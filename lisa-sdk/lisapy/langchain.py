@@ -1,0 +1,178 @@
+"""
+Langchain adapter.
+
+Copyright (C) 2023 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
+This AWS Content is provided subject to the terms of the AWS Customer Agreement
+available at http://aws.amazon.com/agreement or other written agreement between
+Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
+"""
+from typing import Any, Iterator, List, Mapping, Optional
+
+from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.llms.base import LLM
+from langchain.schema.output import GenerationChunk
+from langchain_core.embeddings import Embeddings
+from langchain_core.pydantic_v1 import BaseModel, Extra
+from pydantic import PrivateAttr
+
+from .main import FoundationModel, Lisa
+
+
+class LisaTextgen(LLM):
+    """Lisa text generation adapter.
+
+    To use, you should have the `lisapy` python package installed and
+    a Lisa API available.
+    """
+
+    provider: str
+    """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""
+
+    model_name: str
+    """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1"""
+
+    client: Lisa
+    """An instance of the Lisa client."""
+
+    foundation_model: FoundationModel = PrivateAttr(default_factory=None)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.foundation_model = self.client.describe_model(self.provider, self.model_name)
+
+    @property
+    def _llm_type(self) -> str:
+        """Return type of llm."""
+        return "lisa_inference"
+
+    @property
+    def _identifying_params(self) -> Mapping[str, Any]:
+        """Get the identifying parameters."""
+        return {
+            "provider": self.provider,
+            "model_name": self.model_name,
+            "client": self.client,
+            "foundation_model": self.foundation_model,
+        }
+
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+        if self.foundation_model.streaming:
+            completion = ""
+            for chunk in self._stream(prompt, stop, run_manager, **kwargs):
+                completion += chunk.text
+            return completion
+
+        text, _ = self.client.generate(prompt, self.foundation_model)
+
+        return text  # type: ignore
+
+    def _stream(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> Iterator[GenerationChunk]:
+        for resp in self.client.generate_stream(prompt, self.foundation_model):
+            # yield text, if any
+            if resp.token:
+                chunk = GenerationChunk(text=resp.token)
+                yield chunk
+                if run_manager:
+                    run_manager.on_llm_new_token(chunk.text)
+
+
+class LisaEmbeddings(BaseModel, Embeddings):
+    """Lisa text embedding adapter.
+
+    To use, you should have the `lisapy` python package installed and
+    a Lisa API available.
+    """
+
+    provider: str
+    """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""
+
+    model_name: str
+    """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1"""
+
+    client: Lisa
+    """An instance of the Lisa client."""
+
+    foundation_model: FoundationModel = PrivateAttr(default_factory=None)
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        extra = Extra.forbid
+        arbitrary_types_allowed = True
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.foundation_model = self.client.describe_model(self.provider, self.model_name)
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Compute doc embeddings using a LISA model.
+
+        Parameters
+        ----------
+        texts : List[str]
+            The list of texts to embed.
+
+        Returns
+        -------
+        List[List[float]]
+            List of embeddings, one for each text.
+        """
+        return self.client.embed(texts, self.foundation_model)
+
+    def embed_query(self, text: str) -> List[float]:
+        """Compute query embeddings using a LISA model.
+
+        Parameters
+        ----------
+        text : str
+            The text to embed.
+
+        Returns
+        -------
+        List[float]
+            Embedding for the text.
+        """
+        return self.client.embed(text, self.foundation_model)[0]
+
+    async def aembed_query(self, text: str) -> List[float]:
+        """Asynchronous compute query embeddings using a LISA model.
+
+        Parameters
+        ----------
+        text : str
+            The text to embed.
+
+        Returns
+        -------
+        List[float]
+            Embedding for the text.
+        """
+        return (await self.client.aembed(text, self.foundation_model))[0]
+
+    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Asynchronous compute doc embeddings using a LISA model.
+
+        Parameters
+        ----------
+        texts : List[str]
+            The list of texts to embed.
+
+        Returns
+        -------
+        List[List[float]]
+            List of embeddings, one for each text.
+        """
+        return await self.client.aembed(texts, self.foundation_model)

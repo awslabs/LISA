@@ -1,0 +1,4 @@
+cryptography
+PyJWT
+requests
+urllib3<2

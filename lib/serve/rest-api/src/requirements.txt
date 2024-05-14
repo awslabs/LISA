@@ -1,0 +1,11 @@
+aiobotocore
+aiohttp
+cryptography
+fastapi
+fastapi_utils
+gunicorn
+loguru
+pydantic<2
+PyJWT
+text-generation
+uvicorn

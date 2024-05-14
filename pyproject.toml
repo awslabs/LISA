@@ -1,0 +1,52 @@
+[tool.bandit]
+exclude_dirs = [
+    "test",
+    "scripts",
+    ".venv",
+    "cdk.out"
+]
+skips = [
+    "B104",
+    "B108",
+    "B110",
+    "B403",
+    "B608"
+]
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+line_length = 120
+profile = "black"
+force_alphabetical_sort_within_sections = true
+skip_glob = [
+    "cdk.out/*"
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+disallow_untyped_decorators = true
+disallow_incomplete_defs = true
+disallow_any_unimported = false
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+strict_optional = true
+show_error_codes = true
+
+[tool.ruff]
+ignore = ["D401"]
+line-length = 120
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers -vv -x"
+markers = [
+    "api: API tests",
+    "cdk_deployed: CDK infrastructure deployed",
+]
+testpaths = [
+    "test/python"
+]

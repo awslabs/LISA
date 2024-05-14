@@ -1,0 +1,3 @@
+boto3>=1.26.153
+botocore>=1.29.153
+urllib3<2

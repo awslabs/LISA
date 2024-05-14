@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "lisapy"
+version = "0.1.0"
+description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
+authors = ["Steve Goley <sgoley@amazon.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "*"
+langchain = "*"
+boto3 = "*"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.25.2"
+pytest-asyncio = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers -vv -x"
+markers = [
+    "asyncio: Async tests",
+]
+testpaths = [
+    "tests/"
+]

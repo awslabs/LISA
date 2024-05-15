@@ -1,0 +1,144 @@
+repos:
+- repo: local
+  hooks:
+    - id: verify-config
+      name: Verify config file
+      description: Verify config file to check if certain parameters are empty
+      entry: scripts/verify-config.sh
+      verbose: true
+      language: script
+      files: config.yaml
+
+- repo: https://github.com/PyCQA/bandit
+  rev: '1.7.5'
+  hooks:
+    - id: bandit
+      args: [--recursive, -c=pyproject.toml]
+      additional_dependencies: ['bandit[toml]']
+
+- repo: https://github.com/Yelp/detect-secrets
+  rev: v1.4.0
+  hooks:
+    - id: detect-secrets
+      exclude: (?x)^(
+        .*.ipynb|config.yaml
+        )$
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+    - id: check-json
+    - id: check-yaml
+    - id: check-case-conflict
+    - id: mixed-line-ending
+      args: ['--fix=lf']
+    - id: fix-byte-order-marker
+    - id: check-merge-conflict
+    - id: detect-private-key
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.6
+  hooks:
+    - id: codespell
+      entry: codespell
+      args: ['--skip=*.git*,*cdk.out*,*venv*,*mypy_cache*,*package-lock*,*node_modules*,*dist/*,*poetry.lock*,*coverage*', "-L=xdescribe"]
+      pass_filenames: false
+
+- repo: https://github.com/pre-commit/mirrors-prettier
+  rev: 'v3.0.3'
+  hooks:
+    - id: prettier
+      name: prettier-md
+      files: .*\.(ya?ml|json|md)$
+      exclude: ^node_modules/|config.yaml|^dist/
+
+    - id: prettier
+      name: prettier-ts
+      args: [--write, --config, .prettierrc]
+      files: \.(ts|tsx)$
+      exclude: ^node_modules/|^dist/
+
+- repo: https://github.com/pycqa/isort
+  rev: 5.12.0
+  hooks:
+    - id: isort
+      name: isort (python)
+
+- repo: https://github.com/ambv/black
+  rev: '23.10.1'
+  hooks:
+    - id: black
+
+- repo: https://github.com/charliermarsh/ruff-pre-commit
+  rev: 'v0.1.3'
+  hooks:
+    - id: ruff
+      args: [--exit-non-zero-on-fix]
+
+- repo: https://github.com/pycqa/flake8
+  rev: '6.1.0'
+  hooks:
+    - id: flake8
+      additional_dependencies:
+        - flake8-docstrings
+        - flake8-broken-line
+        - flake8-bugbear
+        - flake8-comprehensions
+        - flake8-debugger
+        - flake8-string-format
+      args:
+        - --docstring-convention=numpy
+        - --max-line-length=120
+        - --extend-immutable-calls=Query,fastapi.Depends,fastapi.params.Depends
+        - --ignore=B008 # Ignore error for function calls in argument defaults
+      exclude: ^(__init__.py$|.*\/__init__.py$)
+
+
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: 'v1.6.1'
+  hooks:
+    - id: mypy
+      verbose: true
+      # mypy currently fails on the gitlab runner and also fails locally due to the mono
+      # repo nature of LISA and two "api" modules. This command will make it so mypy
+      # issues are reported but non-blocking
+      entry: bash -c 'mypy "$@" || true' --
+      args:
+        - --config-file=pyproject.toml
+        - --install-types
+        - --non-interactive
+      exclude: ^test
+
+- repo: https://github.com/pre-commit/mirrors-eslint
+  rev: 'v8.53.0'
+  hooks:
+    - id: eslint
+      files: \.[jt]sx?$
+      types: [file]
+      args:
+        - --max-warnings=10
+        - --fix
+
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: v1.5.5
+  hooks:
+    - id: insert-license
+      files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
+      args:
+        - --license-filepath
+        - .precommit-license-header.txt        # defaults to: LICENSE.txt
+        - --comment-style
+        - /**| |*/        # defaults to:  #
+
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: v1.5.5
+  hooks:
+    - id: insert-license
+      files: \.py$
+      args:
+        - --license-filepath
+        - .precommit-license-header.txt        # defaults to: LICENSE.txt
+        - --comment-style
+        - "#  "        # defaults to:  #

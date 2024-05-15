@@ -15,6 +15,7 @@
     "@aws-sdk/client-iam": "^3.490.0",
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
     "@cdklabs/cdk-enterprise-iac": "^0.0.400",
+    "@types/jest": "^29.5.12",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "20.5.3",
     "@typescript-eslint/eslint-plugin": "^6.7.0",

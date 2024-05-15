@@ -23,3 +23,9 @@ cdk.context.json
 .vscode
 .venv
 .DS_Store
+
+# Coverage Statistic Folders
+coverage
+
+# Model Cache Folders
+models

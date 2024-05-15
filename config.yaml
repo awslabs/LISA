@@ -25,7 +25,12 @@ dev:
   #   backgroundColor: orange
   #   fontColor: black
   s3BucketModels: hf-models-gaiic
+  # aws partition mountS3 package location
   mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+  # aws-iso partition mountS3 package location
+  # mountS3DebUrl: https://mountpoint-s3-release-us-iso-east-1.s3.us-iso-east-1.c2s.ic.gov/latest/x86_64/mount-s3.deb
+  # aws-iso-b partition mountS3 package location
+  # mountS3DebUrl: https://mountpoint-s3-release-us-isob-east-1.s3.us-isob-east-1.sc2s.sgov.gov/latest/x86_64/mount-s3.deb
   accountNumbersEcr:
     - 763104351884
   deployRag: true

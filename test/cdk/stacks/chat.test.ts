@@ -17,7 +17,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { App, Aspects, Stack } from 'aws-cdk-lib';
+import { App, Aspects, Stack, StackProps } from 'aws-cdk-lib';
 import { Annotations, Match } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 import * as yaml from 'js-yaml';
@@ -26,7 +26,7 @@ import { LisaChatApplicationStack } from '../../../lib/chat';
 import { LisaApiBaseStack } from '../../../lib/core/api_base';
 import { createCdkId } from '../../../lib/core/utils';
 import { LisaNetworkingStack } from '../../../lib/networking/index';
-import { Config, ConfigSchema } from '../../../lib/schema';
+import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 
 const regions = ['us-east-1', 'us-gov-west-1', 'us-gov-east-1', 'us-isob-east-1', 'us-iso-east-1', 'us-iso-west-1'];
 
@@ -34,14 +34,14 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
   let app: App;
   let stack: Stack;
   let config: Config;
-  let baseStackProps: any;
+  let baseStackProps: BaseProps & StackProps;
 
   beforeAll(() => {
     app = new App();
 
     // Read configuration file
     const configFilePath = path.join(__dirname, '../mocks/config.yaml');
-    const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as any;
+    const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
     const configEnv = configFile.env || 'dev';
     const configData = configFile[configEnv];
     if (!configData) {

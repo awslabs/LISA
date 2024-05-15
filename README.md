@@ -324,7 +324,9 @@ gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b "0.0.0.0:8080" "src.main:app"
 ```
 
 ### Run example chatbot locally
+
 Create `lib/user-interface/react/public/env.js` file with the following contents:
+
 ```
 window.env = {
   AUTHORITY: '<Your IdP URL here>',
@@ -335,7 +337,9 @@ window.env = {
   SESSION_REST_API_URI: '<API GW session endpoint>'
 }
 ```
+
 Launch the Chat UI:
+
 ```
 cd lib/user-interface/react/
 npm run dev

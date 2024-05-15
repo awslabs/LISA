@@ -23,7 +23,7 @@ import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 import * as yaml from 'js-yaml';
 
 import { LisaServeIAMStack } from '../../../lib/iam_stack';
-import { Config, ConfigSchema } from '../../../lib/schema';
+import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 
 const regions = ['us-east-1', 'us-gov-west-1', 'us-gov-east-1', 'us-isob-east-1', 'us-iso-east-1', 'us-iso-west-1'];
 
@@ -38,7 +38,7 @@ describe.each(regions)('IAM Stack CDK Nag Tests | Region Test: %s', (awsRegion: 
 
     // Read configuration file
     const configFilePath = path.join(__dirname, '../mocks/config.yaml');
-    const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as any;
+    const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
     const configEnv = configFile.env || 'dev';
     const configData = configFile[configEnv];
     if (!configData) {

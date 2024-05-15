@@ -5,6 +5,7 @@
  Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
 */
 import { CfnOutput } from 'aws-cdk-lib';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { IRole } from 'aws-cdk-lib/aws-iam';
@@ -28,6 +29,7 @@ interface FastApiContainerProps extends BaseProps {
   resourcePath: string;
   securityGroup: SecurityGroup;
   taskConfig: FastApiContainerConfig;
+  tokenTable: ITable;
   vpc: IVpc;
 }
 
@@ -52,7 +54,7 @@ export class FastApiContainer extends Construct {
   constructor(scope: Construct, id: string, props: FastApiContainerProps) {
     super(scope, id);
 
-    const { config, securityGroup, taskConfig, vpc } = props;
+    const { config, securityGroup, taskConfig, tokenTable, vpc } = props;
 
     let buildArgs: Record<string, string> | undefined = undefined;
     if (taskConfig.containerConfig.image.type === EcsSourceType.ASSET) {
@@ -68,6 +70,7 @@ export class FastApiContainer extends Construct {
       THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
       AUTHORITY: config.authConfig.authority,
       CLIENT_ID: config.authConfig.clientId,
+      TOKEN_TABLE_NAME: tokenTable.tableName,
     };
 
     const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
@@ -87,6 +90,7 @@ export class FastApiContainer extends Construct {
       securityGroup,
       vpc,
     });
+    tokenTable.grantReadData(apiCluster.taskRole);
 
     this.endpoint = apiCluster.endpointUrl;
 

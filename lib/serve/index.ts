@@ -9,6 +9,7 @@
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -44,6 +45,18 @@ export class LisaServeApplicationStack extends Stack {
 
     const { config, vpc } = props;
 
+    // Create DynamoDB Table for enabling API token usage
+    const tokenTable = new Table(this, 'TokenTable', {
+      tableName: 'LISAApiTokenTable',
+      partitionKey: {
+        name: 'token',
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      encryption: TableEncryption.AWS_MANAGED,
+      removalPolicy: config.removalPolicy,
+    });
+
     // Create REST API
     const restApi = new FastApiContainer(this, 'RestApi', {
       apiName: 'REST',
@@ -51,6 +64,7 @@ export class LisaServeApplicationStack extends Stack {
       resourcePath: path.join(HERE, 'rest-api'),
       securityGroup: vpc.securityGroups.restApiAlbSg,
       taskConfig: config.restApiConfig,
+      tokenTable: tokenTable,
       vpc: vpc.vpc,
     });
 

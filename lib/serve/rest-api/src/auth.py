@@ -9,15 +9,23 @@ Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL o
 import os
 import ssl
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import boto3
 import jwt
 import requests
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
+
+# The following are field names, not passwords or tokens
+API_KEY_HEADER_NAME = "Api-Key"  # pragma: allowlist secret
+TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
+TOKEN_TABLE_NAME = "TOKEN_TABLE_NAME"  # nosec B105
+
 
 logger_level = os.environ.get("LOG_LEVEL", "INFO")
 logger.configure(
@@ -36,18 +44,12 @@ if not jwt.algorithms.has_crypto:
     raise RuntimeError("No crypto support for JWT.")
 
 
-def api_token_is_valid(headers: Dict[str, str]) -> bool:
-    """Return whether valid API Token has been found or not."""
-    if "Api-Key" in headers:
-        return headers["Api-Key"] == "demoApiTokenChangeMeLater"
-    return False
-
-
 class OIDCHTTPBearer(HTTPBearer):
     """OIDC based bearer token authenticator."""
 
     def __init__(self, **kwargs: Dict[str, Any]):
         super().__init__(**kwargs)
+        self._token_authorizer = ApiTokenAuthorizer()
 
         if ("SSL_CERT_DIR" not in os.environ) or ("SSL_CERT_FILE" not in os.environ):
             cert_path = None
@@ -65,7 +67,7 @@ class OIDCHTTPBearer(HTTPBearer):
 
     async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
-        if api_token_is_valid(request.headers):
+        if self._token_authorizer.is_valid_api_token(request.headers):
             return None  # valid API token, not continuing with OIDC auth
         http_auth_creds = await super().__call__(request)
         if not self.id_token_is_valid(
@@ -104,3 +106,34 @@ class OIDCHTTPBearer(HTTPBearer):
         except jwt.exceptions.PyJWTError as e:
             logger.exception(e)
             return False
+
+
+class ApiTokenAuthorizer:
+    """Class for checking API tokens against a DynamoDB table of API Tokens.
+
+    For the Token database, only a string value in the "token" field is required. Optionally,
+    customers may put a UNIX timestamp (in seconds) in a "tokenExpiration" field so that the
+    API key becomes invalid after a specified time.
+    """
+
+    def __init__(self) -> None:
+        ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+        self._token_table = ddb_resource.Table(os.environ[TOKEN_TABLE_NAME])
+
+    def _get_token_info(self, token: str) -> Any:
+        """Return DDB entry for token if it exists."""
+        ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
+        return ddb_response.get("Item", None)
+
+    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+        """Return if API Token from request headers is valid if found."""
+        is_valid = False
+        token = headers.get(API_KEY_HEADER_NAME, None)
+        if token:
+            token_info = self._get_token_info(token)
+            if token_info:
+                token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
+                current_time = int(datetime.now().timestamp())
+                if current_time < token_expiration:  # token has not expired yet
+                    is_valid = True
+        return is_valid

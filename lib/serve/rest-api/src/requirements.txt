@@ -1,5 +1,6 @@
 aiobotocore
 aiohttp
+boto3
 cryptography
 fastapi
 fastapi_utils

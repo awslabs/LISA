@@ -162,7 +162,7 @@ export class UserInterfaceStack extends Stack {
         backgroundColor: config.systemBanner?.backgroundColor,
         fontColor: config.systemBanner?.fontColor,
       },
-      API_BASE_URL: config.apiGatewayConfig?.domainName || `/${config.deploymentStage}/`,
+      API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
     };
 
     const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

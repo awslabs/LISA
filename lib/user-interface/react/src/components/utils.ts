@@ -1,3 +1,4 @@
+import { SelectProps } from '@cloudscape-design/components';
 import {
   LisaChatSession,
   DescribeModelsResponseBody,
@@ -268,7 +269,46 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
     if (forMetadata && doc.Document?.metadata?.source) {
       contents += `${index > 0 ? '\n' : ''}Source - ${doc.Document.metadata.source}:`;
     }
-    contents += `\n${doc.Document.page_content}`;
+    contents += `\n${doc.Document.page_content}\n`;
   });
   return contents;
+};
+
+export const formatModelKey = (providerName: string, modelName: string): string => {
+  return `${providerName}.${modelName}`;
+};
+
+export const createModelOptions = (providers: ModelProvider[]): SelectProps.Options => {
+  const optionGroups: SelectProps.OptionGroup[] = [];
+  for (const modelProvider of providers) {
+    const options: SelectProps.Option[] = [];
+    for (const model of modelProvider.models) {
+      const modelKey = formatModelKey(modelProvider.name, model.modelName);
+      let label = '';
+      if (model.modelType === 'textgen') {
+        label = `${model.modelName} ${model.streaming ? '(streaming supported)' : ''}`;
+      } else if (model.modelType === 'embedding') {
+        label = `${model.modelName}`;
+      }
+      options.push({
+        label,
+        value: modelKey,
+      });
+    }
+    optionGroups.push({
+      label: modelProvider.name,
+      options: options,
+    });
+  }
+  return optionGroups;
+};
+
+export const createModelMap = (providers: ModelProvider[]): Map<string, Model> => {
+  const modelMap: Map<string, Model> = new Map<string, Model>();
+  for (const modelProvider of providers) {
+    for (const model of modelProvider.models) {
+      modelMap[formatModelKey(modelProvider.name, model.modelName)] = model;
+    }
+  }
+  return modelMap;
 };

@@ -8,7 +8,7 @@ Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL o
 """
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, List, Tuple
 
 from ..utils.request_utils import handle_stream_exceptions, validate_and_prepare_llm_request
 from ..utils.resources import RestApiResource
@@ -30,3 +30,63 @@ async def handle_generate_stream(request_data: Dict[str, Any]) -> AsyncGenerator
     model, model_kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE_STREAM)
     async for response in model.generate_stream(text=text, model_kwargs=model_kwargs):
         yield f"data:{json.dumps(response.dict(exclude_none=True))}\n\n"
+
+
+def render_context(messages_list: List[Dict[str, str]]) -> str:
+    """Provide context string for LLM from previous messages."""
+    out_str = "\n\n".join([message["content"] for message in messages_list])
+    return out_str
+
+
+def parse_model_provider_names(model_string: str) -> Tuple[str, str]:
+    """Parse out the model name and its provider name from the combined name of the two.
+
+    Format is assumed to be `${model_name} (${provider_name})` and neither of the model_name or provider_name have
+    a space in them. Requests using the OpenAI text generation APIs will require that model names follow this format.
+    """
+    model_parts = model_string.split()
+    model_name = model_parts[0].strip()
+    provider = model_parts[1].replace("(", "").replace(")", "").strip()
+    return model_name, provider
+
+
+@handle_stream_exceptions  # type: ignore
+async def handle_openai_generate_stream(
+    request_data: Dict[str, Any], is_text_completion: bool = False
+) -> AsyncGenerator[str, None]:
+    """Handle for openai_generate_stream endpoint."""
+    # map OpenAI API settings (keys) with corresponding TGI model settings (values). Any unsupported options ignored.
+    request_mapping = {
+        "echo": "return_full_text",
+        "frequency_penalty": "repetition_penalty",
+        "max_tokens": "max_new_tokens",
+        "seed": "seed",
+        "stop": "stop_sequences",
+        "temperature": "temperature",
+        "top_p": "top_p",
+    }
+    mapped_kwargs = {
+        request_mapping[k]: request_data[k] for k in request_mapping if k in request_data and request_data[k]
+    }
+
+    if is_text_completion:
+        text = request_data["prompt"]  # text is already a string
+    else:
+        text = render_context(request_data["messages"])  # text must be converted from a list to a string
+    model_name, provider = parse_model_provider_names(request_data["model"])
+    lisa_request_data = {
+        "modelName": model_name,
+        "provider": provider,
+        "text": text,
+        "streaming": request_data.get("stream", False),
+        "modelKwargs": mapped_kwargs,
+    }
+    model, model_kwargs, text = await validate_and_prepare_llm_request(
+        lisa_request_data, RestApiResource.GENERATE_STREAM
+    )
+    async for response in model.openai_generate_stream(
+        text=text, model_kwargs=model_kwargs, is_text_completion=is_text_completion
+    ):
+        yield f"data:{json.dumps(response.dict(exclude_none=True))}\n\n"
+    if is_text_completion:
+        yield "data: [DONE]\n\n"

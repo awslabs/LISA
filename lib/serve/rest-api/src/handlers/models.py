@@ -8,6 +8,7 @@ Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL o
 """
 
 import logging
+import time
 from collections import defaultdict
 from typing import Any, DefaultDict, Dict, List
 
@@ -38,6 +39,27 @@ async def handle_list_models(model_types: List[ModelType]) -> Dict[ModelType, Di
     registered_models_cache = get_registered_models_cache()
     response = {model_type: registered_models_cache[model_type] for model_type in model_types}
 
+    return response
+
+
+async def handle_openai_list_models() -> Dict[str, Any]:
+    """Handle for list_models endpoint.
+
+    Returns
+    -------
+    Dict[str, Union[str, Any]
+        OpenAI-compatible response object to list Models. This only returns Text Generation models.
+    """
+    registered_models_cache = get_registered_models_cache()
+
+    model_payload: List[Dict[str, Any]] = []
+    for provider, models in registered_models_cache[ModelType.TEXTGEN].items():
+        model_payload.extend(
+            {"id": f"{model} ({provider})", "object": "model", "created": int(time.time()), "owned_by": "LISA"}
+            for model in models
+        )
+
+    response = {"data": model_payload, "object": "list"}
     return response
 
 

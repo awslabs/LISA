@@ -36,6 +36,13 @@ if not jwt.algorithms.has_crypto:
     raise RuntimeError("No crypto support for JWT.")
 
 
+def api_token_is_valid(headers: Dict[str, str]) -> bool:
+    """Return whether valid API Token has been found or not."""
+    if "Api-Key" in headers:
+        return headers["Api-Key"] == "demoApiTokenChangeMeLater"
+    return False
+
+
 class OIDCHTTPBearer(HTTPBearer):
     """OIDC based bearer token authenticator."""
 
@@ -57,7 +64,9 @@ class OIDCHTTPBearer(HTTPBearer):
         )
 
     async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
-        """Verify the provided bearer token."""
+        """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
+        if api_token_is_valid(request.headers):
+            return None  # valid API token, not continuing with OIDC auth
         http_auth_creds = await super().__call__(request)
         if not self.id_token_is_valid(
             id_token=http_auth_creds.credentials, authority=os.environ["AUTHORITY"], client_id=os.environ["CLIENT_ID"]

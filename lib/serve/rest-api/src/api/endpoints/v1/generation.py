@@ -12,8 +12,14 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ....handlers.generation import handle_generate, handle_generate_stream
-from ....utils.resources import GenerateRequest, GenerateStreamRequest, RestApiResource
+from ....handlers.generation import handle_generate, handle_generate_stream, handle_openai_generate_stream
+from ....utils.resources import (
+    GenerateRequest,
+    GenerateStreamRequest,
+    OpenAIChatCompletionsRequest,
+    OpenAICompletionsRequest,
+    RestApiResource,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,5 +39,23 @@ async def generate_stream(request: GenerateStreamRequest) -> StreamingResponse:
     """Text generation with streaming."""
     return StreamingResponse(
         handle_generate_stream(request.dict()),
+        media_type="text/event-stream",
+    )
+
+
+@router.post(f"/{RestApiResource.OPENAI_CHAT_COMPLETIONS.value}")  # type: ignore
+async def openai_chat_completion_generate_stream(request: OpenAIChatCompletionsRequest) -> StreamingResponse:
+    """Text generation with streaming."""
+    return StreamingResponse(
+        handle_openai_generate_stream(request.dict()),
+        media_type="text/event-stream",
+    )
+
+
+@router.post(f"/{RestApiResource.OPENAI_COMPLETIONS.value}")  # type: ignore
+async def openai_completion_generate_stream(request: OpenAICompletionsRequest) -> StreamingResponse:
+    """Text generation with streaming."""
+    return StreamingResponse(
+        handle_openai_generate_stream(request.dict(), is_text_completion=True),
         media_type="text/event-stream",
     )

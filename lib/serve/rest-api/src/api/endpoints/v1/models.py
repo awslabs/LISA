@@ -13,7 +13,12 @@ from typing import List, Optional
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
-from ....handlers.models import handle_describe_model, handle_describe_models, handle_list_models
+from ....handlers.models import (
+    handle_describe_model,
+    handle_describe_models,
+    handle_list_models,
+    handle_openai_list_models,
+)
 from ....utils.resources import ModelType, RestApiResource
 
 logger = logging.getLogger(__name__)
@@ -71,4 +76,11 @@ async def list_models(
 
     response = await handle_list_models(model_types)
 
+    return JSONResponse(content=response, status_code=200)
+
+
+@router.get(f"/{RestApiResource.OPENAI_LIST_MODELS.value}")  # type: ignore
+async def openai_list_models() -> JSONResponse:
+    """List models for OpenAI Compatibility. Only returns TEXTGEN models."""
+    response = await handle_openai_list_models()
     return JSONResponse(content=response, status_code=200)

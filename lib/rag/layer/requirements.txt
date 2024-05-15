@@ -1,7 +1,7 @@
 opensearch-py
 requests-aws4auth
 PyPDF2==3.0.1
-langchain==0.0.350
+langchain==0.1.0
 pgvector==0.2.5
 psycopg2-binary==2.9.9
 python-docx==1.1.0

@@ -1,11 +1,20 @@
-"""
-Model adapter and kwargs validator for ECS text generation TGI model endpoints.
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
-Copyright (C) 2023 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
-This AWS Content is provided subject to the terms of the AWS Customer Agreement
-available at http://aws.amazon.com/agreement or other written agreement between
-Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
-"""
+"""Model adapter and kwargs validator for ECS text generation TGI model endpoints."""
+import time
+import uuid
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from loguru import logger
@@ -16,6 +25,11 @@ from ...base import (
     escape_curly_brackets,
     GenerateResponse,
     GenerateStreamResponse,
+    OpenAIChatCompletionsChoice,
+    OpenAIChatCompletionsDelta,
+    OpenAIChatCompletionsResponse,
+    OpenAICompletionsChoice,
+    OpenAICompletionsResponse,
     StreamTextGenModelAdapter,
     TextGenModelAdapter,
     Token,
@@ -152,6 +166,63 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
                 token=Token(text=resp.token.text, special=resp.token.special),
                 generatedTokens=resp.details.generated_tokens if resp.details else None,
                 finishReason=resp.details.finish_reason if resp.details else None,
+            )
+            logger.debug(
+                f"Response: {escape_curly_brackets(response.json())}",
+                extra={"event": f"{self.__class__.__name__}:generate_stream"},
+            )
+            yield response
+
+    async def openai_generate_stream(
+        self, *, text: str, model_kwargs: Dict[str, Any], is_text_completion: bool
+    ) -> AsyncGenerator[GenerateStreamResponse, None]:
+        """Text generation with token streaming, conforming to the OpenAI API specification.
+
+        Parameters
+        ----------
+        text : str
+            Prompt input text.
+
+        model_kwargs : Dict[str, Any]
+            Arguments to text generation model.
+
+        is_text_completion : bool
+            Tells if this is a request from the /completions API (True) or if it is from the
+            /chat/completions API (False)
+
+        Returns
+        -------
+        AsyncGenerator[GenerateStreamResponse, None]
+            Text generation model response with streaming.
+        """
+        request = {"prompt": text, **model_kwargs}
+        resp_id = str(uuid.uuid4())
+        fingerprint = str(uuid.uuid4())
+        created = int(time.time())
+        if is_text_completion:
+            response_class = OpenAICompletionsResponse
+        else:
+            response_class = OpenAIChatCompletionsResponse
+        async for resp in self.client.generate_stream(**request):
+            response = response_class(
+                id=resp_id,
+                created=created,
+                model=self.model_name,
+                object="text_completion" if is_text_completion else "chat.completion.chunk",
+                system_fingerprint=fingerprint,
+                choices=[
+                    OpenAICompletionsChoice(
+                        index=0,
+                        finish_reason=resp.details.finish_reason if resp.details else None,
+                        text=resp.token.text,
+                    )
+                    if is_text_completion
+                    else OpenAIChatCompletionsChoice(
+                        index=0,
+                        finish_reason=resp.details.finish_reason if resp.details else None,
+                        delta=OpenAIChatCompletionsDelta(content=resp.token.text, role="assistant"),
+                    )
+                ],
             )
             logger.debug(
                 f"Response: {escape_curly_brackets(response.json())}",

@@ -1,0 +1,236 @@
+env: dev
+
+dev:
+  appName: lisa
+  profile:
+  deploymentName: test-lisa
+  accountNumber: '012345678901'
+  region: us-gov-west-1
+  deploymentStage: dev
+  removalPolicy: destroy
+  runCdkNag: false
+  webAppAssetsPath: './test/cdk/mocks/ui/'
+  # lambdaLayerAssets:
+  #   authorizerLayerPath: /path/to/authorizer_layer.zip
+  #   commonLayerPath: /path/to/common_layer.zip
+  #   ragLayerPath: /path/to/rag_layer.zip
+  #   sdkLayerPath: /path/to/sdk_layer.zip
+  # stackSynthesizer: CliCredentialsStackSynthesizer
+  # permissionsBoundaryAspect:
+  #   permissionsBoundaryPolicyName: CustomPermissionBoundary
+  #   rolePrefix: CustomPrefix
+  #   policyPrefix: CustomPrefix
+  #   instanceProfilePrefix: CustomPrefix
+  # systemBanner:
+  #   text: 'LISA System'
+  #   backgroundColor: orange
+  #   fontColor: black
+  s3BucketModels: hf-models-gaiic
+  # aws partition mountS3 package location
+  mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+  # aws-iso partition mountS3 package location
+  # mountS3DebUrl: https://mountpoint-s3-release-us-iso-east-1.s3.us-iso-east-1.c2s.ic.gov/latest/x86_64/mount-s3.deb
+  # aws-iso-b partition mountS3 package location
+  # mountS3DebUrl: https://mountpoint-s3-release-us-isob-east-1.s3.us-isob-east-1.sc2s.sgov.gov/latest/x86_64/mount-s3.deb
+  accountNumbersEcr:
+    - '012345678901'
+  deployRag: true
+  lambdaConfig:
+    pythonRuntime: PYTHON_3_10
+    logLevel: DEBUG
+    vpcAutoscalingConfig:
+      provisionedConcurrentExecutions: 5
+      minCapacity: 1
+      maxCapacity: 50
+      targetValue: 0.80
+      cooldown: 30
+  authConfig:
+    authority: test
+    clientId: test
+  logLevel: DEBUG
+  # NOTE: The following configuration will allow for using a custom domain for the chat user interface.
+  # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
+  # Users must use the custom domain for the user interface to work if this option is populated.
+  apiGatewayConfig:
+    domainName:
+  restApiConfig:
+    apiVersion: v1
+    instanceType: m5.large
+    containerConfig:
+      image:
+        baseImage: python:3.9
+        path: lib/serve/rest-api
+        type: asset
+      healthCheckConfig:
+        command: ["CMD-SHELL", "exit 0"]
+        interval: 10
+        startPeriod: 30
+        timeout: 5
+        retries: 3
+    autoScalingConfig:
+      minCapacity: 1
+      maxCapacity: 1
+      cooldown: 60
+      defaultInstanceWarmup: 60
+      metricConfig:
+        AlbMetricName: RequestCountPerTarget
+        targetValue: 1000
+        duration: 60
+        estimatedInstanceWarmup: 30
+    loadBalancerConfig:
+      sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
+      healthCheckConfig:
+        path: /health
+        interval: 60
+        timeout: 30
+        healthyThresholdCount: 2
+        unhealthyThresholdCount: 10
+      domainName:
+  ragRepositories:
+    - repositoryId: pgvector-rag
+      type: pgvector
+      rdsConfig:
+        username: postgres
+    # - repositoryId: default
+    #   type: opensearch
+    #   opensearchConfig:
+    #     dataNodes: 2
+    #     dataNodeInstanceType: r6g.large.search
+    #     masterNodes: 0
+    #     masterNodeInstanceType: r6g.large.search
+    #     volumeSize: 300
+    # If adding an existing PGVector database, this configurations assumes:
+    # 1. The database has been configured to have pgvector installed and enabled: https://aws.amazon.com/about-aws/whats-new/2023/05/amazon-rds-postgresql-pgvector-ml-model-integration/
+    # 2. The database is accessible by RAG-related lambda functions (add inbound PostgreSQL access on the database's security group for all Lambda RAG security groups)
+    # 3. A secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'. This is the same format that RDS natively provides a password in SecretsManager.
+    # If the passwordSecretId or dbHost are not provided, then a sample database will be created for you. Only the username is required.
+    # - repositoryId: pgvector-rag
+    #  type: pgvector
+    #  rdsConfig:
+    #    username: postgres
+    #    passwordSecretId: # password ID as stored in SecretsManager. Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
+    #    dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
+    #    dbName: postgres
+  ragFileProcessingConfig:
+    chunkSize: 512
+    chunkOverlap: 51
+  ecsModels:
+    - modelName: mistralai/Mistral-7B-Instruct-v0.2
+      modelId: mistral7b
+      deploy: true
+      streaming: true
+      modelType: textgen
+      instanceType: g5.xlarge
+      inferenceContainer: tgi
+      containerConfig:
+        image:
+          baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+          path: lib/serve/ecs-model/textgen/tgi
+          type: asset
+        sharedMemorySize: 2048
+        healthCheckConfig:
+          command: ["CMD-SHELL", "exit 0"]
+          interval: 10
+          startPeriod: 30
+          timeout: 5
+          retries: 3
+        environment:
+          MAX_CONCURRENT_REQUESTS: 128
+          MAX_INPUT_LENGTH: 1024
+          MAX_TOTAL_TOKENS: 2048
+      autoScalingConfig:
+        minCapacity: 1
+        maxCapacity: 1
+        defaultInstanceWarmup: 180
+        cooldown: 420
+        metricConfig:
+          AlbMetricName: RequestCountPerTarget
+          targetValue: 30
+          duration: 60
+          estimatedInstanceWarmup: 330
+      loadBalancerConfig:
+        healthCheckConfig:
+          path: /health
+          interval: 60
+          timeout: 30
+          healthyThresholdCount: 2
+          unhealthyThresholdCount: 10
+    - modelName: intfloat/e5-large-v2
+      modelId: e5v2
+      deploy: true
+      modelType: embedding
+      instanceType: g5.xlarge
+      inferenceContainer: tei
+      containerConfig:
+        image:
+          baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
+          path: lib/serve/ecs-model/embedding/tei
+          type: asset
+        sharedMemorySize: 2048
+        healthCheckConfig:
+          command: ["CMD-SHELL", "exit 0"]
+          interval: 10
+          startPeriod: 30
+          timeout: 5
+          retries: 3
+        environment:
+          MAX_CONCURRENT_REQUESTS: 512
+          MAX_CLIENT_BATCH_SIZE: 1024
+          MAX_BATCH_TOKENS: 16384
+      autoScalingConfig:
+        minCapacity: 1
+        maxCapacity: 1
+        cooldown: 420
+        defaultInstanceWarmup: 180
+        metricConfig:
+          AlbMetricName: RequestCountPerTarget
+          targetValue: 60
+          duration: 60
+          estimatedInstanceWarmup: 330
+      loadBalancerConfig:
+        healthCheckConfig:
+          path: /health
+          interval: 30
+          timeout: 10
+          healthyThresholdCount: 2
+          unhealthyThresholdCount: 10
+    # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
+    #   deploy: true
+    #   streaming: true
+    #   modelType: textgen
+    #   instanceType: g5.12xlarge
+    #   inferenceContainer: tgi
+    #   containerConfig:
+    #     image:
+    #       baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+    #       path: lib/serve/ecs-model/textgen/tgi
+    #       type: asset
+    #     sharedMemorySize: 2048
+    #     healthCheckConfig:
+    #       command: ["CMD-SHELL", "exit 0"]
+    #       interval: 10
+    #       startPeriod: 30
+    #       timeout: 5
+    #       retries: 3
+    #     environment:
+    #       QUANTIZE: bitsandbytes-nf4
+    #       MAX_CONCURRENT_REQUESTS: 128
+    #       MAX_INPUT_LENGTH: 1024
+    #       MAX_TOTAL_TOKENS: 2048
+    #   autoScalingConfig:
+    #     minCapacity: 1
+    #     maxCapacity: 1
+    #     defaultInstanceWarmup: 180
+    #     cooldown: 420
+    #     metricConfig:
+    #       AlbMetricName: RequestCountPerTarget
+    #       targetValue: 30
+    #       duration: 60
+    #       estimatedInstanceWarmup: 330
+    #   loadBalancerConfig:
+    #     healthCheckConfig:
+    #       path: /health
+    #       interval: 60
+    #       timeout: 30
+    #       healthyThresholdCount: 2
+    #       unhealthyThresholdCount: 10

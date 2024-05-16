@@ -1,0 +1,49 @@
+name: Build and Test
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+permissions:
+  contents: read
+
+jobs:
+  cdk-build:
+    name: CDK Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+      - name: Install dependencies
+        run: |
+          npm install
+      - name: Run tests
+        run: |
+          npm run test
+  pre-commit:
+    name: Run All Pre-Commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+      - name: Install Chatbot dependencies
+        working-directory: ./lib/user-interface/react
+        run: |
+          npm install
+      - name: Install CDK dependencies
+        working-directory: ./
+        run: |
+          npm install
+      - uses: pre-commit/action@v3.0.1

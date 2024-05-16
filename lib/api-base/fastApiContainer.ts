@@ -1,10 +1,21 @@
-/*
- Copyright (C) 2023 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
- This AWS Content is provided subject to the terms of the AWS Customer Agreement
- available at http://aws.amazon.com/agreement or other written agreement between
- Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 */
+
 import { CfnOutput } from 'aws-cdk-lib';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { IRole } from 'aws-cdk-lib/aws-iam';
@@ -28,6 +39,7 @@ interface FastApiContainerProps extends BaseProps {
   resourcePath: string;
   securityGroup: SecurityGroup;
   taskConfig: FastApiContainerConfig;
+  tokenTable: ITable;
   vpc: IVpc;
 }
 
@@ -52,7 +64,7 @@ export class FastApiContainer extends Construct {
   constructor(scope: Construct, id: string, props: FastApiContainerProps) {
     super(scope, id);
 
-    const { config, securityGroup, taskConfig, vpc } = props;
+    const { config, securityGroup, taskConfig, tokenTable, vpc } = props;
 
     let buildArgs: Record<string, string> | undefined = undefined;
     if (taskConfig.containerConfig.image.type === EcsSourceType.ASSET) {
@@ -68,6 +80,7 @@ export class FastApiContainer extends Construct {
       THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
       AUTHORITY: config.authConfig.authority,
       CLIENT_ID: config.authConfig.clientId,
+      TOKEN_TABLE_NAME: tokenTable.tableName,
     };
 
     const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
@@ -87,6 +100,7 @@ export class FastApiContainer extends Construct {
       securityGroup,
       vpc,
     });
+    tokenTable.grantReadData(apiCluster.taskRole);
 
     this.endpoint = apiCluster.endpointUrl;
 

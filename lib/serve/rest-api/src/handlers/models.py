@@ -1,13 +1,21 @@
-"""
-Model route handlers.
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
-Copyright (C) 2023 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
-This AWS Content is provided subject to the terms of the AWS Customer Agreement
-available at http://aws.amazon.com/agreement or other written agreement between
-Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
-"""
+"""Model route handlers."""
 
 import logging
+import time
 from collections import defaultdict
 from typing import Any, DefaultDict, Dict, List
 
@@ -38,6 +46,27 @@ async def handle_list_models(model_types: List[ModelType]) -> Dict[ModelType, Di
     registered_models_cache = get_registered_models_cache()
     response = {model_type: registered_models_cache[model_type] for model_type in model_types}
 
+    return response
+
+
+async def handle_openai_list_models() -> Dict[str, Any]:
+    """Handle for list_models endpoint.
+
+    Returns
+    -------
+    Dict[str, Union[str, Any]
+        OpenAI-compatible response object to list Models. This only returns Text Generation models.
+    """
+    registered_models_cache = get_registered_models_cache()
+
+    model_payload: List[Dict[str, Any]] = []
+    for provider, models in registered_models_cache[ModelType.TEXTGEN].items():
+        model_payload.extend(
+            {"id": f"{model} ({provider})", "object": "model", "created": int(time.time()), "owned_by": "LISA"}
+            for model in models
+        )
+
+    response = {"data": model_payload, "object": "list"}
     return response
 
 

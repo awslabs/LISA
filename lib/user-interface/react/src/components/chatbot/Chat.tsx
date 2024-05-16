@@ -1,3 +1,19 @@
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
@@ -13,14 +29,11 @@ import Input from '@cloudscape-design/components/input';
 import FormField from '@cloudscape-design/components/form-field';
 import Toggle from '@cloudscape-design/components/toggle';
 import {
-  Alert,
   ColumnLayout,
   ExpandableSection,
-  FileUpload,
   Flashbar,
   Grid,
   Header,
-  ProgressBar,
   TextContent,
   Textarea,
 } from '@cloudscape-design/components';
@@ -28,16 +41,7 @@ import { SelectProps } from '@cloudscape-design/components/select';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import {
-  LisaChatMessage,
-  LisaChatSession,
-  ModelProvider,
-  Model,
-  ModelKwargs,
-  LisaChatMessageMetadata,
-  FileTypes,
-  StatusTypes,
-} from '../types';
+import { LisaChatMessage, LisaChatSession, ModelProvider, Model, ModelKwargs, LisaChatMessageMetadata } from '../types';
 import {
   getSession,
   putSession,
@@ -45,20 +49,20 @@ import {
   isModelInterfaceHealthy,
   RESTAPI_URI,
   RESTAPI_VERSION,
-  listRagRepositories,
-  getPresignedUrl,
-  uploadToS3,
-  ingestDocuments,
   parseDescribeModelsResponse,
   formatDocumentsAsString,
+  createModelMap,
+  createModelOptions,
 } from '../utils';
 import { Lisa, LisaContentHandler, LisaRAGRetriever } from '../adapters/lisa';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import ModelKwargsEditor from './ModelKwargs';
-import { PromptTemplate } from '@langchain/core/prompts';
+import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { BufferWindowMemory } from 'langchain/memory';
+import RagControls, { RagConfig } from './RagOptions';
+import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 
 export default function Chat({ sessionId }) {
   const [userPrompt, setUserPrompt] = useState('');
@@ -74,53 +78,37 @@ export default function Chat({ sessionId }) {
           ${aiPrefix}:`,
   );
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
-  const [embeddingModelProviders, setEmbeddingModelProviders] = useState<ModelProvider[]>([]);
   const [modelsOptions, setModelsOptions] = useState<SelectProps.Options>([]);
-  const [embeddingOptions, setEmbeddingOptions] = useState<SelectProps.Options>([]);
-  const [repositoryOptions, setRepositoryOptions] = useState<SelectProps.Options>([]);
   const [textgenModelMap, setTextgenModelMap] = useState<Map<string, Model> | undefined>(undefined);
-  const [embeddingModelMap, setEmbeddingModelMap] = useState<Map<string, Model> | undefined>(undefined);
   const [modelKwargs, setModelKwargs] = useState<ModelKwargs | undefined>(undefined);
   const [selectedModel, setSelectedModel] = useState<Model | undefined>(undefined);
   const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option | undefined>(undefined);
-  const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<SelectProps.Option | undefined>(undefined);
-  const [selectedRepositoryOption, setSelectedRepositoryOption] = useState<SelectProps.Option | undefined>(undefined);
   const [session, setSession] = useState<LisaChatSession>({
     history: [],
     sessionId: '',
     userId: '',
     startTime: new Date(Date.now()).toISOString(),
   });
-  const [chain, setChain] = useState<RunnableSequence | undefined>(undefined);
   const [streamingEnabled, setStreamingEnabled] = useState(false);
   const [chatHistoryBufferSize, setChatHistoryBufferSize] = useState<number>(3);
+  const [ragTopK, setRagTopK] = useState<number>(3);
   const [modelCanStream, setModelCanStream] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
-  const [isLoadingEmbeddingModels, setIsLoadingEmbeddingModels] = useState(false);
-  const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
   const [showMetadata, setShowMetadata] = useState(false);
   const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
   const [modelKwargsModalVisible, setModelKwargsModalVisible] = useState(false);
   const [promptTemplateModalVisible, setPromptTemplateModalVisible] = useState(false);
-  const [fileContextModalVisible, setFileContextModalVisible] = useState(false);
-  const [ragUploadModalVisible, setRAGUploadModalVisible] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [showContextUploadModal, setShowContextUploadModal] = useState(false);
+  const [showRagUploadModal, setShowRagUploadModal] = useState(false);
+
   const [flashbarItems, setFlashbarItems] = useState([]);
-  const [displayProgressBar, setDisplayProgressBar] = useState(false);
-  const [progressBarValue, setProgressBarValue] = useState(0);
-  const [progressBarDescription, setProgressBarDescription] = useState('');
-  const [progressBarLabel, setProgressBarLabel] = useState('');
-  const [alerts, setAlerts] = useState<string[] | undefined>([]);
-  const [ingestingFiles, setIngestingFiles] = useState(false);
-  const [ingestionStatus, setIngestionStatus] = useState('');
-  const [ingestionType, setIngestionType] = useState(StatusTypes.LOADING);
-  const [repositoryMap, setRepositoryMap] = useState(new Map());
   const [ragContext, setRagContext] = useState('');
   const [useRag, setUseRag] = useState(false);
+  const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
   const [memory, setMemory] = useState(
     new BufferWindowMemory({
       chatHistory: new LisaChatMessageHistory(session),
@@ -131,15 +119,19 @@ export default function Chat({ sessionId }) {
       humanPrefix: humanPrefix,
     }),
   );
-  const [chunkSize, setChunkSize] = useState(512);
-  const [chunkOverlap, setChunkOverlap] = useState(51);
   const bottomRef = useRef(null);
   const auth = useAuth();
 
+  const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
+    i = i + 1;
+    return {
+      value: i.toString(),
+      label: i.toString(),
+    };
+  });
+
   useEffect(() => {
     describeTextGenModels();
-    describeEmbeddingModels();
-    describeRagRepositories();
     isBackendHealthy().then((flag) => setIsConnected(flag));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -163,23 +155,6 @@ export default function Chat({ sessionId }) {
     // the textgenModelMap and modelOptions when modelProviders changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelProviders]);
-
-  useEffect(() => {
-    setEmbeddingOptions(createModelOptions(embeddingModelProviders));
-    setEmbeddingModelMap(createModelMap(embeddingModelProviders));
-    // Disabling exhaustive-deps here because we only want to update
-    // the embeddingModelMap and embeddingOptions when embeddingModelProviders changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [embeddingModelProviders]);
-
-  useEffect(() => {
-    if (modelKwargs) {
-      updateModelKwargs('streaming', streamingEnabled);
-    }
-    // Disabling exhaustive-deps here because we are updating modelKwargs so we can't trigger
-    // this on modelKwargs updating or we would end up in a render loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [streamingEnabled]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -227,10 +202,8 @@ export default function Chat({ sessionId }) {
   }, [sessionId]);
 
   useEffect(() => {
-    const promptNeedsContext = fileContext || (selectedEmbeddingOption && selectedRepositoryOption);
+    const promptNeedsContext = fileContext || useRag;
     const promptIncludesContext = promptTemplate.indexOf('{context}') > -1;
-
-    setUseRag(!!selectedEmbeddingOption && !!selectedRepositoryOption);
 
     if (promptNeedsContext && !promptIncludesContext) {
       // Add context parameter to prompt if using local file context or RAG
@@ -251,153 +224,24 @@ export default function Chat({ sessionId }) {
     // Disabling exhaustive-deps here because we are updating the promptTemplate so we can't trigger
     // this on promptTemplate updating or we would end up in a render loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileContext, selectedRepositoryOption, selectedEmbeddingOption]);
+  }, [fileContext, useRag]);
 
   useEffect(() => {
-    if (selectedModel && !isRunning) {
-      setMemory(
-        new BufferWindowMemory({
-          chatHistory: new LisaChatMessageHistory(session),
-          returnMessages: false,
-          memoryKey: 'history',
-          k: chatHistoryBufferSize,
-          aiPrefix: aiPrefix,
-          humanPrefix: humanPrefix,
-        }),
-      );
-      const llm = new Lisa({
-        uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
-        idToken: auth.user?.id_token,
-        modelName: selectedModel.modelName,
-        providerName: selectedModel.provider,
-        modelKwargs: modelKwargs,
-        streaming: streamingEnabled,
-        contentHandler: new LisaContentHandler(),
-        callbacks: [
-          {
-            handleLLMNewToken: async (token) => {
-              setSession((prev) => {
-                const lastMessage = prev.history[prev.history.length - 1];
-                const newMessage = new LisaChatMessage({
-                  ...lastMessage,
-                  content: lastMessage.content + token,
-                });
-                return {
-                  ...prev,
-                  history: prev.history.slice(0, -1).concat(newMessage),
-                };
-              });
-            },
-          },
-        ],
-      });
-      const useContext = fileContext || useRag;
-      const inputVariables = ['history', 'input'];
-
-      if (useContext) {
-        inputVariables.push('context');
-      }
-      const questionPrompt = new PromptTemplate({
-        template: promptTemplate,
-        inputVariables: inputVariables,
-      });
-
-      if (useRag) {
-        const embeddingModel = embeddingModelMap[selectedEmbeddingOption.value];
-        const retriever = new LisaRAGRetriever({
-          uri: '/',
-          idToken: auth.user?.id_token,
-          repositoryId: selectedRepositoryOption.value,
-          repositoryType: repositoryMap.get(selectedRepositoryOption.value),
-          modelName: embeddingModel.modelName,
-          providerName: embeddingModel.provider,
-        });
-
-        const chain = RunnableSequence.from([
-          {
-            input: (input: { input: string; chatHistory?: string }) => input.input,
-            chatHistory: () => memory.loadMemoryVariables({}),
-            context: async (input: { input: string; chatHistory?: string }) => {
-              const relevantDocs = await retriever._getRelevantDocuments(input.input);
-              const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs)}`;
-              setRagContext(serialized);
-              setSession((prev) => {
-                const lastMessage = prev.history[prev.history.length - 1];
-                const newMessage = new LisaChatMessage({
-                  ...lastMessage,
-                  metadata: {
-                    ...lastMessage.metadata,
-                    ragContext: formatDocumentsAsString(relevantDocs, true),
-                  },
-                });
-                return {
-                  ...prev,
-                  history: prev.history.slice(0, -1).concat(newMessage),
-                };
-              });
-              return serialized;
-            },
-          },
-          {
-            input: (previousOutput) => previousOutput.input,
-            context: (previousOutput) => previousOutput.context,
-            history: (previousOutput) => previousOutput.chatHistory.history,
-          },
-          questionPrompt,
-          llm,
-          new StringOutputParser(),
-        ]);
-        setChain(chain);
-      } else if (useContext) {
-        const chain = RunnableSequence.from([
-          {
-            input: (initialInput) => initialInput.input,
-            memory: () => memory.loadMemoryVariables({}),
-            context: () => fileContext,
-          },
-          {
-            input: (previousOutput) => previousOutput.input,
-            context: (previousOutput) => previousOutput.context,
-            history: (previousOutput) => previousOutput.memory.history,
-          },
-          questionPrompt,
-          llm,
-          new StringOutputParser(),
-        ]);
-        setChain(chain);
-      } else {
-        const chain = RunnableSequence.from([
-          {
-            input: (initialInput) => initialInput.input,
-            memory: () => memory.loadMemoryVariables({}),
-          },
-          {
-            input: (previousOutput) => previousOutput.input,
-            history: (previousOutput) => previousOutput.memory.history,
-          },
-          questionPrompt,
-          llm,
-          new StringOutputParser(),
-        ]);
-        setChain(chain);
-      }
-    }
+    setMemory(
+      new BufferWindowMemory({
+        chatHistory: new LisaChatMessageHistory(session),
+        returnMessages: false,
+        memoryKey: 'history',
+        k: chatHistoryBufferSize,
+        aiPrefix: aiPrefix,
+        humanPrefix: humanPrefix,
+      }),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedModel,
-    useRag,
-    modelKwargs,
-    streamingEnabled,
-    promptTemplate,
-    aiPrefix,
-    humanPrefix,
-    isRunning,
-    session,
-    chatHistoryBufferSize,
-  ]);
+  }, [userPrompt]);
 
   useEffect(() => {
-    if (selectedModel && auth.isAuthenticated && chain) {
+    if (selectedModel && auth.isAuthenticated) {
       memory.loadMemoryVariables({}).then(async (formattedHistory) => {
         const promptValues = {
           input: userPrompt,
@@ -421,7 +265,8 @@ export default function Chat({ sessionId }) {
         setMetadata(metadata);
       });
     }
-  }, [selectedModel, modelKwargs, auth, chain, userPrompt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel, modelKwargs, auth, userPrompt]);
 
   useEffect(() => {
     if (bottomRef) {
@@ -431,6 +276,7 @@ export default function Chat({ sessionId }) {
 
   const isBackendHealthy = useCallback(async () => {
     return isModelInterfaceHealthy(auth.user?.id_token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const createFlashbarError = () => {
@@ -447,97 +293,16 @@ export default function Chat({ sessionId }) {
     };
   };
 
-  const processFileUpload = async (allowedFileTypes: FileTypes[], fileSizeLimit: number, isFileContext: boolean) => {
-    if (selectedFiles.length > 0) {
-      const successfulUploads: string[] = [];
+  const contextualizeQSystemPrompt = `Given a chat history and the latest user question
+    which might reference context in the chat history, formulate a standalone question
+    which can be understood without the chat history. Do NOT answer the question,
+    just reformulate it if needed and otherwise return it as is.`;
 
-      for (const file of selectedFiles) {
-        setProgressBarDescription(`Uploading ${file.name}`);
-        let fileIsValid = true;
-        let error = '';
-        if (!allowedFileTypes.includes(file.type as FileTypes)) {
-          error = `${file.name} has an unsupported file type for this operation. `;
-          fileIsValid = false;
-        }
-        if (file.size > fileSizeLimit) {
-          error += `File ${file.name} is too big for this operation. Max file size is ${fileSizeLimit}`;
-          fileIsValid = false;
-        }
-
-        if (fileIsValid) {
-          if (isFileContext) {
-            //File context currently only supports single files
-            await file.text().then((fileContext) => {
-              setFileContext(`File context: ${fileContext}`);
-            });
-            setSelectedFiles([file]);
-          } else {
-            try {
-              const urlResponse = await getPresignedUrl(auth.user?.id_token, file.name);
-              const s3UploadStatusCode = await uploadToS3(urlResponse, file);
-
-              if (s3UploadStatusCode === 204) {
-                successfulUploads.push(file.name);
-                setProgressBarValue((selectedFiles.length / successfulUploads.length) * 100);
-              } else {
-                throw new Error(`File ${file.name} failed to upload.`);
-              }
-            } catch (err) {
-              setAlerts((oldItems) => [...oldItems, `Error encountered while uploading file ${file.name}`]);
-            }
-          }
-        }
-        if (error) {
-          setAlerts((oldItems) => [...oldItems, error]);
-        }
-      }
-      setDisplayProgressBar(false);
-      if (!isFileContext && successfulUploads.length > 0) {
-        setIngestingFiles(true);
-        setIngestionType(StatusTypes.LOADING);
-        setIngestionStatus('Ingesting documents into RAG...');
-        try {
-          // Ingest all of the documents which uploaded successfully
-
-          const ingestResponseStatusCode = await ingestDocuments(
-            auth.user?.id_token,
-            successfulUploads,
-            selectedRepositoryOption.value,
-            embeddingModelMap[selectedEmbeddingOption.value],
-            repositoryMap.get(selectedRepositoryOption.value),
-            chunkSize,
-            chunkOverlap,
-          );
-          if (ingestResponseStatusCode === 200) {
-            setIngestionType(StatusTypes.SUCCESS);
-            setIngestionStatus('Successly ingested documents into RAG');
-            setFlashbarItems((oldItems) => [
-              ...oldItems,
-              {
-                header: 'Success',
-                type: 'success',
-                content: `Successly ingested ${successfulUploads.length} document(s) into the selected RAG repository.`,
-                dismissible: true,
-                dismissLabel: 'Dismiss message',
-                onDismiss: () => {
-                  setFlashbarItems([]);
-                },
-                id: 'rag_success',
-              },
-            ]);
-            setRAGUploadModalVisible(false);
-          } else {
-            throw new Error('Failed to ingest documents into RAG');
-          }
-        } catch (err) {
-          setIngestionType(StatusTypes.ERROR);
-          setIngestionStatus('Failed to ingest documents into RAG');
-        } finally {
-          setIngestingFiles(false);
-        }
-      }
-    }
-  };
+  const contextualizeQPrompt = ChatPromptTemplate.fromMessages([
+    ['system', contextualizeQSystemPrompt],
+    new MessagesPlaceholder('chatHistory'),
+    ['human', '{input}'],
+  ]);
 
   const handleSendGenerateRequest = useCallback(async () => {
     const userMessage = new LisaChatMessage({
@@ -554,6 +319,113 @@ export default function Chat({ sessionId }) {
     const inputs = {
       input: userPrompt,
     };
+    const llm = new Lisa({
+      uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
+      idToken: auth.user?.id_token,
+      modelName: selectedModel.modelName,
+      providerName: selectedModel.provider,
+      modelKwargs: modelKwargs,
+      streaming: streamingEnabled,
+      contentHandler: new LisaContentHandler(),
+      callbacks: [
+        {
+          handleLLMNewToken: async (token) => {
+            setSession((prev) => {
+              const lastMessage = prev.history[prev.history.length - 1];
+              const newMessage = new LisaChatMessage({
+                ...lastMessage,
+                content: lastMessage.content + token,
+              });
+              return {
+                ...prev,
+                history: prev.history.slice(0, -1).concat(newMessage),
+              };
+            });
+          },
+        },
+      ],
+    });
+    const llmNoCallback = new Lisa({
+      uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
+      idToken: auth.user?.id_token,
+      modelName: selectedModel.modelName,
+      providerName: selectedModel.provider,
+      modelKwargs: modelKwargs,
+      streaming: false,
+      contentHandler: new LisaContentHandler(),
+    });
+    const useContext = fileContext || useRag;
+    const inputVariables = ['history', 'input'];
+
+    if (useContext) {
+      inputVariables.push('context');
+    }
+    const questionPrompt = new PromptTemplate({
+      template: promptTemplate,
+      inputVariables: inputVariables,
+    });
+
+    const contextualizeQChain = contextualizeQPrompt.pipe(llmNoCallback).pipe(new StringOutputParser());
+
+    const chainSteps = [
+      {
+        input: (previousOutput) => previousOutput.input,
+        context: (previousOutput) => previousOutput.context,
+        history: (previousOutput) => previousOutput.memory?.history || '',
+      },
+      questionPrompt,
+      llm,
+      new StringOutputParser(),
+    ];
+
+    if (useRag) {
+      const retriever = new LisaRAGRetriever({
+        uri: '/',
+        idToken: auth.user?.id_token,
+        repositoryId: ragConfig.repositoryId,
+        repositoryType: ragConfig.repositoryType,
+        modelName: ragConfig.embeddingModel.modelName,
+        providerName: ragConfig.embeddingModel.provider,
+        topK: ragTopK,
+      });
+
+      chainSteps.unshift({
+        input: (input: { input: string; chatHistory?: LisaChatMessage[] }) => input.input,
+        chatHistory: () => memory.loadMemoryVariables({}),
+        context: async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
+          let question = input.input;
+          if (input.chatHistory?.length > 0) {
+            question = await contextualizeQChain.invoke(input);
+          }
+
+          const relevantDocs = await retriever._getRelevantDocuments(question);
+          const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs)}`;
+          setRagContext(serialized);
+          setSession((prev) => {
+            const lastMessage = prev.history[prev.history.length - 1];
+            const newMessage = new LisaChatMessage({
+              ...lastMessage,
+              metadata: {
+                ...lastMessage.metadata,
+                ragContext: formatDocumentsAsString(relevantDocs, true),
+              },
+            });
+            return {
+              ...prev,
+              history: prev.history.slice(0, -1).concat(newMessage),
+            };
+          });
+          return serialized;
+        },
+      });
+    } else {
+      chainSteps.unshift({
+        input: (initialInput) => initialInput.input,
+        memory: () => memory.loadMemoryVariables({}),
+        context: () => (useContext ? fileContext : ''),
+      });
+    }
+    const chain = RunnableSequence.from(chainSteps);
     if (streamingEnabled) {
       setIsStreaming(true);
       setSession((prev) => ({
@@ -569,6 +441,7 @@ export default function Chat({ sessionId }) {
       try {
         const result = await chain.invoke({
           input: userPrompt,
+          chatHistory: session.history,
         });
         await memory.saveContext(inputs, {
           output: result,
@@ -601,75 +474,16 @@ export default function Chat({ sessionId }) {
 
     setIsRunning(false);
     setUserPrompt('');
-  }, [chain, userPrompt, metadata, streamingEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPrompt, metadata, streamingEnabled]);
 
   const describeTextGenModels = useCallback(async () => {
     setIsLoadingModels(true);
     const resp = await describeModels(['textgen'], auth.user?.id_token);
     setModelProviders(parseDescribeModelsResponse(resp, 'textgen'));
     setIsLoadingModels(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const describeEmbeddingModels = useCallback(async () => {
-    setIsLoadingEmbeddingModels(true);
-    const resp = await describeModels(['embedding'], auth.user?.id_token);
-    setEmbeddingModelProviders(parseDescribeModelsResponse(resp, 'embedding'));
-    setIsLoadingEmbeddingModels(false);
-  }, []);
-
-  const describeRagRepositories = useCallback(async () => {
-    setIsLoadingRepositories(true);
-    const repositories = await listRagRepositories(auth.user?.id_token);
-    setRepositoryOptions(
-      repositories.map((repo) => {
-        setRepositoryMap((map) => new Map(map.set(repo.repositoryId, repo.type)));
-        return {
-          label: `${repo.repositoryId} (${repo.type})`,
-          value: repo.repositoryId,
-        };
-      }),
-    );
-    setIsLoadingRepositories(false);
-  }, []);
-
-  const formatModelKey = (providerName: string, modelName: string): string => {
-    return `${providerName}.${modelName}`;
-  };
-
-  const createModelOptions = (providers: ModelProvider[]): SelectProps.Options => {
-    const optionGroups: SelectProps.OptionGroup[] = [];
-    for (const modelProvider of providers) {
-      const options: SelectProps.Option[] = [];
-      for (const model of modelProvider.models) {
-        const modelKey = formatModelKey(modelProvider.name, model.modelName);
-        let label = '';
-        if (model.modelType === 'textgen') {
-          label = `${model.modelName} ${model.streaming ? '(streaming supported)' : ''}`;
-        } else if (model.modelType === 'embedding') {
-          label = `${model.modelName}`;
-        }
-        options.push({
-          label,
-          value: modelKey,
-        });
-      }
-      optionGroups.push({
-        label: modelProvider.name,
-        options: options,
-      });
-    }
-    return optionGroups;
-  };
-
-  const createModelMap = (providers: ModelProvider[]): Map<string, Model> => {
-    const modelMap: Map<string, Model> = new Map<string, Model>();
-    for (const modelProvider of providers) {
-      for (const model of modelProvider.models) {
-        modelMap[formatModelKey(modelProvider.name, model.modelName)] = model;
-      }
-    }
-    return modelMap;
-  };
 
   const updateModelKwargs = (key, value) => {
     setModelKwargs((prevModelKwargs) => ({
@@ -749,212 +563,19 @@ export default function Chat({ sessionId }) {
           </FormField>
         </SpaceBetween>
       </Modal>
-      <Modal
-        onDismiss={() => {
-          setFileContextModalVisible(false);
-          setSelectedFiles([]);
-          setAlerts([]);
-        }}
-        visible={fileContextModalVisible}
-        header="Manage File Context"
-        size="large"
-        footer={
-          <Box float="right">
-            <SpaceBetween direction="horizontal" size="xs">
-              <Button
-                onClick={async () => {
-                  setAlerts([]);
-                  await processFileUpload([FileTypes.TEXT], 10240, true);
-                  if (alerts.length === 0) {
-                    setFileContextModalVisible(false);
-                    setSelectedFiles([]);
-                  }
-                }}
-                disabled={selectedFiles.length === 0}
-              >
-                Set file context
-              </Button>
-              <Button
-                onClick={() => {
-                  setFileContextModalVisible(false);
-                  setFileContext('');
-                  setSelectedFiles([]);
-                  setAlerts([]);
-                }}
-                disabled={!fileContext}
-              >
-                Clear file context
-              </Button>
-            </SpaceBetween>
-          </Box>
-        }
-      >
-        <SpaceBetween direction="vertical" size="s">
-          <TextContent>
-            <h4>File Context</h4>
-            <p>
-              <small>
-                Upload files for LISA to use as context in this session. This additional context will be referenced to
-                answer your questions.
-              </small>
-            </p>
-          </TextContent>
-          <FileUpload
-            onChange={({ detail }) => setSelectedFiles(detail.value)}
-            value={selectedFiles}
-            i18nStrings={{
-              uploadButtonText: (e) => (e ? 'Choose files' : 'Choose file'),
-              dropzoneText: (e) => (e ? 'Drop files to upload' : 'Drop file to upload'),
-              removeFileAriaLabel: (e) => `Remove file ${e + 1}`,
-              limitShowFewer: 'Show fewer files',
-              limitShowMore: 'Show more files',
-              errorIconAriaLabel: 'Error',
-            }}
-            showFileSize
-            tokenLimit={3}
-            constraintText="Allowed file type is plain text. File size limit is 10 KB"
-          />
-          {alerts.map(function (error: string) {
-            if (error !== '') {
-              return (
-                <Alert
-                  type="error"
-                  statusIconAriaLabel="Error"
-                  header="File upload error:"
-                  dismissible
-                  onDismiss={() => {
-                    setAlerts([]);
-                  }}
-                >
-                  {error}
-                </Alert>
-              );
-            }
-          })}
-        </SpaceBetween>
-      </Modal>
-      <Modal
-        onDismiss={() => {
-          setRAGUploadModalVisible(false);
-          setSelectedFiles([]);
-          setAlerts([]);
-          setIngestingFiles(false);
-        }}
-        visible={ragUploadModalVisible}
-        header="Upload to RAG"
-        size="large"
-        footer={
-          <Box float="right">
-            <SpaceBetween direction="horizontal" size="xs">
-              <Button
-                onClick={async () => {
-                  setAlerts([]);
-                  //Initialize the progress bar values
-                  setProgressBarLabel('Uploading files to S3');
-                  setDisplayProgressBar(true);
-                  setProgressBarValue(0);
-
-                  //Allowed file types are plain text, docx, and pdf. File size limit is 50 MB
-                  await processFileUpload([FileTypes.TEXT, FileTypes.DOCX, FileTypes.PDF], 52428800, false);
-                  if (alerts.length === 0) {
-                    setRAGUploadModalVisible(false);
-                    setSelectedFiles([]);
-                  }
-                }}
-                disabled={selectedFiles.length === 0}
-              >
-                Upload
-              </Button>
-            </SpaceBetween>
-          </Box>
-        }
-      >
-        <SpaceBetween direction="vertical" size="s">
-          <TextContent>
-            <h4>Upload to RAG</h4>
-            <p>
-              <small>
-                Upload files to the RAG repository leveraged by LISA. This will provide LISA with trusted information
-                for answering prompts.
-              </small>
-            </p>
-          </TextContent>
-          <Grid gridDefinition={[{ colspan: { default: 12, xxs: 6 } }, { colspan: { default: 12, xxs: 6 } }]}>
-            <FormField label="Chunk Size" description="Size of chunks that will be persisted in the RAG repository">
-              <Input
-                value={chunkSize.toString()}
-                type="number"
-                step={1}
-                inputMode="numeric"
-                disableBrowserAutocorrect={true}
-                onChange={(event) => {
-                  const intVal = parseInt(event.detail.value);
-                  if (intVal >= 0) {
-                    setChunkSize(intVal);
-                  }
-                }}
-              />
-            </FormField>
-            <FormField label="Chunk Overlap" description="Size of the overlap used when generating content chunks">
-              <Input
-                value={chunkOverlap.toString()}
-                type="number"
-                step={1}
-                inputMode="numeric"
-                disableBrowserAutocorrect={true}
-                onChange={(event) => {
-                  const intVal = parseInt(event.detail.value);
-                  if (intVal >= 0) {
-                    setChunkOverlap(intVal);
-                  }
-                }}
-              />
-            </FormField>
-          </Grid>
-          <FileUpload
-            onChange={({ detail }) => setSelectedFiles(detail.value)}
-            value={selectedFiles}
-            multiple
-            i18nStrings={{
-              uploadButtonText: (e) => (e ? 'Choose files' : 'Choose file'),
-              dropzoneText: (e) => (e ? 'Drop files to upload' : 'Drop file to upload'),
-              removeFileAriaLabel: (e) => `Remove file ${e + 1}`,
-              limitShowFewer: 'Show fewer files',
-              limitShowMore: 'Show more files',
-              errorIconAriaLabel: 'Error',
-            }}
-            showFileSize
-            tokenLimit={3}
-            constraintText="Allowed file types are plain text, PDF, and docx. File size limit is 50 MB"
-          />
-          {alerts.map(function (error: string) {
-            if (error !== '') {
-              return (
-                <Alert
-                  type="error"
-                  statusIconAriaLabel="Error"
-                  header="File upload error:"
-                  dismissible
-                  onDismiss={() => {
-                    setAlerts([]);
-                  }}
-                >
-                  {error}
-                </Alert>
-              );
-            }
-          })}
-          {displayProgressBar && (
-            <ProgressBar
-              status="in-progress"
-              value={progressBarValue}
-              description={progressBarDescription}
-              label={progressBarLabel}
-            />
-          )}
-          {ingestingFiles && <StatusIndicator type={ingestionType}>{ingestionStatus}</StatusIndicator>}
-        </SpaceBetween>
-      </Modal>
+      <RagUploadModal
+        auth={auth}
+        ragConfig={ragConfig}
+        showRagUploadModal={showRagUploadModal}
+        setShowRagUploadModal={setShowRagUploadModal}
+        setFlashbarItems={setFlashbarItems}
+      />
+      <ContextUploadModal
+        showContextUploadModal={showContextUploadModal}
+        setShowContextUploadModal={setShowContextUploadModal}
+        fileContext={fileContext}
+        setFileContext={setFileContext}
+      />
       <div className=" overflow-y-auto p-2 mb-96">
         <SpaceBetween direction="vertical" size="xs">
           {session.history.map((message, idx) => (
@@ -1014,30 +635,28 @@ export default function Chat({ sessionId }) {
                       variant="h2"
                       description={`Select the model to use for this chat session.${
                         window.env.RAG_ENABLED &&
-                        'Optionally select a RAG repository and embedding model to use when chatting.'
+                        ' Optionally select a RAG repository and embedding model to use when chatting.'
                       }`}
                       actions={
                         <SpaceBetween direction="horizontal" size="m">
                           <Box float="left" variant="div">
                             <Button
-                              onClick={() => setFileContextModalVisible(true)}
+                              onClick={() => setShowContextUploadModal(true)}
                               disabled={isRunning || !selectedModelOption}
                             >
                               Manage file context
                             </Button>
                           </Box>
-                          <Box float="left" variant="div">
-                            <Button
-                              onClick={() => setRAGUploadModalVisible(true)}
-                              disabled={
-                                isRunning ||
-                                selectedRepositoryOption === undefined ||
-                                selectedEmbeddingOption === undefined
-                              }
-                            >
-                              Upload files to RAG
-                            </Button>
-                          </Box>
+                          {window.env.RAG_ENABLED && (
+                            <Box float="left" variant="div">
+                              <Button
+                                onClick={() => setShowRagUploadModal(true)}
+                                disabled={isRunning || !ragConfig.embeddingModel || !ragConfig.repositoryId}
+                              >
+                                Upload files to RAG
+                              </Button>
+                            </Box>
+                          )}
                         </SpaceBetween>
                       }
                     >
@@ -1050,10 +669,7 @@ export default function Chat({ sessionId }) {
                       gridDefinition={[
                         { colspan: { default: 10, xxs: 3 } },
                         { colspan: { default: 2, xxs: 1 } },
-                        { colspan: { default: 12, xxs: 3 } },
-                        { colspan: { default: 2, xxs: 1 } },
-                        { colspan: { default: 12, xxs: 3 } },
-                        { colspan: { default: 2, xxs: 1 } },
+                        { colspan: { default: 12, xxs: 8 } },
                       ]}
                     >
                       <Select
@@ -1077,46 +693,16 @@ export default function Chat({ sessionId }) {
                         </Toggle>
                       </div>
                       {window.env.RAG_ENABLED && (
-                        <>
-                          <Select
-                            disabled={isRunning}
-                            statusType={isLoadingRepositories ? 'loading' : 'finished'}
-                            loadingText="Loading repositories (might take few seconds)..."
-                            placeholder="Select a RAG Repository"
-                            empty={<div className="text-gray-500">No repositories available.</div>}
-                            filteringType="auto"
-                            selectedOption={selectedRepositoryOption}
-                            onChange={({ detail }) => setSelectedRepositoryOption(detail.selectedOption)}
-                            options={repositoryOptions}
-                          />
-                          <Button
-                            disabled={selectedRepositoryOption === undefined}
-                            onClick={() => setSelectedRepositoryOption(undefined)}
-                          >
-                            Clear
-                          </Button>
-                          <Select
-                            disabled={isRunning}
-                            statusType={isLoadingEmbeddingModels ? 'loading' : 'finished'}
-                            loadingText="Loading embedding models (might take few seconds)..."
-                            placeholder="Select an embedding model"
-                            empty={<div className="text-gray-500">No embedding models available.</div>}
-                            filteringType="auto"
-                            selectedOption={selectedEmbeddingOption}
-                            onChange={({ detail }) => setSelectedEmbeddingOption(detail.selectedOption)}
-                            options={embeddingOptions}
-                          />
-                          <Button
-                            disabled={selectedEmbeddingOption === undefined}
-                            onClick={() => setSelectedEmbeddingOption(undefined)}
-                          >
-                            Clear
-                          </Button>
-                        </>
+                        <RagControls
+                          isRunning={isRunning}
+                          setUseRag={setUseRag}
+                          auth={auth}
+                          setRagConfig={setRagConfig}
+                        />
                       )}
                     </Grid>
                     <ExpandableSection headerText="Advanced configuration" variant="footer">
-                      <ColumnLayout columns={5}>
+                      <ColumnLayout columns={7}>
                         <Toggle onChange={({ detail }) => setShowMetadata(detail.checked)} checked={showMetadata}>
                           Show metadata
                         </Toggle>
@@ -1134,13 +720,22 @@ export default function Chat({ sessionId }) {
                               label: chatHistoryBufferSize.toString(),
                             }}
                             onChange={({ detail }) => setChatHistoryBufferSize(parseInt(detail.selectedOption.value))}
-                            options={[...Array(10).keys()].map((i) => {
-                              i = i + 1;
-                              return {
-                                value: i.toString(),
-                                label: i.toString(),
-                              };
-                            })}
+                            options={oneThroughTenOptions}
+                          />
+                        </Box>
+                        <Box float="left" textAlign="center" variant="awsui-key-label" padding={{ vertical: 'xxs' }}>
+                          RAG documents:
+                        </Box>
+                        <Box float="left" variant="div">
+                          <Select
+                            disabled={isRunning}
+                            filteringType="auto"
+                            selectedOption={{
+                              value: ragTopK.toString(),
+                              label: ragTopK.toString(),
+                            }}
+                            onChange={({ detail }) => setRagTopK(parseInt(detail.selectedOption.value))}
+                            options={oneThroughTenOptions}
                           />
                         </Box>
                       </ColumnLayout>

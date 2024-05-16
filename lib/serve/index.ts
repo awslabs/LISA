@@ -1,14 +1,24 @@
-/*
- Copyright (C) 2023 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
- This AWS Content is provided subject to the terms of the AWS Customer Agreement
- available at http://aws.amazon.com/agreement or other written agreement between
- Customer and either Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 */
 
 // LISA-serve Stack.
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -44,6 +54,18 @@ export class LisaServeApplicationStack extends Stack {
 
     const { config, vpc } = props;
 
+    // Create DynamoDB Table for enabling API token usage
+    const tokenTable = new Table(this, 'TokenTable', {
+      tableName: 'LISAApiTokenTable',
+      partitionKey: {
+        name: 'token',
+        type: AttributeType.STRING,
+      },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      encryption: TableEncryption.AWS_MANAGED,
+      removalPolicy: config.removalPolicy,
+    });
+
     // Create REST API
     const restApi = new FastApiContainer(this, 'RestApi', {
       apiName: 'REST',
@@ -51,6 +73,7 @@ export class LisaServeApplicationStack extends Stack {
       resourcePath: path.join(HERE, 'rest-api'),
       securityGroup: vpc.securityGroups.restApiAlbSg,
       taskConfig: config.restApiConfig,
+      tokenTable: tokenTable,
       vpc: vpc.vpc,
     });
 

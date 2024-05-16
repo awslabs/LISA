@@ -143,7 +143,11 @@
       ],
       "Resource": "*"
     },
-    { "Effect": "Allow", "Action": ["events:PutEvents", "events:DescribeRule"], "Resource": "*" },
+    {
+      "Effect": "Allow",
+      "Action": ["events:PutEvents", "events:DescribeRule"],
+      "Resource": "*"
+    },
     {
       "Action": "iam:PassRole",
       "Effect": "Allow",

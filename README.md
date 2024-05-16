@@ -315,11 +315,13 @@ The hooks will now run automatically on changed files but if you wish to test th
 ### Run REST API locally
 
 ```
-cd lib/serve/rest-api/src
+cd lib/serve/rest-api
 pip install -r requirements.txt
+export AWS_REGION=<Region where LISA is deployed>
 export AUTHORITY=<IdP Endpoint>
 export CLIENT_ID=<IdP Client Id>
 export REGISTERED_MODELS_PS_NAME=<Models ParameterName>
+export TOKEN_TABLE_NAME="LISAApiTokenTable"
 gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b "0.0.0.0:8080" "src.main:app"
 ```
 

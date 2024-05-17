@@ -1,6 +1,7 @@
-# LISA: An LLM Inference Solution for ADCs
+# LLM inference solution for Amazon Dedicated Cloud (LISA)
 
-LISA is an enabling service to easily deploy generative AI applications in AWS customer environments. LISA is an open-source infrastructure-as-code offering that is accessible via an API or simple user interface and provides scalable access to generative large language models and embedding language models.
+LISA is an enabling service to easily deploy generative AI applications in AWS customer environments. LISA is an infrastructure-as-code solution. It allows customers to provision their own infrastructure within an AWS account. Customers then bring their own models to LISA for hosting and inference.
+LISA accelerates the use of generative AI applications by providing scalable, low latency access to customers’ generative LLMs and embedding language models. Using LISA to support hosting and inference allows customers to focus on experimenting with LLMs and developing generative AI applications. LISA includes an example chatbot user interface that customers can use to experiment. Also included are retrieval augmented generation (RAG) integrations with Amazon OpenSearch and PGVector. This capability allows customers to bring specialized data to LISA for incorporation into the LLM responses without requiring the model to be retrained.
 
 ![LISA Serve Architecture](./assets/LisaServe-FastAPI.png)
 
@@ -40,7 +41,7 @@ cd lisa
 
 ### Define Environment Variables
 
-As we stated earlier you will need to define some parameters in environment though most parameters are provided by the configuration file, [config.yaml](./config.yaml).
+As we stated earlier you will need to define some parameters in environment though most parameters are provided by the example configuration file, [example_config.yaml](./examle_config.yaml). You'll need to create a copy of that file and name it `config.yaml`. Any deployment specific values should be set in the `config.yaml` file which will be used when running the make commands.
 
 ```bash
 # you can also leave this blank
@@ -316,7 +317,7 @@ The hooks will now run automatically on changed files but if you wish to test th
 
 ```
 cd lib/serve/rest-api
-pip install -r requirements.txt
+pip install -r src/requirements.txt
 export AWS_REGION=<Region where LISA is deployed>
 export AUTHORITY=<IdP Endpoint>
 export CLIENT_ID=<IdP Client Id>

@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import time
+from contextlib import asynccontextmanager
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -24,7 +25,6 @@ from aiobotocore.session import get_session
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from fastapi_utils.tasks import repeat_every
 from loguru import logger
 
 from .api.routes import router
@@ -54,28 +54,9 @@ logger.configure(
     ],
 )
 
-app = FastAPI()
-app.include_router(router)
 
-
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-###########
-# STARTUP #
-###########
-
-
-@app.on_event("startup")  # type: ignore
-@repeat_every(seconds=60)  # type: ignore
-async def start_and_update_task() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # type: ignore
     """REST API start and update task."""
     event = "start_and_update_task"
     task_logger = logger.bind(event=event)
@@ -138,7 +119,22 @@ async def start_and_update_task() -> None:
     except Exception:
         task_logger.exception("An unknown error occurred", status="ERROR")
 
-    task_logger.debug("Finish task", status="FINISH")
+    yield
+    task_logger.debug("Finished API Lifespan task", status="FINISH")
+
+
+app = FastAPI(lifespan=lifespan)
+app.include_router(router)
+
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 ##############

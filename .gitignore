@@ -29,3 +29,5 @@ coverage
 
 # Model Cache Folders
 models
+# Deployment configuration file
+config.yaml

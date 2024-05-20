@@ -58,8 +58,10 @@ LISA uses both Python and TypeScript so we need to setup these environments firs
 
 ```bash
 # required for parsing the Makefile
-pip3 install yq
+sudo apt-get install jq
+pip3 install yq huggingface_hub s5cmd
 make createPythonEnvironment
+activate your python environment (command required is output from the previous make command)
 make installPythonRequirements
 ```
 
@@ -93,7 +95,7 @@ Note: we have primarily designed and tested this with HuggingFace models in mind
 When deploying for dev and testing you can use a self-signed certificate for the REST API ALB. You can create this by using the script: `gen-cert.sh` and uploading it to `IAM`.
 
 ```
-export REGION=us-east-1
+export REGION=<region>
 ./scripts/gen-certs.sh
 aws iam upload-server-certificate --server-certificate-name <certificate-name> --certificate-body file://scripts/server.pem --private-key file://scripts/server.key
 ```

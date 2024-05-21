@@ -41,6 +41,9 @@ done
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ABS_MODEL_DIR=`realpath ${MODEL_DIR}`
 
+echo What is your huggingface access token?
+read -s AUTH_TOKEN
+
 docker run \
   --rm \
   --entrypoint python \
@@ -51,6 +54,7 @@ docker run \
   /code/convert-to-safetensors.py \
     --output-dir /model \
     --model-id $MODEL_ID \
+    --auth-token $AUTH_TOKEN
 
 if [ -n "${S3_BUCKET}" ]; then
   echo "Uploading model to ${S3_BUCKET}/${MODEL_ID}"

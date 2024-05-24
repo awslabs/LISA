@@ -162,6 +162,11 @@ modelCheck:
 			[ $$? != 0 ]; \
 			then \
 				localModelDir="./models"; \
+				if \
+					[ ! -d "$localModelDir" ]; \
+					then \
+						mkdir "$localModelDir"; \
+				fi; \
 				echo; \
 				echo "Preparing to download, convert, and upload safetensors for model: $(MODEL_ID)"; \
 				echo "Local directory: '$$localModelDir' will be used to store downloaded and converted model weights"; \
@@ -171,10 +176,13 @@ modelCheck:
 				if \
 					[ $${confirm_download:-'N'} = 'y' ]; \
 					then \
+						mkdir -p $$localModelDir; \
+						echo "What is your huggingface access token? "; \
+						read -s access_token; \
 						echo "Converting and uploading safetensors for model: $(MODEL_ID)"; \
 						tgiImage=$$(yq '[.$(ENV).ecsModels[] | select(.inferenceContainer == "tgi") | .containerConfig.image.baseImage] | first' $(PROJECT_DIR)/config.yaml | sed "s/^['\"]//;s/['\"]$$//"); \
 						echo $$tgiImage; \
-						$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $(MODEL_ID) -s $(MODEL_BUCKET) -t $$tgiImage -d $$localModelDir; \
+						$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $(MODEL_ID) -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
 				fi; \
 		fi; \
 	)

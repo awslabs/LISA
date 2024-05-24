@@ -2,6 +2,7 @@
 
 set -e
 
+ACCESS_TOKEN=""
 TGI_IMAGE=""
 MODEL_DIR=""
 MODEL_ID=""
@@ -11,6 +12,7 @@ OUTPUT_ID=""
 usage(){
   cat << EOF >&2
 Usage: $0
+    [ -a | --access-token  - huggingface access token for accessing restricted models
     [ -t | --tgi-image  - docker image and tag for TGI
     [ -d | --output-dir - local directory to use for model storage
     [ -m | --model-id - the huggingface model-id or path to local model dir
@@ -23,6 +25,8 @@ while true; do
   case "$1" in
     -t | --tgi-container )
       TGI_IMAGE="$2"; shift 2 ;;
+    -a | --access-token )
+      ACCESS_TOKEN="$2"; shift 2 ;;
     -d | --model-dir )
       MODEL_DIR="$2"; shift 2 ;;
     -m | --model-id )
@@ -51,6 +55,7 @@ docker run \
   /code/convert-to-safetensors.py \
     --output-dir /model \
     --model-id $MODEL_ID \
+    --access-token $ACCESS_TOKEN
 
 if [ -n "${S3_BUCKET}" ]; then
   echo "Uploading model to ${S3_BUCKET}/${MODEL_ID}"

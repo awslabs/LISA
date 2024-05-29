@@ -233,3 +233,11 @@ dev:
     #       timeout: 30
     #       healthyThresholdCount: 2
     #       unhealthyThresholdCount: 10
+  # LiteLLM Config options found here: https://litellm.vercel.app/docs/proxy/configs#all-settings
+  # Anything within this config is copied to a configuration for starting LiteLLM in the REST API container.
+  # It is suggested to put an "ignored" API key so that calls to locally hosted models don't fail on OpenAI calls
+  # from LiteLLM.
+  litellmConfig:
+    litellm_settings:
+      telemetry: false  # Don't try to send telemetry to LiteLLM servers.
+    model_list: []  # Add any of your existing (not LISA-hosted) models here.

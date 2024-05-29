@@ -664,6 +664,81 @@ const ApiGatewayConfigSchema = z
   .optional();
 
 /**
+ * Configuration for models inside the LiteLLM Config
+ * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details.
+ */
+const LiteLLMModel = z.object({
+  model_name: z.string(),
+  litellm_params: z.object({
+    model: z.string(),
+    api_base: z.string().optional(),
+    api_key: z.string().optional(),
+    aws_region_name: z.string().optional(),
+  }),
+  model_info: z
+    .object({
+      id: z.string().optional(),
+      mode: z.string().optional(),
+      input_cost_per_token: z.number().optional(),
+      output_cost_per_token: z.number().optional(),
+      max_tokens: z.number().optional(),
+      base_model: z.string().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * Core LiteLLM configuration.
+ * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.
+ */
+const LiteLLMConfig = z.object({
+  environment_variables: z.map(z.string(), z.string()).optional(),
+  model_list: z.array(LiteLLMModel).optional(),
+  litellm_settings: z.object({
+    // ALL (https://github.com/BerriAI/litellm/blob/main/litellm/__init__.py)
+    telemetry: z.boolean().default(false).optional(),
+  }),
+  general_settings: z
+    .object({
+      completion_model: z.string().optional(),
+      disable_spend_logs: z.boolean().optional(), // turn off writing each transaction to the db
+      disable_master_key_return: z.boolean().optional(), // turn off returning master key on UI
+      disable_reset_budget: z.boolean().optional(), // turn off reset budget scheduled task
+      enable_jwt_auth: z.boolean().optional(), // allow proxy admin to auth in via jwt tokens with 'litellm_proxy_admin'
+      enforce_user_param: z.boolean().optional(), // requires all openai endpoint requests to have a 'user' param
+      allowed_routes: z.array(z.string()).optional(), // list of allowed proxy API routes a user can access. (JWT only)
+      key_management_system: z.string().optional(), // either google_kms or azure_kms
+      master_key: z.string().optional(),
+      database_url: z.string().optional(),
+      database_connection_pool_limit: z.number().optional(), // default 100
+      database_connection_timeout: z.number().optional(), // default 60s
+      database_type: z.string().optional(),
+      database_args: z
+        .object({
+          billing_mode: z.string().optional(),
+          read_capacity_units: z.number().optional(),
+          write_capacity_units: z.number().optional(),
+          ssl_verify: z.boolean().optional(),
+          region_name: z.string().optional(),
+          user_table_name: z.string().optional(),
+          key_table_name: z.string().optional(),
+          config_table_name: z.string().optional(),
+          spend_table_name: z.string().optional(),
+        })
+        .optional(),
+      otel: z.boolean().optional(),
+      custom_auth: z.string().optional(),
+      max_parallel_requests: z.number().optional(),
+      infer_model_from_keys: z.boolean().optional(),
+      background_health_checks: z.boolean().optional(),
+      health_check_interval: z.number().optional(),
+      alerting: z.array(z.string()).optional(),
+      alerting_threshold: z.number().optional(),
+    })
+    .optional(),
+});
+
+/**
  * Raw application configuration schema.
  *
  * @property {string} [appName='lisa'] - Name of the application.
@@ -776,6 +851,7 @@ const RawConfigSchema = z
       })
       .optional(),
     stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional(),
+    litellmConfig: LiteLLMConfig,
   })
   .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
     message: 'Must set PypiConfig if in an iso region',

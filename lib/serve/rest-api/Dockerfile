@@ -2,6 +2,9 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
+# Copy LiteLLM config directly out of the LISA config.yaml file
+ARG LITELLM_CONFIG
+
 #### POINT TO NEW PYPI CONFIG
 ARG PYPI_INDEX_URL
 ARG PYPI_TRUSTED_HOST
@@ -15,6 +18,10 @@ WORKDIR /app
 # Install dependencies
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Copy LiteLLM config directly to container, it will be updated at runtime
+# with LISA-hosted models.
+RUN echo "$LITELLM_CONFIG" > litellm_config.yaml
 
 # Copy the source code into the container
 COPY src/ ./src

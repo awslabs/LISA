@@ -1,10 +1,13 @@
 aiobotocore
+aioboto3
 aiohttp
 boto3
+click
 cryptography
 fastapi
 fastapi_utils
 gunicorn
+litellm[proxy]
 loguru
 pydantic<2
 PyJWT

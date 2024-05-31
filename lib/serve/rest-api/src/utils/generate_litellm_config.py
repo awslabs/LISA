@@ -38,7 +38,7 @@ def generate_config(filepath: str) -> None:
     # Generate model definitions for each of the LISA-deployed models
     litellm_model_params = [
         {
-            "model_name": model["modelName"],
+            "model_name": model["modelId"],  # Use user-provided name if one given, otherwise it is the model name.
             "litellm_params": {
                 "model": f"openai/{model['modelName']}",
                 "api_base": model["endpointUrl"] + "/v1",  # Local containers require the /v1 for OpenAI API routing.

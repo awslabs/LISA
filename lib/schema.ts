@@ -73,12 +73,14 @@ export enum EcsSourceType {
  *
  * @property {string} provider - Model provider, of the form <engine>.<type>.
  * @property {string} modelName - The unique name that identifies the model.
+ * @property {string} modelId - The unique user-provided name for the model.
  * @property {ModelType} modelType - Specifies the type of model (e.g., 'textgen', 'embedding').
  * @property {string} endpointUrl - The URL endpoint where the model can be accessed or invoked.
  * @property {boolean} streaming - Indicates whether the model supports streaming capabilities.
  */
 export interface RegisteredModel {
   provider: string;
+  modelId: string;
   modelName: string;
   modelType: ModelType;
   endpointUrl: string;
@@ -697,6 +699,7 @@ const LiteLLMConfig = z.object({
   litellm_settings: z.object({
     // ALL (https://github.com/BerriAI/litellm/blob/main/litellm/__init__.py)
     telemetry: z.boolean().default(false).optional(),
+    drop_params: z.boolean().default(true).optional(),
   }),
   general_settings: z
     .object({

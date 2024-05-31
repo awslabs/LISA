@@ -22,7 +22,8 @@ import requests
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-# Local LiteLLM installation URL
+# Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
+# port was changed as part of the LiteLLM startup in entrypoint.sh
 LITELLM_URL = "http://localhost:4000"
 
 logger = logging.getLogger(__name__)

@@ -513,12 +513,21 @@ const EcsModelConfigSchema = z
     streaming: z.boolean().nullable().default(null),
     modelType: z.nativeEnum(ModelType),
     instanceType: z.enum(VALID_INSTANCE_KEYS),
-    inferenceContainer: z.union([z.literal('tgi'), z.literal('tei'), z.literal('instructor')]),
+    inferenceContainer: z
+      .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
+      .refine((data) => {
+        return !data.includes('.'); // string cannot contain a period
+      }),
     containerConfig: ContainerConfigSchema,
     autoScalingConfig: AutoScalingConfigSchema,
     loadBalancerConfig: LoadBalancerConfigSchema,
     localModelCode: z.string().default('/opt/model-code'),
-    modelHosting: z.string().default('ecs'),
+    modelHosting: z
+      .string()
+      .default('ecs')
+      .refine((data) => {
+        return !data.includes('.'); // string cannot contain a period
+      }),
   })
   .refine(
     (data) => {

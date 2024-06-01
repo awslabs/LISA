@@ -219,6 +219,24 @@ you can do so.
   the corresponding entry in `config.yaml`. For container images you can provide a path to a directory
   from which a docker container will be built (default), a path to a tarball, an ECR repository arn and
   optional tag, or a public registry path.
+  - We provide immediate support for HuggingFace TGI and TEI containers and for vLLM containers. The `example_config.yaml`
+    file provides examples for TGI and TEI, and the only difference for using vLLM is to change the
+    `inferenceContainer`, `baseImage`, and `path` options, as indicated in the snippet below. All other options can
+    remain the same as the model definition examples we have for the TGI or TEI models.
+    ```yaml
+    ecsModels:
+      - modelName: mistralai/Mistral-7B-Instruct-v0.2
+        modelId: mistral7b-vllm
+        deploy: true
+        streaming: true
+        modelType: textgen
+        instanceType: g5.xlarge
+        inferenceContainer: vllm # vLLM-specific config
+        containerConfig:
+          image:
+            baseImage: vllm/vllm-openai:v0.4.2 # vLLM-specific config
+            path: lib/serve/ecs-model/vllm # vLLM-specific config
+    ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built
   website assets using the top level `webAppAssetsPath` parameter in `config.yaml`. Specifying this path
   (typically `lib/user-interface/react/dist`) will avoid using a container to build and bundle the assets

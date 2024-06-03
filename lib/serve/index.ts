@@ -101,6 +101,8 @@ export class LisaServeApplicationStack extends Stack {
         // Create metadata to register model in parameter store
         const registeredModel: RegisteredModel = {
           provider: `${modelConfig.modelHosting}.${modelConfig.modelType}.${modelConfig.inferenceContainer}`,
+          // modelId is used for LiteLLM config to differentiate the same model deployed with two different containers
+          modelId: modelConfig.modelId ? modelConfig.modelId : modelConfig.modelName,
           modelName: modelConfig.modelName,
           modelType: modelConfig.modelType,
           endpointUrl: ecsModel.endpointUrl,

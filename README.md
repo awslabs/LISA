@@ -88,6 +88,64 @@ We also will need `.safetensors`. In order to reduce the startup time we will do
 
 Note: we have primarily designed and tested this with HuggingFace models in mind. Any models outside of this format will require you to create and upload safetensors manually.
 
+### LiteLLM Configuration
+
+With the models that we are hosted using the process above, we automatically add them to a LiteLLM configuration,
+utilizing the [OpenAI specification](https://platform.openai.com/docs/api-reference) for programmatic access. We expose
+the [LiteLLM configuration](https://litellm.vercel.app/docs/proxy/configs) file directly within the LISA config.yaml
+file, so any options defined there can be defined directly in the LISA config file, under the `litellmConfig` option.
+This also means that we will also support calling other existing models that your VPC configuration allows. For more
+information about adding models, please see the LiteLLM docs [here](https://litellm.vercel.app/docs/proxy/configs).
+
+#### SageMaker Endpoints and Bedrock Models
+
+We do support adding existing SageMaker Endpoints and Bedrock Models to the LiteLLM configuration, and as long as the
+services you use are in the same region as the LISA installation, LISA will be able to use those models alongside any
+other models you have deployed. After installing LISA without referencing the SageMaker Endpoint, create a Model using
+the private subnets of the LISA deployment, and that will allow the REST API container to reach out to any Endpoint that
+uses that Model. Then, to invoke the SageMaker Endpoints or Bedrock Models, you would need to add the following
+permissions to the "REST-Role" that was created in the IAM stack:
+
+```
+"bedrock:InvokeModel",
+"bedrock:InvokeModelWithResponseStream",
+"sagemaker:InvokeEndpoint",
+"sagemaker:InvokeEndpointWithResponseStream"
+```
+
+After adding those permissions and access in the VPC, LiteLLM will now be able to route traffic to those entities, and
+they will be accessible through the LISA ALB, using the OpenAI specification for programmatic access.
+
+#### Recommended Configuration Options
+
+There is no one-size-fits-all configuration, especially when it comes to referencing models that you've deployed outside
+the scope of LISA, but we do recommend the following settings for a minimal setup, assuming a SageMaker Endpoint called
+"test-endpoint," access to the "amazon.titan-text-express-v1" Bedrock Model, and a self-hosted OpenAI-compatible model
+with an endpoint you can access from the VPC. The SageMaker Endpoint and Bedrock Model must be in the same region as the
+LISA installation.
+
+```yaml
+dev:
+  litellmConfig:
+    litellm_settings:
+      telemetry: false # Don't attempt to send telemetry to LiteLLM servers from within VPC
+      drop_params: true # Don't fail if params not recognized, instead ignore unrecognized params
+    model_list:
+      - model_name: test-endpoint # Human-readable name, can be anything and will be used for OpenAI API calls
+        litellm_params:
+          model: sagemaker/test-endpoint # Prefix required for SageMaker Endpoints and "test-endpoint" matches Endpoint name
+          api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+      - model_name: bedrock-titan-express # Human-readable name for future OpenAI API calls
+        litellm_params:
+          model: bedrock/amazon.titan-text-express-v1 # Prefix required for Bedrock Models, and exact name of Model to use
+          api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+      - model_name: custom-openai-model # Used in future OpenAI-compatible calls to LiteLLM
+        litellm_params:
+          model: openai/modelProvider/modelName # Prefix required for OpenAI-compatible models followed by model provider and name details
+          api_base: https://your-domain-here:443/v1 # Your model's base URI
+          api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+```
+
 ### DEV ONLY: Create Self-Signed Certificates for ALB
 
 **WARNING: THIS IS FOR DEV ONLY**

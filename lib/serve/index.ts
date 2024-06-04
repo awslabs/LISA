@@ -126,6 +126,7 @@ export class LisaServeApplicationStack extends Stack {
     this.modelsPs.grantRead(restApi.taskRole);
     // Add parameter as container environment variable for both RestAPI and RagAPI
     restApi.container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
+    restApi.node.addDependency(this.modelsPs);
 
     // Update
     this.restApi = restApi;

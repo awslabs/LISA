@@ -39,7 +39,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
   const [presencePenalty, setPresencePenalty] = useState(null);
   const [temperature, setTemperature] = useState(null);
   const [seed, setSeed] = useState(null);
-  const [stopSequences, setStopSequences] = useState([]);
+  const [stopSequences, setStopSequences] = useState(['\nUser:', '\n User:', 'User:', 'User']);
 
   useEffect(() => {
     const modelConfig: ModelConfig = {

@@ -88,19 +88,6 @@ export type LisaChatSession = {
 export type ModelTypes = 'textgen' | 'embedding';
 
 /**
- * Model provider class for maintaining a list of models associated with a model provider name
- */
-export class ModelProvider {
-  public name: string;
-  public models: Model[];
-
-  constructor(providerName: string, models: Model[]) {
-    this.models = models;
-    this.name = providerName;
-  }
-}
-
-/**
  * Supported RAG repository types for LISA
  */
 export type RepositoryTypes = 'OpenSearch';

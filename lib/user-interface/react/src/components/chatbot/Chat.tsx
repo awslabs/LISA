@@ -41,7 +41,7 @@ import { SelectProps } from '@cloudscape-design/components/select';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatSession, ModelProvider, Model, ModelKwargs, LisaChatMessageMetadata } from '../types';
+import { LisaChatMessage, LisaChatSession, Model, ModelKwargs, LisaChatMessageMetadata } from '../types';
 import {
   getSession,
   putSession,
@@ -49,7 +49,7 @@ import {
   isModelInterfaceHealthy,
   RESTAPI_URI,
   RESTAPI_VERSION,
-  formatDocumentsAsString, createModelOptions, createModelMap, parseDescribeModelsResponse,
+  formatDocumentsAsString,
 
 } from '../utils';
 import { LisaRAGRetriever } from '../adapters/lisa';
@@ -76,9 +76,8 @@ export default function Chat({ sessionId }) {
           ${humanPrefix}: {input}
           ${aiPrefix}:`,
   );
-  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   const [modelsOptions, setModelsOptions] = useState<SelectProps.Options>([]);
-  const [textgenModelMap, setTextgenModelMap] = useState<Map<string, Model> | undefined>(undefined);
   const [modelKwargs, setModelKwargs] = useState<ModelKwargs | undefined>(undefined);
   const [selectedModel, setSelectedModel] = useState<Model | undefined>(undefined);
   const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option | undefined>(undefined);
@@ -137,19 +136,15 @@ export default function Chat({ sessionId }) {
 
   useEffect(() => {
     if (selectedModelOption) {
-      const model = textgenModelMap[selectedModelOption.value];
+      const model = models.filter(model => model.id === selectedModelOption.value)[0];
       setModelCanStream(true);
       setSelectedModel(model);
     }
-  }, [selectedModelOption, textgenModelMap, streamingEnabled]);
+  }, [selectedModelOption, streamingEnabled]);
 
   useEffect(() => {
-    setModelsOptions(createModelOptions(modelProviders));
-    setTextgenModelMap(createModelMap(modelProviders));
-    // Disabling exhaustive-deps here because we only want to update
-    // the textgenModelMap and modelOptions when modelProviders changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelProviders]);
+    setModelsOptions(models.map(model => ({label: model.id, value: model.id})));
+  }, [models]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -366,9 +361,8 @@ export default function Chat({ sessionId }) {
         idToken: auth.user?.id_token,
         repositoryId: ragConfig.repositoryId,
         repositoryType: ragConfig.repositoryType,
-        modelName: ragConfig.embeddingModel.modelName,
-        providerName: ragConfig.embeddingModel.provider,
-        topK: ragTopK,
+        modelName: ragConfig.embeddingModel.id,
+        topK: ragTopK
       });
 
       chainSteps.unshift({
@@ -478,7 +472,7 @@ export default function Chat({ sessionId }) {
   const describeTextGenModels = useCallback(async () => {
     setIsLoadingModels(true);
     const resp = await describeModels(auth.user?.id_token);
-    setModelProviders(parseDescribeModelsResponse(resp));
+    setModels(resp.data);
     setIsLoadingModels(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -607,7 +601,7 @@ export default function Chat({ sessionId }) {
                     <div className="flex mb-2 justify-end mt-3">
                       <div>
                         <Button
-                          disabled={!modelProviders.length || isRunning || !selectedModel || userPrompt === ''}
+                          disabled={!models.length || isRunning || !selectedModel || userPrompt === ''}
                           onClick={handleSendGenerateRequest}
                           iconAlign="right"
                           iconName="angle-right-double"

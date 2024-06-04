@@ -30,11 +30,6 @@ export interface LisaRAGRetrieverInput extends BaseRetrieverInput {
   modelName: string;
 
   /**
-   * Name of model provider
-   */
-  providerName: string;
-
-  /**
    * Authentication token to use when communicating with RAG API
    */
   idToken: string;
@@ -60,7 +55,6 @@ export class LisaRAGRetriever extends BaseRetriever {
 
   private uri: string;
   public modelName: string;
-  public providerName: string;
   public idToken: string;
   public repositoryId: string;
   public repositoryType: string;
@@ -71,7 +65,6 @@ export class LisaRAGRetriever extends BaseRetriever {
 
     this.uri = fields.uri;
     this.modelName = fields.modelName;
-    this.providerName = fields.providerName;
     this.idToken = fields.idToken;
     this.repositoryId = fields.repositoryId;
     this.repositoryType = fields.repositoryType;
@@ -80,7 +73,7 @@ export class LisaRAGRetriever extends BaseRetriever {
 
   async _getRelevantDocuments(query: string): Promise<Document[]> {
     const resp = await sendAuthenticatedRequest(
-      `repository/${this.repositoryId}/similaritySearch?query=${query}&modelName=${this.modelName}&modelProvider=${this.providerName}&repositoryType=${this.repositoryType}&topK=${this.topK}`,
+      `repository/${this.repositoryId}/similaritySearch?query=${query}&modelName=${this.modelName}&repositoryType=${this.repositoryType}&topK=${this.topK}`,
       'GET',
       this.idToken,
     );

@@ -145,13 +145,6 @@ export default function Chat({ sessionId }) {
   }, [models]);
 
   useEffect(() => {
-    if (selectedModel) {
-      selectedModel.modelKwargs = modelKwargs;
-      setSelectedModel(selectedModel);
-    }
-  }, [modelKwargs, selectedModel]);
-
-  useEffect(() => {
     if (!isRunning && session.history.length) {
       if (session.history.at(-1).type == 'ai' && !auth.isLoading) {
         putSession(session, auth.user?.id_token);
@@ -327,8 +320,6 @@ export default function Chat({ sessionId }) {
     };
 
     const llm = createOpenAiClient(streamingEnabled);
-    const llmNoCallback = createOpenAiClient(false);
-
     const useContext = fileContext || useRag;
     const inputVariables = ['history', 'input'];
 
@@ -340,7 +331,7 @@ export default function Chat({ sessionId }) {
       inputVariables: inputVariables,
     });
 
-    const contextualizeQChain = contextualizeQPrompt.pipe(llmNoCallback).pipe(new StringOutputParser());
+    const contextualizeQChain = contextualizeQPrompt.pipe(createOpenAiClient(false)).pipe(new StringOutputParser());
 
     const chainSteps = [
       {

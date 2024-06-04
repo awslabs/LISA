@@ -238,8 +238,7 @@ export const ingestDocuments = async (
     idToken,
     JSON.stringify({
       embeddingModel: {
-        modelName: embeddingModel.id,
-        provider: embeddingModel.owned_by,
+        modelName: embeddingModel.id
       },
       keys: documents,
     }),

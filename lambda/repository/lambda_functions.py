@@ -22,7 +22,7 @@ from typing import Any, Dict, List
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.config import Config
-from lisapy.langchain import Lisa, LisaEmbeddings
+from lisapy.langchain import LisaOpenAIEmbeddings
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.file_processing import process_record
 from utilities.vector_store import get_vector_store_client
@@ -68,18 +68,18 @@ def _get_cert_path() -> str | bool:
     return rest_api_cert_path
 
 
-def _get_embeddings(provider: str, model_name: str, id_token: str) -> LisaEmbeddings:
+def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
     global lisa_api_endpoint
 
     if not lisa_api_endpoint:
         lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
         lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
 
-    lisa = Lisa(
-        url=lisa_api_endpoint, verify=_get_cert_path(), timeout=60, headers={"Authorization": f"Bearer {id_token}"}
-    )
+    headers = {"Authorization": f"Bearer {id_token}"}
 
-    embedding = LisaEmbeddings(provider=provider, model_name=model_name, client=lisa)
+    embedding = LisaOpenAIEmbeddings(
+        lisa_openai_api_base=lisa_api_endpoint + "/v2/serve", model=model_name, headers=headers
+    )
     return embedding
 
 
@@ -110,14 +110,13 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     """
     query_string_params = event["queryStringParameters"]
     model_name = query_string_params["modelName"]
-    model_provider = query_string_params["modelProvider"]
     query = query_string_params["query"]
     repository_type = query_string_params["repositoryType"]
     top_k = query_string_params.get("topK", 3)
 
     id_token = get_id_token(event)
 
-    embeddings = _get_embeddings(provider=model_provider, model_name=model_name, id_token=id_token)
+    embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
     vs = get_vector_store_client(repository_type, index=model_name, embeddings=embeddings)
     docs = vs.similarity_search(
         query,
@@ -151,7 +150,6 @@ def ingest_documents(event: dict, context: dict) -> dict:
     body = json.loads(event["body"])
     embedding_model = body["embeddingModel"]
     model_name = embedding_model["modelName"]
-    model_provider = embedding_model["provider"]
 
     query_string_params = event["queryStringParameters"]
     repository_type = query_string_params["repositoryType"]
@@ -169,7 +167,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             metadatas.append(doc.metadata)
 
     id_token = get_id_token(event)
-    embeddings = _get_embeddings(provider=model_provider, model_name=model_name, id_token=id_token)
+    embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
     vs = get_vector_store_client(repository_type, index=model_name, embeddings=embeddings)
     ids = vs.add_texts(texts=texts, metadatas=metadatas)
     return {"ids": ids, "count": len(ids)}

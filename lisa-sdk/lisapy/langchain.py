@@ -13,11 +13,12 @@
 #   limitations under the License.
 
 """Langchain adapter."""
-from typing import Any, Iterator, List, Mapping, Optional
+from typing import Any, cast, Dict, Iterator, List, Mapping, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms.base import LLM
 from langchain.schema.output import GenerationChunk
+from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.embeddings import Embeddings
 from langchain_core.pydantic_v1 import BaseModel, Extra
 from pydantic import PrivateAttr
@@ -94,6 +95,53 @@ class LisaTextgen(LLM):
                 yield chunk
                 if run_manager:
                     run_manager.on_llm_new_token(chunk.text)
+
+
+class LisaOpenAIEmbeddings(BaseModel, Embeddings):
+    """LISA text embedding adapter."""
+
+    lisa_openai_api_base: str
+    """LISA REST API URI."""
+
+    model: str
+    """Model name for Embeddings API."""
+
+    headers: Dict[str, str]
+    """Headers to add to model request."""
+
+    embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
+    """OpenAI-compliant client for making requests against embedding model."""
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        extra = Extra.forbid
+        arbitrary_types_allowed = True
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.embedding_model = OpenAIEmbeddings(
+            openai_api_base=self.lisa_openai_api_base,
+            openai_api_key="ignored",
+            model=self.model,
+            default_headers=self.headers,
+        )
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Use OpenAI API to embed a list of documents."""
+        return cast(List[List[float]], self.embedding_model.embed_documents(texts=texts))
+
+    def embed_query(self, text: str) -> List[float]:
+        """Use OpenAI API to embed a text."""
+        return cast(List[float], self.embedding_model.embed_query(text=text))
+
+    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Use OpenAI API to embed a list of documents."""
+        return cast(List[List[float]], await self.embedding_model.aembed_documents(texts=texts))
+
+    async def aembed_query(self, text: str) -> List[float]:
+        """Use OpenAI API to embed a text."""
+        return cast(List[float], await self.embedding_model.aembed_query(text=text))
 
 
 class LisaEmbeddings(BaseModel, Embeddings):

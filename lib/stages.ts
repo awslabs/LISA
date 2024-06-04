@@ -132,7 +132,8 @@ export class LisaServeApplicationStage extends Stage {
       stackName: createCdkId([config.deploymentName, config.appName, 'API']),
       description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
       vpc: networkingStack.vpc.vpc,
-      securityGroup: networkingStack.vpc.securityGroups.restApiAlbSg
+      securityGroup: networkingStack.vpc.securityGroups.restApiAlbSg,
+      sslCertIamArn: config.restApiConfig.loadBalancerConfig.sslCertIamArn,
     });
     apiBaseStack.addDependency(coreStack);
     stacks.push(apiBaseStack);
@@ -143,6 +144,8 @@ export class LisaServeApplicationStage extends Stage {
       stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
       vpc: networkingStack.vpc,
       alb: apiBaseStack.loadBalancer,
+      listener: apiBaseStack.listener,
+      listenerProps: apiBaseStack.listenerProps
     });
     stacks.push(serveStack);
     serveStack.addDependency(iamStack);
@@ -161,6 +164,8 @@ export class LisaServeApplicationStage extends Stage {
       restApiId: apiBaseStack.restApiId,
       rootResourceId: apiBaseStack.rootResourceId,
       vpc: networkingStack.vpc.vpc,
+      alb: apiBaseStack.loadBalancer,
+      listener: apiBaseStack.listener,
     });
     chatStack.addDependency(apiBaseStack);
     chatStack.addDependency(coreStack);

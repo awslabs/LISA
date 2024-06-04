@@ -37,7 +37,7 @@ import {
   Protocol,
   Volume,
 } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { ApplicationListener, ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -58,6 +58,8 @@ interface ECSClusterProps extends BaseProps {
   securityGroup: SecurityGroup;
   vpc: IVpc;
   alb: ApplicationLoadBalancer;
+  listener: ApplicationListener;
+  listenerProps: BaseApplicationListenerProps;
 }
 
 /**
@@ -80,7 +82,7 @@ export class ECSCluster extends Construct {
    */
   constructor(scope: Construct, id: string, props: ECSClusterProps) {
     super(scope, id);
-    const { config, vpc, securityGroup, ecsConfig, alb } = props;
+    const { config, vpc, ecsConfig, alb, listener, listenerProps } = props;
 
     // Create ECS cluster
     const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
@@ -260,19 +262,20 @@ export class ECSCluster extends Construct {
     service.node.addDependency(autoScalingGroup);
   
 
-    // Add listener
-    const listenerProps: BaseApplicationListenerProps = {
-      port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
-      open: ecsConfig.internetFacing,
-      certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
-        ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
-        : undefined,
-    };
+    // // Add listener
+    // const listenerProps: BaseApplicationListenerProps = {
+    //   port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
+    //   open: ecsConfig.internetFacing,
+    //   certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
+    //     ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
+    //     : undefined,
+    // };
 
-    const listener = alb.addListener(
-      createCdkId([ecsConfig.identifier, 'ApplicationListener']),
-      listenerProps,
-    );
+    // const listener = alb.addListener(
+    //   createCdkId([ecsConfig.identifier, 'ApplicationListener']),
+    //   listenerProps,
+    // );
+
     const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
     // Add targets

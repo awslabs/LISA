@@ -23,7 +23,7 @@ import { Construct } from 'constructs';
 import { ECSCluster } from '../../api-base/ecsCluster';
 import { createCdkId, getModelIdentifier } from '../../core/utils';
 import { BaseProps, Config, Ec2Metadata, EcsSourceType, ModelConfig } from '../../schema';
-import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
@@ -60,7 +60,7 @@ export class EcsModel extends Construct {
     const { config, modelConfig, securityGroup, vpc } = props;
 
     // Create private application load balancer
-    const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([getModelIdentifier(modelConfig), 'ALB']), {
+    const loadBalancer = new ApplicationLoadBalancer(this, createCdkId(['Private', getModelIdentifier(modelConfig), 'ALB']), {
       deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
       internetFacing: false,
       loadBalancerName: createCdkId([config.deploymentName, getModelIdentifier(modelConfig)], 32, 2),
@@ -68,6 +68,20 @@ export class EcsModel extends Construct {
       securityGroup,
       vpc,
     });
+
+    // Add listener
+    const listenerProps: BaseApplicationListenerProps = {
+      port: modelConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
+      open: false,
+      certificates: modelConfig.loadBalancerConfig.sslCertIamArn
+        ? [{ certificateArn: modelConfig.loadBalancerConfig.sslCertIamArn }]
+        : undefined,
+    };
+
+    const listener = loadBalancer.addListener(
+      createCdkId([getModelIdentifier(modelConfig), 'ApplicationListener']),
+      listenerProps,
+    );
 
     const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
       config,
@@ -86,6 +100,8 @@ export class EcsModel extends Construct {
       securityGroup,
       vpc,
       alb: loadBalancer,
+      listener,
+      listenerProps
     });
 
     // Single bucket for all models

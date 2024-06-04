@@ -24,6 +24,8 @@ import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
+import { ApplicationListener, ApplicationLoadBalancer, ListenerCondition } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { LambdaTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 
 /**
  * Properties for SessionApi Construct.
@@ -42,6 +44,8 @@ interface SessionApiProps extends BaseProps {
   rootResourceId: string;
   securityGroups?: ISecurityGroup[];
   vpc?: IVpc;
+  alb: ApplicationLoadBalancer;
+  listener: ApplicationListener;
 }
 
 /**
@@ -51,7 +55,7 @@ export class SessionApi extends Construct {
   constructor(scope: Construct, id: string, props: SessionApiProps) {
     super(scope, id);
 
-    const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
+    const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc, alb, listener } = props;
 
     // Get common layer based on arn from SSM due to issues with cross stack references
     const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -144,6 +148,7 @@ export class SessionApi extends Construct {
       },
     ];
     apis.forEach((f) => {
+
       const lambdaFunction = registerAPIEndpoint(
         this,
         restApi, //TODO: register API endpoints with ALB instead of APIGW
@@ -156,6 +161,22 @@ export class SessionApi extends Construct {
         vpc,
         securityGroups,
       );
+
+      //TODO: generate a target for each path 
+      listener.addTargets('Targets', {
+        targets: [new LambdaTarget(lambdaFunction)],
+        conditions: [
+          //ListenerCondition.hostHeaders(['example.com']), TODO: what should the hostHeader be?
+          ListenerCondition.pathPatterns([f.path]),
+        ],
+        // For Lambda Targets, you need to explicitly enable health checks if you
+        // want them.
+        healthCheck: {
+          enabled: true,
+        }
+      });
+
+
       if (f.method === 'POST' || f.method === 'PUT') {
         sessionTable.grantWriteData(lambdaFunction);
       } else if (f.method == 'GET') {

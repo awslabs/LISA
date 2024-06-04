@@ -122,7 +122,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
         super().__init__(**kwargs)
         self.embedding_model = OpenAIEmbeddings(
             openai_api_base=self.lisa_openai_api_base,
-            openai_api_key="ignored", # pragma: allowlist secret
+            openai_api_key="ignored",  # pragma: allowlist secret
             model=self.model,
             default_headers=self.headers,
         )

@@ -53,7 +53,7 @@ dev:
   apiGatewayConfig:
     domainName:
   restApiConfig:
-    apiVersion: v1
+    apiVersion: v2
     instanceType: m5.large
     containerConfig:
       image:

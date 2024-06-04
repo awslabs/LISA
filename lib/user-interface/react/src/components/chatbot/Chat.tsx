@@ -41,20 +41,17 @@ import { SelectProps } from '@cloudscape-design/components/select';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatSession, ModelProvider, Model, ModelKwargs, LisaChatMessageMetadata } from '../types';
+import { LisaChatMessage, LisaChatSession, Model, ModelConfig, LisaChatMessageMetadata } from '../types';
 import {
   getSession,
   putSession,
   describeModels,
   isModelInterfaceHealthy,
   RESTAPI_URI,
-  RESTAPI_VERSION,
-  parseDescribeModelsResponse,
   formatDocumentsAsString,
-  createModelMap,
-  createModelOptions,
+  RESTAPI_VERSION,
 } from '../utils';
-import { Lisa, LisaContentHandler, LisaRAGRetriever } from '../adapters/lisa';
+import { LisaRAGRetriever } from '../adapters/lisa';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import ModelKwargsEditor from './ModelKwargs';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
@@ -63,6 +60,7 @@ import { StringOutputParser } from '@langchain/core/output_parsers';
 import { BufferWindowMemory } from 'langchain/memory';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
+import { ChatOpenAI } from '@langchain/openai';
 
 export default function Chat({ sessionId }) {
   const [userPrompt, setUserPrompt] = useState('');
@@ -77,10 +75,9 @@ export default function Chat({ sessionId }) {
           ${humanPrefix}: {input}
           ${aiPrefix}:`,
   );
-  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   const [modelsOptions, setModelsOptions] = useState<SelectProps.Options>([]);
-  const [textgenModelMap, setTextgenModelMap] = useState<Map<string, Model> | undefined>(undefined);
-  const [modelKwargs, setModelKwargs] = useState<ModelKwargs | undefined>(undefined);
+  const [modelConfig, setModelConfig] = useState<ModelConfig | undefined>(undefined);
   const [selectedModel, setSelectedModel] = useState<Model | undefined>(undefined);
   const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option | undefined>(undefined);
   const [session, setSession] = useState<LisaChatSession>({
@@ -138,30 +135,15 @@ export default function Chat({ sessionId }) {
 
   useEffect(() => {
     if (selectedModelOption) {
-      const model = textgenModelMap[selectedModelOption.value];
-      setModelCanStream(model.streaming);
+      const model = models.filter((model) => model.id === selectedModelOption.value)[0];
+      setModelCanStream(true);
       setSelectedModel(model);
-      // TODO: the backend should set more reasonable default modelkwargs for chat
-      // until then, we won't use them as defaults in the UI
-      // setModelKwargs(model.modelKwargs);
-      updateModelKwargs('streaming', streamingEnabled);
     }
-  }, [selectedModelOption, textgenModelMap, streamingEnabled]);
+  }, [selectedModelOption, streamingEnabled]);
 
   useEffect(() => {
-    setModelsOptions(createModelOptions(modelProviders));
-    setTextgenModelMap(createModelMap(modelProviders));
-    // Disabling exhaustive-deps here because we only want to update
-    // the textgenModelMap and modelOptions when modelProviders changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelProviders]);
-
-  useEffect(() => {
-    if (selectedModel) {
-      selectedModel.modelKwargs = modelKwargs;
-      setSelectedModel(selectedModel);
-    }
-  }, [modelKwargs, selectedModel]);
+    setModelsOptions(models.map((model) => ({ label: model.id, value: model.id })));
+  }, [models]);
 
   useEffect(() => {
     if (!isRunning && session.history.length) {
@@ -257,16 +239,16 @@ export default function Chat({ sessionId }) {
         }
         const prompt = await PromptTemplate.fromTemplate(promptTemplate).format(promptValues);
         const metadata: LisaChatMessageMetadata = {
-          modelName: selectedModel.modelName,
-          modelKwargs: modelKwargs,
+          modelName: selectedModel.id,
+          modelKwargs: modelConfig,
           userId: auth.user.profile.sub,
-          prompt,
+          messages: prompt,
         };
         setMetadata(metadata);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedModel, modelKwargs, auth, userPrompt]);
+  }, [selectedModel, modelConfig, auth, userPrompt]);
 
   useEffect(() => {
     if (bottomRef) {
@@ -293,13 +275,33 @@ export default function Chat({ sessionId }) {
     };
   };
 
+  const createOpenAiClient = (streaming: boolean) => {
+    return new ChatOpenAI({
+      modelName: selectedModel?.id,
+      openAIApiKey: auth.user?.id_token,
+      configuration: {
+        baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
+      },
+      streaming,
+      maxTokens: modelConfig?.max_tokens,
+      n: modelConfig?.n,
+      topP: modelConfig?.top_p,
+      frequencyPenalty: modelConfig?.frequency_penalty,
+      presencePenalty: modelConfig?.presence_penalty,
+      temperature: modelConfig?.temperature,
+      stop: modelConfig?.stop,
+      modelKwargs: modelConfig?.modelKwargs,
+    });
+  };
+
   const contextualizeQSystemPrompt = `Given a chat history and the latest user question
     which might reference context in the chat history, formulate a standalone question
     which can be understood without the chat history. Do NOT answer the question,
     just reformulate it if needed and otherwise return it as is.`;
 
   const contextualizeQPrompt = ChatPromptTemplate.fromMessages([
-    ['system', contextualizeQSystemPrompt],
+    ['user', contextualizeQSystemPrompt],
+    ['assistant', 'Okay!'],
     new MessagesPlaceholder('chatHistory'),
     ['human', '{input}'],
   ]);
@@ -319,41 +321,8 @@ export default function Chat({ sessionId }) {
     const inputs = {
       input: userPrompt,
     };
-    const llm = new Lisa({
-      uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
-      idToken: auth.user?.id_token,
-      modelName: selectedModel.modelName,
-      providerName: selectedModel.provider,
-      modelKwargs: modelKwargs,
-      streaming: streamingEnabled,
-      contentHandler: new LisaContentHandler(),
-      callbacks: [
-        {
-          handleLLMNewToken: async (token) => {
-            setSession((prev) => {
-              const lastMessage = prev.history[prev.history.length - 1];
-              const newMessage = new LisaChatMessage({
-                ...lastMessage,
-                content: lastMessage.content + token,
-              });
-              return {
-                ...prev,
-                history: prev.history.slice(0, -1).concat(newMessage),
-              };
-            });
-          },
-        },
-      ],
-    });
-    const llmNoCallback = new Lisa({
-      uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
-      idToken: auth.user?.id_token,
-      modelName: selectedModel.modelName,
-      providerName: selectedModel.provider,
-      modelKwargs: modelKwargs,
-      streaming: false,
-      contentHandler: new LisaContentHandler(),
-    });
+
+    const llm = createOpenAiClient(streamingEnabled);
     const useContext = fileContext || useRag;
     const inputVariables = ['history', 'input'];
 
@@ -365,7 +334,7 @@ export default function Chat({ sessionId }) {
       inputVariables: inputVariables,
     });
 
-    const contextualizeQChain = contextualizeQPrompt.pipe(llmNoCallback).pipe(new StringOutputParser());
+    const contextualizeQChain = contextualizeQPrompt.pipe(createOpenAiClient(false)).pipe(new StringOutputParser());
 
     const chainSteps = [
       {
@@ -384,8 +353,7 @@ export default function Chat({ sessionId }) {
         idToken: auth.user?.id_token,
         repositoryId: ragConfig.repositoryId,
         repositoryType: ragConfig.repositoryType,
-        modelName: ragConfig.embeddingModel.modelName,
-        providerName: ragConfig.embeddingModel.provider,
+        modelName: ragConfig.embeddingModel.id,
         topK: ragTopK,
       });
 
@@ -439,12 +407,28 @@ export default function Chat({ sessionId }) {
         ),
       }));
       try {
-        const result = await chain.invoke({
+        const result = await chain.stream({
           input: userPrompt,
           chatHistory: session.history,
         });
-        await memory.saveContext(inputs, {
-          output: result,
+        const resp: string[] = [];
+        for await (const chunk of result) {
+          setSession((prev) => {
+            const lastMessage = prev.history[prev.history.length - 1];
+            const newMessage = new LisaChatMessage({
+              ...lastMessage,
+              content: lastMessage.content + chunk,
+            });
+            return {
+              ...prev,
+              history: prev.history.slice(0, -1).concat(newMessage),
+            };
+          });
+          resp.push(chunk);
+        }
+
+        memory.saveContext(inputs, {
+          output: resp.join(''),
         });
       } catch (exception) {
         setFlashbarItems((oldItems) => [...oldItems, createFlashbarError()]);
@@ -479,23 +463,16 @@ export default function Chat({ sessionId }) {
 
   const describeTextGenModels = useCallback(async () => {
     setIsLoadingModels(true);
-    const resp = await describeModels(['textgen'], auth.user?.id_token);
-    setModelProviders(parseDescribeModelsResponse(resp, 'textgen'));
+    const resp = await describeModels(auth.user?.id_token);
+    setModels(resp.data);
     setIsLoadingModels(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateModelKwargs = (key, value) => {
-    setModelKwargs((prevModelKwargs) => ({
-      ...prevModelKwargs,
-      [key]: value,
-    }));
-  };
-
   return (
     <>
       <ModelKwargsEditor
-        setModelKwargs={setModelKwargs}
+        setModelConfig={setModelConfig}
         visible={modelKwargsModalVisible}
         setVisible={setModelKwargsModalVisible}
       />
@@ -616,7 +593,7 @@ export default function Chat({ sessionId }) {
                     <div className="flex mb-2 justify-end mt-3">
                       <div>
                         <Button
-                          disabled={!modelProviders.length || isRunning || !selectedModel || userPrompt === ''}
+                          disabled={!models.length || isRunning || !selectedModel || userPrompt === ''}
                           onClick={handleSendGenerateRequest}
                           iconAlign="right"
                           iconName="angle-right-double"

@@ -19,8 +19,6 @@ import { useEffect, useState } from 'react';
 import {
   AttributeEditor,
   Modal,
-  Toggle,
-  Link,
   Container,
   SpaceBetween,
   Input,
@@ -29,62 +27,43 @@ import {
 } from '@cloudscape-design/components';
 import unraw from 'unraw';
 
-import { ModelKwargs } from '../types';
+import { ModelConfig } from '../types';
 
-export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible }) {
+export default function ModelKwargsEditor({ setModelConfig, visible, setVisible }) {
   // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
   // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
-  const [maxNewTokens, setMaxNewTokens] = useState(1024);
-  const [topK, setTopK] = useState(50);
-  const [topP, setTopP] = useState(0.99); // TGI client enforces strictly less than 1.0
-  const [typicalP, setTypicalP] = useState(0.99); // TGI client enforces strictly less than 1.0
-  const [temperature, setTemperature] = useState(1.0);
-  const [repetitionPenalty, setRepetitionPenalty] = useState(1.0);
-  const [returnFullText, setReturnFullText] = useState(false);
-  const [watermark, setWatermark] = useState(false);
-  const [doSample, setDoSample] = useState(false);
-  const [truncate, setTruncate] = useState(1024);
-  const [seed, setSeed] = useState(42);
+  const [maxNewTokens, setMaxNewTokens] = useState(null);
+  const [n, setN] = useState(null);
+  const [topP, setTopP] = useState(null);
+  const [frequencyPenalty, setFrequencyPenalty] = useState(null);
+  const [presencePenalty, setPresencePenalty] = useState(null);
+  const [temperature, setTemperature] = useState(null);
+  const [seed, setSeed] = useState(null);
   const [stopSequences, setStopSequences] = useState(['\nUser:', '\n User:', 'User:', 'User']);
 
   useEffect(() => {
-    const modelKwargs: ModelKwargs = {
-      max_new_tokens: maxNewTokens,
-      top_k: topK,
+    const modelConfig: ModelConfig = {
+      max_tokens: maxNewTokens,
+      n: n,
       top_p: topP,
-      typical_p: typicalP,
+      frequency_penalty: frequencyPenalty,
+      presence_penalty: presencePenalty,
       temperature: temperature,
-      repetition_penalty: repetitionPenalty,
-      return_full_text: returnFullText,
-      truncate: truncate,
-      stop_sequences: stopSequences.map((elem) => {
+      stop: stopSequences.map((elem) => {
         try {
           return unraw(elem);
         } catch (error) {
           return elem;
         }
       }),
-      seed: seed,
-      do_sample: doSample,
-      watermark: watermark,
+      modelKwargs: {
+        seed,
+      },
     };
-    setModelKwargs(modelKwargs);
+    setModelConfig(modelConfig);
     //Disabling exhaustive-deps here because we reference and update modelKwargs in the same hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    maxNewTokens,
-    topK,
-    topP,
-    typicalP,
-    temperature,
-    repetitionPenalty,
-    returnFullText,
-    truncate,
-    stopSequences,
-    seed,
-    doSample,
-    watermark,
-  ]);
+  }, [maxNewTokens, n, topP, frequencyPenalty, presencePenalty, temperature, stopSequences, seed]);
   return (
     <Modal
       onDismiss={() => setVisible(false)}
@@ -95,159 +74,145 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
     >
       <SpaceBetween direction="vertical" size="l">
         <FormField
-          label="max_new_tokens"
-          constraintText="Must be greater than or equal to 0."
-          description="The maximum number of new tokens to generate."
+          label="max_tokens"
+          constraintText="Must be greater than or equal to 0 - Defaults to null (no limit) if not specified."
+          description="The maximum number of tokens that can be generated in the completion."
         >
           <Input
-            value={maxNewTokens.toString()}
+            value={maxNewTokens?.toString()}
             type="number"
             step={1}
             inputMode="numeric"
             disableBrowserAutocorrect={true}
             onChange={(event) => {
               const intVal = parseInt(event.detail.value);
-              if (intVal >= 0) {
+              if (!isNaN(intVal) && intVal >= 0) {
                 setMaxNewTokens(intVal);
+              } else if (isNaN(intVal)) {
+                setMaxNewTokens(null);
               }
             }}
           />
         </FormField>
         <FormField
-          label="top_k"
-          constraintText="Must be greater than or equal to 1."
-          description="The number of highest probability vocabulary tokens to keep for top-k-filtering. Value of 1 corresponds to greedy strategy."
+          label="n"
+          constraintText="Must be greater than or equal to 1 - Defaults to 1 if not specified."
+          description="How many completions to generate for each prompt."
         >
           <Input
-            value={topK.toString()}
+            value={n?.toString()}
             type="number"
             step={1}
             inputMode="numeric"
             disableBrowserAutocorrect={true}
             onChange={(event) => {
               const intVal = parseInt(event.detail.value);
-              if (intVal >= 0) {
-                setTopK(intVal);
+              if (!isNaN(intVal) && intVal >= 0) {
+                setN(intVal);
+              } else if (isNaN(intVal)) {
+                setN(null);
               }
             }}
           />
         </FormField>
         <FormField
           label="top_p"
-          constraintText="Must be between 0 and 1"
-          description="If set to < 1, only the smallest set of most probable
-                    tokens with probabilities that add up to `top_p` or
-                    higher are kept for generation"
+          constraintText="Must be between 0 and 1 - Defaults to 1 if not specified."
+          description="An alternative to sampling with temperature,
+                    called nucleus sampling, where the model considers
+                    the results of the tokens with top_p probability mass.
+                    So 0.1 means only the tokens comprising the top 10%
+                    probability mass are considered."
         >
           <Input
-            value={topP.toString()}
+            value={topP?.toString()}
             type="number"
             step={0.1}
             inputMode="decimal"
             disableBrowserAutocorrect={true}
             onChange={(event) => {
               const floatVal = parseFloat(event.detail.value);
-              if (floatVal >= 0.0 && floatVal <= 1.0) {
+              if (!isNaN(floatVal) && floatVal >= 0.0 && floatVal <= 1.0) {
                 setTopP(floatVal);
+              } else if (isNaN(floatVal)) {
+                setTopP(null);
               }
             }}
           />
         </FormField>
         <FormField
-          label="typical_p"
-          constraintText="Must be between 0 and 1"
-          description={
-            <div>
-              <SpaceBetween direction="horizontal" size="xs">
-                <span>Typical Decoding Mass</span>
-                <Link external variant="info" href="https://arxiv.org/pdf/2202.00666.pdf">
-                  Learn more
-                </Link>
-              </SpaceBetween>
-            </div>
-          }
+          label="frequency_penalty"
+          constraintText="Must be between -2.0 and 2.0 - Defaults to 0 if not specified."
+          description="Number between -2.0 and 2.0. Positive values
+                    penalize new tokens based on their existing
+                    frequency in the text so far, decreasing the model's
+                    likelihood to repeat the same line verbatim."
         >
           <Input
-            value={typicalP.toString()}
+            value={frequencyPenalty?.toString()}
             type="number"
             step={0.1}
             inputMode="decimal"
             disableBrowserAutocorrect={true}
             onChange={(event) => {
               const floatVal = parseFloat(event.detail.value);
-              if (floatVal >= 0.0 && floatVal <= 1.0) {
-                setTypicalP(floatVal);
+              if (!isNaN(floatVal) && floatVal >= -2.0 && floatVal <= 2.0) {
+                setFrequencyPenalty(floatVal);
+              } else if (isNaN(floatVal)) {
+                setFrequencyPenalty(null);
+              }
+            }}
+          />
+        </FormField>
+        <FormField
+          label="presence_penalty"
+          constraintText="Must be between -2.0 and 2.0 - Defaults to 0 if not specified."
+          description="Number between -2.0 and 2.0. Positive values
+                      penalize new tokens based on whether they appear
+                      in the text so far, increasing the model's
+                      likelihood to talk about new topics."
+        >
+          <Input
+            value={presencePenalty?.toString()}
+            type="number"
+            step={0.1}
+            inputMode="decimal"
+            disableBrowserAutocorrect={true}
+            onChange={(event) => {
+              const floatVal = parseFloat(event.detail.value);
+              if (!isNaN(floatVal) && floatVal >= -2.0 && floatVal <= 2.0) {
+                setPresencePenalty(floatVal);
+              } else if (isNaN(floatVal)) {
+                setPresencePenalty(null);
               }
             }}
           />
         </FormField>
         <FormField
           label="temperature"
-          constraintText="Must be greater than 0"
-          description="Controls temperature used to modulate token probabilities."
+          constraintText="Must be between 0 and 2.0 - Defaults to 1 if not specified."
+          description="What sampling temperature to use, between 0 and 2.
+                  Higher values like 0.8 will make the output more random,
+                  while lower values like 0.2 will make it more focused
+                  and deterministic."
         >
           <Input
-            value={temperature.toString()}
+            value={temperature?.toString()}
             type="number"
             step={0.1}
             inputMode="decimal"
             disableBrowserAutocorrect={true}
             onChange={(event) => {
               const floatVal = parseFloat(event.detail.value);
-              if (floatVal >= 0.0) {
+              if (!isNaN(floatVal) && floatVal >= 0.0 && floatVal <= 2.0) {
                 setTemperature(floatVal);
+              } else if (isNaN(floatVal)) {
+                setTemperature(null);
               }
             }}
           />
         </FormField>
-        <FormField
-          label="repetition_penalty"
-          description={
-            <div>
-              <SpaceBetween direction="horizontal" size="xs">
-                <span>The parameter for repetition penalty. 1.0 means no penalty.</span>
-                <Link external variant="info" href="https://arxiv.org/pdf/1909.05858.pdf">
-                  Learn more
-                </Link>
-              </SpaceBetween>
-            </div>
-          }
-        >
-          <Input
-            value={repetitionPenalty.toString()}
-            type="number"
-            step={0.1}
-            inputMode="decimal"
-            disableBrowserAutocorrect={true}
-            onChange={(event) => {
-              setRepetitionPenalty(parseFloat(event.detail.value));
-            }}
-          />
-        </FormField>
-        <FormField
-          label="truncate"
-          constraintText="Must be greater than 0."
-          description="Truncate inputs tokens to the given size."
-        >
-          <Input
-            value={truncate.toString()}
-            type="number"
-            step={1}
-            inputMode="numeric"
-            disableBrowserAutocorrect={true}
-            onChange={(event) => {
-              const intVal = parseInt(event.detail.value);
-              if (intVal >= 0) {
-                setTruncate(intVal);
-              }
-            }}
-          />
-        </FormField>
-        <FormField
-          label="stop_sequences"
-          //TODO: this is hardcoded at 4 stop tokens (default in TGI) but maybe this should be a config option?
-          description="Stop generating tokens if a member of `stop_sequences` is generated. Maximum of 4."
-        >
+        <FormField label="stop" description="Up to 4 sequences where the API will stop generating further tokens.">
           <Container>
             <AttributeEditor
               addButtonText="Add"
@@ -285,54 +250,26 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
             />
           </Container>
         </FormField>
-        <FormField label="seed" description="Random sampling seed">
+        <FormField
+          label="seed"
+          description="If specified, our system will make a best
+                      effort to sample deterministically, such that
+                      repeated requests with the same seed and
+                      parameters should return the same result."
+        >
           <Input
-            value={seed.toString()}
+            value={seed?.toString()}
             type="number"
             step={1}
             inputMode="numeric"
             disableBrowserAutocorrect={true}
             onChange={(event) => {
               const intVal = parseInt(event.detail.value);
-              if (intVal >= 0) {
+              if (!isNaN(intVal) && intVal >= 0) {
                 setSeed(intVal);
+              } else if (isNaN(intVal)) {
+                setSeed(null);
               }
-            }}
-          />
-        </FormField>
-        <FormField label="return_full_text" description="Whether to prepend the prompt to the generated text.">
-          <Toggle
-            checked={returnFullText}
-            onChange={(event) => {
-              setReturnFullText(event.detail.checked);
-            }}
-          />
-        </FormField>
-        <FormField label="do_sample" description="Activate logits sampling">
-          <Toggle
-            checked={doSample}
-            onChange={(event) => {
-              setDoSample(event.detail.checked);
-            }}
-          />
-        </FormField>
-        <FormField
-          label="watermark"
-          description={
-            <div>
-              <SpaceBetween direction="horizontal" size="xs">
-                <span>Whether to apply watermarking.</span>
-                <Link external variant="info" href="https://arxiv.org/pdf/2301.10226.pdf">
-                  Learn more
-                </Link>
-              </SpaceBetween>
-            </div>
-          }
-        >
-          <Toggle
-            checked={watermark}
-            onChange={(event) => {
-              setWatermark(event.detail.checked);
             }}
           />
         </FormField>

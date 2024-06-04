@@ -98,6 +98,7 @@ export class LisaRagStack extends Stack {
       CHUNK_SIZE: config.ragFileProcessingConfig.chunkSize.toString(),
       CHUNK_OVERLAP: config.ragFileProcessingConfig.chunkOverlap.toString(),
       LISA_API_URL_PS_NAME: endpointUrl.parameterName,
+      REST_API_VERSION: config.restApiConfig.apiVersion,
     };
 
     // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API

@@ -14,12 +14,9 @@
   limitations under the License.
 */
 
-import { SelectProps } from '@cloudscape-design/components';
 import {
   LisaChatSession,
   DescribeModelsResponseBody,
-  ModelTypes,
-  ModelProvider,
   LisaChatMessageFields,
   PutSessionRequestBody,
   LisaChatMessage,
@@ -170,20 +167,11 @@ export const deleteUserSessions = async (idToken: string) => {
 
 /**
  * Describes all models of a given type which are available to a user
- * @param modelTypes a list of model types to describe
  * @param idToken the user's ID token from authenticating
  * @returns
  */
-export const describeModels = async (
-  modelTypes: ModelTypes[],
-  idToken: string,
-): Promise<DescribeModelsResponseBody> => {
-  const queryParams: string = modelTypes.map((elem) => `modelTypes=${elem}`).join('&');
-  const resp = await sendAuthenticatedRequest(
-    `${RESTAPI_URI}/${RESTAPI_VERSION}/describeModels?${queryParams}`,
-    'GET',
-    idToken,
-  );
+export const describeModels = async (idToken: string): Promise<DescribeModelsResponseBody> => {
+  const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`, 'GET', idToken);
   return await resp.json();
 };
 
@@ -195,24 +183,6 @@ export const describeModels = async (
 export const isModelInterfaceHealthy = async (idToken: string): Promise<boolean> => {
   const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/health`, 'GET', idToken);
   return resp.ok;
-};
-
-/**
- * Parses out the model providers from the DescribeModelsResponseBody
- * @param response the DescribeModelsResponseBody response to parse for providers
- * @returns
- */
-export const parseDescribeModelsResponse = (
-  response: DescribeModelsResponseBody,
-  modelType: ModelTypes,
-): ModelProvider[] => {
-  const providers: ModelProvider[] = [];
-
-  for (const providerName of Object.keys(response[modelType])) {
-    providers.push(new ModelProvider(providerName, response[modelType][providerName]));
-  }
-
-  return providers;
 };
 
 /**
@@ -269,8 +239,7 @@ export const ingestDocuments = async (
     idToken,
     JSON.stringify({
       embeddingModel: {
-        modelName: embeddingModel.modelName,
-        provider: embeddingModel.provider,
+        modelName: embeddingModel.id,
       },
       keys: documents,
     }),
@@ -288,43 +257,4 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
     contents += `\n${doc.Document.page_content}\n`;
   });
   return contents;
-};
-
-export const formatModelKey = (providerName: string, modelName: string): string => {
-  return `${providerName}.${modelName}`;
-};
-
-export const createModelOptions = (providers: ModelProvider[]): SelectProps.Options => {
-  const optionGroups: SelectProps.OptionGroup[] = [];
-  for (const modelProvider of providers) {
-    const options: SelectProps.Option[] = [];
-    for (const model of modelProvider.models) {
-      const modelKey = formatModelKey(modelProvider.name, model.modelName);
-      let label = '';
-      if (model.modelType === 'textgen') {
-        label = `${model.modelName} ${model.streaming ? '(streaming supported)' : ''}`;
-      } else if (model.modelType === 'embedding') {
-        label = `${model.modelName}`;
-      }
-      options.push({
-        label,
-        value: modelKey,
-      });
-    }
-    optionGroups.push({
-      label: modelProvider.name,
-      options: options,
-    });
-  }
-  return optionGroups;
-};
-
-export const createModelMap = (providers: ModelProvider[]): Map<string, Model> => {
-  const modelMap: Map<string, Model> = new Map<string, Model>();
-  for (const modelProvider of providers) {
-    for (const model of modelProvider.models) {
-      modelMap[formatModelKey(modelProvider.name, model.modelName)] = model;
-    }
-  }
-  return modelMap;
 };

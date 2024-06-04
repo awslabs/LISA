@@ -83,8 +83,13 @@ async def lifespan(app: FastAPI):  # type: ignore
         registered_models = json.loads(response["Parameter"]["Value"])
         for model in registered_models:
             provider = model["provider"]
+            # provider format is `modelHosting.modelType.inferenceContainer`, example: "ecs.textgen.tgi"
+            [_, _, inference_container] = provider.split(".")
             model_name = model["modelName"]
             model_type = model["modelType"]
+
+            if inference_container not in ["tgi", "tei", "instructor"]:  # stopgap for supporting new containers for v2
+                continue  # not implementing new providers inside the existing cache; cache is on deprecation path
 
             # Get default model kwargs
             validator = registry.get_assets(provider)["validator"]

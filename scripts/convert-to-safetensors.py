@@ -19,6 +19,8 @@ Parameters
 ----------
 --model-id: str = None
     huggingface model id or local model dir
+--access-token: str = None
+    huggingface access token for restricted models
 --output-dir: str = None
     directory to output model to
 --max-shard-size: str = "2GB"
@@ -32,6 +34,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model-id", help="huggingface model ID or local model dir", default=None)
+parser.add_argument("--access-token", help="huggingface access token for restricted models", default=None)
 parser.add_argument("--output-dir", help="local directory to output model to", default=None)
 parser.add_argument("--max-shard-size", help="maximum size of safetensor shard", default="2GB")
 args = parser.parse_args()
@@ -39,9 +42,10 @@ args = parser.parse_args()
 # pull down model files from HF Hub if needed
 model_dir_fpath = Path(args.output_dir, args.model_id)
 if not model_dir_fpath.exists():
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import login, snapshot_download
 
-    print(f"Downloading model ID {args.model_id} to {model_dir_fpath}")
+    if args.access_token:
+        login(token=args.access_token)
     snapshot_download(
         args.model_id,
         local_dir=model_dir_fpath,

@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 
 from ..auth import OIDCHTTPBearer
 from .endpoints.v1 import embeddings, generation, models
+from .endpoints.v2 import litellm_passthrough
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,9 @@ router = APIRouter()
 router.include_router(models.router, prefix="/v1", tags=["models"], dependencies=[Depends(security)])
 router.include_router(embeddings.router, prefix="/v1", tags=["embeddings"], dependencies=[Depends(security)])
 router.include_router(generation.router, prefix="/v1", tags=["generation"], dependencies=[Depends(security)])
+router.include_router(
+    litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=[Depends(security)]
+)
 
 
 @router.get("/health")  # type: ignore

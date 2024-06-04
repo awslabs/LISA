@@ -23,6 +23,7 @@ import { Construct } from 'constructs';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
+import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -41,6 +42,7 @@ interface FastApiContainerProps extends BaseProps {
   taskConfig: FastApiContainerConfig;
   tokenTable: ITable;
   vpc: IVpc;
+  alb: ApplicationLoadBalancer;
 }
 
 /**
@@ -64,7 +66,7 @@ export class FastApiContainer extends Construct {
   constructor(scope: Construct, id: string, props: FastApiContainerProps) {
     super(scope, id);
 
-    const { config, securityGroup, taskConfig, tokenTable, vpc } = props;
+    const { config, securityGroup, taskConfig, tokenTable, vpc, alb } = props;
 
     let buildArgs: Record<string, string> | undefined = undefined;
     if (taskConfig.containerConfig.image.type === EcsSourceType.ASSET) {
@@ -99,6 +101,7 @@ export class FastApiContainer extends Construct {
       },
       securityGroup,
       vpc,
+      alb,
     });
     tokenTable.grantReadData(apiCluster.taskRole);
 

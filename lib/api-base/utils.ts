@@ -98,6 +98,7 @@ export function registerAPIEndpoint(
     vpc,
     securityGroups,
   });
+  //TODO: attach this function to the ALB
   const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
   functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
     authorizer,

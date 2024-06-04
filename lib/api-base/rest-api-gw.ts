@@ -50,6 +50,7 @@ export class RestApiGateway extends Construct {
       throttlingBurstLimit: 100,
     };
 
+    //TODO: convert this to an ALB
     this.restApi = new RestApi(this, `${id}-RestApi`, {
       description: 'The User Interface and session management Lambda API Layer.',
       endpointConfiguration: { types: [EndpointType.REGIONAL] },

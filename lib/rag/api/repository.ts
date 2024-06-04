@@ -128,7 +128,7 @@ export class RepositoryApi extends Construct {
     apis.forEach((f) => {
       registerAPIEndpoint(
         this,
-        restApi,
+        restApi, //TODO: convert to ALB
         authorizer,
         config.lambdaSourcePath,
         commonLayers,

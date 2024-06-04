@@ -21,8 +21,10 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
 import { ECSCluster } from '../../api-base/ecsCluster';
-import { getModelIdentifier } from '../../core/utils';
+import { createCdkId, getModelIdentifier } from '../../core/utils';
 import { BaseProps, Config, Ec2Metadata, EcsSourceType, ModelConfig } from '../../schema';
+import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -57,6 +59,16 @@ export class EcsModel extends Construct {
     super(scope, id);
     const { config, modelConfig, securityGroup, vpc } = props;
 
+    // Create private application load balancer
+    const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([getModelIdentifier(modelConfig), 'ALB']), {
+      deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
+      internetFacing: false,
+      loadBalancerName: createCdkId([config.deploymentName, getModelIdentifier(modelConfig)], 32, 2),
+      dropInvalidHeaderFields: true,
+      securityGroup,
+      vpc,
+    });
+
     const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
       config,
       ecsConfig: {
@@ -73,6 +85,7 @@ export class EcsModel extends Construct {
       },
       securityGroup,
       vpc,
+      alb: loadBalancer,
     });
 
     // Single bucket for all models

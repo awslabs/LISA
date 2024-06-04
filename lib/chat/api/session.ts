@@ -146,7 +146,7 @@ export class SessionApi extends Construct {
     apis.forEach((f) => {
       const lambdaFunction = registerAPIEndpoint(
         this,
-        restApi,
+        restApi, //TODO: register API endpoints with ALB instead of APIGW
         authorizer,
         config.lambdaSourcePath,
         [commonLambdaLayer],

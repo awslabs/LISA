@@ -15,7 +15,7 @@
 */
 
 // ECS Cluster Construct.
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
@@ -57,6 +57,7 @@ interface ECSClusterProps extends BaseProps {
   ecsConfig: ECSConfig;
   securityGroup: SecurityGroup;
   vpc: IVpc;
+  alb: ApplicationLoadBalancer;
 }
 
 /**
@@ -79,7 +80,7 @@ export class ECSCluster extends Construct {
    */
   constructor(scope: Construct, id: string, props: ECSClusterProps) {
     super(scope, id);
-    const { config, vpc, securityGroup, ecsConfig } = props;
+    const { config, vpc, securityGroup, ecsConfig, alb } = props;
 
     // Create ECS cluster
     const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
@@ -257,16 +258,7 @@ export class ECSCluster extends Construct {
     const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
 
     service.node.addDependency(autoScalingGroup);
-
-    // Create application load balancer
-    const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
-      deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-      internetFacing: ecsConfig.internetFacing,
-      loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-      dropInvalidHeaderFields: true,
-      securityGroup,
-      vpc,
-    });
+  
 
     // Add listener
     const listenerProps: BaseApplicationListenerProps = {
@@ -277,7 +269,7 @@ export class ECSCluster extends Construct {
         : undefined,
     };
 
-    const listener = loadBalancer.addListener(
+    const listener = alb.addListener(
       createCdkId([ecsConfig.identifier, 'ApplicationListener']),
       listenerProps,
     );
@@ -305,7 +297,7 @@ export class ECSCluster extends Construct {
       namespace: 'AWS/ApplicationELB',
       dimensionsMap: {
         TargetGroup: targetGroup.targetGroupFullName,
-        LoadBalancer: loadBalancer.loadBalancerFullName,
+        LoadBalancer: alb.loadBalancerFullName,
       },
       statistic: Stats.SAMPLE_COUNT,
       period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
@@ -321,7 +313,7 @@ export class ECSCluster extends Construct {
     const domain =
       ecsConfig.loadBalancerConfig.domainName !== null
         ? ecsConfig.loadBalancerConfig.domainName
-        : loadBalancer.loadBalancerDnsName;
+        : alb.loadBalancerDnsName;
     const endpoint = `${protocol}://${domain}`;
     this.endpointUrl = endpoint;
 

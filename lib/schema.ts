@@ -580,7 +580,7 @@ const AuthConfigSchema = z.object({
  * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
  */
 const FastApiContainerConfigSchema = z.object({
-  apiVersion: z.string(),
+  apiVersion: z.literal('v2'),
   instanceType: z.enum(VALID_INSTANCE_KEYS),
   containerConfig: ContainerConfigSchema,
   autoScalingConfig: AutoScalingConfigSchema,

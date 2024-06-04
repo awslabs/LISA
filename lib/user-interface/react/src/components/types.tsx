@@ -17,17 +17,23 @@
 import { BaseMessage, BaseMessageFields, MessageContent, MessageType } from '@langchain/core/messages';
 
 /**
- * Used to specify additional parameters in how the LLM processes inputs
+ * Used to specify additional parameters to be passed into OpenAI LLM Model Calls
  */
-export type ModelKwargs = {
+export type ModelConfig = {
   max_tokens?: number;
   n?: number | null;
   top_p?: number | null;
   frequency_penalty?: number | null;
   presence_penalty?: number | null;
   temperature?: number | null;
-  repetition_penalty?: number | null;
   stop: string[];
+  modelKwargs?: ModelArgs;
+};
+
+/**
+ * Used to specify additional parameters in how the LLM processes inputs
+ */
+export type ModelArgs = {
   seed?: number | null;
 };
 
@@ -36,7 +42,7 @@ export type ModelKwargs = {
  */
 export type LisaChatMessageMetadata = {
   modelName?: string;
-  modelKwargs?: ModelKwargs;
+  modelKwargs?: ModelConfig;
   userId?: string;
   messages?: string;
   ragContext?: string;

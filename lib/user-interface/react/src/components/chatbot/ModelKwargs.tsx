@@ -27,9 +27,9 @@ import {
 } from '@cloudscape-design/components';
 import unraw from 'unraw';
 
-import { ModelKwargs } from '../types';
+import { ModelConfig } from '../types';
 
-export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible }) {
+export default function ModelKwargsEditor({ setModelConfig, visible, setVisible }) {
   // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
   // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
   const [maxNewTokens, setMaxNewTokens] = useState(null);
@@ -42,7 +42,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
   const [stopSequences, setStopSequences] = useState([]);
 
   useEffect(() => {
-    const modelKwargs: ModelKwargs = {
+    const modelConfig: ModelConfig = {
       max_tokens: maxNewTokens,
       n: n,
       top_p: topP,
@@ -56,9 +56,11 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
           return elem;
         }
       }),
-      seed: seed,
+      modelKwargs: {
+        seed,
+      },
     };
-    setModelKwargs(modelKwargs);
+    setModelConfig(modelConfig);
     //Disabling exhaustive-deps here because we reference and update modelKwargs in the same hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxNewTokens, n, topP, frequencyPenalty, presencePenalty, temperature, stopSequences, seed]);
@@ -73,7 +75,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
       <SpaceBetween direction="vertical" size="l">
         <FormField
           label="max_tokens"
-          constraintText="Must be greater than or equal to 0 - Defaults to 256."
+          constraintText="Must be greater than or equal to 0 - Defaults to null (no limit) if not specified."
           description="The maximum number of tokens that can be generated in the completion."
         >
           <Input
@@ -94,7 +96,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
         </FormField>
         <FormField
           label="n"
-          constraintText="Must be greater than or equal to 1 - Defaults to 1."
+          constraintText="Must be greater than or equal to 1 - Defaults to 1 if not specified."
           description="How many completions to generate for each prompt."
         >
           <Input
@@ -115,7 +117,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
         </FormField>
         <FormField
           label="top_p"
-          constraintText="Must be between 0 and 1 - Defaults to 1."
+          constraintText="Must be between 0 and 1 - Defaults to 1 if not specified."
           description="An alternative to sampling with temperature,
                     called nucleus sampling, where the model considers
                     the results of the tokens with top_p probability mass.
@@ -140,7 +142,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
         </FormField>
         <FormField
           label="frequency_penalty"
-          constraintText="Must be between -2.0 and 2.0 - Defaults to 0."
+          constraintText="Must be between -2.0 and 2.0 - Defaults to 0 if not specified."
           description="Number between -2.0 and 2.0. Positive values
                     penalize new tokens based on their existing
                     frequency in the text so far, decreasing the model's
@@ -164,7 +166,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
         </FormField>
         <FormField
           label="presence_penalty"
-          constraintText="Must be between -2.0 and 2.0 - Defaults to 0."
+          constraintText="Must be between -2.0 and 2.0 - Defaults to 0 if not specified."
           description="Number between -2.0 and 2.0. Positive values
                       penalize new tokens based on whether they appear
                       in the text so far, increasing the model's
@@ -188,7 +190,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
         </FormField>
         <FormField
           label="temperature"
-          constraintText="Must be between 0 and 2.0 - Defaults to 1."
+          constraintText="Must be between 0 and 2.0 - Defaults to 1 if not specified."
           description="What sampling temperature to use, between 0 and 2.
                   Higher values like 0.8 will make the output more random,
                   while lower values like 0.2 will make it more focused

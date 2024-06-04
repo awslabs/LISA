@@ -41,7 +41,7 @@ import { SelectProps } from '@cloudscape-design/components/select';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatSession, Model, ModelKwargs, LisaChatMessageMetadata } from '../types';
+import { LisaChatMessage, LisaChatSession, Model, ModelConfig, LisaChatMessageMetadata } from '../types';
 import {
   getSession,
   putSession,
@@ -49,6 +49,7 @@ import {
   isModelInterfaceHealthy,
   RESTAPI_URI,
   formatDocumentsAsString,
+  RESTAPI_VERSION,
 } from '../utils';
 import { LisaRAGRetriever } from '../adapters/lisa';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
@@ -76,7 +77,7 @@ export default function Chat({ sessionId }) {
   );
   const [models, setModels] = useState<Model[]>([]);
   const [modelsOptions, setModelsOptions] = useState<SelectProps.Options>([]);
-  const [modelKwargs, setModelKwargs] = useState<ModelKwargs | undefined>(undefined);
+  const [modelConfig, setModelConfig] = useState<ModelConfig | undefined>(undefined);
   const [selectedModel, setSelectedModel] = useState<Model | undefined>(undefined);
   const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option | undefined>(undefined);
   const [session, setSession] = useState<LisaChatSession>({
@@ -239,7 +240,7 @@ export default function Chat({ sessionId }) {
         const prompt = await PromptTemplate.fromTemplate(promptTemplate).format(promptValues);
         const metadata: LisaChatMessageMetadata = {
           modelName: selectedModel.id,
-          modelKwargs: modelKwargs,
+          modelKwargs: modelConfig,
           userId: auth.user.profile.sub,
           messages: prompt,
         };
@@ -247,7 +248,7 @@ export default function Chat({ sessionId }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedModel, modelKwargs, auth, userPrompt]);
+  }, [selectedModel, modelConfig, auth, userPrompt]);
 
   useEffect(() => {
     if (bottomRef) {
@@ -279,16 +280,17 @@ export default function Chat({ sessionId }) {
       modelName: selectedModel?.id,
       openAIApiKey: auth.user?.id_token,
       configuration: {
-        baseURL: `${RESTAPI_URI}/v2/serve`,
+        baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
       },
       streaming,
-      maxTokens: modelKwargs?.max_tokens,
-      n: modelKwargs?.n,
-      topP: modelKwargs?.top_p,
-      frequencyPenalty: modelKwargs?.frequency_penalty,
-      temperature: modelKwargs?.temperature,
-      stop: modelKwargs?.stop,
-      modelKwargs: modelKwargs,
+      maxTokens: modelConfig?.max_tokens,
+      n: modelConfig?.n,
+      topP: modelConfig?.top_p,
+      frequencyPenalty: modelConfig?.frequency_penalty,
+      presencePenalty: modelConfig?.presence_penalty,
+      temperature: modelConfig?.temperature,
+      stop: modelConfig?.stop,
+      modelKwargs: modelConfig?.modelKwargs,
     });
   };
 
@@ -298,7 +300,8 @@ export default function Chat({ sessionId }) {
     just reformulate it if needed and otherwise return it as is.`;
 
   const contextualizeQPrompt = ChatPromptTemplate.fromMessages([
-    ['system', contextualizeQSystemPrompt],
+    ['user', contextualizeQSystemPrompt],
+    ['assistant', 'Okay!'],
     new MessagesPlaceholder('chatHistory'),
     ['human', '{input}'],
   ]);
@@ -469,7 +472,7 @@ export default function Chat({ sessionId }) {
   return (
     <>
       <ModelKwargsEditor
-        setModelKwargs={setModelKwargs}
+        setModelConfig={setModelConfig}
         visible={modelKwargsModalVisible}
         setVisible={setModelKwargsModalVisible}
       />

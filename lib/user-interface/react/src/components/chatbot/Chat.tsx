@@ -48,9 +48,7 @@ import {
   describeModels,
   isModelInterfaceHealthy,
   RESTAPI_URI,
-  RESTAPI_VERSION,
   formatDocumentsAsString,
-
 } from '../utils';
 import { LisaRAGRetriever } from '../adapters/lisa';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
@@ -61,7 +59,7 @@ import { StringOutputParser } from '@langchain/core/output_parsers';
 import { BufferWindowMemory } from 'langchain/memory';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatOpenAI } from '@langchain/openai';
 
 export default function Chat({ sessionId }) {
   const [userPrompt, setUserPrompt] = useState('');
@@ -136,14 +134,14 @@ export default function Chat({ sessionId }) {
 
   useEffect(() => {
     if (selectedModelOption) {
-      const model = models.filter(model => model.id === selectedModelOption.value)[0];
+      const model = models.filter((model) => model.id === selectedModelOption.value)[0];
       setModelCanStream(true);
       setSelectedModel(model);
     }
   }, [selectedModelOption, streamingEnabled]);
 
   useEffect(() => {
-    setModelsOptions(models.map(model => ({label: model.id, value: model.id})));
+    setModelsOptions(models.map((model) => ({ label: model.id, value: model.id })));
   }, [models]);
 
   useEffect(() => {
@@ -283,12 +281,12 @@ export default function Chat({ sessionId }) {
     };
   };
 
-  const createOpenAiClient = (streaming : boolean) => {
+  const createOpenAiClient = (streaming: boolean) => {
     return new ChatOpenAI({
       modelName: selectedModel?.id,
       openAIApiKey: auth.user?.id_token,
       configuration: {
-        baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
+        baseURL: `${RESTAPI_URI}/v2/serve`,
       },
       streaming,
       maxTokens: modelKwargs?.max_tokens,
@@ -297,9 +295,9 @@ export default function Chat({ sessionId }) {
       frequencyPenalty: modelKwargs?.frequency_penalty,
       temperature: modelKwargs?.temperature,
       stop: modelKwargs?.stop,
-      modelKwargs: modelKwargs
+      modelKwargs: modelKwargs,
     });
-  }
+  };
 
   const contextualizeQSystemPrompt = `Given a chat history and the latest user question
     which might reference context in the chat history, formulate a standalone question
@@ -362,7 +360,7 @@ export default function Chat({ sessionId }) {
         repositoryId: ragConfig.repositoryId,
         repositoryType: ragConfig.repositoryType,
         modelName: ragConfig.embeddingModel.id,
-        topK: ragTopK
+        topK: ragTopK,
       });
 
       chainSteps.unshift({
@@ -420,7 +418,7 @@ export default function Chat({ sessionId }) {
           chatHistory: session.history,
         });
         const resp: string[] = [];
-        for await (const chunk of result){
+        for await (const chunk of result) {
           setSession((prev) => {
             const lastMessage = prev.history[prev.history.length - 1];
             const newMessage = new LisaChatMessage({
@@ -435,9 +433,9 @@ export default function Chat({ sessionId }) {
           resp.push(chunk);
         }
 
-      memory.saveContext(inputs, {
-        output: resp.join(''),
-      });
+        memory.saveContext(inputs, {
+          output: resp.join(''),
+        });
       } catch (exception) {
         setFlashbarItems((oldItems) => [...oldItems, createFlashbarError()]);
       }

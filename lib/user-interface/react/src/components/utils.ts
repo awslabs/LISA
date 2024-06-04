@@ -29,7 +29,6 @@ const stripTrailingSlash = (str) => {
 };
 
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
-export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
 
 /**
  * Gets base URI for API Gateway. This can either be the APIGW execution URL directly or a
@@ -170,14 +169,8 @@ export const deleteUserSessions = async (idToken: string) => {
  * @param idToken the user's ID token from authenticating
  * @returns
  */
-export const describeModels = async (
-  idToken: string,
-): Promise<DescribeModelsResponseBody> => {
-  const resp = await sendAuthenticatedRequest(
-      `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`,
-    'GET',
-    idToken,
-  );
+export const describeModels = async (idToken: string): Promise<DescribeModelsResponseBody> => {
+  const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/v2/serve/models`, 'GET', idToken);
   return await resp.json();
 };
 
@@ -190,7 +183,6 @@ export const isModelInterfaceHealthy = async (idToken: string): Promise<boolean>
   const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/health`, 'GET', idToken);
   return resp.ok;
 };
-
 
 /**
  * Created default opensearch rag repository

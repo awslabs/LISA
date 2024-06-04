@@ -414,7 +414,7 @@ window.env = {
   CLIENT_ID: '<Your IdP Client Id Here>',
   // Alternatively you can set this to be your REST api elb endpoint
   RESTAPI_URI: 'http://localhost:8080/',
-  RESTAPI_VERSION: 'v1',
+  RESTAPI_VERSION: 'v2',
   SESSION_REST_API_URI: '<API GW session endpoint>'
 }
 ```

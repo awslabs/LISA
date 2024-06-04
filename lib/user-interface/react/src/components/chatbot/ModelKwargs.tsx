@@ -49,7 +49,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
       frequency_penalty: frequencyPenalty,
       presence_penalty: presencePenalty,
       temperature: temperature,
-        stop: stopSequences.map((elem) => {
+      stop: stopSequences.map((elem) => {
         try {
           return unraw(elem);
         } catch (error) {
@@ -61,16 +61,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
     setModelKwargs(modelKwargs);
     //Disabling exhaustive-deps here because we reference and update modelKwargs in the same hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    maxNewTokens,
-    n,
-    topP,
-    frequencyPenalty,
-    presencePenalty,
-    temperature,
-    stopSequences,
-    seed
-  ]);
+  }, [maxNewTokens, n, topP, frequencyPenalty, presencePenalty, temperature, stopSequences, seed]);
   return (
     <Modal
       onDismiss={() => setVisible(false)}
@@ -99,7 +90,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
                 setMaxNewTokens(null);
               }
             }}
-        />
+          />
         </FormField>
         <FormField
           label="n"
@@ -172,57 +163,54 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
           />
         </FormField>
         <FormField
-            label="presence_penalty"
-            constraintText="Must be between -2.0 and 2.0 - Defaults to 0."
-            description="Number between -2.0 and 2.0. Positive values
+          label="presence_penalty"
+          constraintText="Must be between -2.0 and 2.0 - Defaults to 0."
+          description="Number between -2.0 and 2.0. Positive values
                       penalize new tokens based on whether they appear
                       in the text so far, increasing the model's
                       likelihood to talk about new topics."
         >
           <Input
-              value={presencePenalty?.toString()}
-              type="number"
-              step={0.1}
-              inputMode="decimal"
-              disableBrowserAutocorrect={true}
-              onChange={(event) => {
-                const floatVal = parseFloat(event.detail.value);
-                if (!isNaN(floatVal) && floatVal >= -2.0 && floatVal <= 2.0) {
-                  setPresencePenalty(floatVal);
-                } else if (isNaN(floatVal)) {
-                  setPresencePenalty(null);
-                }
-              }}
+            value={presencePenalty?.toString()}
+            type="number"
+            step={0.1}
+            inputMode="decimal"
+            disableBrowserAutocorrect={true}
+            onChange={(event) => {
+              const floatVal = parseFloat(event.detail.value);
+              if (!isNaN(floatVal) && floatVal >= -2.0 && floatVal <= 2.0) {
+                setPresencePenalty(floatVal);
+              } else if (isNaN(floatVal)) {
+                setPresencePenalty(null);
+              }
+            }}
           />
-      </FormField>
-      <FormField
-        label="temperature"
-        constraintText="Must be between 0 and 2.0 - Defaults to 1."
-        description="What sampling temperature to use, between 0 and 2.
+        </FormField>
+        <FormField
+          label="temperature"
+          constraintText="Must be between 0 and 2.0 - Defaults to 1."
+          description="What sampling temperature to use, between 0 and 2.
                   Higher values like 0.8 will make the output more random,
                   while lower values like 0.2 will make it more focused
                   and deterministic."
-      >
-        <Input
-          value={temperature?.toString()}
-          type="number"
-          step={0.1}
-          inputMode="decimal"
-          disableBrowserAutocorrect={true}
-          onChange={(event) => {
-            const floatVal = parseFloat(event.detail.value);
-            if (!isNaN(floatVal) && floatVal >= 0.0 && floatVal <= 2.0) {
-              setTemperature(floatVal);
-            } else if (isNaN(floatVal)) {
-              setTemperature(null);
-            }
-          }}
-        />
-      </FormField>
-        <FormField
-          label="stop"
-          description="Up to 4 sequences where the API will stop generating further tokens."
         >
+          <Input
+            value={temperature?.toString()}
+            type="number"
+            step={0.1}
+            inputMode="decimal"
+            disableBrowserAutocorrect={true}
+            onChange={(event) => {
+              const floatVal = parseFloat(event.detail.value);
+              if (!isNaN(floatVal) && floatVal >= 0.0 && floatVal <= 2.0) {
+                setTemperature(floatVal);
+              } else if (isNaN(floatVal)) {
+                setTemperature(null);
+              }
+            }}
+          />
+        </FormField>
+        <FormField label="stop" description="Up to 4 sequences where the API will stop generating further tokens.">
           <Container>
             <AttributeEditor
               addButtonText="Add"
@@ -261,11 +249,12 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
           </Container>
         </FormField>
         <FormField
-            label="seed"
-            description="If specified, our system will make a best
+          label="seed"
+          description="If specified, our system will make a best
                       effort to sample deterministically, such that
                       repeated requests with the same seed and
-                      parameters should return the same result.">
+                      parameters should return the same result."
+        >
           <Input
             value={seed?.toString()}
             type="number"
@@ -276,7 +265,7 @@ export default function ModelKwargsEditor({ setModelKwargs, visible, setVisible 
               const intVal = parseInt(event.detail.value);
               if (!isNaN(intVal) && intVal >= 0) {
                 setSeed(intVal);
-              } else if(isNaN(intVal)) {
+              } else if (isNaN(intVal)) {
                 setSeed(null);
               }
             }}

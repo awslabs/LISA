@@ -17,10 +17,7 @@
 import { Button, Grid, Select, SelectProps, SpaceBetween } from '@cloudscape-design/components';
 import { useEffect, useState } from 'react';
 import { Model } from '../types';
-import {
-  describeModels,
-  listRagRepositories,
-} from '../utils';
+import { describeModels, listRagRepositories } from '../utils';
 import { AuthContextProps } from 'react-oidc-context';
 
 export type RagConfig = {
@@ -71,9 +68,9 @@ export default function RagControls({ auth, isRunning, setUseRag, setRagConfig }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-    useEffect(() => {
-        setEmbeddingOptions(embeddingModels.map(model => ({label: model.id, value: model.id})));
-    }, [embeddingModels]);
+  useEffect(() => {
+    setEmbeddingOptions(embeddingModels.map((model) => ({ label: model.id, value: model.id })));
+  }, [embeddingModels]);
 
   useEffect(() => {
     setUseRag(!!selectedEmbeddingOption && !!selectedRepositoryOption);
@@ -134,7 +131,7 @@ export default function RagControls({ auth, isRunning, setUseRag, setRagConfig }
             setSelectedEmbeddingOption(detail.selectedOption);
             setRagConfig((config) => ({
               ...config,
-              embeddingModel: embeddingModels.filter(model => model.id === detail.selectedOption.value)[0],
+              embeddingModel: embeddingModels.filter((model) => model.id === detail.selectedOption.value)[0],
             }));
           }}
           options={embeddingOptions}

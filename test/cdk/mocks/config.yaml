@@ -54,7 +54,7 @@ dev:
   apiGatewayConfig:
     domainName:
   restApiConfig:
-    apiVersion: v1
+    apiVersion: v2
     instanceType: m5.large
     containerConfig:
       image:
@@ -234,3 +234,7 @@ dev:
     #       timeout: 30
     #       healthyThresholdCount: 2
     #       unhealthyThresholdCount: 10
+  litellmConfig:
+    litellm_settings:
+      telemetry: false
+    model_list: [ ]

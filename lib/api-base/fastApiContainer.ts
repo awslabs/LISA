@@ -20,6 +20,7 @@ import { SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
@@ -74,11 +75,13 @@ export class FastApiContainer extends Construct {
         BASE_IMAGE: taskConfig.containerConfig.image.baseImage,
         PYPI_INDEX_URL: config.pypiConfig.indexUrl,
         PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
+        LITELLM_CONFIG: yamlDump(config.litellmConfig),
       };
     }
     const environment: Record<string, string> = {
       LOG_LEVEL: config.logLevel,
       AWS_REGION: config.region,
+      AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
       THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
       AUTHORITY: config.authConfig.authority,
       CLIENT_ID: config.authConfig.clientId,

@@ -17,21 +17,24 @@
 import { BaseMessage, BaseMessageFields, MessageContent, MessageType } from '@langchain/core/messages';
 
 /**
+ * Used to specify additional parameters to be passed into OpenAI LLM Model Calls
+ */
+export type ModelConfig = {
+  max_tokens?: number;
+  n?: number | null;
+  top_p?: number | null;
+  frequency_penalty?: number | null;
+  presence_penalty?: number | null;
+  temperature?: number | null;
+  stop: string[];
+  modelKwargs?: ModelArgs;
+};
+
+/**
  * Used to specify additional parameters in how the LLM processes inputs
  */
-export type ModelKwargs = {
-  max_new_tokens: number;
-  top_k?: number | null;
-  top_p?: number | null;
-  typical_p?: number | null;
-  temperature?: number | null;
-  repetition_penalty?: number | null;
-  return_full_text: boolean;
-  truncate?: number | null;
-  stop_sequences: string[];
+export type ModelArgs = {
   seed?: number | null;
-  do_sample: boolean;
-  watermark: boolean;
 };
 
 /**
@@ -39,9 +42,9 @@ export type ModelKwargs = {
  */
 export type LisaChatMessageMetadata = {
   modelName?: string;
-  modelKwargs?: ModelKwargs;
+  modelKwargs?: ModelConfig;
   userId?: string;
-  prompt?: string;
+  messages?: string;
   ragContext?: string;
 };
 /**
@@ -91,34 +94,6 @@ export type LisaChatSession = {
 export type ModelTypes = 'textgen' | 'embedding';
 
 /**
- * Supported finish reasons for generating a response
- */
-export type FinishReasons = 'length' | 'eos_token' | 'stop_sequence';
-
-/**
- * Interface for models
- */
-export interface Model {
-  modelName: string;
-  provider: string;
-  streaming: boolean;
-  modelKwargs: ModelKwargs;
-  modelType: ModelTypes;
-}
-/**
- * Model provider class for maintaining a list of models associated with a model provider name
- */
-export class ModelProvider {
-  public name: string;
-  public models: Model[];
-
-  constructor(providerName: string, models: Model[]) {
-    this.models = models;
-    this.name = providerName;
-  }
-}
-
-/**
  * Supported RAG repository types for LISA
  */
 export type RepositoryTypes = 'OpenSearch';
@@ -131,62 +106,21 @@ export interface Repository {
   type: RepositoryTypes;
 }
 
-/*
- * TODO: this isn't easily extensible but eventually we should be
- * generating types from the LISA-serve api spec though
- */
-export enum TextGenModelProviderNames {
-  EcsTextGenTgi = 'ecs.textgen.tgi',
-  SagemakerTextGenTgi = 'sagemaker.textgen.tgi',
-}
-
 /**
- * TextGen records. Maps the TextGen provider names to a model
+ * Interface for model
  */
-export type TextGenModelRecord = Record<TextGenModelProviderNames, Record<string, Model>>;
+export interface Model {
+  id: string;
+  object: string;
+  created: number;
+  owned_by: string;
+}
 
 /**
  * Interface for the response body received when describing a model
  */
 export interface DescribeModelsResponseBody {
-  textgen?: TextGenModelRecord;
-  embedding?: any; // TODO: providing typing info for embedding models for RAG
-}
-
-/**
- * Interface for generating a request body to be sent to a model
- */
-export interface GenerateRequestBody {
-  provider: string;
-  modelName: string;
-  text: string;
-  modelKwargs: object;
-}
-
-/**
- * Interface for generating a response body when receiving a response from a model
- */
-export interface GenerateResponseBody {
-  finishReason: FinishReasons;
-  generatedText: string;
-  generatedToken: number;
-}
-
-/**
- * Interface for a stream token which is used for generating a stream response
- */
-export interface StreamToken {
-  text: string;
-  special: boolean;
-}
-
-/**
- * Interface for generating a response object from a stream request
- */
-export interface GenerateStreamResponseBody {
-  token: StreamToken;
-  generatedTokens?: number;
-  finishReason?: string;
+  data: Model[];
 }
 
 /**

@@ -22,6 +22,7 @@ import { Construct } from 'constructs';
 
 import { SessionApi } from './api/session';
 import { BaseProps } from '../schema';
+import { ApplicationListener, ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface CustomLisaChatStackProps extends BaseProps {
   authorizer: IAuthorizer;
@@ -29,6 +30,8 @@ interface CustomLisaChatStackProps extends BaseProps {
   rootResourceId: string;
   securityGroups?: ISecurityGroup[];
   vpc?: IVpc;
+  alb: ApplicationLoadBalancer;
+  listener: ApplicationListener;
 }
 type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
 
@@ -44,7 +47,7 @@ export class LisaChatApplicationStack extends Stack {
   constructor(scope: Construct, id: string, props: LisaChatStackProps) {
     super(scope, id, props);
 
-    const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+    const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, alb, listener } = props;
 
     // Add REST API Lambdas to APIGW
     new SessionApi(this, 'SessionApi', {
@@ -54,6 +57,8 @@ export class LisaChatApplicationStack extends Stack {
       rootResourceId,
       securityGroups,
       vpc,
+      alb,
+      listener,
     });
   }
 }

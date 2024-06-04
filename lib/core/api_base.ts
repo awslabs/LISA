@@ -14,16 +14,20 @@
   limitations under the License.
 */
 
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Cors, EndpointType, Authorizer, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
+import { ApplicationListener, ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { createCdkId } from './utils';
 
 interface LisaApiBaseStackProps extends BaseProps, StackProps {
   vpc: IVpc;
+  securityGroup: SecurityGroup;
+  sslCertIamArn: string | null;
 }
 
 export class LisaApiBaseStack extends Stack {
@@ -32,11 +36,14 @@ export class LisaApiBaseStack extends Stack {
   public readonly restApiId: string;
   public readonly rootResourceId: string;
   public readonly restApiUrl: string;
+  public readonly loadBalancer: ApplicationLoadBalancer;
+  public readonly listener: ApplicationListener;
+  public readonly listenerProps: BaseApplicationListenerProps;
 
   constructor(scope: Construct, id: string, props: LisaApiBaseStackProps) {
     super(scope, id, props);
 
-    const { config, vpc } = props;
+    const { config, vpc, securityGroup, sslCertIamArn } = props;
 
     const deployOptions: StageOptions = {
       stageName: config.deploymentStage,
@@ -63,10 +70,37 @@ export class LisaApiBaseStack extends Stack {
       vpc,
     });
 
+    // Create public application load balancer
+    const loadBalancer = new ApplicationLoadBalancer(this, createCdkId(['REST', 'ALB']), {
+      deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
+      internetFacing: true,
+      loadBalancerName: createCdkId([config.deploymentName, 'REST'], 32, 2),
+      dropInvalidHeaderFields: true,
+      securityGroup: securityGroup,
+      vpc: vpc,
+    });
+
+    // Add listener
+    const listenerProps: BaseApplicationListenerProps = {
+      port: sslCertIamArn ? 443 : 80,
+      open: true,
+      certificates: sslCertIamArn
+        ? [{ certificateArn: sslCertIamArn }]
+        : undefined,
+    };
+
+    const listener = loadBalancer.addListener(
+      createCdkId(['REST', 'ApplicationListener']),
+      listenerProps,
+    );
+
     this.restApi = restApi;
     this.restApiId = restApi.restApiId;
     this.rootResourceId = restApi.restApiRootResourceId;
     this.authorizer = authorizer.authorizer;
     this.restApiUrl = restApi.url;
+    this.loadBalancer = loadBalancer;
+    this.listener = listener;
+    this.listenerProps = listenerProps;
   }
 }

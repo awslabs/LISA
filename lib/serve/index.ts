@@ -27,11 +27,15 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { createCdkId, getModelIdentifier } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, ModelType, RegisteredModel } from '../schema';
+import { ApplicationListener, ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 const HERE = path.resolve(__dirname);
 
 interface CustomLisaStackProps extends BaseProps {
   vpc: Vpc;
+  alb: ApplicationLoadBalancer;
+  listener: ApplicationListener;
+  listenerProps: BaseApplicationListenerProps;
 }
 type LisaStackProps = CustomLisaStackProps & StackProps;
 
@@ -52,7 +56,7 @@ export class LisaServeApplicationStack extends Stack {
   constructor(scope: Construct, id: string, props: LisaStackProps) {
     super(scope, id, props);
 
-    const { config, vpc } = props;
+    const { config, vpc, alb, listener, listenerProps } = props;
 
     // Create DynamoDB Table for enabling API token usage
     const tokenTable = new Table(this, 'TokenTable', {
@@ -75,6 +79,9 @@ export class LisaServeApplicationStack extends Stack {
       taskConfig: config.restApiConfig,
       tokenTable: tokenTable,
       vpc: vpc.vpc,
+      alb,
+      listener,
+      listenerProps,
     });
 
     // Create Parameter Store entry with RestAPI URI

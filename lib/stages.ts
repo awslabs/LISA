@@ -127,24 +127,28 @@ export class LisaServeApplicationStage extends Stage {
     });
     stacks.push(coreStack);
 
-    const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
-      ...baseStackProps,
-      description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
-      stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
-      vpc: networkingStack.vpc,
-    });
-    stacks.push(serveStack);
-
-    serveStack.addDependency(iamStack);
-
     const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {
       ...baseStackProps,
       stackName: createCdkId([config.deploymentName, config.appName, 'API']),
       description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
       vpc: networkingStack.vpc.vpc,
+      securityGroup: networkingStack.vpc.securityGroups.restApiAlbSg,
+      sslCertIamArn: config.restApiConfig.loadBalancerConfig.sslCertIamArn,
     });
     apiBaseStack.addDependency(coreStack);
     stacks.push(apiBaseStack);
+
+    const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
+      ...baseStackProps,
+      description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
+      stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
+      vpc: networkingStack.vpc,
+      alb: apiBaseStack.loadBalancer,
+      listener: apiBaseStack.listener,
+      listenerProps: apiBaseStack.listenerProps
+    });
+    stacks.push(serveStack);
+    serveStack.addDependency(iamStack);
 
     const apiDeploymentStack = new LisaApiDeploymentStack(this, 'LisaApiDeployment', {
       ...baseStackProps,
@@ -160,6 +164,8 @@ export class LisaServeApplicationStage extends Stage {
       restApiId: apiBaseStack.restApiId,
       rootResourceId: apiBaseStack.rootResourceId,
       vpc: networkingStack.vpc.vpc,
+      alb: apiBaseStack.loadBalancer,
+      listener: apiBaseStack.listener,
     });
     chatStack.addDependency(apiBaseStack);
     chatStack.addDependency(coreStack);

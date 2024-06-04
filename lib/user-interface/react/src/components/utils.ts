@@ -18,7 +18,6 @@ import { SelectProps } from '@cloudscape-design/components';
 import {
   LisaChatSession,
   DescribeModelsResponseBody,
-  ModelTypes,
   ModelProvider,
   LisaChatMessageFields,
   PutSessionRequestBody,
@@ -170,17 +169,14 @@ export const deleteUserSessions = async (idToken: string) => {
 
 /**
  * Describes all models of a given type which are available to a user
- * @param modelTypes a list of model types to describe
  * @param idToken the user's ID token from authenticating
  * @returns
  */
 export const describeModels = async (
-  modelTypes: ModelTypes[],
   idToken: string,
 ): Promise<DescribeModelsResponseBody> => {
-  const queryParams: string = modelTypes.map((elem) => `modelTypes=${elem}`).join('&');
   const resp = await sendAuthenticatedRequest(
-    `${RESTAPI_URI}/${RESTAPI_VERSION}/describeModels?${queryParams}`,
+      `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`,
     'GET',
     idToken,
   );
@@ -203,14 +199,18 @@ export const isModelInterfaceHealthy = async (idToken: string): Promise<boolean>
  * @returns
  */
 export const parseDescribeModelsResponse = (
-  response: DescribeModelsResponseBody,
-  modelType: ModelTypes,
+  response: DescribeModelsResponseBody
 ): ModelProvider[] => {
   const providers: ModelProvider[] = [];
 
-  for (const providerName of Object.keys(response[modelType])) {
-    providers.push(new ModelProvider(providerName, response[modelType][providerName]));
-  }
+  response.data.forEach(model => {
+    if(providers.find(modelProvider => modelProvider.name === model.owned_by)){
+      let modelProvider = providers.find(modelProvider => modelProvider.name === model.owned_by);
+      modelProvider.models.push(model);
+    } else {
+      providers.push(new ModelProvider(model.owned_by, Array.of(model)));
+    }
+  });
 
   return providers;
 };
@@ -269,8 +269,8 @@ export const ingestDocuments = async (
     idToken,
     JSON.stringify({
       embeddingModel: {
-        modelName: embeddingModel.modelName,
-        provider: embeddingModel.provider,
+        modelName: embeddingModel.id,
+        provider: embeddingModel.owned_by,
       },
       keys: documents,
     }),
@@ -299,15 +299,9 @@ export const createModelOptions = (providers: ModelProvider[]): SelectProps.Opti
   for (const modelProvider of providers) {
     const options: SelectProps.Option[] = [];
     for (const model of modelProvider.models) {
-      const modelKey = formatModelKey(modelProvider.name, model.modelName);
-      let label = '';
-      if (model.modelType === 'textgen') {
-        label = `${model.modelName} ${model.streaming ? '(streaming supported)' : ''}`;
-      } else if (model.modelType === 'embedding') {
-        label = `${model.modelName}`;
-      }
+      const modelKey = formatModelKey(modelProvider.name, model.id);
       options.push({
-        label,
+        label: model.id,
         value: modelKey,
       });
     }
@@ -323,7 +317,7 @@ export const createModelMap = (providers: ModelProvider[]): Map<string, Model> =
   const modelMap: Map<string, Model> = new Map<string, Model>();
   for (const modelProvider of providers) {
     for (const model of modelProvider.models) {
-      modelMap[formatModelKey(modelProvider.name, model.modelName)] = model;
+      modelMap[formatModelKey(modelProvider.name, model.id)] = model;
     }
   }
   return modelMap;

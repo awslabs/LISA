@@ -49,12 +49,10 @@ import {
   isModelInterfaceHealthy,
   RESTAPI_URI,
   RESTAPI_VERSION,
-  parseDescribeModelsResponse,
-  formatDocumentsAsString,
-  createModelMap,
-  createModelOptions,
+  formatDocumentsAsString, createModelOptions, createModelMap, parseDescribeModelsResponse,
+
 } from '../utils';
-import { Lisa, LisaContentHandler, LisaRAGRetriever } from '../adapters/lisa';
+import { LisaRAGRetriever } from '../adapters/lisa';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import ModelKwargsEditor from './ModelKwargs';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
@@ -63,6 +61,7 @@ import { StringOutputParser } from '@langchain/core/output_parsers';
 import { BufferWindowMemory } from 'langchain/memory';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
+import { ChatOpenAI } from "@langchain/openai";
 
 export default function Chat({ sessionId }) {
   const [userPrompt, setUserPrompt] = useState('');
@@ -139,12 +138,8 @@ export default function Chat({ sessionId }) {
   useEffect(() => {
     if (selectedModelOption) {
       const model = textgenModelMap[selectedModelOption.value];
-      setModelCanStream(model.streaming);
+      setModelCanStream(true);
       setSelectedModel(model);
-      // TODO: the backend should set more reasonable default modelkwargs for chat
-      // until then, we won't use them as defaults in the UI
-      // setModelKwargs(model.modelKwargs);
-      updateModelKwargs('streaming', streamingEnabled);
     }
   }, [selectedModelOption, textgenModelMap, streamingEnabled]);
 
@@ -257,10 +252,10 @@ export default function Chat({ sessionId }) {
         }
         const prompt = await PromptTemplate.fromTemplate(promptTemplate).format(promptValues);
         const metadata: LisaChatMessageMetadata = {
-          modelName: selectedModel.modelName,
+          modelName: selectedModel.id,
           modelKwargs: modelKwargs,
           userId: auth.user.profile.sub,
-          prompt,
+          messages: prompt,
         };
         setMetadata(metadata);
       });
@@ -293,6 +288,24 @@ export default function Chat({ sessionId }) {
     };
   };
 
+  const createOpenAiClient = (streaming : boolean) => {
+    return new ChatOpenAI({
+      modelName: selectedModel?.id,
+      openAIApiKey: auth.user?.id_token,
+      configuration: {
+        baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
+      },
+      streaming,
+      maxTokens: modelKwargs?.max_tokens,
+      n: modelKwargs?.n,
+      topP: modelKwargs?.top_p,
+      frequencyPenalty: modelKwargs?.frequency_penalty,
+      temperature: modelKwargs?.temperature,
+      stop: modelKwargs?.stop,
+      modelKwargs: modelKwargs
+    });
+  }
+
   const contextualizeQSystemPrompt = `Given a chat history and the latest user question
     which might reference context in the chat history, formulate a standalone question
     which can be understood without the chat history. Do NOT answer the question,
@@ -319,41 +332,10 @@ export default function Chat({ sessionId }) {
     const inputs = {
       input: userPrompt,
     };
-    const llm = new Lisa({
-      uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
-      idToken: auth.user?.id_token,
-      modelName: selectedModel.modelName,
-      providerName: selectedModel.provider,
-      modelKwargs: modelKwargs,
-      streaming: streamingEnabled,
-      contentHandler: new LisaContentHandler(),
-      callbacks: [
-        {
-          handleLLMNewToken: async (token) => {
-            setSession((prev) => {
-              const lastMessage = prev.history[prev.history.length - 1];
-              const newMessage = new LisaChatMessage({
-                ...lastMessage,
-                content: lastMessage.content + token,
-              });
-              return {
-                ...prev,
-                history: prev.history.slice(0, -1).concat(newMessage),
-              };
-            });
-          },
-        },
-      ],
-    });
-    const llmNoCallback = new Lisa({
-      uri: `${RESTAPI_URI}/${RESTAPI_VERSION}`,
-      idToken: auth.user?.id_token,
-      modelName: selectedModel.modelName,
-      providerName: selectedModel.provider,
-      modelKwargs: modelKwargs,
-      streaming: false,
-      contentHandler: new LisaContentHandler(),
-    });
+
+    const llm = createOpenAiClient(streamingEnabled);
+    const llmNoCallback = createOpenAiClient(false);
+
     const useContext = fileContext || useRag;
     const inputVariables = ['history', 'input'];
 
@@ -439,13 +421,29 @@ export default function Chat({ sessionId }) {
         ),
       }));
       try {
-        const result = await chain.invoke({
+        const result = await chain.stream({
           input: userPrompt,
           chatHistory: session.history,
         });
-        await memory.saveContext(inputs, {
-          output: result,
-        });
+        const resp: string[] = [];
+        for await (const chunk of result){
+          setSession((prev) => {
+            const lastMessage = prev.history[prev.history.length - 1];
+            const newMessage = new LisaChatMessage({
+              ...lastMessage,
+              content: lastMessage.content + chunk,
+            });
+            return {
+              ...prev,
+              history: prev.history.slice(0, -1).concat(newMessage),
+            };
+          });
+          resp.push(chunk);
+        }
+
+      memory.saveContext(inputs, {
+        output: resp.join(''),
+      });
       } catch (exception) {
         setFlashbarItems((oldItems) => [...oldItems, createFlashbarError()]);
       }
@@ -479,18 +477,11 @@ export default function Chat({ sessionId }) {
 
   const describeTextGenModels = useCallback(async () => {
     setIsLoadingModels(true);
-    const resp = await describeModels(['textgen'], auth.user?.id_token);
-    setModelProviders(parseDescribeModelsResponse(resp, 'textgen'));
+    const resp = await describeModels(auth.user?.id_token);
+    setModelProviders(parseDescribeModelsResponse(resp));
     setIsLoadingModels(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const updateModelKwargs = (key, value) => {
-    setModelKwargs((prevModelKwargs) => ({
-      ...prevModelKwargs,
-      [key]: value,
-    }));
-  };
 
   return (
     <>

@@ -53,7 +53,7 @@ export default function RagControls({ auth, isRunning, setUseRag, setRagConfig }
     setIsLoadingEmbeddingModels(true);
     setIsLoadingRepositories(true);
 
-    describeModels(['embedding'], auth.user?.id_token).then((resp) => {
+    describeModels(auth.user?.id_token).then((resp) => {
       const embeddingModelProviders = parseDescribeModelsResponse(resp, 'embedding');
       setEmbeddingOptions(createModelOptions(embeddingModelProviders));
       setEmbeddingModelMap(createModelMap(embeddingModelProviders));

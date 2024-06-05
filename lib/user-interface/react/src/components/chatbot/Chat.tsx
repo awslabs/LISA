@@ -136,13 +136,13 @@ export default function Chat({ sessionId }) {
   useEffect(() => {
     if (selectedModelOption) {
       const model = models.filter((model) => model.id === selectedModelOption.value)[0];
-      if (!model.streaming && streamingEnabled) {
+      if (!model.streaming && model.streaming !== undefined && streamingEnabled) {
         setStreamingEnabled(false);
       }
-      setModelCanStream(model.streaming);
+      setModelCanStream(model.streaming || model.streaming === undefined);
       setSelectedModel(model);
     }
-  }, [selectedModelOption, streamingEnabled]);
+  }, [models, selectedModelOption, streamingEnabled]);
 
   useEffect(() => {
     setModelsOptions(models.map((model) => ({ label: model.id, value: model.id })));
@@ -466,7 +466,7 @@ export default function Chat({ sessionId }) {
 
   const describeTextGenModels = useCallback(async () => {
     setIsLoadingModels(true);
-    setModels(describeModels('textgen'));
+    setModels(await describeModels(auth.user?.id_token, 'textgen'));
     setIsLoadingModels(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -22,6 +22,7 @@ import {
   Repository,
   ModelTypes,
   Model,
+  DescribeModelsResponseBody,
 } from './types';
 
 const stripTrailingSlash = (str) => {
@@ -170,12 +171,25 @@ export const deleteUserSessions = async (idToken: string) => {
  * @param modelType model type we are requesting
  * @returns
  */
-export const describeModels = (modelType: ModelTypes): Model[] => {
-  return window.env.MODELS?.filter((m) => m.modelType === modelType).map((m) => ({
-    id: m.model,
-    streaming: m.streaming,
-    modelType: m.modelType,
-  }));
+export const describeModels = async (idToken: string, modelType: ModelTypes): Promise<Model[]> => {
+  const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`, 'GET', idToken);
+  const modelResponse = (await resp.json()) as DescribeModelsResponseBody;
+
+  return modelResponse.data
+    .filter((openAiModel) => {
+      const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
+      if (!configModelMatch || configModelMatch.modelType === modelType) {
+        return true;
+      }
+    })
+    .map((openAiModel) => {
+      const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
+      return {
+        id: openAiModel.id,
+        streaming: configModelMatch?.streaming,
+        modelType: configModelMatch?.modelType,
+      };
+    });
 };
 
 /**

@@ -46,8 +46,11 @@ export default function RagControls({ auth, isRunning, setUseRag, setRagConfig }
   useEffect(() => {
     setIsLoadingEmbeddingModels(true);
     setIsLoadingRepositories(true);
-    setEmbeddingModels(describeModels('embedding'));
-    setIsLoadingEmbeddingModels(false);
+
+    describeModels(auth.user?.id_token, 'embedding').then((resp) => {
+      setEmbeddingModels(resp);
+      setIsLoadingEmbeddingModels(false);
+    });
 
     listRagRepositories(auth.user?.id_token).then((repositories) => {
       setRepositoryOptions(

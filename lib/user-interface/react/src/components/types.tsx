@@ -109,11 +109,28 @@ export interface Repository {
 /**
  * Interface for model
  */
-export type Model = {
+export interface Model {
   id: string;
   modelType: ModelTypes;
   streaming?: boolean;
-};
+}
+
+/**
+ * Interface for OpenAIModel that is used for OpenAI Model Interactions
+ */
+export interface OpenAIModel {
+  id: string;
+  object: string;
+  created: number;
+  owned_by: string;
+}
+
+/**
+ * Interface for the response body received when describing a model
+ */
+export interface DescribeModelsResponseBody {
+  data: OpenAIModel[];
+}
 
 /**
  * Interface for creating a session request body; composed of LisaChatMessageFields

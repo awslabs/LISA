@@ -16,12 +16,13 @@
 
 import {
   LisaChatSession,
-  DescribeModelsResponseBody,
   LisaChatMessageFields,
   PutSessionRequestBody,
   LisaChatMessage,
   Repository,
+  ModelTypes,
   Model,
+  DescribeModelsResponseBody,
 } from './types';
 
 const stripTrailingSlash = (str) => {
@@ -167,12 +168,28 @@ export const deleteUserSessions = async (idToken: string) => {
 
 /**
  * Describes all models of a given type which are available to a user
- * @param idToken the user's ID token from authenticating
+ * @param modelType model type we are requesting
  * @returns
  */
-export const describeModels = async (idToken: string): Promise<DescribeModelsResponseBody> => {
+export const describeModels = async (idToken: string, modelType: ModelTypes): Promise<Model[]> => {
   const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`, 'GET', idToken);
-  return await resp.json();
+  const modelResponse = (await resp.json()) as DescribeModelsResponseBody;
+
+  return modelResponse.data
+    .filter((openAiModel) => {
+      const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
+      if (!configModelMatch || configModelMatch.modelType === modelType) {
+        return true;
+      }
+    })
+    .map((openAiModel) => {
+      const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
+      return {
+        id: openAiModel.id,
+        streaming: configModelMatch?.streaming,
+        modelType: configModelMatch?.modelType,
+      };
+    });
 };
 
 /**

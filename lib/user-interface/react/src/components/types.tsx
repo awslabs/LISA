@@ -111,6 +111,15 @@ export interface Repository {
  */
 export interface Model {
   id: string;
+  modelType: ModelTypes;
+  streaming?: boolean;
+}
+
+/**
+ * Interface for OpenAIModel that is used for OpenAI Model Interactions
+ */
+export interface OpenAIModel {
+  id: string;
   object: string;
   created: number;
   owned_by: string;
@@ -120,7 +129,7 @@ export interface Model {
  * Interface for the response body received when describing a model
  */
 export interface DescribeModelsResponseBody {
-  data: Model[];
+  data: OpenAIModel[];
 }
 
 /**

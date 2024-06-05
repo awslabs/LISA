@@ -237,4 +237,4 @@ dev:
   litellmConfig:
     litellm_settings:
       telemetry: false
-    model_list: [ ]
+    model_list:

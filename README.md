@@ -415,7 +415,24 @@ window.env = {
   // Alternatively you can set this to be your REST api elb endpoint
   RESTAPI_URI: 'http://localhost:8080/',
   RESTAPI_VERSION: 'v2',
-  SESSION_REST_API_URI: '<API GW session endpoint>'
+  SESSION_REST_API_URI: '<API GW session endpoint>',
+  "MODELS": [
+    {
+      "model": "streaming-textgen-model",
+      "streaming": true,
+      "modelType": "textgen"
+    },
+    {
+      "model": "non-streaming-textgen-model",
+      "streaming": false,
+      "modelType": "textgen"
+    },
+    {
+      "model": "embedding-model",
+      "streaming": null,
+      "modelType": "embedding"
+    }
+  ]
 }
 ```
 

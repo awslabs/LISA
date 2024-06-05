@@ -20,6 +20,7 @@ import './index.css';
 import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
+import { ModelTypes } from './components/types';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -36,6 +37,13 @@ declare global {
         backgroundColor: string;
         fontColor: string;
       };
+      MODELS: [
+        {
+          model: string;
+          streaming: boolean | null;
+          modelType: ModelTypes;
+        },
+      ];
     };
   }
 }

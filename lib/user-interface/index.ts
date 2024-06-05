@@ -161,6 +161,24 @@ export class UserInterfaceStack extends Stack {
       },
     );
 
+    const ecsModels = config.ecsModels.map((modelConfig) => {
+      return {
+        model: modelConfig.modelId,
+        streaming: modelConfig.streaming,
+        modelType: modelConfig.modelType,
+      };
+    });
+    const litellmModels = config.litellmConfig.model_list ? config.litellmConfig.model_list : [];
+    const modelsList = ecsModels.concat(
+      litellmModels.map((model) => {
+        return {
+          model: model.model_name,
+          streaming: model.lisa_params.streaming,
+          modelType: model.lisa_params.model_type,
+        };
+      }),
+    );
+
     // Website bucket deployment
     // Copy auth and LISA-Serve info to UI deployment bucket
     const appEnvConfig = {
@@ -179,6 +197,7 @@ export class UserInterfaceStack extends Stack {
         fontColor: config.systemBanner?.fontColor,
       },
       API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
+      MODELS: modelsList,
     };
 
     const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

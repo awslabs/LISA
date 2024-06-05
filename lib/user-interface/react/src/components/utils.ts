@@ -16,11 +16,11 @@
 
 import {
   LisaChatSession,
-  DescribeModelsResponseBody,
   LisaChatMessageFields,
   PutSessionRequestBody,
   LisaChatMessage,
   Repository,
+  ModelTypes,
   Model,
 } from './types';
 
@@ -167,12 +167,15 @@ export const deleteUserSessions = async (idToken: string) => {
 
 /**
  * Describes all models of a given type which are available to a user
- * @param idToken the user's ID token from authenticating
+ * @param modelType model type we are requesting
  * @returns
  */
-export const describeModels = async (idToken: string): Promise<DescribeModelsResponseBody> => {
-  const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`, 'GET', idToken);
-  return await resp.json();
+export const describeModels = (modelType: ModelTypes): Model[] => {
+  return window.env.MODELS?.filter((m) => m.modelType === modelType).map((m) => ({
+    id: m.model,
+    streaming: m.streaming,
+    modelType: m.modelType,
+  }));
 };
 
 /**

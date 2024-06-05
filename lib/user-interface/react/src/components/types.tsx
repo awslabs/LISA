@@ -109,19 +109,11 @@ export interface Repository {
 /**
  * Interface for model
  */
-export interface Model {
+export type Model = {
   id: string;
-  object: string;
-  created: number;
-  owned_by: string;
-}
-
-/**
- * Interface for the response body received when describing a model
- */
-export interface DescribeModelsResponseBody {
-  data: Model[];
-}
+  modelType: ModelTypes;
+  streaming?: boolean;
+};
 
 /**
  * Interface for creating a session request body; composed of LisaChatMessageFields

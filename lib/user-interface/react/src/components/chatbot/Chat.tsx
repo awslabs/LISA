@@ -136,7 +136,10 @@ export default function Chat({ sessionId }) {
   useEffect(() => {
     if (selectedModelOption) {
       const model = models.filter((model) => model.id === selectedModelOption.value)[0];
-      setModelCanStream(true);
+      if (!model.streaming && streamingEnabled) {
+        setStreamingEnabled(false);
+      }
+      setModelCanStream(model.streaming);
       setSelectedModel(model);
     }
   }, [selectedModelOption, streamingEnabled]);
@@ -463,8 +466,7 @@ export default function Chat({ sessionId }) {
 
   const describeTextGenModels = useCallback(async () => {
     setIsLoadingModels(true);
-    const resp = await describeModels(auth.user?.id_token);
-    setModels(resp.data);
+    setModels(describeModels('textgen'));
     setIsLoadingModels(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

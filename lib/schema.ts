@@ -677,6 +677,10 @@ const ApiGatewayConfigSchema = z
 /**
  * Configuration for models inside the LiteLLM Config
  * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details.
+ *
+ * The `lisa_params` are custom for the LISA installation to add model metadata to allow the models to be referenced
+ * correctly within the Chat UI. LiteLLM will ignore these parameters as it is not looking for them, and it will not
+ * fail to initialize as a result of them existing.
  */
 const LiteLLMModel = z.object({
   model_name: z.string(),
@@ -685,6 +689,10 @@ const LiteLLMModel = z.object({
     api_base: z.string().optional(),
     api_key: z.string().optional(),
     aws_region_name: z.string().optional(),
+  }),
+  lisa_params: z.object({
+    streaming: z.boolean().nullable().default(null),
+    model_type: z.nativeEnum(ModelType),
   }),
   model_info: z
     .object({
@@ -704,7 +712,7 @@ const LiteLLMModel = z.object({
  */
 const LiteLLMConfig = z.object({
   environment_variables: z.map(z.string(), z.string()).optional(),
-  model_list: z.array(LiteLLMModel).optional(),
+  model_list: z.array(LiteLLMModel).optional().nullable().default([]),
   litellm_settings: z.object({
     // ALL (https://github.com/BerriAI/litellm/blob/main/litellm/__init__.py)
     telemetry: z.boolean().default(false).optional(),

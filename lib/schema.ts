@@ -690,10 +690,25 @@ const LiteLLMModel = z.object({
     api_key: z.string().optional(),
     aws_region_name: z.string().optional(),
   }),
-  lisa_params: z.object({
-    streaming: z.boolean().nullable().default(null),
-    model_type: z.nativeEnum(ModelType),
-  }),
+  lisa_params: z
+    .object({
+      streaming: z.boolean().nullable().default(null),
+      model_type: z.nativeEnum(ModelType),
+    })
+    .refine(
+      (data) => {
+        // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+        const isValidForTextgen = data.model_type === 'textgen' && typeof data.streaming === 'boolean';
+        const isValidForEmbedding = data.model_type === 'embedding' && data.streaming === null;
+
+        return isValidForTextgen || isValidForEmbedding;
+      },
+      {
+        message: `For 'textgen' models, 'streaming' must be true or false.
+            For 'embedding' models, 'streaming' must not be set.`,
+        path: ['streaming'],
+      },
+    ),
   model_info: z
     .object({
       id: z.string().optional(),

@@ -499,7 +499,7 @@ with your own REST API domain or ALB. The `/v2/serve` is required at the end of 
   "title": "LISA",
   "apiBase": "https://<lisa_serve_alb>/v2/serve",
   "provider": "openai",
-  "apiKey": "your-api-token"
+  "apiKey": "your-api-token" // pragma: allowlist-secret
 }
 ```
 
@@ -518,7 +518,7 @@ normally be instantiated and invoked with the following block.
 from openai import OpenAI
 
 client = OpenAI(
-  api_key="my_key"
+  api_key="my_key" # pragma: allowlist-secret not a real key
 )
 client.models.list()
 ```
@@ -535,9 +535,9 @@ The Code block will now look like this and you can continue to use the library w
 from openai import OpenAI
 
 client = OpenAI(
-  api_key="ignored", # LISA ignores this field, but it must be defined
+  api_key="ignored", # LISA ignores this field, but it must be defined # pragma: allowlist-secret not a real key
   base_url="https://<lisa_serve_alb>/v2/serve",
-  default_headers={"Api-Key": "my_api_token"}
+  default_headers={"Api-Key": "my_api_token"} # pragma: allowlist-secret not a real key
 )
 client.models.list()
 ```

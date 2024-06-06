@@ -3,7 +3,7 @@
 LISA is an enabling service to easily deploy generative AI applications in AWS customer environments. LISA is an infrastructure-as-code solution. It allows customers to provision their own infrastructure within an AWS account. Customers then bring their own models to LISA for hosting and inference.
 LISA accelerates the use of generative AI applications by providing scalable, low latency access to customers’ generative LLMs and embedding language models. Using LISA to support hosting and inference allows customers to focus on experimenting with LLMs and developing generative AI applications. LISA includes an example chatbot user interface that customers can use to experiment. Also included are retrieval augmented generation (RAG) integrations with Amazon OpenSearch and PGVector. This capability allows customers to bring specialized data to LISA for incorporation into the LLM responses without requiring the model to be retrained.
 
-![LISA Serve Architecture](./assets/LisaServe-FastAPI.png)
+![LISA Serve Architecture](./assets/LisaArchitecture.png)
 
 ## Table of contents
 
@@ -14,10 +14,12 @@ LISA accelerates the use of generative AI applications by providing scalable, lo
   - [Staging Model Weights](#staging-model-weights)
   - [Customize Configuration](#customize-configuration)
   - [Bootstrap](#bootstrap)
-  - [Deploy](#deploy)
+- [Deployment](#deployment)
+- [Programmatic API Tokens](#programmatic-api-tokens)
 - [Model Compatibility](#model-compatibility)
 - [Load Testing](#load-testing)
 - [Chatbot Example](#chatbot-example)
+- [Usage and Features](#usage-and-features)
 
 ## Background
 
@@ -222,14 +224,16 @@ you can do so.
   - We provide immediate support for HuggingFace TGI and TEI containers and for vLLM containers. The `example_config.yaml`
     file provides examples for TGI and TEI, and the only difference for using vLLM is to change the
     `inferenceContainer`, `baseImage`, and `path` options, as indicated in the snippet below. All other options can
-    remain the same as the model definition examples we have for the TGI or TEI models.
+    remain the same as the model definition examples we have for the TGI or TEI models. vLLM can also support embedding
+    models in this way, so all you need to do is refer to the embedding model artifacts and remove the `streaming` field
+    to deploy the embedding model.
     ```yaml
     ecsModels:
       - modelName: mistralai/Mistral-7B-Instruct-v0.2
         modelId: mistral7b-vllm
         deploy: true
-        streaming: true
-        modelType: textgen
+        modelType: textgen # can also be 'embedding'
+        streaming: true # remove option if modelType is 'embedding'
         instanceType: g5.xlarge
         inferenceContainer: vllm # vLLM-specific config
         containerConfig:
@@ -356,7 +360,7 @@ aws --region $AWS_REGION dynamodb delete-item --table-name LISAApiTokenTable \
 
 ## Model Compatibility
 
-### Generation Models
+### HuggingFace Generation Models
 
 For generation models, or causal language models, LISA supports models that are supported by the underlying serving container, TGI. TGI divides compatibility into two categories: optimized models and best effort supported models. The list of optimized models is found [here](https://huggingface.co/docs/text-generation-inference/supported_models). The best effort uses the `transformers` codebase under-the-hood and so should work for most causal models on HuggingFace:
 
@@ -370,9 +374,16 @@ or
 AutoModelForSeq2SeqLM.from_pretrained(<model>, device_map="auto")
 ```
 
-### Embedding Models
+### HuggingFace Embedding Models
 
 Embedding models often utilize custom codebases and are not as uniform as generation models. For this reason you will likely need to create a new `inferenceContainer`. Follow the [example](./lib/ecs-model/embedding/instructor) provided for the `instructor` model.
+
+### vLLM Models
+
+In addition to the support we have for the TGI and TEI containers, we support hosting models using the [vLLM container](https://docs.vllm.ai/en/latest/). vLLM abides by the OpenAI specification, and as such allows both text generation and embedding on the models that vLLM supports.
+See the [deployment](#deployment) section for details on how to set up the vLLM container for your models. Similar to how the HuggingFace containers will serve safetensor weights downloaded from the
+HuggingFace website, vLLM will do the same, and our configuration will allow you to serve these artifacts automatically. vLLM does not have many supported models for embeddings, but as they become available,
+LISA will support them as long as the vLLM container version is updated in the config.yaml file and as long as the model's safetensors can be found in S3.
 
 ## Chatbot Example
 
@@ -441,6 +452,94 @@ Launch the Chat UI:
 ```
 cd lib/user-interface/react/
 npm run dev
+```
+
+## Usage and Features
+
+### OpenAI Specification Compatibility
+
+We now provide greater support for the [OpenAI specification](https://platform.openai.com/docs/api-reference) for model inference and embeddings.
+We utilize LiteLLM as a proxy for both models we spin up on behalf of the user and additional models configured through the config.yaml file, and because of that, the
+LISA REST API endpoint allows for a central location for making text generation and embeddings requests. We do not support the entire API specification, but most notably
+we do support the following APIs, subject to model and container compatibility:
+
+- /models
+- /chat/completions
+- /completions
+- /embeddings
+
+By supporting the OpenAI spec, we can more easily allow users to integrate their collection of models into their LLM applications and workflows. In LISA, users can authenticate
+using their OpenID Connect Identity Provider, or with an API token created through the DynamoDB token workflow as described [here](#programmatic-api-tokens). Once the token
+is retrieved, users can use that in direct requests to the LISA Serve REST API. If using the IdP, users must set the 'Authorization' header, otherwise if using the API token,
+users must set the 'Api-Key' header. After that, requests to `https://${lisa_serve_alb}/v2/serve` will handle the OpenAI API calls. As an example, the following call can list all
+models that LISA is aware of, assuming usage of the API token.
+
+```shell
+curl -s -H 'Api-Key: your-api-token' -X GET https://${lisa_serve_alb}/v2/serve/models
+```
+
+If using the IdP, the request would look like the following:
+
+```shell
+curl -s -H 'Authorization: Bearer your-bearer-token' -X GET https://${lisa_serve_alb}/v2/serve/models
+```
+
+When using a library that requests an OpenAI-compatible base_url, you can provide `https://${lisa_serve_alb}/v2/serve` here. All of the OpenAI routes will
+automatically be added to the base URL, just as we appended `/models` to the `/v2/serve` route for listing all models tracked by LISA.
+
+#### Continue JetBrains and VS Code Plugin
+
+For developers that desire an LLM assistant to help with programming tasks, we support adding LISA as an LLM provider for the [Continue plugin](https://www.continue.dev).
+To add LISA as a provider, open up the Continue plugin's `config.json` file and locate the `models` list. In this list, add the following block, replacing the placeholder URL
+with your own REST API domain or ALB. The `/v2/serve` is required at the end of the `apiBase`. This configuration requires an API token as created through the [DynamoDB workflow](#programmatic-api-tokens).
+
+```json
+{
+  "model": "AUTODETECT",
+  "title": "LISA",
+  "apiBase": "https://<lisa_serve_alb>/v2/serve",
+  "provider": "openai",
+  "apiKey": "your-api-token" // pragma: allowlist-secret
+}
+```
+
+Once you save the `config.json` file, the Continue plugin will call the `/models` API to get a list of models at your disposal. The ones provided by LISA will be prefaced
+with "LISA" or with the string you place in the `title` field of the config above. Once the configuration is complete and a model is selected, you can use that model to
+generate code and perform AI assistant tasks within your development environment. See the [Continue documentation](https://docs.continue.dev/how-to-use-continue) for more
+information about its features, capabilities, and usage.
+
+#### Usage in LLM Libraries
+
+If your workflow includes using libraries, such as [LangChain](https://python.langchain.com/v0.2/docs/introduction/) or [OpenAI](https://github.com/openai/openai-python),
+then you can place LISA right in your application by changing only the endpoint and headers for the client objects. As an example, using the OpenAI library, the client would
+normally be instantiated and invoked with the following block.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+  api_key="my_key" # pragma: allowlist-secret not a real key
+)
+client.models.list()
+```
+
+To use the models being served by LISA, the client needs three changes:
+
+1. Specify the `base_url` as the LISA Serve ALB, using the /v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
+2. Change the api_key to be any string. This will be ignored by LISA, but for the OpenAI library to not fail, it needs to be defined.
+3. Add the `default_headers` option, setting the header for "Api-Key" to a valid token value, defined in DynamoDB from the [token creation](#programmatic-api-tokens) steps
+
+The Code block will now look like this and you can continue to use the library without any other modifications.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+  api_key="ignored", # LISA ignores this field, but it must be defined # pragma: allowlist-secret not a real key
+  base_url="https://<lisa_serve_alb>/v2/serve",
+  default_headers={"Api-Key": "my_api_token"} # pragma: allowlist-secret not a real key
+)
+client.models.list()
 ```
 
 ## License Notice

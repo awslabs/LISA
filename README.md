@@ -27,6 +27,7 @@ LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](htt
 
 1.  LISA is designed to operate in Amazon Dedicated Cloud (ADC) partitions.
 2.  LISA is designed to be composable so we've separated the the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
+3.  LISA is designed to support the OpenAI specification, so anywhere you can use the OpenAI API in your applications, you can insert LISA in its place.
 
 ## Getting Started
 
@@ -90,22 +91,48 @@ We also will need `.safetensors`. In order to reduce the startup time we will do
 
 Note: we have primarily designed and tested this with HuggingFace models in mind. Any models outside of this format will require you to create and upload safetensors manually.
 
+### Identity Provider Configuration
+
+In the config.yaml file, you will find a block for the `authConfig`. This configuration is required for deploying LISA, and it is used for identifying the
+OpenID Connect identity provider (IdP) that will be used for authenticating users who want to use LISA features, such as the Chat UI. Common usage patterns
+include using Cognito within your AWS Account or using [Keycloak](https://www.keycloak.org/) configured by your organization. The `authConfig` will require
+two values: the `authority` and the `clientId`.
+
+#### Cognito
+
+In Cognito, the `authority` will be the URL to your User Pool. As an example, if your User Pool ID, not the name, is `us-east-1_example`, and if it is
+running in `us-east-1`, then the URL to put in the `authority` field would be `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example`. The `clientId`
+can be found in your User Pool's "App integration" tab from within the AWS Management Console, and at the bottom of the page, you will see the list of clients
+and their associated Client IDs. The ID here is what we will need for the `clientId` field.
+
+#### Keycloak
+
+In Keycloak, the `authority` will be the URL to your Keycloak server. The `clientId` is likely not a random string like in the Cognito clients, and instead
+will be a string configured by your Keycloak administrator. Your administrator will be able to give you a client name or create a client for you to use for
+this application. Once you have this string, use that as the `clientId` within the `authConfig` block.
+
 ### LiteLLM Configuration
 
-With the models that we are hosted using the process above, we automatically add them to a LiteLLM configuration,
-utilizing the [OpenAI specification](https://platform.openai.com/docs/api-reference) for programmatic access. We expose
-the [LiteLLM configuration](https://litellm.vercel.app/docs/proxy/configs) file directly within the LISA config.yaml
-file, so any options defined there can be defined directly in the LISA config file, under the `litellmConfig` option.
+We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
+With the models that we are hosted using the process above, we automatically add them to our LiteLLM configuration with
+no additional configuration required from the user. We expose the [LiteLLM configuration](https://litellm.vercel.app/docs/proxy/configs)
+file directly within the LISA config.yaml file, so any options defined there can be defined directly in the LISA config file, under the `litellmConfig` option.
 This also means that we will also support calling other existing models that your VPC configuration allows. For more
 information about adding models, please see the LiteLLM docs [here](https://litellm.vercel.app/docs/proxy/configs).
+
+For the LISA implementation, we added one more block under the models within the `model_list` so that we can gather information about your
+models for usage in the LISA Chat UI. We ask for whether the model is a `textgen` or `embedding` model, and then if the model is a `textgen`
+model, we ask if it supports streaming or not. If the model is an embedding model, then the `streaming` option must be null or omitted.
+These fields will allow us to organize the models in the Chat UI so that the models show in
+the correct locations. These fields can be seen in the example configuration below.
 
 #### SageMaker Endpoints and Bedrock Models
 
 We do support adding existing SageMaker Endpoints and Bedrock Models to the LiteLLM configuration, and as long as the
 services you use are in the same region as the LISA installation, LISA will be able to use those models alongside any
-other models you have deployed. After installing LISA without referencing the SageMaker Endpoint, create a Model using
+other models you have deployed. After installing LISA without referencing the SageMaker Endpoint, create a SageMaker Model using
 the private subnets of the LISA deployment, and that will allow the REST API container to reach out to any Endpoint that
-uses that Model. Then, to invoke the SageMaker Endpoints or Bedrock Models, you would need to add the following
+uses that SageMaker Model. Then, to invoke the SageMaker Endpoints or Bedrock Models, you would need to add the following
 permissions to the "REST-Role" that was created in the IAM stack:
 
 ```
@@ -120,11 +147,11 @@ they will be accessible through the LISA ALB, using the OpenAI specification for
 
 #### Recommended Configuration Options
 
-There is no one-size-fits-all configuration, especially when it comes to referencing models that you've deployed outside
-the scope of LISA, but we do recommend the following settings for a minimal setup, assuming a SageMaker Endpoint called
-"test-endpoint," access to the "amazon.titan-text-express-v1" Bedrock Model, and a self-hosted OpenAI-compatible model
-with an endpoint you can access from the VPC. The SageMaker Endpoint and Bedrock Model must be in the same region as the
-LISA installation.
+There is no one-size-fits-all configuration, especially when it comes to invoking models whose infrastructure is defined outside
+the scope of LISA, but we do recommend the following settings for a minimal setup to invoke those existing models. The following example
+assumes a SageMaker Endpoint called "test-endpoint," access to the "amazon.titan-text-express-v1" Bedrock Model, a self-hosted OpenAI-compatible
+text generation model with an endpoint you can access from the VPC, and a similarly configured embedding model. The SageMaker Endpoint and
+Bedrock Model must be in the same region as the LISA installation.
 
 ```yaml
 dev:
@@ -137,15 +164,34 @@ dev:
         litellm_params:
           model: sagemaker/test-endpoint # Prefix required for SageMaker Endpoints and "test-endpoint" matches Endpoint name
           api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+        lisa_params:
+          model_type: textgen
+          streaming: true
+
       - model_name: bedrock-titan-express # Human-readable name for future OpenAI API calls
         litellm_params:
           model: bedrock/amazon.titan-text-express-v1 # Prefix required for Bedrock Models, and exact name of Model to use
           api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+        lisa_params:
+          model_type: textgen
+          streaming: true
+
       - model_name: custom-openai-model # Used in future OpenAI-compatible calls to LiteLLM
         litellm_params:
           model: openai/modelProvider/modelName # Prefix required for OpenAI-compatible models followed by model provider and name details
           api_base: https://your-domain-here:443/v1 # Your model's base URI
           api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+        lisa_params:
+          model_type: textgen
+          streaming: true
+
+      - model_name: custom-openai-embedding-model # Used in future OpenAI-compatible calls to LiteLLM
+        litellm_params:
+          model: openai/modelProvider/modelName # Prefix required for OpenAI-compatible models followed by model provider and name details
+          api_base: https://your-domain-here:443/v1 # Your model's base URI
+          api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
+        lisa_params:
+          model_type: embedding
 ```
 
 ### DEV ONLY: Create Self-Signed Certificates for ALB
@@ -456,12 +502,19 @@ npm run dev
 
 ## Usage and Features
 
+The LISA Serve endpoint can be used independently of the Chat UI, and the following shows a few examples of how to do that. The Serve endpoint
+will still validate user auth, so if you have a Bearer token from the IdP configured with LISA, we will honor it, or if you've set up an API
+token using the [DynamoDB instructions](#programmatic-api-tokens), we will also accept that. This diagram shows the LISA Serve components that
+would be utilized during direct REST API requests.
+
+![LISA Serve Architecture](./assets/LisaServe.png)
+
 ### OpenAI Specification Compatibility
 
 We now provide greater support for the [OpenAI specification](https://platform.openai.com/docs/api-reference) for model inference and embeddings.
 We utilize LiteLLM as a proxy for both models we spin up on behalf of the user and additional models configured through the config.yaml file, and because of that, the
-LISA REST API endpoint allows for a central location for making text generation and embeddings requests. We do not support the entire API specification, but most notably
-we do support the following APIs, subject to model and container compatibility:
+LISA REST API endpoint allows for a central location for making text generation and embeddings requests. We support, and are not limited to, the following popular endpoint
+routes as long as your underlying models can also respond to them.
 
 - /models
 - /chat/completions

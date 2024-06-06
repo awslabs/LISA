@@ -463,10 +463,10 @@ We utilize LiteLLM as a proxy for both models we spin up on behalf of the user a
 LISA REST API endpoint allows for a central location for making text generation and embeddings requests. We do not support the entire API specification, but most notably
 we do support the following APIs, subject to model and container compatibility:
 
-* /models
-* /chat/completions
-* /completions
-* /embeddings
+- /models
+- /chat/completions
+- /completions
+- /embeddings
 
 By supporting the OpenAI spec, we can more easily allow users to integrate their collection of models into their LLM applications and workflows. In LISA, users can authenticate
 using their OpenID Connect Identity Provider, or with an API token created through the DynamoDB token workflow as described [here](#programmatic-api-tokens). Once the token
@@ -524,6 +524,7 @@ client.models.list()
 ```
 
 To use the models being served by LISA, the client needs three changes:
+
 1. Specify the `base_url` as the LISA Serve ALB, using the /v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
 2. Change the api_key to be any string. This will be ignored by LISA, but for the OpenAI library to not fail, it needs to be defined.
 3. Add the `default_headers` option, setting the header for "Api-Key" to a valid token value, defined in DynamoDB from the [token creation](#programmatic-api-tokens) steps
@@ -534,7 +535,7 @@ The Code block will now look like this and you can continue to use the library w
 from openai import OpenAI
 
 client = OpenAI(
-  api_key="ignored", # LISA ignores this field, but it must be defined 
+  api_key="ignored", # LISA ignores this field, but it must be defined
   base_url="https://<lisa_serve_alb>/v2/serve",
   default_headers={"Api-Key": "my_api_token"}
 )

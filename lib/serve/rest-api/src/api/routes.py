@@ -28,9 +28,13 @@ logger = logging.getLogger(__name__)
 security = OIDCHTTPBearer()
 router = APIRouter()
 
-router.include_router(models.router, prefix="/v1", tags=["models"], dependencies=[Depends(security)])
-router.include_router(embeddings.router, prefix="/v1", tags=["embeddings"], dependencies=[Depends(security)])
-router.include_router(generation.router, prefix="/v1", tags=["generation"], dependencies=[Depends(security)])
+router.include_router(models.router, prefix="/v1", tags=["models"], dependencies=[Depends(security)], deprecated=True)
+router.include_router(
+    embeddings.router, prefix="/v1", tags=["embeddings"], dependencies=[Depends(security)], deprecated=True
+)
+router.include_router(
+    generation.router, prefix="/v1", tags=["generation"], dependencies=[Depends(security)], deprecated=True
+)
 router.include_router(
     litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=[Depends(security)]
 )

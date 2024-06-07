@@ -48,7 +48,9 @@ def generate_config(filepath: str) -> None:
         }
         for model in registered_models
     ]
-    config_contents["model_list"].extend(litellm_model_params)
+    config_models = config_contents["model_list"] or []  # ensure config_models is a list and not None
+    config_models.extend(litellm_model_params)
+    config_contents["model_list"] = config_models
     # Write updated config back to original path
     with open(filepath, "w") as fp:
         yaml.safe_dump(config_contents, fp)

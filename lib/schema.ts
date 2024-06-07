@@ -727,7 +727,12 @@ const LiteLLMModel = z.object({
  */
 const LiteLLMConfig = z.object({
   environment_variables: z.map(z.string(), z.string()).optional(),
-  model_list: z.array(LiteLLMModel).optional().nullable().default([]),
+  model_list: z
+    .array(LiteLLMModel)
+    .optional()
+    .nullable()
+    .default([])
+    .transform((value) => value ?? []),
   litellm_settings: z.object({
     // ALL (https://github.com/BerriAI/litellm/blob/main/litellm/__init__.py)
     telemetry: z.boolean().default(false).optional(),

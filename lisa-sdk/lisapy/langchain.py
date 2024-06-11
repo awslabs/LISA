@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Langchain adapter."""
-from typing import Any, cast, Dict, Iterator, List, Mapping, Optional
+from typing import Any, cast, Dict, Iterator, List, Mapping, Optional, Union
 
 from httpx import AsyncClient as HttpAsyncClient
 from httpx import Client as HttpClient
@@ -111,7 +111,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     headers: Dict[str, str]
     """Headers to add to model request."""
 
-    verify: str | bool | None
+    verify: Union[bool, str]
     """Cert path or option for verifying SSL"""
 
     embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)

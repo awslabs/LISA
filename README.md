@@ -29,6 +29,11 @@ LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](htt
 2.  LISA is designed to be composable so we've separated the the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
 3.  LISA is designed to support the OpenAI specification, so anywhere you can use the OpenAI API in your applications, you can insert LISA in its place.
 
+## Deprecation Notes
+
+With the release of the LISA v2.0.0 we have deprecated the v1 endpoint routes in LISA Serve. These routes, such as the `/v1/openai` route, will still work in the current v2 release, but we actively encourage users to migrate to the v2 endpoints
+as they will have greater support for listing and using models, along with greater support for the OpenAI API specification. We do intend to remove the v1 routes in future releases of LISA.
+
 ## Getting Started
 
 LISA leverages AWS's cloud development toolkit (cdk). Users of LISA should be familiar with CDK and infrastructure-as-code principles. If CDK is new to you please see the [documentation on CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and talk to your AWS support team to help get you started.
@@ -368,7 +373,7 @@ in the following snippet.
 ```bash
 lisa_serve_rest_url="https://<rest-url-from-cdk-output>"
 token_string="YOUR_STRING_HERE"
-curl ${lisa_serve_rest_url}/v1/openai/models \
+curl ${lisa_serve_rest_url}/v2/serve/models \
     -H 'accept: application/json' \
     -H 'Content-Type: application/json' \
     -H 'Api-Key: '${token_string}

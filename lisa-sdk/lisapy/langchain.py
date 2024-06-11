@@ -13,14 +13,16 @@
 #   limitations under the License.
 
 """Langchain adapter."""
-from typing import Any, cast, Dict, Iterator, List, Mapping, Optional
+from typing import Any, cast, Dict, Iterator, List, Mapping, Optional, Union
 
+from httpx import AsyncClient as HttpAsyncClient
+from httpx import Client as HttpClient
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms.base import LLM
 from langchain.schema.output import GenerationChunk
-from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.embeddings import Embeddings
 from langchain_core.pydantic_v1 import BaseModel, Extra
+from langchain_openai import OpenAIEmbeddings
 from pydantic import PrivateAttr
 
 from .main import FoundationModel, Lisa
@@ -109,6 +111,9 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     headers: Dict[str, str]
     """Headers to add to model request."""
 
+    verify: Union[bool, str]
+    """Cert path or option for verifying SSL"""
+
     embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
     """OpenAI-compliant client for making requests against embedding model."""
 
@@ -124,6 +129,8 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
             openai_api_base=self.lisa_openai_api_base,
             openai_api_key="ignored",  # pragma: allowlist secret
             model=self.model,
+            http_async_client=HttpAsyncClient(verify=self.verify),
+            http_client=HttpClient(verify=self.verify),
             default_headers=self.headers,
         )
 

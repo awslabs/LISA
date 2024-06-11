@@ -16,13 +16,13 @@
 import json
 import logging
 import os
-import tempfile
 from typing import Any, Dict, List
 
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
+from lisapy.utils import get_cert_path
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.file_processing import process_record
 from utilities.vector_store import get_vector_store_client
@@ -44,28 +44,6 @@ s3 = session.client(
 )
 lisa_api_endpoint = ""
 registered_repositories: List[Dict[str, Any]] = []
-rest_api_cert_path = ""
-
-
-def _get_cert_path() -> str | bool:
-    global rest_api_cert_path
-
-    if not rest_api_cert_path:
-        # If no SSL Cert ARN is specified just default verify to true and the cert will need to be
-        # signed by a known CA
-        # Assume cert is signed with known CA if coming from ACM
-        cert_arn = os.environ["RESTAPI_SSL_CERT_ARN"]
-        if not cert_arn or cert_arn.split(":")[2] == "acm":
-            return True
-
-        # We have the arn but we need the name which is the last part of the arn
-        rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_arn.split("/")[1])
-        cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
-        cert_file = tempfile.NamedTemporaryFile(delete=False)
-        cert_file.write(cert_body.encode("utf-8"))
-        rest_api_cert_path = cert_file.name
-
-    return rest_api_cert_path
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -78,7 +56,9 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
     headers = {"Authorization": f"Bearer {id_token}"}
     base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
 
-    embedding = LisaOpenAIEmbeddings(lisa_openai_api_base=base_url, model=model_name, headers=headers)
+    embedding = LisaOpenAIEmbeddings(
+        lisa_openai_api_base=base_url, model=model_name, headers=headers, verify=get_cert_path(iam_client)
+    )
     return embedding
 
 

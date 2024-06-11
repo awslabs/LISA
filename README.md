@@ -576,21 +576,31 @@ client = OpenAI(
 client.models.list()
 ```
 
-To use the models being served by LISA, the client needs three changes:
+To use the models being served by LISA, the client needs four changes:
 
 1. Specify the `base_url` as the LISA Serve ALB, using the /v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
 2. Change the api_key to be any string. This will be ignored by LISA, but for the OpenAI library to not fail, it needs to be defined.
 3. Add the `default_headers` option, setting the header for "Api-Key" to a valid token value, defined in DynamoDB from the [token creation](#programmatic-api-tokens) steps
+4. If using a self-signed cert, you must provide a certificate path for validating SSL. If you're using an ACM or public cert, then this may be omitted.
+   1. We provide a convenience function in the `lisa-sdk` for generating a cert path from an IAM certificate ARN if one is provided in the `RESTAPI_SSL_CERT_ARN` environment variable.
 
 The Code block will now look like this and you can continue to use the library without any other modifications.
 
 ```python
-from openai import OpenAI
+# for self-signed certificates
+import boto3
+from lisapy.utils import get_cert_path
+# main client library
+from openai import DefaultHttpxClient, OpenAI
+
+iam_client = boto3.client("iam")
+cert_path = get_cert_path(iam_client)
 
 client = OpenAI(
   api_key="ignored", # LISA ignores this field, but it must be defined # pragma: allowlist-secret not a real key
   base_url="https://<lisa_serve_alb>/v2/serve",
-  default_headers={"Api-Key": "my_api_token"} # pragma: allowlist-secret not a real key
+  default_headers={"Api-Key": "my_api_token"}, # pragma: allowlist-secret not a real key
+  http_client=DefaultHttpxClient(verify=cert_path), # needed for self-signed certs on your ALB, can be omitted otherwise
 )
 client.models.list()
 ```

@@ -32,7 +32,9 @@ LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](htt
 ## Deprecation Notes
 
 With the release of the LISA v2.0.0 we have deprecated the v1 endpoint routes in LISA Serve. These routes, such as the `/v1/openai` route, will still work in the current v2 release, but we actively encourage users to migrate to the v2 endpoints
-as they will have greater support for listing and using models, along with greater support for the OpenAI API specification. We do intend to remove the v1 routes in future releases of LISA.
+as they will have greater support for listing and using models, along with greater support for the OpenAI API specification.
+
+We intend to fully remove the v1 routes in the next release of LISA, anticipating July 2024.
 
 For users dependent on the v1 OpenAI endpoint, all you have to do to migrate is change your base URL route from `/v1/openai` to `/v2/serve`. Please note that model names may change once you list models again, but this comes with the benefit of being
 able to list both models hosted by LISA and models that are configured with the new LiteLLM configuration options.

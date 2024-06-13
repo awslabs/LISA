@@ -129,6 +129,9 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
             openai_api_base=self.lisa_openai_api_base,
             openai_api_key="ignored",  # pragma: allowlist secret
             model=self.model,
+            model_kwargs={
+                "encoding_format": "float",  # keep values as floats because base64 is not widely supported
+            },
             http_async_client=HttpAsyncClient(verify=self.verify),
             http_client=HttpClient(verify=self.verify),
             default_headers=self.headers,

@@ -283,6 +283,9 @@ you can do so.
     remain the same as the model definition examples we have for the TGI or TEI models. vLLM can also support embedding
     models in this way, so all you need to do is refer to the embedding model artifacts and remove the `streaming` field
     to deploy the embedding model.
+  - vLLM has support for the OpenAI Embeddings API, but model support for it is limited because the feature is new. Currently,
+    the only supported embedding model with vLLM is [intfloat/e5-mistral-7b-instruct](https://huggingface.co/intfloat/e5-mistral-7b-instruct),
+    but this list is expected to grow over time as vLLM updates.
     ```yaml
     ecsModels:
       - modelName: mistralai/Mistral-7B-Instruct-v0.2
@@ -294,7 +297,7 @@ you can do so.
         inferenceContainer: vllm # vLLM-specific config
         containerConfig:
           image:
-            baseImage: vllm/vllm-openai:v0.4.2 # vLLM-specific config
+            baseImage: vllm/vllm-openai:v0.5.0 # vLLM-specific config
             path: lib/serve/ecs-model/vllm # vLLM-specific config
     ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built

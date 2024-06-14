@@ -53,11 +53,10 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
         lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
         lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
 
-    headers = {"Authorization": f"Bearer {id_token}"}
     base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
 
     embedding = LisaOpenAIEmbeddings(
-        lisa_openai_api_base=base_url, model=model_name, headers=headers, verify=get_cert_path(iam_client)
+        lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=get_cert_path(iam_client)
     )
     return embedding
 

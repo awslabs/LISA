@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Langchain adapter."""
-from typing import Any, cast, Dict, Iterator, List, Mapping, Optional, Union
+from typing import Any, cast, Iterator, List, Mapping, Optional, Union
 
 from httpx import AsyncClient as HttpAsyncClient
 from httpx import Client as HttpClient
@@ -108,8 +108,8 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     model: str
     """Model name for Embeddings API."""
 
-    headers: Dict[str, str]
-    """Headers to add to model request."""
+    api_token: str
+    """API Token for communicating with LISA Serve. This can be a custom API token or the IdP Bearer token."""
 
     verify: Union[bool, str]
     """Cert path or option for verifying SSL"""
@@ -127,14 +127,13 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
         super().__init__(**kwargs)
         self.embedding_model = OpenAIEmbeddings(
             openai_api_base=self.lisa_openai_api_base,
-            openai_api_key="ignored",  # pragma: allowlist secret
+            openai_api_key=self.api_token,
             model=self.model,
             model_kwargs={
                 "encoding_format": "float",  # keep values as floats because base64 is not widely supported
             },
             http_async_client=HttpAsyncClient(verify=self.verify),
             http_client=HttpClient(verify=self.verify),
-            default_headers=self.headers,
         )
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:

@@ -34,7 +34,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
   // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
   const [maxNewTokens, setMaxNewTokens] = useState(null);
   const [n, setN] = useState(null);
-  const [topP, setTopP] = useState(null);
+  const [topP, setTopP] = useState(0.01);
   const [frequencyPenalty, setFrequencyPenalty] = useState(null);
   const [presencePenalty, setPresencePenalty] = useState(null);
   const [temperature, setTemperature] = useState(null);
@@ -127,7 +127,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
           <Input
             value={topP?.toString()}
             type="number"
-            step={0.1}
+            step={0.01}
             inputMode="decimal"
             disableBrowserAutocorrect={true}
             onChange={(event) => {

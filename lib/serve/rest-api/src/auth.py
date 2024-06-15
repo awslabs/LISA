@@ -29,7 +29,10 @@ from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 # The following are field names, not passwords or tokens
-API_KEY_HEADER_NAME = "Api-Key"  # pragma: allowlist secret
+API_KEY_HEADER_NAMES = [
+    "Authorization",  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
+    "Api-Key",  # pragma: allowlist secret # Azure key format, can be used with Continue IDE plugin
+]
 TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 TOKEN_TABLE_NAME = "TOKEN_TABLE_NAME"  # nosec B105
 
@@ -134,13 +137,13 @@ class ApiTokenAuthorizer:
 
     def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
-        is_valid = False
-        token = headers.get(API_KEY_HEADER_NAME, None)
-        if token:
-            token_info = self._get_token_info(token)
-            if token_info:
-                token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
-                current_time = int(datetime.now().timestamp())
-                if current_time < token_expiration:  # token has not expired yet
-                    is_valid = True
-        return is_valid
+        for header_name in API_KEY_HEADER_NAMES:
+            token = headers.get(header_name, "").removeprefix("Bearer").strip()
+            if token:
+                token_info = self._get_token_info(token)
+                if token_info:
+                    token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
+                    current_time = int(datetime.now().timestamp())
+                    if current_time < token_expiration:  # token has not expired yet
+                        return True
+        return False

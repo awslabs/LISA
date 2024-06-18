@@ -4,7 +4,7 @@ dev:
   appName: lisa
   profile:
   deploymentName:
-  accountNumber: 811126113338
+  accountNumber: 012345678901
   region: us-east-1
   deploymentStage: dev
   removalPolicy: destroy
@@ -32,7 +32,7 @@ dev:
   # aws-iso-b partition mountS3 package location
   # mountS3DebUrl: https://mountpoint-s3-release-us-isob-east-1.s3.us-isob-east-1.sc2s.sgov.gov/latest/x86_64/mount-s3.deb
   accountNumbersEcr:
-    - 763104351884
+    - 012345678901
   deployRag: true
   lambdaConfig:
     pythonRuntime: PYTHON_3_10
@@ -77,7 +77,7 @@ dev:
         duration: 60
         estimatedInstanceWarmup: 30
     loadBalancerConfig:
-      sslCertIamArn: arn:aws:iam::811126113338:server-certificate/lisa-self-signed-dev
+      sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
       healthCheckConfig:
         path: /health
         interval: 60

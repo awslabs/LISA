@@ -279,7 +279,7 @@ export default function Chat({ sessionId }) {
   };
 
   const createOpenAiClient = (streaming: boolean) => {
-    const client = new ChatOpenAI({
+    return new ChatOpenAI({
       modelName: selectedModel?.id,
       openAIApiKey: auth.user?.id_token,
       configuration: {
@@ -287,24 +287,8 @@ export default function Chat({ sessionId }) {
       },
       streaming,
       maxTokens: modelConfig?.max_tokens,
-      n: modelConfig?.n,
-      topP: modelConfig?.top_p,
-      frequencyPenalty: modelConfig?.frequency_penalty,
-      presencePenalty: modelConfig?.presence_penalty,
-      temperature: modelConfig?.temperature,
-      stop: modelConfig?.stop,
       modelKwargs: modelConfig?.modelKwargs,
     });
-    // LangChain's JS OpenAI client sets default values that we do not want if we didn't set them.
-    // The following parameters are preferred to be null instead of having a numeric default value
-    // as they degrade the quality of the model response if set incorrectly by default.
-    if (!modelConfig?.frequency_penalty && modelConfig?.frequency_penalty !== 0) {
-      client.frequencyPenalty = null;
-    }
-    if (!modelConfig?.presence_penalty && modelConfig?.presence_penalty !== 0) {
-      client.presencePenalty = null;
-    }
-    return client;
   };
 
   const contextualizeQSystemPrompt = `Given a chat history and the latest user question

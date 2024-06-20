@@ -44,19 +44,19 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
   useEffect(() => {
     const modelConfig: ModelConfig = {
       max_tokens: maxNewTokens,
-      n: n,
-      top_p: topP,
-      frequency_penalty: frequencyPenalty,
-      presence_penalty: presencePenalty,
-      temperature: temperature,
-      stop: stopSequences.map((elem) => {
-        try {
-          return unraw(elem);
-        } catch (error) {
-          return elem;
-        }
-      }),
       modelKwargs: {
+        n: n,
+        top_p: topP,
+        frequency_penalty: frequencyPenalty,
+        presence_penalty: presencePenalty,
+        temperature: temperature,
+        stop: stopSequences.map((elem) => {
+          try {
+            return unraw(elem);
+          } catch (error) {
+            return elem;
+          }
+        }),
         seed,
       },
     };
@@ -96,7 +96,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
         </FormField>
         <FormField
           label="n"
-          constraintText="Must be greater than or equal to 1 - Defaults to 1 if not specified."
+          constraintText="Must be greater than or equal to 1 - Defaults to null if not specified."
           description="How many completions to generate for each prompt."
         >
           <Input
@@ -190,7 +190,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
         </FormField>
         <FormField
           label="temperature"
-          constraintText="Must be between 0 and 2.0 - Defaults to 1 if not specified."
+          constraintText="Must be between 0 and 2.0 - Defaults to null if not specified."
           description="What sampling temperature to use, between 0 and 2.
                   Higher values like 0.8 will make the output more random,
                   while lower values like 0.2 will make it more focused

@@ -142,7 +142,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
         </FormField>
         <FormField
           label="frequency_penalty"
-          constraintText="Must be between -2.0 and 2.0 - Defaults to 0 if not specified."
+          constraintText="Must be between -2.0 and 2.0 - Defaults to null if not specified."
           description="Number between -2.0 and 2.0. Positive values
                     penalize new tokens based on their existing
                     frequency in the text so far, decreasing the model's
@@ -166,7 +166,7 @@ export default function ModelKwargsEditor({ setModelConfig, visible, setVisible 
         </FormField>
         <FormField
           label="presence_penalty"
-          constraintText="Must be between -2.0 and 2.0 - Defaults to 0 if not specified."
+          constraintText="Must be between -2.0 and 2.0 - Defaults to null if not specified."
           description="Number between -2.0 and 2.0. Positive values
                       penalize new tokens based on whether they appear
                       in the text so far, increasing the model's

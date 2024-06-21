@@ -21,12 +21,6 @@ import { BaseMessage, BaseMessageFields, MessageContent, MessageType } from '@la
  */
 export type ModelConfig = {
   max_tokens?: number;
-  n?: number | null;
-  top_p?: number | null;
-  frequency_penalty?: number | null;
-  presence_penalty?: number | null;
-  temperature?: number | null;
-  stop: string[];
   modelKwargs?: ModelArgs;
 };
 
@@ -34,6 +28,12 @@ export type ModelConfig = {
  * Used to specify additional parameters in how the LLM processes inputs
  */
 export type ModelArgs = {
+  n?: number | null;
+  top_p?: number | null;
+  frequency_penalty?: number | null;
+  presence_penalty?: number | null;
+  temperature?: number | null;
+  stop: string[];
   seed?: number | null;
 };
 

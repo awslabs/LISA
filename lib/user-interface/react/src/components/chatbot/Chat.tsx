@@ -287,12 +287,6 @@ export default function Chat({ sessionId }) {
       },
       streaming,
       maxTokens: modelConfig?.max_tokens,
-      n: modelConfig?.n,
-      topP: modelConfig?.top_p,
-      frequencyPenalty: modelConfig?.frequency_penalty,
-      presencePenalty: modelConfig?.presence_penalty,
-      temperature: modelConfig?.temperature,
-      stop: modelConfig?.stop,
       modelKwargs: modelConfig?.modelKwargs,
     });
   };

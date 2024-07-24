@@ -22,7 +22,7 @@ jobs:
       - name: Create Release Branch and Update Version
         run: |
           git config --global user.email "petermul@amazon.com"
-          git config --global user.name "github_actions_mlspace"
+          git config --global user.name "github_actions_lisa"
           RELEASE_TAG=${{ github.event.inputs.release_tag }}
           git checkout -b release/${{ github.event.inputs.release_tag }}
           echo "$( jq --arg version ${RELEASE_TAG:1} '.version = $version' package.json )" > package.json

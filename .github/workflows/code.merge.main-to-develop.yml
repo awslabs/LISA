@@ -29,7 +29,7 @@ jobs:
           GH_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
   send_final_slack_notification:
     name: Send Final Slack Notification
-    needs: [ conduct_merge ]
+    needs: [conduct_merge]
     runs-on: ubuntu-latest
     if: always()
     steps:

@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [ "main", "develop", "release/**" , "hotfix/**" ]
+    branches: ['main', 'develop', 'release/**', 'hotfix/**']
   pull_request:
-    branches: [ "main", "develop", "release/**", "hotfix/**" ]
+    branches: ['main', 'develop', 'release/**', 'hotfix/**']
 
 permissions:
   contents: read
@@ -64,7 +64,7 @@ jobs:
       - uses: pre-commit/action@v3.0.1
   send_final_slack_notification:
     name: Send Final Slack Notification
-    needs: [ cdk-build, pre-commit ]
+    needs: [cdk-build, pre-commit]
     runs-on: ubuntu-latest
     if: always()
     steps:

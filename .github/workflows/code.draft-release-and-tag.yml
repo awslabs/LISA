@@ -1,0 +1,56 @@
+name: Draft Release and Tag
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  draft_release:
+    runs-on: ubuntu-latest
+    if: (startsWith(github.event.pull_request.head.ref, 'release/' ) || startsWith(github.event.pull_request.head.ref, 'hotfix/')) && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    steps:
+      - name: Checkout Source Tag
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Get Version
+        id: get-version
+        run: |
+          version=$(echo ${{github.event.pull_request.head.ref}} | cut -d/ -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "VERSION = $version"
+      - name: Create Release
+        run: |
+          gh release create ${{ steps.get-version.outputs.version }} --generate-notes -d -t "${{ steps.get-version.outputs.version }}" --target main
+        env:
+          GH_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+  send_final_slack_notification:
+    name: Send Final Slack Notification
+    needs: [ draft_release ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Get Version
+        id: get-version
+        run: |
+          version=$(echo ${{github.event.pull_request.head.ref}} | cut -d/ -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "VERSION = $version"
+      - name: Send Notification that Draft Release is Ready
+        uses: rtCamp/action-slack-notify@v2
+        if: (startsWith(github.event.pull_request.head.ref, 'release/' ) || startsWith(github.event.pull_request.head.ref, 'hotfix/')) && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+        with:
+          status: success()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
+          SLACK_TITLE: 'Build Finished'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: true
+          SLACK_MESSAGE_ON_FAILURE: '<!here> FAILED to publish Draft release for ${{ steps.get-version.outputs.version }}'
+          SLACK_MESSAGE_ON_SUCCESS: '<!here> Draft release published for <https://github.com/awslabs/LISA/releases|${{ steps.get-version.outputs.version }}>'
+          SLACK_MESSAGE: '<!here> Draft release finished with status ${{ job.status }} for ${{ steps.get-version.outputs.version }}'

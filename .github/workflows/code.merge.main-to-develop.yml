@@ -1,0 +1,46 @@
+name: Merge Main into Develop
+
+on:
+  release:
+    types: [released]
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  conduct_merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: merge main into develop
+        run: |
+          git config --global user.email "evmann@amazon.com"
+          git config --global user.name "github_actions_mlspace"
+          git fetch --unshallow
+          git checkout develop
+          git pull
+          git merge --no-ff origin/main -m "Auto-merge main back to dev post release"
+          git push --force origin develop
+        env:
+          GH_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+  send_final_slack_notification:
+    name: Send Final Slack Notification
+    needs: [ conduct_merge ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Notification that Develop is up to date
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
+          SLACK_TITLE: 'Main merged into Develop'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: true
+          SLACK_MESSAGE_ON_FAILURE: '<!here> New Release has been <${{ github.event.release.html_url }}|published>! FAILED to merge main into Develop.'
+          SLACK_MESSAGE_ON_SUCCESS: '<!here> New Release has been <${{ github.event.release.html_url }}|published>! Main was SUCCESSFULLY merged into Develop.'
+          SLACK_MESSAGE: '<!here> New Release has been <${{ github.event.release.html_url }}|published>! Merging main into develop finished with status ${{ job.status }}.'

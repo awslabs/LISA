@@ -2,16 +2,30 @@ name: Build and Test
 
 on:
   push:
-    branches: ['main']
+    branches: [ "main", "develop", "release/**" , "hotfix/**" ]
   pull_request:
-    branches: ['main']
+    branches: [ "main", "develop", "release/**", "hotfix/**" ]
 
 permissions:
   contents: read
 
 jobs:
+  send_starting_slack_notification:
+    name: Send Starting Slack Notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send PR Created Notification
+        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_TITLE: 'PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: true
+          SLACK_MESSAGE: 'PR Created ${{ github.event.pull_request.html_url }}'
   cdk-build:
     name: CDK Tests
+    needs: [send_starting_slack_notification]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +41,7 @@ jobs:
           npm run test
   pre-commit:
     name: Run All Pre-Commit
+    needs: [send_starting_slack_notification]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,3 +62,21 @@ jobs:
         run: |
           npm install
       - uses: pre-commit/action@v3.0.1
+  send_final_slack_notification:
+    name: Send Final Slack Notification
+    needs: [ cdk-build, pre-commit ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send GitHub Action trigger data to Slack workflow
+        uses: rtCamp/action-slack-notify@v2
+        if: github.event_name != 'pull_request'
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
+          SLACK_TITLE: 'Build Finished'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: 'actions url,commit'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> Build FAILED on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'
+          SLACK_MESSAGE_ON_SUCCESS: 'Build SUCCESS on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>.'
+          SLACK_MESSAGE: 'Build Finished with status ${{ job.status }} on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'

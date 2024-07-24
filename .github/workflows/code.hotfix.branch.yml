@@ -1,0 +1,43 @@
+name: Make Hotfix Branch
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: 'Starting Tag'
+        required: true
+      dest_tag:
+        description: 'New Tag'
+        required: true
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  MakeNewBranch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.inputs.source_tag }}
+      - name: Create Hotfix Branch and Update Version
+        run: |
+          git config --global user.email "petermul@amazon.com"
+          git config --global user.name "github_actions_lisa"
+          SRC_TAG=${{ github.event.inputs.source_tag }}
+          DST_TAG=${{ github.event.inputs.dest_tag }}
+          git checkout -b hotfix/${{ github.event.inputs.dest_tag }}
+          sed -i -e "s/\"version\": \"${SRC_TAG:1}\"/\"version\": \"${DST_TAG:1}\"/g" package.json
+          sed -i -e "s/version = \"${SRC_TAG:1}\"/version = \"${DST_TAG:1}\"/g" lisa-sdk/pyproject.toml
+          sed -i -e "s/${SRC_TAG:1}/${DST_TAG:1}/g" VERSION
+          git commit -a -m "Updating version for hotfix ${{ github.event.inputs.dest_tag }}"
+          git push origin hotfix/${{ github.event.inputs.dest_tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+      - name: Draft Pull Request
+        run: |
+          gh pr create -d --title "Hotfix ${{github.event.inputs.dest_tag}} into Main" --body "Hotfix ${{github.event.inputs.dest_tag}} PR into Main" --base main --head hotfix/${{ github.event.inputs.dest_tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -21,7 +21,7 @@ jobs:
           ref: develop
       - name: Create Release Branch and Update Version
         run: |
-          git config --global user.email "evmann@amazon.com"
+          git config --global user.email "petermul@amazon.com"
           git config --global user.name "github_actions_mlspace"
           RELEASE_TAG=${{ github.event.inputs.release_tag }}
           git checkout -b release/${{ github.event.inputs.release_tag }}

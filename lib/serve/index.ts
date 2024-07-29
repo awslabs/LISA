@@ -54,17 +54,20 @@ export class LisaServeApplicationStack extends Stack {
 
     const { config, vpc } = props;
 
-    // Create DynamoDB Table for enabling API token usage
-    const tokenTable = new Table(this, 'TokenTable', {
-      tableName: 'LISAApiTokenTable',
-      partitionKey: {
-        name: 'token',
-        type: AttributeType.STRING,
-      },
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      encryption: TableEncryption.AWS_MANAGED,
-      removalPolicy: config.removalPolicy,
-    });
+    let tokenTable;
+    if (config.restApiConfig.internetFacing) {
+      // Create DynamoDB Table for enabling API token usage
+      tokenTable = new Table(this, 'TokenTable', {
+        tableName: 'LISAApiTokenTable',
+        partitionKey: {
+          name: 'token',
+          type: AttributeType.STRING,
+        },
+        billingMode: BillingMode.PAY_PER_REQUEST,
+        encryption: TableEncryption.AWS_MANAGED,
+        removalPolicy: config.removalPolicy,
+      });
+    }
 
     // Create REST API
     const restApi = new FastApiContainer(this, 'RestApi', {

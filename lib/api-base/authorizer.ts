@@ -78,8 +78,8 @@ export class CustomAuthorizer extends Construct {
       memorySize: 128,
       layers: [authorizerLambdaLayer, commonLambdaLayer],
       environment: {
-        CLIENT_ID: config.authConfig.clientId,
-        AUTHORITY: config.authConfig.authority,
+        CLIENT_ID: config.authConfig!.clientId,
+        AUTHORITY: config.authConfig!.authority,
       },
       role: role,
       vpc: vpc,

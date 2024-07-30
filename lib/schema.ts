@@ -831,7 +831,6 @@ const RawConfigSchema = z
         message: 'AWS account number should be 12 digits',
       }),
     region: z.string(),
-    stack: z.string().default('all'),
     vpcId: z.string().optional(),
     deploymentStage: z.string(),
     removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),

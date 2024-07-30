@@ -846,8 +846,8 @@ const RawConfigSchema = z
       })
       .optional(),
     deployRag: z.boolean().optional().default(false),
-    deployChat: z.boolean().optional().default(false),
-    deployUi: z.boolean().optional().default(false),
+    deployChat: z.boolean().optional().default(true),
+    deployUi: z.boolean().optional().default(true),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
     lambdaConfig: lambdaConfigSchema,
     lambdaSourcePath: z.string().optional().default('./lambda'),

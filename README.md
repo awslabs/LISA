@@ -359,7 +359,7 @@ An account owner may create a long-lived API Token using the following AWS CLI c
 ```bash
 AWS_REGION="us-east-1"  # change to your deployment region
 token_string="YOUR_STRING_HERE"  # change to a unique string for a user
-aws --region $AWS_REGION dynamodb put-item --table-name LISAApiTokenTable \
+aws --region $AWS_REGION dynamodb put-item --table-name <deployment name>-LISAApiTokenTable \
     --item '{"token": {"S": "'${token_string}'"}}'
 ```
 
@@ -371,7 +371,7 @@ in seconds. The following command shows an example of how to do this.
 AWS_REGION="us-east-1"  # change to your deployment region
 token_string="YOUR_STRING_HERE"
 token_expiration=$(echo $(date +%s) + 3600 | bc)  # token that expires in one hour, 3600 seconds
-aws --region $AWS_REGION dynamodb put-item --table-name LISAApiTokenTable \
+aws --region $AWS_REGION dynamodb put-item --table-name <deployment name>-LISAApiTokenTable \
     --item '{
         "token": {"S": "'${token_string}'"},
         "tokenExpiration": {"N": "'${token_expiration}'"}
@@ -401,7 +401,7 @@ that key.
 AWS_REGION="us-east-1"  # change to your deployment region
 token_string="YOUR_STRING_HERE"
 token_expiration=$(echo $(date +%s) + 600 | bc)  # token that expires in 10 minutes from now
-aws --region $AWS_REGION dynamodb update-item --table-name LISAApiTokenTable \
+aws --region $AWS_REGION dynamodb update-item --table-name <deployment name>-LISAApiTokenTable \
     --key '{"token": {"S": "'${token_string}'"}}' \
     --update-expression 'SET tokenExpiration=:t' \
     --expression-attribute-values '{":t": {"N": "'${token_expiration}'"}}'
@@ -416,7 +416,7 @@ remove a token.
 ```bash
 AWS_REGION="us-east-1"  # change to your deployment region
 token_string="YOUR_STRING_HERE"  # change to the token to remove
-aws --region $AWS_REGION dynamodb delete-item --table-name LISAApiTokenTable \
+aws --region $AWS_REGION dynamodb delete-item --table-name <deployment name>-LISAApiTokenTable \
     --key '{"token": {"S": "'${token_string}'"}}'
 ```
 
@@ -473,7 +473,7 @@ export AWS_REGION=<Region where LISA is deployed>
 export AUTHORITY=<IdP Endpoint>
 export CLIENT_ID=<IdP Client Id>
 export REGISTERED_MODELS_PS_NAME=<Models ParameterName>
-export TOKEN_TABLE_NAME="LISAApiTokenTable"
+export TOKEN_TABLE_NAME="<deployment prefix>/LISAApiTokenTable"
 gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b "0.0.0.0:8080" "src.main:app"
 ```
 

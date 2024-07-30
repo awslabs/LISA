@@ -92,7 +92,7 @@ export class FastApiContainer extends Construct {
     }
 
     if (tokenTable) {
-      environment.TOKEN_TABLE = tokenTable.tableName;
+      environment.TOKEN_TABLE_NAME = tokenTable.tableName;
     }
 
     const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {

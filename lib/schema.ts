@@ -910,6 +910,20 @@ const RawConfigSchema = z
     {
       message: 'Chat stack is needed for UI stack. You must set deployChat to true if deployUi is true.',
     },
+  )
+  .refine(
+    (config) => {
+      return (
+        !(config.deployChat || config.deployRag || config.deployUi || config.restApiConfig.internetFacing) ||
+        config.authConfig
+      );
+    },
+    {
+      message:
+        'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
+        'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
+        'false or that an `authConfig` is provided.',
+    },
   );
 
 /**

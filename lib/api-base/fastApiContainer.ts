@@ -40,7 +40,7 @@ interface FastApiContainerProps extends BaseProps {
   resourcePath: string;
   securityGroup: SecurityGroup;
   taskConfig: FastApiContainerConfig;
-  tokenTable: ITable;
+  tokenTable: ITable | undefined;
   vpc: IVpc;
 }
 
@@ -81,10 +81,19 @@ export class FastApiContainer extends Construct {
       AWS_REGION: config.region,
       AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
       THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
-      AUTHORITY: config.authConfig.authority,
-      CLIENT_ID: config.authConfig.clientId,
-      TOKEN_TABLE_NAME: tokenTable.tableName,
     };
+
+    if (config.restApiConfig.internetFacing) {
+      environment.USE_AUTH = 'true';
+      environment.AUTHORITY = config.authConfig!.authority;
+      environment.CLIENT_ID = config.authConfig!.clientId;
+    } else {
+      environment.USE_AUTH = 'false';
+    }
+
+    if (tokenTable) {
+      environment.TOKEN_TABLE_NAME = tokenTable.tableName;
+    }
 
     const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
       config,
@@ -97,14 +106,16 @@ export class FastApiContainer extends Construct {
         environment,
         identifier: props.apiName,
         instanceType: taskConfig.instanceType,
-        internetFacing: true,
+        internetFacing: config.restApiConfig.internetFacing,
         loadBalancerConfig: taskConfig.loadBalancerConfig,
       },
       securityGroup,
       vpc,
     });
-    tokenTable.grantReadData(apiCluster.taskRole);
 
+    if (tokenTable) {
+      tokenTable.grantReadData(apiCluster.taskRole);
+    }
     this.endpoint = apiCluster.endpointUrl;
 
     // Update

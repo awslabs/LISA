@@ -1,3 +1,5 @@
+default_language_version:
+  node: system
 repos:
 - repo: local
   hooks:

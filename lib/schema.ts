@@ -578,6 +578,7 @@ const AuthConfigSchema = z.object({
  * @property {ContainerConfig} containerConfig - Configuration for the container.
  * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
  * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
+ * @property {boolean} [internetFacing=true] - Whether or not the REST API ALB will be configured as internet facing.
  */
 const FastApiContainerConfigSchema = z.object({
   apiVersion: z.literal('v2'),
@@ -585,6 +586,7 @@ const FastApiContainerConfigSchema = z.object({
   containerConfig: ContainerConfigSchema,
   autoScalingConfig: AutoScalingConfigSchema,
   loadBalancerConfig: LoadBalancerConfigSchema,
+  internetFacing: z.boolean().default(true),
 });
 
 /**
@@ -794,6 +796,9 @@ const LiteLLMConfig = z.object({
  * @property {string} s3BucketModels - S3 bucket for models.
  * @property {string} mountS3DebUrl - URL for S3-mounted Debian package.
  * @property {string[]} [accountNumbersEcr=null] - List of AWS account numbers for ECR repositories.
+ * @property {boolean} [deployRag=false] - Whether to deploy RAG stacks.
+ * @property {boolean} [deployChat=true] - Whether to deploy chat stacks.
+ * @property {boolean} [deployUi=true] - Whether to deploy UI stacks.
  * @property {string} logLevel - Log level for application.
  * @property {AuthConfigSchema} authConfig - Authorization configuration.
  * @property {FastApiContainerConfigSchema} restApiConfig - REST API configuration.
@@ -840,21 +845,23 @@ const RawConfigSchema = z
       })
       .optional(),
     deployRag: z.boolean().optional().default(false),
+    deployChat: z.boolean().optional().default(true),
+    deployUi: z.boolean().optional().default(true),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
     lambdaConfig: lambdaConfigSchema,
     lambdaSourcePath: z.string().optional().default('./lambda'),
-    authConfig: AuthConfigSchema,
+    authConfig: AuthConfigSchema.optional(),
     pypiConfig: PypiConfigSchema.optional().default({
       indexUrl: '',
       trustedHost: '',
     }),
     condaUrl: z.string().optional().default(''),
     certificateAuthorityBundle: z.string().optional().default(''),
-    ragRepositories: z.array(RagRepositoryConfigSchema),
-    ragFileProcessingConfig: RagFileProcessingConfigSchema,
+    ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
+    ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
     restApiConfig: FastApiContainerConfigSchema,
     ecsModels: z.array(EcsModelConfigSchema),
-    apiGatewayConfig: ApiGatewayConfigSchema,
+    apiGatewayConfig: ApiGatewayConfigSchema.optional(),
     nvmeHostMountPath: z.string().default('/nvme'),
     nvmeContainerMountPath: z.string().default('/nvme'),
     tags: z
@@ -895,7 +902,29 @@ const RawConfigSchema = z
   })
   .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
     message: 'Must set PypiConfig if in an iso region',
-  });
+  })
+  .refine(
+    (config) => {
+      return !config.deployUi || config.deployChat;
+    },
+    {
+      message: 'Chat stack is needed for UI stack. You must set deployChat to true if deployUi is true.',
+    },
+  )
+  .refine(
+    (config) => {
+      return (
+        !(config.deployChat || config.deployRag || config.deployUi || config.restApiConfig.internetFacing) ||
+        config.authConfig
+      );
+    },
+    {
+      message:
+        'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
+        'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
+        'false or that an `authConfig` is provided.',
+    },
+  );
 
 /**
  * Apply transformations to the raw application configuration schema.

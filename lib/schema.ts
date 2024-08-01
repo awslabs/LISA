@@ -797,8 +797,8 @@ const LiteLLMConfig = z.object({
  * @property {string} mountS3DebUrl - URL for S3-mounted Debian package.
  * @property {string[]} [accountNumbersEcr=null] - List of AWS account numbers for ECR repositories.
  * @property {boolean} [deployRag=false] - Whether to deploy RAG stacks.
- * @property {boolean} [deployChat=false] - Whether to deploy chat stacks.
- * @property {boolean} [deployUi=false] - Whether to deploy UI stacks.
+ * @property {boolean} [deployChat=true] - Whether to deploy chat stacks.
+ * @property {boolean} [deployUi=true] - Whether to deploy UI stacks.
  * @property {string} logLevel - Log level for application.
  * @property {AuthConfigSchema} authConfig - Authorization configuration.
  * @property {FastApiContainerConfigSchema} restApiConfig - REST API configuration.

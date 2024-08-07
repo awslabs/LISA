@@ -1,5 +1,7 @@
-from models.domain_objects.get_model_response import GetModelResponse
-from .. import router
+from ..domain_objects.get_model_response import GetModelResponse
+from fastapi import APIRouter
+
+router = APIRouter()
 
 @router.get(path = '/')
 async def list_models() -> list[GetModelResponse]:

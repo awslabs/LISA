@@ -1,7 +1,8 @@
 from typing import Annotated
-from models.domain_objects.get_model_response import GetModelResponse
-from fastapi import Path
-from .. import router
+from ..domain_objects.get_model_response import GetModelResponse
+from fastapi import Path, APIRouter
+
+router = APIRouter()
 
 @router.get(path = '/{model_name}')
 async def get_model(

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel
 
 class InferenceContainer(str, Enum):
@@ -14,7 +14,7 @@ class ContainerConfigImage(BaseModel):
     Type: str 
 
 class HealthCheckConfig(BaseModel):
-    Command: str | list[str]
+    Command: Union[str, list[str]]
     Interval: int
     StartPeriod: int
     Timeout: int

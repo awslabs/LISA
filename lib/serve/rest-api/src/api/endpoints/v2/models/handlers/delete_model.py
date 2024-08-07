@@ -1,7 +1,8 @@
 from typing import Annotated
-from models.domain_objects.delete_model import DeleteModelResponse
-from fastapi import Path
-from .. import router
+from ..domain_objects.delete_model import DeleteModelResponse
+from fastapi import Path, APIRouter
+
+router = APIRouter()
 
 @router.delete(path = '/{model_name}')
 async def delete_model(

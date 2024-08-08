@@ -31,6 +31,9 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     """Handle authorization for REST API."""
     logger.info("REST API authorization handler started")
 
+    requested_resource = event["resource"]
+    request_method = event["httpMethod"]
+
     id_token = get_id_token(event)
 
     if not id_token:
@@ -44,19 +47,23 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     admin_group = os.environ.get("ADMIN_GROUP", "")
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
+    deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
+
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
-        if is_admin(jwt_data, admin_group, jwt_groups_property):
-            logger.info(f"USER IS ADMIN")
+        is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])  # type: ignore
+        allow_policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
 
-        policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])  # type: ignore
-        policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
+        if requested_resource.startswith("/models") and not is_admin_user:
+            logger.info("Deny access to user due to non-admin accessing /models api.")
+            return deny_policy
 
-        logger.debug(f"Generated policy: {policy}")
+        logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
-        return policy
+        return allow_policy
 
     logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
-    return generate_policy(effect="Deny", resource=event["methodArn"])
+    return deny_policy
 
 
 def generate_policy(*, effect: str, resource: str, username: str = "username") -> Dict[str, Any]:

@@ -32,7 +32,6 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     logger.info("REST API authorization handler started")
 
     requested_resource = event["resource"]
-    request_method = event["httpMethod"]
 
     id_token = get_id_token(event)
 
@@ -126,6 +125,11 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Union
 
 def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str):
     """Check if the user is an admin."""
-    if jwt_groups_property in jwt_data:
-        return admin_group in jwt_data[jwt_groups_property]
-    return False
+    props = jwt_groups_property.split('.')
+    current_node = jwt_data
+    for prop in props:
+        if prop in current_node:
+            current_node = current_node[prop]
+        else:
+            return False
+    return admin_group in current_node

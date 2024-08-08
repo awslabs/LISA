@@ -41,8 +41,13 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     # TODO: investigate authority case sensitivity
     client_id = os.environ.get("CLIENT_ID", "")
     authority = os.environ.get("AUTHORITY", "")
+    admin_group = os.environ.get("ADMIN_GROUP", "")
+    jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
+        if is_admin(jwt_data, admin_group, jwt_groups_property):
+            logger.info(f"USER IS ADMIN")
+
         policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])  # type: ignore
         policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
 
@@ -110,3 +115,10 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Union
     except jwt.exceptions.PyJWTError as e:
         logger.exception(e)
         return False
+
+
+def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str):
+    """Check if the user is an admin."""
+    if jwt_groups_property in jwt_data:
+        return admin_group in jwt_data[jwt_groups_property]
+    return False

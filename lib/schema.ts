@@ -569,6 +569,8 @@ const AuthConfigSchema = z.object({
     }
   }),
   clientId: z.string(),
+  adminGroup: z.string().optional().default(''),
+  jwtGroupsProperty: z.string().optional().default(''),
 });
 
 /**

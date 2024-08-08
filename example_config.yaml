@@ -46,6 +46,8 @@ dev:
   authConfig:
     authority:
     clientId:
+    adminGroup:
+    jwtGroupsProperty:
   logLevel: DEBUG
   # NOTE: The following configuration will allow for using a custom domain for the chat user interface.
   # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.

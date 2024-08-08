@@ -28,6 +28,7 @@ declare global {
     env: {
       AUTHORITY: string;
       CLIENT_ID: string;
+      CUSTOM_SCOPES: string[];
       RESTAPI_URI: string;
       RESTAPI_VERSION: string;
       RAG_ENABLED: boolean;

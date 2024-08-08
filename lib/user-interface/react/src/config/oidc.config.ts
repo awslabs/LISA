@@ -21,7 +21,7 @@ export const OidcConfig: AuthProviderProps = {
   client_id: window.env.CLIENT_ID,
   redirect_uri: window.location.toString(),
   post_logout_redirect_uri: window.location.toString(),
-  scope: 'openid profile email',
+  scope: 'openid profile email' + (window.env.CUSTOM_SCOPES ? ' ' + window.env.CUSTOM_SCOPES.join(' ') : ''),
   onSigninCallback: async () => {
     window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
   },

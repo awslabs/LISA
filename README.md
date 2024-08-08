@@ -106,7 +106,9 @@ Note: we have primarily designed and tested this with HuggingFace models in mind
 In the config.yaml file, you will find a block for the `authConfig`. This configuration is required for deploying LISA, and it is used for identifying the
 OpenID Connect identity provider (IdP) that will be used for authenticating users who want to use LISA features, such as the Chat UI. Common usage patterns
 include using Cognito within your AWS Account or using [Keycloak](https://www.keycloak.org/) configured by your organization. The `authConfig` will require
-two values: the `authority` and the `clientId`.
+four values and an optional fifth: the `authority`, the `clientId`, the `adminGroup` for writing and updating available models, the `jwtGroupsProperty` which
+is the path to the field that contains the list of groups a user is a part of in the returned JWT token ex: `cognito:groups` for cognito or `realm_access.roles` 
+for Keycloak. The optional property is `additionalScopes` which is a list of extra scopes that might be required to request the needed group membership information.
 
 #### Cognito
 
@@ -485,6 +487,7 @@ Create `lib/user-interface/react/public/env.js` file with the following contents
 window.env = {
   AUTHORITY: '<Your IdP URL here>',
   CLIENT_ID: '<Your IdP Client Id Here>',
+  "CUSTOM_SCOPES":[<add your optional list of custom scopes to pull groups from your IdP here>],
   // Alternatively you can set this to be your REST api elb endpoint
   RESTAPI_URI: 'http://localhost:8080/',
   RESTAPI_VERSION: 'v2',

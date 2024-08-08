@@ -1,5 +1,5 @@
 from typing import Annotated
-from ..domain_objects.get_model_response import GetModelResponse
+from models.domain_objects.get_model_response import GetModelResponse
 from fastapi import Path, APIRouter
 
 router = APIRouter()

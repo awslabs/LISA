@@ -22,7 +22,6 @@ from fastapi.responses import JSONResponse
 from ..auth import OIDCHTTPBearer
 from .endpoints.v1 import embeddings, generation, models
 from .endpoints.v2 import litellm_passthrough
-from .endpoints.v2.models.handlers.router import router as models_router
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,6 @@ router.include_router(
     litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=[Depends(security)]
 )
 
-router.include_router(models_router, prefix="/v1", tags=["models"])
 
 @router.get("/health")  # type: ignore
 async def health_check() -> JSONResponse:

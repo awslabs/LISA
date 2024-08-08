@@ -1,5 +1,5 @@
 from typing import Annotated
-from ..domain_objects.delete_model import DeleteModelResponse
+from models.domain_objects.delete_model import DeleteModelResponse
 from fastapi import Path, APIRouter
 
 router = APIRouter()

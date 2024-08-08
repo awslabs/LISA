@@ -40,6 +40,7 @@ import { LisaRagStack } from './rag';
 import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
+import { LisaModelsApiStack } from './models';
 
 interface CustomLisaServeApplicationStageProps extends BaseProps {}
 type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & StageProps;
@@ -151,6 +152,17 @@ export class LisaServeApplicationStage extends Stage {
       restApiId: apiBaseStack.restApiId,
     });
     apiDeploymentStack.addDependency(apiBaseStack);
+
+    const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelApiDeployment', {
+      ...baseStackProps,
+      authorizer: apiBaseStack.authorizer,
+      stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
+      description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
+      restApiId: apiBaseStack.restApiId,
+      rootResourceId: apiBaseStack.rootResourceId,
+      vpc: networkingStack.vpc.vpc,
+    });
+    apiDeploymentStack.addDependency(modelsApiDeploymentStack);
 
     const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
       ...baseStackProps,

@@ -1,4 +1,4 @@
-cryptography
-PyJWT
-requests
+cryptography==42.0.8
+PyJWT==2.9.0
+requests==2.32.3
 urllib3<2

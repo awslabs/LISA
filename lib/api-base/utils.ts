@@ -36,7 +36,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, Runtime, ILayerVersion, IFunction } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, Runtime, ILayerVersion, IFunction, CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 /**
@@ -53,6 +53,7 @@ export type PythonLambdaFunction = {
     [key: string]: string;
   };
   timeout?: Duration;
+  disambiguator?: string;
 };
 
 /**
@@ -67,6 +68,7 @@ export type PythonLambdaFunction = {
  * @param role the IAM execution role of this Lambda function
  * @param vpc the VPC this Lambda function will exist inside
  * @param securityGroups security groups for Lambdas
+ * @param fromArn an existing lambda function that should be used instead of creating a new one
  * @returns
  */
 export function registerAPIEndpoint(
@@ -80,29 +82,49 @@ export function registerAPIEndpoint(
   role?: IRole,
   vpc?: IVpc,
   securityGroups?: ISecurityGroup[],
+  fromArn?: string
 ): IFunction {
-  const functionId = `${funcDef.id || [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name].join('-')}`;
-  const handler = new Function(scope, functionId, {
-    functionName: functionId,
-    runtime: pythonRuntime,
-    handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
-    code: Code.fromAsset(lambdaSourcePath),
-    description: funcDef.description,
-    environment: {
-      ...funcDef.environment,
-    },
-    timeout: funcDef.timeout || Duration.seconds(180),
-    memorySize: 512,
-    layers,
-    role,
-    vpc,
-    securityGroups,
-  });
+  const functionId = `${funcDef.id || [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')}`;
+  console.log('functionId', functionId);
+
   const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
+  let handler;
+
+  if (fromArn) {
+    handler = Function.fromFunctionArn(scope, functionId, fromArn);
+
+    // create a CFN L1 primitive because `handler.addPermission` doesn't behave as expected
+    // https://stackoverflow.com/questions/71075361/aws-cdk-lambda-resource-based-policy-for-a-function-with-an-alias
+    const cfnPermission = new CfnPermission(scope, `LambdaInvokeAccessRemote-${functionId}`, {
+      action: 'lambda:InvokeFunction',
+      sourceArn: api.arnForExecuteApi(funcDef.method, `/${funcDef.path}`),
+      functionName: handler.functionName,
+      principal: 'apigateway.amazonaws.com',
+    });
+  } else {
+    handler = new Function(scope, functionId, {
+      functionName: functionId,
+      runtime: pythonRuntime,
+      handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
+      code: Code.fromAsset(lambdaSourcePath),
+      description: funcDef.description,
+      environment: {
+        ...funcDef.environment,
+      },
+      timeout: funcDef.timeout || Duration.seconds(180),
+      memorySize: 512,
+      layers,
+      role,
+      vpc,
+      securityGroups,
+    });
+  }
+
   functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
     authorizer,
     authorizationType: AuthorizationType.CUSTOM,
   });
+
   return handler;
 }
 

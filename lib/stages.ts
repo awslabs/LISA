@@ -153,16 +153,16 @@ export class LisaServeApplicationStage extends Stage {
     });
     apiDeploymentStack.addDependency(apiBaseStack);
 
-    const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelApiDeployment', {
+    const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
       ...baseStackProps,
       authorizer: apiBaseStack.authorizer,
-      stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
       description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
       restApiId: apiBaseStack.restApiId,
       rootResourceId: apiBaseStack.rootResourceId,
-      vpc: networkingStack.vpc.vpc,
+      stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
     });
     apiDeploymentStack.addDependency(modelsApiDeploymentStack);
+    stacks.push(modelsApiDeploymentStack);
 
     const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
       ...baseStackProps,

@@ -11,15 +11,11 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-from typing import Annotated
-from fastapi import Path, APIRouter, status
-from models.domain_objects import DeleteModelResponse
+import botocore.session
 
-router = APIRouter()
+sess = botocore.session.Session()
 
-@router.delete(path = '/{model_name}', status_code = status. HTTP_200_OK)
-async def delete_model(
-    model_name: Annotated[str, Path(title="The name of the model to delete")],
-) -> DeleteModelResponse:
-    # TODO add service to delete model
-    return DeleteModelResponse(ModelName = model_name)
+def validate_instance_type(type: str) -> str:
+    assert type in  sess.get_service_model('ec2').shape_for('InstanceType').enum
+    return type
+    

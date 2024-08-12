@@ -17,13 +17,14 @@
 import { IAuthorizer, Method, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { IRole, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
+import crypto from 'node:crypto'
 
 /**
  * Properties for SessionApi Construct.
@@ -65,19 +66,45 @@ export class ModelsApi extends Construct {
       rootResourceId: rootResourceId,
     });
 
+    // generates a random hexidecimal string of a specific length
+    const generateDisambiguator = (size: number): string => Buffer.from(
+      // a byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
+      crypto.getRandomValues(new Uint8Array(Math.ceil(size/2)))
+    ).toString('hex').slice(0,size);
+
+    const lambdaFunction = registerAPIEndpoint(
+      this,
+      restApi,
+      authorizer,
+      config.lambdaSourcePath,
+      [commonLambdaLayer],
+      {
+        name: 'handler',
+        resource: 'models',
+        description: 'Manage model',
+        path: 'models',
+        method: "ANY",
+      },
+      config.lambdaConfig.pythonRuntime,
+      lambdaExecutionRole,
+      vpc,
+      securityGroups,
+    );
+
     // Create API Lambda functions
     const apis: PythonLambdaFunction[] = [
       {
         name: 'handler',
         resource: 'models',
-        description: 'Manage models',
-        path: 'models/{proxy+}',
-        method: "ANY",
+        description: 'Manage model',
+        path: 'models',
+        method: "GET",
+        disambiguator: generateDisambiguator(4),
       },
     ];
 
     apis.forEach((f) => {
-      const lambdaFunction = registerAPIEndpoint(
+      const handler = registerAPIEndpoint(
         this,
         restApi,
         authorizer,
@@ -88,6 +115,7 @@ export class ModelsApi extends Construct {
         lambdaExecutionRole,
         vpc,
         securityGroups,
+        lambdaFunction.functionArn
       );
     });
   }

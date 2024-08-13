@@ -82,7 +82,7 @@ export class ModelsApi extends Construct {
         name: 'handler',
         resource: 'models',
         description: 'Manage model',
-        path: 'models',
+        path: 'models/{proxy+}',
         method: "ANY",
       },
       config.lambdaConfig.pythonRuntime,

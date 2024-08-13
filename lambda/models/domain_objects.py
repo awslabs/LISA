@@ -28,6 +28,7 @@ class InferenceContainer(str, Enum):
 class ModelStatus(str, Enum):
     CREATING = 'CREATING'
     READY    = 'READY'
+    UPDATING = 'UPDATING'
     DELETED  = 'DELETED'
 
 
@@ -94,10 +95,25 @@ class CreateModelRequest(BaseModel):
     AutoScalingConfig: Optional[AutoScalingConfig] = None
 
 
-class DeleteModelResponse(BaseModel):
-    ModelName: str
-    Status: str = "DELETED"
-
-
 class GetModelResponse(BaseModel):
     ModelName: str
+    Status: Optional[ModelStatus] = None
+    ModelId: Optional[str] = None
+    InferenceContainer: Optional[InferenceContainer] = None
+    InstanceType: Optional[str] = None
+    ContainerConfig: Optional[ContainerConfig] = None
+    AutoScalingConfig: Optional[AutoScalingConfig] = None
+
+
+class UpdateModelRequest(BaseModel):
+    ModelName: str
+    ModelId: Optional[str] = None
+    InferenceContainer: Optional[InferenceContainer] = None
+    InstanceType: Annotated[str, AfterValidator(validate_instance_type)]
+    ContainerConfig: Optional[ContainerConfig] = None
+    AutoScalingConfig: Optional[AutoScalingConfig] = None
+
+
+class DeleteModelResponse(BaseModel):
+    ModelName: str
+    Status: ModelStatus = ModelStatus.DELETED

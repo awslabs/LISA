@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Path, status, Request
 from mangum import Mangum
 from typing import Annotated
-from models.domain_objects import GetModelResponse, CreateModelRequest, CreateModelResponse, ModelStatus, DeleteModelResponse
+from models.domain_objects import GetModelResponse, CreateModelRequest, CreateModelResponse, ModelStatus, DeleteModelResponse, UpdateModelRequest
 
 app = FastAPI(redirect_slashes=False, lifespan="off")
 
@@ -55,6 +55,15 @@ async def get_model(
 ) -> GetModelResponse:
     # TODO add service to get model
     return GetModelResponse(ModelName = model_name)
+
+
+@app.put(path = '/{model_name}', status_code = status. HTTP_200_OK)
+async def put_model(
+    model_name: Annotated[str, Path(title="The name of the model to update")],
+    model: UpdateModelRequest
+) -> GetModelResponse:
+    # TODO add service to update model
+    return GetModelResponse(ModelName = model_name, Status=ModelStatus.UPDATING)
 
 
 @app.delete(path = '/{model_name}', status_code = status. HTTP_200_OK)

@@ -85,8 +85,6 @@ export function registerAPIEndpoint(
   fromArn?: string
 ): IFunction {
   const functionId = `${funcDef.id || [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')}`;
-  console.log('functionId', functionId);
-
   const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
   let handler;
 

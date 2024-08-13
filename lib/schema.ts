@@ -572,6 +572,24 @@ const AuthConfigSchema = z.object({
 });
 
 /**
+ * Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
+ *
+ * The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use
+ * an existing database instance.
+ *
+ * @property {string} username - Database username.
+ * @property {string} passwordSecretId - SecretsManager Secret ID that stores an existing database password.
+ * @property {string} dbHost - Database hostname for existing database instance.
+ * @property {string} dbName - Database name for existing database instance.
+ */
+const RdsInstanceConfig = z.object({
+  username: z.string().optional().default('postgres'),
+  passwordSecretId: z.string().optional(),
+  dbHost: z.string().optional(),
+  dbName: z.string().optional().default('postgres'),
+});
+
+/**
  * Configuration schema for REST API.
  *
  * @property {string} instanceType - EC2 instance type.
@@ -579,6 +597,7 @@ const AuthConfigSchema = z.object({
  * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
  * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
  * @property {boolean} [internetFacing=true] - Whether or not the REST API ALB will be configured as internet facing.
+ * @property {RdsInstanceConfig} rdsConfig - Configuration for LiteLLM scaling database.
  */
 const FastApiContainerConfigSchema = z.object({
   apiVersion: z.literal('v2'),
@@ -587,6 +606,21 @@ const FastApiContainerConfigSchema = z.object({
   autoScalingConfig: AutoScalingConfigSchema,
   loadBalancerConfig: LoadBalancerConfigSchema,
   internetFacing: z.boolean().default(true),
+  rdsConfig: RdsInstanceConfig.optional()
+    .default({
+      dbName: 'postgres',
+      username: 'postgres',
+    })
+    .refine(
+      (config) => {
+        return !config.dbHost && !config.passwordSecretId;
+      },
+      {
+        message:
+          'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
+          'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+      },
+    ),
 });
 
 /**
@@ -608,13 +642,6 @@ const OpenSearchNewClusterConfig = z.object({
 
 const OpenSearchExistingClusterConfig = z.object({
   endpoint: z.string(),
-});
-
-const RdsInstanceConfig = z.object({
-  username: z.string(),
-  passwordSecretId: z.string().optional(),
-  dbHost: z.string().optional(),
-  dbName: z.string().optional().default('postgres'),
 });
 
 /**
@@ -740,44 +767,46 @@ const LiteLLMConfig = z.object({
     telemetry: z.boolean().default(false).optional(),
     drop_params: z.boolean().default(true).optional(),
   }),
-  general_settings: z
-    .object({
-      completion_model: z.string().optional(),
-      disable_spend_logs: z.boolean().optional(), // turn off writing each transaction to the db
-      disable_master_key_return: z.boolean().optional(), // turn off returning master key on UI
-      disable_reset_budget: z.boolean().optional(), // turn off reset budget scheduled task
-      enable_jwt_auth: z.boolean().optional(), // allow proxy admin to auth in via jwt tokens with 'litellm_proxy_admin'
-      enforce_user_param: z.boolean().optional(), // requires all openai endpoint requests to have a 'user' param
-      allowed_routes: z.array(z.string()).optional(), // list of allowed proxy API routes a user can access. (JWT only)
-      key_management_system: z.string().optional(), // either google_kms or azure_kms
-      master_key: z.string().optional(),
-      database_url: z.string().optional(),
-      database_connection_pool_limit: z.number().optional(), // default 100
-      database_connection_timeout: z.number().optional(), // default 60s
-      database_type: z.string().optional(),
-      database_args: z
-        .object({
-          billing_mode: z.string().optional(),
-          read_capacity_units: z.number().optional(),
-          write_capacity_units: z.number().optional(),
-          ssl_verify: z.boolean().optional(),
-          region_name: z.string().optional(),
-          user_table_name: z.string().optional(),
-          key_table_name: z.string().optional(),
-          config_table_name: z.string().optional(),
-          spend_table_name: z.string().optional(),
-        })
-        .optional(),
-      otel: z.boolean().optional(),
-      custom_auth: z.string().optional(),
-      max_parallel_requests: z.number().optional(),
-      infer_model_from_keys: z.boolean().optional(),
-      background_health_checks: z.boolean().optional(),
-      health_check_interval: z.number().optional(),
-      alerting: z.array(z.string()).optional(),
-      alerting_threshold: z.number().optional(),
-    })
-    .optional(),
+  general_settings: z.object({
+    completion_model: z.string().optional(),
+    disable_spend_logs: z.boolean().optional(), // turn off writing each transaction to the db
+    disable_master_key_return: z.boolean().optional(), // turn off returning master key on UI
+    disable_reset_budget: z.boolean().optional(), // turn off reset budget scheduled task
+    enable_jwt_auth: z.boolean().optional(), // allow proxy admin to auth in via jwt tokens with 'litellm_proxy_admin'
+    enforce_user_param: z.boolean().optional(), // requires all openai endpoint requests to have a 'user' param
+    allowed_routes: z.array(z.string()).optional(), // list of allowed proxy API routes a user can access. (JWT only)
+    key_management_system: z.string().optional(), // either google_kms or azure_kms
+    master_key: z.string().refine(
+      (key) => key.startsWith('sk-'), // key needed for model management actions
+      'Key string must be defined for model management operations, and it must start with "sk-".' +
+        'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
+    ),
+    database_url: z.string().optional(),
+    database_connection_pool_limit: z.number().optional(), // default 100
+    database_connection_timeout: z.number().optional(), // default 60s
+    database_type: z.string().optional(),
+    database_args: z
+      .object({
+        billing_mode: z.string().optional(),
+        read_capacity_units: z.number().optional(),
+        write_capacity_units: z.number().optional(),
+        ssl_verify: z.boolean().optional(),
+        region_name: z.string().optional(),
+        user_table_name: z.string().optional(),
+        key_table_name: z.string().optional(),
+        config_table_name: z.string().optional(),
+        spend_table_name: z.string().optional(),
+      })
+      .optional(),
+    otel: z.boolean().optional(),
+    custom_auth: z.string().optional(),
+    max_parallel_requests: z.number().optional(),
+    infer_model_from_keys: z.boolean().optional(),
+    background_health_checks: z.boolean().optional(),
+    health_check_interval: z.number().optional(),
+    alerting: z.array(z.string()).optional(),
+    alerting_threshold: z.number().optional(),
+  }),
 });
 
 /**

@@ -22,6 +22,7 @@ import click
 import yaml
 
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
+secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
 
 
 @click.command()  # type: ignore
@@ -51,6 +52,22 @@ def generate_config(filepath: str) -> None:
     config_models = config_contents["model_list"] or []  # ensure config_models is a list and not None
     config_models.extend(litellm_model_params)
     config_contents["model_list"] = config_models
+
+    # Get database connection info
+    db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
+    db_params = json.loads(db_param_response["Parameter"]["Value"])
+    secrets_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
+    password = json.loads(secrets_response["SecretString"])["password"]
+    connection_str = f"postgresql://{db_params['username']}:{password}@{db_params['dbHost']}:5432/{db_params['dbName']}"
+
+    general_settings = config_contents["general_settings"]
+    general_settings.update(
+        {
+            "store_model_in_db": True,
+            "database_url": connection_str,
+        }
+    )
+
     # Write updated config back to original path
     with open(filepath, "w") as fp:
         yaml.safe_dump(config_contents, fp)

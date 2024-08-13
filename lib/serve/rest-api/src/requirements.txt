@@ -9,6 +9,7 @@ fastapi_utils==0.6.0
 gunicorn==22.0.0
 litellm[proxy]==1.38.12
 loguru==0.7.2
+prisma==0.13.1
 pydantic==1.10.15 # must be <2
 PyJWT==2.8.0
 text-generation==0.6.1

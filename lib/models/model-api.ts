@@ -98,20 +98,30 @@ export class ModelsApi extends Construct {
       {
         name: 'handler',
         resource: 'models',
-        description: 'Manage model',
+        description: 'Get models',
         path: 'models',
         method: "GET",
         disambiguator: generateDisambiguator(4),
         existingFunction: lambdaFunction.functionArn
       },
 
-      // create an endpoint just for the docs
+      // create an endpoints for the docs
       {
         name: 'docs',
         resource: 'models',
         description: 'Manage model',
         path: 'docs',
         method: "GET",
+        disableAuthorizer: true
+      },
+      {
+        name: 'handler',
+        resource: 'models',
+        description: 'Get API definition',
+        path: 'openapi.json',
+        method: "GET",
+        disambiguator: generateDisambiguator(4),
+        existingFunction: lambdaFunction.functionArn,
         disableAuthorizer: true
       },
     ];

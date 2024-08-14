@@ -12,6 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""APIGW endpoints for managing models."""
+
 from typing import Annotated
 
 from fastapi import FastAPI, Path, status
@@ -35,6 +37,7 @@ app.add_middleware(AWSAPIGatewayMiddleware)
 @app.post(path="", status_code=status.HTTP_200_OK, include_in_schema=False)
 @app.post(path="/", status_code=status.HTTP_200_OK)
 async def create_model(model: CreateModelRequest) -> CreateModelResponse:
+    """Endpoint to create a model."""
     # TODO add service to create model
     return CreateModelResponse(ModelId=model.ModelId, ModelName=model.ModelName, Status=ModelStatus.CREATING)
 
@@ -42,6 +45,7 @@ async def create_model(model: CreateModelRequest) -> CreateModelResponse:
 @app.get(path="", status_code=status.HTTP_200_OK, include_in_schema=False)
 @app.get(path="/", status_code=status.HTTP_200_OK)
 async def list_models() -> list[ListModelResponse]:
+    """Endpoint to list models."""
     # TODO add service to list models
     return [
         ListModelResponse(ModelId="my_first_model", ModelName="my_first_model", Status=ModelStatus.CREATING),
@@ -53,6 +57,7 @@ async def list_models() -> list[ListModelResponse]:
 async def get_model(
     model_id: Annotated[str, Path(title="The name of the model to get")],
 ) -> DescribeModelResponse:
+    """Endpoint to describe a model."""
     # TODO add service to get model
     return DescribeModelResponse.DUMMY(model_id, model_id)
 
@@ -61,6 +66,7 @@ async def get_model(
 async def put_model(
     model_id: Annotated[str, Path(title="The name of the model to update")], model: UpdateModelRequest
 ) -> DescribeModelResponse:
+    """Endpoint to update a model."""
     # TODO add service to update model
     model.Status = ModelStatus.UPDATING
     return DescribeModelResponse(**model.model_dump())
@@ -70,6 +76,7 @@ async def put_model(
 async def delete_model(
     model_name: Annotated[str, Path(title="The name of the model to delete")],
 ) -> DeleteModelResponse:
+    """Endpoint to delete a model."""
     # TODO add service to delete model
     return DeleteModelResponse(ModelId=model_name, ModelName=model_name)
 

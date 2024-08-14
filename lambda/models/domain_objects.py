@@ -26,8 +26,7 @@ class InferenceContainer(str, Enum):
     """Enum representing the interface container type."""
 
     def __str__(self) -> str:
-        """Converts Enum to a str"""
-
+        """Represent the enum as a string."""
         return str(self.value)
 
     TGI = "TGI"
@@ -40,8 +39,7 @@ class ModelStatus(str, Enum):
     """Enum representing a model status."""
 
     def __str__(self) -> str:
-        """Converts Enum to a str"""
-
+        """Represent the enum as a string."""
         return str(self.value)
 
     CREATING = "CREATING"
@@ -55,8 +53,7 @@ class ModelType(str, Enum):
     """Enum representing a model type."""
 
     def __str__(self) -> str:
-        """Converts Enum to a str"""
-
+        """Represent the enum as a string."""
         return str(self.value)
 
     TEXTGEN = ("TEXTGEN",)
@@ -74,6 +71,7 @@ class MetricConfig(BaseModel):
 
 class LoadBalancerHealthCheckConfig(BaseModel):
     """Health check configuration for a load balancer."""
+
     Path: str
     Interval: int
     Timeout: int
@@ -166,10 +164,13 @@ class DescribeModelResponse(BaseModel):
     AutoScalingConfig: AutoScalingConfig
     LoadBalancerConfig: LoadBalancerConfig
 
-    # todo: remove after endpoints are no longer mocked
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE) -> DescribeModelResponse:
-        """Temporary static function to cleanly/easily create an object while the API is stubbed."""
+    @staticmethod
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE) -> "DescribeModelResponse":
+        """
+        Create a dummy object while the API is stubbed.
 
+        This method is temporary and should be removed once the endpoints are no longer stubbed.
+        """
         return DescribeModelResponse(
             ModelId=model_id,
             ModelName=model_name,
@@ -225,10 +226,13 @@ class UpdateModelRequest(BaseModel):
     AutoScalingConfig: AutoScalingConfig
     LoadBalancerConfig: LoadBalancerConfig
 
-    # todo: remove after endpoints are no longer mocked
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE):
-        """Temporary static function to cleanly/easily create an object while the API is stubbed."""
+    @staticmethod
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE) -> "UpdateModelRequest":
+        """
+        Create a dummy object while the API is stubbed.
 
+        This method is temporary and should be removed once the endpoints are no longer stubbed.
+        """
         return UpdateModelRequest(
             ModelId=model_id,
             ModelName=model_name,

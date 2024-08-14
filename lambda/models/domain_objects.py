@@ -13,10 +13,11 @@
 #   limitations under the License.
 from pydantic import BaseModel
 from pydantic.functional_validators import AfterValidator
-from typing import Optional, Union
+from typing import Union
 from utilities.validators import validate_instance_type
 from enum import Enum
 from typing import Annotated
+
 
 class InferenceContainer(str, Enum):
     def __str__(self):
@@ -32,19 +33,19 @@ class ModelStatus(str, Enum):
     def __str__(self):
         return str(self.value)
 
-    CREATING  = 'CREATING' 
-    ACTIVE   = 'ACTIVE'
-    INACTIVE  = 'INACTIVE'
-    UPDATING = 'UPDATING'
-    DELETED  = 'DELETING'
+    CREATING = "CREATING"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    UPDATING = "UPDATING"
+    DELETED = "DELETING"
 
 
 class ModelType(str, Enum):
     def __str__(self):
         return str(self.value)
 
-    TEXTGEN = 'TEXTGEN',
-    EMBEDDING = 'EMBEDDING'
+    TEXTGEN = ("TEXTGEN",)
+    EMBEDDING = "EMBEDDING"
 
 
 class MetricConfig(BaseModel):
@@ -130,30 +131,30 @@ class DescribeModelResponse(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     # todo: remove after endpoints are no longer mocked
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus=ModelStatus.ACTIVE):
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE):
         return DescribeModelResponse(
             ModelId=model_id,
             ModelName=model_name,
             Status=status,
             Streaming=True,
             ModelType=ModelType.TEXTGEN,
-            InstanceType='m5.large',
+            InstanceType="m5.large",
             InferenceContainer=InferenceContainer.TGI,
             ContainerConfig=ContainerConfig(
-                BaseImage=ContainerConfigImage(BaseImage='ghcr.io/huggingface/text-generation-inference:2.0.1', Path='lib/serve/ecs-model/textgen/tgi', Type='asset'),
+                BaseImage=ContainerConfigImage(
+                    BaseImage="ghcr.io/huggingface/text-generation-inference:2.0.1",
+                    Path="lib/serve/ecs-model/textgen/tgi",
+                    Type="asset",
+                ),
                 SharedMemorySize=2048,
                 HealthCheckConfig=ContainerHealthCheckConfig(
-                    Command=["CMD-SHELL", "exit 0"],
-                    Interval=10,
-                    StartPeriod=30,
-                    Timeout=5,
-                    Retries=5
+                    Command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
                 ),
                 Environment={
-                    'MAX_CONCURRENT_REQUESTS': '128',
-                    'MAX_INPUT_LENGTH': '1024',
-                    'MAX_TOTAL_TOKENS': '2048',
-                }
+                    "MAX_CONCURRENT_REQUESTS": "128",
+                    "MAX_INPUT_LENGTH": "1024",
+                    "MAX_TOTAL_TOKENS": "2048",
+                },
             ),
             AutoScalingConfig=AutoScalingConfig(
                 MinCapacity=1,
@@ -161,21 +162,14 @@ class DescribeModelResponse(BaseModel):
                 Cooldown=420,
                 DefaultInstanceWarmup=180,
                 MetricConfig=MetricConfig(
-                    AlbMetricName='RequestCountPerTarget',
-                    TargetValue=30,
-                    Duration=60,
-                    EstimatedInstanceWarmup=330
-                )
+                    AlbMetricName="RequestCountPerTarget", TargetValue=30, Duration=60, EstimatedInstanceWarmup=330
+                ),
             ),
             LoadBalancerConfig=LoadBalancerConfig(
                 HealthCheckConfig=LoadBalancerHealthCheckConfig(
-                    Path="/health",
-                    Interval=60,
-                    Timeout=30,
-                    HealthyThresholdCount=2,
-                    UnhealthyThresholdCount=10
+                    Path="/health", Interval=60, Timeout=30, HealthyThresholdCount=2, UnhealthyThresholdCount=10
                 )
-            )
+            ),
         )
 
 
@@ -192,30 +186,30 @@ class UpdateModelRequest(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     # todo: remove after endpoints are no longer mocked
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus=ModelStatus.ACTIVE):
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE):
         return UpdateModelRequest(
             ModelId=model_id,
             ModelName=model_name,
             Status=status,
             Streaming=True,
             ModelType=ModelType.TEXTGEN,
-            InstanceType='m5.large',
+            InstanceType="m5.large",
             InferenceContainer=InferenceContainer.TGI,
             ContainerConfig=ContainerConfig(
-                BaseImage=ContainerConfigImage(BaseImage='ghcr.io/huggingface/text-generation-inference:2.0.1', Path='lib/serve/ecs-model/textgen/tgi', Type='asset'),
+                BaseImage=ContainerConfigImage(
+                    BaseImage="ghcr.io/huggingface/text-generation-inference:2.0.1",
+                    Path="lib/serve/ecs-model/textgen/tgi",
+                    Type="asset",
+                ),
                 SharedMemorySize=2048,
                 HealthCheckConfig=ContainerHealthCheckConfig(
-                    Command=["CMD-SHELL", "exit 0"],
-                    Interval=10,
-                    StartPeriod=30,
-                    Timeout=5,
-                    Retries=5
+                    Command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
                 ),
                 Environment={
-                    'MAX_CONCURRENT_REQUESTS': '128',
-                    'MAX_INPUT_LENGTH': '1024',
-                    'MAX_TOTAL_TOKENS': '2048',
-                }
+                    "MAX_CONCURRENT_REQUESTS": "128",
+                    "MAX_INPUT_LENGTH": "1024",
+                    "MAX_TOTAL_TOKENS": "2048",
+                },
             ),
             AutoScalingConfig=AutoScalingConfig(
                 MinCapacity=1,
@@ -223,21 +217,14 @@ class UpdateModelRequest(BaseModel):
                 Cooldown=420,
                 DefaultInstanceWarmup=180,
                 MetricConfig=MetricConfig(
-                    AlbMetricName='RequestCountPerTarget',
-                    TargetValue=30,
-                    Duration=60,
-                    EstimatedInstanceWarmup=330
-                )
+                    AlbMetricName="RequestCountPerTarget", TargetValue=30, Duration=60, EstimatedInstanceWarmup=330
+                ),
             ),
             LoadBalancerConfig=LoadBalancerConfig(
                 HealthCheckConfig=LoadBalancerHealthCheckConfig(
-                    Path="/health",
-                    Interval=60,
-                    Timeout=30,
-                    HealthyThresholdCount=2,
-                    UnhealthyThresholdCount=10
+                    Path="/health", Interval=60, Timeout=30, HealthyThresholdCount=2, UnhealthyThresholdCount=10
                 )
-            )
+            ),
         )
 
 

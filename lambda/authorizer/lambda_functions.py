@@ -50,7 +50,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])  # type: ignore
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])
         allow_policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
 
         if requested_resource.startswith("/models") and not is_admin_user:
@@ -125,7 +125,7 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Union
 
 def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str):
     """Check if the user is an admin."""
-    props = jwt_groups_property.split('.')
+    props = jwt_groups_property.split(".")
     current_node = jwt_data
     for prop in props:
         if prop in current_node:

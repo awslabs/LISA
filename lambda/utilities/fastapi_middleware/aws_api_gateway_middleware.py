@@ -13,6 +13,7 @@
 #   limitations under the License.
 from starlette.middleware.base import Request, Response, BaseHTTPMiddleware, RequestResponseEndpoint, ASGIApp
 
+
 class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
     """
     Handles the FastAPI path and root_path dynamically from the ASGI request data.
@@ -26,9 +27,7 @@ class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.app = app
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Process the request and call the next middleware"""
 
         root_path = request.scope["root_path"]

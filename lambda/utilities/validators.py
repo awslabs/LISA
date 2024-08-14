@@ -15,7 +15,7 @@ import botocore.session
 
 sess = botocore.session.Session()
 
+
 def validate_instance_type(type: str) -> str:
-    assert type in  sess.get_service_model('ec2').shape_for('InstanceType').enum
+    assert type in sess.get_service_model("ec2").shape_for("InstanceType").enum
     return type
-    

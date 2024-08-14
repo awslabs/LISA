@@ -20,7 +20,8 @@ sess = botocore.session.Session()
 
 
 def validate_instance_type(type: str) -> str:
-    """Validates type is a valid EC2 instance type."""
+    """Validate that the type is a valid EC2 instance type."""
+    if type in sess.get_service_model("ec2").shape_for("InstanceType").enum:
+        return type
 
-    assert type in sess.get_service_model("ec2").shape_for("InstanceType").enum
-    return type
+    raise ValueError("Invalid EC2 instance type.")

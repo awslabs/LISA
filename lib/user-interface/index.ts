@@ -182,9 +182,9 @@ export class UserInterfaceStack extends Stack {
     // Website bucket deployment
     // Copy auth and LISA-Serve info to UI deployment bucket
     const appEnvConfig = {
-      AUTHORITY: config.authConfig.authority,
-      CLIENT_ID: config.authConfig.clientId,
-      CUSTOM_SCOPES: config.authConfig.additionalScopes,
+      AUTHORITY: config.authConfig!.authority,
+      CLIENT_ID: config.authConfig!.clientId,
+      CUSTOM_SCOPES: config.authConfig!.additionalScopes,
       RESTAPI_URI: StringParameter.fromStringParameterName(
         this,
         createCdkId(['LisaRestApiUri', 'StringParameter']),

@@ -34,6 +34,8 @@ dev:
   accountNumbersEcr:
     - 012345678901
   deployRag: true
+  deployChat: true
+  deployUi: true
   lambdaConfig:
     pythonRuntime: PYTHON_3_10
     logLevel: DEBUG
@@ -78,6 +80,7 @@ dev:
         targetValue: 1000
         duration: 60
         estimatedInstanceWarmup: 30
+    internetFacing: true
     loadBalancerConfig:
       sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
       healthCheckConfig:

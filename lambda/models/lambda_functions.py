@@ -21,12 +21,14 @@ from mangum import Mangum
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (
+    ContainerConfig,
     CreateModelRequest,
     CreateModelResponse,
     DeleteModelResponse,
     DescribeModelResponse,
     ListModelResponse,
     ModelStatus,
+    ModelType,
     UpdateModelRequest,
 )
 
@@ -48,8 +50,24 @@ async def list_models() -> list[ListModelResponse]:
     """Endpoint to list models."""
     # TODO add service to list models
     return [
-        ListModelResponse(ModelId="my_first_model", ModelName="my_first_model", Status=ModelStatus.CREATING),
-        ListModelResponse(ModelId="my_second_model", ModelName="my_second_model", Status=ModelStatus.ACTIVE),
+        ListModelResponse(
+            ModelId="my_first_model",
+            ModelName="my_first_model",
+            ModelType=ModelType.TEXTGEN,
+            Status=ModelStatus.CREATING,
+            Streaming=True,
+            ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
+            ContainerConfig=ContainerConfig.DUMMY(),
+        ),
+        ListModelResponse(
+            ModelId="my_second_model",
+            ModelName="my_second_model",
+            ModelType=ModelType.TEXTGEN,
+            Status=ModelStatus.ACTIVE,
+            Streaming=True,
+            ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
+            ContainerConfig=ContainerConfig.DUMMY(),
+        ),
     ]
 
 
@@ -70,6 +88,36 @@ async def put_model(
     # TODO add service to update model
     model.Status = ModelStatus.UPDATING
     return DescribeModelResponse(**model.model_dump())
+
+
+@app.put(path="/{model_id}/start", status_code=status.HTTP_200_OK)
+async def start_model(model_id: Annotated[str, Path(title="The name of the model to start")]) -> DescribeModelResponse:
+    """Endpoint to start a model."""
+    # TODO add service to update model
+    return ListModelResponse(
+        ModelId=model_id,
+        ModelName=model_id,
+        ModelType=ModelType.TEXTGEN,
+        Status=ModelStatus.CREATING,
+        Streaming=True,
+        ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
+        ContainerConfig=ContainerConfig.DUMMY(),
+    )
+
+
+@app.put(path="/{model_id}/stop", status_code=status.HTTP_200_OK)
+async def stop_model(model_id: Annotated[str, Path(title="The name of the model to stop")]) -> DescribeModelResponse:
+    """Endpoint to stop a model."""
+    # TODO add service to update model
+    return ListModelResponse(
+        ModelId=model_id,
+        ModelName=model_id,
+        ModelType=ModelType.TEXTGEN,
+        Status=ModelStatus.INACTIVE,
+        Streaming=True,
+        ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
+        ContainerConfig=ContainerConfig.DUMMY(),
+    )
 
 
 @app.delete(path="/{model_name}", status_code=status.HTTP_200_OK)

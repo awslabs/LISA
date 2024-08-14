@@ -121,6 +121,30 @@ class ContainerConfig(BaseModel):
     HealthCheckConfig: ContainerHealthCheckConfig
     Environment: dict[str, str]
 
+    @staticmethod
+    def DUMMY() -> "ContainerConfig":
+        """
+        Create a dummy object while the API is stubbed.
+
+        This method is temporary and should be removed once the endpoints are no longer stubbed.
+        """
+        return ContainerConfig(
+            BaseImage=ContainerConfigImage(
+                BaseImage="ghcr.io/huggingface/text-generation-inference:2.0.1",
+                Path="lib/serve/ecs-model/textgen/tgi",
+                Type="asset",
+            ),
+            SharedMemorySize=2048,
+            HealthCheckConfig=ContainerHealthCheckConfig(
+                Command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
+            ),
+            Environment={
+                "MAX_CONCURRENT_REQUESTS": "128",
+                "MAX_INPUT_LENGTH": "1024",
+                "MAX_TOTAL_TOKENS": "2048",
+            },
+        )
+
 
 class CreateModelRequest(BaseModel):
     """Request object for creating a new model."""
@@ -150,6 +174,10 @@ class ListModelResponse(BaseModel):
     ModelId: str
     ModelName: str
     Status: ModelStatus
+    ModelType: ModelType
+    Streaming: bool
+    ModelUrl: str
+    ContainerConfig: ContainerConfig
 
 
 class DescribeModelResponse(BaseModel):

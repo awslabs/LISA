@@ -14,12 +14,13 @@
   limitations under the License.
 */
 
-import { AuthProviderProps } from 'react-oidc-context';
+import { ReducersMapObject } from '@reduxjs/toolkit';
 
-export const OidcConfig: AuthProviderProps = {
-  authority: window.env.AUTHORITY,
-  client_id: window.env.CLIENT_ID,
-  redirect_uri: window.location.toString(),
-  post_logout_redirect_uri: window.location.toString(),
-  scope: 'openid profile email' + (window.env.CUSTOM_SCOPES ? ' ' + window.env.CUSTOM_SCOPES.join(' ') : ''),
+import userReducer from './user.reducer';
+
+
+const rootReducer: ReducersMapObject = {
+  user: userReducer,
 };
+
+export default rootReducer;

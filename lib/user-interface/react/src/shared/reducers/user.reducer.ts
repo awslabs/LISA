@@ -14,12 +14,26 @@
   limitations under the License.
 */
 
-import { AuthProviderProps } from 'react-oidc-context';
+import { createSlice } from '@reduxjs/toolkit';
+import { IUser } from '../model/user.model';
 
-export const OidcConfig: AuthProviderProps = {
-  authority: window.env.AUTHORITY,
-  client_id: window.env.CLIENT_ID,
-  redirect_uri: window.location.toString(),
-  post_logout_redirect_uri: window.location.toString(),
-  scope: 'openid profile email' + (window.env.CUSTOM_SCOPES ? ' ' + window.env.CUSTOM_SCOPES.join(' ') : ''),
+const initialState = {
+    info: undefined as IUser
 };
+
+export const User = createSlice({
+    name: 'user',
+    initialState,
+    reducers: {
+        updateUserState: (state, action) => {
+            state.info = action.payload;
+        }
+    },
+    extraReducers () {}
+});
+
+export const selectCurrentUserIsAdmin = (state: any) => state.user.info?.isAdmin ?? false;
+
+export const { updateUserState } = User.actions
+
+export default User.reducer;

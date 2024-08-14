@@ -487,7 +487,9 @@ Create `lib/user-interface/react/public/env.js` file with the following contents
 window.env = {
   AUTHORITY: '<Your IdP URL here>',
   CLIENT_ID: '<Your IdP Client Id Here>',
-  "CUSTOM_SCOPES":[<add your optional list of custom scopes to pull groups from your IdP here>],
+  JWT_GROUPS_PROP: '<The full path (period delimited) to the property for the groups that a user is a member of in the JWT token. For Cognito: cognito:groups>',
+  ADMIN_GROUP: '<The admin group you would like LISA to check the JWT token for>',
+  CUSTOM_SCOPES:[<add your optional list of custom scopes to pull groups from your IdP here>],
   // Alternatively you can set this to be your REST api elb endpoint
   RESTAPI_URI: 'http://localhost:8080/',
   RESTAPI_VERSION: 'v2',

@@ -20,12 +20,15 @@ import { useNavigate, useHref } from 'react-router-dom';
 import { applyMode, applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
+import {signOut,  useAppSelector } from '../config/store';
+import { selectCurrentUserIsAdmin } from '../shared/reducers/user.reducer';
 
 applyDensity(Density.Comfortable);
 
 function Topbar() {
   const navigate = useNavigate();
   const auth = useAuth();
+  const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
 
   const [isDarkMode, setIsDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -63,6 +66,16 @@ function Topbar() {
         },
       }}
       utilities={[
+        ...isUserAdmin ? [{
+          type: 'button',
+          variant: 'link',
+          text: `Model Management`,
+          disableUtilityCollapse: false,
+          external: false,
+          onClick: () => {
+            navigate('/model-management');
+          },
+        }] :  [],
         {
           type: 'button',
           variant: 'link',
@@ -82,6 +95,7 @@ function Topbar() {
                 auth.signinRedirect({ redirect_uri: window.location.toString() });
                 break;
               case 'signout':
+                await signOut();
                 await auth.signoutSilent();
                 break;
               default:

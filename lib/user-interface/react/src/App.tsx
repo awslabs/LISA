@@ -25,6 +25,9 @@ import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';
 import Topbar from './components/Topbar';
 import SystemBanner from './components/system-banner/system-banner';
+import { useAppSelector } from './config/store';
+import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
+import ModelManagement from './pages/ModelManagement';
 
 const PrivateRoute = ({ children }) => {
   const auth = useAuth();
@@ -35,6 +38,18 @@ const PrivateRoute = ({ children }) => {
   } else {
     return <Navigate to={import.meta.env.BASE_URL} />;
   }
+};
+
+const AdminRoute = ({ children }) => {
+    const auth = useAuth();
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    if (auth.isAuthenticated && isUserAdmin) {
+        return children;
+    } else if (auth.isLoading) {
+        return <Spinner />;
+    } else {
+        return <Navigate to={import.meta.env.BASE_URL} />;
+    }
 };
 
 function App() {
@@ -84,6 +99,14 @@ function App() {
                   <Chatbot setTools={setTools} />
                 </PrivateRoute>
               }
+            />
+            <Route
+                path="model-management"
+                element={
+                    <AdminRoute>
+                        <ModelManagement setTools={setTools} />
+                    </AdminRoute>
+                }
             />
           </Routes>
         }

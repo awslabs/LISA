@@ -16,11 +16,13 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
 import './index.css';
 import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
 import { ModelTypes } from './components/types';
+import getStore from './config/store';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -28,6 +30,8 @@ declare global {
     env: {
       AUTHORITY: string;
       CLIENT_ID: string;
+      ADMIN_GROUP?: string;
+      JWT_GROUPS_PROP?: string;
       CUSTOM_SCOPES: string[];
       RESTAPI_URI: string;
       RESTAPI_VERSION: string;
@@ -49,8 +53,12 @@ declare global {
   }
 }
 
+const store = getStore();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AppConfigured />
+    <Provider store={store}>
+      <AppConfigured />
+    </Provider>
   </React.StrictMode>,
 );

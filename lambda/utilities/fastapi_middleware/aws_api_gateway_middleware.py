@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Middleware for FastAPI that dynamically sets the root_path for Lambdas proxied through APIGW"""
+"""Middleware for FastAPI that dynamically sets the root_path for Lambdas proxied through APIGW."""
 
 from starlette.middleware.base import ASGIApp, BaseHTTPMiddleware, Request, RequestResponseEndpoint, Response
 
@@ -25,15 +25,14 @@ class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
     and root_path.
     https://github.com/jordaneremieff/mangum/issues/147
     """
+
     def __init__(self, app: ASGIApp) -> None:
         """Initialize the middleware."""
-
         super().__init__(app)
         self.app = app
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Process the request and call the next middleware."""
-
         root_path = request.scope["root_path"]
         if root_path:
             # Assume set correctly in this case

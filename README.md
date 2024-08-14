@@ -107,7 +107,7 @@ In the config.yaml file, you will find a block for the `authConfig`. This config
 OpenID Connect identity provider (IdP) that will be used for authenticating users who want to use LISA features, such as the Chat UI. Common usage patterns
 include using Cognito within your AWS Account or using [Keycloak](https://www.keycloak.org/) configured by your organization. The `authConfig` will require
 four values and an optional fifth: the `authority`, the `clientId`, the `adminGroup` for writing and updating available models, the `jwtGroupsProperty` which
-is the path to the field that contains the list of groups a user is a part of in the returned JWT token ex: `cognito:groups` for cognito or `realm_access.roles` 
+is the path to the field that contains the list of groups a user is a part of in the returned JWT token ex: `cognito:groups` for cognito or `realm_access.roles`  
 for Keycloak. The optional property is `additionalScopes` which is a list of extra scopes that might be required to request the needed group membership information.
 
 #### Cognito

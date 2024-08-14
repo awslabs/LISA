@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import crypto from 'node:crypto'
+import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
@@ -130,7 +130,7 @@ export class ModelsApi extends Construct {
     ];
 
     apis.forEach((f) => {
-        registerAPIEndpoint(
+      registerAPIEndpoint(
         this,
         restApi,
         authorizer,

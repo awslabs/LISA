@@ -11,10 +11,11 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-from pydantic import BaseModel
-from pydantic.functional_validators import AfterValidator
 from enum import Enum
 from typing import Annotated, Union
+
+from pydantic import BaseModel
+from pydantic.functional_validators import AfterValidator
 from utilities.validators import validate_instance_type
 
 

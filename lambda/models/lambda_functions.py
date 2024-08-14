@@ -17,11 +17,12 @@ from typing import Annotated
 from fastapi import FastAPI, Path, status
 from mangum import Mangum
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
+
 from .domain_objects import (
     CreateModelRequest,
     CreateModelResponse,
-    DescribeModelResponse,
     DeleteModelResponse,
+    DescribeModelResponse,
     ListModelResponse,
     ModelStatus,
     UpdateModelRequest,

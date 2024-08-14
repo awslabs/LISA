@@ -58,7 +58,10 @@ def generate_config(filepath: str) -> None:
     db_params = json.loads(db_param_response["Parameter"]["Value"])
     secrets_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
     password = json.loads(secrets_response["SecretString"])["password"]
-    connection_str = f"postgresql://{db_params['username']}:{password}@{db_params['dbHost']}:5432/{db_params['dbName']}"
+    connection_str = (
+        f"postgresql://{db_params['username']}:{password}@{db_params['dbHost']}:{db_params['dbPort']}"
+        f"/{db_params['dbName']}"
+    )
 
     general_settings = config_contents["general_settings"]
     general_settings.update(

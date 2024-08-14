@@ -93,7 +93,7 @@ export class LisaServeApplicationStack extends Stack {
     vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
       litellmDbSg.connections.allowFrom(
         Peer.ipv4(subnet.ipv4CidrBlock),
-        Port.tcp(5432),
+        Port.tcp(rdsConfig.dbPort),
         'Allow REST API private subnets to communicate with LiteLLM database',
       );
     });
@@ -120,6 +120,7 @@ export class LisaServeApplicationStack extends Stack {
         passwordSecretId: litellmDbPasswordSecret.secretName,
         dbHost: litellmDb.dbInstanceEndpointAddress,
         dbName: rdsConfig.dbName,
+        dbPort: rdsConfig.dbPort,
       }),
     });
     litellmDbPasswordSecret.grantRead(restApi.taskRole);

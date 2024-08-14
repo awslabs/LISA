@@ -80,7 +80,7 @@ def get_vector_store_client(store: str, index: str, embeddings: Embeddings) -> V
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",
             host=connection_info["dbHost"],
-            port=5432,
+            port=connection_info["dbPort"],
             database=connection_info["dbName"],
             user=connection_info["username"],
             password=password,

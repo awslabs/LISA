@@ -581,12 +581,14 @@ const AuthConfigSchema = z.object({
  * @property {string} passwordSecretId - SecretsManager Secret ID that stores an existing database password.
  * @property {string} dbHost - Database hostname for existing database instance.
  * @property {string} dbName - Database name for existing database instance.
+ * @property {number} dbPort - Port to open on the database instance.
  */
 const RdsInstanceConfig = z.object({
   username: z.string().optional().default('postgres'),
   passwordSecretId: z.string().optional(),
   dbHost: z.string().optional(),
   dbName: z.string().optional().default('postgres'),
+  dbPort: z.number().optional().default(5432),
 });
 
 /**

@@ -11,6 +11,9 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+"""Domain objects for interacting with the model endpoints."""
+
 from enum import Enum
 from typing import Annotated, Union
 
@@ -20,7 +23,11 @@ from utilities.validators import validate_instance_type
 
 
 class InferenceContainer(str, Enum):
+    """Enum representing the interface container type."""
+
     def __str__(self) -> str:
+        """Converts Enum to a str"""
+
         return str(self.value)
 
     TGI = "TGI"
@@ -30,18 +37,26 @@ class InferenceContainer(str, Enum):
 
 
 class ModelStatus(str, Enum):
-    def __str__(self):
+    """Enum representing a model status."""
+
+    def __str__(self) -> str:
+        """Converts Enum to a str"""
+
         return str(self.value)
 
     CREATING = "CREATING"
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
     UPDATING = "UPDATING"
-    DELETED = "DELETING"
+    DELETING = "DELETING"
 
 
 class ModelType(str, Enum):
-    def __str__(self):
+    """Enum representing a model type."""
+
+    def __str__(self) -> str:
+        """Converts Enum to a str"""
+
         return str(self.value)
 
     TEXTGEN = ("TEXTGEN",)
@@ -49,6 +64,8 @@ class ModelType(str, Enum):
 
 
 class MetricConfig(BaseModel):
+    """Metric configuration for autoscaling."""
+
     AlbMetricName: str
     TargetValue: int
     Duration: int
@@ -56,6 +73,7 @@ class MetricConfig(BaseModel):
 
 
 class LoadBalancerHealthCheckConfig(BaseModel):
+    """Health check configuration for a load balancer."""
     Path: str
     Interval: int
     Timeout: int
@@ -64,10 +82,14 @@ class LoadBalancerHealthCheckConfig(BaseModel):
 
 
 class LoadBalancerConfig(BaseModel):
+    """Load balancer configuration."""
+
     HealthCheckConfig: LoadBalancerHealthCheckConfig
 
 
 class AutoScalingConfig(BaseModel):
+    """Autoscaling configuration."""
+
     MinCapacity: int
     MaxCapacity: int
     Cooldown: int
@@ -76,6 +98,8 @@ class AutoScalingConfig(BaseModel):
 
 
 class ContainerHealthCheckConfig(BaseModel):
+    """Health check configuration for a container."""
+
     Command: Union[str, list[str]]
     Interval: int
     StartPeriod: int
@@ -84,12 +108,16 @@ class ContainerHealthCheckConfig(BaseModel):
 
 
 class ContainerConfigImage(BaseModel):
+    """Image image configuration for a container."""
+
     BaseImage: str
     Path: str
     Type: str
 
 
 class ContainerConfig(BaseModel):
+    """Container configuration."""
+
     BaseImage: ContainerConfigImage
     SharedMemorySize: int
     HealthCheckConfig: ContainerHealthCheckConfig
@@ -97,6 +125,8 @@ class ContainerConfig(BaseModel):
 
 
 class CreateModelRequest(BaseModel):
+    """Request object for creating a new model."""
+
     ModelId: str
     ModelName: str
     Streaming: bool
@@ -109,18 +139,24 @@ class CreateModelRequest(BaseModel):
 
 
 class CreateModelResponse(BaseModel):
+    """Response object when creating a model."""
+
     ModelId: str
     ModelName: str
     Status: ModelStatus
 
 
 class ListModelResponse(BaseModel):
+    """Response object when listing a models."""
+
     ModelId: str
     ModelName: str
     Status: ModelStatus
 
 
 class DescribeModelResponse(BaseModel):
+    """Response object when describing a model."""
+
     ModelId: str
     ModelName: str
     Status: ModelStatus
@@ -131,7 +167,9 @@ class DescribeModelResponse(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     # todo: remove after endpoints are no longer mocked
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE):
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE) -> DescribeModelResponse:
+        """Temporary static function to cleanly/easily create an object while the API is stubbed."""
+
         return DescribeModelResponse(
             ModelId=model_id,
             ModelName=model_name,
@@ -174,6 +212,8 @@ class DescribeModelResponse(BaseModel):
 
 
 class UpdateModelRequest(BaseModel):
+    """Requset object when updating a model."""
+
     ModelId: str
     ModelName: str
     Status: ModelStatus
@@ -187,6 +227,8 @@ class UpdateModelRequest(BaseModel):
 
     # todo: remove after endpoints are no longer mocked
     def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE):
+        """Temporary static function to cleanly/easily create an object while the API is stubbed."""
+
         return UpdateModelRequest(
             ModelId=model_id,
             ModelName=model_name,
@@ -229,6 +271,8 @@ class UpdateModelRequest(BaseModel):
 
 
 class DeleteModelResponse(BaseModel):
+    """Response object when deleting a model."""
+
     ModelId: str
     ModelName: str
-    Status: ModelStatus = ModelStatus.DELETED
+    Status: ModelStatus = ModelStatus.DELETING

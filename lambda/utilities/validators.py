@@ -11,11 +11,16 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+"""Functional validators for use with Pydantic."""
+
 import botocore.session
 
 sess = botocore.session.Session()
 
 
 def validate_instance_type(type: str) -> str:
+    """Validates type is a valid EC2 instance type."""
+
     assert type in sess.get_service_model("ec2").shape_for("InstanceType").enum
     return type

@@ -11,18 +11,23 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+"""Middleware for FastAPI that dynamically sets the root_path for Lambdas proxied through APIGW"""
+
 from starlette.middleware.base import ASGIApp, BaseHTTPMiddleware, Request, RequestResponseEndpoint, Response
 
 
 class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
     """
     Handles the FastAPI path and root_path dynamically from the ASGI request data.
+
     Mangum injects the AWS event data which we can use to dynamically set the path
     and root_path.
     https://github.com/jordaneremieff/mangum/issues/147
     """
     def __init__(self, app: ASGIApp) -> None:
-        """Initialize the middleware"""
+        """Initialize the middleware."""
+
         super().__init__(app)
         self.app = app
 

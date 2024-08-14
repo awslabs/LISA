@@ -19,6 +19,9 @@ from enum import Enum
 from typing import Annotated
 
 class InferenceContainer(str, Enum):
+    def __str__(self):
+        return str(self.value)
+
     TGI = "TGI"
     TEI = "TEI"
     VLLM = "VLLM"
@@ -26,10 +29,22 @@ class InferenceContainer(str, Enum):
 
 
 class ModelStatus(str, Enum):
-    CREATING = 'CREATING'
-    READY    = 'READY'
+    def __str__(self):
+        return str(self.value)
+
+    CREATING  = 'CREATING' 
+    ACTIVE   = 'ACTIVE'
+    INACTIVE  = 'INACTIVE'
     UPDATING = 'UPDATING'
-    DELETED  = 'DELETED'
+    DELETED  = 'DELETING'
+
+
+class ModelType(str, Enum):
+    def __str__(self):
+        return str(self.value)
+
+    TEXTGEN = 'TEXTGEN',
+    EMBEDDING = 'EMBEDDING'
 
 
 class MetricConfig(BaseModel):
@@ -57,7 +72,6 @@ class AutoScalingConfig(BaseModel):
     Cooldown: int
     DefaultInstanceWarmup: int
     MetricConfig: MetricConfig
-    LoadBalancerConfig: LoadBalancerConfig
 
 
 class ContainerHealthCheckConfig(BaseModel):
@@ -81,39 +95,153 @@ class ContainerConfig(BaseModel):
     Environment: dict[str, str]
 
 
+class CreateModelRequest(BaseModel):
+    ModelId: str
+    ModelName: str
+    Streaming: bool
+    ModelType: ModelType
+    InferenceContainer: InferenceContainer
+    InstanceType: Annotated[str, AfterValidator(validate_instance_type)]
+    ContainerConfig: ContainerConfig
+    AutoScalingConfig: AutoScalingConfig
+    LoadBalancerConfig: LoadBalancerConfig
+
+
 class CreateModelResponse(BaseModel):
+    ModelId: str
     ModelName: str
     Status: ModelStatus
 
 
-class CreateModelRequest(BaseModel):
-    ModelName: str
+class ListModelResponse(BaseModel):
     ModelId: str
-    InferenceContainer: Optional[InferenceContainer] = None
-    InstanceType: Annotated[str, AfterValidator(validate_instance_type)]
-    ContainerConfig: Optional[ContainerConfig] = None
-    AutoScalingConfig: Optional[AutoScalingConfig] = None
-
-
-class GetModelResponse(BaseModel):
     ModelName: str
-    Status: Optional[ModelStatus] = None
-    ModelId: Optional[str] = None
-    InferenceContainer: Optional[InferenceContainer] = None
-    InstanceType: Optional[str] = None
-    ContainerConfig: Optional[ContainerConfig] = None
-    AutoScalingConfig: Optional[AutoScalingConfig] = None
+    Status: ModelStatus
+
+
+class DescribeModelResponse(BaseModel):
+    ModelId: str
+    ModelName: str
+    Status: ModelStatus
+    InferenceContainer: InferenceContainer
+    InstanceType: str
+    ContainerConfig: ContainerConfig
+    AutoScalingConfig: AutoScalingConfig
+    LoadBalancerConfig: LoadBalancerConfig
+
+    # todo: remove after endpoints are no longer mocked
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus=ModelStatus.ACTIVE):
+        return DescribeModelResponse(
+            ModelId=model_id,
+            ModelName=model_name,
+            Status=status,
+            Streaming=True,
+            ModelType=ModelType.TEXTGEN,
+            InstanceType='m5.large',
+            InferenceContainer=InferenceContainer.TGI,
+            ContainerConfig=ContainerConfig(
+                BaseImage=ContainerConfigImage(BaseImage='ghcr.io/huggingface/text-generation-inference:2.0.1', Path='lib/serve/ecs-model/textgen/tgi', Type='asset'),
+                SharedMemorySize=2048,
+                HealthCheckConfig=ContainerHealthCheckConfig(
+                    Command=["CMD-SHELL", "exit 0"],
+                    Interval=10,
+                    StartPeriod=30,
+                    Timeout=5,
+                    Retries=5
+                ),
+                Environment={
+                    'MAX_CONCURRENT_REQUESTS': '128',
+                    'MAX_INPUT_LENGTH': '1024',
+                    'MAX_TOTAL_TOKENS': '2048',
+                }
+            ),
+            AutoScalingConfig=AutoScalingConfig(
+                MinCapacity=1,
+                MaxCapacity=1,
+                Cooldown=420,
+                DefaultInstanceWarmup=180,
+                MetricConfig=MetricConfig(
+                    AlbMetricName='RequestCountPerTarget',
+                    TargetValue=30,
+                    Duration=60,
+                    EstimatedInstanceWarmup=330
+                )
+            ),
+            LoadBalancerConfig=LoadBalancerConfig(
+                HealthCheckConfig=LoadBalancerHealthCheckConfig(
+                    Path="/health",
+                    Interval=60,
+                    Timeout=30,
+                    HealthyThresholdCount=2,
+                    UnhealthyThresholdCount=10
+                )
+            )
+        )
 
 
 class UpdateModelRequest(BaseModel):
+    ModelId: str
     ModelName: str
-    ModelId: Optional[str] = None
-    InferenceContainer: Optional[InferenceContainer] = None
-    InstanceType: Annotated[str, AfterValidator(validate_instance_type)]
-    ContainerConfig: Optional[ContainerConfig] = None
-    AutoScalingConfig: Optional[AutoScalingConfig] = None
+    Status: ModelStatus
+    Streaming: bool
+    ModelType: ModelType
+    InstanceType: str
+    InferenceContainer: InferenceContainer
+    ContainerConfig: ContainerConfig
+    AutoScalingConfig: AutoScalingConfig
+    LoadBalancerConfig: LoadBalancerConfig
+
+    # todo: remove after endpoints are no longer mocked
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus=ModelStatus.ACTIVE):
+        return UpdateModelRequest(
+            ModelId=model_id,
+            ModelName=model_name,
+            Status=status,
+            Streaming=True,
+            ModelType=ModelType.TEXTGEN,
+            InstanceType='m5.large',
+            InferenceContainer=InferenceContainer.TGI,
+            ContainerConfig=ContainerConfig(
+                BaseImage=ContainerConfigImage(BaseImage='ghcr.io/huggingface/text-generation-inference:2.0.1', Path='lib/serve/ecs-model/textgen/tgi', Type='asset'),
+                SharedMemorySize=2048,
+                HealthCheckConfig=ContainerHealthCheckConfig(
+                    Command=["CMD-SHELL", "exit 0"],
+                    Interval=10,
+                    StartPeriod=30,
+                    Timeout=5,
+                    Retries=5
+                ),
+                Environment={
+                    'MAX_CONCURRENT_REQUESTS': '128',
+                    'MAX_INPUT_LENGTH': '1024',
+                    'MAX_TOTAL_TOKENS': '2048',
+                }
+            ),
+            AutoScalingConfig=AutoScalingConfig(
+                MinCapacity=1,
+                MaxCapacity=1,
+                Cooldown=420,
+                DefaultInstanceWarmup=180,
+                MetricConfig=MetricConfig(
+                    AlbMetricName='RequestCountPerTarget',
+                    TargetValue=30,
+                    Duration=60,
+                    EstimatedInstanceWarmup=330
+                )
+            ),
+            LoadBalancerConfig=LoadBalancerConfig(
+                HealthCheckConfig=LoadBalancerHealthCheckConfig(
+                    Path="/health",
+                    Interval=60,
+                    Timeout=30,
+                    HealthyThresholdCount=2,
+                    UnhealthyThresholdCount=10
+                )
+            )
+        )
 
 
 class DeleteModelResponse(BaseModel):
+    ModelId: str
     ModelName: str
     Status: ModelStatus = ModelStatus.DELETED

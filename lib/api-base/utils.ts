@@ -54,6 +54,8 @@ export type PythonLambdaFunction = {
   };
   timeout?: Duration;
   disambiguator?: string;
+  existingFunction?: string;
+  disableAuthorizer?: boolean
 };
 
 /**
@@ -68,7 +70,6 @@ export type PythonLambdaFunction = {
  * @param role the IAM execution role of this Lambda function
  * @param vpc the VPC this Lambda function will exist inside
  * @param securityGroups security groups for Lambdas
- * @param fromArn an existing lambda function that should be used instead of creating a new one
  * @returns
  */
 export function registerAPIEndpoint(
@@ -82,18 +83,17 @@ export function registerAPIEndpoint(
   role?: IRole,
   vpc?: IVpc,
   securityGroups?: ISecurityGroup[],
-  fromArn?: string
 ): IFunction {
   const functionId = `${funcDef.id || [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')}`;
   const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
   let handler;
 
-  if (fromArn) {
-    handler = Function.fromFunctionArn(scope, functionId, fromArn);
+  if (funcDef.existingFunction) {
+    handler = Function.fromFunctionArn(scope, functionId, funcDef.existingFunction);
 
     // create a CFN L1 primitive because `handler.addPermission` doesn't behave as expected
     // https://stackoverflow.com/questions/71075361/aws-cdk-lambda-resource-based-policy-for-a-function-with-an-alias
-    const cfnPermission = new CfnPermission(scope, `LambdaInvokeAccessRemote-${functionId}`, {
+    new CfnPermission(scope, `LambdaInvokeAccessRemote-${functionId}`, {
       action: 'lambda:InvokeFunction',
       sourceArn: api.arnForExecuteApi(funcDef.method, `/${funcDef.path}`),
       functionName: handler.functionName,
@@ -118,10 +118,14 @@ export function registerAPIEndpoint(
     });
   }
 
-  functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
-    authorizer,
-    authorizationType: AuthorizationType.CUSTOM,
-  });
+  if (funcDef.disableAuthorizer) {
+    functionResource.addMethod(funcDef.method, new LambdaIntegration(handler));
+  } else {
+    functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
+      authorizer,
+      authorizationType: AuthorizationType.CUSTOM,
+    });
+  }
 
   return handler;
 }

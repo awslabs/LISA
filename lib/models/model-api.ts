@@ -68,10 +68,11 @@ export class ModelsApi extends Construct {
 
     // generates a random hexidecimal string of a specific length
     const generateDisambiguator = (size: number): string => Buffer.from(
-      // a byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
+      // one byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
       crypto.getRandomValues(new Uint8Array(Math.ceil(size/2)))
     ).toString('hex').slice(0,size);
 
+    // create proxy hanlder
     const lambdaFunction = registerAPIEndpoint(
       this,
       restApi,
@@ -91,8 +92,9 @@ export class ModelsApi extends Construct {
       securityGroups,
     );
 
-    // Create API Lambda functions
     const apis: PythonLambdaFunction[] = [
+      // create endpoint for /models without a trailing slash but reuse
+      // the proxy lambda so there aren't cold start issues
       {
         name: 'handler',
         resource: 'models',
@@ -100,6 +102,17 @@ export class ModelsApi extends Construct {
         path: 'models',
         method: "GET",
         disambiguator: generateDisambiguator(4),
+        existingFunction: lambdaFunction.functionArn
+      },
+
+      // create an endpoint just for the docs
+      {
+        name: 'docs',
+        resource: 'models',
+        description: 'Manage model',
+        path: 'docs',
+        method: "GET",
+        disableAuthorizer: true
       },
     ];
 
@@ -114,8 +127,7 @@ export class ModelsApi extends Construct {
         config.lambdaConfig.pythonRuntime,
         lambdaExecutionRole,
         vpc,
-        securityGroups,
-        lambdaFunction.functionArn
+        securityGroups
       );
     });
   }

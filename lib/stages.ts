@@ -35,12 +35,12 @@ import { LisaApiBaseStack } from './core/api_base';
 import { LisaApiDeploymentStack } from './core/api_deployment';
 import { createCdkId } from './core/utils';
 import { LisaServeIAMStack } from './iam_stack';
+import { LisaModelsApiStack } from './models';
 import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
 import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
-import { LisaModelsApiStack } from './models';
 
 interface CustomLisaServeApplicationStageProps extends BaseProps {}
 type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & StageProps;

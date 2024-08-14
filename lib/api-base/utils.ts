@@ -55,7 +55,7 @@ export type PythonLambdaFunction = {
   timeout?: Duration;
   disambiguator?: string;
   existingFunction?: string;
-  disableAuthorizer?: boolean
+  disableAuthorizer?: boolean;
 };
 
 /**
@@ -84,7 +84,10 @@ export function registerAPIEndpoint(
   vpc?: IVpc,
   securityGroups?: ISecurityGroup[],
 ): IFunction {
-  const functionId = `${funcDef.id || [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')}`;
+  const functionId = `${
+    funcDef.id ||
+    [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
+  }`;
   const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
   let handler;
 

@@ -14,17 +14,17 @@
   limitations under the License.
 */
 
-import { IAuthorizer, Method, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import crypto from 'node:crypto'
+
+import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
-import { IRole, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
-import crypto from 'node:crypto'
 
 /**
  * Properties for SessionApi Construct.
@@ -43,7 +43,7 @@ type ModelsApiProps = BaseProps & {
   rootResourceId: string;
   securityGroups?: ISecurityGroup[];
   vpc?: IVpc;
-}
+};
 
 /**
  * API for managing Models
@@ -67,10 +67,13 @@ export class ModelsApi extends Construct {
     });
 
     // generates a random hexidecimal string of a specific length
-    const generateDisambiguator = (size: number): string => Buffer.from(
-      // one byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
-      crypto.getRandomValues(new Uint8Array(Math.ceil(size/2)))
-    ).toString('hex').slice(0,size);
+    const generateDisambiguator = (size: number): string =>
+      Buffer.from(
+        // one byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
+        crypto.getRandomValues(new Uint8Array(Math.ceil(size / 2))),
+      )
+        .toString('hex')
+        .slice(0, size);
 
     // create proxy hanlder
     const lambdaFunction = registerAPIEndpoint(
@@ -84,7 +87,7 @@ export class ModelsApi extends Construct {
         resource: 'models',
         description: 'Manage model',
         path: 'models/{proxy+}',
-        method: "ANY",
+        method: 'ANY',
       },
       config.lambdaConfig.pythonRuntime,
       lambdaExecutionRole,
@@ -100,9 +103,9 @@ export class ModelsApi extends Construct {
         resource: 'models',
         description: 'Get models',
         path: 'models',
-        method: "GET",
+        method: 'GET',
         disambiguator: generateDisambiguator(4),
-        existingFunction: lambdaFunction.functionArn
+        existingFunction: lambdaFunction.functionArn,
       },
 
       // create an endpoints for the docs
@@ -111,23 +114,23 @@ export class ModelsApi extends Construct {
         resource: 'models',
         description: 'Manage model',
         path: 'docs',
-        method: "GET",
-        disableAuthorizer: true
+        method: 'GET',
+        disableAuthorizer: true,
       },
       {
         name: 'handler',
         resource: 'models',
         description: 'Get API definition',
         path: 'openapi.json',
-        method: "GET",
+        method: 'GET',
         disambiguator: generateDisambiguator(4),
         existingFunction: lambdaFunction.functionArn,
-        disableAuthorizer: true
+        disableAuthorizer: true,
       },
     ];
 
     apis.forEach((f) => {
-      const handler = registerAPIEndpoint(
+        registerAPIEndpoint(
         this,
         restApi,
         authorizer,
@@ -137,7 +140,7 @@ export class ModelsApi extends Construct {
         config.lambdaConfig.pythonRuntime,
         lambdaExecutionRole,
         vpc,
-        securityGroups
+        securityGroups,
       );
     });
   }

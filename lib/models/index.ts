@@ -23,13 +23,14 @@ import { Construct } from 'constructs';
 import { ModelsApi } from './model-api';
 import { BaseProps } from '../schema';
 
-type LisaModelsApiStackProps = BaseProps & StackProps & {
-  authorizer: IAuthorizer;
-  restApiId: string;
-  rootResourceId: string;
-  securityGroups?: ISecurityGroup[];
-  vpc?: IVpc;
-}
+type LisaModelsApiStackProps = BaseProps &
+  StackProps & {
+    authorizer: IAuthorizer;
+    restApiId: string;
+    rootResourceId: string;
+    securityGroups?: ISecurityGroup[];
+    vpc?: IVpc;
+  };
 
 /**
  * Lisa Models API Stack.

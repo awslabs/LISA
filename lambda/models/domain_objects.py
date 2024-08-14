@@ -13,10 +13,9 @@
 #   limitations under the License.
 from pydantic import BaseModel
 from pydantic.functional_validators import AfterValidator
-from typing import Union
-from utilities.validators import validate_instance_type
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Union
+from utilities.validators import validate_instance_type
 
 
 class InferenceContainer(str, Enum):

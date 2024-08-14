@@ -20,7 +20,7 @@ from utilities.validators import validate_instance_type
 
 
 class InferenceContainer(str, Enum):
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value)
 
     TGI = "TGI"

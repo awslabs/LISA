@@ -66,7 +66,7 @@ export class ModelsApi extends Construct {
       rootResourceId: rootResourceId,
     });
 
-    // generates a random hexidecimal string of a specific length
+    // generates a random hexadecimal string of a specific length
     const generateDisambiguator = (size: number): string =>
       Buffer.from(
         // one byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
@@ -75,7 +75,7 @@ export class ModelsApi extends Construct {
         .toString('hex')
         .slice(0, size);
 
-    // create proxy hanlder
+    // create proxy handler
     const lambdaFunction = registerAPIEndpoint(
       this,
       restApi,

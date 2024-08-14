@@ -21,19 +21,18 @@ class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
     and root_path.
     https://github.com/jordaneremieff/mangum/issues/147
     """
-
     def __init__(self, app: ASGIApp) -> None:
         """Initialize the middleware"""
         super().__init__(app)
         self.app = app
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Process the request and call the next middleware"""
+        """Process the request and call the next middleware."""
 
         root_path = request.scope["root_path"]
         if root_path:
             # Assume set correctly in this case
-            self.app.root_path = root_path  # type: ignore
+            self.app.root_path = root_path
 
         else:
             if "aws.event" in request.scope and "pathParameters" in request.scope["aws.event"]:

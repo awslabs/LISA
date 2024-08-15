@@ -17,6 +17,7 @@
 from typing import Annotated
 
 from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
@@ -34,6 +35,15 @@ from .domain_objects import (
 
 app = FastAPI(redirect_slashes=False, lifespan="off")
 app.add_middleware(AWSAPIGatewayMiddleware)
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post(path="", include_in_schema=False)

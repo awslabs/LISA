@@ -313,6 +313,7 @@ you can do so.
 lambdaLayerAssets:
   authorizerLayerPath: lib/core/layers/authorizer_layer.zip
   commonLayerPath: lib/core/layers/common_layer.zip
+  fastapiLayerPath: /path/to/fastapi_layer.zip
   sdkLayerPath: lib/rag/layers/sdk_layer.zip
 ```
 

@@ -61,6 +61,12 @@ export class ModelsApi extends Construct {
       StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
     );
 
+    const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
+      this,
+      'models-fastapi-lambda-layer',
+      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
+    );
+
     const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
       restApiId: restApiId,
       rootResourceId: rootResourceId,
@@ -81,7 +87,7 @@ export class ModelsApi extends Construct {
       restApi,
       authorizer,
       config.lambdaSourcePath,
-      [commonLambdaLayer],
+      [commonLambdaLayer, fastapiLambdaLayer],
       {
         name: 'handler',
         resource: 'models',

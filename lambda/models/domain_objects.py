@@ -29,10 +29,10 @@ class InferenceContainer(str, Enum):
         """Represent the enum as a string."""
         return str(self.value)
 
-    TGI = "TGI"
-    TEI = "TEI"
-    VLLM = "VLLM"
-    INSTRUCTOR = "INSTRUCTOR"
+    TGI = "tgi"
+    TEI = "tei"
+    VLLM = "vllm"
+    INSTRUCTOR = "instructor"
 
 
 class ModelStatus(str, Enum):
@@ -42,13 +42,13 @@ class ModelStatus(str, Enum):
         """Represent the enum as a string."""
         return str(self.value)
 
-    Creating = "Creating"
-    InService = "InService"
-    Stopping = "Stopping"
-    Stopped = "Stopped"
-    Updating = "Updating"
-    Deleting = "Deleting"
-    Failed = "Failed"
+    CREATING = "Creating"
+    IN_SERVICE = "InService"
+    STOPPING = "Stopping"
+    STOPPED = "Stopped"
+    UPDATING = "Updating"
+    DELETING = "Deleting"
+    FAILED = "Failed"
 
 
 class ModelType(str, Enum):
@@ -58,8 +58,8 @@ class ModelType(str, Enum):
         """Represent the enum as a string."""
         return str(self.value)
 
-    TEXTGEN = "TEXTGEN"
-    EMBEDDING = "EMBEDDING"
+    TEXTGEN = "textgen"
+    EMBEDDING = "embedding  "
 
 
 class MetricConfig(BaseModel):
@@ -126,9 +126,9 @@ class ContainerConfig(BaseModel):
     @staticmethod
     def DUMMY() -> "ContainerConfig":
         """
-        TODO Create a dummy ContainerConfig while the API is stubbed.
+        Create a ContainerConfig while the API is stubbed.
 
-        This method is temporary and should be removed once the endpoints are no longer stubbed.
+        TODO This method is temporary and should be removed once the endpoints are no longer stubbed.
         """
         return ContainerConfig(
             BaseImage=ContainerConfigImage(
@@ -195,11 +195,11 @@ class DescribeModelResponse(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     @staticmethod
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.InService) -> "DescribeModelResponse":
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.IN_SERVICE) -> "DescribeModelResponse":
         """
-        TODO Create a dummy DescribeModelResponse while the API is stubbed.
+        Create a DescribeModelResponse while the API is stubbed.
 
-        This method is temporary and should be removed once the endpoints are no longer stubbed.
+        TODO This method is temporary and should be removed once the endpoints are no longer stubbed.
         """
         return DescribeModelResponse(
             ModelId=model_id,
@@ -257,11 +257,11 @@ class UpdateModelRequest(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     @staticmethod
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.InService) -> "UpdateModelRequest":
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.IN_SERVICE) -> "UpdateModelRequest":
         """
-        TODO Create a dummy UpdateModelRequest while the API is stubbed.
+        Create a UpdateModelRequest while the API is stubbed.
 
-        This method is temporary and should be removed once the endpoints are no longer stubbed.
+        TODO This method is temporary and should be removed once the endpoints are no longer stubbed.
         """
         return UpdateModelRequest(
             ModelId=model_id,
@@ -309,4 +309,4 @@ class DeleteModelResponse(BaseModel):
 
     ModelId: str
     ModelName: str
-    Status: ModelStatus = ModelStatus.Deleting
+    Status: ModelStatus = ModelStatus.DELETING

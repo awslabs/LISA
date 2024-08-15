@@ -54,7 +54,8 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         allow_policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
 
         if requested_resource.startswith("/models") and not is_admin_user:
-            logger.info("Deny access to user due to non-admin accessing /models api.")
+            username = jwt_data.get("sub", "user")
+            logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
             return deny_policy
 
         logger.debug(f"Generated policy: {allow_policy}")

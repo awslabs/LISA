@@ -16,7 +16,7 @@
 
 from typing import Annotated
 
-from fastapi import FastAPI, Path, status
+from fastapi import FastAPI, Path
 from mangum import Mangum
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
@@ -36,12 +36,12 @@ app = FastAPI(redirect_slashes=False, lifespan="off")
 app.add_middleware(AWSAPIGatewayMiddleware)
 
 
-@app.post(path="", status_code=status.HTTP_201_CREATED, include_in_schema=False)
-@app.post(path="/", status_code=status.HTTP_201_CREATED)
+@app.post(path="", include_in_schema=False)
+@app.post(path="/")
 async def create_model(model: CreateModelRequest) -> CreateModelResponse:
     """Endpoint to create a model."""
     # TODO add service to create model
-    return CreateModelResponse(ModelId=model.ModelId, ModelName=model.ModelName, Status=ModelStatus.Creating)
+    return CreateModelResponse(ModelId=model.ModelId, ModelName=model.ModelName, Status=ModelStatus.CREATING)
 
 
 @app.get(path="", include_in_schema=False)
@@ -54,7 +54,7 @@ async def list_models() -> list[ListModelResponse]:
             ModelId="my_first_model",
             ModelName="my_first_model",
             ModelType=ModelType.TEXTGEN,
-            Status=ModelStatus.Creating,
+            Status=ModelStatus.CREATING,
             Streaming=True,
             ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
             ContainerConfig=ContainerConfig.DUMMY(),
@@ -63,7 +63,7 @@ async def list_models() -> list[ListModelResponse]:
             ModelId="my_second_model",
             ModelName="my_second_model",
             ModelType=ModelType.TEXTGEN,
-            Status=ModelStatus.InService,
+            Status=ModelStatus.IN_SERVICE,
             Streaming=True,
             ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
             ContainerConfig=ContainerConfig.DUMMY(),
@@ -86,7 +86,7 @@ async def put_model(
 ) -> DescribeModelResponse:
     """Endpoint to update a model."""
     # TODO add service to update model
-    model.Status = ModelStatus.Updating
+    model.Status = ModelStatus.UPDATING
     return DescribeModelResponse(**model.model_dump())
 
 
@@ -98,7 +98,7 @@ async def start_model(model_id: Annotated[str, Path(title="The name of the model
         ModelId=model_id,
         ModelName=model_id,
         ModelType=ModelType.TEXTGEN,
-        Status=ModelStatus.Creating,
+        Status=ModelStatus.CREATING,
         Streaming=True,
         ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
         ContainerConfig=ContainerConfig.DUMMY(),
@@ -113,7 +113,7 @@ async def stop_model(model_id: Annotated[str, Path(title="The name of the model 
         ModelId=model_id,
         ModelName=model_id,
         ModelType=ModelType.TEXTGEN,
-        Status=ModelStatus.Stopping,
+        Status=ModelStatus.STOPPING,
         Streaming=True,
         ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
         ContainerConfig=ContainerConfig.DUMMY(),

@@ -16,13 +16,16 @@
 
 import { useEffect, useState } from 'react';
 import {
-    Box, Button, ButtonDropdown,
-    Cards,
-    CollectionPreferences,
-    Header, Modal,
-    Pagination,
-    StatusIndicator,
-    TextFilter,
+  Box,
+  Button,
+  ButtonDropdown,
+  Cards,
+  CollectionPreferences,
+  Header,
+  Modal,
+  Pagination,
+  StatusIndicator,
+  TextFilter,
 } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Form from '@cloudscape-design/components/form';
@@ -30,45 +33,52 @@ import Container from '@cloudscape-design/components/container';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import { useGetAllModelsQuery } from '../shared/reducers/model-management.reducer';
+import { IModel, ModelStatus, ModelType } from '../shared/model/model-management.model';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
   [K in T]: U;
 };
 
-enum ModelState {
-  Running = "Running",
-  Stopped = "Stopped",
-  Starting = "Starting",
-  Stopping = "Stopping",
-  Failed = "Failed"
-}
 
-const MODEL_STATE_LOOKUP: EnumDictionary<ModelState, string> = {
-  [ModelState.Running]: "success",
-  [ModelState.Stopped]: "stopped",
-  [ModelState.Starting]: "in-progress",
-  [ModelState.Stopping]: "in-progress",
-  [ModelState.Failed]: "error"
+const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, string> = {
+  [ModelStatus.Creating]: "in-progress",
+  [ModelStatus.InService]: "success",
+  [ModelStatus.Stopping]: "in-progress",
+  [ModelStatus.Stopped]: "stopped",
+  [ModelStatus.Updating]: "in-progress",
+  [ModelStatus.Deleting]: "in-progress",
+  [ModelStatus.Failed]: "error"
 }
-
 
 const CARD_DEFINITIONS = {
   header: model => (
     <div>
-      {model.name}
+      {model.ModelName}
     </div>
   ),
   sections: [
     {
-      id: 'description',
-      header: 'Description',
-      content: model => model.description,
+      id: 'ModelId',
+      header: 'ID',
+      content: model => model.ModelId,
+    },{
+      id: 'ModelType',
+      header: 'Type',
+      content: model => model.ModelType,
+    },{
+      id: 'ModelUrl',
+      header: 'URL',
+      content: model => model.ModelUrl,
+    },{
+      id: 'Streaming',
+      header: 'Streaming',
+      content: model => String(model.Streaming),
     },
     {
-      id: 'state',
-      header: 'State',
+      id: 'ModelStatus',
+      header: 'Status',
       content: model => (
-        <StatusIndicator type={MODEL_STATE_LOOKUP[model.state]}>{model.state}</StatusIndicator>
+        <StatusIndicator type={MODEL_STATUS_LOOKUP[model.ModelStatus]}>{model.ModelStatus}</StatusIndicator>
       ),
     },
   ],
@@ -78,8 +88,11 @@ const VISIBLE_CONTENT_OPTIONS = [
   {
     label: 'Main distribution properties',
     options: [
-      { id: 'description', label: 'Description' },
-      { id: 'state', label: 'State' },
+      { id: 'ModelId', label: 'ID' },
+      { id: 'ModelType', label: 'Type' },
+      { id: 'ModelUrl', label: 'URL' },
+      { id: 'Streaming', label: 'Streaming' },
+      { id: 'ModelStatus', label: 'Status' },
     ],
   },
 ];
@@ -92,7 +105,7 @@ const PAGE_SIZE_OPTIONS = [
 
 const DEFAULT_PREFERENCES = {
   pageSize: 30,
-  visibleContent: ['description', 'state'],
+  visibleContent: ['ModelType', 'ModelStatus'],
 };
 
 export function ModelManagement({ setTools }) {
@@ -110,43 +123,68 @@ export function ModelManagement({ setTools }) {
     const [selectedItems, setSelectedItems] = useState([]);
     const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
-
-
-    const models = [
+    
+    const models: IModel[] = [
       {
-        name: "Model 1",
-        description: "LLM 1",
-        state: ModelState.Stopping
+        ModelId: "123",
+        ModelName: "Model 1",
+        ModelType: ModelType.textgen,
+        Streaming: true,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.Stopping
       },
       {
-        name: "Model 2",
-        description: "LLM 2",
-        state: ModelState.Running
+        ModelId: "234",
+        ModelName: "Model 2",
+        ModelType: ModelType.embedding,
+        Streaming: true,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.Deleting
       },
       {
-        name: "Model 3",
-        description: "Expensive Model",
-        state: ModelState.Stopped
+        ModelId: "345",
+        ModelName: "Model 3",
+        ModelType: ModelType.textgen,
+        Streaming: true,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.Stopped
       },
       {
-        name: "Model 4",
-        description: "Fast model",
-        state: ModelState.Starting
+        ModelId: "456",
+        ModelName: "Model 4",
+        ModelType: ModelType.textgen,
+        Streaming: true,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.Creating
       },
       {
-        name: "Model 5",
-        description: "Broken model",
-        state: ModelState.Failed
+        ModelId: "567",
+        ModelName: "Model 5",
+        ModelType: ModelType.embedding,
+        Streaming: true,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.Failed
       },
       {
-        name: "Model 6",
-        description: "Model v3",
-        state: ModelState.Running
+        ModelId: "678",
+        ModelName: "Model 6",
+        ModelType: ModelType.embedding,
+        Streaming: false,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.InService
+      },
+      {
+        ModelId: "789",
+        ModelName: "Model 7",
+        ModelType: ModelType.embedding,
+        Streaming: true,
+        ModelUrl: "http://dummy.url",
+        ModelStatus: ModelStatus.Updating
       }
       ]
 
     return (
-      <div>
+      <>
         <Modal
           onDismiss={() => setNewModelModelVisible(false)}
           visible={newModelModalVisible}
@@ -167,13 +205,13 @@ export function ModelManagement({ setTools }) {
               >
                 <SpaceBetween direction="vertical" size="l">
                   <FormField label="First field">
-                    <Input />
+                    <Input value=""/>
                   </FormField>
                   <FormField label="Second field">
-                    <Input />
+                    <Input value=""/>
                   </FormField>
                   <FormField label="Third field">
-                    <Input />
+                    <Input value=""/>
                   </FormField>
                 </SpaceBetween>
               </Container>
@@ -186,15 +224,15 @@ export function ModelManagement({ setTools }) {
           }
           selectedItems={selectedItems}
           ariaLabels={{
-            itemSelectionLabel: (e, t) => `select ${t.name}`,
+            itemSelectionLabel: (e, t) => `select ${t.ModelName}`,
             selectionGroupLabel: "Model selection"
           }}
           cardDefinition={CARD_DEFINITIONS}
           visibleSections={preferences.visibleContent}
           loadingText="Loading models"
           items={models}
-          selectionType="single" // single | multi
-          trackBy="name"
+          selectionType="single"  // single | multi
+          trackBy="ModelId"
           variant="full-page"
           header={
             <Header
@@ -235,7 +273,7 @@ export function ModelManagement({ setTools }) {
                     Actions
                   </ButtonDropdown>
                   <Button iconName="add-plus" variant="primary" onClick={()=>setNewModelModelVisible(true)}>
-                    New model
+                    New Model
                   </Button>
                 </SpaceBetween>
               }
@@ -278,7 +316,7 @@ export function ModelManagement({ setTools }) {
             </Box>
           }
         />
-      </div>
+      </>
     );
 }
 

@@ -14,44 +14,59 @@
   limitations under the License.
 */
 
-import {
-    AnyAction,
-    AsyncThunk,
-} from '@reduxjs/toolkit';
+import { default as Axios, AxiosError, AxiosRequestConfig} from 'axios';
 
-/**
- * Model for redux actions with pagination
- */
-export type IQueryParams = { query?: string; page?: number; size?: number; sort?: string };
+export const lisaAxios = Axios.create({
+    baseURL: `${window.env.RESTAPI_URI}`
+});
 
-/**
- * Useful types for working with actions
- */
-type GenericAsyncThunk = AsyncThunk<unknown, unknown, any>;
-export type PendingAction = ReturnType<GenericAsyncThunk['pending']>;
-export type RejectedAction = ReturnType<GenericAsyncThunk['rejected']>;
-export type FulfilledAction = ReturnType<GenericAsyncThunk['fulfilled']>;
+lisaAxios.interceptors.request.use((config) => {
+    const oidcString = sessionStorage.getItem(
+        `oidc.user:${window.env.AUTHORITY}:${window.env.CLIENT_ID}`
+    );
+    const token = oidcString ? JSON.parse(oidcString).id_token : '';
 
-/**
- * Check if the async action type is rejected
- */
-/* istanbul ignore next */
-export function isRejectedAction (action: AnyAction) {
-    return action.type.endsWith('/rejected');
-}
+    if (config.headers === undefined) {
+        config.headers = {};
+    }
 
-/**
- * Check if the async action type is pending
- */
-/* istanbul ignore next */
-export function isPendingAction (action: AnyAction) {
-    return action.type.endsWith('/pending');
-}
+    config.headers['Authorization'] = `Bearer ${token}`;
 
-/**
- * Check if the async action type is completed
- */
-/* istanbul ignore next */
-export function isFulfilledAction (action: AnyAction) {
-    return action.type.endsWith('/fulfilled');
-}
+    return config;
+}, (error) => {
+    return Promise.reject(error).catch(axiosCatch);
+});
+
+export const lisaBaseQuery = ({ baseUrl } = { baseUrl: '' }) => async ({ url, method, data, params, headers }: AxiosRequestConfig) => {
+    try {
+        const result = await lisaAxios({
+            url: baseUrl + url,
+            method,
+            data,
+            params,
+            headers,
+        });
+
+        return { data: result.data };
+    } catch (axiosError) {
+        const err = axiosError;
+
+        return {
+            error: {
+                status: err.response?.status,
+                data: err.response?.data || err.message,
+            }
+        };
+    }
+};
+
+export const axiosCatch = (reason: Error | AxiosError) => {
+    if (Axios.isAxiosError(reason)) {
+        return Promise.reject({
+            name: reason.name,
+            message: reason.response?.data,
+            code: reason.response?.status
+        });
+    }
+    throw reason;
+};

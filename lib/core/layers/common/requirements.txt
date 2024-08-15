@@ -1,6 +1,3 @@
 boto3>=1.34.131
 botocore>=1.34.131
-fastapi==0.111.0
-mangum==0.17.0
-pydantic==2.8.2
 urllib3<2

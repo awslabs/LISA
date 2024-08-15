@@ -27,6 +27,7 @@ import { BaseProps } from '../schema';
 
 const HERE = path.resolve(__dirname);
 const COMMON_LAYER_PATH = path.join(HERE, 'layers', 'common');
+const FASTAPI_LAYER_PATH = path.join(HERE, 'layers', 'fastapi');
 const AUTHORIZER_LAYER_PATH = path.join(HERE, 'layers', 'authorizer');
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
@@ -59,6 +60,16 @@ export class CoreStack extends cdk.Stack {
       assetPath: config.lambdaLayerAssets?.commonLayerPath,
     });
 
+    // Build fastapi Lambda layer
+    const fastapiLambdaLayer = new Layer(this, 'FastapiLayer', {
+      config: config,
+      path: FASTAPI_LAYER_PATH,
+      description: 'FastAPI requirements for REST API Lambdas',
+      architecture: ARCHITECTURE,
+      autoUpgrade: true,
+      assetPath: config.lambdaLayerAssets?.fastapiLayerPath,
+    });
+
     // Build authorizer Lambda layer
     const authorizerLambdaLayer = new Layer(this, 'AuthorizerLayer', {
       config: config,
@@ -73,6 +84,12 @@ export class CoreStack extends cdk.Stack {
       parameterName: `${config.deploymentPrefix}/layerVersion/common`,
       stringValue: commonLambdaLayer.layer.layerVersionArn,
       description: `Layer Version ARN for LISA Common Lambda Layer`,
+    });
+
+    new StringParameter(this, 'LisaFastapiLamdaLayerStringParameter', {
+      parameterName: `${config.deploymentPrefix}/layerVersion/fastapi`,
+      stringValue: fastapiLambdaLayer.layer.layerVersionArn,
+      description: `Layer Version ARN for LISA FastAPI Lambda Layer`,
     });
 
     new StringParameter(this, 'LisaAuthorizerLamdaLayerStringParameter', {

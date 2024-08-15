@@ -12,6 +12,7 @@ dev:
   # lambdaLayerAssets:
   #   authorizerLayerPath: /path/to/authorizer_layer.zip
   #   commonLayerPath: /path/to/common_layer.zip
+  #   fastapiLayerPath: /path/to/fastapi_layer.zip
   #   ragLayerPath: /path/to/rag_layer.zip
   #   sdkLayerPath: /path/to/sdk_layer.zip
   # stackSynthesizer: CliCredentialsStackSynthesizer

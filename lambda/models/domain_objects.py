@@ -59,7 +59,7 @@ class ModelType(str, Enum):
         return str(self.value)
 
     TEXTGEN = "textgen"
-    EMBEDDING = "embedding  "
+    EMBEDDING = "embedding"
 
 
 class MetricConfig(BaseModel):

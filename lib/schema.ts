@@ -884,6 +884,7 @@ const RawConfigSchema = z
       .object({
         authorizerLayerPath: z.string().optional(),
         commonLayerPath: z.string().optional(),
+        fastapiLayerPath: z.string().optional(),
         ragLayerPath: z.string().optional(),
         sdkLayerPath: z.string().optional(),
       })

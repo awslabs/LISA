@@ -91,7 +91,7 @@ async def put_model(
 
 
 @app.put(path="/{model_id}/start", status_code=status.HTTP_200_OK)
-async def start_model(model_id: Annotated[str, Path(title="The name of the model to start")]) -> DescribeModelResponse:
+async def start_model(model_id: Annotated[str, Path(title="The name of the model to start")]) -> ListModelResponse:
     """Endpoint to start a model."""
     # TODO add service to update model
     return ListModelResponse(
@@ -106,7 +106,7 @@ async def start_model(model_id: Annotated[str, Path(title="The name of the model
 
 
 @app.put(path="/{model_id}/stop", status_code=status.HTTP_200_OK)
-async def stop_model(model_id: Annotated[str, Path(title="The name of the model to stop")]) -> DescribeModelResponse:
+async def stop_model(model_id: Annotated[str, Path(title="The name of the model to stop")]) -> ListModelResponse:
     """Endpoint to stop a model."""
     # TODO add service to update model
     return ListModelResponse(
@@ -120,13 +120,13 @@ async def stop_model(model_id: Annotated[str, Path(title="The name of the model 
     )
 
 
-@app.delete(path="/{model_name}", status_code=status.HTTP_200_OK)
+@app.delete(path="/{model_id}", status_code=status.HTTP_200_OK)
 async def delete_model(
-    model_name: Annotated[str, Path(title="The name of the model to delete")],
+    model_id: Annotated[str, Path(title="The name of the model to delete")],
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
     # TODO add service to delete model
-    return DeleteModelResponse(ModelId=model_name, ModelName=model_name)
+    return DeleteModelResponse(ModelId=model_id, ModelName=model_id)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")

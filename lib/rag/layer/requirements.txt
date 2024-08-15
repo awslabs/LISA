@@ -1,10 +1,10 @@
 opensearch-py==2.6.0
 requests-aws4auth==1.2.3
 PyPDF2==3.0.1
-langchain==0.2.9
-langchain-community==0.2.9
+langchain==0.2.5
+langchain-community==0.2.5
 langchain-openai==0.1.8
 pgvector==0.2.5
 psycopg2-binary==2.9.9
 python-docx==1.1.0
-urllib3<2
+urllib3==1.26.19

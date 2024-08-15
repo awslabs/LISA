@@ -72,13 +72,6 @@ export class LisaRagStack extends Stack {
 
     const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-    // Get common layer based on arn from SSM due to issues with cross stack references
-    const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'rag-common-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-    );
-
     const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`;
     const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
       bucketName,
@@ -327,7 +320,7 @@ export class LisaRagStack extends Stack {
       baseEnvironment,
       config,
       vpc: vpc.vpc,
-      commonLayers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
+      commonLayers: [ragLambdaLayer.layer, sdkLayer],
       restApiId,
       rootResourceId,
       securityGroups,

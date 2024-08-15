@@ -16,15 +16,19 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Box, Button, ButtonDropdown,
-  Cards,
-  CollectionPreferences,
-  Header,
-  Pagination,
-  StatusIndicator,
-  TextFilter,
+    Box, Button, ButtonDropdown,
+    Cards,
+    CollectionPreferences,
+    Header, Modal,
+    Pagination,
+    StatusIndicator,
+    TextFilter,
 } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Form from '@cloudscape-design/components/form';
+import Container from '@cloudscape-design/components/container';
+import FormField from '@cloudscape-design/components/form-field';
+import Input from '@cloudscape-design/components/input';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
   [K in T]: U;
@@ -98,6 +102,8 @@ export function ModelManagement({ setTools }) {
 
     const [selectedItems, setSelectedItems] = useState([]);
     const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+    const [newModelModalVisible, setNewModelModelVisible] = useState(false);
+
 
     const models = [
       {
@@ -132,106 +138,140 @@ export function ModelManagement({ setTools }) {
       }
       ]
 
-
     return (
-      <Cards
-        onSelectionChange={({ detail }) =>
-          setSelectedItems(detail?.selectedItems ?? [])
-        }
-        selectedItems={selectedItems}
-        ariaLabels={{
-          itemSelectionLabel: (e, t) => `select ${t.name}`,
-          selectionGroupLabel: "Model selection"
-        }}
-        cardDefinition={CARD_DEFINITIONS}
-        visibleSections={preferences.visibleContent}
-        loadingText="Loading models"
-        items={models}
-        selectionType="multi"
-        trackBy="name"
-        variant="full-page"
-        header={
-          <Header
-            counter={
-              selectedItems?.length
-                ? `(${selectedItems.length})`
-                : ""
-            }
-            actions={
-              <SpaceBetween
-                direction="horizontal"
-                size="xs"
+      <div>
+        <Modal
+          onDismiss={() => setNewModelModelVisible(false)}
+          visible={newModelModalVisible}
+          header="Create Model"
+        >
+          <form onSubmit={e => e.preventDefault()}>
+            <Form
+              actions={
+                <SpaceBetween direction="horizontal" size="xs">
+                  <Button formAction="none" variant="link" onClick={() => setNewModelModelVisible(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary">Submit</Button>
+                </SpaceBetween>
+              }
+            >
+              <Container
               >
-                <ButtonDropdown
-                  items={[
-                    {
-                      text: "Start",
-                      id: "start",
-                      disabled: true
-                    },
-                    {
-                      text: "Stop",
-                      id: "stop",
-                      disabled: true
-                    },
-                    {
-                      text: "Edit",
-                      id: "edit",
-                      disabled: true
-                    },
-                    {
-                      text: "Delete",
-                      id: "Delete",
-                      disabled: true
-                    }
-                  ]}
+                <SpaceBetween direction="vertical" size="l">
+                  <FormField label="First field">
+                    <Input />
+                  </FormField>
+                  <FormField label="Second field">
+                    <Input />
+                  </FormField>
+                  <FormField label="Third field">
+                    <Input />
+                  </FormField>
+                </SpaceBetween>
+              </Container>
+            </Form>
+          </form>
+        </Modal>
+        <Cards
+          onSelectionChange={({ detail }) =>
+            setSelectedItems(detail?.selectedItems ?? [])
+          }
+          selectedItems={selectedItems}
+          ariaLabels={{
+            itemSelectionLabel: (e, t) => `select ${t.name}`,
+            selectionGroupLabel: "Model selection"
+          }}
+          cardDefinition={CARD_DEFINITIONS}
+          visibleSections={preferences.visibleContent}
+          loadingText="Loading models"
+          items={models}
+          selectionType="single" // single | multi
+          trackBy="name"
+          variant="full-page"
+          header={
+            <Header
+              counter={
+                selectedItems?.length
+                  ? `(${selectedItems.length})`
+                  : ""
+              }
+              actions={
+                <SpaceBetween
+                  direction="horizontal"
+                  size="xs"
                 >
-                  Actions
-                </ButtonDropdown>
-                <Button iconName="add-plus" variant="primary">
-                  New model
-                </Button>
+                  <ButtonDropdown
+                    items={[
+                      {
+                        text: "Start",
+                        id: "start",
+                        disabled: false
+                      },
+                      {
+                        text: "Stop",
+                        id: "stop",
+                        disabled: false
+                      },
+                      {
+                        text: "Edit",
+                        id: "edit",
+                        disabled: true
+                      },
+                      {
+                        text: "Delete",
+                        id: "delete",
+                        disabled: true
+                      }
+                    ]}
+                  >
+                    Actions
+                  </ButtonDropdown>
+                  <Button iconName="add-plus" variant="primary" onClick={()=>setNewModelModelVisible(true)}>
+                    New model
+                  </Button>
+                </SpaceBetween>
+              }
+            >
+              Models
+            </Header>
+          }
+          filter={
+            <TextFilter filteringPlaceholder="Find models" />
+          }
+          pagination={
+            <Pagination currentPageIndex={1} pagesCount={1} />
+          }
+          preferences={
+            <CollectionPreferences
+              title="Preferences"
+              confirmLabel="Confirm"
+              cancelLabel="Cancel"
+              preferences={preferences}
+              onConfirm={({ detail }) => setPreferences(detail)}
+              pageSizePreference={{
+                title: 'Page size',
+                options: PAGE_SIZE_OPTIONS,
+              }}
+              visibleContentPreference={{
+                title: 'Select visible columns',
+                options: VISIBLE_CONTENT_OPTIONS,
+              }}
+            />
+          }
+          empty={
+            <Box
+              margin={{ vertical: "xs" }}
+              textAlign="center"
+              color="inherit"
+            >
+              <SpaceBetween size="m">
+                <b>No models</b>
               </SpaceBetween>
-            }
-          >
-            Models
-          </Header>
-        }
-        filter={
-          <TextFilter filteringPlaceholder="Find models" />
-        }
-        pagination={
-          <Pagination currentPageIndex={1} pagesCount={1} />
-        }
-        preferences={
-          <CollectionPreferences
-            title="Preferences"
-            confirmLabel="Confirm"
-            cancelLabel="Cancel"
-            preferences={preferences}
-            onConfirm={({ detail }) => setPreferences(detail)}
-            pageSizePreference={{
-              title: 'Page size',
-              options: PAGE_SIZE_OPTIONS,
-            }}
-            visibleContentPreference={{
-              title: 'Select visible columns',
-              options: VISIBLE_CONTENT_OPTIONS,
-            }}
-          />
-        }
-        empty={
-          <Box
-            margin={{ vertical: "xs" }}
-            textAlign="center"
-            color="inherit"
-          >
-            <SpaceBetween size="m">
-              <b>No models</b>
-            </SpaceBetween>
-          </Box>
-        }
-      />
+            </Box>
+          }
+        />
+      </div>
     );
 }
 

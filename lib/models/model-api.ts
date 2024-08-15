@@ -27,7 +27,7 @@ import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
 
 /**
- * Properties for SessionApi Construct.
+ * Properties for ModelsApi Construct.
  *
  * @property {IVpc} vpc - Stack VPC
  * @property {Layer} commonLayer - Lambda layer for all Lambdas.
@@ -57,7 +57,7 @@ export class ModelsApi extends Construct {
     // Get common layer based on arn from SSM due to issues with cross stack references
     const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
       this,
-      'session-common-lambda-layer',
+      'models-common-lambda-layer',
       StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
     );
 
@@ -69,7 +69,7 @@ export class ModelsApi extends Construct {
     // generates a random hexadecimal string of a specific length
     const generateDisambiguator = (size: number): string =>
       Buffer.from(
-        // one byte is 2 hex characters so only generate ceil(size/2) bytse of randomness
+        // one byte is 2 hex characters so only generate ceil(size/2) bytes of randomness
         crypto.getRandomValues(new Uint8Array(Math.ceil(size / 2))),
       )
         .toString('hex')

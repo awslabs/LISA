@@ -42,11 +42,13 @@ class ModelStatus(str, Enum):
         """Represent the enum as a string."""
         return str(self.value)
 
-    CREATING = "CREATING"
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    UPDATING = "UPDATING"
-    DELETING = "DELETING"
+    Creating = "Creating"
+    InService = "InService"
+    Stopping = "Stopping"
+    Stopped = "Stopped"
+    Updating = "Updating"
+    Deleting = "Deleting"
+    Failed = "Failed"
 
 
 class ModelType(str, Enum):
@@ -56,7 +58,7 @@ class ModelType(str, Enum):
         """Represent the enum as a string."""
         return str(self.value)
 
-    TEXTGEN = ("TEXTGEN",)
+    TEXTGEN = "TEXTGEN"
     EMBEDDING = "EMBEDDING"
 
 
@@ -124,7 +126,7 @@ class ContainerConfig(BaseModel):
     @staticmethod
     def DUMMY() -> "ContainerConfig":
         """
-        Create a dummy object while the API is stubbed.
+        TODO Create a dummy ContainerConfig while the API is stubbed.
 
         This method is temporary and should be removed once the endpoints are no longer stubbed.
         """
@@ -193,9 +195,9 @@ class DescribeModelResponse(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     @staticmethod
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE) -> "DescribeModelResponse":
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.InService) -> "DescribeModelResponse":
         """
-        Create a dummy object while the API is stubbed.
+        TODO Create a dummy DescribeModelResponse while the API is stubbed.
 
         This method is temporary and should be removed once the endpoints are no longer stubbed.
         """
@@ -255,9 +257,9 @@ class UpdateModelRequest(BaseModel):
     LoadBalancerConfig: LoadBalancerConfig
 
     @staticmethod
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.ACTIVE) -> "UpdateModelRequest":
+    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.InService) -> "UpdateModelRequest":
         """
-        Create a dummy object while the API is stubbed.
+        TODO Create a dummy UpdateModelRequest while the API is stubbed.
 
         This method is temporary and should be removed once the endpoints are no longer stubbed.
         """
@@ -307,4 +309,4 @@ class DeleteModelResponse(BaseModel):
 
     ModelId: str
     ModelName: str
-    Status: ModelStatus = ModelStatus.DELETING
+    Status: ModelStatus = ModelStatus.Deleting

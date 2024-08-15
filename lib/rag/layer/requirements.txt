@@ -1,3 +1,5 @@
+boto3>=1.34.131
+botocore>=1.34.131
 opensearch-py==2.6.0
 requests-aws4auth==1.2.3
 PyPDF2==3.0.1

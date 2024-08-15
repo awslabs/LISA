@@ -235,6 +235,8 @@ dev:
     #       healthyThresholdCount: 2
     #       unhealthyThresholdCount: 10
   litellmConfig:
+    general_settings:
+      master_key: sk-012345
     litellm_settings:
       telemetry: false
     model_list:

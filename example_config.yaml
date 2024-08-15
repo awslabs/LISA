@@ -247,6 +247,8 @@ dev:
   litellmConfig:
     litellm_settings:
       telemetry: false  # Don't try to send telemetry to LiteLLM servers.
+    general_settings:
+      master_key: sk-d7a77bcb-3e23-483c-beec-2700f2baeeb1  # A key is required for model management purposes
     model_list: # Add any of your existing (not LISA-hosted) models here.
 #      - model_name: mymodel
 #        litellm_params:

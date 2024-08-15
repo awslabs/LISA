@@ -252,7 +252,7 @@ export class LisaRagStack extends Stack {
           vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
             pgvectorSg.connections.allowFrom(
               Peer.ipv4(subnet.ipv4CidrBlock),
-              Port.tcp(5432),
+              Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
               'Allow private subnets to communicate with PGVector database',
             );
           });
@@ -274,6 +274,7 @@ export class LisaRagStack extends Stack {
               passwordSecretId: rdsPasswordSecret.secretName,
               dbHost: pgvector_db.dbInstanceEndpointAddress,
               dbName: ragConfig.rdsConfig.dbName,
+              dbPort: ragConfig.rdsConfig.dbPort,
             }),
             description: 'Connection info for LISA Serve PGVector database',
           });

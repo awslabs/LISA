@@ -15,5 +15,5 @@
  */
 
 export type IModel = {
-    name: string;
+    ModelName: string;
 }

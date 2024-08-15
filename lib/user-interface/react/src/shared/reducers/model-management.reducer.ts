@@ -20,19 +20,17 @@ import { IModel } from '../model/model-management.model';
 
 
 export const modelManagementApi = createApi({
-    reducerPath: 'model-management',
+    reducerPath: 'models',
     baseQuery:  lisaBaseQuery(),
     endpoints: (builder) => ({
-        createModel: builder.mutation<string, IModel>({
-            query: (group) => ({
-                url: '/models',
-                data: JSON.stringify(group),
-                method: 'POST'
+        getAllModels: builder.query<IModel[], void>({
+            query: () => ({
+                url: '/models'
             }),
-            invalidatesTags: ['models']
+            providesTags: ['models']
         }),
 
     }),
 });
 
-export const { useCreateModelMutation } = modelManagementApi;
+export const { useGetAllModelsQuery } = modelManagementApi;

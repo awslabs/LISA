@@ -17,7 +17,7 @@
 import { default as Axios, AxiosError, AxiosRequestConfig} from 'axios';
 
 export const lisaAxios = Axios.create({
-    baseURL: `${window.env.RESTAPI_URI}`
+    baseURL: `${window.env.API_BASE_URL}`
 });
 
 lisaAxios.interceptors.request.use((config) => {

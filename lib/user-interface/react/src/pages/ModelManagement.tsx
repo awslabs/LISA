@@ -25,6 +25,7 @@ import {
   TextFilter,
 } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import { useGetAllModelsQuery } from '../shared/reducers/model-management.reducer';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
   [K in T]: U;
@@ -91,6 +92,12 @@ const DEFAULT_PREFERENCES = {
 };
 
 export function ModelManagement({ setTools }) {
+    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery();
+
+    useEffect(() => {
+        if(!fetchingModels && allModels)
+            console.log(allModels)
+    }, [allModels, fetchingModels]);
 
     useEffect(() => {
         setTools(null);

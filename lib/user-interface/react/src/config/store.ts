@@ -14,12 +14,12 @@
   limitations under the License.
 */
 
-import { AnyAction, combineReducers, configureStore, ThunkAction } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import storage from 'redux-persist/lib/storage';
-import { persistReducer, persistStore } from 'redux-persist';
+import { persistReducer } from 'redux-persist';
 
-import sharedReducers from '../shared/reducers';
+import sharedReducers, { rootMiddleware } from '../shared/reducers';
 
 const persistConfig = {
     key: 'lisa',
@@ -33,7 +33,7 @@ const store = configureStore({
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: false,
-        }),
+        }).concat(...rootMiddleware),
 });
 
 export async function signOut() {
@@ -47,7 +47,5 @@ export type AppDispatch = typeof store.dispatch;
 
 export const useAppSelector: TypedUseSelectorHook<IRootState> = useSelector;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
-export type AppThunk<ReturnType = void> = ThunkAction<ReturnType, IRootState, unknown, AnyAction>;
 
-export const persistor = persistStore(store);
 export default getStore;

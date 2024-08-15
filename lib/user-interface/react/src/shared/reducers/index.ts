@@ -17,10 +17,13 @@
 import { ReducersMapObject } from '@reduxjs/toolkit';
 
 import userReducer from './user.reducer';
-
+import { modelManagementApi } from './model-management.reducer';
 
 const rootReducer: ReducersMapObject = {
   user: userReducer,
+  [modelManagementApi.reducerPath]: modelManagementApi.reducer,
 };
+
+export const rootMiddleware = [modelManagementApi.middleware]
 
 export default rootReducer;

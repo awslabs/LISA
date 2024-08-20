@@ -25,35 +25,35 @@ import { BaseProps } from '../schema';
 
 type LisaModelsApiStackProps = BaseProps &
   StackProps & {
-      authorizer: IAuthorizer;
-      restApiId: string;
-      rootResourceId: string;
-      securityGroups?: ISecurityGroup[];
-      vpc?: IVpc;
+    authorizer: IAuthorizer;
+    restApiId: string;
+    rootResourceId: string;
+    securityGroups?: ISecurityGroup[];
+    vpc?: IVpc;
   };
 
 /**
  * Lisa Models API Stack.
  */
 export class LisaModelsApiStack extends Stack {
-    /**
+  /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaModelsApiStackProps} props - Properties for the Stack.
    */
-    constructor (scope: Construct, id: string, props: LisaModelsApiStackProps) {
-        super(scope, id, props);
+  constructor(scope: Construct, id: string, props: LisaModelsApiStackProps) {
+    super(scope, id, props);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+    const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Add REST API Lambdas to APIGW
-        new ModelsApi(this, 'ModelsApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
-    }
+    // Add REST API Lambdas to APIGW
+    new ModelsApi(this, 'ModelsApi', {
+      authorizer,
+      config,
+      restApiId,
+      rootResourceId,
+      securityGroups,
+      vpc,
+    });
+  }
 }

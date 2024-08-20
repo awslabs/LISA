@@ -47,7 +47,7 @@ type UserInterfaceProps = CustomUserInterfaceProps & StackProps;
  * User Interface Construct.
  */
 export class UserInterfaceStack extends Stack {
-    /**
+  /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {UserInterfaceProps} props - The properties of the construct.

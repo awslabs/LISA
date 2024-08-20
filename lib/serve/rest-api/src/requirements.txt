@@ -12,4 +12,5 @@ loguru==0.7.2
 pydantic==2.8.2
 PyJWT==2.9.0
 text-generation==0.7.0
+prisma==0.13.1
 uvicorn==0.22.0

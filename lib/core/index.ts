@@ -41,7 +41,7 @@ type CoreStackProps = CustomCoreStackProps & cdk.StackProps;
  * Creates a virtual private cloud (VPC) and other networking resources.
  */
 export class CoreStack extends cdk.Stack {
-    /**
+  /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    */

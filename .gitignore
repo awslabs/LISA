@@ -23,6 +23,7 @@ cdk.context.json
 .vscode
 .venv
 .DS_Store
+*.iml
 
 # Coverage Statistic Folders
 coverage

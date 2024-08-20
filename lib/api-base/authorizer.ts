@@ -80,6 +80,8 @@ export class CustomAuthorizer extends Construct {
       environment: {
         CLIENT_ID: config.authConfig!.clientId,
         AUTHORITY: config.authConfig!.authority,
+        ADMIN_GROUP: config.authConfig!.adminGroup,
+        JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
       },
       role: role,
       vpc: vpc,

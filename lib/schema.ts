@@ -559,6 +559,9 @@ export type ModelConfig = EcsModelConfig;
  *
  * @property {string} [authority=null] - URL of OIDC authority.
  * @property {string} [clientId=null] - Client ID for OIDC IDP .
+ * @property {string} [adminGroup=null] - Name of the admin group.
+ * @property {string} [jwtGroupsProperty=null] - Name of the JWT groups property.
+ * @property {string[]} [additionalScopes=null] - Additional JWT scopes to request.
  */
 const AuthConfigSchema = z.object({
   authority: z.string().transform((value) => {
@@ -569,6 +572,9 @@ const AuthConfigSchema = z.object({
     }
   }),
   clientId: z.string(),
+  adminGroup: z.string().optional().default(''),
+  jwtGroupsProperty: z.string().optional().default(''),
+  additionalScopes: z.array(z.string()).optional().default([]),
 });
 
 /**
@@ -909,6 +915,7 @@ const RawConfigSchema = z
       .object({
         authorizerLayerPath: z.string().optional(),
         commonLayerPath: z.string().optional(),
+        fastapiLayerPath: z.string().optional(),
         ragLayerPath: z.string().optional(),
         sdkLayerPath: z.string().optional(),
       })

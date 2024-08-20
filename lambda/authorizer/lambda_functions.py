@@ -31,6 +31,8 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     """Handle authorization for REST API."""
     logger.info("REST API authorization handler started")
 
+    requested_resource = event["resource"]
+
     id_token = get_id_token(event)
 
     if not id_token:
@@ -41,17 +43,27 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     # TODO: investigate authority case sensitivity
     client_id = os.environ.get("CLIENT_ID", "")
     authority = os.environ.get("AUTHORITY", "")
+    admin_group = os.environ.get("ADMIN_GROUP", "")
+    jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
+
+    deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
-        policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])  # type: ignore
-        policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
+        is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])
+        allow_policy["context"] = {"username": jwt_data["sub"]}  # type: ignore [index]
 
-        logger.debug(f"Generated policy: {policy}")
+        if requested_resource.startswith("/models") and not is_admin_user:
+            username = jwt_data.get("sub", "user")
+            logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
+            return deny_policy
+
+        logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
-        return policy
+        return allow_policy
 
     logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
-    return generate_policy(effect="Deny", resource=event["methodArn"])
+    return deny_policy
 
 
 def generate_policy(*, effect: str, resource: str, username: str = "username") -> Dict[str, Any]:
@@ -110,3 +122,15 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Union
     except jwt.exceptions.PyJWTError as e:
         logger.exception(e)
         return False
+
+
+def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str):
+    """Check if the user is an admin."""
+    props = jwt_groups_property.split(".")
+    current_node = jwt_data
+    for prop in props:
+        if prop in current_node:
+            current_node = current_node[prop]
+        else:
+            return False
+    return admin_group in current_node

@@ -28,6 +28,6 @@ cdk.context.json
 coverage
 
 # Model Cache Folders
-models
+/models
 # Deployment configuration file
 config.yaml

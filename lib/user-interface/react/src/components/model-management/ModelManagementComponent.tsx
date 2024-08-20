@@ -46,11 +46,11 @@ export function ModelManagementComponent() {
         }}
         cardDefinition={CARD_DEFINITIONS}
         visibleSections={preferences.visibleContent}
-        loadingText="Loading models"
+        loadingText='Loading models'
         items={allModels}
-        selectionType="single" // single | multi
-        trackBy="ModelId"
-        variant="full-page"
+        selectionType='single' // single | multi
+        trackBy='ModelId'
+        variant='full-page'
         loading={fetchingModels}
         header={
           <Header
@@ -66,13 +66,13 @@ export function ModelManagementComponent() {
             Models
           </Header>
         }
-        filter={<TextFilter filteringPlaceholder="Find models" />}
+        filter={<TextFilter filteringPlaceholder='Find models' />}
         pagination={<Pagination currentPageIndex={1} pagesCount={1} />}
         preferences={
           <CollectionPreferences
-            title="Preferences"
-            confirmLabel="Confirm"
-            cancelLabel="Cancel"
+            title='Preferences'
+            confirmLabel='Confirm'
+            cancelLabel='Cancel'
             preferences={preferences}
             onConfirm={({ detail }) => setPreferences(detail)}
             pageSizePreference={{
@@ -86,8 +86,8 @@ export function ModelManagementComponent() {
           />
         }
         empty={
-          <Box margin={{ vertical: 'xs' }} textAlign="center" color="inherit">
-            <SpaceBetween size="m">
+          <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+            <SpaceBetween size='m'>
               <b>No models</b>
             </SpaceBetween>
           </Box>

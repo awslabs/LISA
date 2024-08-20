@@ -39,16 +39,16 @@ function ModelActions(props: ModelActionProps): ReactElement {
   const notificationService = useNotificationService(dispatch);
 
   return (
-    <SpaceBetween direction="horizontal" size="xs">
+    <SpaceBetween direction='horizontal' size='xs'>
       {ModelActionButton(notificationService, props)}
-      <Button iconName="add-plus" variant="primary" onClick={() => props.setNewModelModelVisible(true)}>
+      <Button iconName='add-plus' variant='primary' onClick={() => props.setNewModelModelVisible(true)}>
         New Model
       </Button>
       <Button
         onClick={() => dispatch(modelManagementApi.util.invalidateTags(['models']))}
         ariaLabel={'Refresh models cards'}
       >
-        <Icon name="refresh" />
+        <Icon name='refresh' />
       </Button>
     </SpaceBetween>
   );
@@ -123,7 +123,7 @@ function ModelActionButton(notificationService: INotificationService, props?: an
   return (
     <ButtonDropdown
       items={items}
-      variant="primary"
+      variant='primary'
       disabled={!selectedModel}
       loading={isDeleteLoading || isStopLoading || isStartLoading}
       onItemClick={(e) =>

@@ -27,28 +27,28 @@ export type CreateModelModalProps = {
 
 export function CreateModelModal(props: CreateModelModalProps) {
   return (
-    <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header="Create Model">
+    <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header='Create Model'>
       <form onSubmit={(e) => e.preventDefault()}>
         <Form
           actions={
-            <SpaceBetween direction="horizontal" size="xs">
-              <Button formAction="none" variant="link" onClick={() => props.setVisible(false)}>
+            <SpaceBetween direction='horizontal' size='xs'>
+              <Button formAction='none' variant='link' onClick={() => props.setVisible(false)}>
                 Cancel
               </Button>
-              <Button variant="primary">Submit</Button>
+              <Button variant='primary'>Submit</Button>
             </SpaceBetween>
           }
         >
           <Container>
-            <SpaceBetween direction="vertical" size="l">
-              <FormField label="First field">
-                <Input value="" />
+            <SpaceBetween direction='vertical' size='l'>
+              <FormField label='First field'>
+                <Input value='' />
               </FormField>
-              <FormField label="Second field">
-                <Input value="" />
+              <FormField label='Second field'>
+                <Input value='' />
               </FormField>
-              <FormField label="Third field">
-                <Input value="" />
+              <FormField label='Third field'>
+                <Input value='' />
               </FormField>
             </SpaceBetween>
           </Container>

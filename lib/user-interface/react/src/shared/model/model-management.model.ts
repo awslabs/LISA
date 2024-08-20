@@ -14,27 +14,26 @@
  limitations under the License.
  */
 
-
 export enum ModelStatus {
- Creating = "Creating",
- InService = "In Service",
- Stopping = "Stopping",
- Stopped = "Stopped",
- Updating = "Updating",
- Deleting = "Deleting",
- Failed = "Failed"
+  Creating = 'Creating',
+  InService = 'InService',
+  Stopping = 'Stopping',
+  Stopped = 'Stopped',
+  Updating = 'Updating',
+  Deleting = 'Deleting',
+  Failed = 'Failed',
 }
 
 export enum ModelType {
- textgen = "textgen",
- embedding = "embedding",
+  textgen = 'textgen',
+  embedding = 'embedding',
 }
 
 export type IModel = {
-    ModelName: string;
-    ModelId: string;
-    ModelType: ModelType;
-    ModelUrl: string;
-    Streaming: boolean;
-    ModelStatus: ModelStatus;
-}
+  ModelName: string;
+  ModelId: string;
+  ModelType: ModelType;
+  ModelUrl: string;
+  Streaming: boolean;
+  Status: ModelStatus;
+};

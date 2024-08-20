@@ -18,19 +18,39 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { IModel } from '../model/model-management.model';
 
-
 export const modelManagementApi = createApi({
-    reducerPath: 'models',
-    baseQuery:  lisaBaseQuery(),
-    endpoints: (builder) => ({
-        getAllModels: builder.query<IModel[], void>({
-            query: () => ({
-                url: '/models'
-            }),
-            providesTags: ['models']
-        }),
-
+  reducerPath: 'models',
+  baseQuery: lisaBaseQuery(),
+  endpoints: (builder) => ({
+    getAllModels: builder.query<IModel[], void>({
+      query: () => ({
+        url: '/models',
+      }),
+      providesTags: ['models'],
     }),
+    deleteModel: builder.mutation<IModel, string>({
+      query: (modelId) => ({
+        url: `/models/${modelId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['models'],
+    }),
+    startModel: builder.mutation<IModel, string>({
+      query: (modelId) => ({
+        url: `/models/${modelId}/start`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['models'],
+    }),
+    stopModel: builder.mutation<IModel, string>({
+      query: (modelId) => ({
+        url: `/models/${modelId}/stop`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['models'],
+    }),
+  }),
 });
 
-export const { useGetAllModelsQuery } = modelManagementApi;
+export const { useGetAllModelsQuery, useDeleteModelMutation, useStopModelMutation, useStartModelMutation } =
+  modelManagementApi;

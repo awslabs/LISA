@@ -14,13 +14,12 @@
   limitations under the License.
 */
 
-// eslint-disable-next-line no-undef
-module.exports = {
-    testEnvironment: 'node',
-    roots: ['<rootDir>/test'],
-    testMatch: ['**/*.test.ts'],
-    transform: {
-        '^.+\\.tsx?$': 'ts-jest'
-    },
-    collectCoverage: true,
+import { FlashbarProps } from '@cloudscape-design/components';
+
+export type NotificationProp = {
+  header: string;
+  type: FlashbarProps.Type;
+  id: string;
+  content?: React.ReactNode;
+  dismissible?: boolean;
 };

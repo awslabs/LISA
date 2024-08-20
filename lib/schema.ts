@@ -28,44 +28,44 @@ const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
 const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 const PYTHON_VERSIONS: Record<string, lambda.Runtime> = {
-  PYTHON_3_8: lambda.Runtime.PYTHON_3_8,
-  PYTHON_3_9: lambda.Runtime.PYTHON_3_9,
-  PYTHON_3_10: lambda.Runtime.PYTHON_3_10,
-  PYTHON_3_11: lambda.Runtime.PYTHON_3_11,
+    PYTHON_3_8: lambda.Runtime.PYTHON_3_8,
+    PYTHON_3_9: lambda.Runtime.PYTHON_3_9,
+    PYTHON_3_10: lambda.Runtime.PYTHON_3_10,
+    PYTHON_3_11: lambda.Runtime.PYTHON_3_11,
 };
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
-  destroy: cdk.RemovalPolicy.DESTROY,
-  retain: cdk.RemovalPolicy.RETAIN,
+    destroy: cdk.RemovalPolicy.DESTROY,
+    retain: cdk.RemovalPolicy.RETAIN,
 };
 
 /**
  * Configuration schema for Lambda.
  */
 const lambdaConfigSchema = z.object({
-  pythonRuntime: z
-    .union([z.literal('PYTHON_3_8'), z.literal('PYTHON_3_9'), z.literal('PYTHON_3_10'), z.literal('PYTHON_3_11')])
-    .default('PYTHON_3_9')
-    .transform((value) => PYTHON_VERSIONS[value]),
-  logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
+    pythonRuntime: z
+        .union([z.literal('PYTHON_3_8'), z.literal('PYTHON_3_9'), z.literal('PYTHON_3_10'), z.literal('PYTHON_3_11')])
+        .default('PYTHON_3_9')
+        .transform((value) => PYTHON_VERSIONS[value]),
+    logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
 });
 
 /**
  * Enum for different types of models.
  */
 export enum ModelType {
-  TEXTGEN = 'textgen',
-  EMBEDDING = 'embedding',
+    TEXTGEN = 'textgen',
+    EMBEDDING = 'embedding',
 }
 
 /**
  * Enum for different types of ECS container image sources.
  */
 export enum EcsSourceType {
-  ASSET = 'asset',
-  ECR = 'ecr',
-  REGISTRY = 'registry',
-  TARBALL = 'tarball',
+    ASSET = 'asset',
+    ECR = 'ecr',
+    REGISTRY = 'registry',
+    TARBALL = 'tarball',
 }
 
 /**
@@ -78,14 +78,14 @@ export enum EcsSourceType {
  * @property {string} endpointUrl - The URL endpoint where the model can be accessed or invoked.
  * @property {boolean} streaming - Indicates whether the model supports streaming capabilities.
  */
-export interface RegisteredModel {
-  provider: string;
-  modelId: string;
-  modelName: string;
-  modelType: ModelType;
-  endpointUrl: string;
-  streaming?: boolean;
-}
+export type RegisteredModel = {
+    provider: string;
+    modelId: string;
+    modelName: string;
+    modelType: ModelType;
+    endpointUrl: string;
+    streaming?: boolean;
+};
 
 /**
  * Custom security groups for application.
@@ -94,11 +94,11 @@ export interface RegisteredModel {
  * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
  * @property {ec2.SecurityGroup} lambdaSecurityGroup - Lambda security group.
  */
-export interface SecurityGroups {
-  ecsModelAlbSg: ec2.SecurityGroup;
-  restApiAlbSg: ec2.SecurityGroup;
-  lambdaSecurityGroup: ec2.SecurityGroup;
-}
+export type SecurityGroups = {
+    ecsModelAlbSg: ec2.SecurityGroup;
+    restApiAlbSg: ec2.SecurityGroup;
+    lambdaSecurityGroup: ec2.SecurityGroup;
+};
 
 /**
  * Metadata for a specific EC2 instance type.
@@ -110,11 +110,11 @@ export interface SecurityGroups {
  * @property {number} vCpus - Number of virtual CPUs (vCPUs).
  */
 const Ec2TypeSchema = z.object({
-  memory: z.number(),
-  gpuCount: z.number().min(0),
-  nvmePath: z.string().optional().default(''),
-  maxThroughput: z.number(),
-  vCpus: z.number(),
+    memory: z.number(),
+    gpuCount: z.number().min(0),
+    nvmePath: z.string().optional().default(''),
+    maxThroughput: z.number(),
+    vCpus: z.number(),
 });
 
 type Ec2Type = z.infer<typeof Ec2TypeSchema>;
@@ -125,179 +125,179 @@ type Ec2Type = z.infer<typeof Ec2TypeSchema>;
  * maximum throughput, and virtual CPUs.
  */
 export class Ec2Metadata {
-  private static instances: Record<string, Ec2Type> = {
-    'm5.large': {
-      memory: 8 * 1000,
-      gpuCount: 0,
-      nvmePath: '',
-      maxThroughput: 10,
-      vCpus: 2,
-    },
-    'm5.xlarge': {
-      memory: 16 * 1000,
-      gpuCount: 0,
-      nvmePath: '',
-      maxThroughput: 10,
-      vCpus: 4,
-    },
-    'm5.2xlarge': {
-      memory: 32 * 1000,
-      gpuCount: 0,
-      nvmePath: '',
-      maxThroughput: 10,
-      vCpus: 8,
-    },
-    'm5d.xlarge': {
-      memory: 16 * 1000,
-      gpuCount: 0,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 10,
-      vCpus: 4,
-    },
-    'm5d.2xlarge': {
-      memory: 32 * 1000,
-      gpuCount: 0,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 10,
-      vCpus: 8,
-    },
-    'g4dn.xlarge': {
-      memory: 16 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 25,
-      vCpus: 4,
-    },
-    'g4dn.2xlarge': {
-      memory: 32 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 25,
-      vCpus: 8,
-    },
-    'g4dn.4xlarge': {
-      memory: 64 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 25,
-      vCpus: 16,
-    },
-    'g4dn.8xlarge': {
-      memory: 128 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 50,
-      vCpus: 32,
-    },
-    'g4dn.16xlarge': {
-      memory: 256 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 50,
-      vCpus: 64,
-    },
-    'g4dn.12xlarge': {
-      memory: 192 * 1000,
-      gpuCount: 4,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 50,
-      vCpus: 48,
-    },
-    'g4dn.metal': {
-      memory: 384 * 1000,
-      gpuCount: 8,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 100,
-      vCpus: 96,
-    },
-    'g5.xlarge': {
-      memory: 16 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 10,
-      vCpus: 4,
-    },
-    'g5.2xlarge': {
-      memory: 32 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 10,
-      vCpus: 8,
-    },
-    'g5.4xlarge': {
-      memory: 64 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 25,
-      vCpus: 16,
-    },
-    'g5.8xlarge': {
-      memory: 128 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 25,
-      vCpus: 32,
-    },
-    'g5.16xlarge': {
-      memory: 256 * 1000,
-      gpuCount: 1,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 25,
-      vCpus: 64,
-    },
-    'g5.12xlarge': {
-      memory: 192 * 1000,
-      gpuCount: 4,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 40,
-      vCpus: 48,
-    },
-    'g5.24xlarge': {
-      memory: 384 * 1000,
-      gpuCount: 4,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 50,
-      vCpus: 96,
-    },
-    'g5.48xlarge': {
-      memory: 768 * 1000,
-      gpuCount: 8,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 100,
-      vCpus: 192,
-    },
-    'p4d.24xlarge': {
-      memory: 1152 * 1000,
-      gpuCount: 8,
-      nvmePath: '/dev/nvme1n1',
-      maxThroughput: 400,
-      vCpus: 96,
-    },
-  };
+    private static instances: Record<string, Ec2Type> = {
+        'm5.large': {
+            memory: 8 * 1000,
+            gpuCount: 0,
+            nvmePath: '',
+            maxThroughput: 10,
+            vCpus: 2,
+        },
+        'm5.xlarge': {
+            memory: 16 * 1000,
+            gpuCount: 0,
+            nvmePath: '',
+            maxThroughput: 10,
+            vCpus: 4,
+        },
+        'm5.2xlarge': {
+            memory: 32 * 1000,
+            gpuCount: 0,
+            nvmePath: '',
+            maxThroughput: 10,
+            vCpus: 8,
+        },
+        'm5d.xlarge': {
+            memory: 16 * 1000,
+            gpuCount: 0,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 10,
+            vCpus: 4,
+        },
+        'm5d.2xlarge': {
+            memory: 32 * 1000,
+            gpuCount: 0,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 10,
+            vCpus: 8,
+        },
+        'g4dn.xlarge': {
+            memory: 16 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 4,
+        },
+        'g4dn.2xlarge': {
+            memory: 32 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 8,
+        },
+        'g4dn.4xlarge': {
+            memory: 64 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 16,
+        },
+        'g4dn.8xlarge': {
+            memory: 128 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 50,
+            vCpus: 32,
+        },
+        'g4dn.16xlarge': {
+            memory: 256 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 50,
+            vCpus: 64,
+        },
+        'g4dn.12xlarge': {
+            memory: 192 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 50,
+            vCpus: 48,
+        },
+        'g4dn.metal': {
+            memory: 384 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 100,
+            vCpus: 96,
+        },
+        'g5.xlarge': {
+            memory: 16 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 10,
+            vCpus: 4,
+        },
+        'g5.2xlarge': {
+            memory: 32 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 10,
+            vCpus: 8,
+        },
+        'g5.4xlarge': {
+            memory: 64 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 16,
+        },
+        'g5.8xlarge': {
+            memory: 128 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 32,
+        },
+        'g5.16xlarge': {
+            memory: 256 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 64,
+        },
+        'g5.12xlarge': {
+            memory: 192 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 40,
+            vCpus: 48,
+        },
+        'g5.24xlarge': {
+            memory: 384 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 50,
+            vCpus: 96,
+        },
+        'g5.48xlarge': {
+            memory: 768 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 100,
+            vCpus: 192,
+        },
+        'p4d.24xlarge': {
+            memory: 1152 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 400,
+            vCpus: 96,
+        },
+    };
 
-  /**
+    /**
    * Getter method to access EC2 metadata. Retrieves the metadata for a specific EC2 instance type.
    *
    * @param {string} key - The key representing the EC2 instance type (e.g., 'g4dn.xlarge').
    * @throws {Error} Throws an error if no metadata is found for the specified EC2 instance type.
    * @returns {Ec2Type} The metadata for the specified EC2 instance type.
    */
-  static get(key: string): Ec2Type {
-    const instance = this.instances[key];
-    if (!instance) {
-      throw new Error(`No EC2 type found for key: ${key}`);
+    static get (key: string): Ec2Type {
+        const instance = this.instances[key];
+        if (!instance) {
+            throw new Error(`No EC2 type found for key: ${key}`);
+        }
+        return instance;
     }
-    return instance;
-  }
 
-  /**
+    /**
    * Get EC2 instances defined with metadata.
    *
    * @returns {string[]} Array of EC2 instances.
    */
-  static getValidInstanceKeys(): string[] {
-    return Object.keys(this.instances);
-  }
+    static getValidInstanceKeys (): string[] {
+        return Object.keys(this.instances);
+    }
 }
 
 const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string, ...string[]];
@@ -313,45 +313,45 @@ const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string, ...st
  *                                  as unhealthy.
  */
 const ContainerHealthCheckConfigSchema = z.object({
-  command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
-  interval: z.number().default(10),
-  startPeriod: z.number().default(30),
-  timeout: z.number().default(5),
-  retries: z.number().default(2),
+    command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
+    interval: z.number().default(10),
+    startPeriod: z.number().default(30),
+    timeout: z.number().default(5),
+    retries: z.number().default(2),
 });
 
 /**
  * Container image that will use tarball on disk
  */
 const ImageTarballAsset = z.object({
-  path: z.string(),
-  type: z.literal(EcsSourceType.TARBALL),
+    path: z.string(),
+    type: z.literal(EcsSourceType.TARBALL),
 });
 
 /**
  * Container image that will be built based on Dockerfile and assets at the supplied path
  */
 const ImageSourceAsset = z.object({
-  baseImage: z.string(),
-  path: z.string(),
-  type: z.literal(EcsSourceType.ASSET),
+    baseImage: z.string(),
+    path: z.string(),
+    type: z.literal(EcsSourceType.ASSET),
 });
 
 /**
  * Container image that will be pulled from the specified ECR repository
  */
 const ImageECRAsset = z.object({
-  repositoryArn: z.string(),
-  tag: z.string().optional(),
-  type: z.literal(EcsSourceType.ECR),
+    repositoryArn: z.string(),
+    tag: z.string().optional(),
+    type: z.literal(EcsSourceType.ECR),
 });
 
 /**
  * Container image that will be pulled from the specified public registry
  */
 const ImageRegistryAsset = z.object({
-  registry: z.string(),
-  type: z.literal(EcsSourceType.REGISTRY),
+    registry: z.string(),
+    type: z.literal(EcsSourceType.REGISTRY),
 });
 
 /**
@@ -363,21 +363,21 @@ const ImageRegistryAsset = z.object({
  * @property {number} [sharedMemorySize=0] - The value for the size of the /dev/shm volume.
  */
 const ContainerConfigSchema = z.object({
-  image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]),
-  environment: z
-    .record(z.any())
-    .transform((obj) => {
-      return Object.entries(obj).reduce(
-        (acc, [key, value]) => {
-          acc[key] = String(value);
-          return acc;
-        },
-        {} as Record<string, string>,
-      );
-    })
-    .default({}),
-  sharedMemorySize: z.number().min(0).optional().default(0),
-  healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
+    image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]),
+    environment: z
+        .record(z.any())
+        .transform((obj) => {
+            return Object.entries(obj).reduce(
+                (acc, [key, value]) => {
+                    acc[key] = String(value);
+                    return acc;
+                },
+                {} as Record<string, string>,
+            );
+        })
+        .default({}),
+    sharedMemorySize: z.number().min(0).optional().default(0),
+    healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
 });
 
 /**
@@ -392,11 +392,11 @@ const ContainerConfigSchema = z.object({
  *                                                  target unhealthy.
  */
 const HealthCheckConfigSchema = z.object({
-  path: z.string(),
-  interval: z.number().default(30),
-  timeout: z.number().default(10),
-  healthyThresholdCount: z.number().default(2),
-  unhealthyThresholdCount: z.number().default(2),
+    path: z.string(),
+    interval: z.number().default(30),
+    timeout: z.number().default(10),
+    healthyThresholdCount: z.number().default(2),
+    unhealthyThresholdCount: z.number().default(2),
 });
 
 /**
@@ -407,9 +407,9 @@ const HealthCheckConfigSchema = z.object({
  * @property {string} domainName - Domain name to use instead of the load balancer's default DNS name.
  */
 const LoadBalancerConfigSchema = z.object({
-  sslCertIamArn: z.string().optional().nullable().default(null),
-  healthCheckConfig: HealthCheckConfigSchema,
-  domainName: z.string().optional().nullable().default(null),
+    sslCertIamArn: z.string().optional().nullable().default(null),
+    healthCheckConfig: HealthCheckConfigSchema,
+    domainName: z.string().optional().nullable().default(null),
 });
 
 /**
@@ -423,10 +423,10 @@ const LoadBalancerConfigSchema = z.object({
  *
  */
 const MetricConfigSchema = z.object({
-  AlbMetricName: z.string(),
-  targetValue: z.number(),
-  duration: z.number().default(60),
-  estimatedInstanceWarmup: z.number().min(0).default(180),
+    AlbMetricName: z.string(),
+    targetValue: z.number(),
+    duration: z.number().default(60),
+    estimatedInstanceWarmup: z.number().min(0).default(180),
 });
 
 /**
@@ -440,11 +440,11 @@ const MetricConfigSchema = z.object({
 * @property {MetricConfig} metricConfig - Metric configuration for auto scaling.
 */
 const AutoScalingConfigSchema = z.object({
-  minCapacity: z.number().min(1).default(1),
-  maxCapacity: z.number().min(1).default(2),
-  defaultInstanceWarmup: z.number().default(180),
-  cooldown: z.number().min(1).default(420),
-  metricConfig: MetricConfigSchema,
+    minCapacity: z.number().min(1).default(1),
+    maxCapacity: z.number().min(1).default(2),
+    defaultInstanceWarmup: z.number().default(180),
+    cooldown: z.number().min(1).default(420),
+    metricConfig: MetricConfigSchema,
 });
 
 /**
@@ -466,16 +466,16 @@ const AutoScalingConfigSchema = z.object({
  * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
  */
 const EcsBaseConfigSchema = z.object({
-  amiHardwareType: z.nativeEnum(AmiHardwareType),
-  autoScalingConfig: AutoScalingConfigSchema,
-  buildArgs: z.record(z.string()).optional(),
-  containerConfig: ContainerConfigSchema,
-  containerMemoryBuffer: z.number().default(1024 * 2),
-  environment: z.record(z.string()),
-  identifier: z.string(),
-  instanceType: z.enum(VALID_INSTANCE_KEYS),
-  internetFacing: z.boolean().default(false),
-  loadBalancerConfig: LoadBalancerConfigSchema,
+    amiHardwareType: z.nativeEnum(AmiHardwareType),
+    autoScalingConfig: AutoScalingConfigSchema,
+    buildArgs: z.record(z.string()).optional(),
+    containerConfig: ContainerConfigSchema,
+    containerMemoryBuffer: z.number().default(1024 * 2),
+    environment: z.record(z.string()),
+    identifier: z.string(),
+    instanceType: z.enum(VALID_INSTANCE_KEYS),
+    internetFacing: z.boolean().default(false),
+    loadBalancerConfig: LoadBalancerConfigSchema,
 });
 
 /**
@@ -506,43 +506,43 @@ export type ECSConfig = EcsBaseConfig;
  * @property {string} [modelHosting='ecs'] - Model hosting.
  */
 const EcsModelConfigSchema = z
-  .object({
-    modelName: z.string(),
-    modelId: z.string().optional(),
-    deploy: z.boolean().default(true),
-    streaming: z.boolean().nullable().default(null),
-    modelType: z.nativeEnum(ModelType),
-    instanceType: z.enum(VALID_INSTANCE_KEYS),
-    inferenceContainer: z
-      .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
-      .refine((data) => {
-        return !data.includes('.'); // string cannot contain a period
-      }),
-    containerConfig: ContainerConfigSchema,
-    autoScalingConfig: AutoScalingConfigSchema,
-    loadBalancerConfig: LoadBalancerConfigSchema,
-    localModelCode: z.string().default('/opt/model-code'),
-    modelHosting: z
-      .string()
-      .default('ecs')
-      .refine((data) => {
-        return !data.includes('.'); // string cannot contain a period
-      }),
-  })
-  .refine(
-    (data) => {
-      // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
-      const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
-      const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
+    .object({
+        modelName: z.string(),
+        modelId: z.string().optional(),
+        deploy: z.boolean().default(true),
+        streaming: z.boolean().nullable().default(null),
+        modelType: z.nativeEnum(ModelType),
+        instanceType: z.enum(VALID_INSTANCE_KEYS),
+        inferenceContainer: z
+            .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
+            .refine((data) => {
+                return !data.includes('.'); // string cannot contain a period
+            }),
+        containerConfig: ContainerConfigSchema,
+        autoScalingConfig: AutoScalingConfigSchema,
+        loadBalancerConfig: LoadBalancerConfigSchema,
+        localModelCode: z.string().default('/opt/model-code'),
+        modelHosting: z
+            .string()
+            .default('ecs')
+            .refine((data) => {
+                return !data.includes('.'); // string cannot contain a period
+            }),
+    })
+    .refine(
+        (data) => {
+            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+            const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
+            const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
 
-      return isValidForTextgen || isValidForEmbedding;
-    },
-    {
-      message: `For 'textgen' models, 'streaming' must be true or false.
+            return isValidForTextgen || isValidForEmbedding;
+        },
+        {
+            message: `For 'textgen' models, 'streaming' must be true or false.
             For 'embedding' models, 'streaming' must not be set.`,
-      path: ['streaming'],
-    },
-  );
+            path: ['streaming'],
+        },
+    );
 
 /**
  * Type representing configuration for an ECS model.
@@ -564,17 +564,17 @@ export type ModelConfig = EcsModelConfig;
  * @property {string[]} [additionalScopes=null] - Additional JWT scopes to request.
  */
 const AuthConfigSchema = z.object({
-  authority: z.string().transform((value) => {
-    if (value.endsWith('/')) {
-      return value.slice(0, -1);
-    } else {
-      return value;
-    }
-  }),
-  clientId: z.string(),
-  adminGroup: z.string().optional().default(''),
-  jwtGroupsProperty: z.string().optional().default(''),
-  additionalScopes: z.array(z.string()).optional().default([]),
+    authority: z.string().transform((value) => {
+        if (value.endsWith('/')) {
+            return value.slice(0, -1);
+        } else {
+            return value;
+        }
+    }),
+    clientId: z.string(),
+    adminGroup: z.string().optional().default(''),
+    jwtGroupsProperty: z.string().optional().default(''),
+    additionalScopes: z.array(z.string()).optional().default([]),
 });
 
 /**
@@ -587,68 +587,68 @@ const AuthConfigSchema = z.object({
  * @property {boolean} [internetFacing=true] - Whether or not the REST API ALB will be configured as internet facing.
  */
 const FastApiContainerConfigSchema = z.object({
-  apiVersion: z.literal('v2'),
-  instanceType: z.enum(VALID_INSTANCE_KEYS),
-  containerConfig: ContainerConfigSchema,
-  autoScalingConfig: AutoScalingConfigSchema,
-  loadBalancerConfig: LoadBalancerConfigSchema,
-  internetFacing: z.boolean().default(true),
+    apiVersion: z.literal('v2'),
+    instanceType: z.enum(VALID_INSTANCE_KEYS),
+    containerConfig: ContainerConfigSchema,
+    autoScalingConfig: AutoScalingConfigSchema,
+    loadBalancerConfig: LoadBalancerConfigSchema,
+    internetFacing: z.boolean().default(true),
 });
 
 /**
  * Enum for different types of RAG repositories available
  */
 export enum RagRepositoryType {
-  OPENSEARCH = 'opensearch',
-  PGVECTOR = 'pgvector',
+    OPENSEARCH = 'opensearch',
+    PGVECTOR = 'pgvector',
 }
 
 const OpenSearchNewClusterConfig = z.object({
-  dataNodes: z.number().min(1),
-  dataNodeInstanceType: z.string(),
-  masterNodes: z.number().min(0),
-  masterNodeInstanceType: z.string(),
-  volumeSize: z.number().min(10),
-  multiAzWithStandby: z.boolean().default(false),
+    dataNodes: z.number().min(1),
+    dataNodeInstanceType: z.string(),
+    masterNodes: z.number().min(0),
+    masterNodeInstanceType: z.string(),
+    volumeSize: z.number().min(10),
+    multiAzWithStandby: z.boolean().default(false),
 });
 
 const OpenSearchExistingClusterConfig = z.object({
-  endpoint: z.string(),
+    endpoint: z.string(),
 });
 
 const RdsInstanceConfig = z.object({
-  username: z.string(),
-  passwordSecretId: z.string().optional(),
-  dbHost: z.string().optional(),
-  dbName: z.string().optional().default('postgres'),
+    username: z.string(),
+    passwordSecretId: z.string().optional(),
+    dbHost: z.string().optional(),
+    dbName: z.string().optional().default('postgres'),
 });
 
 /**
  * Configuration schema for RAG repository. Defines settings for OpenSearch.
  */
 const RagRepositoryConfigSchema = z
-  .object({
-    repositoryId: z.string(),
-    type: z.nativeEnum(RagRepositoryType),
-    opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-    rdsConfig: RdsInstanceConfig.optional(),
-  })
-  .refine((input) => {
-    if (
-      (input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
+    .object({
+        repositoryId: z.string(),
+        type: z.nativeEnum(RagRepositoryType),
+        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
+        rdsConfig: RdsInstanceConfig.optional(),
+    })
+    .refine((input) => {
+        if (
+            (input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
       (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined)
-    ) {
-      return false;
-    }
-    return true;
-  });
+        ) {
+            return false;
+        }
+        return true;
+    });
 
 /**
  * Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.
  */
 const RagFileProcessingConfigSchema = z.object({
-  chunkSize: z.number().min(100).max(10000),
-  chunkOverlap: z.number().min(0),
+    chunkSize: z.number().min(100).max(10000),
+    chunkOverlap: z.number().min(0),
 });
 
 /**
@@ -658,17 +658,17 @@ const RagFileProcessingConfigSchema = z.object({
  * @property {string} [trustedHost=''] - Trusted host for pypi.
  */
 const PypiConfigSchema = z.object({
-  indexUrl: z.string().optional().default(''),
-  trustedHost: z.string().optional().default(''),
+    indexUrl: z.string().optional().default(''),
+    trustedHost: z.string().optional().default(''),
 });
 
 /**
  * Enum for different types of stack synthesizers
  */
 export enum stackSynthesizerType {
-  CliCredentialsStackSynthesizer = 'CliCredentialsStackSynthesizer',
-  DefaultStackSynthesizer = 'DefaultStackSynthesizer',
-  LegacyStackSynthesizer = 'LegacyStackSynthesizer',
+    CliCredentialsStackSynthesizer = 'CliCredentialsStackSynthesizer',
+    DefaultStackSynthesizer = 'DefaultStackSynthesizer',
+    LegacyStackSynthesizer = 'LegacyStackSynthesizer',
 }
 
 /**
@@ -677,10 +677,10 @@ export enum stackSynthesizerType {
  * @property {string} domainName - Custom domain name for API Gateway Endpoint
  */
 const ApiGatewayConfigSchema = z
-  .object({
-    domainName: z.string().optional().nullable().default(null),
-  })
-  .optional();
+    .object({
+        domainName: z.string().optional().nullable().default(null),
+    })
+    .optional();
 
 /**
  * Configuration for models inside the LiteLLM Config
@@ -691,42 +691,42 @@ const ApiGatewayConfigSchema = z
  * fail to initialize as a result of them existing.
  */
 const LiteLLMModel = z.object({
-  model_name: z.string(),
-  litellm_params: z.object({
-    model: z.string(),
-    api_base: z.string().optional(),
-    api_key: z.string().optional(),
-    aws_region_name: z.string().optional(),
-  }),
-  lisa_params: z
-    .object({
-      streaming: z.boolean().nullable().default(null),
-      model_type: z.nativeEnum(ModelType),
-    })
-    .refine(
-      (data) => {
-        // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
-        const isValidForTextgen = data.model_type === 'textgen' && typeof data.streaming === 'boolean';
-        const isValidForEmbedding = data.model_type === 'embedding' && data.streaming === null;
+    model_name: z.string(),
+    litellm_params: z.object({
+        model: z.string(),
+        api_base: z.string().optional(),
+        api_key: z.string().optional(),
+        aws_region_name: z.string().optional(),
+    }),
+    lisa_params: z
+        .object({
+            streaming: z.boolean().nullable().default(null),
+            model_type: z.nativeEnum(ModelType),
+        })
+        .refine(
+            (data) => {
+                // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+                const isValidForTextgen = data.model_type === 'textgen' && typeof data.streaming === 'boolean';
+                const isValidForEmbedding = data.model_type === 'embedding' && data.streaming === null;
 
-        return isValidForTextgen || isValidForEmbedding;
-      },
-      {
-        message: `For 'textgen' models, 'streaming' must be true or false.
+                return isValidForTextgen || isValidForEmbedding;
+            },
+            {
+                message: `For 'textgen' models, 'streaming' must be true or false.
             For 'embedding' models, 'streaming' must not be set.`,
-        path: ['streaming'],
-      },
-    ),
-  model_info: z
-    .object({
-      id: z.string().optional(),
-      mode: z.string().optional(),
-      input_cost_per_token: z.number().optional(),
-      output_cost_per_token: z.number().optional(),
-      max_tokens: z.number().optional(),
-      base_model: z.string().optional(),
-    })
-    .optional(),
+                path: ['streaming'],
+            },
+        ),
+    model_info: z
+        .object({
+            id: z.string().optional(),
+            mode: z.string().optional(),
+            input_cost_per_token: z.number().optional(),
+            output_cost_per_token: z.number().optional(),
+            max_tokens: z.number().optional(),
+            base_model: z.string().optional(),
+        })
+        .optional(),
 });
 
 /**
@@ -734,56 +734,56 @@ const LiteLLMModel = z.object({
  * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.
  */
 const LiteLLMConfig = z.object({
-  environment_variables: z.map(z.string(), z.string()).optional(),
-  model_list: z
-    .array(LiteLLMModel)
-    .optional()
-    .nullable()
-    .default([])
-    .transform((value) => value ?? []),
-  litellm_settings: z.object({
+    environment_variables: z.map(z.string(), z.string()).optional(),
+    model_list: z
+        .array(LiteLLMModel)
+        .optional()
+        .nullable()
+        .default([])
+        .transform((value) => value ?? []),
+    litellm_settings: z.object({
     // ALL (https://github.com/BerriAI/litellm/blob/main/litellm/__init__.py)
-    telemetry: z.boolean().default(false).optional(),
-    drop_params: z.boolean().default(true).optional(),
-  }),
-  general_settings: z
-    .object({
-      completion_model: z.string().optional(),
-      disable_spend_logs: z.boolean().optional(), // turn off writing each transaction to the db
-      disable_master_key_return: z.boolean().optional(), // turn off returning master key on UI
-      disable_reset_budget: z.boolean().optional(), // turn off reset budget scheduled task
-      enable_jwt_auth: z.boolean().optional(), // allow proxy admin to auth in via jwt tokens with 'litellm_proxy_admin'
-      enforce_user_param: z.boolean().optional(), // requires all openai endpoint requests to have a 'user' param
-      allowed_routes: z.array(z.string()).optional(), // list of allowed proxy API routes a user can access. (JWT only)
-      key_management_system: z.string().optional(), // either google_kms or azure_kms
-      master_key: z.string().optional(),
-      database_url: z.string().optional(),
-      database_connection_pool_limit: z.number().optional(), // default 100
-      database_connection_timeout: z.number().optional(), // default 60s
-      database_type: z.string().optional(),
-      database_args: z
+        telemetry: z.boolean().default(false).optional(),
+        drop_params: z.boolean().default(true).optional(),
+    }),
+    general_settings: z
         .object({
-          billing_mode: z.string().optional(),
-          read_capacity_units: z.number().optional(),
-          write_capacity_units: z.number().optional(),
-          ssl_verify: z.boolean().optional(),
-          region_name: z.string().optional(),
-          user_table_name: z.string().optional(),
-          key_table_name: z.string().optional(),
-          config_table_name: z.string().optional(),
-          spend_table_name: z.string().optional(),
+            completion_model: z.string().optional(),
+            disable_spend_logs: z.boolean().optional(), // turn off writing each transaction to the db
+            disable_master_key_return: z.boolean().optional(), // turn off returning master key on UI
+            disable_reset_budget: z.boolean().optional(), // turn off reset budget scheduled task
+            enable_jwt_auth: z.boolean().optional(), // allow proxy admin to auth in via jwt tokens with 'litellm_proxy_admin'
+            enforce_user_param: z.boolean().optional(), // requires all openai endpoint requests to have a 'user' param
+            allowed_routes: z.array(z.string()).optional(), // list of allowed proxy API routes a user can access. (JWT only)
+            key_management_system: z.string().optional(), // either google_kms or azure_kms
+            master_key: z.string().optional(),
+            database_url: z.string().optional(),
+            database_connection_pool_limit: z.number().optional(), // default 100
+            database_connection_timeout: z.number().optional(), // default 60s
+            database_type: z.string().optional(),
+            database_args: z
+                .object({
+                    billing_mode: z.string().optional(),
+                    read_capacity_units: z.number().optional(),
+                    write_capacity_units: z.number().optional(),
+                    ssl_verify: z.boolean().optional(),
+                    region_name: z.string().optional(),
+                    user_table_name: z.string().optional(),
+                    key_table_name: z.string().optional(),
+                    config_table_name: z.string().optional(),
+                    spend_table_name: z.string().optional(),
+                })
+                .optional(),
+            otel: z.boolean().optional(),
+            custom_auth: z.string().optional(),
+            max_parallel_requests: z.number().optional(),
+            infer_model_from_keys: z.boolean().optional(),
+            background_health_checks: z.boolean().optional(),
+            health_check_interval: z.number().optional(),
+            alerting: z.array(z.string()).optional(),
+            alerting_threshold: z.number().optional(),
         })
         .optional(),
-      otel: z.boolean().optional(),
-      custom_auth: z.string().optional(),
-      max_parallel_requests: z.number().optional(),
-      infer_model_from_keys: z.boolean().optional(),
-      background_health_checks: z.boolean().optional(),
-      health_check_interval: z.number().optional(),
-      alerting: z.array(z.string()).optional(),
-      alerting_threshold: z.number().optional(),
-    })
-    .optional(),
 });
 
 /**
@@ -821,117 +821,117 @@ const LiteLLMConfig = z.object({
  *                                              time.
  */
 const RawConfigSchema = z
-  .object({
-    appName: z.string().default('lisa'),
-    profile: z
-      .string()
-      .optional()
-      .nullable()
-      .transform((value) => value ?? ''),
-    deploymentName: z.string(),
-    accountNumber: z
-      .number()
-      .or(z.string())
-      .transform((value) => value.toString())
-      .refine((value) => value.length === 12, {
-        message: 'AWS account number should be 12 digits',
-      }),
-    region: z.string(),
-    vpcId: z.string().optional(),
-    deploymentStage: z.string(),
-    removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
-    runCdkNag: z.boolean().default(false),
-    s3BucketModels: z.string(),
-    mountS3DebUrl: z.string().optional(),
-    accountNumbersEcr: z
-      .array(z.union([z.number(), z.string()]))
-      .transform((arr) => arr.map(String))
-      .refine((value) => value.every((num) => num.length === 12), {
-        message: 'AWS account number should be 12 digits',
-      })
-      .optional(),
-    deployRag: z.boolean().optional().default(false),
-    deployChat: z.boolean().optional().default(true),
-    deployUi: z.boolean().optional().default(true),
-    logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
-    lambdaConfig: lambdaConfigSchema,
-    lambdaSourcePath: z.string().optional().default('./lambda'),
-    authConfig: AuthConfigSchema.optional(),
-    pypiConfig: PypiConfigSchema.optional().default({
-      indexUrl: '',
-      trustedHost: '',
-    }),
-    condaUrl: z.string().optional().default(''),
-    certificateAuthorityBundle: z.string().optional().default(''),
-    ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
-    ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
-    restApiConfig: FastApiContainerConfigSchema,
-    ecsModels: z.array(EcsModelConfigSchema),
-    apiGatewayConfig: ApiGatewayConfigSchema.optional(),
-    nvmeHostMountPath: z.string().default('/nvme'),
-    nvmeContainerMountPath: z.string().default('/nvme'),
-    tags: z
-      .array(
-        z.object({
-          Key: z.string(),
-          Value: z.string(),
+    .object({
+        appName: z.string().default('lisa'),
+        profile: z
+            .string()
+            .optional()
+            .nullable()
+            .transform((value) => value ?? ''),
+        deploymentName: z.string(),
+        accountNumber: z
+            .number()
+            .or(z.string())
+            .transform((value) => value.toString())
+            .refine((value) => value.length === 12, {
+                message: 'AWS account number should be 12 digits',
+            }),
+        region: z.string(),
+        vpcId: z.string().optional(),
+        deploymentStage: z.string(),
+        removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
+        runCdkNag: z.boolean().default(false),
+        s3BucketModels: z.string(),
+        mountS3DebUrl: z.string().optional(),
+        accountNumbersEcr: z
+            .array(z.union([z.number(), z.string()]))
+            .transform((arr) => arr.map(String))
+            .refine((value) => value.every((num) => num.length === 12), {
+                message: 'AWS account number should be 12 digits',
+            })
+            .optional(),
+        deployRag: z.boolean().optional().default(false),
+        deployChat: z.boolean().optional().default(true),
+        deployUi: z.boolean().optional().default(true),
+        logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
+        lambdaConfig: lambdaConfigSchema,
+        lambdaSourcePath: z.string().optional().default('./lambda'),
+        authConfig: AuthConfigSchema.optional(),
+        pypiConfig: PypiConfigSchema.optional().default({
+            indexUrl: '',
+            trustedHost: '',
         }),
-      )
-      .optional(),
-    deploymentPrefix: z.string().optional(),
-    webAppAssetsPath: z.string().optional(),
-    lambdaLayerAssets: z
-      .object({
-        authorizerLayerPath: z.string().optional(),
-        commonLayerPath: z.string().optional(),
-        fastapiLayerPath: z.string().optional(),
-        ragLayerPath: z.string().optional(),
-        sdkLayerPath: z.string().optional(),
-      })
-      .optional(),
-    systemBanner: z
-      .object({
-        text: z.string(),
-        backgroundColor: z.string(),
-        fontColor: z.string(),
-      })
-      .optional(),
-    permissionsBoundaryAspect: z
-      .object({
-        permissionsBoundaryPolicyName: z.string(),
-        rolePrefix: z.string().optional(),
-        policyPrefix: z.string().optional(),
-        instanceProfilePrefix: z.string().optional(),
-      })
-      .optional(),
-    stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional(),
-    litellmConfig: LiteLLMConfig,
-  })
-  .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
-    message: 'Must set PypiConfig if in an iso region',
-  })
-  .refine(
-    (config) => {
-      return !config.deployUi || config.deployChat;
-    },
-    {
-      message: 'Chat stack is needed for UI stack. You must set deployChat to true if deployUi is true.',
-    },
-  )
-  .refine(
-    (config) => {
-      return (
-        !(config.deployChat || config.deployRag || config.deployUi || config.restApiConfig.internetFacing) ||
+        condaUrl: z.string().optional().default(''),
+        certificateAuthorityBundle: z.string().optional().default(''),
+        ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
+        ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
+        restApiConfig: FastApiContainerConfigSchema,
+        ecsModels: z.array(EcsModelConfigSchema),
+        apiGatewayConfig: ApiGatewayConfigSchema.optional(),
+        nvmeHostMountPath: z.string().default('/nvme'),
+        nvmeContainerMountPath: z.string().default('/nvme'),
+        tags: z
+            .array(
+                z.object({
+                    Key: z.string(),
+                    Value: z.string(),
+                }),
+            )
+            .optional(),
+        deploymentPrefix: z.string().optional(),
+        webAppAssetsPath: z.string().optional(),
+        lambdaLayerAssets: z
+            .object({
+                authorizerLayerPath: z.string().optional(),
+                commonLayerPath: z.string().optional(),
+                fastapiLayerPath: z.string().optional(),
+                ragLayerPath: z.string().optional(),
+                sdkLayerPath: z.string().optional(),
+            })
+            .optional(),
+        systemBanner: z
+            .object({
+                text: z.string(),
+                backgroundColor: z.string(),
+                fontColor: z.string(),
+            })
+            .optional(),
+        permissionsBoundaryAspect: z
+            .object({
+                permissionsBoundaryPolicyName: z.string(),
+                rolePrefix: z.string().optional(),
+                policyPrefix: z.string().optional(),
+                instanceProfilePrefix: z.string().optional(),
+            })
+            .optional(),
+        stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional(),
+        litellmConfig: LiteLLMConfig,
+    })
+    .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
+        message: 'Must set PypiConfig if in an iso region',
+    })
+    .refine(
+        (config) => {
+            return !config.deployUi || config.deployChat;
+        },
+        {
+            message: 'Chat stack is needed for UI stack. You must set deployChat to true if deployUi is true.',
+        },
+    )
+    .refine(
+        (config) => {
+            return (
+                !(config.deployChat || config.deployRag || config.deployUi || config.restApiConfig.internetFacing) ||
         config.authConfig
-      );
-    },
-    {
-      message:
+            );
+        },
+        {
+            message:
         'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
         'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
         'false or that an `authConfig` is provided.',
-    },
-  );
+        },
+    );
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -940,41 +940,41 @@ const RawConfigSchema = z
  * @returns {Object} The transformed application configuration.
  */
 export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
-  let deploymentPrefix = rawConfig.deploymentPrefix;
+    let deploymentPrefix = rawConfig.deploymentPrefix;
 
-  if (!deploymentPrefix && rawConfig.appName && rawConfig.deploymentStage && rawConfig.deploymentName) {
-    deploymentPrefix = `/${rawConfig.deploymentStage}/${rawConfig.deploymentName}/${rawConfig.appName}`;
-  }
+    if (!deploymentPrefix && rawConfig.appName && rawConfig.deploymentStage && rawConfig.deploymentName) {
+        deploymentPrefix = `/${rawConfig.deploymentStage}/${rawConfig.deploymentName}/${rawConfig.appName}`;
+    }
 
-  let tags = rawConfig.tags;
+    let tags = rawConfig.tags;
 
-  if (!tags && deploymentPrefix) {
-    tags = [
-      { Key: 'deploymentPrefix', Value: deploymentPrefix },
-      { Key: 'deploymentName', Value: rawConfig.deploymentName },
-      { Key: 'deploymentStage', Value: rawConfig.deploymentStage },
-      { Key: 'region', Value: rawConfig.region },
-      { Key: 'version', Value: VERSION },
-    ];
-  }
+    if (!tags && deploymentPrefix) {
+        tags = [
+            { Key: 'deploymentPrefix', Value: deploymentPrefix },
+            { Key: 'deploymentName', Value: rawConfig.deploymentName },
+            { Key: 'deploymentStage', Value: rawConfig.deploymentStage },
+            { Key: 'region', Value: rawConfig.region },
+            { Key: 'version', Value: VERSION },
+        ];
+    }
 
-  let awsRegionArn;
-  if (rawConfig.region.includes('iso-b')) {
-    awsRegionArn = 'aws-iso-b';
-  } else if (rawConfig.region.includes('iso')) {
-    awsRegionArn = 'aws-iso';
-  } else if (rawConfig.region.includes('gov')) {
-    awsRegionArn = 'aws-gov';
-  } else {
-    awsRegionArn = 'aws';
-  }
+    let awsRegionArn;
+    if (rawConfig.region.includes('iso-b')) {
+        awsRegionArn = 'aws-iso-b';
+    } else if (rawConfig.region.includes('iso')) {
+        awsRegionArn = 'aws-iso';
+    } else if (rawConfig.region.includes('gov')) {
+        awsRegionArn = 'aws-gov';
+    } else {
+        awsRegionArn = 'aws';
+    }
 
-  return {
-    ...rawConfig,
-    deploymentPrefix: deploymentPrefix,
-    tags: tags,
-    awsRegionArn,
-  };
+    return {
+        ...rawConfig,
+        deploymentPrefix: deploymentPrefix,
+        tags: tags,
+        awsRegionArn,
+    };
 });
 
 /**
@@ -989,8 +989,8 @@ export type FastApiContainerConfig = z.infer<typeof FastApiContainerConfigSchema
  *
  * @property {Config} config - The application configuration.
  */
-export interface BaseProps {
-  config: Config;
-}
+export type BaseProps = {
+    config: Config;
+};
 
 export type ConfigFile = Record<string, any>;

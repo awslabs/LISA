@@ -26,50 +26,53 @@ import { useEffect, useState } from 'react';
 
 function AppConfigured() {
   const dispatch = useAppDispatch();
-  const[oidcUser, setOidcUser] = useState<User | void>();
+  const [oidcUser, setOidcUser] = useState<User | void>();
 
   useEffect(() => {
-    if(oidcUser){
-      let userGroups = getGroups(oidcUser.profile);
-      dispatch(updateUserState(
-          {
-              name: oidcUser.profile.name,
-              preferred_username: oidcUser.profile.preferred_username,
-              email: oidcUser.profile.email,
-              groups: userGroups,
-              isAdmin: userGroups ? isAdmin(userGroups) : false
-          })
-      )
+    if (oidcUser) {
+      const userGroups = getGroups(oidcUser.profile);
+      dispatch(
+        updateUserState({
+          name: oidcUser.profile.name,
+          preferred_username: oidcUser.profile.preferred_username,
+          email: oidcUser.profile.email,
+          groups: userGroups,
+          isAdmin: userGroups ? isAdmin(userGroups) : false,
+        }),
+      );
     }
   }, [dispatch, oidcUser]);
 
   const getGroups = (oidcUserProfile: UserProfile): any => {
-      if (window.env.JWT_GROUPS_PROP) {
-          const props: string[] = window.env.JWT_GROUPS_PROP.split(".");
-          let currentNode: any = oidcUserProfile;
-          let found = true;
-          props.forEach((prop) => {
-              if (prop in currentNode) {
-                  currentNode = currentNode[prop];
-              } else {
-                  found = false;
-              }
-          });
-          return found ? currentNode : undefined;
-      } else {
-          return undefined;
-      }
+    if (window.env.JWT_GROUPS_PROP) {
+      const props: string[] = window.env.JWT_GROUPS_PROP.split('.');
+      let currentNode: any = oidcUserProfile;
+      let found = true;
+      props.forEach((prop) => {
+        if (prop in currentNode) {
+          currentNode = currentNode[prop];
+        } else {
+          found = false;
+        }
+      });
+      return found ? currentNode : undefined;
+    } else {
+      return undefined;
+    }
   };
 
   const isAdmin = (userGroups: any): boolean => {
-      return window.env.ADMIN_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
-    }
+    return window.env.ADMIN_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
+  };
 
   return (
-    <AuthProvider {...OidcConfig} onSigninCallback={async (user: User | void) => {
-      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
-      setOidcUser(user);
-    }}>
+    <AuthProvider
+      {...OidcConfig}
+      onSigninCallback={async (user: User | void) => {
+        window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
+        setOidcUser(user);
+      }}
+    >
       <App />
     </AuthProvider>
   );

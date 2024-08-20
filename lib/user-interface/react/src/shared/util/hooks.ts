@@ -14,13 +14,15 @@
   limitations under the License.
 */
 
-// eslint-disable-next-line no-undef
-module.exports = {
-    testEnvironment: 'node',
-    roots: ['<rootDir>/test'],
-    testMatch: ['**/*.test.ts'],
-    transform: {
-        '^.+\\.tsx?$': 'ts-jest'
-    },
-    collectCoverage: true,
-};
+import { Action, ThunkDispatch } from '@reduxjs/toolkit';
+import { useMemo } from 'react';
+import NotificationService from '../notification/notification.service';
+
+/**
+ * Creates a memoized NotificationService based on {@link dispatch}
+ */
+export function useNotificationService(
+  dispatch: ThunkDispatch<any, any, Action>,
+): ReturnType<typeof NotificationService> {
+  return useMemo(() => NotificationService(dispatch), [dispatch]);
+}

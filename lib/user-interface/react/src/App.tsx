@@ -28,6 +28,7 @@ import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import NotificationBanner from './shared/notification/notification';
 
 const PrivateRoute = ({ children }) => {
   const auth = useAuth();
@@ -41,15 +42,15 @@ const PrivateRoute = ({ children }) => {
 };
 
 const AdminRoute = ({ children }) => {
-    const auth = useAuth();
-    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
-    if (auth.isAuthenticated && isUserAdmin) {
-        return children;
-    } else if (auth.isLoading) {
-        return <Spinner />;
-    } else {
-        return <Navigate to={import.meta.env.BASE_URL} />;
-    }
+  const auth = useAuth();
+  const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+  if (auth.isAuthenticated && isUserAdmin) {
+    return children;
+  } else if (auth.isLoading) {
+    return <Spinner />;
+  } else {
+    return <Navigate to={import.meta.env.BASE_URL} />;
+  }
 };
 
 function App() {
@@ -79,6 +80,8 @@ function App() {
         footerSelector="#f"
         navigationHide={true}
         toolsHide={!showTools}
+        notifications={<NotificationBanner />}
+        stickyNotifications={true}
         tools={tools}
         toolsWidth={500}
         content={
@@ -101,12 +104,12 @@ function App() {
               }
             />
             <Route
-                path="model-management"
-                element={
-                    <AdminRoute>
-                        <ModelManagement setTools={setTools} />
-                    </AdminRoute>
-                }
+              path="model-management"
+              element={
+                <AdminRoute>
+                  <ModelManagement setTools={setTools} />
+                </AdminRoute>
+              }
             />
           </Routes>
         }

@@ -37,117 +37,117 @@ import { BaseProps } from '../schema';
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  */
 type ModelsApiProps = BaseProps & {
-  authorizer: IAuthorizer;
-  lambdaExecutionRole?: IRole;
-  restApiId: string;
-  rootResourceId: string;
-  securityGroups?: ISecurityGroup[];
-  vpc?: IVpc;
+    authorizer: IAuthorizer;
+    lambdaExecutionRole?: IRole;
+    restApiId: string;
+    rootResourceId: string;
+    securityGroups?: ISecurityGroup[];
+    vpc?: IVpc;
 };
 
 /**
  * API for managing Models
  */
 export class ModelsApi extends Construct {
-  constructor(scope: Construct, id: string, props: ModelsApiProps) {
-    super(scope, id);
+    constructor (scope: Construct, id: string, props: ModelsApiProps) {
+        super(scope, id);
 
-    const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-    // Get common layer based on arn from SSM due to issues with cross stack references
-    const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'models-common-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-    );
+        // Get common layer based on arn from SSM due to issues with cross stack references
+        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'models-common-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        );
 
-    const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'models-fastapi-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-    );
+        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'models-fastapi-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
+        );
 
-    const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
-      restApiId: restApiId,
-      rootResourceId: rootResourceId,
-    });
+        const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
+            restApiId: restApiId,
+            rootResourceId: rootResourceId,
+        });
 
-    // generates a random hexadecimal string of a specific length
-    const generateDisambiguator = (size: number): string =>
-      Buffer.from(
-        // one byte is 2 hex characters so only generate ceil(size/2) bytes of randomness
-        crypto.getRandomValues(new Uint8Array(Math.ceil(size / 2))),
-      )
-        .toString('hex')
-        .slice(0, size);
+        // generates a random hexadecimal string of a specific length
+        const generateDisambiguator = (size: number): string =>
+            Buffer.from(
+                // one byte is 2 hex characters so only generate ceil(size/2) bytes of randomness
+                crypto.getRandomValues(new Uint8Array(Math.ceil(size / 2))),
+            )
+                .toString('hex')
+                .slice(0, size);
 
-    // create proxy handler
-    const lambdaFunction = registerAPIEndpoint(
-      this,
-      restApi,
-      authorizer,
-      config.lambdaSourcePath,
-      [commonLambdaLayer, fastapiLambdaLayer],
-      {
-        name: 'handler',
-        resource: 'models',
-        description: 'Manage model',
-        path: 'models/{proxy+}',
-        method: 'ANY',
-      },
-      config.lambdaConfig.pythonRuntime,
-      lambdaExecutionRole,
-      vpc,
-      securityGroups,
-    );
+        // create proxy handler
+        const lambdaFunction = registerAPIEndpoint(
+            this,
+            restApi,
+            authorizer,
+            config.lambdaSourcePath,
+            [commonLambdaLayer, fastapiLambdaLayer],
+            {
+                name: 'handler',
+                resource: 'models',
+                description: 'Manage model',
+                path: 'models/{proxy+}',
+                method: 'ANY',
+            },
+            config.lambdaConfig.pythonRuntime,
+            lambdaExecutionRole,
+            vpc,
+            securityGroups,
+        );
 
-    const apis: PythonLambdaFunction[] = [
-      // create endpoint for /models without a trailing slash but reuse
-      // the proxy lambda so there aren't cold start issues
-      {
-        name: 'handler',
-        resource: 'models',
-        description: 'Get models',
-        path: 'models',
-        method: 'GET',
-        disambiguator: generateDisambiguator(4),
-        existingFunction: lambdaFunction.functionArn,
-      },
+        const apis: PythonLambdaFunction[] = [
+            // create endpoint for /models without a trailing slash but reuse
+            // the proxy lambda so there aren't cold start issues
+            {
+                name: 'handler',
+                resource: 'models',
+                description: 'Get models',
+                path: 'models',
+                method: 'GET',
+                disambiguator: generateDisambiguator(4),
+                existingFunction: lambdaFunction.functionArn,
+            },
 
-      // create an endpoints for the docs
-      {
-        name: 'docs',
-        resource: 'models',
-        description: 'Manage model',
-        path: 'docs',
-        method: 'GET',
-        disableAuthorizer: true,
-      },
-      {
-        name: 'handler',
-        resource: 'models',
-        description: 'Get API definition',
-        path: 'openapi.json',
-        method: 'GET',
-        disambiguator: generateDisambiguator(4),
-        existingFunction: lambdaFunction.functionArn,
-        disableAuthorizer: true,
-      },
-    ];
+            // create an endpoints for the docs
+            {
+                name: 'docs',
+                resource: 'models',
+                description: 'Manage model',
+                path: 'docs',
+                method: 'GET',
+                disableAuthorizer: true,
+            },
+            {
+                name: 'handler',
+                resource: 'models',
+                description: 'Get API definition',
+                path: 'openapi.json',
+                method: 'GET',
+                disambiguator: generateDisambiguator(4),
+                existingFunction: lambdaFunction.functionArn,
+                disableAuthorizer: true,
+            },
+        ];
 
-    apis.forEach((f) => {
-      registerAPIEndpoint(
-        this,
-        restApi,
-        authorizer,
-        config.lambdaSourcePath,
-        [commonLambdaLayer],
-        f,
-        config.lambdaConfig.pythonRuntime,
-        lambdaExecutionRole,
-        vpc,
-        securityGroups,
-      );
-    });
-  }
+        apis.forEach((f) => {
+            registerAPIEndpoint(
+                this,
+                restApi,
+                authorizer,
+                config.lambdaSourcePath,
+                [commonLambdaLayer],
+                f,
+                config.lambdaConfig.pythonRuntime,
+                lambdaExecutionRole,
+                vpc,
+                securityGroups,
+            );
+        });
+    }
 }

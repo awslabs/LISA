@@ -30,108 +30,108 @@ import { BaseProps, ModelType, RegisteredModel } from '../schema';
 
 const HERE = path.resolve(__dirname);
 
-interface CustomLisaStackProps extends BaseProps {
-  vpc: Vpc;
-}
+type CustomLisaStackProps = {
+    vpc: Vpc;
+} & BaseProps;
 type LisaStackProps = CustomLisaStackProps & StackProps;
 
 /**
  * LisaServe Application stack.
  */
 export class LisaServeApplicationStack extends Stack {
-  /** FastAPI construct */
-  public readonly restApi: FastApiContainer;
-  public readonly modelsPs: StringParameter;
-  public readonly endpointUrl: StringParameter;
+    /** FastAPI construct */
+    public readonly restApi: FastApiContainer;
+    public readonly modelsPs: StringParameter;
+    public readonly endpointUrl: StringParameter;
 
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaStackProps} props - Properties for the Stack.
    */
-  constructor(scope: Construct, id: string, props: LisaStackProps) {
-    super(scope, id, props);
+    constructor (scope: Construct, id: string, props: LisaStackProps) {
+        super(scope, id, props);
 
-    const { config, vpc } = props;
+        const { config, vpc } = props;
 
-    let tokenTable;
-    if (config.restApiConfig.internetFacing) {
-      // Create DynamoDB Table for enabling API token usage
-      tokenTable = new Table(this, 'TokenTable', {
-        tableName: `${config.deploymentName}-LISAApiTokenTable`,
-        partitionKey: {
-          name: 'token',
-          type: AttributeType.STRING,
-        },
-        billingMode: BillingMode.PAY_PER_REQUEST,
-        encryption: TableEncryption.AWS_MANAGED,
-        removalPolicy: config.removalPolicy,
-      });
-    }
+        let tokenTable;
+        if (config.restApiConfig.internetFacing) {
+            // Create DynamoDB Table for enabling API token usage
+            tokenTable = new Table(this, 'TokenTable', {
+                tableName: `${config.deploymentName}-LISAApiTokenTable`,
+                partitionKey: {
+                    name: 'token',
+                    type: AttributeType.STRING,
+                },
+                billingMode: BillingMode.PAY_PER_REQUEST,
+                encryption: TableEncryption.AWS_MANAGED,
+                removalPolicy: config.removalPolicy,
+            });
+        }
 
-    // Create REST API
-    const restApi = new FastApiContainer(this, 'RestApi', {
-      apiName: 'REST',
-      config: config,
-      resourcePath: path.join(HERE, 'rest-api'),
-      securityGroup: vpc.securityGroups.restApiAlbSg,
-      taskConfig: config.restApiConfig,
-      tokenTable: tokenTable,
-      vpc: vpc.vpc,
-    });
-
-    // Create Parameter Store entry with RestAPI URI
-    this.endpointUrl = new StringParameter(this, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {
-      parameterName: `${config.deploymentPrefix}/lisaServeRestApiUri`,
-      stringValue: restApi.endpoint,
-      description: 'URI for LISA Serve API',
-    });
-
-    // Register all models
-    const registeredModels: RegisteredModel[] = [];
-
-    // Create ECS models
-    for (const modelConfig of config.ecsModels) {
-      if (modelConfig.deploy) {
-        // Create ECS Model Construct
-        const ecsModel = new EcsModel(this, createCdkId([getModelIdentifier(modelConfig), 'EcsModel']), {
-          config: config,
-          modelConfig: modelConfig,
-          securityGroup: vpc.securityGroups.ecsModelAlbSg,
-          vpc: vpc.vpc,
+        // Create REST API
+        const restApi = new FastApiContainer(this, 'RestApi', {
+            apiName: 'REST',
+            config: config,
+            resourcePath: path.join(HERE, 'rest-api'),
+            securityGroup: vpc.securityGroups.restApiAlbSg,
+            taskConfig: config.restApiConfig,
+            tokenTable: tokenTable,
+            vpc: vpc.vpc,
         });
 
-        // Create metadata to register model in parameter store
-        const registeredModel: RegisteredModel = {
-          provider: `${modelConfig.modelHosting}.${modelConfig.modelType}.${modelConfig.inferenceContainer}`,
-          // modelId is used for LiteLLM config to differentiate the same model deployed with two different containers
-          modelId: modelConfig.modelId ? modelConfig.modelId : modelConfig.modelName,
-          modelName: modelConfig.modelName,
-          modelType: modelConfig.modelType,
-          endpointUrl: ecsModel.endpointUrl,
-        };
+        // Create Parameter Store entry with RestAPI URI
+        this.endpointUrl = new StringParameter(this, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {
+            parameterName: `${config.deploymentPrefix}/lisaServeRestApiUri`,
+            stringValue: restApi.endpoint,
+            description: 'URI for LISA Serve API',
+        });
 
-        // For textgen models, add metadata whether streaming is supported
-        if (modelConfig.modelType == ModelType.TEXTGEN) {
-          registeredModel.streaming = modelConfig.streaming!;
+        // Register all models
+        const registeredModels: RegisteredModel[] = [];
+
+        // Create ECS models
+        for (const modelConfig of config.ecsModels) {
+            if (modelConfig.deploy) {
+                // Create ECS Model Construct
+                const ecsModel = new EcsModel(this, createCdkId([getModelIdentifier(modelConfig), 'EcsModel']), {
+                    config: config,
+                    modelConfig: modelConfig,
+                    securityGroup: vpc.securityGroups.ecsModelAlbSg,
+                    vpc: vpc.vpc,
+                });
+
+                // Create metadata to register model in parameter store
+                const registeredModel: RegisteredModel = {
+                    provider: `${modelConfig.modelHosting}.${modelConfig.modelType}.${modelConfig.inferenceContainer}`,
+                    // modelId is used for LiteLLM config to differentiate the same model deployed with two different containers
+                    modelId: modelConfig.modelId ? modelConfig.modelId : modelConfig.modelName,
+                    modelName: modelConfig.modelName,
+                    modelType: modelConfig.modelType,
+                    endpointUrl: ecsModel.endpointUrl,
+                };
+
+                // For textgen models, add metadata whether streaming is supported
+                if (modelConfig.modelType === ModelType.TEXTGEN) {
+                    registeredModel.streaming = modelConfig.streaming!;
+                }
+                registeredModels.push(registeredModel);
+            }
         }
-        registeredModels.push(registeredModel);
-      }
+
+        // Create Parameter Store entry with registeredModels
+        this.modelsPs = new StringParameter(this, createCdkId(['RegisteredModels', 'StringParameter']), {
+            parameterName: `${config.deploymentPrefix}/registeredModels`,
+            stringValue: JSON.stringify(registeredModels),
+            description: 'Serialized JSON of registered models data',
+        });
+
+        this.modelsPs.grantRead(restApi.taskRole);
+        // Add parameter as container environment variable for both RestAPI and RagAPI
+        restApi.container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
+        restApi.node.addDependency(this.modelsPs);
+
+        // Update
+        this.restApi = restApi;
     }
-
-    // Create Parameter Store entry with registeredModels
-    this.modelsPs = new StringParameter(this, createCdkId(['RegisteredModels', 'StringParameter']), {
-      parameterName: `${config.deploymentPrefix}/registeredModels`,
-      stringValue: JSON.stringify(registeredModels),
-      description: 'Serialized JSON of registered models data',
-    });
-
-    this.modelsPs.grantRead(restApi.taskRole);
-    // Add parameter as container environment variable for both RestAPI and RagAPI
-    restApi.container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
-    restApi.node.addDependency(this.modelsPs);
-
-    // Update
-    this.restApi = restApi;
-  }
 }

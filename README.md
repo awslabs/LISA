@@ -26,7 +26,7 @@ LISA accelerates the use of generative AI applications by providing scalable, lo
 LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](https://github.com/aws-samples/aws-genai-llm-chatbot) and deploys LLMs using the [text-generation-inference](https://github.com/huggingface/text-generation-inference/tree/main) container from HuggingFace. LISA is different from it's inspiration in a few ways:
 
 1.  LISA is designed to operate in Amazon Dedicated Cloud (ADC) partitions.
-2.  LISA is designed to be composable so we've separated the the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
+2.  LISA is designed to be composable so we've separated the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
 3.  LISA is designed to support the OpenAI specification, so anywhere you can use the OpenAI API in your applications, you can insert LISA in its place.
 
 ## Deprecation Notes

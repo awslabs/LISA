@@ -17,27 +17,32 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import storage from 'redux-persist/lib/storage';
-import { persistReducer } from 'redux-persist';
+import { persistReducer, persistStore } from 'redux-persist';
 
 import sharedReducers, { rootMiddleware } from '../shared/reducers';
 
 const persistConfig = {
-    key: 'lisa',
-    storage,
+  key: 'lisa',
+  storage,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(sharedReducers));
 
 const store = configureStore({
-    reducer: persistedReducer,
-    middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({
-            serializableCheck: false,
-        }).concat(...rootMiddleware),
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }).concat(...rootMiddleware),
 });
 
 export async function signOut() {
-    await storage.removeItem('persist:lisa')
+  await storage.removeItem('persist:lisa');
+  persistor.purge().then(() => {
+    persistor.flush().then(() => {
+      persistor.pause();
+    });
+  });
 }
 
 const getStore = () => store;
@@ -48,4 +53,5 @@ export type AppDispatch = typeof store.dispatch;
 export const useAppSelector: TypedUseSelectorHook<IRootState> = useSelector;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 
+export const persistor = persistStore(store);
 export default getStore;

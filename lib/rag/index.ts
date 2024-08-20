@@ -62,7 +62,7 @@ type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
 export class LisaRagStack extends Stack {
     public readonly ragApi: FastApiContainer;
 
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaChatStackProps} props - Properties for the Stack.

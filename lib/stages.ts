@@ -50,7 +50,7 @@ type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & Sta
  * CloudFormation template, setting the HttpPutResponseHopLimit within MetadataOptions to 2 and HttpTokens to required.
  */
 class UpdateLaunchTemplateMetadataOptions implements IAspect {
-  /**
+    /**
    * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::LaunchTemplate resource.
    * If both conditions are true, it applies a direct override to the CloudFormation resource's properties, setting
    * the HttpPutResponseHopLimit to 2 and HttpTokens to 'required'.
@@ -75,7 +75,7 @@ type CommonStackProps = {
  * LISA-serve Application Stage.
  */
 export class LisaServeApplicationStage extends Stage {
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaServeApplicationStageProps} props - Properties for the stage.

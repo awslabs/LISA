@@ -46,15 +46,15 @@ export class LisaServeApplicationStack extends Stack {
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
 
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaStackProps} props - Properties for the Stack.
    */
-  constructor(scope: Construct, id: string, props: LisaStackProps) {
-    super(scope, id, props);
+    constructor (scope: Construct, id: string, props: LisaStackProps) {
+        super(scope, id, props);
 
-    const { config, vpc } = props;
+        const { config, vpc } = props;
         const rdsConfig = config.restApiConfig.rdsConfig;
 
         let tokenTable;
@@ -72,60 +72,60 @@ export class LisaServeApplicationStack extends Stack {
             });
         }
 
-    // Create REST API
-    const restApi = new FastApiContainer(this, 'RestApi', {
-      apiName: 'REST',
-      config: config,
-      resourcePath: path.join(HERE, 'rest-api'),
-      securityGroup: vpc.securityGroups.restApiAlbSg,
-      taskConfig: config.restApiConfig,
-      tokenTable: tokenTable,
-      vpc: vpc.vpc,
-    });
+        // Create REST API
+        const restApi = new FastApiContainer(this, 'RestApi', {
+            apiName: 'REST',
+            config: config,
+            resourcePath: path.join(HERE, 'rest-api'),
+            securityGroup: vpc.securityGroups.restApiAlbSg,
+            taskConfig: config.restApiConfig,
+            tokenTable: tokenTable,
+            vpc: vpc.vpc,
+        });
 
-    // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
-    const connectionParamName = 'LiteLLMDbConnectionInfo';
+        // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
+        const connectionParamName = 'LiteLLMDbConnectionInfo';
 
-    const litellmDbSg = new SecurityGroup(this, 'LISA-LiteLLMScalingSg', {
-      vpc: vpc.vpc,
-      description: 'Security group for LiteLLM dynamic model management database.',
-    });
-    vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
-      litellmDbSg.connections.allowFrom(
-        Peer.ipv4(subnet.ipv4CidrBlock),
-        Port.tcp(rdsConfig.dbPort),
-        'Allow REST API private subnets to communicate with LiteLLM database',
-      );
-    });
+        const litellmDbSg = new SecurityGroup(this, 'LISA-LiteLLMScalingSg', {
+            vpc: vpc.vpc,
+            description: 'Security group for LiteLLM dynamic model management database.',
+        });
+        vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+            litellmDbSg.connections.allowFrom(
+                Peer.ipv4(subnet.ipv4CidrBlock),
+                Port.tcp(rdsConfig.dbPort),
+                'Allow REST API private subnets to communicate with LiteLLM database',
+            );
+        });
 
-    const username = rdsConfig.username;
-    const dbCreds = Credentials.fromGeneratedSecret(username);
+        const username = rdsConfig.username;
+        const dbCreds = Credentials.fromGeneratedSecret(username);
 
-    // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
-    // DB is not expected to be under any form of heavy load.
-    // https://github.com/aws/aws-cdk/issues/25547
-    const litellmDb = new DatabaseInstance(this, 'LiteLLMScalingDB', {
-      engine: DatabaseInstanceEngine.POSTGRES,
-      vpc: vpc.vpc,
-      credentials: dbCreds,
-      securityGroups: [litellmDbSg!],
-      removalPolicy: config.removalPolicy,
-    });
+        // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
+        // DB is not expected to be under any form of heavy load.
+        // https://github.com/aws/aws-cdk/issues/25547
+        const litellmDb = new DatabaseInstance(this, 'LiteLLMScalingDB', {
+            engine: DatabaseInstanceEngine.POSTGRES,
+            vpc: vpc.vpc,
+            credentials: dbCreds,
+            securityGroups: [litellmDbSg!],
+            removalPolicy: config.removalPolicy,
+        });
 
-    const litellmDbPasswordSecret = litellmDb.secret!;
-    const litellmDbConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
-      parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
-      stringValue: JSON.stringify({
-        username: username,
-        passwordSecretId: litellmDbPasswordSecret.secretName,
-        dbHost: litellmDb.dbInstanceEndpointAddress,
-        dbName: rdsConfig.dbName,
-        dbPort: rdsConfig.dbPort,
-      }),
-    });
-    litellmDbPasswordSecret.grantRead(restApi.taskRole);
-    litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
-    restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+        const litellmDbPasswordSecret = litellmDb.secret!;
+        const litellmDbConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
+            parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
+            stringValue: JSON.stringify({
+                username: username,
+                passwordSecretId: litellmDbPasswordSecret.secretName,
+                dbHost: litellmDb.dbInstanceEndpointAddress,
+                dbName: rdsConfig.dbName,
+                dbPort: rdsConfig.dbPort,
+            }),
+        });
+        litellmDbPasswordSecret.grantRead(restApi.taskRole);
+        litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
+        restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
 
         // Create Parameter Store entry with RestAPI URI
         this.endpointUrl = new StringParameter(this, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {

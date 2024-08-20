@@ -275,7 +275,7 @@ export class Ec2Metadata {
         },
     };
 
-  /**
+    /**
    * Getter method to access EC2 metadata. Retrieves the metadata for a specific EC2 instance type.
    *
    * @param {string} key - The key representing the EC2 instance type (e.g., 'g4dn.xlarge').
@@ -290,7 +290,7 @@ export class Ec2Metadata {
         return instance;
     }
 
-  /**
+    /**
    * Get EC2 instances defined with metadata.
    *
    * @returns {string[]} Array of EC2 instances.
@@ -615,20 +615,20 @@ const FastApiContainerConfigSchema = z.object({
     loadBalancerConfig: LoadBalancerConfigSchema,
     internetFacing: z.boolean().default(true),
     rdsConfig: RdsInstanceConfig.optional()
-      .default({
-        dbName: 'postgres',
-        username: 'postgres',
-      })
-      .refine(
-        (config) => {
-          return !config.dbHost && !config.passwordSecretId;
-        },
-        {
-          message:
+        .default({
+            dbName: 'postgres',
+            username: 'postgres',
+        })
+        .refine(
+            (config) => {
+                return !config.dbHost && !config.passwordSecretId;
+            },
+            {
+                message:
             'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
             'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
-        },
-      ),
+            },
+        ),
 });
 
 /**

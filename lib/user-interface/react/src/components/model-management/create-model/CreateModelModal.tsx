@@ -19,15 +19,18 @@ import { Button, Modal } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
+import { IModel } from '../../../shared/model/model-management.model';
 
 export type CreateModelModalProps = {
   visible: boolean;
+  isEdit: boolean;
   setVisible: (boolean) => void;
+  selectedItems: IModel[];
 };
 
 export function CreateModelModal(props: CreateModelModalProps) {
   return (
-    <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header='Create Model'>
+    <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
       <form onSubmit={(e) => e.preventDefault()}>
         <Form
           actions={

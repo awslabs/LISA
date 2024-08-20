@@ -33,10 +33,11 @@ export function ModelManagementComponent() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
   const [newModelModalVisible, setNewModelModelVisible] = useState(false);
+  const [isEdit, setEdit] = useState(false);
 
   return (
     <>
-      <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} />
+      <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} selectedItems={selectedItems}/>
       <Cards
         onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
         selectedItems={selectedItems}
@@ -60,6 +61,7 @@ export function ModelManagementComponent() {
                 selectedItems={selectedItems}
                 setSelectedItems={setSelectedItems}
                 setNewModelModelVisible={setNewModelModelVisible}
+                setEdit={setEdit}
               />
             }
           >

@@ -32,6 +32,7 @@ export type ModelActionProps = {
   selectedItems: IModel[];
   setSelectedItems: (items: IModel[]) => void;
   setNewModelModelVisible: (boolean) => void;
+  setEdit: (boolean) => void;
 };
 
 function ModelActions(props: ModelActionProps): ReactElement {
@@ -41,7 +42,10 @@ function ModelActions(props: ModelActionProps): ReactElement {
   return (
     <SpaceBetween direction='horizontal' size='xs'>
       {ModelActionButton(notificationService, props)}
-      <Button iconName='add-plus' variant='primary' onClick={() => props.setNewModelModelVisible(true)}>
+      <Button iconName='add-plus' variant='primary' onClick={() => {
+        props.setEdit(false);
+        props.setNewModelModelVisible(true);
+      }}>
         New Model
       </Button>
       <Button

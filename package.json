@@ -5,7 +5,7 @@
     "lisa": "bin/lisa.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cd ./cdk_runner_lambda && npm run build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",

@@ -24,11 +24,10 @@ import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-l
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { EcsModel } from './ecs-model';
 import { FastApiContainer } from '../api-base/fastApiContainer';
-import { createCdkId, getModelIdentifier } from '../core/utils';
+import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, ModelType, RegisteredModel } from '../schema';
+import { BaseProps } from '../schema';
 
 const HERE = path.resolve(__dirname);
 
@@ -134,42 +133,10 @@ export class LisaServeApplicationStack extends Stack {
             description: 'URI for LISA Serve API',
         });
 
-        // Register all models
-        const registeredModels: RegisteredModel[] = [];
-
-        // Create ECS models
-        for (const modelConfig of config.ecsModels) {
-            if (modelConfig.deploy) {
-                // Create ECS Model Construct
-                const ecsModel = new EcsModel(this, createCdkId([getModelIdentifier(modelConfig), 'EcsModel']), {
-                    config: config,
-                    modelConfig: modelConfig,
-                    securityGroup: vpc.securityGroups.ecsModelAlbSg,
-                    vpc: vpc.vpc,
-                });
-
-                // Create metadata to register model in parameter store
-                const registeredModel: RegisteredModel = {
-                    provider: `${modelConfig.modelHosting}.${modelConfig.modelType}.${modelConfig.inferenceContainer}`,
-                    // modelId is used for LiteLLM config to differentiate the same model deployed with two different containers
-                    modelId: modelConfig.modelId ? modelConfig.modelId : modelConfig.modelName,
-                    modelName: modelConfig.modelName,
-                    modelType: modelConfig.modelType,
-                    endpointUrl: ecsModel.endpointUrl,
-                };
-
-                // For textgen models, add metadata whether streaming is supported
-                if (modelConfig.modelType === ModelType.TEXTGEN) {
-                    registeredModel.streaming = modelConfig.streaming!;
-                }
-                registeredModels.push(registeredModel);
-            }
-        }
-
         // Create Parameter Store entry with registeredModels
         this.modelsPs = new StringParameter(this, createCdkId(['RegisteredModels', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/registeredModels`,
-            stringValue: JSON.stringify(registeredModels),
+            stringValue: JSON.stringify([]),
             description: 'Serialized JSON of registered models data',
         });
 

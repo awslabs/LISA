@@ -17,19 +17,31 @@
 import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
-import { Effect, IRole, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import {
+    Effect,
+    IRole,
+    ManagedPolicy,
+    Policy,
+    PolicyDocument,
+    PolicyStatement,
+    Role,
+    ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
+
+import { ECSModelDeployer } from './ecs-model-deployer';
 
 /**
  * Properties for ModelsApi Construct.
  *
- * @property {IVpc} vpc - Stack VPC
+ * @property {Vpc} vpc - Stack VPC
  * @property {Layer} commonLayer - Lambda layer for all Lambdas.
  * @property {IRestApi} restAPI - REST APIGW for UI and Lambdas
  * @property {IRole} lambdaExecutionRole - Execution role for lambdas
@@ -43,7 +55,7 @@ type ModelsApiProps = BaseProps & {
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
-    vpc?: IVpc;
+    vpc: Vpc;
 };
 
 /**
@@ -103,7 +115,7 @@ export class ModelsApi extends Construct {
             },
             config.lambdaConfig.pythonRuntime,
             lambdaExecutionRole,
-            vpc,
+            vpc.vpc,
             securityGroups,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
@@ -173,9 +185,15 @@ export class ModelsApi extends Construct {
                 f,
                 config.lambdaConfig.pythonRuntime,
                 lambdaExecutionRole,
-                vpc,
+                vpc.vpc,
                 securityGroups,
             );
+        });
+
+        new ECSModelDeployer(this, 'ecs-model-deployer', {
+            securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
+            vpcId: vpc.vpc.vpcId,
+            config: config
         });
     }
 }

@@ -15,18 +15,18 @@
 */
 
 import {
-  LisaChatSession,
-  LisaChatMessageFields,
-  PutSessionRequestBody,
-  LisaChatMessage,
-  Repository,
-  ModelTypes,
-  Model,
-  DescribeModelsResponseBody,
+    LisaChatSession,
+    LisaChatMessageFields,
+    PutSessionRequestBody,
+    LisaChatMessage,
+    Repository,
+    ModelTypes,
+    Model,
+    DescribeModelsResponseBody,
 } from './types';
 
 const stripTrailingSlash = (str) => {
-  return str && str.endsWith('/') ? str.slice(0, -1) : str;
+    return str && str.endsWith('/') ? str.slice(0, -1) : str;
 };
 
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
@@ -37,7 +37,7 @@ export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
  * custom domain.
  */
 export const getBaseURI = (): string => {
-  return window.env.API_BASE_URL;
+    return window.env.API_BASE_URL;
 };
 
 /**
@@ -50,36 +50,36 @@ export const getBaseURI = (): string => {
  * @returns
  */
 export const sendAuthenticatedRequest = async (
-  url: string,
-  method: string,
-  idToken: string,
-  body?: BodyInit,
-  headers?: Record<string, string>,
+    url: string,
+    method: string,
+    idToken: string,
+    body?: BodyInit,
+    headers?: Record<string, string>,
 ): Promise<Response> => {
-  headers = {
-    ...headers,
-    Authorization: `Bearer ${idToken}`,
-  };
-  let fetchUrl = url;
-  if (!url.includes(RESTAPI_URI)) {
-    fetchUrl = `${getBaseURI()}${url}`;
-  }
-  let resp: Response;
-  if (body) {
-    resp = await fetch(fetchUrl, {
-      method: method,
-      mode: 'cors',
-      headers: headers,
-      body: body,
-    });
-  } else {
-    resp = await fetch(fetchUrl, {
-      method: method,
-      mode: 'cors',
-      headers: headers,
-    });
-  }
-  return resp;
+    headers = {
+        ...headers,
+        Authorization: `Bearer ${idToken}`,
+    };
+    let fetchUrl = url;
+    if (!url.includes(RESTAPI_URI)) {
+        fetchUrl = `${getBaseURI()}${url}`;
+    }
+    let resp: Response;
+    if (body) {
+        resp = await fetch(fetchUrl, {
+            method: method,
+            mode: 'cors',
+            headers: headers,
+            body: body,
+        });
+    } else {
+        resp = await fetch(fetchUrl, {
+            method: method,
+            mode: 'cors',
+            headers: headers,
+        });
+    }
+    return resp;
 };
 
 /**
@@ -88,18 +88,18 @@ export const sendAuthenticatedRequest = async (
  * @param idToken the user's ID token from authenticating
  */
 export const putSession = async (session: LisaChatSession, idToken: string): Promise<void> => {
-  const body: PutSessionRequestBody = {
-    messages: session.history.map((elem) => {
-      const message: LisaChatMessageFields = {
-        content: elem.content,
-        type: elem.type,
-        metadata: elem.metadata,
-      };
-      return message;
-    }),
-  };
+    const body: PutSessionRequestBody = {
+        messages: session.history.map((elem) => {
+            const message: LisaChatMessageFields = {
+                content: elem.content,
+                type: elem.type,
+                metadata: elem.metadata,
+            };
+            return message;
+        }),
+    };
 
-  await sendAuthenticatedRequest(`session/${session.sessionId}`, 'PUT', idToken, JSON.stringify(body));
+    await sendAuthenticatedRequest(`session/${session.sessionId}`, 'PUT', idToken, JSON.stringify(body));
 };
 
 /**
@@ -109,19 +109,19 @@ export const putSession = async (session: LisaChatSession, idToken: string): Pro
  * @returns
  */
 export const getSession = async (sessionId: string, idToken: string): Promise<LisaChatSession> => {
-  const resp = await sendAuthenticatedRequest(`session/${sessionId}`, 'GET', idToken);
-  const sess = (await resp.json()) as LisaChatSession;
-  if (sess.history != undefined) {
-    sess.history = sess.history.map(
-      (elem) =>
-        new LisaChatMessage({
-          type: elem.type,
-          content: elem.content,
-          metadata: elem.metadata,
-        }),
-    );
-  }
-  return sess;
+    const resp = await sendAuthenticatedRequest(`session/${sessionId}`, 'GET', idToken);
+    const sess = (await resp.json()) as LisaChatSession;
+    if (sess.history !== undefined) {
+        sess.history = sess.history.map(
+            (elem) =>
+                new LisaChatMessage({
+                    type: elem.type,
+                    content: elem.content,
+                    metadata: elem.metadata,
+                }),
+        );
+    }
+    return sess;
 };
 
 /**
@@ -130,19 +130,19 @@ export const getSession = async (sessionId: string, idToken: string): Promise<Li
  * @returns
  */
 export const listSessions = async (idToken: string): Promise<LisaChatSession[]> => {
-  const resp = await sendAuthenticatedRequest(`session`, 'GET', idToken);
-  const sessArray = (await resp.json()) as LisaChatSession[];
-  for (const sess of sessArray) {
-    sess.history = sess.history.map(
-      (elem) =>
-        new LisaChatMessage({
-          type: elem.type,
-          content: elem.content,
-          metadata: elem.metadata,
-        }),
-    );
-  }
-  return sessArray;
+    const resp = await sendAuthenticatedRequest('session', 'GET', idToken);
+    const sessArray = (await resp.json()) as LisaChatSession[];
+    for (const sess of sessArray) {
+        sess.history = sess.history.map(
+            (elem) =>
+                new LisaChatMessage({
+                    type: elem.type,
+                    content: elem.content,
+                    metadata: elem.metadata,
+                }),
+        );
+    }
+    return sessArray;
 };
 
 /**
@@ -152,8 +152,8 @@ export const listSessions = async (idToken: string): Promise<LisaChatSession[]> 
  * @returns
  */
 export const deleteSession = async (sessionId: string, idToken: string) => {
-  const resp = await sendAuthenticatedRequest(`session/${sessionId}`, 'DELETE', idToken);
-  return await resp.json();
+    const resp = await sendAuthenticatedRequest(`session/${sessionId}`, 'DELETE', idToken);
+    return await resp.json();
 };
 
 /**
@@ -162,8 +162,8 @@ export const deleteSession = async (sessionId: string, idToken: string) => {
  * @returns
  */
 export const deleteUserSessions = async (idToken: string) => {
-  const resp = await sendAuthenticatedRequest(`session`, 'DELETE', idToken);
-  return await resp.json();
+    const resp = await sendAuthenticatedRequest('session', 'DELETE', idToken);
+    return await resp.json();
 };
 
 /**
@@ -172,24 +172,24 @@ export const deleteUserSessions = async (idToken: string) => {
  * @returns
  */
 export const describeModels = async (idToken: string, modelType: ModelTypes): Promise<Model[]> => {
-  const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`, 'GET', idToken);
-  const modelResponse = (await resp.json()) as DescribeModelsResponseBody;
+    const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/models`, 'GET', idToken);
+    const modelResponse = (await resp.json()) as DescribeModelsResponseBody;
 
-  return modelResponse.data
-    .filter((openAiModel) => {
-      const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
-      if (!configModelMatch || configModelMatch.modelType === modelType) {
-        return true;
-      }
-    })
-    .map((openAiModel) => {
-      const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
-      return {
-        id: openAiModel.id,
-        streaming: configModelMatch?.streaming,
-        modelType: configModelMatch?.modelType,
-      };
-    });
+    return modelResponse.data
+        .filter((openAiModel) => {
+            const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
+            if (!configModelMatch || configModelMatch.modelType === modelType) {
+                return true;
+            }
+        })
+        .map((openAiModel) => {
+            const configModelMatch = window.env.MODELS.filter((configModel) => configModel.model === openAiModel.id)[0];
+            return {
+                id: openAiModel.id,
+                streaming: configModelMatch?.streaming,
+                modelType: configModelMatch?.modelType,
+            };
+        });
 };
 
 /**
@@ -198,8 +198,8 @@ export const describeModels = async (idToken: string, modelType: ModelTypes): Pr
  * @returns
  */
 export const isModelInterfaceHealthy = async (idToken: string): Promise<boolean> => {
-  const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/health`, 'GET', idToken);
-  return resp.ok;
+    const resp = await sendAuthenticatedRequest(`${RESTAPI_URI}/health`, 'GET', idToken);
+    return resp.ok;
 };
 
 /**
@@ -208,70 +208,70 @@ export const isModelInterfaceHealthy = async (idToken: string): Promise<boolean>
  * @returns
  */
 export const listRagRepositories = async (idToken: string): Promise<Repository[]> => {
-  const resp = await sendAuthenticatedRequest(`repository`, 'GET', idToken);
-  return await resp.json();
+    const resp = await sendAuthenticatedRequest('repository', 'GET', idToken);
+    return await resp.json();
 };
 
 export const getPresignedUrl = async (idToken: string, body: string): Promise<Response> => {
-  const resp = await sendAuthenticatedRequest(`repository/presigned-url`, 'POST', idToken, body);
-  return resp.json();
+    const resp = await sendAuthenticatedRequest('repository/presigned-url', 'POST', idToken, body);
+    return resp.json();
 };
 
 export const uploadToS3 = async (presignedUrlResponse: Response, file: File): Promise<number> => {
-  const presignedUrl = presignedUrlResponse['response'];
-  //This method uploads a file to S3 using a pre-signed post
-  const url = presignedUrl.url;
-  /*
+    const presignedUrl = presignedUrlResponse['response'];
+    //This method uploads a file to S3 using a pre-signed post
+    const url = presignedUrl.url;
+    /*
       The S3 PutObject API accepts form data, and an attached binary file.
       Here, we add the form fields returned by the API, build a form
       and attach the file. Finally, we send the request to S3.
   */
-  const formData = new FormData();
-  for (const key in presignedUrl.fields) {
-    formData.append(key, presignedUrl.fields[key]);
-  }
+    const formData = new FormData();
+    for (const key in presignedUrl.fields) {
+        formData.append(key, presignedUrl.fields[key]);
+    }
 
-  formData.append('file', file); // The binary file must be appended last
+    formData.append('file', file); // The binary file must be appended last
 
-  const response = await fetch(url, {
-    method: 'POST',
-    body: formData,
-  });
+    const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+    });
 
-  return response.status;
+    return response.status;
 };
 
 export const ingestDocuments = async (
-  idToken: string,
-  documents: string[],
-  repositoryId: string,
-  embeddingModel: Model,
-  repostiroyType: string,
-  chunkSize: number,
-  chunkOverlap: number,
+    idToken: string,
+    documents: string[],
+    repositoryId: string,
+    embeddingModel: Model,
+    repostiroyType: string,
+    chunkSize: number,
+    chunkOverlap: number,
 ): Promise<number> => {
-  const resp = await sendAuthenticatedRequest(
-    `repository/${repositoryId}/bulk?repositoryType=${repostiroyType}&chunkSize=${chunkSize}&chunkOverlap=${chunkOverlap}`,
-    'POST',
-    idToken,
-    JSON.stringify({
-      embeddingModel: {
-        modelName: embeddingModel.id,
-      },
-      keys: documents,
-    }),
-  );
-  return resp.status;
+    const resp = await sendAuthenticatedRequest(
+        `repository/${repositoryId}/bulk?repositoryType=${repostiroyType}&chunkSize=${chunkSize}&chunkOverlap=${chunkOverlap}`,
+        'POST',
+        idToken,
+        JSON.stringify({
+            embeddingModel: {
+                modelName: embeddingModel.id,
+            },
+            keys: documents,
+        }),
+    );
+    return resp.status;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const formatDocumentsAsString = (docs: any, forMetadata = false): string => {
-  let contents = '';
-  (docs || []).forEach((doc, index) => {
-    if (forMetadata && doc.Document?.metadata?.source) {
-      contents += `${index > 0 ? '\n' : ''}Source - ${doc.Document.metadata.source}:`;
-    }
-    contents += `\n${doc.Document.page_content}\n`;
-  });
-  return contents;
+    let contents = '';
+    (docs || []).forEach((doc, index) => {
+        if (forMetadata && doc.Document?.metadata?.source) {
+            contents += `${index > 0 ? '\n' : ''}Source - ${doc.Document.metadata.source}:`;
+        }
+        contents += `\n${doc.Document.page_content}\n`;
+    });
+    return contents;
 };

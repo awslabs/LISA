@@ -22,51 +22,52 @@ import { Construct } from 'constructs';
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
 
-interface LisaApiBaseStackProps extends BaseProps, StackProps {
-  vpc: IVpc;
-}
+type LisaApiBaseStackProps = {
+    vpc: IVpc;
+} & BaseProps &
+  StackProps;
 
 export class LisaApiBaseStack extends Stack {
-  public readonly restApi: RestApi;
-  public readonly authorizer: Authorizer;
-  public readonly restApiId: string;
-  public readonly rootResourceId: string;
-  public readonly restApiUrl: string;
+    public readonly restApi: RestApi;
+    public readonly authorizer: Authorizer;
+    public readonly restApiId: string;
+    public readonly rootResourceId: string;
+    public readonly restApiUrl: string;
 
-  constructor(scope: Construct, id: string, props: LisaApiBaseStackProps) {
-    super(scope, id, props);
+    constructor (scope: Construct, id: string, props: LisaApiBaseStackProps) {
+        super(scope, id, props);
 
-    const { config, vpc } = props;
+        const { config, vpc } = props;
 
-    const deployOptions: StageOptions = {
-      stageName: config.deploymentStage,
-      throttlingRateLimit: 100,
-      throttlingBurstLimit: 100,
-    };
+        const deployOptions: StageOptions = {
+            stageName: config.deploymentStage,
+            throttlingRateLimit: 100,
+            throttlingBurstLimit: 100,
+        };
 
-    const restApi = new RestApi(this, `${id}-RestApi`, {
-      description: 'Base API Gateway for LISA.',
-      endpointConfiguration: { types: [EndpointType.REGIONAL] },
-      deploy: true,
-      deployOptions,
-      defaultCorsPreflightOptions: {
-        allowOrigins: Cors.ALL_ORIGINS,
-        allowHeaders: [...Cors.DEFAULT_HEADERS],
-      },
-      // Support binary media types used for documentation images and fonts
-      binaryMediaTypes: ['font/*', 'image/*'],
-    });
+        const restApi = new RestApi(this, `${id}-RestApi`, {
+            description: 'Base API Gateway for LISA.',
+            endpointConfiguration: { types: [EndpointType.REGIONAL] },
+            deploy: true,
+            deployOptions,
+            defaultCorsPreflightOptions: {
+                allowOrigins: Cors.ALL_ORIGINS,
+                allowHeaders: [...Cors.DEFAULT_HEADERS],
+            },
+            // Support binary media types used for documentation images and fonts
+            binaryMediaTypes: ['font/*', 'image/*'],
+        });
 
-    // Create the authorizer Lambda for APIGW
-    const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
-      config: config,
-      vpc,
-    });
+        // Create the authorizer Lambda for APIGW
+        const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
+            config: config,
+            vpc,
+        });
 
-    this.restApi = restApi;
-    this.restApiId = restApi.restApiId;
-    this.rootResourceId = restApi.restApiRootResourceId;
-    this.authorizer = authorizer.authorizer;
-    this.restApiUrl = restApi.url;
-  }
+        this.restApi = restApi;
+        this.restApiId = restApi.restApiId;
+        this.rootResourceId = restApi.restApiRootResourceId;
+        this.authorizer = authorizer.authorizer;
+        this.restApiUrl = restApi.url;
+    }
 }

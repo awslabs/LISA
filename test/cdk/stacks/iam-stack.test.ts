@@ -28,77 +28,77 @@ import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 const regions = ['us-east-1', 'us-gov-west-1', 'us-gov-east-1', 'us-isob-east-1', 'us-iso-east-1', 'us-iso-west-1'];
 
 describe.each(regions)('IAM Stack CDK Nag Tests | Region Test: %s', (awsRegion: string) => {
-  let app: App;
-  let stack: Stack;
-  let config: Config;
-  let baseStackProps: any;
+    let app: App;
+    let stack: Stack;
+    let config: Config;
+    let baseStackProps: any;
 
-  beforeAll(() => {
-    app = new App();
+    beforeAll(() => {
+        app = new App();
 
-    // Read configuration file
-    const configFilePath = path.join(__dirname, '../mocks/config.yaml');
-    const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
-    const configEnv = configFile.env || 'dev';
-    const configData = configFile[configEnv];
-    if (!configData) {
-      throw new Error(`Configuration for environment "${configEnv}" not found.`);
-    }
-    // Validate and parse configuration
+        // Read configuration file
+        const configFilePath = path.join(__dirname, '../mocks/config.yaml');
+        const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
+        const configEnv = configFile.env || 'dev';
+        const configData = configFile[configEnv];
+        if (!configData) {
+            throw new Error(`Configuration for environment "${configEnv}" not found.`);
+        }
+        // Validate and parse configuration
 
-    try {
-      config = ConfigSchema.parse(configData);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Error parsing the configuration:', error.message);
-      } else {
-        console.error('An unexpected error occurred:', error);
-      }
-      process.exit(1);
-    }
+        try {
+            config = ConfigSchema.parse(configData);
+        } catch (error) {
+            if (error instanceof Error) {
+                console.error('Error parsing the configuration:', error.message);
+            } else {
+                console.error('An unexpected error occurred:', error);
+            }
+            process.exit(1);
+        }
 
-    baseStackProps = {
-      env: {
-        account: '012345678901',
-        region: awsRegion,
-      },
-      config,
-    };
-  });
-
-  beforeEach(() => {
-    stack = new LisaServeIAMStack(app, 'TestStack', {
-      ...baseStackProps,
-      config: config,
+        baseStackProps = {
+            env: {
+                account: '012345678901',
+                region: awsRegion,
+            },
+            config,
+        };
     });
-    // WHEN
-    Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
-    Aspects.of(stack).add(new NIST80053R5Checks({ verbose: true }));
-  });
 
-  afterEach(() => {
-    app = new App();
-    stack = new Stack();
-  });
+    beforeEach(() => {
+        stack = new LisaServeIAMStack(app, 'TestStack', {
+            ...baseStackProps,
+            config: config,
+        });
+        // WHEN
+        Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
+        Aspects.of(stack).add(new NIST80053R5Checks({ verbose: true }));
+    });
 
-  //TODO Update expect values to remediate CDK NAG findings and remove debug
-  test('AwsSolutions CDK NAG Warnings', () => {
-    const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-    expect(warnings.length).toBe(0);
-  });
+    afterEach(() => {
+        app = new App();
+        stack = new Stack();
+    });
 
-  test('AwsSolutions CDK NAG Errors', () => {
-    const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-    expect(errors.length).toBe(12);
-  });
+    //TODO Update expect values to remediate CDK NAG findings and remove debug
+    test('AwsSolutions CDK NAG Warnings', () => {
+        const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('AwsSolutions-.*'));
+        expect(warnings.length).toBe(0);
+    });
 
-  test('NIST800.53r5 CDK NAG Warnings', () => {
-    const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('NIST.*'));
-    expect(warnings.length).toBe(0);
-  });
+    test('AwsSolutions CDK NAG Errors', () => {
+        const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
+        expect(errors.length).toBe(12);
+    });
 
-  test('NIST800.53r5 CDK NAG Errors', () => {
-    const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-    expect(errors.length).toBe(0);
-  });
+    test('NIST800.53r5 CDK NAG Warnings', () => {
+        const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('NIST.*'));
+        expect(warnings.length).toBe(0);
+    });
+
+    test('NIST800.53r5 CDK NAG Errors', () => {
+        const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
+        expect(errors.length).toBe(0);
+    });
 });

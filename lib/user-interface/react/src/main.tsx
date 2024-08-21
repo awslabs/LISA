@@ -16,41 +16,49 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
 import './index.css';
 import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
 import { ModelTypes } from './components/types';
+import getStore from './config/store';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-  interface Window {
-    env: {
-      AUTHORITY: string;
-      CLIENT_ID: string;
-      CUSTOM_SCOPES: string[];
-      RESTAPI_URI: string;
-      RESTAPI_VERSION: string;
-      RAG_ENABLED: boolean;
-      API_BASE_URL?: string;
-      SYSTEM_BANNER?: {
-        text: string;
-        backgroundColor: string;
-        fontColor: string;
-      };
-      MODELS: [
-        {
-          model: string;
-          streaming: boolean | null;
-          modelType: ModelTypes;
-        },
-      ];
-    };
-  }
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+    interface Window {
+        env: {
+            AUTHORITY: string;
+            CLIENT_ID: string;
+            ADMIN_GROUP?: string;
+            JWT_GROUPS_PROP?: string;
+            CUSTOM_SCOPES: string[];
+            RESTAPI_URI: string;
+            RESTAPI_VERSION: string;
+            RAG_ENABLED: boolean;
+            API_BASE_URL?: string;
+            SYSTEM_BANNER?: {
+                text: string;
+                backgroundColor: string;
+                fontColor: string;
+            };
+            MODELS: [
+                {
+                    model: string;
+                    streaming: boolean | null;
+                    modelType: ModelTypes;
+                },
+            ];
+        };
+    }
 }
 
+const store = getStore();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <AppConfigured />
-  </React.StrictMode>,
+    <React.StrictMode>
+        <Provider store={store}>
+            <AppConfigured />
+        </Provider>
+    </React.StrictMode>,
 );

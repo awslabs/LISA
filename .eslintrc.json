@@ -1,37 +1,41 @@
 {
-  "env": {
-    "node": true
-  },
   "parser": "@typescript-eslint/parser",
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   "parserOptions": {
-    "ecmaVersion": 2020,
+    "ecmaVersion": 12,
     "sourceType": "module"
   },
-  "plugins": ["@typescript-eslint", "import"],
+  "plugins": ["@stylistic", "@typescript-eslint"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:react-hooks/recommended"],
   "rules": {
-    "max-len": [
+    "eqeqeq": ["error", "smart"],
+    "@stylistic/indent": "error",
+    "@stylistic/quotes": ["error", "single"],
+    "@stylistic/arrow-parens": "error",
+    "@stylistic/arrow-spacing": "error",
+    "@stylistic/brace-style": "error",
+    "@stylistic/computed-property-spacing": ["error", "never"],
+    "@stylistic/jsx-quotes": ["error", "prefer-single"],
+    "@stylistic/keyword-spacing": [
       "error",
       {
-        "code": 120,
-        "ignoreComments": false,
-        "ignoreStrings": false,
-        "ignoreTemplateLiterals": false,
-        "ignoreRegExpLiterals": false,
-        "ignoreUrls": false
+        "before": true
       }
     ],
-    "@typescript-eslint/no-explicit-any": "warn",
-    "import/order": [
-      "error",
-      {
-        "newlines-between": "always",
-        "groups": ["builtin", "external", "internal", ["parent", "sibling", "index"]],
-        "alphabetize": {
-          "order": "asc",
-          "caseInsensitive": true
-        }
-      }
-    ]
+    "@stylistic/semi": "error",
+    "@stylistic/space-before-function-paren": "error",
+    "@stylistic/space-infix-ops": "error",
+    "@stylistic/space-unary-ops": "error",
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/ban-types": "off",
+    "@typescript-eslint/consistent-type-definitions": ["error", "type"],
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "error",
+    "react/prop-types": "off"
+  },
+  "env": {
+    "browser": true,
+    "es2021": true
   }
 }

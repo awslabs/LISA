@@ -46,16 +46,16 @@ app.add_middleware(
 )
 
 
-@app.post(path="", include_in_schema=False)
-@app.post(path="/")
+@app.post(path="", include_in_schema=False)  # type: ignore
+@app.post(path="/")  # type: ignore
 async def create_model(model: CreateModelRequest) -> CreateModelResponse:
     """Endpoint to create a model."""
     # TODO add service to create model
     return CreateModelResponse(ModelId=model.ModelId, ModelName=model.ModelName, Status=ModelStatus.CREATING)
 
 
-@app.get(path="", include_in_schema=False)
-@app.get(path="/")
+@app.get(path="", include_in_schema=False)  # type: ignore
+@app.get(path="/")  # type: ignore
 async def list_models() -> list[ListModelResponse]:
     """Endpoint to list models."""
     # TODO add service to list models
@@ -81,7 +81,7 @@ async def list_models() -> list[ListModelResponse]:
     ]
 
 
-@app.get(path="/{model_id}")
+@app.get(path="/{model_id}")  # type: ignore
 async def get_model(
     model_id: Annotated[str, Path(title="The name of the model to get")],
 ) -> DescribeModelResponse:
@@ -90,7 +90,7 @@ async def get_model(
     return DescribeModelResponse.DUMMY(model_id, model_id)
 
 
-@app.put(path="/{model_id}")
+@app.put(path="/{model_id}")  # type: ignore
 async def put_model(
     model_id: Annotated[str, Path(title="The name of the model to update")], model: UpdateModelRequest
 ) -> DescribeModelResponse:
@@ -100,7 +100,7 @@ async def put_model(
     return DescribeModelResponse(**model.model_dump())
 
 
-@app.put(path="/{model_id}/start")
+@app.put(path="/{model_id}/start")  # type: ignore
 async def start_model(model_id: Annotated[str, Path(title="The name of the model to start")]) -> ListModelResponse:
     """Endpoint to start a model."""
     # TODO add service to update model
@@ -115,7 +115,7 @@ async def start_model(model_id: Annotated[str, Path(title="The name of the model
     )
 
 
-@app.put(path="/{model_id}/stop")
+@app.put(path="/{model_id}/stop")  # type: ignore
 async def stop_model(model_id: Annotated[str, Path(title="The name of the model to stop")]) -> ListModelResponse:
     """Endpoint to stop a model."""
     # TODO add service to update model
@@ -130,7 +130,7 @@ async def stop_model(model_id: Annotated[str, Path(title="The name of the model 
     )
 
 
-@app.delete(path="/{model_id}")
+@app.delete(path="/{model_id}")  # type: ignore
 async def delete_model(
     model_id: Annotated[str, Path(title="The name of the model to delete")],
 ) -> DeleteModelResponse:

@@ -20,72 +20,72 @@ import { BaseMessage, BaseMessageFields, MessageContent, MessageType } from '@la
  * Used to specify additional parameters to be passed into OpenAI LLM Model Calls
  */
 export type ModelConfig = {
-  max_tokens?: number;
-  modelKwargs?: ModelArgs;
+    max_tokens?: number;
+    modelKwargs?: ModelArgs;
 };
 
 /**
  * Used to specify additional parameters in how the LLM processes inputs
  */
 export type ModelArgs = {
-  n?: number | null;
-  top_p?: number | null;
-  frequency_penalty?: number | null;
-  presence_penalty?: number | null;
-  temperature?: number | null;
-  stop: string[];
-  seed?: number | null;
+    n?: number | null;
+    top_p?: number | null;
+    frequency_penalty?: number | null;
+    presence_penalty?: number | null;
+    temperature?: number | null;
+    stop: string[];
+    seed?: number | null;
 };
 
 /**
  * Stores metadata for messages returned from LISA
  */
 export type LisaChatMessageMetadata = {
-  modelName?: string;
-  modelKwargs?: ModelConfig;
-  userId?: string;
-  messages?: string;
-  ragContext?: string;
+    modelName?: string;
+    modelKwargs?: ModelConfig;
+    userId?: string;
+    messages?: string;
+    ragContext?: string;
 };
 /**
  * Interface for storing data for messages
  */
-export interface LisaChatMessageFields extends BaseMessageFields {
-  type: MessageType;
-  content: MessageContent;
-  metadata?: LisaChatMessageMetadata;
-}
+export type LisaChatMessageFields = {
+    type: MessageType;
+    content: MessageContent;
+    metadata?: LisaChatMessageMetadata;
+} & BaseMessageFields;
 
 /**
  * Stores data for messages including the message type and message metadata
  */
 export class LisaChatMessage extends BaseMessage implements LisaChatMessageFields {
-  type: MessageType;
-  metadata?: LisaChatMessageMetadata;
+    type: MessageType;
+    metadata?: LisaChatMessageMetadata;
 
-  constructor(fields: LisaChatMessageFields) {
-    super(fields);
-    this.type = fields.type;
-    this.metadata = fields.metadata ?? {};
-  }
+    constructor (fields: LisaChatMessageFields) {
+        super(fields);
+        this.type = fields.type;
+        this.metadata = fields.metadata ?? {};
+    }
 
-  static lc_name() {
-    return 'LisaChatMessage';
-  }
+    static lc_name () {
+        return 'LisaChatMessage';
+    }
 
-  _getType(): MessageType {
-    return this.type;
-  }
+    _getType (): MessageType {
+        return this.type;
+    }
 }
 
 /**
  * Stores session data for chats with LISA
  */
 export type LisaChatSession = {
-  sessionId: string;
-  userId: string;
-  startTime: string;
-  history: LisaChatMessage[];
+    sessionId: string;
+    userId: string;
+    startTime: string;
+    history: LisaChatMessage[];
 };
 
 /**
@@ -101,58 +101,58 @@ export type RepositoryTypes = 'OpenSearch';
 /**
  * Interface for repository
  */
-export interface Repository {
-  repositoryId: string;
-  type: RepositoryTypes;
-}
+export type Repository = {
+    repositoryId: string;
+    type: RepositoryTypes;
+};
 
 /**
  * Interface for model
  */
-export interface Model {
-  id: string;
-  modelType: ModelTypes;
-  streaming?: boolean;
-}
+export type Model = {
+    id: string;
+    modelType: ModelTypes;
+    streaming?: boolean;
+};
 
 /**
  * Interface for OpenAIModel that is used for OpenAI Model Interactions
  */
-export interface OpenAIModel {
-  id: string;
-  object: string;
-  created: number;
-  owned_by: string;
-}
+export type OpenAIModel = {
+    id: string;
+    object: string;
+    created: number;
+    owned_by: string;
+};
 
 /**
  * Interface for the response body received when describing a model
  */
-export interface DescribeModelsResponseBody {
-  data: OpenAIModel[];
-}
+export type DescribeModelsResponseBody = {
+    data: OpenAIModel[];
+};
 
 /**
  * Interface for creating a session request body; composed of LisaChatMessageFields
  */
-export interface PutSessionRequestBody {
-  messages: LisaChatMessageFields[];
-}
+export type PutSessionRequestBody = {
+    messages: LisaChatMessageFields[];
+};
 
 /**
  * File types that can be uploaded for context or for RAG
  */
 export enum FileTypes {
-  TEXT = 'text/plain',
-  DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  PDF = 'application/pdf',
+    TEXT = 'text/plain',
+    DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    PDF = 'application/pdf',
 }
 
 /**
  * Loading types for status indicator
  */
 export enum StatusTypes {
-  LOADING = 'loading',
-  SUCCESS = 'success',
-  ERROR = 'error',
+    LOADING = 'loading',
+    SUCCESS = 'success',
+    ERROR = 'error',
 }

@@ -35,55 +35,55 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 5;
  * @property {SecurityGroup} securityGroup - The security group to use for the ECS cluster
  * @property {ModelConfig} modelConfig - The model configuration.
  */
-interface ECSModelProps extends BaseProps {
-  modelConfig: ModelConfig;
-  securityGroup: SecurityGroup;
-  vpc: IVpc;
-}
+type ECSModelProps = {
+    modelConfig: ModelConfig;
+    securityGroup: SecurityGroup;
+    vpc: IVpc;
+} & BaseProps;
 
 /**
  * Create an ECS model.
  */
 export class EcsModel extends Construct {
-  /** Model endpoint URL of application load balancer. */
-  public readonly endpointUrl: string;
+    /** Model endpoint URL of application load balancer. */
+    public readonly endpointUrl: string;
 
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSModelProps} props - The properties of the construct.
    */
-  constructor(scope: Construct, id: string, props: ECSModelProps) {
-    super(scope, id);
-    const { config, modelConfig, securityGroup, vpc } = props;
+    constructor (scope: Construct, id: string, props: ECSModelProps) {
+        super(scope, id);
+        const { config, modelConfig, securityGroup, vpc } = props;
 
-    const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
-      config,
-      ecsConfig: {
-        amiHardwareType: AmiHardwareType.GPU,
-        autoScalingConfig: modelConfig.autoScalingConfig,
-        buildArgs: this.getBuildArguments(config, modelConfig),
-        containerConfig: modelConfig.containerConfig,
-        containerMemoryBuffer: CONTAINER_MEMORY_BUFFER,
-        environment: this.getEnvironmentVariables(config, modelConfig),
-        identifier: getModelIdentifier(modelConfig),
-        instanceType: modelConfig.instanceType,
-        internetFacing: false,
-        loadBalancerConfig: modelConfig.loadBalancerConfig,
-      },
-      securityGroup,
-      vpc,
-    });
+        const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
+            config,
+            ecsConfig: {
+                amiHardwareType: AmiHardwareType.GPU,
+                autoScalingConfig: modelConfig.autoScalingConfig,
+                buildArgs: this.getBuildArguments(config, modelConfig),
+                containerConfig: modelConfig.containerConfig,
+                containerMemoryBuffer: CONTAINER_MEMORY_BUFFER,
+                environment: this.getEnvironmentVariables(config, modelConfig),
+                identifier: getModelIdentifier(modelConfig),
+                instanceType: modelConfig.instanceType,
+                internetFacing: false,
+                loadBalancerConfig: modelConfig.loadBalancerConfig,
+            },
+            securityGroup,
+            vpc,
+        });
 
-    // Single bucket for all models
-    const s3BucketModels = Bucket.fromBucketName(this, 'Bucket', config.s3BucketModels);
-    s3BucketModels.grantReadWrite(modelCluster.taskRole);
+        // Single bucket for all models
+        const s3BucketModels = Bucket.fromBucketName(this, 'Bucket', config.s3BucketModels);
+        s3BucketModels.grantReadWrite(modelCluster.taskRole);
 
-    // Update
-    this.endpointUrl = modelCluster.endpointUrl;
-  }
+        // Update
+        this.endpointUrl = modelCluster.endpointUrl;
+    }
 
-  /**
+    /**
    * Generates environment variables for Docker at runtime based on the configuration. The environment variables
    * include the local model path, S3 bucket for models, model name, and other variables depending on the model type.
    *
@@ -92,37 +92,37 @@ export class EcsModel extends Construct {
    * @returns {Object} An object containing the environment variables. The object has string keys and values, which
    *                   represent the environment variables for Docker at runtime.
    */
-  private getEnvironmentVariables(config: Config, modelConfig: ModelConfig): { [key: string]: string } {
-    const environment: { [key: string]: string } = {
-      LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath}/model`,
-      S3_BUCKET_MODELS: config.s3BucketModels,
-      MODEL_NAME: modelConfig.modelName,
-      LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
-      AWS_REGION: config.region, // needed for s5cmd
-    };
+    private getEnvironmentVariables (config: Config, modelConfig: ModelConfig): { [key: string]: string } {
+        const environment: { [key: string]: string } = {
+            LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath}/model`,
+            S3_BUCKET_MODELS: config.s3BucketModels,
+            MODEL_NAME: modelConfig.modelName,
+            LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
+            AWS_REGION: config.region, // needed for s5cmd
+        };
 
-    if (modelConfig.modelType === 'embedding') {
-      environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath;
-    }
-
-    if (config.mountS3DebUrl) {
-      environment.S3_MOUNT_POINT = 's3-models-mount';
-      // More threads than files during S3 mount point copy to NVMe is fine; by default use half threads
-      environment.THREADS = Math.ceil(Ec2Metadata.get(modelConfig.instanceType).vCpus / 2).toString();
-    }
-
-    if (modelConfig.containerConfig.environment) {
-      for (const [key, value] of Object.entries(modelConfig.containerConfig.environment)) {
-        if (value !== null) {
-          environment[key] = String(value);
+        if (modelConfig.modelType === 'embedding') {
+            environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath;
         }
-      }
+
+        if (config.mountS3DebUrl) {
+            environment.S3_MOUNT_POINT = 's3-models-mount';
+            // More threads than files during S3 mount point copy to NVMe is fine; by default use half threads
+            environment.THREADS = Math.ceil(Ec2Metadata.get(modelConfig.instanceType).vCpus / 2).toString();
+        }
+
+        if (modelConfig.containerConfig.environment) {
+            for (const [key, value] of Object.entries(modelConfig.containerConfig.environment)) {
+                if (value !== null) {
+                    environment[key] = String(value);
+                }
+            }
+        }
+
+        return environment;
     }
 
-    return environment;
-  }
-
-  /**
+    /**
    * Generates build arguments for the Docker build based on the configuration. The build arguments include the base
    * image, and depending on the model type, either the local code path or the S3 deb URL.
    *
@@ -131,29 +131,29 @@ export class EcsModel extends Construct {
    * @returns {Object} An object containing the build arguments. The object has string keys and values, which represent
    *                   the arguments for the Docker build.
    */
-  private getBuildArguments(config: Config, modelConfig: ModelConfig): { [key: string]: string } | undefined {
-    if (modelConfig.containerConfig.image.type !== EcsSourceType.ASSET) {
-      return undefined;
-    }
+    private getBuildArguments (config: Config, modelConfig: ModelConfig): { [key: string]: string } | undefined {
+        if (modelConfig.containerConfig.image.type !== EcsSourceType.ASSET) {
+            return undefined;
+        }
 
-    const buildArgs: { [key: string]: string } = {
-      BASE_IMAGE: modelConfig.containerConfig.image.baseImage,
-    };
+        const buildArgs: { [key: string]: string } = {
+            BASE_IMAGE: modelConfig.containerConfig.image.baseImage,
+        };
 
-    if (modelConfig.modelType === 'embedding') {
-      buildArgs.LOCAL_CODE_PATH = modelConfig.localModelCode;
-    }
-    if (config.mountS3DebUrl) {
-      buildArgs.MOUNTS3_DEB_URL = config.mountS3DebUrl;
-    }
-    if (config.pypiConfig.indexUrl) {
-      buildArgs.PYPI_INDEX_URL = config.pypiConfig.indexUrl;
-      buildArgs.PYPI_TRUSTED_HOST = config.pypiConfig.trustedHost;
-    }
-    if (config.condaUrl) {
-      buildArgs.CONDA_URL = config.condaUrl;
-    }
+        if (modelConfig.modelType === 'embedding') {
+            buildArgs.LOCAL_CODE_PATH = modelConfig.localModelCode;
+        }
+        if (config.mountS3DebUrl) {
+            buildArgs.MOUNTS3_DEB_URL = config.mountS3DebUrl;
+        }
+        if (config.pypiConfig.indexUrl) {
+            buildArgs.PYPI_INDEX_URL = config.pypiConfig.indexUrl;
+            buildArgs.PYPI_TRUSTED_HOST = config.pypiConfig.trustedHost;
+        }
+        if (config.condaUrl) {
+            buildArgs.CONDA_URL = config.condaUrl;
+        }
 
-    return buildArgs;
-  }
+        return buildArgs;
+    }
 }

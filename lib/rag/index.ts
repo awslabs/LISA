@@ -44,15 +44,15 @@ const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
 const SDK_PATH: string = path.resolve(HERE, '..', '..', 'lisa-sdk');
 
-interface CustomLisaRagStackProps extends BaseProps {
-  authorizer: IAuthorizer;
-  endpointUrl: StringParameter;
-  modelsPs: StringParameter;
-  restApiId: string;
-  rootResourceId: string;
-  securityGroups?: ISecurityGroup[];
-  vpc: Vpc;
-}
+type CustomLisaRagStackProps = {
+    authorizer: IAuthorizer;
+    endpointUrl: StringParameter;
+    modelsPs: StringParameter;
+    restApiId: string;
+    rootResourceId: string;
+    securityGroups?: ISecurityGroup[];
+    vpc: Vpc;
+} & BaseProps;
 
 type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
 
@@ -60,283 +60,283 @@ type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
  * LisaChat RAG stack.
  */
 export class LisaRagStack extends Stack {
-  public readonly ragApi: FastApiContainer;
+    public readonly ragApi: FastApiContainer;
 
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaChatStackProps} props - Properties for the Stack.
    */
-  constructor(scope: Construct, id: string, props: LisaRagStackProps) {
-    super(scope, id, props);
+    constructor (scope: Construct, id: string, props: LisaRagStackProps) {
+        super(scope, id, props);
 
-    const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-    // Get common layer based on arn from SSM due to issues with cross stack references
-    const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'rag-common-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-    );
-
-    const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`;
-    const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
-      bucketName,
-      cors: [
-        {
-          allowedMethods: [HttpMethods.GET, HttpMethods.POST],
-          allowedHeaders: ['*'],
-          allowedOrigins: ['*'],
-          exposedHeaders: ['Access-Control-Allow-Origin'],
-        },
-      ],
-    });
-
-    const baseEnvironment: Record<string, string> = {
-      REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
-      BUCKET_NAME: bucketName,
-      CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
-      CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
-      LISA_API_URL_PS_NAME: endpointUrl.parameterName,
-      REST_API_VERSION: config.restApiConfig.apiVersion,
-    };
-
-    // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
-    if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
-      baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig.loadBalancerConfig.sslCertIamArn;
-    }
-
-    const lambdaRole = Role.fromRoleArn(
-      this,
-      'LISARagAPILambdaExecutionRole',
-      StringParameter.valueForStringParameter(
-        this,
-        `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, 'RAGRole'])}`,
-      ),
-    );
-    bucket.grantRead(lambdaRole);
-    bucket.grantPut(lambdaRole);
-
-    const registeredRepositories = [];
-
-    for (const ragConfig of config.ragRepositories) {
-      // Create opensearch cluster for RAG
-      if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
-        const openSearchSg = new SecurityGroup(this, 'LISA-OpenSearchSg', {
-          securityGroupName: createCdkId([config.deploymentName, 'OpenSearch-SG']),
-          vpc: vpc.vpc,
-          description: 'Security group for RAG OpenSearch domain',
-        });
-        // Allow communication from private subnets to ECS cluster
-        vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
-          openSearchSg.connections.allowFrom(
-            Peer.ipv4(subnet.ipv4CidrBlock),
-            Port.tcp(443),
-            'Allow private subnets to communicate with OpenSearch cluster',
-          );
-        });
-        new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
-
-        registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
-        let openSearchDomain: IDomain;
-
-        if ('endpoint' in ragConfig.opensearchConfig) {
-          openSearchDomain = Domain.fromDomainEndpoint(
+        // Get common layer based on arn from SSM due to issues with cross stack references
+        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
-            'ExistingOpenSearchDomain',
-            ragConfig.opensearchConfig.endpoint,
-          );
-        } else {
-          // Service-linked role that Amazon OpenSearch Service will use
-          (async () => {
-            const iam = new IAMClient({
-              region: config.region,
-            });
-            const response = await iam.send(
-              new ListRolesCommand({
-                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
-              }),
-            );
-
-            // Only if the role for OpenSearch Service doesn't exist, it will be created.
-            if (response.Roles && response.Roles?.length == 0) {
-              new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
-                awsServiceName: 'opensearchservice.amazonaws.com',
-              });
-            }
-          })();
-
-          openSearchDomain = new Domain(this, 'LisaServeRagRepository', {
-            domainName: 'lisa-rag',
-            // 2.9 is the latest available in ADC regions as of 1/11/24
-            version: EngineVersion.OPENSEARCH_2_9,
-            enableVersionUpgrade: true,
-            vpc: vpc.vpc,
-            ebs: {
-              enabled: true,
-              volumeSize: ragConfig.opensearchConfig.volumeSize,
-            },
-            zoneAwareness: {
-              availabilityZoneCount: vpc.vpc.privateSubnets.length,
-              enabled: true,
-            },
-            capacity: {
-              dataNodes: ragConfig.opensearchConfig.dataNodes,
-              dataNodeInstanceType: ragConfig.opensearchConfig.dataNodeInstanceType,
-              masterNodes: ragConfig.opensearchConfig.masterNodes,
-              masterNodeInstanceType: ragConfig.opensearchConfig.masterNodeInstanceType,
-              multiAzWithStandbyEnabled: ragConfig.opensearchConfig.multiAzWithStandby,
-            },
-            accessPolicies: [
-              new PolicyStatement({
-                actions: ['es:*'],
-                resources: ['*'],
-                effect: Effect.ALLOW,
-                principals: [new AnyPrincipal()],
-              }),
-            ],
-            removalPolicy: RemovalPolicy.DESTROY,
-            securityGroups: [openSearchSg!],
-          });
-        }
-
-        // Rag API task execution role will read and write
-        openSearchDomain.grantIndexReadWrite('*', lambdaRole);
-        openSearchDomain.grantPathReadWrite('*', lambdaRole);
-        openSearchDomain.grantReadWrite(lambdaRole);
-
-        new CfnOutput(this, 'opensearchRagRepositoryEndpoint', {
-          value: openSearchDomain.domainEndpoint,
-        });
-
-        const openSearchEndpointPs = new StringParameter(
-          this,
-          createCdkId(['LisaServeRagRepositoryEndpoint', 'StringParameter']),
-          {
-            parameterName: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-            stringValue: openSearchDomain.domainEndpoint,
-            description: 'Endpoint for LISA Serve OpenSearch Rag Repository',
-          },
+            'rag-common-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        // Add explicit dependency on OpenSearch Domain being created
-        openSearchEndpointPs.node.addDependency(openSearchDomain);
-        openSearchEndpointPs.grantRead(lambdaRole);
-        // Add parameter as lambda environment variable for RagAPI
-        baseEnvironment['OPENSEARCH_ENDPOINT_PS_NAME'] = openSearchEndpointPs.parameterName;
-      } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
-        registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
-        const connectionParamName = 'LisaServeRagPGVectorConnectionInfo';
-        let rdsPasswordSecret: ISecret;
-        let rdsConnectionInfoPs: StringParameter;
-        // if dbHost and passwordSecretId are defined, then connect to DB with existing params
-        if (!!ragConfig.rdsConfig.dbHost && !!ragConfig.rdsConfig.passwordSecretId) {
-          rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
-            parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
-            stringValue: JSON.stringify(ragConfig.rdsConfig),
-            description: 'Connection info for LISA Serve PGVector database',
-          });
-          rdsPasswordSecret = Secret.fromSecretNameV2(
-            this,
-            createCdkId([config.deploymentName, 'RagRDSPwdSecret']),
-            ragConfig.rdsConfig.passwordSecretId,
-          );
-        } else {
-          // Create new DB and SG
-          const pgvectorSg = new SecurityGroup(this, 'LISA-PGVectorSg', {
-            securityGroupName: 'LISA-PGVector-SG',
-            vpc: vpc.vpc,
-            description: 'Security group for RAG PGVector database',
-          });
+        const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`;
+        const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
+            bucketName,
+            cors: [
+                {
+                    allowedMethods: [HttpMethods.GET, HttpMethods.POST],
+                    allowedHeaders: ['*'],
+                    allowedOrigins: ['*'],
+                    exposedHeaders: ['Access-Control-Allow-Origin'],
+                },
+            ],
+        });
 
-          vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
-            pgvectorSg.connections.allowFrom(
-              Peer.ipv4(subnet.ipv4CidrBlock),
-              Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
-              'Allow private subnets to communicate with PGVector database',
-            );
-          });
+        const baseEnvironment: Record<string, string> = {
+            REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
+            BUCKET_NAME: bucketName,
+            CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
+            CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
+            LISA_API_URL_PS_NAME: endpointUrl.parameterName,
+            REST_API_VERSION: config.restApiConfig.apiVersion,
+        };
 
-          const username = ragConfig.rdsConfig.username;
-          const dbCreds = Credentials.fromGeneratedSecret(username);
-          const pgvector_db = new DatabaseInstance(this, 'PGVectorDB', {
-            engine: DatabaseInstanceEngine.POSTGRES,
-            vpc: vpc.vpc,
-            credentials: dbCreds,
-            securityGroups: [pgvectorSg!],
-            removalPolicy: RemovalPolicy.DESTROY,
-          });
-          rdsPasswordSecret = pgvector_db.secret!;
-          rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
-            parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
-            stringValue: JSON.stringify({
-              username: username,
-              passwordSecretId: rdsPasswordSecret.secretName,
-              dbHost: pgvector_db.dbInstanceEndpointAddress,
-              dbName: ragConfig.rdsConfig.dbName,
-              dbPort: ragConfig.rdsConfig.dbPort,
-            }),
-            description: 'Connection info for LISA Serve PGVector database',
-          });
+        // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
+        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+            baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig.loadBalancerConfig.sslCertIamArn;
         }
-        rdsPasswordSecret.grantRead(lambdaRole);
-        rdsConnectionInfoPs.grantRead(lambdaRole);
-        baseEnvironment['RDS_CONNECTION_INFO_PS_NAME'] = rdsConnectionInfoPs.parameterName;
-      }
+
+        const lambdaRole = Role.fromRoleArn(
+            this,
+            'LISARagAPILambdaExecutionRole',
+            StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, 'RAGRole'])}`,
+            ),
+        );
+        bucket.grantRead(lambdaRole);
+        bucket.grantPut(lambdaRole);
+
+        const registeredRepositories = [];
+
+        for (const ragConfig of config.ragRepositories) {
+            // Create opensearch cluster for RAG
+            if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
+                const openSearchSg = new SecurityGroup(this, 'LISA-OpenSearchSg', {
+                    securityGroupName: createCdkId([config.deploymentName, 'OpenSearch-SG']),
+                    vpc: vpc.vpc,
+                    description: 'Security group for RAG OpenSearch domain',
+                });
+                // Allow communication from private subnets to ECS cluster
+                vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+                    openSearchSg.connections.allowFrom(
+                        Peer.ipv4(subnet.ipv4CidrBlock),
+                        Port.tcp(443),
+                        'Allow private subnets to communicate with OpenSearch cluster',
+                    );
+                });
+                new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
+
+                registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
+                let openSearchDomain: IDomain;
+
+                if ('endpoint' in ragConfig.opensearchConfig) {
+                    openSearchDomain = Domain.fromDomainEndpoint(
+                        this,
+                        'ExistingOpenSearchDomain',
+                        ragConfig.opensearchConfig.endpoint,
+                    );
+                } else {
+                    // Service-linked role that Amazon OpenSearch Service will use
+                    (async () => {
+                        const iam = new IAMClient({
+                            region: config.region,
+                        });
+                        const response = await iam.send(
+                            new ListRolesCommand({
+                                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
+                            }),
+                        );
+
+                        // Only if the role for OpenSearch Service doesn't exist, it will be created.
+                        if (response.Roles && response.Roles?.length === 0) {
+                            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
+                                awsServiceName: 'opensearchservice.amazonaws.com',
+                            });
+                        }
+                    })();
+
+                    openSearchDomain = new Domain(this, 'LisaServeRagRepository', {
+                        domainName: 'lisa-rag',
+                        // 2.9 is the latest available in ADC regions as of 1/11/24
+                        version: EngineVersion.OPENSEARCH_2_9,
+                        enableVersionUpgrade: true,
+                        vpc: vpc.vpc,
+                        ebs: {
+                            enabled: true,
+                            volumeSize: ragConfig.opensearchConfig.volumeSize,
+                        },
+                        zoneAwareness: {
+                            availabilityZoneCount: vpc.vpc.privateSubnets.length,
+                            enabled: true,
+                        },
+                        capacity: {
+                            dataNodes: ragConfig.opensearchConfig.dataNodes,
+                            dataNodeInstanceType: ragConfig.opensearchConfig.dataNodeInstanceType,
+                            masterNodes: ragConfig.opensearchConfig.masterNodes,
+                            masterNodeInstanceType: ragConfig.opensearchConfig.masterNodeInstanceType,
+                            multiAzWithStandbyEnabled: ragConfig.opensearchConfig.multiAzWithStandby,
+                        },
+                        accessPolicies: [
+                            new PolicyStatement({
+                                actions: ['es:*'],
+                                resources: ['*'],
+                                effect: Effect.ALLOW,
+                                principals: [new AnyPrincipal()],
+                            }),
+                        ],
+                        removalPolicy: RemovalPolicy.DESTROY,
+                        securityGroups: [openSearchSg!],
+                    });
+                }
+
+                // Rag API task execution role will read and write
+                openSearchDomain.grantIndexReadWrite('*', lambdaRole);
+                openSearchDomain.grantPathReadWrite('*', lambdaRole);
+                openSearchDomain.grantReadWrite(lambdaRole);
+
+                new CfnOutput(this, 'opensearchRagRepositoryEndpoint', {
+                    value: openSearchDomain.domainEndpoint,
+                });
+
+                const openSearchEndpointPs = new StringParameter(
+                    this,
+                    createCdkId(['LisaServeRagRepositoryEndpoint', 'StringParameter']),
+                    {
+                        parameterName: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
+                        stringValue: openSearchDomain.domainEndpoint,
+                        description: 'Endpoint for LISA Serve OpenSearch Rag Repository',
+                    },
+                );
+
+                // Add explicit dependency on OpenSearch Domain being created
+                openSearchEndpointPs.node.addDependency(openSearchDomain);
+                openSearchEndpointPs.grantRead(lambdaRole);
+                // Add parameter as lambda environment variable for RagAPI
+                baseEnvironment['OPENSEARCH_ENDPOINT_PS_NAME'] = openSearchEndpointPs.parameterName;
+            } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
+                registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
+                const connectionParamName = 'LisaServeRagPGVectorConnectionInfo';
+                let rdsPasswordSecret: ISecret;
+                let rdsConnectionInfoPs: StringParameter;
+                // if dbHost and passwordSecretId are defined, then connect to DB with existing params
+                if (!!ragConfig.rdsConfig.dbHost && !!ragConfig.rdsConfig.passwordSecretId) {
+                    rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
+                        parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
+                        stringValue: JSON.stringify(ragConfig.rdsConfig),
+                        description: 'Connection info for LISA Serve PGVector database',
+                    });
+                    rdsPasswordSecret = Secret.fromSecretNameV2(
+                        this,
+                        createCdkId([config.deploymentName, 'RagRDSPwdSecret']),
+                        ragConfig.rdsConfig.passwordSecretId,
+                    );
+                } else {
+                    // Create new DB and SG
+                    const pgvectorSg = new SecurityGroup(this, 'LISA-PGVectorSg', {
+                        securityGroupName: 'LISA-PGVector-SG',
+                        vpc: vpc.vpc,
+                        description: 'Security group for RAG PGVector database',
+                    });
+
+                    vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+                        pgvectorSg.connections.allowFrom(
+                            Peer.ipv4(subnet.ipv4CidrBlock),
+                            Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
+                            'Allow private subnets to communicate with PGVector database',
+                        );
+                    });
+
+                    const username = ragConfig.rdsConfig.username;
+                    const dbCreds = Credentials.fromGeneratedSecret(username);
+                    const pgvector_db = new DatabaseInstance(this, 'PGVectorDB', {
+                        engine: DatabaseInstanceEngine.POSTGRES,
+                        vpc: vpc.vpc,
+                        credentials: dbCreds,
+                        securityGroups: [pgvectorSg!],
+                        removalPolicy: RemovalPolicy.DESTROY,
+                    });
+                    rdsPasswordSecret = pgvector_db.secret!;
+                    rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
+                        parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
+                        stringValue: JSON.stringify({
+                            username: username,
+                            passwordSecretId: rdsPasswordSecret.secretName,
+                            dbHost: pgvector_db.dbInstanceEndpointAddress,
+                            dbName: ragConfig.rdsConfig.dbName,
+                            dbPort: ragConfig.rdsConfig.dbPort,
+                        }),
+                        description: 'Connection info for LISA Serve PGVector database',
+                    });
+                }
+                rdsPasswordSecret.grantRead(lambdaRole);
+                rdsConnectionInfoPs.grantRead(lambdaRole);
+                baseEnvironment['RDS_CONNECTION_INFO_PS_NAME'] = rdsConnectionInfoPs.parameterName;
+            }
+        }
+
+        // Create Parameter Store entry with RAG repositories
+        const ragRepositoriesParam = new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
+            parameterName: `${config.deploymentPrefix}/registeredRepositories`,
+            stringValue: JSON.stringify(registeredRepositories),
+            description: 'Serialized JSON of registered RAG repositories',
+        });
+
+        baseEnvironment['REGISTERED_REPOSITORIES_PS_NAME'] = ragRepositoriesParam.parameterName;
+
+        // Build RAG Lambda layer
+        const ragLambdaLayer = new Layer(this, 'RagLayer', {
+            config: config,
+            path: RAG_LAYER_PATH,
+            description: 'Lambad dependencies for RAG API',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.ragLayerPath,
+        });
+
+        // Build SDK Layer
+        let sdkLayer;
+        if (config.lambdaLayerAssets?.sdkLayerPath) {
+            sdkLayer = new LayerVersion(this, 'SdkLayer', {
+                code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
+                compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
+                removalPolicy: config.removalPolicy,
+                description: 'LISA SDK common layer',
+            });
+        } else {
+            sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
+                entry: SDK_PATH,
+                compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
+                removalPolicy: config.removalPolicy,
+                description: 'LISA SDK common layer',
+            });
+        }
+
+        // Add REST API Lambdas to APIGW
+        new RepositoryApi(this, 'RepositoryApi', {
+            authorizer,
+            baseEnvironment,
+            config,
+            vpc: vpc.vpc,
+            commonLayers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            lambdaExecutionRole: lambdaRole,
+        });
+
+        ragRepositoriesParam.grantRead(lambdaRole);
+        modelsPs.grantRead(lambdaRole);
+        endpointUrl.grantRead(lambdaRole);
     }
-
-    // Create Parameter Store entry with RAG repositories
-    const ragRepositoriesParam = new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
-      parameterName: `${config.deploymentPrefix}/registeredRepositories`,
-      stringValue: JSON.stringify(registeredRepositories),
-      description: 'Serialized JSON of registered RAG repositories',
-    });
-
-    baseEnvironment['REGISTERED_REPOSITORIES_PS_NAME'] = ragRepositoriesParam.parameterName;
-
-    // Build RAG Lambda layer
-    const ragLambdaLayer = new Layer(this, 'RagLayer', {
-      config: config,
-      path: RAG_LAYER_PATH,
-      description: 'Lambad dependencies for RAG API',
-      architecture: ARCHITECTURE,
-      autoUpgrade: true,
-      assetPath: config.lambdaLayerAssets?.ragLayerPath,
-    });
-
-    // Build SDK Layer
-    let sdkLayer;
-    if (config.lambdaLayerAssets?.sdkLayerPath) {
-      sdkLayer = new LayerVersion(this, 'SdkLayer', {
-        code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-        compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
-        removalPolicy: config.removalPolicy,
-        description: 'LISA SDK common layer',
-      });
-    } else {
-      sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
-        entry: SDK_PATH,
-        compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
-        removalPolicy: config.removalPolicy,
-        description: 'LISA SDK common layer',
-      });
-    }
-
-    // Add REST API Lambdas to APIGW
-    new RepositoryApi(this, 'RepositoryApi', {
-      authorizer,
-      baseEnvironment,
-      config,
-      vpc: vpc.vpc,
-      commonLayers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
-      restApiId,
-      rootResourceId,
-      securityGroups,
-      lambdaExecutionRole: lambdaRole,
-    });
-
-    ragRepositoriesParam.grantRead(lambdaRole);
-    modelsPs.grantRead(lambdaRole);
-    endpointUrl.grantRead(lambdaRole);
-  }
 }

@@ -58,7 +58,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
     );
 }
 
-function ModelActionButton (notificationService: INotificationService, props?: any) {
+function ModelActionButton (notificationService: INotificationService, props?: any): ReactElement {
     const selectedModel: IModel = props?.selectedItems[0];
     const [
         deleteMutation,

@@ -81,7 +81,7 @@ export class FastApiContainer extends Construct {
             AWS_REGION: config.region,
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
-            LITELLM_KEY: config.litellmConfig.general_settings.master_key, //
+            LITELLM_KEY: config.litellmConfig.general_settings.master_key,
         };
 
         if (config.restApiConfig.internetFacing) {

@@ -15,14 +15,14 @@
 */
 
 import { Flashbar } from '@cloudscape-design/components';
-import React, { useMemo } from 'react';
+import React, { ReactElement, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { reset, selectNotifications } from '../reducers/notification.reducer';
 import { NotificationProp } from './notifications.props';
 import { useNotificationService } from '../util/hooks';
 import { useAppSelector } from '../../config/store';
 
-function NotificationBanner () {
+function NotificationBanner (): ReactElement {
     const notifications: NotificationProp[] = useAppSelector(selectNotifications);
     const notificationDisplayMaxSize = 5;
 

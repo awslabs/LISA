@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { useState } from 'react';
+import { ReactElement, useState } from 'react';
 import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
@@ -27,7 +27,7 @@ import {
 } from './ModelManagementUtils';
 import { ModelActions } from './ModelManagementActions';
 
-export function ModelManagementComponent () {
+export function ModelManagementComponent () : ReactElement {
     const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery();
 
     const [selectedItems, setSelectedItems] = useState([]);

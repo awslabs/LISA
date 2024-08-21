@@ -14,10 +14,10 @@
  limitations under the License.
  */
 
-import { useEffect } from 'react';
+import { ReactElement, useEffect } from 'react';
 import ModelManagementComponent from '../components/model-management/ModelManagementComponent';
 
-export function ModelManagement ({ setTools }) {
+export function ModelManagement ({ setTools }): ReactElement {
     useEffect(() => {
         setTools(null);
     }, [setTools]);

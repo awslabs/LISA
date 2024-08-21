@@ -18,72 +18,72 @@ import { StatusIndicatorProps } from '@cloudscape-design/components/status-indic
 import { StatusIndicator } from '@cloudscape-design/components';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
-  [K in T]: U;
+    [K in T]: U;
 };
 
 export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorProps.Type> = {
-  [ModelStatus.Creating]: 'in-progress',
-  [ModelStatus.InService]: 'success',
-  [ModelStatus.Stopping]: 'in-progress',
-  [ModelStatus.Stopped]: 'stopped',
-  [ModelStatus.Updating]: 'in-progress',
-  [ModelStatus.Deleting]: 'in-progress',
-  [ModelStatus.Failed]: 'error',
+    [ModelStatus.Creating]: 'in-progress',
+    [ModelStatus.InService]: 'success',
+    [ModelStatus.Stopping]: 'in-progress',
+    [ModelStatus.Stopped]: 'stopped',
+    [ModelStatus.Updating]: 'in-progress',
+    [ModelStatus.Deleting]: 'in-progress',
+    [ModelStatus.Failed]: 'error',
 };
 
 export const CARD_DEFINITIONS = {
-  header: (model: IModel) => <div>{model.ModelName}</div>,
-  sections: [
-    {
-      id: 'ModelId',
-      header: 'ID',
-      content: (model: IModel) => model.ModelId,
-    },
-    {
-      id: 'ModelType',
-      header: 'Type',
-      content: (model: IModel) => model.ModelType,
-    },
-    {
-      id: 'ModelUrl',
-      header: 'URL',
-      content: (model: IModel) => model.ModelUrl,
-    },
-    {
-      id: 'Streaming',
-      header: 'Streaming',
-      content: (model: IModel) => String(model.Streaming),
-    },
-    {
-      id: 'ModelStatus',
-      header: 'Status',
-      content: (model: IModel) => (
-        <StatusIndicator type={MODEL_STATUS_LOOKUP[model.Status]}>{model.Status}</StatusIndicator>
-      ),
-    },
-  ],
+    header: (model: IModel) => <div>{model.ModelName}</div>,
+    sections: [
+        {
+            id: 'ModelId',
+            header: 'ID',
+            content: (model: IModel) => model.ModelId,
+        },
+        {
+            id: 'ModelType',
+            header: 'Type',
+            content: (model: IModel) => model.ModelType,
+        },
+        {
+            id: 'ModelUrl',
+            header: 'URL',
+            content: (model: IModel) => model.ModelUrl,
+        },
+        {
+            id: 'Streaming',
+            header: 'Streaming',
+            content: (model: IModel) => String(model.Streaming),
+        },
+        {
+            id: 'ModelStatus',
+            header: 'Status',
+            content: (model: IModel) => (
+                <StatusIndicator type={MODEL_STATUS_LOOKUP[model.Status]}>{model.Status}</StatusIndicator>
+            ),
+        },
+    ],
 };
 
 export const PAGE_SIZE_OPTIONS = [
-  { value: 10, label: '10 Models' },
-  { value: 30, label: '30 Models' },
-  { value: 50, label: '50 Models' },
+    { value: 10, label: '10 Models' },
+    { value: 30, label: '30 Models' },
+    { value: 50, label: '50 Models' },
 ];
 
 export const DEFAULT_PREFERENCES = {
-  pageSize: 30,
-  visibleContent: ['ModelType', 'ModelStatus'],
+    pageSize: 30,
+    visibleContent: ['ModelType', 'ModelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
-  {
-    label: 'Main distribution properties',
-    options: [
-      { id: 'ModelId', label: 'ID' },
-      { id: 'ModelType', label: 'Type' },
-      { id: 'ModelUrl', label: 'URL' },
-      { id: 'Streaming', label: 'Streaming' },
-      { id: 'ModelStatus', label: 'Status' },
-    ],
-  },
+    {
+        label: 'Main distribution properties',
+        options: [
+            { id: 'ModelId', label: 'ID' },
+            { id: 'ModelType', label: 'Type' },
+            { id: 'ModelUrl', label: 'URL' },
+            { id: 'Streaming', label: 'Streaming' },
+            { id: 'ModelStatus', label: 'Status' },
+        ],
+    },
 ];

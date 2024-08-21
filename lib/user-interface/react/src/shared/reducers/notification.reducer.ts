@@ -18,23 +18,23 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { NotificationProp } from '../notification/notifications.props';
 
 const initialState = {
-  notifications: [] as NotificationProp[],
+    notifications: [] as NotificationProp[],
 };
 
 const NotificationSlice = createSlice({
-  name: 'notification',
-  initialState,
-  reducers: {
-    addNotification(state, action: PayloadAction<NotificationProp>) {
-      state.notifications = [...state.notifications, action.payload];
+    name: 'notification',
+    initialState,
+    reducers: {
+        addNotification (state, action: PayloadAction<NotificationProp>) {
+            state.notifications = [...state.notifications, action.payload];
+        },
+        clearNotification (state, action: PayloadAction<string>) {
+            state.notifications = state.notifications.filter((item) => item.id !== action.payload);
+        },
+        reset (state) {
+            state.notifications = [];
+        },
     },
-    clearNotification(state, action: PayloadAction<string>) {
-      state.notifications = state.notifications.filter((item) => item.id !== action.payload);
-    },
-    reset(state) {
-      state.notifications = [];
-    },
-  },
 });
 
 export const { addNotification, clearNotification, reset } = NotificationSlice.actions;

@@ -22,29 +22,29 @@ import { NotificationProp } from './notifications.props';
 import { useNotificationService } from '../util/hooks';
 import { useAppSelector } from '../../config/store';
 
-function NotificationBanner() {
-  const notifications: NotificationProp[] = useAppSelector(selectNotifications);
-  const notificationDisplayMaxSize = 5;
+function NotificationBanner () {
+    const notifications: NotificationProp[] = useAppSelector(selectNotifications);
+    const notificationDisplayMaxSize = 5;
 
-  const dispatch = useDispatch();
-  const notificationService = useNotificationService(dispatch);
+    const dispatch = useDispatch();
+    const notificationService = useNotificationService(dispatch);
 
-  useMemo(() => {
-    dispatch(reset());
-  }, [dispatch]);
+    useMemo(() => {
+        dispatch(reset());
+    }, [dispatch]);
 
-  return (
-    <div role="status" aria-live="polite">
-      <Flashbar
-        items={notifications
-          .slice(
-            0,
-            notifications.length > notificationDisplayMaxSize ? notificationDisplayMaxSize : notifications.length,
-          )
-          .map((props) => notificationService.createNotification(props))}
-      />
-    </div>
-  );
+    return (
+        <div role='status' aria-live='polite'>
+            <Flashbar
+                items={notifications
+                    .slice(
+                        0,
+                        notifications.length > notificationDisplayMaxSize ? notificationDisplayMaxSize : notifications.length,
+                    )
+                    .map((props) => notificationService.createNotification(props))}
+            />
+        </div>
+    );
 }
 
 export default NotificationBanner;

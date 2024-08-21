@@ -21,8 +21,8 @@ import NotificationService from '../notification/notification.service';
 /**
  * Creates a memoized NotificationService based on {@link dispatch}
  */
-export function useNotificationService(
-  dispatch: ThunkDispatch<any, any, Action>,
+export function useNotificationService (
+    dispatch: ThunkDispatch<any, any, Action>,
 ): ReturnType<typeof NotificationService> {
-  return useMemo(() => NotificationService(dispatch), [dispatch]);
+    return useMemo(() => NotificationService(dispatch), [dispatch]);
 }

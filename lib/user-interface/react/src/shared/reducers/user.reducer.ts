@@ -18,18 +18,18 @@ import { createSlice } from '@reduxjs/toolkit';
 import { IUser } from '../model/user.model';
 
 const initialState = {
-  info: undefined as IUser,
+    info: undefined as IUser,
 };
 
 export const User = createSlice({
-  name: 'user',
-  initialState,
-  reducers: {
-    updateUserState: (state, action) => {
-      state.info = action.payload;
+    name: 'user',
+    initialState,
+    reducers: {
+        updateUserState: (state, action) => {
+            state.info = action.payload;
+        },
     },
-  },
-  extraReducers() {},
+    extraReducers () {},
 });
 
 export const selectCurrentUserIsAdmin = (state: any) => state.user.info?.isAdmin ?? false;

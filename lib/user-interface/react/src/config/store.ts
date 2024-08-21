@@ -22,27 +22,27 @@ import { persistReducer, persistStore } from 'redux-persist';
 import sharedReducers, { rootMiddleware } from '../shared/reducers';
 
 const persistConfig = {
-  key: 'lisa',
-  storage,
+    key: 'lisa',
+    storage,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(sharedReducers));
 
 const store = configureStore({
-  reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: false,
-    }).concat(...rootMiddleware),
+    reducer: persistedReducer,
+    middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({
+            serializableCheck: false,
+        }).concat(...rootMiddleware),
 });
 
-export async function signOut() {
-  await storage.removeItem('persist:lisa');
-  persistor.purge().then(() => {
-    persistor.flush().then(() => {
-      persistor.pause();
+export async function signOut () {
+    await storage.removeItem('persist:lisa');
+    persistor.purge().then(() => {
+        persistor.flush().then(() => {
+            persistor.pause();
+        });
     });
-  });
 }
 
 const getStore = () => store;

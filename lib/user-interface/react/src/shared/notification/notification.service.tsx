@@ -21,40 +21,40 @@ import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { NotificationProp } from './notifications.props';
 import React from 'react';
 
-function NotificationService(dispatch: ThunkDispatch<any, any, Action>) {
-  function generateNotification(
-    header: string,
-    type: FlashbarProps.Type,
-    id: string = v4(),
-    content: React.ReactNode = null,
-    dismissible = true,
-  ) {
-    dispatch(clearNotification(id));
-    dispatch(addNotification({ header: header, type: type, id: id, content: content, dismissible: dismissible }));
-    return id;
-  }
-
-  function createNotification(props: NotificationProp) {
-    return {
-      ...props,
-      onDismiss: () => dispatch(clearNotification(props.id)),
-      dismissLabel: 'Dismiss notification',
-    } as FlashbarProps.MessageDefinition;
-  }
-
-  function showActionNotification(action: string, successMessage: string, actionResult: any) {
-    if (actionResult.type.endsWith('/fulfilled')) {
-      generateNotification(successMessage || `Successfully ${action}.`, 'success');
-    } else {
-      generateNotification(`Failed to ${action}: ${actionResult.payload}`, 'error');
+function NotificationService (dispatch: ThunkDispatch<any, any, Action>) {
+    function generateNotification (
+        header: string,
+        type: FlashbarProps.Type,
+        id: string = v4(),
+        content: React.ReactNode = null,
+        dismissible = true,
+    ) {
+        dispatch(clearNotification(id));
+        dispatch(addNotification({ header: header, type: type, id: id, content: content, dismissible: dismissible }));
+        return id;
     }
-  }
 
-  return {
-    generateNotification: generateNotification,
-    createNotification: createNotification,
-    showActionNotification: showActionNotification,
-  };
+    function createNotification (props: NotificationProp) {
+        return {
+            ...props,
+            onDismiss: () => dispatch(clearNotification(props.id)),
+            dismissLabel: 'Dismiss notification',
+        } as FlashbarProps.MessageDefinition;
+    }
+
+    function showActionNotification (action: string, successMessage: string, actionResult: any) {
+        if (actionResult.type.endsWith('/fulfilled')) {
+            generateNotification(successMessage || `Successfully ${action}.`, 'success');
+        } else {
+            generateNotification(`Failed to ${action}: ${actionResult.payload}`, 'error');
+        }
+    }
+
+    return {
+        generateNotification: generateNotification,
+        createNotification: createNotification,
+        showActionNotification: showActionNotification,
+    };
 }
 
 export type INotificationService = ReturnType<typeof NotificationService>;

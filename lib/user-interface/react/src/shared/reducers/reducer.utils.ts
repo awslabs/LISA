@@ -17,59 +17,59 @@
 import { default as Axios, AxiosError, AxiosRequestConfig } from 'axios';
 
 export const lisaAxios = Axios.create({
-  baseURL: `${window.env.API_BASE_URL}`,
+    baseURL: `${window.env.API_BASE_URL}`,
 });
 
 lisaAxios.interceptors.request.use(
-  (config) => {
-    const oidcString = sessionStorage.getItem(`oidc.user:${window.env.AUTHORITY}:${window.env.CLIENT_ID}`);
-    const token = oidcString ? JSON.parse(oidcString).id_token : '';
+    (config) => {
+        const oidcString = sessionStorage.getItem(`oidc.user:${window.env.AUTHORITY}:${window.env.CLIENT_ID}`);
+        const token = oidcString ? JSON.parse(oidcString).id_token : '';
 
-    if (config.headers === undefined) {
-      config.headers = {};
-    }
+        if (config.headers === undefined) {
+            config.headers = {};
+        }
 
-    config.headers['Authorization'] = `Bearer ${token}`;
+        config.headers['Authorization'] = `Bearer ${token}`;
 
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error).catch(axiosCatch);
-  },
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error).catch(axiosCatch);
+    },
 );
 
 export const lisaBaseQuery =
   ({ baseUrl } = { baseUrl: '' }) =>
-  async ({ url, method, data, params, headers }: AxiosRequestConfig) => {
-    try {
-      const result = await lisaAxios({
-        url: baseUrl + url,
-        method,
-        data,
-        params,
-        headers,
-      });
+      async ({ url, method, data, params, headers }: AxiosRequestConfig) => {
+          try {
+              const result = await lisaAxios({
+                  url: baseUrl + url,
+                  method,
+                  data,
+                  params,
+                  headers,
+              });
 
-      return { data: result.data };
-    } catch (axiosError) {
-      const err = axiosError;
+              return { data: result.data };
+          } catch (axiosError) {
+              const err = axiosError;
 
-      return {
-        error: {
-          status: err.response?.status,
-          data: err.response?.data || err.message,
-        },
+              return {
+                  error: {
+                      status: err.response?.status,
+                      data: err.response?.data || err.message,
+                  },
+              };
+          }
       };
-    }
-  };
 
 export const axiosCatch = (reason: Error | AxiosError) => {
-  if (Axios.isAxiosError(reason)) {
-    return Promise.reject({
-      name: reason.name,
-      message: reason.response?.data,
-      code: reason.response?.status,
-    });
-  }
-  throw reason;
+    if (Axios.isAxiosError(reason)) {
+        return Promise.reject({
+            name: reason.name,
+            message: reason.response?.data,
+            code: reason.response?.status,
+        });
+    }
+    throw reason;
 };

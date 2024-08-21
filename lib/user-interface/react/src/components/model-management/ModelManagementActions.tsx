@@ -21,148 +21,148 @@ import { IModel } from '../../shared/model/model-management.model';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
 import {
-  modelManagementApi,
-  useDeleteModelMutation,
-  useStartModelMutation,
-  useStopModelMutation,
+    modelManagementApi,
+    useDeleteModelMutation,
+    useStartModelMutation,
+    useStopModelMutation,
 } from '../../shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 
 export type ModelActionProps = {
-  selectedItems: IModel[];
-  setSelectedItems: (items: IModel[]) => void;
-  setNewModelModelVisible: (boolean) => void;
-  setEdit: (boolean) => void;
+    selectedItems: IModel[];
+    setSelectedItems: (items: IModel[]) => void;
+    setNewModelModelVisible: (boolean) => void;
+    setEdit: (boolean) => void;
 };
 
-function ModelActions(props: ModelActionProps): ReactElement {
-  const dispatch = useAppDispatch();
-  const notificationService = useNotificationService(dispatch);
+function ModelActions (props: ModelActionProps): ReactElement {
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
 
-  return (
-    <SpaceBetween direction='horizontal' size='xs'>
-      {ModelActionButton(notificationService, props)}
-      <Button iconName='add-plus' variant='primary' onClick={() => {
-        props.setEdit(false);
-        props.setNewModelModelVisible(true);
-      }}>
-        New Model
-      </Button>
-      <Button
-        onClick={() => dispatch(modelManagementApi.util.invalidateTags(['models']))}
-        ariaLabel={'Refresh models cards'}
-      >
-        <Icon name='refresh' />
-      </Button>
-    </SpaceBetween>
-  );
+    return (
+        <SpaceBetween direction='horizontal' size='xs'>
+            {ModelActionButton(notificationService, props)}
+            <Button iconName='add-plus' variant='primary' onClick={() => {
+                props.setEdit(false);
+                props.setNewModelModelVisible(true);
+            }}>
+                New Model
+            </Button>
+            <Button
+                onClick={() => dispatch(modelManagementApi.util.invalidateTags(['models']))}
+                ariaLabel={'Refresh models cards'}
+            >
+                <Icon name='refresh' />
+            </Button>
+        </SpaceBetween>
+    );
 }
 
-function ModelActionButton(notificationService: INotificationService, props?: any) {
-  const selectedModel: IModel = props?.selectedItems[0];
-  const [
-    deleteMutation,
-    { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
-  ] = useDeleteModelMutation();
-  const [stopMutation, { isSuccess: isStopSuccess, isError: isStopError, error: stopError, isLoading: isStopLoading }] =
+function ModelActionButton (notificationService: INotificationService, props?: any) {
+    const selectedModel: IModel = props?.selectedItems[0];
+    const [
+        deleteMutation,
+        { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
+    ] = useDeleteModelMutation();
+    const [stopMutation, { isSuccess: isStopSuccess, isError: isStopError, error: stopError, isLoading: isStopLoading }] =
     useStopModelMutation();
-  const [
-    startMutation,
-    { isSuccess: isStartSuccess, isError: isStartError, error: startError, isLoading: isStartLoading },
-  ] = useStartModelMutation();
+    const [
+        startMutation,
+        { isSuccess: isStartSuccess, isError: isStartError, error: startError, isLoading: isStartLoading },
+    ] = useStartModelMutation();
 
-  useEffect(() => {
-    if (!isDeleteLoading && isDeleteSuccess && selectedModel) {
-      notificationService.generateNotification(`Successfully deleted model: ${selectedModel.ModelId}`, 'success');
-      props.setSelectedItems([]);
-    } else if (!isDeleteLoading && isDeleteError && selectedModel) {
-      notificationService.generateNotification(`Error deleting model: ${deleteError}`, 'error');
-      props.setSelectedItems([]);
-    }
+    useEffect(() => {
+        if (!isDeleteLoading && isDeleteSuccess && selectedModel) {
+            notificationService.generateNotification(`Successfully deleted model: ${selectedModel.ModelId}`, 'success');
+            props.setSelectedItems([]);
+        } else if (!isDeleteLoading && isDeleteError && selectedModel) {
+            notificationService.generateNotification(`Error deleting model: ${deleteError}`, 'error');
+            props.setSelectedItems([]);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
+    }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
 
-  useEffect(() => {
-    if (!isStopLoading && isStopSuccess && selectedModel) {
-      notificationService.generateNotification(`Successfully stopped model: ${selectedModel.ModelId}`, 'success');
-      props.setSelectedItems([]);
-    } else if (!isStopLoading && isStopError && selectedModel) {
-      notificationService.generateNotification(`Error stopping model: ${stopError}`, 'error');
-      props.setSelectedItems([]);
-    }
+    useEffect(() => {
+        if (!isStopLoading && isStopSuccess && selectedModel) {
+            notificationService.generateNotification(`Successfully stopped model: ${selectedModel.ModelId}`, 'success');
+            props.setSelectedItems([]);
+        } else if (!isStopLoading && isStopError && selectedModel) {
+            notificationService.generateNotification(`Error stopping model: ${stopError}`, 'error');
+            props.setSelectedItems([]);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStopSuccess, isStopError, stopError, isStopLoading]);
+    }, [isStopSuccess, isStopError, stopError, isStopLoading]);
 
-  useEffect(() => {
-    if (!isStartLoading && isStartSuccess && selectedModel) {
-      notificationService.generateNotification(`Successfully started model: ${selectedModel.ModelId}`, 'success');
-      props.setSelectedItems([]);
-    } else if (!isStartLoading && isStartError && selectedModel) {
-      notificationService.generateNotification(`Error starting model: ${startError}`, 'error');
-      props.setSelectedItems([]);
-    }
+    useEffect(() => {
+        if (!isStartLoading && isStartSuccess && selectedModel) {
+            notificationService.generateNotification(`Successfully started model: ${selectedModel.ModelId}`, 'success');
+            props.setSelectedItems([]);
+        } else if (!isStartLoading && isStartError && selectedModel) {
+            notificationService.generateNotification(`Error starting model: ${startError}`, 'error');
+            props.setSelectedItems([]);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStartSuccess, isStartError, startError, isStartLoading]);
+    }, [isStartSuccess, isStartError, startError, isStartLoading]);
 
-  const items = [];
-  if (selectedModel) {
-    items.push({
-      text: 'Start',
-      id: 'startModel',
-    });
-    items.push({
-      text: 'Stop',
-      id: 'stopModel',
-    });
-    items.push({
-      text: 'Edit',
-      id: 'editModel',
-    });
-    items.push({
-      text: 'Delete',
-      id: 'deleteModel',
-    });
-  }
+    const items = [];
+    if (selectedModel) {
+        items.push({
+            text: 'Start',
+            id: 'startModel',
+        });
+        items.push({
+            text: 'Stop',
+            id: 'stopModel',
+        });
+        items.push({
+            text: 'Edit',
+            id: 'editModel',
+        });
+        items.push({
+            text: 'Delete',
+            id: 'deleteModel',
+        });
+    }
 
-  return (
-    <ButtonDropdown
-      items={items}
-      variant='primary'
-      disabled={!selectedModel}
-      loading={isDeleteLoading || isStopLoading || isStartLoading}
-      onItemClick={(e) =>
-        ModelActionHandler(e, selectedModel, notificationService, deleteMutation, stopMutation, startMutation)
-      }
-    >
-      Actions
-    </ButtonDropdown>
-  );
+    return (
+        <ButtonDropdown
+            items={items}
+            variant='primary'
+            disabled={!selectedModel}
+            loading={isDeleteLoading || isStopLoading || isStartLoading}
+            onItemClick={(e) =>
+                ModelActionHandler(e, selectedModel, notificationService, deleteMutation, stopMutation, startMutation)
+            }
+        >
+            Actions
+        </ButtonDropdown>
+    );
 }
 
 const ModelActionHandler = async (
-  e: any,
-  selectedModel: IModel,
-  notificationService: INotificationService,
-  deleteMutation: MutationTrigger<any>,
-  stopMutation: MutationTrigger<any>,
-  startMutation: MutationTrigger<any>,
+    e: any,
+    selectedModel: IModel,
+    notificationService: INotificationService,
+    deleteMutation: MutationTrigger<any>,
+    stopMutation: MutationTrigger<any>,
+    startMutation: MutationTrigger<any>,
 ) => {
-  switch (e.detail.id) {
-    case 'startModel':
-      startMutation(selectedModel.ModelId);
-      break;
-    case 'stopModel':
-      stopMutation(selectedModel.ModelId);
-      break;
-    case 'editModel':
-      notificationService.generateNotification('Calling Edit Model', 'success');
-      break;
-    case 'deleteModel':
-      deleteMutation(selectedModel.ModelId);
-      break;
-    default:
-      return;
-  }
+    switch (e.detail.id) {
+        case 'startModel':
+            startMutation(selectedModel.ModelId);
+            break;
+        case 'stopModel':
+            stopMutation(selectedModel.ModelId);
+            break;
+        case 'editModel':
+            notificationService.generateNotification('Calling Edit Model', 'success');
+            break;
+        case 'deleteModel':
+            deleteMutation(selectedModel.ModelId);
+            break;
+        default:
+            return;
+    }
 };
 
 export { ModelActions };

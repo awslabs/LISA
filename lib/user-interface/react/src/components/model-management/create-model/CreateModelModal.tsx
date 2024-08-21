@@ -22,43 +22,43 @@ import Input from '@cloudscape-design/components/input';
 import { IModel } from '../../../shared/model/model-management.model';
 
 export type CreateModelModalProps = {
-  visible: boolean;
-  isEdit: boolean;
-  setVisible: (boolean) => void;
-  selectedItems: IModel[];
+    visible: boolean;
+    isEdit: boolean;
+    setVisible: (boolean) => void;
+    selectedItems: IModel[];
 };
 
-export function CreateModelModal(props: CreateModelModalProps) {
-  return (
-    <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
-      <form onSubmit={(e) => e.preventDefault()}>
-        <Form
-          actions={
-            <SpaceBetween direction='horizontal' size='xs'>
-              <Button formAction='none' variant='link' onClick={() => props.setVisible(false)}>
-                Cancel
-              </Button>
-              <Button variant='primary'>Submit</Button>
-            </SpaceBetween>
-          }
-        >
-          <Container>
-            <SpaceBetween direction='vertical' size='l'>
-              <FormField label='First field'>
-                <Input value='' />
-              </FormField>
-              <FormField label='Second field'>
-                <Input value='' />
-              </FormField>
-              <FormField label='Third field'>
-                <Input value='' />
-              </FormField>
-            </SpaceBetween>
-          </Container>
-        </Form>
-      </form>
-    </Modal>
-  );
+export function CreateModelModal (props: CreateModelModalProps) {
+    return (
+        <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
+            <form onSubmit={(e) => e.preventDefault()}>
+                <Form
+                    actions={
+                        <SpaceBetween direction='horizontal' size='xs'>
+                            <Button formAction='none' variant='link' onClick={() => props.setVisible(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant='primary'>Submit</Button>
+                        </SpaceBetween>
+                    }
+                >
+                    <Container>
+                        <SpaceBetween direction='vertical' size='l'>
+                            <FormField label='First field'>
+                                <Input value='' />
+                            </FormField>
+                            <FormField label='Second field'>
+                                <Input value='' />
+                            </FormField>
+                            <FormField label='Third field'>
+                                <Input value='' />
+                            </FormField>
+                        </SpaceBetween>
+                    </Container>
+                </Form>
+            </form>
+        </Modal>
+    );
 }
 
 export default CreateModelModal;

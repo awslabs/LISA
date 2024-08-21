@@ -17,12 +17,12 @@
 import { useEffect } from 'react';
 import ModelManagementComponent from '../components/model-management/ModelManagementComponent';
 
-export function ModelManagement({ setTools }) {
-  useEffect(() => {
-    setTools(null);
-  }, [setTools]);
+export function ModelManagement ({ setTools }) {
+    useEffect(() => {
+        setTools(null);
+    }, [setTools]);
 
-  return <ModelManagementComponent />;
+    return <ModelManagementComponent />;
 }
 
 export default ModelManagement;

@@ -20,83 +20,83 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import CreateModelModal from './create-model/CreateModelModal';
 import {
-  CARD_DEFINITIONS,
-  DEFAULT_PREFERENCES,
-  PAGE_SIZE_OPTIONS,
-  VISIBLE_CONTENT_OPTIONS,
+    CARD_DEFINITIONS,
+    DEFAULT_PREFERENCES,
+    PAGE_SIZE_OPTIONS,
+    VISIBLE_CONTENT_OPTIONS,
 } from './ModelManagementUtils';
 import { ModelActions } from './ModelManagementActions';
 
-export function ModelManagementComponent() {
-  const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery();
+export function ModelManagementComponent () {
+    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery();
 
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
-  const [newModelModalVisible, setNewModelModelVisible] = useState(false);
-  const [isEdit, setEdit] = useState(false);
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+    const [newModelModalVisible, setNewModelModelVisible] = useState(false);
+    const [isEdit, setEdit] = useState(false);
 
-  return (
-    <>
-      <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} selectedItems={selectedItems}/>
-      <Cards
-        onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
-        selectedItems={selectedItems}
-        ariaLabels={{
-          itemSelectionLabel: (e, t) => `select ${t.ModelName}`,
-          selectionGroupLabel: 'Model selection',
-        }}
-        cardDefinition={CARD_DEFINITIONS}
-        visibleSections={preferences.visibleContent}
-        loadingText='Loading models'
-        items={allModels}
-        selectionType='single' // single | multi
-        trackBy='ModelId'
-        variant='full-page'
-        loading={fetchingModels}
-        header={
-          <Header
-            counter={selectedItems?.length ? `(${selectedItems.length})` : ''}
-            actions={
-              <ModelActions
+    return (
+        <>
+            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} selectedItems={selectedItems}/>
+            <Cards
+                onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
-                setSelectedItems={setSelectedItems}
-                setNewModelModelVisible={setNewModelModelVisible}
-                setEdit={setEdit}
-              />
-            }
-          >
-            Models
-          </Header>
-        }
-        filter={<TextFilter filteringPlaceholder='Find models' />}
-        pagination={<Pagination currentPageIndex={1} pagesCount={1} />}
-        preferences={
-          <CollectionPreferences
-            title='Preferences'
-            confirmLabel='Confirm'
-            cancelLabel='Cancel'
-            preferences={preferences}
-            onConfirm={({ detail }) => setPreferences(detail)}
-            pageSizePreference={{
-              title: 'Page size',
-              options: PAGE_SIZE_OPTIONS,
-            }}
-            visibleContentPreference={{
-              title: 'Select visible columns',
-              options: VISIBLE_CONTENT_OPTIONS,
-            }}
-          />
-        }
-        empty={
-          <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-            <SpaceBetween size='m'>
-              <b>No models</b>
-            </SpaceBetween>
-          </Box>
-        }
-      />
-    </>
-  );
+                ariaLabels={{
+                    itemSelectionLabel: (e, t) => `select ${t.ModelName}`,
+                    selectionGroupLabel: 'Model selection',
+                }}
+                cardDefinition={CARD_DEFINITIONS}
+                visibleSections={preferences.visibleContent}
+                loadingText='Loading models'
+                items={allModels}
+                selectionType='single' // single | multi
+                trackBy='ModelId'
+                variant='full-page'
+                loading={fetchingModels}
+                header={
+                    <Header
+                        counter={selectedItems?.length ? `(${selectedItems.length})` : ''}
+                        actions={
+                            <ModelActions
+                                selectedItems={selectedItems}
+                                setSelectedItems={setSelectedItems}
+                                setNewModelModelVisible={setNewModelModelVisible}
+                                setEdit={setEdit}
+                            />
+                        }
+                    >
+                        Models
+                    </Header>
+                }
+                filter={<TextFilter filteringPlaceholder='Find models' />}
+                pagination={<Pagination currentPageIndex={1} pagesCount={1} />}
+                preferences={
+                    <CollectionPreferences
+                        title='Preferences'
+                        confirmLabel='Confirm'
+                        cancelLabel='Cancel'
+                        preferences={preferences}
+                        onConfirm={({ detail }) => setPreferences(detail)}
+                        pageSizePreference={{
+                            title: 'Page size',
+                            options: PAGE_SIZE_OPTIONS,
+                        }}
+                        visibleContentPreference={{
+                            title: 'Select visible columns',
+                            options: VISIBLE_CONTENT_OPTIONS,
+                        }}
+                    />
+                }
+                empty={
+                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                        <SpaceBetween size='m'>
+                            <b>No models</b>
+                        </SpaceBetween>
+                    </Box>
+                }
+            />
+        </>
+    );
 }
 
 export default ModelManagementComponent;

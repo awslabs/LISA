@@ -21,9 +21,9 @@ import notificationReducer from './notification.reducer';
 import { modelManagementApi } from './model-management.reducer';
 
 const rootReducer: ReducersMapObject = {
-  user: userReducer,
-  notification: notificationReducer,
-  [modelManagementApi.reducerPath]: modelManagementApi.reducer,
+    user: userReducer,
+    notification: notificationReducer,
+    [modelManagementApi.reducerPath]: modelManagementApi.reducer,
 };
 
 export const rootMiddleware = [modelManagementApi.middleware];

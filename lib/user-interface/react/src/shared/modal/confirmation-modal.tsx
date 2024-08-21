@@ -15,7 +15,7 @@
  */
 
 import { Modal as CloudscapeModal, Box, SpaceBetween, Button } from '@cloudscape-design/components';
-import React, { useState } from 'react';
+import React, { ReactElement, useState } from 'react';
 import { useAppDispatch } from '../../config/store';
 import { dismissModal } from '../reducers/modal.reducer';
 import { MutationActionCreatorResult } from '@reduxjs/toolkit/query';
@@ -38,7 +38,7 @@ function ConfirmationModal ({
     postConfirm,
     description,
     disabled,
-}: ConfirmationModalProps) {
+}: ConfirmationModalProps) : ReactElement{
     const [processing, setProcessing] = useState(false);
     const dispatch = useAppDispatch();
 

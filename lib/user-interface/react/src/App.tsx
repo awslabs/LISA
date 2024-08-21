@@ -29,6 +29,7 @@ import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
 import NotificationBanner from './shared/notification/notification';
+import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 
 const PrivateRoute = ({ children }) => {
     const auth = useAuth();
@@ -56,6 +57,7 @@ const AdminRoute = ({ children }) => {
 function App () {
     const [showTools, setShowTools] = useState(false);
     const [tools, setTools] = useState(null);
+    const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
 
     useEffect(() => {
         if (tools) {
@@ -114,6 +116,7 @@ function App () {
                     </Routes>
                 }
             />
+            {confirmationModal && <ConfirmationModal {...confirmationModal} />}
             {window.env.SYSTEM_BANNER?.text && <SystemBanner position='BOTTOM' />}
         </HashRouter>
     );

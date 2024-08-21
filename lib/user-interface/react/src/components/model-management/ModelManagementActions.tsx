@@ -27,6 +27,8 @@ import {
     useStopModelMutation,
 } from '../../shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
+import { Action, ThunkDispatch } from '@reduxjs/toolkit';
+import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 
 export type ModelActionProps = {
     selectedItems: IModel[];
@@ -41,7 +43,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            {ModelActionButton(notificationService, props)}
+            {ModelActionButton(dispatch, notificationService, props)}
             <Button iconName='add-plus' variant='primary' onClick={() => {
                 props.setEdit(false);
                 props.setNewModelModelVisible(true);
@@ -58,7 +60,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
     );
 }
 
-function ModelActionButton (notificationService: INotificationService, props?: any): ReactElement {
+function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
     const selectedModel: IModel = props?.selectedItems[0];
     const [
         deleteMutation,
@@ -131,7 +133,7 @@ function ModelActionButton (notificationService: INotificationService, props?: a
             disabled={!selectedModel}
             loading={isDeleteLoading || isStopLoading || isStartLoading}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedModel, notificationService, deleteMutation, stopMutation, startMutation)
+                ModelActionHandler(e, selectedModel, dispatch, notificationService, deleteMutation, stopMutation, startMutation)
             }
         >
             Actions
@@ -142,6 +144,7 @@ function ModelActionButton (notificationService: INotificationService, props?: a
 const ModelActionHandler = async (
     e: any,
     selectedModel: IModel,
+    dispatch: ThunkDispatch<any, any, Action>,
     notificationService: INotificationService,
     deleteMutation: MutationTrigger<any>,
     stopMutation: MutationTrigger<any>,
@@ -149,16 +152,37 @@ const ModelActionHandler = async (
 ) => {
     switch (e.detail.id) {
         case 'startModel':
-            startMutation(selectedModel.ModelId);
+            dispatch(
+                setConfirmationModal({
+                    action: 'Start',
+                    resourceName: 'Model',
+                    onConfirm: () => startMutation(selectedModel.ModelId),
+                    description: `This will start the following model: ${selectedModel.ModelId}.`
+                })
+            );
             break;
         case 'stopModel':
-            stopMutation(selectedModel.ModelId);
+            dispatch(
+                setConfirmationModal({
+                    action: 'Stop',
+                    resourceName: 'Model',
+                    onConfirm: () => stopMutation(selectedModel.ModelId),
+                    description: `This will stop the following model: ${selectedModel.ModelId}.`
+                })
+            );
             break;
         case 'editModel':
             notificationService.generateNotification('Calling Edit Model', 'success');
             break;
         case 'deleteModel':
-            deleteMutation(selectedModel.ModelId);
+            dispatch(
+                setConfirmationModal({
+                    action: 'Delete',
+                    resourceName: 'Model',
+                    onConfirm: () => deleteMutation(selectedModel.ModelId),
+                    description: `This will delete the following model: ${selectedModel.ModelId}.`
+                })
+            );
             break;
         default:
             return;

@@ -23,8 +23,8 @@ import docx
 from botocore.exceptions import ClientError
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from PyPDF2 import PdfReader
-from PyPDF2.errors import PdfReadError
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE
 from utilities.exceptions import RagUploadException
 

@@ -60,25 +60,45 @@ async def list_models() -> list[ListModelResponse]:
     """Endpoint to list models."""
     # TODO add service to list models
     return [
-        ListModelResponse(
-            ModelId="my_first_model",
-            ModelName="my_first_model",
-            ModelType=ModelType.TEXTGEN,
-            Status=ModelStatus.CREATING,
-            Streaming=True,
-            ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
-            ContainerConfig=ContainerConfig.DUMMY(),
-        ),
-        ListModelResponse(
-            ModelId="my_second_model",
-            ModelName="my_second_model",
-            ModelType=ModelType.TEXTGEN,
-            Status=ModelStatus.IN_SERVICE,
-            Streaming=True,
-            ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
-            ContainerConfig=ContainerConfig.DUMMY(),
-        ),
+        _create_dummy_model("my_first_model", ModelType.TEXTGEN, ModelStatus.CREATING),
+        _create_dummy_model("my_second_model", ModelType.EMBEDDING, ModelStatus.IN_SERVICE),
+        _create_dummy_model("my_third_model", ModelType.EMBEDDING, ModelStatus.STOPPING),
+        _create_dummy_model("my_fourth_model", ModelType.TEXTGEN, ModelStatus.STOPPED),
+        _create_dummy_model("my_fifth_model", ModelType.EMBEDDING, ModelStatus.UPDATING),
+        _create_dummy_model("my_sixth_model", ModelType.EMBEDDING, ModelStatus.DELETING),
+        _create_dummy_model("my_seventh_model", ModelType.TEXTGEN, ModelStatus.FAILED),
+        _create_dummy_model("my_eighth_model", ModelType.TEXTGEN, ModelStatus.FAILED),
+        _create_dummy_model("my_ninth_model", ModelType.EMBEDDING, ModelStatus.DELETING),
+        _create_dummy_model("my_tenth_model", ModelType.TEXTGEN, ModelStatus.UPDATING),
+        _create_dummy_model("my_eleventh_model", ModelType.EMBEDDING, ModelStatus.STOPPED),
+        _create_dummy_model("my_twelfth_model", ModelType.EMBEDDING, ModelStatus.STOPPING),
+        _create_dummy_model("my_thirteenth_model", ModelType.TEXTGEN, ModelStatus.IN_SERVICE),
+        _create_dummy_model("my_fourteenth_model", ModelType.TEXTGEN, ModelStatus.CREATING),
+        _create_dummy_model("my_fifteenth_model", ModelType.EMBEDDING, ModelStatus.CREATING),
+        _create_dummy_model("my_sixteenth_model", ModelType.TEXTGEN, ModelStatus.IN_SERVICE),
+        _create_dummy_model("my_seventeenth_model", ModelType.EMBEDDING, ModelStatus.STOPPING),
+        _create_dummy_model("my_eighteenth_model", ModelType.EMBEDDING, ModelStatus.STOPPED),
+        _create_dummy_model("my_nineteenth_model", ModelType.EMBEDDING, ModelStatus.UPDATING),
+        _create_dummy_model("my_twentieth_model", ModelType.TEXTGEN, ModelStatus.DELETING),
+        _create_dummy_model("my_twenty_first_model", ModelType.TEXTGEN, ModelStatus.FAILED),
+        _create_dummy_model("my_twenty_second_model", ModelType.EMBEDDING, ModelStatus.FAILED),
+        _create_dummy_model("my_twenty_third_model", ModelType.EMBEDDING, ModelStatus.DELETING),
+        _create_dummy_model("my_twenty_fourth_model", ModelType.TEXTGEN, ModelStatus.UPDATING),
+        _create_dummy_model("my_twenty_fifth_model", ModelType.TEXTGEN, ModelStatus.STOPPED),
+        _create_dummy_model("my_twenty_sixth_model", ModelType.TEXTGEN, ModelStatus.IN_SERVICE),
     ]
+
+
+def _create_dummy_model(model_name: str, model_type: ModelType, model_status: ModelStatus) -> ListModelResponse:
+    return ListModelResponse(
+        ModelId=f"{model_name}_id",
+        ModelName=model_name,
+        ModelType=model_type,
+        Status=model_status,
+        Streaming=model_type == ModelType.TEXTGEN,
+        ModelUrl="http://some.cool.alb.amazonaws.com/path/to/endpoint",
+        ContainerConfig=ContainerConfig.DUMMY(),
+    )
 
 
 @app.get(path="/{model_id}")  # type: ignore

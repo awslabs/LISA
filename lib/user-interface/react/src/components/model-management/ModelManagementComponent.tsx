@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
@@ -26,14 +26,36 @@ import {
     VISIBLE_CONTENT_OPTIONS,
 } from './ModelManagementUtils';
 import { ModelActions } from './ModelManagementActions';
+import { IModel } from '../../shared/model/model-management.model';
 
 export function ModelManagementComponent () : ReactElement {
     const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery();
+    const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
+    const [searchText, setSearchText] = useState<string>('');
+    const [numberOfPages, setNumberOfPages] = useState<number>(1);
+    const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
 
     const [selectedItems, setSelectedItems] = useState([]);
     const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
+
+    useEffect(() => {
+        let newPageCount = 0;
+        if (searchText){
+            const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
+            setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
+            newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
+        } else {
+            setMatchedModels(allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
+            newPageCount = Math.ceil(allModels.length / preferences.pageSize);
+        }
+
+        if (newPageCount < numberOfPages){
+            setCurrentPageIndex(1);
+        }
+        setNumberOfPages(newPageCount);
+    }, [allModels, searchText, preferences, currentPageIndex, numberOfPages]);
 
     return (
         <>
@@ -48,11 +70,12 @@ export function ModelManagementComponent () : ReactElement {
                 cardDefinition={CARD_DEFINITIONS}
                 visibleSections={preferences.visibleContent}
                 loadingText='Loading models'
-                items={allModels}
+                items={matchedModels}
                 selectionType='single' // single | multi
                 trackBy='ModelId'
                 variant='full-page'
                 loading={fetchingModels}
+                cardsPerRow={[{ cards: 3 }]}
                 header={
                     <Header
                         counter={selectedItems?.length ? `(${selectedItems.length})` : ''}
@@ -68,8 +91,13 @@ export function ModelManagementComponent () : ReactElement {
                         Models
                     </Header>
                 }
-                filter={<TextFilter filteringPlaceholder='Find models' />}
-                pagination={<Pagination currentPageIndex={1} pagesCount={1} />}
+                filter={<TextFilter filteringText={searchText}
+                    filteringPlaceholder='Find models'
+                    filteringAriaLabel='Find models'
+                    onChange={({ detail }) => {
+                        setSearchText(detail.filteringText);
+                    }} />}
+                pagination={<Pagination currentPageIndex={currentPageIndex} onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)} pagesCount={numberOfPages} />}
                 preferences={
                     <CollectionPreferences
                         title='Preferences'

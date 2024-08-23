@@ -18,11 +18,13 @@ import { ReducersMapObject } from '@reduxjs/toolkit';
 
 import userReducer from './user.reducer';
 import notificationReducer from './notification.reducer';
+import modalReducer from './modal.reducer';
 import { modelManagementApi } from './model-management.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
     notification: notificationReducer,
+    modal: modalReducer,
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
 };
 

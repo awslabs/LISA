@@ -65,14 +65,15 @@ export const CARD_DEFINITIONS = {
 };
 
 export const PAGE_SIZE_OPTIONS = [
-    { value: 10, label: '10 Models' },
-    { value: 30, label: '30 Models' },
-    { value: 50, label: '50 Models' },
+    { value: 6, label: '6 Models' },
+    { value: 12, label: '12 Models' },
+    { value: 24, label: '24 Models' },
+    { value: 48, label: '48 Models' },
 ];
 
 export const DEFAULT_PREFERENCES = {
-    pageSize: 30,
-    visibleContent: ['ModelType', 'ModelStatus'],
+    pageSize: 12,
+    visibleContent: ['ModelId', 'ModelType', 'ModelUrl', 'Streaming', 'ModelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [

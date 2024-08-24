@@ -45,7 +45,7 @@ OPENAI_ROUTES = (
     "v1/completions",
     # Embeddings
     "embeddings",
-    "/v1/embeddings",
+    "v1/embeddings",
     # Create images
     "images/generations",
     "v1/images/generations",

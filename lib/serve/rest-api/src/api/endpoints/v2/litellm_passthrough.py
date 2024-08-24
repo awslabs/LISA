@@ -20,12 +20,45 @@ from collections.abc import Iterator
 from typing import Union
 
 import requests
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+from starlette.status import HTTP_401_UNAUTHORIZED
+
+from ....auth import get_authorization_token, get_jwks_client, id_token_is_valid, is_admin, is_idp_used
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
 # port was changed as part of the LiteLLM startup in entrypoint.sh
 LITELLM_URL = "http://localhost:4000"
+
+# The following is an allowlist of OpenAI routes that users would not need elevated permissions to invoke. This is so
+# that we may assume anything *not* in this allowlist is an admin operation that requires greater LiteLLM permissions.
+# Assume that anything not within these routes requires admin permissions, which would only come from the LISA model
+# management API.
+OPENAI_ROUTES = (
+    # List models
+    "models",
+    "v1/models",
+    # Text completions
+    "chat/completions",
+    "v1/chat/completions",
+    "completions",
+    "v1/completions",
+    # Embeddings
+    "embeddings",
+    "v1/embeddings",
+    # Create images
+    "images/generations",
+    "v1/images/generations",
+    # Audio routes
+    "audio/speech",
+    "v1/audio/speech",
+    "audio/transcriptions",
+    "v1/audio/transcriptions",
+    # Health check routes
+    "health",
+    "health/readiness",
+    "health/liveliness",
+)
 
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a
 # LiteLLM-vended API key. Since we are not requiring LiteLLM keys for customers, we are using the LiteLLM key
@@ -59,6 +92,26 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     """
     litellm_path = f"{LITELLM_URL}/{api_path}"
     headers = dict(request.headers.items())
+
+    # If not handling an OpenAI request, we will also check if the user is an Admin user before allowing the request,
+    # otherwise, we will block it. This prevents non-admins from invoking model management APIs directly. If LISA
+    # Serve is deployed without an IdP configuration, we cannot determine who is an admin user, so all API routes
+    # will default to being openly accessible.
+    if api_path not in OPENAI_ROUTES and is_idp_used():
+        client_id = os.environ.get("CLIENT_ID", "")
+        authority = os.environ.get("AUTHORITY", "")
+        admin_group = os.environ.get("ADMIN_GROUP", "")
+        jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
+
+        id_token = get_authorization_token(headers=headers, header_name="Authorization")
+        jwks_client = get_jwks_client()
+        if jwt_data := id_token_is_valid(
+            id_token=id_token, authority=authority, client_id=client_id, jwks_client=jwks_client
+        ):
+            if not is_admin(jwt_data=jwt_data, admin_group=admin_group, jwt_groups_property=jwt_groups_property):
+                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        else:
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
     # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid

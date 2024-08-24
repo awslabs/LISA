@@ -866,7 +866,7 @@ const RawConfigSchema = z
             .or(z.string())
             .transform((value) => value.toString())
             .refine((value) => value.length === 12, {
-                message: 'AWS account number should be 12 digits',
+                message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             }),
         region: z.string(),
         vpcId: z.string().optional(),
@@ -879,7 +879,7 @@ const RawConfigSchema = z
             .array(z.union([z.number(), z.string()]))
             .transform((arr) => arr.map(String))
             .refine((value) => value.every((num) => num.length === 12), {
-                message: 'AWS account number should be 12 digits',
+                message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             })
             .optional(),
         deployRag: z.boolean().optional().default(false),

@@ -113,7 +113,15 @@ export class ModelsApi extends Construct {
                 disambiguator: generateDisambiguator(4),
                 existingFunction: lambdaFunction.functionArn,
             },
-
+            {
+                name: 'handler',
+                resource: 'models',
+                description: 'Create model',
+                path: 'models',
+                method: 'POST',
+                disambiguator: generateDisambiguator(4),
+                existingFunction: lambdaFunction.functionArn,
+            },
             // create an endpoints for the docs
             {
                 name: 'docs',

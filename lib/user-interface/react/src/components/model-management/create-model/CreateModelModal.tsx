@@ -13,221 +13,209 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import Form from '@cloudscape-design/components/form';
+
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { Button, ExpandableSection, Modal } from '@cloudscape-design/components';
-import FormField from '@cloudscape-design/components/form-field';
-import Input from '@cloudscape-design/components/input';
-import {
-    IModel,
-    InferenceContainer,
-    ModelRequestSchema,
-    ModelType,
-} from '../../../shared/model/model-management.model';
-import { ReactElement, useState } from 'react';
-import Select from '@cloudscape-design/components/select';
-import Toggle from '@cloudscape-design/components/toggle';
+import { Modal, Wizard } from '@cloudscape-design/components';
+import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
+import { ReactElement, useEffect } from 'react';
+import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
+import { BaseModelConfig } from './BaseModelConfig';
+import { ContainerConfig } from './ContainerConfig';
+import { AutoScalingConfig } from './AutoScalingConfig';
+import { LoadBalancerConfig } from './LoadBalancerConfig';
+import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/reducers/model-management.reducer';
+import { useAppDispatch } from '../../../config/store';
+import { useNotificationService } from '../../../shared/util/hooks';
 
 export type CreateModelModalProps = {
     visible: boolean;
     isEdit: boolean;
+    setIsEdit: (boolean) => void;
     setVisible: (boolean) => void;
     selectedItems: IModel[];
 };
 
-export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
-    console.log(props);
-    console.log(ModelRequestSchema.parse({}));
+export type ModelCreateState = {
+    validateAll: boolean;
+    form: IModelRequest;
+    touched: any;
+    formSubmitting: boolean;
+    activeStepIndex: number;
+};
 
-    const [streaming, setStreaming] = useState(true);
+export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const [
-        selectedModelType,
-        setSelectedModelType
-    ] = useState({ label: 'TEXTGEN', value: ModelType.textgen });
+        createModelMutation,
+        { isSuccess: isCreateSuccess, isError: isCreateError, error: createError, isLoading: isCreating },
+    ] = useCreateModelMutation();
     const [
-        selectedInferenceContainer,
-        setSelectedInferenceContainer
-    ] = useState({ label: 'TGI', value: InferenceContainer.TGI });
+        updateModelMutation,
+        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
+    ] = useUpdateModelMutation();
+    const initialForm = ModelRequestSchema.parse({});
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
+
+    const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(ModelRequestSchema, {
+        validateAll: false as boolean,
+        touched: {},
+        formSubmitting: false as boolean,
+        form: {
+            ...initialForm
+        },
+        activeStepIndex: 0,
+    } as ModelCreateState);
+
+    function resetState () {
+        setState({
+            validateAll: false as boolean,
+            touched: {},
+            formSubmitting: false as boolean,
+            form: {
+                ...initialForm
+            },
+            activeStepIndex: 0,
+        });
+    }
+
+    function handleSubmit () {
+        if (isValid && !props.isEdit) {
+            createModelMutation(state.form);
+        } else if (isValid && props.isEdit) {
+            updateModelMutation(state.form);
+        }
+    }
+
+    useEffect(() => {
+        if (props.isEdit) {
+            setState({
+                ...state,
+                form: {
+                    ...props.selectedItems[0]
+                }
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [props.isEdit]);
+
+    useEffect(() => {
+        if (!isCreating && isCreateSuccess) {
+            notificationService.generateNotification(`Successfully created model: ${state.form.ModelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            resetState();
+        } else if (!isCreating && isCreateError) {
+            notificationService.generateNotification(`Error creating model: ${createError.data.message ?? createError.data}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCreateError, createError, isCreating, isCreateSuccess]);
+
+    useEffect(() => {
+        if (!isUpdating && isUpdateSuccess) {
+            notificationService.generateNotification(`Successfully updated model: ${state.form.ModelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            resetState();
+        } else if (!isUpdating && isUpdateError) {
+            notificationService.generateNotification(`Error updating model: ${updateError.data.message ?? updateError.data}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateError, updateError, isUpdating, isUpdateSuccess]);
+
     return (
-        <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
-            <form onSubmit={(e) => e.preventDefault()}>
-                <Form
-                    actions={
-                        <SpaceBetween direction='horizontal' size='xs'>
-                            <Button formAction='none' variant='link' onClick={() => props.setVisible(false)}>
-                                Cancel
-                            </Button>
-                            <Button variant='primary'>Submit</Button>
-                        </SpaceBetween>
+        <Modal size={'large'} onDismiss={() => {
+            props.setVisible(false); props.setIsEdit(false); resetState();
+        }} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
+            <Wizard
+                i18nStrings={{
+                    stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
+                    collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
+                    skipToButtonLabel: () => `Skip to ${props.isEdit ? 'Update' : 'Create'}`,
+                    navigationAriaLabel: 'Steps',
+                    cancelButton: 'Cancel',
+                    previousButton: 'Previous',
+                    nextButton: 'Next',
+                    submitButton: props.isEdit ? 'Update Model' : 'Create Model',
+                    optional: 'optional'
+                }}
+                onNavigate={(event) => {
+                    switch (event.detail.reason) {
+                        case 'step':
+                        case 'previous':
+                            setState({
+                                ...state,
+                                activeStepIndex: event.detail.requestedStepIndex,
+                            });
+                            break;
+                        case 'next':
+                        case 'skip':
+                            {
+                                if (isValid) {
+                                    setState({
+                                        ...state,
+                                        activeStepIndex: event.detail.requestedStepIndex,
+                                    });
+                                    break;
+                                }
+                            }
+                            break;
                     }
-                >
-                    <SpaceBetween direction='vertical' size='xs'>
-                        <FormField label='Model ID'>
-                            <Input value=''
-                                inputMode='text'/>
-                        </FormField>
-                        <FormField label='Model Name'>
-                            <Input value=''
-                                inputMode='text'/>
-                        </FormField>
-                        <FormField label='Streaming'>
-                            <Toggle
-                                onChange={({ detail }) =>
-                                    setStreaming(detail.checked)
-                                }
-                                checked={streaming}
-                            />
-                        </FormField>
-                        <FormField label='Model Type'>
-                            <Select
-                                selectedOption={selectedModelType}
-                                onChange={({ detail }) =>
-                                    setSelectedModelType(detail.selectedOption)
-                                }
-                                options={[
-                                    { label: 'TEXTGEN', value: ModelType.textgen },
-                                    { label: 'EMBEDDING', value: ModelType.embedding },
-                                ]}
-                            />
-                        </FormField>
-                        <FormField label='Instance Type'>
-                            <Input value=''
-                                inputMode='text'/>
-                        </FormField>
-                        <FormField label='Inference Container'>
-                            <Select
-                                selectedOption={selectedInferenceContainer}
-                                onChange={({ detail }) =>
-                                    setSelectedInferenceContainer(detail.selectedOption)
-                                }
-                                options={[
-                                    { label: 'TGI', value: InferenceContainer.TGI },
-                                    { label: 'TEI', value: InferenceContainer.TEI },
-                                    { label: 'VLLM', value: InferenceContainer.VLLM },
-                                    { label: 'INSTRUCTOR', value: InferenceContainer.INSTRUCTOR },
-                                ]}
-                            />
-                        </FormField>
-                        <ExpandableSection variant='stacked'
-                            headerText='Container Config'>
-                            <FormField label='Shared Memory Size'>
-                                <Input value=''
-                                    inputMode='numeric'/>
-                            </FormField>
-                            <ExpandableSection defaultExpanded
-                                headingTagOverride='h3'
-                                variant='stacked'
-                                headerText='Base Image Config'>
-                                <FormField label='Base Image'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                                <FormField label='Path'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                                <FormField label='Type'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                            </ExpandableSection>
-                            <ExpandableSection defaultExpanded
-                                headingTagOverride='h3'
-                                variant='stacked'
-                                headerText='Container Health Check Config'>
-                                <FormField label='Command'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                                <FormField label='Interval'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Start Period'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Timeout'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Retries'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                            </ExpandableSection>
-                        </ExpandableSection>
-                        <ExpandableSection variant='stacked'
-                            headerText='Auto Scaling Config'>
-                            <FormField label='Min Capacity'>
-                                <Input value=''
-                                    inputMode='numeric'/>
-                            </FormField>
-                            <FormField label='Max Capacity'>
-                                <Input value=''
-                                    inputMode='numeric'/>
-                            </FormField>
-                            <FormField label='Cooldown'>
-                                <Input value=''
-                                    inputMode='numeric'/>
-                            </FormField>
-                            <FormField label='Default Instance Warmup'>
-                                <Input value=''
-                                    inputMode='numeric'/>
-                            </FormField>
-                            <ExpandableSection defaultExpanded
-                                headingTagOverride='h3'
-                                variant='stacked'
-                                headerText='Metric Config'>
-                                <FormField label='ALB Metric Name'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                                <FormField label='Target Value'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                                <FormField label='Duration'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Estimated Instance Warmup'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                            </ExpandableSection>
-                        </ExpandableSection>
-                        <ExpandableSection variant='stacked'
-                            headerText='Load Balancer Config'>
-                            <ExpandableSection defaultExpanded
-                                headingTagOverride='h3'
-                                variant='stacked'
-                                headerText='Health Check Config'>
-                                <FormField label='Path'>
-                                    <Input value=''
-                                        inputMode='text'/>
-                                </FormField>
-                                <FormField label='Interval'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Timeout'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Healthy Threshold Count'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                                <FormField label='Unhealthy Threshold Count'>
-                                    <Input value=''
-                                        inputMode='numeric'/>
-                                </FormField>
-                            </ExpandableSection>
-                        </ExpandableSection>
-                    </SpaceBetween>
-                </Form>
-            </form>
+
+                    scrollToInvalid();
+                }}
+                onCancel={() => {
+                    props.setVisible(false);
+                    props.setIsEdit(false);
+                    resetState();
+                }}
+                onSubmit={() => {
+                    handleSubmit();
+                }}
+                activeStepIndex={state.activeStepIndex}
+                isLoadingNextStep={isCreating || isUpdating}
+                allowSkipTo
+                steps={[
+                    {
+                        title: 'Base Model Configuration',
+                        description: 'Place Holder Description Base Model Config',
+                        content: (
+                            <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+                        )
+                    },
+                    {
+                        title: 'Container Configuration',
+                        description: 'Place Holder Description Container Config',
+                        content: (
+                            <ContainerConfig item={state.form.ContainerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                        ),
+                        isOptional: true
+                    },
+                    {
+                        title: 'Auto Scaling Configuration',
+                        description: 'Place Holder Description Auto Scaling Config',
+                        content: (
+                            <AutoScalingConfig item={state.form.AutoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                        ),
+                        isOptional: true
+                    },
+                    {
+                        title: 'Load Balancer Configuration',
+                        description: 'Place Holder Description Load Balancer Config',
+                        content: (
+                            <LoadBalancerConfig item={state.form.LoadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                        ),
+                        isOptional: true
+                    },
+                    {
+                        title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
+                        description: 'Place Holder Description Review Screen',
+                        content: (
+                            <SpaceBetween size={'s'}>
+                            </SpaceBetween>
+                        )
+                    }
+                ]}
+            />
         </Modal>
     );
 }

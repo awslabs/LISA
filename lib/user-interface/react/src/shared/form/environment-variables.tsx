@@ -21,7 +21,7 @@ import {
     Input,
     SpaceBetween,
 } from '@cloudscape-design/components';
-import { ReactElement } from 'react';
+import { Fragment, ReactElement } from 'react';
 import { FormProps } from './form-props';
 
 
@@ -31,9 +31,9 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>>): ReactEle
     return (
         <ExpandableSection
             headerText={
-                <React.Fragment>
+                <Fragment>
                     Environment variables <i>- optional</i>
-                </React.Fragment>
+                </Fragment>
             }
             headingTagOverride='h3'
             defaultExpanded={true}

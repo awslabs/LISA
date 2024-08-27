@@ -21,6 +21,7 @@ import Input from '@cloudscape-design/components/input';
 import { IContainerConfig } from '../../../shared/model/model-management.model';
 import { Button, Grid, Header, Icon, SpaceBetween } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
+import { EnvironmentVariables } from '../../../shared/form/environment-variables';
 
 export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElement {
     return (
@@ -110,6 +111,15 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
                             props.setFields({ 'ContainerConfig.HealthCheckConfig.Retries': Number(detail.value) });
                         }}/>
                     </FormField>
+                </SpaceBetween>
+            </Container>
+            <Container
+                header={
+                    <Header variant='h2'>Container Environment</Header>
+                }
+            >
+                <SpaceBetween size={'s'}>
+                    <EnvironmentVariables item={props.item} setFields={props.setFields} touchFields={props.touchFields} formErrors={props.formErrors} propertyPath={['ContainerConfig', 'Environment']}/>
                 </SpaceBetween>
             </Container>
         </SpaceBetween>

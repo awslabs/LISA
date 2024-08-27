@@ -14,10 +14,10 @@
  limitations under the License.
  */
 
-import SpaceBetween from '@cloudscape-design/components/space-between';
+import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
 import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
-import { ReactElement, useEffect } from 'react';
+import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
 import { ContainerConfig } from './ContainerConfig';
@@ -26,6 +26,7 @@ import { LoadBalancerConfig } from './LoadBalancerConfig';
 import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/reducers/model-management.reducer';
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
+import { ReviewModelChanges } from './ReviewModelChanges';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -77,6 +78,44 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             activeStepIndex: 0,
         });
     }
+
+    /**
+     * Computes the difference between two JSON objects, recursively.
+     *
+     * This function takes two JSON objects as input and returns a new object that
+     * contains the differences between the two. Works with nested objects.
+     *
+     * @param {object} [obj1={}] - The first JSON object to compare.
+     * @param {object} [obj2={}] - The second JSON object to compare.
+     * @returns {object} - A new object containing the differences between the two input objects.
+     */
+    function getJsonDifference (obj1 = {}, obj2 = {}) {
+        const output = {},
+            merged = { ...obj1, ...obj2 }; // has properties of both
+
+        for (const key in merged) {
+            const value1 = obj1[key], value2 = obj2[key];
+
+            if (_.isPlainObject(value1) || _.isPlainObject(value2)) {
+                const value = getJsonDifference(value1, value2); // recursively call
+                if (Object.keys(value).length !== 0) {
+                    output[key] = value;
+                }
+
+            } else {
+                if (!_.isEqual(value1, value2) && (value1 || value2)) {
+                    output[key] = value2;
+                    // output[key][value2] = value2.
+                }
+            }
+        }
+        return output;
+    }
+
+    const changesDiff = useMemo(() => {
+        return props.isEdit ? getJsonDifference(props.selectedItems[0], state.form) : getJsonDifference({}, state.form);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.form, initialForm, props.isEdit]);
 
     function handleSubmit () {
         if (isValid && !props.isEdit) {
@@ -210,8 +249,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
                         description: 'Place Holder Description Review Screen',
                         content: (
-                            <SpaceBetween size={'s'}>
-                            </SpaceBetween>
+                            <ReviewModelChanges jsonDiff={changesDiff}/>
                         )
                     }
                 ]}

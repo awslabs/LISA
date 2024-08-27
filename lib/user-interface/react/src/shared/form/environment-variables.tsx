@@ -23,10 +23,38 @@ import {
 } from '@cloudscape-design/components';
 import { Fragment, ReactElement } from 'react';
 import { FormProps } from './form-props';
+import { duplicateAttributeRefinement } from '../validation';
+import { z } from 'zod';
+import { ModifyMethod } from '../validation/modify-method';
+
+export const AttributeEditorSchema = z
+    .array(
+        z.object({
+            key: z.string().min(1, { message: 'Empty key not permitted.' }),
+            value: z.string().min(1, { message: 'Empty value not permitted.' }),
+        })
+    )
+    .superRefine(duplicateAttributeRefinement('key'))
+    .optional();
+
+export type EnvironmentVariablesProps = {
+    propertyPath?: string[]
+};
 
 
-export function EnvironmentVariables (props: FormProps<Readonly<any>>): ReactElement {
-    const { item, setFields, touchFields, formErrors } = props;
+export function EnvironmentVariables (props: FormProps<Readonly<any>> & EnvironmentVariablesProps): ReactElement {
+    const { item, setFields, touchFields, formErrors, propertyPath } = props;
+    const property = props.propertyPath ? propertyPath?.join('.') : 'Environment';
+
+    function findProperty (obj, path) {
+        const parts = path.split('.');
+        if (parts.length === 1 && obj){
+            return obj[parts[0]];
+        } else if (!obj){
+            return undefined;
+        }
+        return findProperty(obj[parts[0]], parts.slice(1).join('.'));
+    }
 
     return (
         <ExpandableSection
@@ -41,17 +69,16 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>>): ReactEle
             <SpaceBetween direction='vertical' size='xxl'>
                 <FormField label='' description=''>
                     <AttributeEditor
-                        onAddButtonClick={() =>
-                            setFields({
-                                Environment: (item.Environment || []).concat({
-                                    key: '',
-                                    value: '',
-                                }),
-                            })
-                        }
+                        onAddButtonClick={() => {
+                            setFields({ [property]: (item.Environment || []).concat({
+                                key: '',
+                                value: '',
+                            })});
+                        }}
                         onRemoveButtonClick={({ detail: { itemIndex } }) => {
                             const toRemove = {} as any;
-                            toRemove[`Environment[${itemIndex}]`] = true;
+                            toRemove[`${property}[${itemIndex}]`] = true;
+                            setFields(toRemove, ModifyMethod.Unset);
                         }}
                         items={item.Environment}
                         addButtonText='Add environment variable'
@@ -60,7 +87,7 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>>): ReactEle
                                 label: 'Key',
                                 control: (attribute: any, itemIndex) => (
                                     <FormField
-                                        errorText={formErrors?.Environment?.[itemIndex]?.key}
+                                        errorText={findProperty(formErrors, property)?.[itemIndex]?.key}
                                     >
                                         <Input
                                             autoFocus
@@ -68,12 +95,13 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>>): ReactEle
                                             value={attribute.key}
                                             onChange={({ detail }) => {
                                                 const toChange = {} as any;
-                                                toChange[`Environment[${itemIndex}]`] = {
+                                                toChange[`${property}[${itemIndex}]`] = {
                                                     key: detail.value,
                                                 };
+                                                setFields(toChange, ModifyMethod.Merge);
                                             }}
                                             onBlur={() =>
-                                                touchFields([`Environment[${itemIndex}].key`])
+                                                touchFields([`${property}[${itemIndex}].key`])
                                             }
                                         />
                                     </FormField>
@@ -83,19 +111,20 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>>): ReactEle
                                 label: 'Value',
                                 control: (attribute: any, itemIndex) => (
                                     <FormField
-                                        errorText={formErrors?.Environment?.[itemIndex]?.value}
+                                        errorText={findProperty(formErrors, property)?.[itemIndex]?.value}
                                     >
                                         <Input
                                             placeholder='Enter value'
                                             value={attribute.value}
                                             onChange={({ detail }) => {
                                                 const toChange = {} as any;
-                                                toChange[`Environment[${itemIndex}]`] = {
+                                                toChange[`${property}[${itemIndex}]`] = {
                                                     value: detail.value,
                                                 };
+                                                setFields(toChange, ModifyMethod.Merge);
                                             }}
                                             onBlur={() =>
-                                                touchFields([`Environment[${itemIndex}].value`])
+                                                touchFields([`${property}[${itemIndex}].value`])
                                             }
                                         />
                                     </FormField>

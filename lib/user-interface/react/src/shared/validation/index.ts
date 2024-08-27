@@ -298,3 +298,19 @@ export const useValidationReducer = <F, S extends ValidationReducerBaseState<F>>
         },
     };
 };
+
+export const duplicateAttributeRefinement = (keyField: string) => {
+    return (attributes, ctx) => {
+        attributes.forEach((originalVariable: any, originalIndex) => {
+            attributes.slice(originalIndex + 1).forEach((attribute: any, index) => {
+                if (originalVariable[keyField] === attribute[keyField]) {
+                    ctx.addIssue({
+                        code: 'custom',
+                        message: `Duplicate ${keyField}`,
+                        path: [originalIndex + 1 + index, keyField],
+                    });
+                }
+            });
+        });
+    };
+};

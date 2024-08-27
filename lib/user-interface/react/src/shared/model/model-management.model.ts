@@ -14,6 +14,7 @@
  limitations under the License.
  */
 import { z } from 'zod';
+import { AttributeEditorSchema } from '../form/environment-variables';
 
 export enum ModelStatus {
     Creating = 'Creating',
@@ -82,7 +83,7 @@ export type IContainerConfig = {
     BaseImage: IContainerConfigImage;
     SharedMemorySize: number;
     HealthCheckConfig: IContainerHealthCheckConfig;
-    Environment: Map<string, string>;
+    Environment?: Record<string, string>[];
 };
 
 export type IModel = {
@@ -152,7 +153,7 @@ export const containerConfigSchema = z.object({
     BaseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
     SharedMemorySize: z.number().min(0).default(0),
     HealthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
-    Environment: z.map(z.string(), z.string()).default(new Map<string, string>()),
+    Environment: AttributeEditorSchema,
 });
 
 export const ModelRequestSchema = z.object({

@@ -15,7 +15,7 @@
 """Domain objects for interacting with the model endpoints."""
 
 from enum import Enum
-from typing import Annotated, Union
+from typing import Annotated, List, Optional, Union
 
 from pydantic import BaseModel
 from pydantic.functional_validators import AfterValidator
@@ -123,190 +123,94 @@ class ContainerConfig(BaseModel):
     HealthCheckConfig: ContainerHealthCheckConfig
     Environment: dict[str, str]
 
-    @staticmethod
-    def DUMMY() -> "ContainerConfig":
-        """
-        Create a ContainerConfig while the API is stubbed.
 
-        TODO This method is temporary and should be removed once the endpoints are no longer stubbed.
-        """
-        return ContainerConfig(
-            BaseImage=ContainerConfigImage(
-                BaseImage="ghcr.io/huggingface/text-generation-inference:2.0.1",
-                Path="lib/serve/ecs-model/textgen/tgi",
-                Type="asset",
-            ),
-            SharedMemorySize=2048,
-            HealthCheckConfig=ContainerHealthCheckConfig(
-                Command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
-            ),
-            Environment={
-                "MAX_CONCURRENT_REQUESTS": "128",
-                "MAX_INPUT_LENGTH": "1024",
-                "MAX_TOTAL_TOKENS": "2048",
-            },
-        )
+class LISAModel(BaseModel):
+    """Core model definition fields."""
+
+    AutoScalingConfig: Optional[AutoScalingConfig]
+    ContainerConfig: Optional[ContainerConfig]
+    LoadBalancerConfig: Optional[LoadBalancerConfig]
+    ModelId: str
+    ModelName: str
+    ModelType: ModelType
+    ModelUrl: Optional[str]
+    Status: ModelStatus
+    Streaming: bool
+    UniqueId: str
+
+
+class ApiResponseBase(BaseModel):
+    """Common API response definition for most API calls."""
+
+    Model: LISAModel
 
 
 class CreateModelRequest(BaseModel):
-    """Request object for creating a new model."""
+    """Request object when creating a new model."""
 
+    AutoScalingConfig: Optional[AutoScalingConfig]
+    ContainerConfig: Optional[ContainerConfig]
+    InferenceContainer: Optional[InferenceContainer]
+    InstanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]]
+    LoadBalancerConfig: Optional[LoadBalancerConfig]
     ModelId: str
     ModelName: str
-    Streaming: bool
     ModelType: ModelType
-    InferenceContainer: InferenceContainer
-    InstanceType: Annotated[str, AfterValidator(validate_instance_type)]
-    ContainerConfig: ContainerConfig
-    AutoScalingConfig: AutoScalingConfig
-    LoadBalancerConfig: LoadBalancerConfig
+    ModelUrl: Optional[str]
+    Streaming: bool
 
 
-class CreateModelResponse(BaseModel):
+class CreateModelResponse(ApiResponseBase):
     """Response object when creating a model."""
 
-    ModelId: str
-    ModelName: str
-    Status: ModelStatus
+    pass
 
 
-class ListModelResponse(BaseModel):
-    """Response object when listing a models."""
+class ListModelsResponse(BaseModel):
+    """Response object when listing models."""
 
-    ModelId: str
-    ModelName: str
-    Status: ModelStatus
-    ModelType: ModelType
-    Streaming: bool
-    ModelUrl: str
-    ContainerConfig: ContainerConfig
+    Models: List[LISAModel]
 
 
-class DescribeModelResponse(BaseModel):
-    """Response object when describing a model."""
+class GetModelResponse(ApiResponseBase):
+    """Response object when getting a model."""
 
-    ModelId: str
-    ModelName: str
-    Status: ModelStatus
-    InferenceContainer: InferenceContainer
-    InstanceType: str
-    ContainerConfig: ContainerConfig
-    AutoScalingConfig: AutoScalingConfig
-    LoadBalancerConfig: LoadBalancerConfig
-
-    @staticmethod
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.IN_SERVICE) -> "DescribeModelResponse":
-        """
-        Create a DescribeModelResponse while the API is stubbed.
-
-        TODO This method is temporary and should be removed once the endpoints are no longer stubbed.
-        """
-        return DescribeModelResponse(
-            ModelId=model_id,
-            ModelName=model_name,
-            Status=status,
-            Streaming=True,
-            ModelType=ModelType.TEXTGEN,
-            InstanceType="m5.large",
-            InferenceContainer=InferenceContainer.TGI,
-            ContainerConfig=ContainerConfig(
-                BaseImage=ContainerConfigImage(
-                    BaseImage="ghcr.io/huggingface/text-generation-inference:2.0.1",
-                    Path="lib/serve/ecs-model/textgen/tgi",
-                    Type="asset",
-                ),
-                SharedMemorySize=2048,
-                HealthCheckConfig=ContainerHealthCheckConfig(
-                    Command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
-                ),
-                Environment={
-                    "MAX_CONCURRENT_REQUESTS": "128",
-                    "MAX_INPUT_LENGTH": "1024",
-                    "MAX_TOTAL_TOKENS": "2048",
-                },
-            ),
-            AutoScalingConfig=AutoScalingConfig(
-                MinCapacity=1,
-                MaxCapacity=1,
-                Cooldown=420,
-                DefaultInstanceWarmup=180,
-                MetricConfig=MetricConfig(
-                    AlbMetricName="RequestCountPerTarget", TargetValue=30, Duration=60, EstimatedInstanceWarmup=330
-                ),
-            ),
-            LoadBalancerConfig=LoadBalancerConfig(
-                HealthCheckConfig=LoadBalancerHealthCheckConfig(
-                    Path="/health", Interval=60, Timeout=30, HealthyThresholdCount=2, UnhealthyThresholdCount=10
-                )
-            ),
-        )
+    pass
 
 
 class UpdateModelRequest(BaseModel):
-    """Requset object when updating a model."""
+    """Request object when updating a model."""
 
-    ModelId: str
-    ModelName: str
-    Status: ModelStatus
-    Streaming: bool
-    ModelType: ModelType
-    InstanceType: str
-    InferenceContainer: InferenceContainer
-    ContainerConfig: ContainerConfig
-    AutoScalingConfig: AutoScalingConfig
-    LoadBalancerConfig: LoadBalancerConfig
-
-    @staticmethod
-    def DUMMY(model_id: str, model_name: str, status: ModelStatus = ModelStatus.IN_SERVICE) -> "UpdateModelRequest":
-        """
-        Create a UpdateModelRequest while the API is stubbed.
-
-        TODO This method is temporary and should be removed once the endpoints are no longer stubbed.
-        """
-        return UpdateModelRequest(
-            ModelId=model_id,
-            ModelName=model_name,
-            Status=status,
-            Streaming=True,
-            ModelType=ModelType.TEXTGEN,
-            InstanceType="m5.large",
-            InferenceContainer=InferenceContainer.TGI,
-            ContainerConfig=ContainerConfig(
-                BaseImage=ContainerConfigImage(
-                    BaseImage="ghcr.io/huggingface/text-generation-inference:2.0.1",
-                    Path="lib/serve/ecs-model/textgen/tgi",
-                    Type="asset",
-                ),
-                SharedMemorySize=2048,
-                HealthCheckConfig=ContainerHealthCheckConfig(
-                    Command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
-                ),
-                Environment={
-                    "MAX_CONCURRENT_REQUESTS": "128",
-                    "MAX_INPUT_LENGTH": "1024",
-                    "MAX_TOTAL_TOKENS": "2048",
-                },
-            ),
-            AutoScalingConfig=AutoScalingConfig(
-                MinCapacity=1,
-                MaxCapacity=1,
-                Cooldown=420,
-                DefaultInstanceWarmup=180,
-                MetricConfig=MetricConfig(
-                    AlbMetricName="RequestCountPerTarget", TargetValue=30, Duration=60, EstimatedInstanceWarmup=330
-                ),
-            ),
-            LoadBalancerConfig=LoadBalancerConfig(
-                HealthCheckConfig=LoadBalancerHealthCheckConfig(
-                    Path="/health", Interval=60, Timeout=30, HealthyThresholdCount=2, UnhealthyThresholdCount=10
-                )
-            ),
-        )
+    AutoScalingConfig: Optional[AutoScalingConfig]
+    ContainerConfig: Optional[ContainerConfig]
+    InferenceContainer: Optional[InferenceContainer]
+    InstanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]]
+    LoadBalancerConfig: Optional[LoadBalancerConfig]
+    ModelId: Optional[str]
+    ModelName: Optional[str]
+    ModelType: Optional[ModelType]
+    Streaming: Optional[bool]
 
 
-class DeleteModelResponse(BaseModel):
+class UpdateModelResponse(ApiResponseBase):
+    """Response object when updating a model."""
+
+    pass
+
+
+class StartModelResponse(ApiResponseBase):
+    """Response object when stopping a model."""
+
+    pass
+
+
+class StopModelResponse(ApiResponseBase):
+    """Response object when stopping a model."""
+
+    pass
+
+
+class DeleteModelResponse(ApiResponseBase):
     """Response object when deleting a model."""
 
-    ModelId: str
-    ModelName: str
-    Status: ModelStatus = ModelStatus.DELETING
+    pass

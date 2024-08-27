@@ -87,12 +87,15 @@ export type IContainerConfig = {
 };
 
 export type IModel = {
-    ModelName: string;
     ModelId: string;
-    ModelType: ModelType;
-    ModelUrl: string;
+    ModelName: string;
     Streaming: boolean;
-    Status: ModelStatus;
+    ModelType: ModelType;
+    InstanceType: string;
+    InferenceContainer: InferenceContainer;
+    ContainerConfig: IContainerConfig;
+    AutoScalingConfig: IAutoScalingConfig;
+    LoadBalancerConfig: ILoadBalancerConfig;
 };
 
 export type IModelRequest = {

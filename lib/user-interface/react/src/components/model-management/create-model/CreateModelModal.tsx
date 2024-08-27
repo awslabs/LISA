@@ -27,6 +27,7 @@ import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { ReviewModelChanges } from './ReviewModelChanges';
+import { ModifyMethod } from '../../../shared/validation/modify-method';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -76,7 +77,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 ...initialForm
             },
             activeStepIndex: 0,
-        });
+        }, ModifyMethod.Set);
     }
 
     /**
@@ -118,10 +119,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     }, [state.form, initialForm, props.isEdit]);
 
     function handleSubmit () {
+        const submittedObject : IModelRequest = {
+            ...state.form,
+            ContainerConfig: {
+                ...state.form.ContainerConfig,
+                Environment: Object.fromEntries(Object.entries(state.form.ContainerConfig.Environment || {}).filter((entry: any) => !!entry.key))
+            }
+        };
         if (isValid && !props.isEdit) {
-            createModelMutation(state.form);
+            createModelMutation(submittedObject);
         } else if (isValid && props.isEdit) {
-            updateModelMutation(state.form);
+            updateModelMutation(submittedObject);
         }
     }
 
@@ -130,7 +138,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             setState({
                 ...state,
                 form: {
-                    ...props.selectedItems[0]
+                    ...props.selectedItems[0],
+                    ContainerConfig: {
+                        ...props.selectedItems[0].ContainerConfig,
+                        Environment: Object.entries(props.selectedItems[0].ContainerConfig.Environment).map(([key, value]) => ({ key, value })),
+                    }
                 }
             });
         }

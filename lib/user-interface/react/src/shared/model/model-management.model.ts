@@ -87,6 +87,7 @@ export type IContainerConfig = {
 };
 
 export type IModel = {
+    UniqueId: string;
     ModelId: string;
     ModelName: string;
     Streaming: boolean;
@@ -98,7 +99,12 @@ export type IModel = {
     LoadBalancerConfig: ILoadBalancerConfig;
 };
 
+export type IModelListResponse = {
+    Models: IModel[];
+};
+
 export type IModelRequest = {
+    UniqueId: string;
     ModelId: string;
     ModelName: string;
     Streaming: boolean;
@@ -165,7 +171,7 @@ export const ModelRequestSchema = z.object({
     Streaming: z.boolean().default(true),
     ModelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     InstanceType: z.string().default(''),
-    InferenceContainer: z.nativeEnum(InferenceContainer).default(InferenceContainer.TEI),
+    InferenceContainer: z.nativeEnum(InferenceContainer).optional(),
     ContainerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
     AutoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
     LoadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),

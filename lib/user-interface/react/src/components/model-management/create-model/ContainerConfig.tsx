@@ -26,17 +26,17 @@ import { EnvironmentVariables } from '../../../shared/form/environment-variables
 export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElement {
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Shared Memory Size' errorText={props.formErrors?.ContainerConfig?.SharedMemorySize}>
-                <Input value={props.item.SharedMemorySize.toString()} inputMode='numeric' onBlur={() => props.touchFields(['ContainerConfig.SharedMemorySize'])} onChange={({ detail }) => {
-                    props.setFields({ 'ContainerConfig.SharedMemorySize': Number(detail.value) });
-                }}/>
-            </FormField>
             <Container
                 header={
-                    <Header variant='h2'>Base Image Config</Header>
+                    <Header variant='h2'>Memory Size & Base Image Config</Header>
                 }
             >
                 <SpaceBetween size={'s'}>
+                    <FormField label='Shared Memory Size' errorText={props.formErrors?.ContainerConfig?.SharedMemorySize}>
+                        <Input value={props.item.SharedMemorySize.toString()} inputMode='numeric' onBlur={() => props.touchFields(['ContainerConfig.SharedMemorySize'])} onChange={({ detail }) => {
+                            props.setFields({ 'ContainerConfig.SharedMemorySize': Number(detail.value) });
+                        }}/>
+                    </FormField>
                     <FormField label='Base Image' errorText={props.formErrors?.ContainerConfig?.BaseImage?.BaseImage}>
                         <Input value={props.item.BaseImage.BaseImage} inputMode='text' onBlur={() => props.touchFields(['ContainerConfig.BaseImage.BaseImage'])} onChange={({ detail }) => {
                             props.setFields({ 'ContainerConfig.BaseImage.BaseImage': detail.value });

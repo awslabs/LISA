@@ -157,7 +157,7 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Start',
                     resourceName: 'Model',
-                    onConfirm: () => startMutation(selectedModel.ModelId),
+                    onConfirm: () => startMutation(selectedModel.UniqueId),
                     description: `This will start the following model: ${selectedModel.ModelId}.`
                 })
             );
@@ -167,7 +167,7 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Stop',
                     resourceName: 'Model',
-                    onConfirm: () => stopMutation(selectedModel.ModelId),
+                    onConfirm: () => stopMutation(selectedModel.UniqueId),
                     description: `This will stop the following model: ${selectedModel.ModelId}.`
                 })
             );
@@ -181,7 +181,7 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Delete',
                     resourceName: 'Model',
-                    onConfirm: () => deleteMutation(selectedModel.ModelId),
+                    onConfirm: () => deleteMutation(selectedModel.UniqueId),
                     description: `This will delete the following model: ${selectedModel.ModelId}.`
                 })
             );

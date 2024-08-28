@@ -23,9 +23,10 @@ from starlette.datastructures import Headers
 class LiteLLMClient:
     """Client definition for interfacing directly with LiteLLM management operations."""
 
-    def __init__(self, base_uri: str, headers: Headers):
+    def __init__(self, base_uri: str, headers: Headers, timeout: int = 30):
         self._base_uri = base_uri
         self._headers = headers
+        self._timeout = timeout
 
     def list_models(self) -> List[Dict[str, Any]]:
         """
@@ -35,7 +36,7 @@ class LiteLLMClient:
         are defined with the same model name, only one will show in the OpenAI API call because of the model name, but
         both will show in the management API call because of the differences in unique IDs.
         """
-        resp = requests.get(self._base_uri + "/model/info", headers=self._headers)
+        resp = requests.get(self._base_uri + "/model/info", headers=self._headers, timeout=self._timeout)
         all_models = resp.json()
         models_list: List[Dict[str, Any]] = all_models["data"]
         return models_list
@@ -53,7 +54,12 @@ class LiteLLMClient:
         requests.post(
             self._base_uri + "/model/new",
             headers=self._headers,
-            json={"model_name": model_name, "litellm_params": litellm_params, "model_info": additional_metadata},
+            json={
+                "model_name": model_name,
+                "litellm_params": litellm_params,
+                "model_info": additional_metadata,
+            },
+            timeout=self._timeout,
         )
 
     def delete_model(self, unique_id: str) -> None:
@@ -63,4 +69,9 @@ class LiteLLMClient:
         The unique_id is the ID that LiteLLM generates on its end when creating a model, regardless of if the model
         was defined in a static configuration file or if it was added dynamically.
         """
-        requests.post(self._base_uri + "/model/delete", headers=self._headers, json={"id": unique_id})
+        requests.post(
+            self._base_uri + "/model/delete",
+            headers=self._headers,
+            json={"id": unique_id},
+            timeout=self._timeout,
+        )

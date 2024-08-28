@@ -39,6 +39,7 @@ export function ModelManagementComponent () : ReactElement {
     const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
+    const [count, setCount] = useState('');
 
     useEffect(() => {
         let newPageCount = 0;
@@ -46,9 +47,11 @@ export function ModelManagementComponent () : ReactElement {
             const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
             setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
             newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
+            setCount(filteredModels.length.toString());
         } else {
-            setMatchedModels(allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
-            newPageCount = Math.ceil(allModels.length / preferences.pageSize);
+            setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
+            newPageCount = Math.ceil(allModels ? (allModels.length / preferences.pageSize) : 1);
+            setCount(allModels ? allModels.length.toString() : '0');
         }
 
         if (newPageCount < numberOfPages){
@@ -59,7 +62,7 @@ export function ModelManagementComponent () : ReactElement {
 
     return (
         <>
-            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} selectedItems={selectedItems}/>
+            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems}/>
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
@@ -78,7 +81,7 @@ export function ModelManagementComponent () : ReactElement {
                 cardsPerRow={[{ cards: 3 }]}
                 header={
                     <Header
-                        counter={selectedItems?.length ? `(${selectedItems.length})` : ''}
+                        counter={`(${count})` ?? ''}
                         actions={
                             <ModelActions
                                 selectedItems={selectedItems}

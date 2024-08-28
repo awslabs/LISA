@@ -78,7 +78,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully deleted model: ${selectedModel.ModelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedModel) {
-            notificationService.generateNotification(`Error deleting model: ${deleteError}`, 'error');
+            notificationService.generateNotification(`Error deleting model: ${deleteError.data?.message ?? deleteError.data}`, 'error');
             props.setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,7 +89,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully stopped model: ${selectedModel.ModelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isStopLoading && isStopError && selectedModel) {
-            notificationService.generateNotification(`Error stopping model: ${stopError}`, 'error');
+            notificationService.generateNotification(`Error stopping model: ${stopError.data?.message ?? stopError.data}`, 'error');
             props.setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,7 +100,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully started model: ${selectedModel.ModelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isStartLoading && isStartError && selectedModel) {
-            notificationService.generateNotification(`Error starting model: ${startError}`, 'error');
+            notificationService.generateNotification(`Error starting model: ${startError.data?.message ?? startError.data}`, 'error');
             props.setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,7 +117,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             id: 'stopModel',
         });
         items.push({
-            text: 'Edit',
+            text: 'Update',
             id: 'editModel',
         });
         items.push({
@@ -133,7 +133,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             disabled={!selectedModel}
             loading={isDeleteLoading || isStopLoading || isStartLoading}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedModel, dispatch, notificationService, deleteMutation, stopMutation, startMutation)
+                ModelActionHandler(e, selectedModel, dispatch, deleteMutation, stopMutation, startMutation, props.setNewModelModelVisible, props.setEdit)
             }
         >
             Actions
@@ -145,10 +145,11 @@ const ModelActionHandler = async (
     e: any,
     selectedModel: IModel,
     dispatch: ThunkDispatch<any, any, Action>,
-    notificationService: INotificationService,
     deleteMutation: MutationTrigger<any>,
     stopMutation: MutationTrigger<any>,
     startMutation: MutationTrigger<any>,
+    setNewModelModelVisible: (boolean) => void,
+    setEdit: (boolean) => void
 ) => {
     switch (e.detail.id) {
         case 'startModel':
@@ -172,7 +173,8 @@ const ModelActionHandler = async (
             );
             break;
         case 'editModel':
-            notificationService.generateNotification('Calling Edit Model', 'success');
+            setEdit(true);
+            setNewModelModelVisible(true);
             break;
         case 'deleteModel':
             dispatch(

@@ -13,51 +13,259 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import Form from '@cloudscape-design/components/form';
-import SpaceBetween from '@cloudscape-design/components/space-between';
-import { Button, Modal } from '@cloudscape-design/components';
-import Container from '@cloudscape-design/components/container';
-import FormField from '@cloudscape-design/components/form-field';
-import Input from '@cloudscape-design/components/input';
-import { IModel } from '../../../shared/model/model-management.model';
-import { ReactElement } from 'react';
+
+import _ from 'lodash';
+import { Modal, Wizard } from '@cloudscape-design/components';
+import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
+import { ReactElement, useEffect, useMemo } from 'react';
+import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
+import { BaseModelConfig } from './BaseModelConfig';
+import { ContainerConfig } from './ContainerConfig';
+import { AutoScalingConfig } from './AutoScalingConfig';
+import { LoadBalancerConfig } from './LoadBalancerConfig';
+import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/reducers/model-management.reducer';
+import { useAppDispatch } from '../../../config/store';
+import { useNotificationService } from '../../../shared/util/hooks';
+import { ReviewModelChanges } from './ReviewModelChanges';
+import { ModifyMethod } from '../../../shared/validation/modify-method';
 
 export type CreateModelModalProps = {
     visible: boolean;
     isEdit: boolean;
+    setIsEdit: (boolean) => void;
     setVisible: (boolean) => void;
     selectedItems: IModel[];
 };
 
+export type ModelCreateState = {
+    validateAll: boolean;
+    form: IModelRequest;
+    touched: any;
+    formSubmitting: boolean;
+    activeStepIndex: number;
+};
+
 export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
-    return (
-        <Modal onDismiss={() => props.setVisible(false)} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
-            <form onSubmit={(e) => e.preventDefault()}>
-                <Form
-                    actions={
-                        <SpaceBetween direction='horizontal' size='xs'>
-                            <Button formAction='none' variant='link' onClick={() => props.setVisible(false)}>
-                                Cancel
-                            </Button>
-                            <Button variant='primary'>Submit</Button>
-                        </SpaceBetween>
+    const [
+        createModelMutation,
+        { isSuccess: isCreateSuccess, isError: isCreateError, error: createError, isLoading: isCreating },
+    ] = useCreateModelMutation();
+    const [
+        updateModelMutation,
+        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
+    ] = useUpdateModelMutation();
+    const initialForm = ModelRequestSchema.parse({});
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
+
+    const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(ModelRequestSchema, {
+        validateAll: false as boolean,
+        touched: {},
+        formSubmitting: false as boolean,
+        form: {
+            ...initialForm
+        },
+        activeStepIndex: 0,
+    } as ModelCreateState);
+
+    function resetState () {
+        setState({
+            validateAll: false as boolean,
+            touched: {},
+            formSubmitting: false as boolean,
+            form: {
+                ...initialForm
+            },
+            activeStepIndex: 0,
+        }, ModifyMethod.Set);
+    }
+
+    /**
+     * Computes the difference between two JSON objects, recursively.
+     *
+     * This function takes two JSON objects as input and returns a new object that
+     * contains the differences between the two. Works with nested objects.
+     *
+     * @param {object} [obj1={}] - The first JSON object to compare.
+     * @param {object} [obj2={}] - The second JSON object to compare.
+     * @returns {object} - A new object containing the differences between the two input objects.
+     */
+    function getJsonDifference (obj1 = {}, obj2 = {}) {
+        const output = {},
+            merged = { ...obj1, ...obj2 }; // has properties of both
+
+        for (const key in merged) {
+            const value1 = obj1[key], value2 = obj2[key];
+
+            if (_.isPlainObject(value1) || _.isPlainObject(value2)) {
+                const value = getJsonDifference(value1, value2); // recursively call
+                if (Object.keys(value).length !== 0) {
+                    output[key] = value;
+                }
+
+            } else {
+                if (!_.isEqual(value1, value2) && (value1 || value2)) {
+                    output[key] = value2;
+                    // output[key][value2] = value2.
+                }
+            }
+        }
+        return output;
+    }
+
+    const changesDiff = useMemo(() => {
+        return props.isEdit ? getJsonDifference(props.selectedItems[0], state.form) : getJsonDifference({}, state.form);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.form, initialForm, props.isEdit]);
+
+    function handleSubmit () {
+        const submittedObject : IModelRequest = {
+            ...state.form,
+            ContainerConfig: {
+                ...state.form.ContainerConfig,
+                Environment: Object.fromEntries(Object.entries(state.form.ContainerConfig.Environment || {}).filter((entry: any) => !!entry.key))
+            }
+        };
+        if (isValid && !props.isEdit) {
+            createModelMutation(submittedObject);
+        } else if (isValid && props.isEdit) {
+            updateModelMutation(submittedObject);
+        }
+    }
+
+    useEffect(() => {
+        if (props.isEdit) {
+            setState({
+                ...state,
+                form: {
+                    ...props.selectedItems[0],
+                    ContainerConfig: {
+                        ...props.selectedItems[0].ContainerConfig,
+                        Environment: Object.entries(props.selectedItems[0].ContainerConfig.Environment).map(([key, value]) => ({ key, value })),
                     }
-                >
-                    <Container>
-                        <SpaceBetween direction='vertical' size='l'>
-                            <FormField label='First field'>
-                                <Input value='' />
-                            </FormField>
-                            <FormField label='Second field'>
-                                <Input value='' />
-                            </FormField>
-                            <FormField label='Third field'>
-                                <Input value='' />
-                            </FormField>
-                        </SpaceBetween>
-                    </Container>
-                </Form>
-            </form>
+                }
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [props.isEdit]);
+
+    useEffect(() => {
+        if (!isCreating && isCreateSuccess) {
+            notificationService.generateNotification(`Successfully created model: ${state.form.ModelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            resetState();
+        } else if (!isCreating && isCreateError) {
+            notificationService.generateNotification(`Error creating model: ${createError.data.message ?? createError.data}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCreateError, createError, isCreating, isCreateSuccess]);
+
+    useEffect(() => {
+        if (!isUpdating && isUpdateSuccess) {
+            notificationService.generateNotification(`Successfully updated model: ${state.form.ModelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            resetState();
+        } else if (!isUpdating && isUpdateError) {
+            notificationService.generateNotification(`Error updating model: ${updateError.data.message ?? updateError.data}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateError, updateError, isUpdating, isUpdateSuccess]);
+
+    return (
+        <Modal size={'large'} onDismiss={() => {
+            props.setVisible(false); props.setIsEdit(false); resetState();
+        }} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
+            <Wizard
+                i18nStrings={{
+                    stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
+                    collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
+                    skipToButtonLabel: () => `Skip to ${props.isEdit ? 'Update' : 'Create'}`,
+                    navigationAriaLabel: 'Steps',
+                    cancelButton: 'Cancel',
+                    previousButton: 'Previous',
+                    nextButton: 'Next',
+                    submitButton: props.isEdit ? 'Update Model' : 'Create Model',
+                    optional: 'optional'
+                }}
+                onNavigate={(event) => {
+                    switch (event.detail.reason) {
+                        case 'step':
+                        case 'previous':
+                            setState({
+                                ...state,
+                                activeStepIndex: event.detail.requestedStepIndex,
+                            });
+                            break;
+                        case 'next':
+                        case 'skip':
+                            {
+                                if (isValid) {
+                                    setState({
+                                        ...state,
+                                        activeStepIndex: event.detail.requestedStepIndex,
+                                    });
+                                    break;
+                                }
+                            }
+                            break;
+                    }
+
+                    scrollToInvalid();
+                }}
+                onCancel={() => {
+                    props.setVisible(false);
+                    props.setIsEdit(false);
+                    resetState();
+                }}
+                onSubmit={() => {
+                    handleSubmit();
+                }}
+                activeStepIndex={state.activeStepIndex}
+                isLoadingNextStep={isCreating || isUpdating}
+                allowSkipTo
+                steps={[
+                    {
+                        title: 'Base Model Configuration',
+                        description: 'Place Holder Description Base Model Config',
+                        content: (
+                            <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+                        )
+                    },
+                    {
+                        title: 'Container Configuration',
+                        description: 'Place Holder Description Container Config',
+                        content: (
+                            <ContainerConfig item={state.form.ContainerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                        ),
+                        isOptional: true
+                    },
+                    {
+                        title: 'Auto Scaling Configuration',
+                        description: 'Place Holder Description Auto Scaling Config',
+                        content: (
+                            <AutoScalingConfig item={state.form.AutoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                        ),
+                        isOptional: true
+                    },
+                    {
+                        title: 'Load Balancer Configuration',
+                        description: 'Place Holder Description Load Balancer Config',
+                        content: (
+                            <LoadBalancerConfig item={state.form.LoadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                        ),
+                        isOptional: true
+                    },
+                    {
+                        title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
+                        description: 'Place Holder Description Review Screen',
+                        content: (
+                            <ReviewModelChanges jsonDiff={changesDiff}/>
+                        )
+                    }
+                ]}
+            />
         </Modal>
     );
 }

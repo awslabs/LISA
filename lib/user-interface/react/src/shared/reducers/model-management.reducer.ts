@@ -16,7 +16,7 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { IModel } from '../model/model-management.model';
+import { IModel, IModelRequest } from '../model/model-management.model';
 
 export const modelManagementApi = createApi({
     reducerPath: 'models',
@@ -49,8 +49,24 @@ export const modelManagementApi = createApi({
             }),
             invalidatesTags: ['models'],
         }),
+        createModel: builder.mutation<IModel, IModelRequest>({
+            query: (modelRequest) => ({
+                url: '/models',
+                method: 'POST',
+                data: modelRequest
+            }),
+            invalidatesTags: ['models'],
+        }),
+        updateModel: builder.mutation<IModel, IModelRequest>({
+            query: (modelRequest) => ({
+                url: `/models/${modelRequest.ModelId}`,
+                method: 'PUT',
+                data: modelRequest
+            }),
+            invalidatesTags: ['models'],
+        }),
     }),
 });
 
-export const { useGetAllModelsQuery, useDeleteModelMutation, useStopModelMutation, useStartModelMutation } =
+export const { useGetAllModelsQuery, useDeleteModelMutation, useStopModelMutation, useStartModelMutation, useCreateModelMutation, useUpdateModelMutation } =
   modelManagementApi;

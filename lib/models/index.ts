@@ -22,10 +22,12 @@ import { Construct } from 'constructs';
 
 import { ModelsApi } from './model-api';
 import { BaseProps } from '../schema';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type LisaModelsApiStackProps = BaseProps &
   StackProps & {
       authorizer: IAuthorizer;
+      lisaServeEndpointUrlPs: StringParameter;
       restApiId: string;
       rootResourceId: string;
       securityGroups?: ISecurityGroup[];
@@ -44,12 +46,13 @@ export class LisaModelsApiStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaModelsApiStackProps) {
         super(scope, id, props);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, lisaServeEndpointUrlPs, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Add REST API Lambdas to APIGW
         new ModelsApi(this, 'ModelsApi', {
             authorizer,
             config,
+            lisaServeEndpointUrlPs,
             restApiId,
             rootResourceId,
             securityGroups,

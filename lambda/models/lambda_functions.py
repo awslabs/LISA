@@ -13,14 +13,17 @@
 #   limitations under the License.
 
 """APIGW endpoints for managing models."""
+import os
 from typing import Annotated
 
 # Remove the following imports after APIs are no longer stubbed
 from uuid import uuid4
 
-from fastapi import FastAPI, Path
+import boto3
+from fastapi import FastAPI, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
+from utilities.common_functions import retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (
@@ -44,6 +47,7 @@ from .domain_objects import (
     UpdateModelRequest,
     UpdateModelResponse,
 )
+from .handler.list_models_handler import ListModelsHandler
 
 app = FastAPI(redirect_slashes=False, lifespan="off")
 app.add_middleware(AWSAPIGatewayMiddleware)
@@ -56,6 +60,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+
+def get_lisa_serve_endpoint() -> str:
+    """Get LISA Serve base URI from SSM Parameter Store."""
+    lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
+    lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
+    return f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
 
 
 @app.post(path="", include_in_schema=False)  # type: ignore
@@ -70,38 +83,11 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
 
 @app.get(path="", include_in_schema=False)  # type: ignore
 @app.get(path="/")  # type: ignore
-async def list_models() -> ListModelsResponse:
+async def list_models(request: Request) -> ListModelsResponse:
     """Endpoint to list models."""
-    return ListModelsResponse(
-        Models=[
-            _create_dummy_model("my_first_model", ModelType.TEXTGEN, ModelStatus.CREATING),
-            _create_dummy_model("my_second_model", ModelType.EMBEDDING, ModelStatus.IN_SERVICE),
-            _create_dummy_model("my_third_model", ModelType.EMBEDDING, ModelStatus.STOPPING),
-            _create_dummy_model("my_fourth_model", ModelType.TEXTGEN, ModelStatus.STOPPED),
-            _create_dummy_model("my_fifth_model", ModelType.EMBEDDING, ModelStatus.UPDATING),
-            _create_dummy_model("my_sixth_model", ModelType.EMBEDDING, ModelStatus.DELETING),
-            _create_dummy_model("my_seventh_model", ModelType.TEXTGEN, ModelStatus.FAILED),
-            _create_dummy_model("my_eighth_model", ModelType.TEXTGEN, ModelStatus.FAILED),
-            _create_dummy_model("my_ninth_model", ModelType.EMBEDDING, ModelStatus.DELETING),
-            _create_dummy_model("my_tenth_model", ModelType.TEXTGEN, ModelStatus.UPDATING),
-            _create_dummy_model("my_eleventh_model", ModelType.EMBEDDING, ModelStatus.STOPPED),
-            _create_dummy_model("my_twelfth_model", ModelType.EMBEDDING, ModelStatus.STOPPING),
-            _create_dummy_model("my_thirteenth_model", ModelType.TEXTGEN, ModelStatus.IN_SERVICE),
-            _create_dummy_model("my_fourteenth_model", ModelType.TEXTGEN, ModelStatus.CREATING),
-            _create_dummy_model("my_fifteenth_model", ModelType.EMBEDDING, ModelStatus.CREATING),
-            _create_dummy_model("my_sixteenth_model", ModelType.TEXTGEN, ModelStatus.IN_SERVICE),
-            _create_dummy_model("my_seventeenth_model", ModelType.EMBEDDING, ModelStatus.STOPPING),
-            _create_dummy_model("my_eighteenth_model", ModelType.EMBEDDING, ModelStatus.STOPPED),
-            _create_dummy_model("my_nineteenth_model", ModelType.EMBEDDING, ModelStatus.UPDATING),
-            _create_dummy_model("my_twentieth_model", ModelType.TEXTGEN, ModelStatus.DELETING),
-            _create_dummy_model("my_twenty_first_model", ModelType.TEXTGEN, ModelStatus.FAILED),
-            _create_dummy_model("my_twenty_second_model", ModelType.EMBEDDING, ModelStatus.FAILED),
-            _create_dummy_model("my_twenty_third_model", ModelType.EMBEDDING, ModelStatus.DELETING),
-            _create_dummy_model("my_twenty_fourth_model", ModelType.TEXTGEN, ModelStatus.UPDATING),
-            _create_dummy_model("my_twenty_fifth_model", ModelType.TEXTGEN, ModelStatus.STOPPED),
-            _create_dummy_model("my_twenty_sixth_model", ModelType.TEXTGEN, ModelStatus.IN_SERVICE),
-        ]
-    )
+    headers = request.headers
+    list_handler = ListModelsHandler(base_uri=get_lisa_serve_endpoint(), headers=headers)
+    return list_handler()
 
 
 def _create_dummy_model(model_name: str, model_type: ModelType, model_status: ModelStatus) -> LISAModel:
@@ -198,13 +184,15 @@ async def stop_model(
     return StopModelResponse(Model=model)
 
 
-@app.delete(path="/{model_id}")  # type: ignore
+@app.delete(path="/{unique_id}")  # type: ignore
 async def delete_model(
-    model_id: Annotated[str, Path(title="The unique model ID of the model to delete")],
+    unique_id: Annotated[str, Path(title="The unique model ID of the model to delete")],
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
     # TODO add service to delete model
-    return DeleteModelResponse(ModelId=model_id, ModelName=model_id)
+    model = _create_dummy_model("model_name", ModelType.TEXTGEN, ModelStatus.DELETING)
+    model.UniqueId = unique_id
+    return DeleteModelResponse(Model=model)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")

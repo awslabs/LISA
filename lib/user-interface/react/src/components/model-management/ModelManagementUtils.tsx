@@ -56,8 +56,8 @@ export const CARD_DEFINITIONS = {
         },
         {
             id: 'Hosting',
-            header: 'Hosting Platform',
-            content: (model: IModel) => (model.ContainerConfig === null && model.AutoScalingConfig === null && model.LoadBalancerConfig === null) ? 'External Provider' : 'LISA Hosted',
+            header: 'Hosted in LISA',
+            content: (model: IModel) => String(model.ContainerConfig === null && model.AutoScalingConfig === null && model.LoadBalancerConfig === null),
         },
         {
             id: 'InstanceType',
@@ -94,7 +94,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'ModelType', label: 'Type' },
             { id: 'ModelUrl', label: 'URL' },
             { id: 'Streaming', label: 'Streaming' },
-            { id: 'Hosting', label: 'Hosting Platform' },
+            { id: 'Hosting', label: 'LISA-Hosted Infrastructure' },
             { id: 'InstanceType', label: 'Instance Type' },
             { id: 'ModelStatus', label: 'Status' },
         ],

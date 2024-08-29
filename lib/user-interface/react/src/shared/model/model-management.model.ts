@@ -90,6 +90,7 @@ export type IModel = {
     UniqueId: string;
     ModelId: string;
     ModelName: string;
+    ModelUrl: string;
     Streaming: boolean;
     ModelType: ModelType;
     InstanceType: string;
@@ -107,6 +108,7 @@ export type IModelRequest = {
     UniqueId: string;
     ModelId: string;
     ModelName: string;
+    ModelUrl: string;
     Streaming: boolean;
     ModelType: ModelType;
     InstanceType: string;
@@ -168,6 +170,7 @@ export const containerConfigSchema = z.object({
 export const ModelRequestSchema = z.object({
     ModelId: z.string().default(''),
     ModelName: z.string().default(''),
+    ModelUrl: z.string().default(''),
     Streaming: z.boolean().default(true),
     ModelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     InstanceType: z.string().default(''),

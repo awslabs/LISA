@@ -40,6 +40,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'ModelName': detail.value });
                 }}/>
             </FormField>
+            <FormField label='Model URL' errorText={props.formErrors?.ModelUrl}>
+                <Input value={props.item.ModelUrl} inputMode='text' onBlur={() => props.touchFields(['ModelUrl'])} onChange={({ detail }) => {
+                    props.setFields({ 'ModelUrl': detail.value });
+                }}/>
+            </FormField>
             <FormField label='Streaming' errorText={props.formErrors?.Streaming}>
                 <Toggle
                     onChange={({ detail }) =>

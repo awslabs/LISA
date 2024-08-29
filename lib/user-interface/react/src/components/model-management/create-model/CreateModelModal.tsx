@@ -95,7 +95,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             merged = { ...obj1, ...obj2 }; // has properties of both
 
         for (const key in merged) {
-            const value1 = obj1[key], value2 = obj2[key];
+            const value1 = obj1 && Object.keys(obj1).includes(key) ? obj1[key] : undefined;
+            const value2 = obj2 && Object.keys(obj2).includes(key) ? obj2[key] : undefined;
 
             if (_.isPlainObject(value1) || _.isPlainObject(value2)) {
                 const value = getJsonDifference(value1, value2); // recursively call
@@ -134,14 +135,15 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     }
 
     useEffect(() => {
+        const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
         if (props.isEdit) {
             setState({
                 ...state,
                 form: {
-                    ...props.selectedItems[0],
+                    ...parsedValue,
                     ContainerConfig: {
-                        ...props.selectedItems[0].ContainerConfig,
-                        Environment: Object.entries(props.selectedItems[0].ContainerConfig.Environment).map(([key, value]) => ({ key, value })),
+                        ...parsedValue,
+                        Environment: props.selectedItems[0].ContainerConfig?.Environment ? Object.entries(props.selectedItems[0].ContainerConfig?.Environment).map(([key, value]) => ({ key, value })) : [],
                     }
                 }
             });
@@ -187,7 +189,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     previousButton: 'Previous',
                     nextButton: 'Next',
                     submitButton: props.isEdit ? 'Update Model' : 'Create Model',
-                    optional: 'optional'
+                    optional: 'ECS hosted models only'
                 }}
                 onNavigate={(event) => {
                     switch (event.detail.reason) {
@@ -228,14 +230,13 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 steps={[
                     {
                         title: 'Base Model Configuration',
-                        description: 'Place Holder Description Base Model Config',
+                        description: 'Define your model\'s configuration settings using these forms.',
                         content: (
                             <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
                         )
                     },
                     {
                         title: 'Container Configuration',
-                        description: 'Place Holder Description Container Config',
                         content: (
                             <ContainerConfig item={state.form.ContainerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
@@ -243,7 +244,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     },
                     {
                         title: 'Auto Scaling Configuration',
-                        description: 'Place Holder Description Auto Scaling Config',
                         content: (
                             <AutoScalingConfig item={state.form.AutoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
@@ -251,7 +251,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     },
                     {
                         title: 'Load Balancer Configuration',
-                        description: 'Place Holder Description Load Balancer Config',
                         content: (
                             <LoadBalancerConfig item={state.form.LoadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
@@ -259,7 +258,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     },
                     {
                         title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
-                        description: 'Place Holder Description Review Screen',
+                        description: 'Review configuration prior to submitting.',
                         content: (
                             <ReviewModelChanges jsonDiff={changesDiff}/>
                         )

@@ -16,17 +16,18 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { IModel, IModelRequest } from '../model/model-management.model';
+import { IModel, IModelListResponse, IModelRequest } from '../model/model-management.model';
 
 export const modelManagementApi = createApi({
     reducerPath: 'models',
     baseQuery: lisaBaseQuery(),
     endpoints: (builder) => ({
-        getAllModels: builder.query<IModel[], void>({
+        getAllModels: builder.query<IModelListResponse, void>({
             query: () => ({
                 url: '/models',
             }),
-            providesTags: ['models'],
+            transformResponse: (response) => response.Models,
+            providesTags:['models'],
         }),
         deleteModel: builder.mutation<IModel, string>({
             query: (modelId) => ({
@@ -59,7 +60,7 @@ export const modelManagementApi = createApi({
         }),
         updateModel: builder.mutation<IModel, IModelRequest>({
             query: (modelRequest) => ({
-                url: `/models/${modelRequest.ModelId}`,
+                url: `/models/${modelRequest.UniqueId}`,
                 method: 'PUT',
                 data: modelRequest
             }),

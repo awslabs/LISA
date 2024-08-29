@@ -26,26 +26,32 @@ import Container from '@cloudscape-design/components/container';
 export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : ReactElement {
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Min Capacity' errorText={props.formErrors?.AutoScalingConfig?.MinCapacity}>
-                <Input value={props.item.MinCapacity.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.MinCapacity'])} onChange={({ detail }) => {
-                    props.setFields({ 'AutoScalingConfig.MinCapacity': Number(detail.value) });
-                }}/>
-            </FormField>
-            <FormField label='Max Capacity' errorText={props.formErrors?.AutoScalingConfig?.MaxCapacity}>
-                <Input value={props.item.MaxCapacity.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.MaxCapacity'])} onChange={({ detail }) => {
-                    props.setFields({ 'AutoScalingConfig.MaxCapacity': Number(detail.value) });
-                }}/>
-            </FormField>
-            <FormField label='Cooldown' errorText={props.formErrors?.AutoScalingConfig?.Cooldown}>
-                <Input value={props.item.Cooldown.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.Cooldown'])} onChange={({ detail }) => {
-                    props.setFields({ 'AutoScalingConfig.Cooldown': Number(detail.value) });
-                }}/>
-            </FormField>
-            <FormField label='Default Instance Warmup' errorText={props.formErrors?.AutoScalingConfig?.DefaultInstanceWarmup}>
-                <Input value={props.item.DefaultInstanceWarmup.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.DefaultInstanceWarmup'])} onChange={({ detail }) => {
-                    props.setFields({ 'AutoScalingConfig.DefaultInstanceWarmup': Number(detail.value) });
-                }}/>
-            </FormField>
+            <Container
+                header={
+                    <Header variant='h3'>Auto Scaling Capacity</Header>
+                }
+            >
+                <FormField label='Min Capacity' errorText={props.formErrors?.AutoScalingConfig?.MinCapacity}>
+                    <Input value={props.item.MinCapacity.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.MinCapacity'])} onChange={({ detail }) => {
+                        props.setFields({ 'AutoScalingConfig.MinCapacity': Number(detail.value) });
+                    }}/>
+                </FormField>
+                <FormField label='Max Capacity' errorText={props.formErrors?.AutoScalingConfig?.MaxCapacity}>
+                    <Input value={props.item.MaxCapacity.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.MaxCapacity'])} onChange={({ detail }) => {
+                        props.setFields({ 'AutoScalingConfig.MaxCapacity': Number(detail.value) });
+                    }}/>
+                </FormField>
+                <FormField label='Cooldown' errorText={props.formErrors?.AutoScalingConfig?.Cooldown}>
+                    <Input value={props.item.Cooldown.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.Cooldown'])} onChange={({ detail }) => {
+                        props.setFields({ 'AutoScalingConfig.Cooldown': Number(detail.value) });
+                    }}/>
+                </FormField>
+                <FormField label='Default Instance Warmup' errorText={props.formErrors?.AutoScalingConfig?.DefaultInstanceWarmup}>
+                    <Input value={props.item.DefaultInstanceWarmup.toString()} inputMode='numeric' onBlur={() => props.touchFields(['AutoScalingConfig.DefaultInstanceWarmup'])} onChange={({ detail }) => {
+                        props.setFields({ 'AutoScalingConfig.DefaultInstanceWarmup': Number(detail.value) });
+                    }}/>
+                </FormField>
+            </Container>
             <Container
                 header={
                     <Header variant='h3'>Metric Config</Header>

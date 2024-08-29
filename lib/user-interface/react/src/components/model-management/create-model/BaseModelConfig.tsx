@@ -71,7 +71,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             </FormField>
             <FormField label='Inference Container' errorText={props.formErrors?.InferenceContainer}>
                 <Select
-                    selectedOption={{label: props.item.InferenceContainer.toUpperCase(), value: props.item.InferenceContainer}}
+                    selectedOption={{label: props.item.InferenceContainer?.toUpperCase(), value: props.item.InferenceContainer}}
                     onBlur={() => props.touchFields(['InferenceContainer'])}
                     onChange={({ detail }) =>
                         props.setFields({

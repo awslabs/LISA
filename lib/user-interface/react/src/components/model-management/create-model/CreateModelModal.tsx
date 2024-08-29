@@ -189,7 +189,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     previousButton: 'Previous',
                     nextButton: 'Next',
                     submitButton: props.isEdit ? 'Update Model' : 'Create Model',
-                    optional: 'ECS hosted models only'
+                    optional: 'LISA hosted models only'
                 }}
                 onNavigate={(event) => {
                     switch (event.detail.reason) {

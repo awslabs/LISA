@@ -47,12 +47,22 @@ export const CARD_DEFINITIONS = {
         {
             id: 'ModelUrl',
             header: 'URL',
-            content: (model: IModel) => model.ModelUrl,
+            content: (model: IModel) => model.ModelUrl ?? 'Model URL not defined',
         },
         {
             id: 'Streaming',
             header: 'Streaming',
             content: (model: IModel) => String(model.Streaming),
+        },
+        {
+            id: 'Hosting',
+            header: 'Hosting Platform',
+            content: (model: IModel) => (model.ContainerConfig === null && model.AutoScalingConfig === null && model.LoadBalancerConfig === null) ? 'LiteLLM' : 'LISA Hosted',
+        },
+        {
+            id: 'InstanceType',
+            header: 'Instance Type',
+            content: (model: IModel) => model.InstanceType ?? 'Instance Type not defined',
         },
         {
             id: 'ModelStatus',
@@ -73,17 +83,19 @@ export const PAGE_SIZE_OPTIONS = [
 
 export const DEFAULT_PREFERENCES = {
     pageSize: 12,
-    visibleContent: ['ModelId', 'ModelType', 'ModelUrl', 'Streaming', 'ModelStatus'],
+    visibleContent: ['ModelId', 'ModelType', 'ModelUrl', 'Streaming', 'Hosting', 'InstanceType', 'ModelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
     {
-        label: 'Main distribution properties',
+        label: 'Displayed Properties',
         options: [
             { id: 'ModelId', label: 'ID' },
             { id: 'ModelType', label: 'Type' },
             { id: 'ModelUrl', label: 'URL' },
             { id: 'Streaming', label: 'Streaming' },
+            { id: 'Hosting', label: 'Hosting Platform' },
+            { id: 'InstanceType', label: 'Instance Type' },
             { id: 'ModelStatus', label: 'Status' },
         ],
     },

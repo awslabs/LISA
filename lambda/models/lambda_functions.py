@@ -22,6 +22,7 @@ from uuid import uuid4
 import boto3
 from fastapi import FastAPI, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from mangum import Mangum
 from utilities.common_functions import retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
@@ -47,7 +48,8 @@ from .domain_objects import (
     UpdateModelRequest,
     UpdateModelResponse,
 )
-from .handler.list_models_handler import ListModelsHandler
+from .exception import ModelNotFoundError
+from .handler import DeleteModelHandler, GetModelHandler, ListModelsHandler
 
 app = FastAPI(redirect_slashes=False, lifespan="off")
 app.add_middleware(AWSAPIGatewayMiddleware)
@@ -69,6 +71,12 @@ def get_lisa_serve_endpoint() -> str:
     lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
     lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
     return f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
+
+
+@app.exception_handler(ModelNotFoundError)  # type: ignore
+async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
+    """Handle exception when model cannot be found and translate to a 404 error."""
+    return JSONResponse(status_code=404, content={"message": str(exc)})
 
 
 @app.post(path="", include_in_schema=False)  # type: ignore
@@ -141,13 +149,12 @@ def _create_dummy_model(model_name: str, model_type: ModelType, model_status: Mo
 
 @app.get(path="/{unique_id}")  # type: ignore
 async def get_model(
-    unique_id: Annotated[str, Path(title="The unique model ID of the model to get")],
+    unique_id: Annotated[str, Path(title="The unique model ID of the model to get")], request: Request
 ) -> GetModelResponse:
     """Endpoint to describe a model."""
-    # TODO add service to get model
-    model = _create_dummy_model("model_name", ModelType.TEXTGEN, ModelStatus.IN_SERVICE)
-    model.UniqueId = unique_id
-    return GetModelResponse(Model=model)
+    headers = request.headers
+    get_handler = GetModelHandler(base_uri=get_lisa_serve_endpoint(), headers=headers)
+    return get_handler(unique_id=unique_id)
 
 
 @app.put(path="/{unique_id}")  # type: ignore
@@ -186,13 +193,12 @@ async def stop_model(
 
 @app.delete(path="/{unique_id}")  # type: ignore
 async def delete_model(
-    unique_id: Annotated[str, Path(title="The unique model ID of the model to delete")],
+    unique_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
-    # TODO add service to delete model
-    model = _create_dummy_model("model_name", ModelType.TEXTGEN, ModelStatus.DELETING)
-    model.UniqueId = unique_id
-    return DeleteModelResponse(Model=model)
+    headers = request.headers
+    delete_handler = DeleteModelHandler(base_uri=get_lisa_serve_endpoint(), headers=headers)
+    return delete_handler(unique_id=unique_id)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")

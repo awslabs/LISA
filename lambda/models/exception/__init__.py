@@ -12,6 +12,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .delete_model_handler import DeleteModelHandler  # noqa: F401
-from .get_model_handler import GetModelHandler  # noqa: F401
-from .list_models_handler import ListModelsHandler  # noqa: F401
+"""Exception definitions for model management APIs."""
+
+
+class ModelNotFoundError(LookupError):
+    """Error to raise when a specified model cannot be found in LiteLLM."""
+
+    pass

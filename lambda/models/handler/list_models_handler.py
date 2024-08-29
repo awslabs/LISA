@@ -14,35 +14,16 @@
 
 """Handler for ListModels requests."""
 
-from starlette.datastructures import Headers
+from ..domain_objects import ListModelsResponse
+from .base_handler import BaseApiHandler
+from .utils import to_lisa_model
 
-from ..clients.litellm_client import LiteLLMClient
-from ..domain_objects import LISAModel, ListModelsResponse, ModelStatus
 
-
-class ListModelsHandler:
+class ListModelsHandler(BaseApiHandler):
     """Handler class for ListModels requests."""
 
-    def __init__(self, base_uri: str, headers: Headers):
-        """Create ListModelsHandler with URI for accessing LiteLLM directly."""
-        self._litellm_client = LiteLLMClient(base_uri=base_uri, headers=headers)
-
-    def __call__(self) -> ListModelsResponse:
+    def __call__(self) -> ListModelsResponse:  # type: ignore
         """Call handler to get all models from LiteLLM database and transform results into API response format."""
         litellm_models = self._litellm_client.list_models()
-        models_list = [
-            LISAModel(
-                ModelId=m["model_name"],
-                ModelName=m["litellm_params"]["model"].removeprefix("openai/"),
-                UniqueId=m["model_info"]["id"],
-                Status=m["model_info"].get("model_status", ModelStatus.IN_SERVICE),
-                ModelType=m["model_info"].get("model_type", "textgen"),
-                Streaming=m["model_info"].get("streaming", False),
-                ModelUrl=m["litellm_params"].get("api_base", None),
-                ContainerConfig=m["model_info"].get("container_config", None),
-                AutoScalingConfig=m["model_info"].get("autoscaling_config", None),
-                LoadBalancerConfig=m["model_info"].get("loadbalancer_config", None),
-            )
-            for m in litellm_models
-        ]
+        models_list = [to_lisa_model(m) for m in litellm_models]
         return ListModelsResponse(Models=models_list)

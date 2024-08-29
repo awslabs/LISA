@@ -19,6 +19,8 @@ from typing import Any, Dict, List
 import requests
 from starlette.datastructures import Headers
 
+from ..exception import ModelNotFoundError
+
 
 class LiteLLMClient:
     """Client definition for interfacing directly with LiteLLM management operations."""
@@ -75,3 +77,16 @@ class LiteLLMClient:
             json={"id": unique_id},
             timeout=self._timeout,
         )
+
+    def get_model(self, unique_id: str) -> Dict[str, Any]:
+        """
+        Get model metadata from the database.
+
+        Due to what appears to be a bug in LiteLLM when accessing individual models from the /model/info route, we must
+        list all models then filter out the one we want for this method call.
+        """
+        all_models = self.list_models()
+        filtered_models = [m for m in all_models if m["model_info"]["id"] == unique_id]
+        if len(filtered_models) < 1:
+            raise ModelNotFoundError("Specified model was not found.")
+        return filtered_models[0]

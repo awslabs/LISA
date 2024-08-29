@@ -12,6 +12,17 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .delete_model_handler import DeleteModelHandler  # noqa: F401
-from .get_model_handler import GetModelHandler  # noqa: F401
-from .list_models_handler import ListModelsHandler  # noqa: F401
+"""Handler for GetModel requests."""
+
+from ..domain_objects import GetModelResponse
+from .base_handler import BaseApiHandler
+from .utils import to_lisa_model
+
+
+class GetModelHandler(BaseApiHandler):
+    """Handler class for GetModel requests."""
+
+    def __call__(self, unique_id: str) -> GetModelResponse:  # type: ignore
+        """Get model metadata from LiteLLM and translate to a model management response object."""
+        model = self._litellm_client.get_model(unique_id=unique_id)
+        return GetModelResponse(Model=to_lisa_model(model))

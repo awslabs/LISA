@@ -57,7 +57,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'Hosting',
             header: 'Hosting Platform',
-            content: (model: IModel) => (model.ContainerConfig === null && model.AutoScalingConfig === null && model.LoadBalancerConfig === null) ? 'LiteLLM' : 'LISA Hosted',
+            content: (model: IModel) => (model.ContainerConfig === null && model.AutoScalingConfig === null && model.LoadBalancerConfig === null) ? 'External Provider' : 'LISA Hosted',
         },
         {
             id: 'InstanceType',

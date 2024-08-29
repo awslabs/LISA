@@ -39,6 +39,7 @@ import { BaseProps } from '../schema';
 type ModelsApiProps = BaseProps & {
     authorizer: IAuthorizer;
     lambdaExecutionRole?: IRole;
+    lisaServeEndpointUrlPs: StringParameter;
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
@@ -52,7 +53,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -94,12 +95,17 @@ export class ModelsApi extends Construct {
                 description: 'Manage model',
                 path: 'models/{proxy+}',
                 method: 'ANY',
+                environment: {
+                    LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                    REST_API_VERSION: config.restApiConfig.apiVersion,
+                }
             },
             config.lambdaConfig.pythonRuntime,
             lambdaExecutionRole,
             vpc,
             securityGroups,
         );
+        lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
         const apis: PythonLambdaFunction[] = [
             // create endpoint for /models without a trailing slash but reuse

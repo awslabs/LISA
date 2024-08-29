@@ -25,7 +25,6 @@ import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
-import { add } from 'husky';
 
 /**
  * Properties for ModelsApi Construct.

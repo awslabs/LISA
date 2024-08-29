@@ -14,7 +14,7 @@
 
 """Client for interfacing with the LiteLLM proxy's management options directly."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import requests
 from starlette.datastructures import Headers
@@ -25,10 +25,11 @@ from ..exception import ModelNotFoundError
 class LiteLLMClient:
     """Client definition for interfacing directly with LiteLLM management operations."""
 
-    def __init__(self, base_uri: str, headers: Headers, timeout: int = 30):
+    def __init__(self, base_uri: str, headers: Headers, verify: Union[str, bool], timeout: int = 30):
         self._base_uri = base_uri
         self._headers = headers
         self._timeout = timeout
+        self._verify = verify
 
     def list_models(self) -> List[Dict[str, Any]]:
         """
@@ -38,7 +39,12 @@ class LiteLLMClient:
         are defined with the same model name, only one will show in the OpenAI API call because of the model name, but
         both will show in the management API call because of the differences in unique IDs.
         """
-        resp = requests.get(self._base_uri + "/model/info", headers=self._headers, timeout=self._timeout)
+        resp = requests.get(
+            self._base_uri + "/model/info",
+            headers=self._headers,
+            timeout=self._timeout,
+            verify=self._verify,
+        )
         all_models = resp.json()
         models_list: List[Dict[str, Any]] = all_models["data"]
         return models_list
@@ -62,6 +68,7 @@ class LiteLLMClient:
                 "model_info": additional_metadata,
             },
             timeout=self._timeout,
+            verify=self._verify,
         )
 
     def delete_model(self, unique_id: str) -> None:
@@ -76,6 +83,7 @@ class LiteLLMClient:
             headers=self._headers,
             json={"id": unique_id},
             timeout=self._timeout,
+            verify=self._verify,
         )
 
     def get_model(self, unique_id: str) -> Dict[str, Any]:

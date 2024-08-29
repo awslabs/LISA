@@ -15,7 +15,7 @@
 """Base Handler definition for model management API definitions."""
 
 
-from typing import Any
+from typing import Any, Union
 
 from starlette.datastructures import Headers
 
@@ -25,9 +25,9 @@ from ..clients.litellm_client import LiteLLMClient
 class BaseApiHandler:
     """Base Handler class for all model management APIs."""
 
-    def __init__(self, base_uri: str, headers: Headers):
+    def __init__(self, base_uri: str, headers: Headers, verify: Union[str, bool]):
         """Create a LiteLLM client for all child objects to use."""
-        self._litellm_client = LiteLLMClient(base_uri=base_uri, headers=headers)
+        self._litellm_client = LiteLLMClient(base_uri=base_uri, headers=headers, verify=verify)
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:
         """All handlers must implement the __call__ method."""

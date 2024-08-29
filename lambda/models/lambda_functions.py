@@ -24,7 +24,7 @@ from fastapi import FastAPI, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.common_functions import retry_config
+from utilities.common_functions import get_cert_path, retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (
@@ -64,6 +64,7 @@ app.add_middleware(
 )
 
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
+iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 def get_lisa_serve_endpoint() -> str:
@@ -94,7 +95,11 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
 async def list_models(request: Request) -> ListModelsResponse:
     """Endpoint to list models."""
     headers = request.headers
-    list_handler = ListModelsHandler(base_uri=get_lisa_serve_endpoint(), headers=headers)
+    list_handler = ListModelsHandler(
+        base_uri=get_lisa_serve_endpoint(),
+        headers=headers,
+        verify=get_cert_path(iam_client),
+    )
     return list_handler()
 
 
@@ -153,7 +158,11 @@ async def get_model(
 ) -> GetModelResponse:
     """Endpoint to describe a model."""
     headers = request.headers
-    get_handler = GetModelHandler(base_uri=get_lisa_serve_endpoint(), headers=headers)
+    get_handler = GetModelHandler(
+        base_uri=get_lisa_serve_endpoint(),
+        headers=headers,
+        verify=get_cert_path(iam_client),
+    )
     return get_handler(unique_id=unique_id)
 
 
@@ -197,7 +206,11 @@ async def delete_model(
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
     headers = request.headers
-    delete_handler = DeleteModelHandler(base_uri=get_lisa_serve_endpoint(), headers=headers)
+    delete_handler = DeleteModelHandler(
+        base_uri=get_lisa_serve_endpoint(),
+        headers=headers,
+        verify=get_cert_path(iam_client),
+    )
     return delete_handler(unique_id=unique_id)
 
 

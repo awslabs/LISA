@@ -98,6 +98,7 @@ export class ModelsApi extends Construct {
                 environment: {
                     LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
                     REST_API_VERSION: config.restApiConfig.apiVersion,
+                    RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
                 }
             },
             config.lambdaConfig.pythonRuntime,

@@ -18,7 +18,7 @@ import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { Effect, IRole, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -98,6 +98,7 @@ export class ModelsApi extends Construct {
                 environment: {
                     LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
                     REST_API_VERSION: config.restApiConfig.apiVersion,
+                    RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
                 }
             },
             config.lambdaConfig.pythonRuntime,
@@ -106,6 +107,19 @@ export class ModelsApi extends Construct {
             securityGroups,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
+
+        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+            const additionalPerms = new Policy(this, 'ModelsApiAdditionalPerms', {
+                statements: [
+                    new PolicyStatement({
+                        actions: ['iam:GetServerCertificate'],
+                        resources: [config.restApiConfig.loadBalancerConfig.sslCertIamArn],
+                        effect: Effect.ALLOW,
+                    })
+                ]
+            });
+            lambdaFunction.role!.attachInlinePolicy(additionalPerms);
+        }
 
         const apis: PythonLambdaFunction[] = [
             // create endpoint for /models without a trailing slash but reuse

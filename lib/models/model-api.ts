@@ -36,7 +36,10 @@ import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
+import { EcsModelImageRepository } from './ecs-model-image-repo';
 import { ECSModelDeployer } from './ecs-model-deployer';
+import { DockerImageBuilder } from './docker-image-builder';
+import { createCdkId } from '../core/utils';
 
 /**
  * Properties for ModelsApi Construct.
@@ -194,6 +197,10 @@ export class ModelsApi extends Construct {
             securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
             vpcId: vpc.vpc.vpcId,
             config: config
+        });
+
+        new DockerImageBuilder(this, 'docker-image-builder', {
+            ecrUri: ecsModelImages.repo.repositoryUri
         });
     }
 }

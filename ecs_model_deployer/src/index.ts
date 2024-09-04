@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { spawnSync, spawn } from 'child_process';
+import { spawnSync, spawn, ChildProcess } from 'child_process';
 import { readdirSync, symlinkSync, rmSync } from 'fs';
 
 const ACTION_DEPLOY = 'deploy';
@@ -44,6 +44,8 @@ const createWritableEnv = () => {
         } catch ( err ) {
             if ( err instanceof Error && err.message.match(/EEXIST/) ) {
                 // Writable env already established from previous call.
+            } else {
+                throw err;
             }
         }
     }
@@ -77,6 +79,7 @@ export const handler = async (event: any) => {
 
     const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out']);
 
+    let stdout = String(ret.output[1]);
     let stderr = String(ret.output[2]);
     if ( ret.status !== 0 ) {
         console.log(`cdk synth failed with stderr: ${stderr}`);
@@ -86,24 +89,33 @@ export const handler = async (event: any) => {
 
     const stackName = `${config.deploymentName}-${modelConfig.modelId}`;
     if ( event.action === ACTION_DEPLOY ) {
-        const deploy_promise: Promise<Number> = new Promise( (resolve) => {
+        const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
             const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
 
             cp.on('close', (code) => {
-                resolve(code ?? -1);
+                console.log(`cdk deploy exited early, code ${code}`);
+                resolve(cp);
+            });
+
+            cp.stdout.on('data', (data) => {
+                console.log(`Got data: ${data}`);
+            });
+
+            cp.stderr.on('data', (data) => {
+                console.log(`Got err data: ${data}`);
             });
 
             setTimeout(() => {
-                console.log('60 second timeout');
-                resolve(0);
-            }, 60 * 1000);
+                console.log('180 second timeout');
+                resolve(undefined);
+            }, 180 * 1000);
         });
 
-        const exitCode = await deploy_promise;
-        stderr = String(ret.output[2]);
-        if ( exitCode !== 0 ) {
-            console.log(`cdk deploy failed with stderr: ${stderr}`);
-            throw new Error('Stack failed to deploy');
+        const cp = await deploy_promise;
+        if ( cp ) {
+            if ( cp.exitCode !== 0 ) {
+                throw new Error('Stack failed to deploy');
+            }
         }
     } else if ( event.action === ACTION_DESTROY ) {
         const deploy_promise: Promise<Number> = new Promise( (resolve) => {
@@ -116,13 +128,14 @@ export const handler = async (event: any) => {
             setTimeout(() => {
                 console.log('60 second timeout');
                 resolve(0);
-            }, 60 * 1000);
+            }, 180 * 1000);
         });
 
         const exitCode = await deploy_promise;
+        stdout = String(ret.output[1]);
         stderr = String(ret.output[2]);
         if ( exitCode !== 0 ) {
-            console.log(`cdk destroy failed with stderr: ${stderr}`);
+            console.log(`cdk destroy failed with stdout: ${stdout}, stderr: ${stderr}`);
             throw new Error('Stack failed to destroy');
         }
     }

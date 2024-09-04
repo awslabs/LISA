@@ -16,7 +16,7 @@
 
 import { Construct } from 'constructs';
 import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { Role, ServicePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
+import { Role, ServicePrincipal, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration, Size } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
@@ -36,7 +36,16 @@ export class ECSModelDeployer extends Construct {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com')
         });
 
-        role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
+        const assumeCdkPolicy = new Policy(this, createCdkId([stackName, 'ecs-model-deployer-policy']), {
+            statements: [
+                new PolicyStatement({
+                    actions: ['sts:AssumeRole'],
+                    resources: ['arn:*:iam::*:role/cdk-*']
+                })
+            ]
+        });
+
+        role.attachInlinePolicy(assumeCdkPolicy);
 
         const stripped_config = {
             'appName': props.config.appName,

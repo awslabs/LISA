@@ -45,7 +45,7 @@ done
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ABS_MODEL_DIR=`realpath ${MODEL_DIR}`
 
-docker run \
+finch run \
   --rm \
   --entrypoint python \
   --network host \

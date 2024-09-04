@@ -24,6 +24,7 @@ import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
+import { ConnectionType, IAuthorizer, Integration, IntegrationType } from 'aws-cdk-lib/aws-apigateway';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -36,6 +37,9 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 2;
  * @property {SecurityGroup} securityGroups - The security groups of the application.
  */
 type FastApiContainerProps = {
+    authorizer: IAuthorizer;
+    restApiId: string;
+    rootResourceId: string;
     apiName: string;
     resourcePath: string;
     securityGroup: SecurityGroup;
@@ -82,17 +86,8 @@ export class FastApiContainer extends Construct {
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
             LITELLM_KEY: config.litellmConfig.general_settings.master_key,
+            USE_AUTH: 'false',
         };
-
-        if (config.restApiConfig.internetFacing) {
-            environment.USE_AUTH = 'true';
-            environment.AUTHORITY = config.authConfig!.authority;
-            environment.CLIENT_ID = config.authConfig!.clientId;
-            environment.ADMIN_GROUP = config.authConfig!.adminGroup;
-            environment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
-        } else {
-            environment.USE_AUTH = 'false';
-        }
 
         if (tokenTable) {
             environment.TOKEN_TABLE_NAME = tokenTable.tableName;
@@ -109,12 +104,33 @@ export class FastApiContainer extends Construct {
                 environment,
                 identifier: props.apiName,
                 instanceType: taskConfig.instanceType,
-                internetFacing: config.restApiConfig.internetFacing,
+                internetFacing: false,
                 loadBalancerConfig: taskConfig.loadBalancerConfig,
             },
             securityGroup,
             vpc,
         });
+
+        // const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
+        //     restApiId: props.restApiId,
+        //     rootResourceId: props.rootResourceId,
+        // });
+
+        // create private integration
+        const privateIntegration = new Integration({
+            type: IntegrationType.HTTP_PROXY,
+            integrationHttpMethod: 'ANY',
+            options: {
+                connectionType: ConnectionType.VPC_LINK,
+                vpcLink: undefined,
+            },
+            uri: `http://${apiCluster.endpointUrl}`,
+        });
+
+        privateIntegration.bind();
+
+
+        lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
         if (tokenTable) {
             tokenTable.grantReadData(apiCluster.taskRole);

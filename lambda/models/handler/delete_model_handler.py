@@ -23,7 +23,7 @@ class DeleteModelHandler(BaseApiHandler):
     """Handler class for DeleteModel requests."""
 
     def __call__(self, unique_id: str) -> DeleteModelResponse:  # type: ignore
-        """Delete model infrastructure and remove model reference from LiteLLM."""
+        """Kick off state machine to delete infrastructure and remove model reference from LiteLLM."""
         model = self._litellm_client.get_model(unique_id=unique_id)
         # TODO Use model definition to get CloudFormation stack to delete.
         self._litellm_client.delete_model(unique_id=unique_id)

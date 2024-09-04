@@ -17,13 +17,8 @@
 import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import {
-    Effect,
-    IRole,
-    Policy,
-    PolicyStatement
-} from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Effect, IRole, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -36,6 +31,9 @@ import { EcsModelImageRepository } from './ecs-model-image-repo';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
 import { createCdkId } from '../core/utils';
+import { DeleteModelStateMachine } from './state-machine/delete-model';
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { CreateModelStateMachine } from './state-machine/create-model';
 
 /**
  * Properties for ModelsApi Construct.
@@ -188,6 +186,7 @@ export class ModelsApi extends Construct {
                 securityGroups,
             );
         });
+
         const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
 
         new ECSModelDeployer(this, 'ecs-model-deployer', {
@@ -197,7 +196,95 @@ export class ModelsApi extends Construct {
         });
 
         new DockerImageBuilder(this, 'docker-image-builder', {
-            ecrUri: ecsModelImages.repo.repositoryUri
+            ecrUri: ecsModelImages.repo.repositoryUri,
         });
+
+        const modelTable = new Table(this, 'ModelTable', {
+            partitionKey: {
+                name: 'model_id',
+                type: AttributeType.STRING
+            },
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            encryption: TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+        });
+
+        const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            inlinePolicies: {
+                lambdaPermissions: new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'dynamodb:DeleteItem',
+                                'dynamodb:GetItem',
+                                'dynamodb:PutItem',
+                                'dynamodb:UpdateItem',
+                            ],
+                            resources: [
+                                modelTable.tableArn,
+                                `${modelTable.tableArn}/*`,
+                            ]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'cloudformation:CreateStack',
+                                'cloudformation:DeleteStack',
+                                'cloudformation:DescribeStacks',
+                            ],
+                            resources: [
+                                'arn:*:cloudformation:*:*:stack/*',
+                            ],
+                        }),
+                    ]
+                }),
+            }
+        });
+
+        const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
+            config: config,
+            modelTable: modelTable,
+            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+        });
+
+        const deleteModelStateMacheine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
+            config: config,
+            modelTable: modelTable,
+            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+        });
+
+        const workflowPermissions = new Policy(this, 'ModelsApiStateMachinePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'states:StartExecution',
+                    ],
+                    resources: [
+                        createModelStateMachine.stateMachineArn,
+                        deleteModelStateMacheine.stateMachineArn,
+                    ],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:GetItem',
+                    ],
+                    resources: [
+                        modelTable.tableArn,
+                        `${modelTable.tableArn}/*`
+                    ],
+                }),
+            ]
+        });
+        lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
     }
 }

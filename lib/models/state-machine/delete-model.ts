@@ -24,14 +24,13 @@ import {
     StateMachine,
     Succeed,
     Wait,
-    WaitTime,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { Duration } from 'aws-cdk-lib';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { BaseProps } from '../../schema';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -60,8 +59,8 @@ export class DeleteModelStateMachine extends Construct {
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
                 code: Code.fromAsset(config.lambdaSourcePath),
-                timeout: Duration.seconds(60),
-                memorySize: 128,
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
                 role: role,
                 vpc: vpc,
                 securityGroups: securityGroups,
@@ -70,7 +69,7 @@ export class DeleteModelStateMachine extends Construct {
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
-            outputPath: '$.Payload',
+            outputPath: OUTPUT_PATH,
         });
 
         const deleteFromLitellm = new LambdaInvoke(this, 'DeleteFromLitellm', {
@@ -78,8 +77,8 @@ export class DeleteModelStateMachine extends Construct {
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
                 code: Code.fromAsset(config.lambdaSourcePath),
-                timeout: Duration.seconds(60),
-                memorySize: 128,
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
                 role: role,
                 vpc: vpc,
                 securityGroups: securityGroups,
@@ -88,7 +87,7 @@ export class DeleteModelStateMachine extends Construct {
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
-            outputPath: '$.Payload',
+            outputPath: OUTPUT_PATH,
         });
 
         const deleteStack = new LambdaInvoke(this, 'DeleteStack', {
@@ -96,8 +95,8 @@ export class DeleteModelStateMachine extends Construct {
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
-                timeout: Duration.seconds(60),
-                memorySize: 128,
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
                 role: role,
                 vpc: vpc,
                 securityGroups: securityGroups,
@@ -106,7 +105,7 @@ export class DeleteModelStateMachine extends Construct {
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
-            outputPath: '$.Payload',
+            outputPath: OUTPUT_PATH,
         });
 
         const monitorDeleteStack = new LambdaInvoke(this, 'MonitorDeleteStack', {
@@ -114,8 +113,8 @@ export class DeleteModelStateMachine extends Construct {
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
-                timeout: Duration.seconds(60),
-                memorySize: 128,
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
                 role: role,
                 vpc: vpc,
                 securityGroups: securityGroups,
@@ -124,7 +123,7 @@ export class DeleteModelStateMachine extends Construct {
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
-            outputPath: '$.Payload',
+            outputPath: OUTPUT_PATH,
         });
 
         const deleteFromDdb = new LambdaInvoke(this, 'DeleteFromDdb', {
@@ -132,8 +131,8 @@ export class DeleteModelStateMachine extends Construct {
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
                 code: Code.fromAsset(config.lambdaSourcePath),
-                timeout: Duration.seconds(60),
-                memorySize: 128,
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
                 role: role,
                 vpc: vpc,
                 securityGroups: securityGroups,
@@ -142,7 +141,7 @@ export class DeleteModelStateMachine extends Construct {
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
-            outputPath: '$.Payload',
+            outputPath: OUTPUT_PATH,
         });
 
         const successState = new Succeed(this, 'DeleteSuccess');
@@ -150,7 +149,7 @@ export class DeleteModelStateMachine extends Construct {
         const deleteStackChoice = new Choice(this, 'DeleteStackChoice');
         const pollDeleteStackChoice = new Choice(this, 'PollDeleteStackChoice');
         const waitBeforePollingStackStatus = new Wait(this, 'WaitBeforePollDeleteStack', {
-            time: WaitTime.duration(Duration.seconds(60)),
+            time: POLLING_TIMEOUT,
         });
 
         // State Machine definition

@@ -14,18 +14,26 @@
  limitations under the License.
  */
 
+import {
+    Choice,
+    Condition,
+    DefinitionBody,
+    StateMachine,
+    Succeed,
+    Wait,
+} from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
+import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 
-
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
-    lambdaLayers: ILayerVersion[],
+    lambdaLayers: ILayerVersion[];
     role?: IRole,
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];

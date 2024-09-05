@@ -16,6 +16,12 @@
 
 
 class ModelNotFoundError(LookupError):
-    """Error to raise when a specified model cannot be found in LiteLLM."""
+    """Error to raise when a specified model cannot be found in the database."""
+
+    pass
+
+
+class ModelAlreadyExistsError(LookupError):
+    """Error to raise when a specified model already exists in the database."""
 
     pass

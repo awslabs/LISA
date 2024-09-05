@@ -20,12 +20,8 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import {
     Effect,
     IRole,
-    ManagedPolicy,
     Policy,
-    PolicyDocument,
-    PolicyStatement,
-    Role,
-    ServicePrincipal,
+    PolicyStatement
 } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -192,6 +188,7 @@ export class ModelsApi extends Construct {
                 securityGroups,
             );
         });
+        const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
 
         new ECSModelDeployer(this, 'ecs-model-deployer', {
             securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,

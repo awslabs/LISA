@@ -13,23 +13,24 @@
 #   limitations under the License.
 
 import os
+import shlex
 import uuid
 from typing import Any, Dict
-import shlex
 
 import boto3
 from botocore.exceptions import ClientError
 
 user_data_template = """#! /bin/bash -ex
 
+export AWS_REGION={{AWS_REGION}}
 (r=5;while ! yum install -y docker ; do ((--r))||exit;sleep 60;done)
 systemctl start docker
 mkdir /home/ec2-user/docker_resources
-aws s3 sync s3://{{BUCKET_NAME}} /home/ec2-user/docker_resources
+aws --region ${AWS_REGION} s3 sync s3://{{BUCKET_NAME}} /home/ec2-user/docker_resources
 cd /home/ec2-user/docker_resources/{{LAYER_TO_ADD}}
 docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} .
 docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}}
-aws ecr get-login-password | docker login --username AWS --password-stdin {{ECR_URI}}
+aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin {{ECR_URI}}
 docker push {{ECR_URI}}:{{IMAGE_ID}}
 """
 
@@ -39,9 +40,14 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     layer_to_add = event["layer_to_add"]
     mounts3_deb_url = event["mounts3_deb_url"]
 
-    ec2_resource = boto3.resource("ec2", region_name="us-east-1")
+    ec2_resource = boto3.resource("ec2", region_name=os.environ["AWS_REGION"])
+    ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
+
+    response = ssm_client.get_parameter(Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2")
+    ami_id = response["Parameter"]["Value"]
 
     rendered_userdata = user_data_template
+    rendered_userdata = rendered_userdata.replace("{{AWS_REGION}}", shlex.quote(os.environ["AWS_REGION"]))
     rendered_userdata = rendered_userdata.replace("{{BUCKET_NAME}}", shlex.quote(os.environ["LISA_DOCKER_BUCKET"]))
     rendered_userdata = rendered_userdata.replace("{{LAYER_TO_ADD}}", shlex.quote(layer_to_add))
     rendered_userdata = rendered_userdata.replace("{{BASE_IMAGE}}", shlex.quote(base_image))
@@ -53,10 +59,10 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     print(rendered_userdata)
     try:
         ec2_resource.create_instances(
-            ImageId="ami-066784287e358dad1",
+            ImageId=ami_id,
             MinCount=1,
             MaxCount=1,
-            InstanceType="t2.medium",
+            InstanceType="m5.large",
             UserData=rendered_userdata,
             IamInstanceProfile={"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
             BlockDeviceMappings=[{"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 32}}],

@@ -86,6 +86,10 @@ export class DockerImageBuilder extends Construct {
                 new PolicyStatement({
                     actions: ['iam:PassRole'],
                     resources: [ec2InstanceProfileRole.roleArn]
+                }),
+                new PolicyStatement({
+                    actions: ['ssm:GetParameter'],
+                    resources: ['arn:*:ssm:*::parameter/aws/service/*']
                 })
             ]
         });

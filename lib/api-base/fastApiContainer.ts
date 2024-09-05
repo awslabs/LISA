@@ -24,8 +24,15 @@ import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
-import { ConnectionType, Cors, IAuthorizer, Integration, IntegrationType, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import { VpcLink } from 'aws-cdk-lib/aws-apigatewayv2';
+import {
+    ConnectionType,
+    Cors,
+    IAuthorizer,
+    Integration,
+    IntegrationType,
+    RestApi,
+    VpcLink
+} from 'aws-cdk-lib/aws-apigateway';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -110,6 +117,11 @@ export class FastApiContainer extends Construct {
             },
             securityGroup,
             vpc,
+            addNlb: true
+        });
+
+        const nlbVpcLink = new VpcLink(this, 'nlb-vpc-link', {
+            targets: [apiCluster.nlb]
         });
 
         // get the rest api
@@ -119,15 +131,10 @@ export class FastApiContainer extends Construct {
         });
 
         // create the resource
-        const resource = restApi.root.addResource('serve');
+        const resource = restApi.root.addResource('{serve+}');
         resource.addCorsPreflight({
             allowOrigins: Cors.ALL_ORIGINS,
             allowHeaders: Cors.DEFAULT_HEADERS,
-        });
-
-        const vpcLink = new VpcLink(this, 'alb-vpclink', {
-            vpc: props.vpc,
-            securityGroups: [securityGroup],
         });
 
         const integration = new Integration({
@@ -135,16 +142,19 @@ export class FastApiContainer extends Construct {
             integrationHttpMethod: 'ANY',
             options: {
                 connectionType: ConnectionType.VPC_LINK,
-                vpcLink: vpcLink,
+                vpcLink: nlbVpcLink,
             },
-            uri: `http://${apiCluster.endpointUrl}`,
+            uri: `${apiCluster.endpointUrl}`,
         });
 
-        resource.addMethod('ANY', integration);
+        resource.addMethod('ANY', integration, {
+            authorizer: props.authorizer,
+        });
 
         if (tokenTable) {
             tokenTable.grantReadData(apiCluster.taskRole);
         }
+
         this.endpoint = apiCluster.endpointUrl;
 
         // Update

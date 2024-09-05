@@ -15,6 +15,7 @@
 import os
 import uuid
 from typing import Any, Dict
+import shlex
 
 import boto3
 from botocore.exceptions import ClientError
@@ -41,11 +42,11 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     ec2_resource = boto3.resource("ec2", region_name="us-east-1")
 
     rendered_userdata = user_data_template
-    rendered_userdata = rendered_userdata.replace("{{BUCKET_NAME}}", os.environ["LISA_DOCKER_BUCKET"])
-    rendered_userdata = rendered_userdata.replace("{{LAYER_TO_ADD}}", layer_to_add)
-    rendered_userdata = rendered_userdata.replace("{{BASE_IMAGE}}", base_image)
-    rendered_userdata = rendered_userdata.replace("{{MOUNTS3_DEB_URL}}", mounts3_deb_url)
-    rendered_userdata = rendered_userdata.replace("{{ECR_URI}}", os.environ["LISA_ECR_URI"])
+    rendered_userdata = rendered_userdata.replace("{{BUCKET_NAME}}", shlex.quote(os.environ["LISA_DOCKER_BUCKET"]))
+    rendered_userdata = rendered_userdata.replace("{{LAYER_TO_ADD}}", shlex.quote(layer_to_add))
+    rendered_userdata = rendered_userdata.replace("{{BASE_IMAGE}}", shlex.quote(base_image))
+    rendered_userdata = rendered_userdata.replace("{{MOUNTS3_DEB_URL}}", shlex.quote(mounts3_deb_url))
+    rendered_userdata = rendered_userdata.replace("{{ECR_URI}}", shlex.quote(os.environ["LISA_ECR_URI"]))
     rendered_userdata = rendered_userdata.replace("{{IMAGE_ID}}", str(uuid.uuid4()))
 
     print("Creating instance with userdata: ")

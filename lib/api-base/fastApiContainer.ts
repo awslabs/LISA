@@ -130,25 +130,33 @@ export class FastApiContainer extends Construct {
             rootResourceId: props.rootResourceId,
         });
 
-        // create the resource
-        const resource = restApi.root.addResource('serve').addResource('{proxy+}');
-        resource.addCorsPreflight({
-            allowOrigins: Cors.ALL_ORIGINS,
-            allowHeaders: Cors.DEFAULT_HEADERS,
-        });
-
         const integration = new Integration({
             type: IntegrationType.HTTP_PROXY,
             integrationHttpMethod: 'ANY',
             options: {
                 connectionType: ConnectionType.VPC_LINK,
                 vpcLink: nlbVpcLink,
+                requestParameters: {
+                    'integration.request.path.proxy': 'method.request.path.proxy'
+                },
             },
-            uri: `${apiCluster.endpointUrl}`,
+            uri: `${apiCluster.endpointUrl}/{proxy}`,
         });
 
-        resource.addMethod('ANY', integration, {
-            authorizer: props.authorizer,
+        // create the proxy
+        restApi.root.addResource('serve').addProxy({
+            defaultIntegration: integration,
+            defaultCorsPreflightOptions: {
+                allowOrigins: Cors.ALL_ORIGINS,
+                allowHeaders: Cors.DEFAULT_HEADERS,
+            },
+            anyMethod: true,
+            defaultMethodOptions: {
+                authorizer: props.authorizer,
+                requestParameters: {
+                    'method.request.path.proxy': true
+                }
+            }
         });
 
         if (tokenTable) {

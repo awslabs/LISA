@@ -33,6 +33,7 @@ import {
     RestApi,
     VpcLink
 } from 'aws-cdk-lib/aws-apigateway';
+import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -68,6 +69,8 @@ export class FastApiContainer extends Construct {
 
     /** FastAPI URL **/
     public readonly endpoint: string;
+
+    public readonly alb: ApplicationLoadBalancer;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -119,6 +122,8 @@ export class FastApiContainer extends Construct {
             vpc,
             addNlb: true
         });
+
+        this.alb = apiCluster.alb;
 
         const nlbVpcLink = new VpcLink(this, 'nlb-vpc-link', {
             targets: [apiCluster.nlb]

@@ -26,7 +26,6 @@ import { createCdkId } from '../../../lib/core/utils';
 import { LisaNetworkingStack } from '../../../lib/networking/index';
 import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 import { LisaServeApplicationStack } from '../../../lib/serve';
-import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { LisaApiBaseStack } from '../../../lib/core/api_base';
 
 const regions = ['us-east-1', 'us-gov-west-1', 'us-gov-east-1', 'us-isob-east-1', 'us-iso-east-1', 'us-iso-west-1'];

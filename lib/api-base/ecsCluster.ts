@@ -273,7 +273,7 @@ export class ECSCluster extends Construct {
         this.alb = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: ecsConfig.internetFacing,
-            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'ALB'], 32, 2),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc,
@@ -284,7 +284,7 @@ export class ECSCluster extends Construct {
                 deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
                 crossZoneEnabled: true,
                 internetFacing: ecsConfig.internetFacing,
-                loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+                loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'NLB'], 32, 2),
                 securityGroups: [securityGroup],
                 vpc,
             });
@@ -294,7 +294,10 @@ export class ECSCluster extends Construct {
             const albTargetGroup = new NetworkTargetGroup(this, 'ALB-Target-Group', {
                 port: 80,
                 vpc: vpc,
-                targets: [new AlbTarget(this.alb, 80)]
+                targets: [new AlbTarget(this.alb, 80)],
+                healthCheck: {
+                    path: '/health'
+                }
             });
 
             nlbListener.addTargetGroups('ALB-Target-Group', albTargetGroup);

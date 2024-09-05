@@ -144,12 +144,8 @@ export class FastApiContainer extends Construct {
         });
 
         // create the proxy
-        restApi.root.addResource('serve').addProxy({
+        const resource = restApi.root.addResource('serve').addProxy({
             defaultIntegration: integration,
-            defaultCorsPreflightOptions: {
-                allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: Cors.DEFAULT_HEADERS,
-            },
             anyMethod: true,
             defaultMethodOptions: {
                 authorizer: props.authorizer,
@@ -157,6 +153,11 @@ export class FastApiContainer extends Construct {
                     'method.request.path.proxy': true
                 }
             }
+        });
+
+        resource.addCorsPreflight({
+            allowOrigins: Cors.ALL_ORIGINS,
+            allowHeaders: Cors.DEFAULT_HEADERS,
         });
 
         if (tokenTable) {

@@ -35,7 +35,7 @@ docker push {{ECR_URI}}:{{IMAGE_ID}}
 """
 
 
-def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [no-untyped-def]
+def handler(event: Dict[str, Any], context) -> None:  # type: ignore [no-untyped-def]
     base_image = event["base_image"]
     layer_to_add = event["layer_to_add"]
     mounts3_deb_url = event["mounts3_deb_url"]

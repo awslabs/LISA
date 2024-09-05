@@ -17,13 +17,17 @@
 import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
     Effect,
     IRole,
+    ManagedPolicy,
     Policy,
-    PolicyStatement
+    PolicyDocument,
+    PolicyStatement,
+    Role,
+    ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -36,6 +40,9 @@ import { EcsModelImageRepository } from './ecs-model-image-repo';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
 import { createCdkId } from '../core/utils';
+import { DeleteModelStateMachine } from './state-machine/delete-model';
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { CreateModelStateMachine } from './state-machine/create-model';
 
 /**
  * Properties for ModelsApi Construct.
@@ -93,6 +100,71 @@ export class ModelsApi extends Construct {
                 .toString('hex')
                 .slice(0, size);
 
+        const modelTable = new Table(this, 'ModelTable', {
+            partitionKey: {
+                name: 'model_id',
+                type: AttributeType.STRING
+            },
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            encryption: TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+        });
+
+        const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
+            inlinePolicies: {
+                lambdaPermissions: new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'dynamodb:DeleteItem',
+                                'dynamodb:GetItem',
+                                'dynamodb:PutItem',
+                                'dynamodb:UpdateItem',
+                            ],
+                            resources: [
+                                modelTable.tableArn,
+                                `${modelTable.tableArn}/*`,
+                            ]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'cloudformation:CreateStack',
+                                'cloudformation:DeleteStack',
+                                'cloudformation:DescribeStacks',
+                            ],
+                            resources: [
+                                'arn:*:cloudformation:*:*:stack/*',
+                            ],
+                        }),
+                    ]
+                }),
+            }
+        });
+
+        const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
+            config: config,
+            modelTable: modelTable,
+            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+        });
+
+        const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
+            config: config,
+            modelTable: modelTable,
+            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+        });
+
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
@@ -110,6 +182,9 @@ export class ModelsApi extends Construct {
                     LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
                     REST_API_VERSION: config.restApiConfig.apiVersion,
                     RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+                    CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
+                    DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
+                    MODEL_TABLE_NAME: modelTable.tableName,
                 }
             },
             config.lambdaConfig.pythonRuntime,
@@ -188,6 +263,7 @@ export class ModelsApi extends Construct {
                 securityGroups,
             );
         });
+
         const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
 
         new ECSModelDeployer(this, 'ecs-model-deployer', {
@@ -197,7 +273,33 @@ export class ModelsApi extends Construct {
         });
 
         new DockerImageBuilder(this, 'docker-image-builder', {
-            ecrUri: ecsModelImages.repo.repositoryUri
+            ecrUri: ecsModelImages.repo.repositoryUri,
         });
+
+        const workflowPermissions = new Policy(this, 'ModelsApiStateMachinePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'states:StartExecution',
+                    ],
+                    resources: [
+                        createModelStateMachine.stateMachineArn,
+                        deleteModelStateMachine.stateMachineArn,
+                    ],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:GetItem',
+                    ],
+                    resources: [
+                        modelTable.tableArn,
+                        `${modelTable.tableArn}/*`
+                    ],
+                }),
+            ]
+        });
+        lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
     }
 }

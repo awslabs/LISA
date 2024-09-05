@@ -48,8 +48,8 @@ from .domain_objects import (
     UpdateModelRequest,
     UpdateModelResponse,
 )
-from .exception import ModelNotFoundError
-from .handler import DeleteModelHandler, GetModelHandler, ListModelsHandler
+from .exception import ModelAlreadyExistsError, ModelNotFoundError
+from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler
 
 app = FastAPI(redirect_slashes=False, lifespan="off")
 app.add_middleware(AWSAPIGatewayMiddleware)
@@ -80,14 +80,23 @@ async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> 
     return JSONResponse(status_code=404, content={"message": str(exc)})
 
 
+@app.exception_handler(ModelAlreadyExistsError)  # type: ignore
+async def model_already_exists_handler(request: Request, exc: ModelAlreadyExistsError) -> JSONResponse:
+    """Handle exception when model is found and translate to a 400 error."""
+    return JSONResponse(status_code=400, content={"message": str(exc)})
+
+
 @app.post(path="", include_in_schema=False)  # type: ignore
 @app.post(path="/")  # type: ignore
-async def create_model(create_request: CreateModelRequest) -> CreateModelResponse:
+async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
-    # TODO add service to create model
-    return CreateModelResponse(
-        Model=_create_dummy_model(create_request.ModelName, ModelType.TEXTGEN, ModelStatus.CREATING)
+    headers = request.headers
+    create_handler = CreateModelHandler(
+        base_uri=get_lisa_serve_endpoint(),
+        headers=headers,
+        verify=get_cert_path(iam_client),
     )
+    return create_handler(create_request=create_request)
 
 
 @app.get(path="", include_in_schema=False)  # type: ignore

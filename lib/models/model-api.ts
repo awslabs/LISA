@@ -18,7 +18,16 @@ import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Effect, IRole, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import {
+    Effect,
+    IRole,
+    ManagedPolicy,
+    Policy,
+    PolicyDocument,
+    PolicyStatement,
+    Role,
+    ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -211,6 +220,9 @@ export class ModelsApi extends Construct {
 
         const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
             inlinePolicies: {
                 lambdaPermissions: new PolicyDocument({
                     statements: [

@@ -190,7 +190,7 @@ export class UserInterfaceStack extends Stack {
             //     createCdkId(['LisaRestApiUri', 'StringParameter']),
             //     `${config.deploymentPrefix}/lisaServeRestApiUri`,
             // ).stringValue,
-            RESTAPI_ID: config.apiGatewayConfig?.domainName ? '/serve' : `/${config.deploymentStage}/serve`,
+            RESTAPI_ID: config.apiGatewayConfig?.domainName ? '/llm' : `/${config.deploymentStage}/llm`,
             RESTAPI_VERSION: config.restApiConfig.apiVersion,
             RAG_ENABLED: config.deployRag,
             SYSTEM_BANNER: {

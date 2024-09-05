@@ -144,7 +144,7 @@ export class FastApiContainer extends Construct {
         });
 
         // create the proxy
-        const resource = restApi.root.addResource('serve').addProxy({
+        const resource = restApi.root.addResource('llm').addProxy({
             defaultIntegration: integration,
             anyMethod: true,
             defaultMethodOptions: {

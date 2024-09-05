@@ -14,14 +14,15 @@
 
 """Handler for CreateModel requests."""
 
-import boto3
 import os
+
+import boto3
+from models.exception import ModelAlreadyExistsError
+from utilities.common_functions import retry_config
 
 from ..domain_objects import CreateModelRequest, CreateModelResponse, ModelStatus
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
-from utilities.common_functions import retry_config
-from models.exception import ModelAlreadyExistsError
 
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)

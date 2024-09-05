@@ -3,7 +3,7 @@
 	createTypeScriptEnvironment installTypeScriptRequirements \
 	deploy destroy \
 	clean cleanTypeScript cleanPython cleanCfn cleanMisc \
-	help dockerCheck dockerLogin listStacks modelCheck
+	help dockerCheck dockerLogin listStacks modelCheck buildEcsDeployer
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -236,8 +236,11 @@ endif
 listStacks:
 	@npx cdk list
 
+buildEcsDeployer:
+	@cd ./ecs_model_deployer && npm run build >& /dev/null
+
 ## Deploy all infrastructure
-deploy: dockerCheck dockerLogin cleanMisc modelCheck
+deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
 ifdef PROFILE
 	@printf "\n \
 	DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \

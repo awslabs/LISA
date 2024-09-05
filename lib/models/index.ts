@@ -17,9 +17,10 @@
 // LisaModelsApi Stack.
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
+import { Vpc } from '../networking/vpc';
 import { ModelsApi } from './model-api';
 import { BaseProps } from '../schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -31,7 +32,7 @@ type LisaModelsApiStackProps = BaseProps &
       restApiId: string;
       rootResourceId: string;
       securityGroups?: ISecurityGroup[];
-      vpc?: IVpc;
+      vpc: Vpc;
   };
 
 /**

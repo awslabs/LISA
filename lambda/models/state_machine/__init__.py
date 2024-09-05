@@ -11,17 +11,3 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
-"""Exception definitions for model management APIs."""
-
-
-class ModelNotFoundError(LookupError):
-    """Error to raise when a specified model cannot be found in the database."""
-
-    pass
-
-
-class ModelAlreadyExistsError(LookupError):
-    """Error to raise when a specified model already exists in the database."""
-
-    pass

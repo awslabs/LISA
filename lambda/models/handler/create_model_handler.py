@@ -12,16 +12,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Handler for DeleteModel requests."""
+"""Handler for CreateModel requests."""
 
-import json
 import os
 
 import boto3
-from models.exception import ModelNotFoundError
+from models.exception import ModelAlreadyExistsError
 from utilities.common_functions import retry_config
 
-from ..domain_objects import DeleteModelResponse, ModelStatus
+from ..domain_objects import CreateModelRequest, CreateModelResponse, ModelStatus
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
 
@@ -30,20 +29,23 @@ dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], conf
 model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
 
 
-class DeleteModelHandler(BaseApiHandler):
-    """Handler class for DeleteModel requests."""
+class CreateModelHandler(BaseApiHandler):
+    """Handler class for CreateModel requests."""
 
-    def __call__(self, unique_id: str) -> DeleteModelResponse:  # type: ignore
-        """Kick off state machine to delete infrastructure and remove model reference from LiteLLM."""
+    def __call__(self, create_request: CreateModelRequest) -> CreateModelResponse:  # type: ignore
+        """Create model infrastructure and add model data to LiteLLM database."""
+        unique_id = create_request.ModelId
+
+        # If model exists in DDB, then fail out. ModelId must be unique.
         table_item = model_table.get_item(Key={"model_id": unique_id}).get("Item", None)
-        if not table_item:
-            raise ModelNotFoundError(f"Model '{unique_id}' was not found")
+        if table_item:
+            raise ModelAlreadyExistsError(f"Model '{unique_id}' already exists. Please select another name.")
 
         stepfunctions.start_execution(
-            stateMachineArn=os.environ["DELETE_SFN_ARN"], input=json.dumps({"model_id": unique_id})
+            stateMachineArn=os.environ["CREATE_SFN_ARN"], input=create_request.model_dump_json()
         )
 
-        # Placeholder info until all model info is properly stored in DDB
+        # Placeholder data until model data is persisted in database via state machine workflow
         lisa_model = to_lisa_model(
             {
                 "model_name": unique_id,
@@ -52,9 +54,8 @@ class DeleteModelHandler(BaseApiHandler):
                 },
                 "model_info": {
                     "id": unique_id,
-                    "model_status": ModelStatus.DELETING,
+                    "model_status": ModelStatus.CREATING,
                 },
             }
         )
-
-        return DeleteModelResponse(Model=lisa_model)
+        return CreateModelResponse(Model=lisa_model)

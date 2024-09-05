@@ -131,7 +131,7 @@ export class FastApiContainer extends Construct {
         });
 
         // create the resource
-        const resource = restApi.root.addResource('{serve+}');
+        const resource = restApi.root.addResource('serve').addResource('{proxy+}');
         resource.addCorsPreflight({
             allowOrigins: Cors.ALL_ORIGINS,
             allowHeaders: Cors.DEFAULT_HEADERS,

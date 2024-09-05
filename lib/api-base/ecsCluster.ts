@@ -12,13 +12,13 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
@@ -39,16 +39,17 @@ import {
 } from 'aws-cdk-lib/aws-ecs';
 import {
     ApplicationLoadBalancer,
+    ApplicationProtocol,
     BaseApplicationListenerProps,
-    NetworkLoadBalancer, NetworkTargetGroup
+    NetworkLoadBalancer,
+    NetworkTargetGroup
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
-import { ECSConfig } from '../schema';
+import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { AlbTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 
 /**
@@ -303,6 +304,7 @@ export class ECSCluster extends Construct {
         const listenerProps: BaseApplicationListenerProps = {
             port: 80,
             open: ecsConfig.internetFacing,
+            protocol: ApplicationProtocol.HTTP
         };
 
         const listener = this.alb.addListener(

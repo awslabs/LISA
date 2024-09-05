@@ -128,16 +128,6 @@ export class LisaServeApplicationStage extends Stage {
         });
         stacks.push(coreStack);
 
-        const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
-            ...baseStackProps,
-            description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
-            stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
-            vpc: networkingStack.vpc,
-        });
-        stacks.push(serveStack);
-
-        serveStack.addDependency(iamStack);
-
         const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
@@ -146,6 +136,20 @@ export class LisaServeApplicationStage extends Stage {
         });
         apiBaseStack.addDependency(coreStack);
         stacks.push(apiBaseStack);
+
+        const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
+            ...baseStackProps,
+            authorizer: apiBaseStack.authorizer,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
+            stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
+            vpc: networkingStack.vpc,
+        });
+        stacks.push(serveStack);
+
+        serveStack.addDependency(iamStack);
+        serveStack.addDependency(apiBaseStack);
 
         const apiDeploymentStack = new LisaApiDeploymentStack(this, 'LisaApiDeployment', {
             ...baseStackProps,

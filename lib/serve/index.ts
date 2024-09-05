@@ -28,11 +28,15 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
+import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 
 const HERE = path.resolve(__dirname);
 
 type CustomLisaStackProps = {
     vpc: Vpc;
+    authorizer: IAuthorizer;
+    restApiId: string;
+    rootResourceId: string;
 } & BaseProps;
 type LisaStackProps = CustomLisaStackProps & StackProps;
 
@@ -73,6 +77,9 @@ export class LisaServeApplicationStack extends Stack {
 
         // Create REST API
         const restApi = new FastApiContainer(this, 'RestApi', {
+            authorizer: props.authorizer,
+            restApiId: props.restApiId,
+            rootResourceId: props.rootResourceId,
             apiName: 'REST',
             config: config,
             resourcePath: path.join(HERE, 'rest-api'),

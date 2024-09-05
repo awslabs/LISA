@@ -70,8 +70,6 @@ export class FastApiContainer extends Construct {
     /** FastAPI URL **/
     public readonly endpoint: string;
 
-    public readonly alb: ApplicationLoadBalancer;
-
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -122,8 +120,6 @@ export class FastApiContainer extends Construct {
             vpc,
             addNlb: true
         });
-
-        this.alb = apiCluster.alb;
 
         const nlbVpcLink = new VpcLink(this, 'nlb-vpc-link', {
             targets: [apiCluster.nlb]

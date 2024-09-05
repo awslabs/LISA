@@ -33,7 +33,6 @@ import {
     RestApi,
     VpcLink
 } from 'aws-cdk-lib/aws-apigateway';
-import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment

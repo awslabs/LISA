@@ -110,6 +110,19 @@ export class ModelsApi extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
+        const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
+
+        new ECSModelDeployer(this, 'ecs-model-deployer', {
+            securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
+            vpcId: vpc.vpc.vpcId,
+            config: config
+        });
+
+        const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
+            ecrUri: ecsModelImages.repo.repositoryUri,
+            mountS3DebUrl: config.mountS3DebUrl!
+        });
+
         const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -142,6 +155,32 @@ export class ModelsApi extends Construct {
                                 'arn:*:cloudformation:*:*:stack/*',
                             ],
                         }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'lambda:InvokeFunction'
+                            ],
+                            resources: [
+                                dockerImageBuilder.dockerImageBuilderFn.functionArn
+                            ]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ecr:DescribeImages'
+                            ],
+                            resources: ['*']
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ec2:TerminateInstances'
+                            ],
+                            resources: ['*'],
+                            conditions: {
+                                'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
+                            }
+                        })
                     ]
                 }),
             }
@@ -154,6 +193,8 @@ export class ModelsApi extends Construct {
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
+            dockerImageBuilderFnArn: dockerImageBuilder.dockerImageBuilderFn.functionArn,
+            ecsModelImageRepositoryName: ecsModelImages.repo.repositoryName
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
@@ -262,18 +303,6 @@ export class ModelsApi extends Construct {
                 vpc.vpc,
                 securityGroups,
             );
-        });
-
-        const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
-
-        new ECSModelDeployer(this, 'ecs-model-deployer', {
-            securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
-            vpcId: vpc.vpc.vpcId,
-            config: config
-        });
-
-        new DockerImageBuilder(this, 'docker-image-builder', {
-            ecrUri: ecsModelImages.repo.repositoryUri,
         });
 
         const workflowPermissions = new Policy(this, 'ModelsApiStateMachinePerms', {

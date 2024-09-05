@@ -24,7 +24,8 @@ import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
-import { ConnectionType, IAuthorizer, Integration, IntegrationType } from 'aws-cdk-lib/aws-apigateway';
+import { ConnectionType, Cors, IAuthorizer, Integration, IntegrationType, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { VpcLink } from 'aws-cdk-lib/aws-apigatewayv2';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -111,26 +112,35 @@ export class FastApiContainer extends Construct {
             vpc,
         });
 
-        // const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
-        //     restApiId: props.restApiId,
-        //     rootResourceId: props.rootResourceId,
-        // });
+        // get the rest api
+        const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
+            restApiId: props.restApiId,
+            rootResourceId: props.rootResourceId,
+        });
 
-        // create private integration
-        const privateIntegration = new Integration({
+        // create the resource
+        const resource = restApi.root.addResource('serve');
+        resource.addCorsPreflight({
+            allowOrigins: Cors.ALL_ORIGINS,
+            allowHeaders: Cors.DEFAULT_HEADERS,
+        });
+
+        const vpcLink = new VpcLink(this, 'alb-vpclink', {
+            vpc: props.vpc,
+            securityGroups: [securityGroup],
+        });
+
+        const integration = new Integration({
             type: IntegrationType.HTTP_PROXY,
             integrationHttpMethod: 'ANY',
             options: {
                 connectionType: ConnectionType.VPC_LINK,
-                vpcLink: undefined,
+                vpcLink: vpcLink,
             },
             uri: `http://${apiCluster.endpointUrl}`,
         });
 
-        privateIntegration.bind();
-
-
-        lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
+        resource.addMethod('ANY', integration);
 
         if (tokenTable) {
             tokenTable.grantReadData(apiCluster.taskRole);

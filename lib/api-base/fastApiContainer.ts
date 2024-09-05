@@ -157,7 +157,7 @@ export class FastApiContainer extends Construct {
 
         resource.addCorsPreflight({
             allowOrigins: Cors.ALL_ORIGINS,
-            allowHeaders: Cors.DEFAULT_HEADERS,
+            allowHeaders: ['*'],
         });
 
         if (tokenTable) {

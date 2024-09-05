@@ -63,7 +63,7 @@ export class Layer extends Construct {
         } else {
             const outputDirectory = '/asset-output/python';
             const args = [`mkdir -p ${outputDirectory} && cp -R . ${outputDirectory}`];
-            args.push(`&& pip install -r requirements.txt --platform manylinux2014_x86_64 --only-binary=:all: -t ${outputDirectory}`);
+            args.push(`&& pip install -r requirements.txt -t ${outputDirectory}`);
             if (config.region.includes('iso')) {
                 args.push(`-i ${config.pypiConfig.indexUrl} --trusted-host ${config.pypiConfig.trustedHost}`);
             }

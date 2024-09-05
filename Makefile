@@ -146,7 +146,7 @@ installTypeScriptRequirements:
 
 ## Make sure Docker is running
 dockerCheck:
-	@cmd_output=$$(finch ps); \
+	@cmd_output=$$(docker ps); \
 	if \
 		[ $$? != 0 ]; \
 		then \
@@ -225,11 +225,11 @@ cleanMisc:
 dockerLogin: dockerCheck
 ifdef PROFILE
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | finch login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | docker login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
 	)
 else
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} | finch login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
 	)
 endif
 

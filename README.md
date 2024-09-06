@@ -330,8 +330,8 @@ pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.
 The LISA API Gateway can be used for programmatic access outside the example Chat application.
 An example use case would be for allowing LISA to serve LLM requests that originate from the [Continue VSCode Plugin](https://www.continue.dev/).
 To facilitate communication directly with the LISA API Gateway, a user with sufficient DynamoDB PutItem permissions may add
-API keys to the APITokenTable, and once created, a user may make requests by including the `Authorization: Bearer ${token}`
-header or the `Api-Key: ${token}` header with that token. If using any OpenAI-compatible library, the `api_key` fields
+API keys to the APITokenTable, and once created, a user may make requests by including the `Authorization: Bearer ${token}` 
+header with that token. If using any OpenAI-compatible library, the `api_key` fields
 will use the `Authorization: Bearer ${token}` format automatically, so there is no need to include additional headers
 when using those libraries.
 

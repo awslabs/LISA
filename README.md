@@ -45,10 +45,10 @@ LISA leverages AWS's cloud development toolkit (cdk). Users of LISA should be fa
 
 LISA uses a `make` system that leverages both environment variables and a configuration file. Most of the commands to deploy LISA are wrapped in high level `make` actions, please see [Makefile](./Makefile).
 
-Let's start by downloading the repository:
+Let's start by downloading the repository. Use the "main" branch to ensure that you are using a stable LISA release.
 
 ```
-git clone <path-to-lisa-repo>
+git clone -b main --single-branch <path-to-lisa-repo>
 cd lisa
 ```
 

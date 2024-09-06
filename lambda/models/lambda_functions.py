@@ -51,7 +51,7 @@ from .domain_objects import (
 from .exception import ModelAlreadyExistsError, ModelNotFoundError
 from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler
 
-app = FastAPI(redirect_slashes=False, lifespan="off")
+app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
 app.add_middleware(AWSAPIGatewayMiddleware)
 
 # Enable CORS

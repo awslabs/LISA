@@ -19,15 +19,15 @@ import ssl
 from datetime import datetime
 from typing import Any, Dict
 
-import create_env_variables  # noqa: F401
 import boto3
+import create_env_variables  # noqa: F401
 import jwt
 import requests
 from utilities.common_functions import authorization_wrapper, get_id_token
 
 logger = logging.getLogger(__name__)
 ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
-token_table = ddb_resource.Table(os.environ["TOKEN_TABLE_NAME"]) # nosec B105
+token_table = ddb_resource.Table(os.environ["TOKEN_TABLE_NAME"])  # nosec B105
 TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 
 # The following is an allowlist of OpenAI routes that users would not need elevated permissions to invoke. This is so
@@ -59,6 +59,7 @@ OPENAI_ROUTES = (
     "/llm/health/readiness",
     "/llm/health/liveliness",
 )
+
 
 @authorization_wrapper
 def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [no-untyped-def]
@@ -107,12 +108,15 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         if token:
             token_expiration = int(token.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
             current_time = int(datetime.now().timestamp())
-            if current_time < token_expiration and path.removeprefix("/llm/v2/serve/") in OPENAI_ROUTES:  # token has not expired yet - NON Admin Route
-                allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=f"ApiToken:{id_token}")
+            if (
+                current_time < token_expiration and path.removeprefix("/llm/v2/serve/") in OPENAI_ROUTES
+            ):  # token has not expired yet - NON Admin Route
+                allow_policy = generate_policy(
+                    effect="Allow", resource=event["methodArn"], username=f"ApiToken:{id_token}"
+                )
                 logger.debug(f"Generated policy: {allow_policy}")
                 logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
                 return allow_policy
-
 
     logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
     return deny_policy

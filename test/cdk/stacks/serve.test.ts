@@ -88,6 +88,7 @@ describe.each(regions)('Serve Nag Pack Tests | Region Test: %s', (awsRegion) => 
             authorizer: apiBaseStack.authorizer,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
+            tokenTable: apiBaseStack.tokenTable
         });
         // WHEN
         Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
@@ -102,7 +103,7 @@ describe.each(regions)('Serve Nag Pack Tests | Region Test: %s', (awsRegion) => 
     //TODO Update expect values to remediate CDK NAG findings and remove debug
     test('AwsSolutions CDK NAG Warnings', () => {
         const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-        expect(warnings.length).toBe(1);
+        expect(warnings.length).toBe(0);
     });
 
     test('AwsSolutions CDK NAG Errors', () => {
@@ -117,6 +118,6 @@ describe.each(regions)('Serve Nag Pack Tests | Region Test: %s', (awsRegion) => 
 
     test('NIST800.53r5 CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-        expect(errors.length).toBe(34);
+        expect(errors.length).toBe(32);
     });
 });

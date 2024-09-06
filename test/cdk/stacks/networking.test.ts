@@ -29,12 +29,12 @@ import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema
 type TestConfig = [string, number, number, number, number];
 
 const regions: TestConfig[] = [
-    ['us-east-1', 2, 1, 5, 5],
-    ['us-gov-west-1', 2, 1, 5, 5],
-    ['us-gov-east-1', 2, 1, 5, 5],
-    ['us-isob-east-1', 2, 1, 5, 5],
-    ['us-iso-east-1', 2, 1, 5, 5],
-    ['us-iso-west-1', 2, 1, 5, 5],
+    ['us-east-1', 1, 2, 3, 5],
+    ['us-gov-west-1', 1, 2, 3, 5],
+    ['us-gov-east-1', 1, 2, 3, 5],
+    ['us-isob-east-1', 1, 2, 3, 5],
+    ['us-iso-east-1', 1, 2, 3, 5],
+    ['us-iso-west-1', 1, 2, 3, 5],
 ];
 
 describe.each<TestConfig>(regions)(

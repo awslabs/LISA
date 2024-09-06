@@ -140,22 +140,13 @@ the correct locations. These fields can be seen in the example configuration bel
 
 #### SageMaker Endpoints and Bedrock Models
 
-We do support adding existing SageMaker Endpoints and Bedrock Models to the LiteLLM configuration, and as long as the
+We support adding existing SageMaker Endpoints and Bedrock Models to the LiteLLM configuration, and as long as the
 services you use are in the same region as the LISA installation, LISA will be able to use those models alongside any
 other models you have deployed. After installing LISA without referencing the SageMaker Endpoint, create a SageMaker Model using
 the private subnets of the LISA deployment, and that will allow the REST API container to reach out to any Endpoint that
-uses that SageMaker Model. Then, to invoke the SageMaker Endpoints or Bedrock Models, you would need to add the following
-permissions to the "REST-Role" that was created in the IAM stack:
-
-```
-"bedrock:InvokeModel",
-"bedrock:InvokeModelWithResponseStream",
-"sagemaker:InvokeEndpoint",
-"sagemaker:InvokeEndpointWithResponseStream"
-```
-
-After adding those permissions and access in the VPC, LiteLLM will now be able to route traffic to those entities, and
-they will be accessible through the LISA ALB, using the OpenAI specification for programmatic access.
+uses that SageMaker Model. SageMaker Endpoints and Bedrock Models may be configured statically at LISA deployment time
+or dynamically using the LISA Model Management API. Any Endpoints or Models that were statically defined at LISA
+deployment time cannot be removed or updated by the LISA Model Management API.
 
 #### Recommended Configuration Options
 

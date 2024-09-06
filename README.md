@@ -155,7 +155,7 @@ permissions to the "REST-Role" that was created in the IAM stack:
 ```
 
 After adding those permissions and access in the VPC, LiteLLM will now be able to route traffic to those entities, and
-they will be accessible through the LISA ALB, using the OpenAI specification for programmatic access.
+they will be accessible through the LISA APIGateway, using the OpenAI specification for programmatic access.
 
 #### Recommended Configuration Options
 
@@ -204,26 +204,6 @@ dev:
           api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
         lisa_params:
           model_type: embedding
-```
-
-### DEV ONLY: Create Self-Signed Certificates for ALB
-
-**WARNING: THIS IS FOR DEV ONLY**
-
-When deploying for dev and testing you can use a self-signed certificate for the REST API ALB. You can create this by using the script: `gen-cert.sh` and uploading it to `IAM`.
-
-```
-export REGION=<region>
-./scripts/gen-certs.sh
-aws iam upload-server-certificate --server-certificate-name <certificate-name> --certificate-body file://scripts/server.pem --private-key file://scripts/server.key
-```
-
-And you will need to update the ALB certificate path in the config.yaml file:
-
-```yaml
-restApiConfig:
-  loadBalancerConfig:
-    sslCertIamArn: arn:aws:iam::<account-number>:server-certificate/<certificate-name>
 ```
 
 ### Customize Configuration
@@ -347,9 +327,9 @@ pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.
 
 ## Programmatic API Tokens
 
-The LISA Serve ALB can be used for programmatic access outside the example Chat application.
+The LISA API Gateway can be used for programmatic access outside the example Chat application.
 An example use case would be for allowing LISA to serve LLM requests that originate from the [Continue VSCode Plugin](https://www.continue.dev/).
-To facilitate communication directly with the LISA Serve ALB, a user with sufficient DynamoDB PutItem permissions may add
+To facilitate communication directly with the LISA API Gateway, a user with sufficient DynamoDB PutItem permissions may add
 API keys to the APITokenTable, and once created, a user may make requests by including the `Authorization: Bearer ${token}`
 header or the `Api-Key: ${token}` header with that token. If using any OpenAI-compatible library, the `api_key` fields
 will use the `Authorization: Bearer ${token}` format automatically, so there is no need to include additional headers
@@ -546,33 +526,33 @@ routes as long as your underlying models can also respond to them.
 By supporting the OpenAI spec, we can more easily allow users to integrate their collection of models into their LLM applications and workflows. In LISA, users can authenticate
 using their OpenID Connect Identity Provider, or with an API token created through the DynamoDB token workflow as described [here](#programmatic-api-tokens). Once the token
 is retrieved, users can use that in direct requests to the LISA Serve REST API. If using the IdP, users must set the 'Authorization' header, otherwise if using the API token,
-users can set either the 'Api-Key' header or the 'Authorization' header. After that, requests to `https://${lisa_serve_alb}/v2/serve` will handle the OpenAI API calls. As an example, the following call can list all
-models that LISA is aware of, assuming usage of the API token. If you are using a self-signed cert, you must also provide the `--cacert $path` option to specify a CA bundle to trust for SSL verification.
+users can set either the 'Api-Key' header or the 'Authorization' header. After that, requests to `https://${lisa_api_gateway}/llm/v2/serve` will handle the OpenAI API calls. As an example, the following call can list all
+models that LISA is aware of, assuming usage of the API token.
 
 ```shell
-curl -s -H 'Api-Key: your-token' -X GET https://${lisa_serve_alb}/v2/serve/models
+curl -s -H 'Authorization: Bearer your-api-key' -X GET https://${lisa_api_gateway}/llm/v2/serve/models
 ```
 
 If using the IdP, the request would look like the following:
 
 ```shell
-curl -s -H 'Authorization: Bearer your-token' -X GET https://${lisa_serve_alb}/v2/serve/models
+curl -s -H 'Authorization: Bearer your-token' -X GET https://${lisa_api_gateway}/llm/v2/serve/models
 ```
 
-When using a library that requests an OpenAI-compatible base_url, you can provide `https://${lisa_serve_alb}/v2/serve` here. All of the OpenAI routes will
+When using a library that requests an OpenAI-compatible base_url, you can provide `https://${lisa_api_gateway}/llm/v2/serve` here. All of the OpenAI routes will
 automatically be added to the base URL, just as we appended `/models` to the `/v2/serve` route for listing all models tracked by LISA.
 
 #### Continue JetBrains and VS Code Plugin
 
 For developers that desire an LLM assistant to help with programming tasks, we support adding LISA as an LLM provider for the [Continue plugin](https://www.continue.dev).
 To add LISA as a provider, open up the Continue plugin's `config.json` file and locate the `models` list. In this list, add the following block, replacing the placeholder URL
-with your own REST API domain or ALB. The `/v2/serve` is required at the end of the `apiBase`. This configuration requires an API token as created through the [DynamoDB workflow](#programmatic-api-tokens).
+with your own REST API domain. The `/llm/v2/serve` is required at the end of the `apiBase`. This configuration requires an API token as created through the [DynamoDB workflow](#programmatic-api-tokens).
 
 ```json
 {
   "model": "AUTODETECT",
   "title": "LISA",
-  "apiBase": "https://<lisa_serve_alb>/v2/serve",
+  "apiBase": "https://<lisa_api_gateway>/llm/v2/serve",
   "provider": "openai",
   "apiKey": "your-api-token" // pragma: allowlist-secret
 }
@@ -600,30 +580,10 @@ client.models.list()
 
 To use the models being served by LISA, the client needs only a few changes:
 
-1. Specify the `base_url` as the LISA Serve ALB, using the /v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
+1. Specify the `base_url` as the LISA API Gateway, using the /llm/v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
 2. Add the API key that you generated from the [token generation steps](#programmatic-api-tokens) as your `api_key` field.
-3. If using a self-signed cert, you must provide a certificate path for validating SSL. If you're using an ACM or public cert, then this may be omitted.
-   1. We provide a convenience function in the `lisa-sdk` for generating a cert path from an IAM certificate ARN if one is provided in the `RESTAPI_SSL_CERT_ARN` environment variable.
 
 The Code block will now look like this and you can continue to use the library without any other modifications.
-
-```python
-# for self-signed certificates
-import boto3
-from lisapy.utils import get_cert_path
-# main client library
-from openai import DefaultHttpxClient, OpenAI
-
-iam_client = boto3.client("iam")
-cert_path = get_cert_path(iam_client)
-
-client = OpenAI(
-  api_key="my_key", # pragma: allowlist-secret not a real key
-  base_url="https://<lisa_serve_alb>/v2/serve",
-  http_client=DefaultHttpxClient(verify=cert_path), # needed for self-signed certs on your ALB, can be omitted otherwise
-)
-client.models.list()
-```
 
 ## License Notice
 

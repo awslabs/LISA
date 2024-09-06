@@ -113,7 +113,6 @@ export class FastApiContainer extends Construct {
                 environment,
                 identifier: props.apiName,
                 instanceType: taskConfig.instanceType,
-                internetFacing: false,
                 loadBalancerConfig: taskConfig.loadBalancerConfig,
             },
             securityGroup,

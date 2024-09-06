@@ -101,11 +101,6 @@ export class LisaRagStack extends Stack {
             REST_API_VERSION: config.restApiConfig.apiVersion,
         };
 
-        // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
-            baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig.loadBalancerConfig.sslCertIamArn;
-        }
-
         const lambdaRole = Role.fromRoleArn(
             this,
             'LISARagAPILambdaExecutionRole',

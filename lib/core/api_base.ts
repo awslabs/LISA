@@ -41,21 +41,18 @@ export class LisaApiBaseStack extends Stack {
 
         const { config, vpc } = props;
 
-        let tokenTable;
-        if (config.restApiConfig.internetFacing) {
-            // Create DynamoDB Table for enabling API token usage
-            tokenTable = new Table(this, 'TokenTable', {
-                tableName: `${config.deploymentName}-LISAApiTokensTable`,
-                partitionKey: {
-                    name: 'token',
-                    type: AttributeType.STRING,
-                },
-                billingMode: BillingMode.PAY_PER_REQUEST,
-                encryption: TableEncryption.AWS_MANAGED,
-                removalPolicy: config.removalPolicy,
-            });
-        }
-        this.tokenTable = tokenTable;
+        // Create DynamoDB Table for enabling API token usage
+        this.tokenTable = new Table(this, 'TokenTable', {
+            tableName: `${config.deploymentName}-LISAApiTokensTable`,
+            partitionKey: {
+                name: 'token',
+                type: AttributeType.STRING,
+            },
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            encryption: TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+        });
+
 
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
@@ -79,7 +76,7 @@ export class LisaApiBaseStack extends Stack {
         // Create the authorizer Lambda for APIGW
         const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
             config: config,
-            tokenTable: tokenTable,
+            tokenTable: this.tokenTable,
             vpc,
         });
 

@@ -22,7 +22,6 @@ import boto3
 import create_env_variables  # noqa: F401
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
-from lisapy.utils import get_cert_path
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.file_processing import process_record
 from utilities.vector_store import get_vector_store_client
@@ -56,7 +55,7 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
     base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
 
     embedding = LisaOpenAIEmbeddings(
-        lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=get_cert_path(iam_client)
+        lisa_openai_api_base=base_url, model=model_name, api_token=id_token
     )
     return embedding
 

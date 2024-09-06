@@ -307,7 +307,7 @@ export class ECSCluster extends Construct {
         // ALB metric for ASG to use for auto scaling EC2 instances
         // TODO: Update this to step scaling for embedding models??
         const requestCountPerTargetMetric = new Metric({
-            metricName: ecsConfig.autoScalingConfig.metricConfig.AlbMetricName,
+            metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
             namespace: 'AWS/ApplicationELB',
             dimensionsMap: {
                 TargetGroup: targetGroup.targetGroupFullName,

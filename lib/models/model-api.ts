@@ -112,7 +112,7 @@ export class ModelsApi extends Construct {
 
         const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
 
-        new ECSModelDeployer(this, 'ecs-model-deployer', {
+        const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {
             securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
             vpcId: vpc.vpc.vpcId,
             config: config
@@ -161,7 +161,8 @@ export class ModelsApi extends Construct {
                                 'lambda:InvokeFunction'
                             ],
                             resources: [
-                                dockerImageBuilder.dockerImageBuilderFn.functionArn
+                                dockerImageBuilder.dockerImageBuilderFn.functionArn,
+                                ecsModelDeployer.ecsModelDeployerFn.functionArn
                             ]
                         }),
                         new PolicyStatement({
@@ -194,7 +195,8 @@ export class ModelsApi extends Construct {
             vpc: vpc.vpc,
             securityGroups: securityGroups,
             dockerImageBuilderFnArn: dockerImageBuilder.dockerImageBuilderFn.functionArn,
-            ecsModelImageRepositoryName: ecsModelImages.repo.repositoryName
+            ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
+            ecsModelImageRepository: ecsModelImages.repo
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {

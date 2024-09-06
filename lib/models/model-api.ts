@@ -208,6 +208,15 @@ export class ModelsApi extends Construct {
             securityGroups: securityGroups,
         });
 
+        const environment = {
+            LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+            REST_API_VERSION: config.restApiConfig.apiVersion,
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+            CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
+            DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
+            MODEL_TABLE_NAME: modelTable.tableName,
+        };
+
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
@@ -221,14 +230,7 @@ export class ModelsApi extends Construct {
                 description: 'Manage model',
                 path: 'models/{proxy+}',
                 method: 'ANY',
-                environment: {
-                    LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
-                    REST_API_VERSION: config.restApiConfig.apiVersion,
-                    RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
-                    CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
-                    DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                }
+                environment
             },
             config.lambdaConfig.pythonRuntime,
             lambdaExecutionRole,
@@ -279,6 +281,7 @@ export class ModelsApi extends Construct {
                 path: 'docs',
                 method: 'GET',
                 disableAuthorizer: true,
+                environment
             },
             {
                 name: 'handler',

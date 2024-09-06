@@ -1,0 +1,23 @@
+{
+  "name": "cdk_runner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && cp package.json ./dist && cp ./src/cdk*json ./dist/ && cd ./dist && npm i --omit dev",
+    "clean": "rm -rf ./dist/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/uuid": "^10.0.0",
+    "aws-cdk": "^2.153.0",
+    "aws-cdk-lib": "^2.153.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.4.1"
+  }
+}

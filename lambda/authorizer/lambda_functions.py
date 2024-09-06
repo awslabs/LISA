@@ -16,14 +16,49 @@
 import logging
 import os
 import ssl
+from datetime import datetime
 from typing import Any, Dict
 
+import boto3
 import create_env_variables  # noqa: F401
 import jwt
 import requests
 from utilities.common_functions import authorization_wrapper, get_id_token
 
 logger = logging.getLogger(__name__)
+ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+token_table = ddb_resource.Table(os.environ["TOKEN_TABLE_NAME"])  # nosec B105
+TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
+
+# The following is an allowlist of OpenAI routes that users would not need elevated permissions to invoke. This is so
+# that we may assume anything *not* in this allowlist is an admin operation that requires greater LiteLLM permissions.
+# Assume that anything not within these routes requires admin permissions, which would only come from the LISA model
+# management API.
+OPENAI_ROUTES = (
+    # List models
+    "models",
+    "v1/models",
+    # Text completions
+    "chat/completions",
+    "v1/chat/completions",
+    "completions",
+    "v1/completions",
+    # Embeddings
+    "embeddings",
+    "v1/embeddings",
+    # Create images
+    "images/generations",
+    "v1/images/generations",
+    # Audio routes
+    "audio/speech",
+    "v1/audio/speech",
+    "audio/transcriptions",
+    "v1/audio/transcriptions",
+    # Health check routes
+    "/llm/health",
+    "/llm/health/readiness",
+    "/llm/health/liveliness",
+)
 
 
 @authorization_wrapper
@@ -32,6 +67,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     logger.info("REST API authorization handler started")
 
     requested_resource = event["resource"]
+    path = event["path"]
 
     id_token = get_id_token(event)
 
@@ -57,10 +93,30 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
             username = jwt_data.get("sub", "user")
             logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
             return deny_policy
+        elif path.startswith("/llm") and path.removeprefix("/llm/v2/serve/") not in OPENAI_ROUTES and not is_admin_user:
+            username = jwt_data.get("sub", "user")
+            logger.info(f"Deny access to {username} due to non-admin accessing litellm admin api.")
+            return deny_policy
 
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         return allow_policy
+
+    # Try to authenticate with API Token
+    elif path.startswith("/llm"):
+        token = _get_api_token_info(id_token)
+        if token:
+            token_expiration = int(token.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
+            current_time = int(datetime.now().timestamp())
+            if (
+                current_time < token_expiration and path.removeprefix("/llm/v2/serve/") in OPENAI_ROUTES
+            ):  # token has not expired yet - NON Admin Route
+                allow_policy = generate_policy(
+                    effect="Allow", resource=event["methodArn"], username=f"ApiToken:{id_token}"
+                )
+                logger.debug(f"Generated policy: {allow_policy}")
+                logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
+                return allow_policy
 
     logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
     return deny_policy
@@ -76,6 +132,12 @@ def generate_policy(*, effect: str, resource: str, username: str = "username") -
         },
     }
     return policy
+
+
+def _get_api_token_info(token: str) -> Any:
+    """Return DDB entry for token if it exists."""
+    ddb_response = token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
+    return ddb_response.get("Item", None)
 
 
 def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[str, Any] | None:

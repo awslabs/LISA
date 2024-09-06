@@ -18,22 +18,27 @@
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { EcsModel } from './ecs-model';
 import { FastApiContainer } from '../api-base/fastApiContainer';
-import { createCdkId, getModelIdentifier } from '../core/utils';
+import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, ModelType, RegisteredModel } from '../schema';
+import { BaseProps } from '../schema';
+import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
+import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 const HERE = path.resolve(__dirname);
 
 type CustomLisaStackProps = {
     vpc: Vpc;
+    authorizer: IAuthorizer;
+    restApiId: string;
+    rootResourceId: string;
+    tokenTable: ITable | undefined;
 } & BaseProps;
 type LisaStackProps = CustomLisaStackProps & StackProps;
 
@@ -54,26 +59,14 @@ export class LisaServeApplicationStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaStackProps) {
         super(scope, id, props);
 
-        const { config, vpc } = props;
+        const { config, vpc, tokenTable } = props;
         const rdsConfig = config.restApiConfig.rdsConfig;
-
-        let tokenTable;
-        if (config.restApiConfig.internetFacing) {
-            // Create DynamoDB Table for enabling API token usage
-            tokenTable = new Table(this, 'TokenTable', {
-                tableName: `${config.deploymentName}-LISAApiTokenTable`,
-                partitionKey: {
-                    name: 'token',
-                    type: AttributeType.STRING,
-                },
-                billingMode: BillingMode.PAY_PER_REQUEST,
-                encryption: TableEncryption.AWS_MANAGED,
-                removalPolicy: config.removalPolicy,
-            });
-        }
 
         // Create REST API
         const restApi = new FastApiContainer(this, 'RestApi', {
+            authorizer: props.authorizer,
+            restApiId: props.restApiId,
+            rootResourceId: props.rootResourceId,
             apiName: 'REST',
             config: config,
             resourcePath: path.join(HERE, 'rest-api'),
@@ -134,42 +127,10 @@ export class LisaServeApplicationStack extends Stack {
             description: 'URI for LISA Serve API',
         });
 
-        // Register all models
-        const registeredModels: RegisteredModel[] = [];
-
-        // Create ECS models
-        for (const modelConfig of config.ecsModels) {
-            if (modelConfig.deploy) {
-                // Create ECS Model Construct
-                const ecsModel = new EcsModel(this, createCdkId([getModelIdentifier(modelConfig), 'EcsModel']), {
-                    config: config,
-                    modelConfig: modelConfig,
-                    securityGroup: vpc.securityGroups.ecsModelAlbSg,
-                    vpc: vpc.vpc,
-                });
-
-                // Create metadata to register model in parameter store
-                const registeredModel: RegisteredModel = {
-                    provider: `${modelConfig.modelHosting}.${modelConfig.modelType}.${modelConfig.inferenceContainer}`,
-                    // modelId is used for LiteLLM config to differentiate the same model deployed with two different containers
-                    modelId: modelConfig.modelId ? modelConfig.modelId : modelConfig.modelName,
-                    modelName: modelConfig.modelName,
-                    modelType: modelConfig.modelType,
-                    endpointUrl: ecsModel.endpointUrl,
-                };
-
-                // For textgen models, add metadata whether streaming is supported
-                if (modelConfig.modelType === ModelType.TEXTGEN) {
-                    registeredModel.streaming = modelConfig.streaming!;
-                }
-                registeredModels.push(registeredModel);
-            }
-        }
-
         // Create Parameter Store entry with registeredModels
         this.modelsPs = new StringParameter(this, createCdkId(['RegisteredModels', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/registeredModels`,
-            stringValue: JSON.stringify(registeredModels),
+            stringValue: JSON.stringify([]),
             description: 'Serialized JSON of registered models data',
         });
 
@@ -177,6 +138,33 @@ export class LisaServeApplicationStack extends Stack {
         // Add parameter as container environment variable for both RestAPI and RagAPI
         restApi.container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
         restApi.node.addDependency(this.modelsPs);
+
+        // Additional permissions for REST API Role
+        const invocation_permissions = new Policy(this, 'ModelInvokePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'bedrock:InvokeModel',
+                        'bedrock:InvokeModelWithResponseStream',
+                    ],
+                    resources: [
+                        'arn:*:bedrock:*::foundation-model/*'
+                    ]
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'sagemaker:InvokeEndpoint',
+                        'sagemaker:InvokeEndpointWithResponseStream',
+                    ],
+                    resources: [
+                        'arn:*:sagemaker:*:*:endpoint/*'
+                    ],
+                }),
+            ]
+        });
+        restApi.taskRole.attachInlinePolicy(invocation_permissions);
 
         // Update
         this.restApi = restApi;

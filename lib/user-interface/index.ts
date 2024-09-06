@@ -24,10 +24,8 @@ import { ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 
 /**
@@ -187,11 +185,7 @@ export class UserInterfaceStack extends Stack {
             ADMIN_GROUP: config.authConfig!.adminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
             CUSTOM_SCOPES: config.authConfig!.additionalScopes,
-            RESTAPI_URI: StringParameter.fromStringParameterName(
-                this,
-                createCdkId(['LisaRestApiUri', 'StringParameter']),
-                `${config.deploymentPrefix}/lisaServeRestApiUri`,
-            ).stringValue,
+            RESTAPI_URI: config.apiGatewayConfig?.domainName ? '/llm' : `/${config.deploymentStage}/llm`,
             RESTAPI_VERSION: config.restApiConfig.apiVersion,
             RAG_ENABLED: config.deployRag,
             SYSTEM_BANNER: {

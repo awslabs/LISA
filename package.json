@@ -5,7 +5,7 @@
     "lisa": "bin/lisa.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cd ./cdk_runner_lambda && npm run build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
@@ -15,7 +15,7 @@
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
     "@aws-sdk/client-iam": "^3.490.0",
     "@cdklabs/cdk-enterprise-iac": "^0.0.400",
-    "@stylistic/eslint-plugin": "^2.6.4",
+    "@stylistic/eslint-plugin": "^2.7.2",
     "@types/jest": "^29.5.12",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "20.5.3",

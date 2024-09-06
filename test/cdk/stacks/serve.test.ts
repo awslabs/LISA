@@ -26,6 +26,7 @@ import { createCdkId } from '../../../lib/core/utils';
 import { LisaNetworkingStack } from '../../../lib/networking/index';
 import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 import { LisaServeApplicationStack } from '../../../lib/serve';
+import { LisaApiBaseStack } from '../../../lib/core/api_base';
 
 const regions = ['us-east-1', 'us-gov-west-1', 'us-gov-east-1', 'us-isob-east-1', 'us-iso-east-1', 'us-iso-west-1'];
 
@@ -73,11 +74,21 @@ describe.each(regions)('Serve Nag Pack Tests | Region Test: %s', (awsRegion) => 
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
             description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
         });
+        const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
+            ...baseStackProps,
+            stackName: createCdkId([config.deploymentName, config.appName, 'API']),
+            description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
+            vpc: networkingStack.vpc.vpc,
+        });
         stack = new LisaServeApplicationStack(app, 'LisaServe', {
             ...baseStackProps,
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
             stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
             vpc: networkingStack.vpc,
+            authorizer: apiBaseStack.authorizer,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            tokenTable: apiBaseStack.tokenTable
         });
         // WHEN
         Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
@@ -92,12 +103,12 @@ describe.each(regions)('Serve Nag Pack Tests | Region Test: %s', (awsRegion) => 
     //TODO Update expect values to remediate CDK NAG findings and remove debug
     test('AwsSolutions CDK NAG Warnings', () => {
         const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-        expect(warnings.length).toBe(1);
+        expect(warnings.length).toBe(0);
     });
 
     test('AwsSolutions CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-        expect(errors.length).toBe(56);
+        expect(errors.length).toBe(24);
     });
 
     test('NIST800.53r5 CDK NAG Warnings', () => {
@@ -107,6 +118,6 @@ describe.each(regions)('Serve Nag Pack Tests | Region Test: %s', (awsRegion) => 
 
     test('NIST800.53r5 CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-        expect(errors.length).toBe(64);
+        expect(errors.length).toBe(32);
     });
 });

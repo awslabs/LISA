@@ -12,13 +12,13 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- */
+*/
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
@@ -37,20 +37,14 @@ import {
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
-import {
-    ApplicationLoadBalancer,
-    ApplicationProtocol,
-    BaseApplicationListenerProps,
-    NetworkLoadBalancer,
-    NetworkTargetGroup
-} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
+import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { IRole, ManagedPolicy, ServicePrincipal, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { createCdkId } from '../core/utils';
-import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
-import { AlbTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
+import { createCdkId } from './utils';
+import { BaseProps, Ec2Metadata, EcsSourceType } from './schema';
+import { ECSConfig } from './schema';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -61,9 +55,8 @@ import { AlbTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
  */
 type ECSClusterProps = {
     ecsConfig: ECSConfig;
-    securityGroup: SecurityGroup;
+    securityGroup: ISecurityGroup;
     vpc: IVpc;
-    addNlb?: boolean;
 } & BaseProps;
 
 /**
@@ -78,10 +71,6 @@ export class ECSCluster extends Construct {
 
     /** Endpoint URL of application load balancer for the cluster. */
     public readonly endpointUrl: string;
-
-    public readonly alb: ApplicationLoadBalancer;
-
-    public readonly nlb: NetworkLoadBalancer;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -187,12 +176,22 @@ export class ECSCluster extends Construct {
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
         }
 
+        const taskPolicy = ManagedPolicy.fromManagedPolicyName(this, createCdkId([config.deploymentName, 'ECSPolicy']), createCdkId([config.deploymentName, 'ECSPolicy']));
+        const role_id = ecsConfig.identifier;
+        const roleName = createCdkId([config.deploymentName, role_id, 'Role']);
+        const taskRole = new Role(this, createCdkId([role_id, 'Role']), {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+            roleName,
+            description: `Allow ${role_id} ${role_id} ECS task access to AWS resources`,
+            managedPolicies: [taskPolicy],
+        });
+        new StringParameter(this, createCdkId([config.deploymentName, role_id, 'SP']), {
+            parameterName: `${config.deploymentPrefix}/roles/${role_id}`,
+            stringValue: taskRole.roleArn,
+            description: `Role ARN for LISA ${role_id} ${role_id} ECS Task`,
+        });
+
         // Create ECS task definition
-        const taskRole = Role.fromRoleArn(
-            this,
-            createCdkId([ecsConfig.identifier, 'TR']),
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`),
-        );
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskRole: taskRole,
@@ -270,47 +269,25 @@ export class ECSCluster extends Construct {
         service.node.addDependency(autoScalingGroup);
 
         // Create application load balancer
-        this.alb = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
+        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: ecsConfig.internetFacing,
-            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'ALB'], 32, 2),
+            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc,
         });
 
-        if (props.addNlb) {
-            this.nlb = new NetworkLoadBalancer(this, createCdkId([ecsConfig.identifier, 'NLB']), {
-                deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-                crossZoneEnabled: false,
-                internetFacing: ecsConfig.internetFacing,
-                loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'NLB'], 32, 2),
-                securityGroups: [securityGroup],
-                vpc,
-            });
-
-            const nlbListener = this.nlb.addListener('Listener', { port: 80 });
-
-            const albTargetGroup = new NetworkTargetGroup(this, 'ALB-Target-Group', {
-                port: 80,
-                vpc: vpc,
-                targets: [new AlbTarget(this.alb, 80)],
-                healthCheck: {
-                    path: '/health'
-                }
-            });
-
-            nlbListener.addTargetGroups('ALB-Target-Group', albTargetGroup);
-        }
-
         // Add listener
         const listenerProps: BaseApplicationListenerProps = {
-            port: 80,
+            port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
             open: ecsConfig.internetFacing,
-            protocol: ApplicationProtocol.HTTP
+            certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
+                ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
+                : undefined,
         };
 
-        const listener = this.alb.addListener(
+        const listener = loadBalancer.addListener(
             createCdkId([ecsConfig.identifier, 'ApplicationListener']),
             listenerProps,
         );
@@ -338,7 +315,7 @@ export class ECSCluster extends Construct {
             namespace: 'AWS/ApplicationELB',
             dimensionsMap: {
                 TargetGroup: targetGroup.targetGroupFullName,
-                LoadBalancer: this.alb.loadBalancerFullName,
+                LoadBalancer: loadBalancer.loadBalancerFullName,
             },
             statistic: Stats.SAMPLE_COUNT,
             period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
@@ -354,7 +331,7 @@ export class ECSCluster extends Construct {
         const domain =
       ecsConfig.loadBalancerConfig.domainName !== null
           ? ecsConfig.loadBalancerConfig.domainName
-          : this.alb.loadBalancerDnsName;
+          : loadBalancer.loadBalancerDnsName;
         const endpoint = `${protocol}://${domain}`;
         this.endpointUrl = endpoint;
 

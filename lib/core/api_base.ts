@@ -21,6 +21,7 @@ import { Construct } from 'constructs';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
+import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 
 type LisaApiBaseStackProps = {
     vpc: IVpc;
@@ -33,11 +34,28 @@ export class LisaApiBaseStack extends Stack {
     public readonly restApiId: string;
     public readonly rootResourceId: string;
     public readonly restApiUrl: string;
+    public readonly tokenTable: ITable | undefined;
 
     constructor (scope: Construct, id: string, props: LisaApiBaseStackProps) {
         super(scope, id, props);
 
         const { config, vpc } = props;
+
+        let tokenTable;
+        if (config.restApiConfig.internetFacing) {
+            // Create DynamoDB Table for enabling API token usage
+            tokenTable = new Table(this, 'TokenTable', {
+                tableName: `${config.deploymentName}-LISAApiTokensTable`,
+                partitionKey: {
+                    name: 'token',
+                    type: AttributeType.STRING,
+                },
+                billingMode: BillingMode.PAY_PER_REQUEST,
+                encryption: TableEncryption.AWS_MANAGED,
+                removalPolicy: config.removalPolicy,
+            });
+        }
+        this.tokenTable = tokenTable;
 
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
@@ -61,6 +79,7 @@ export class LisaApiBaseStack extends Stack {
         // Create the authorizer Lambda for APIGW
         const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
             config: config,
+            tokenTable: tokenTable,
             vpc,
         });
 

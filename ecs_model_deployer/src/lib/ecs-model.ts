@@ -15,14 +15,14 @@
 */
 
 // ECS Model Construct.
-import { SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
-import { ECSCluster } from '../../api-base/ecsCluster';
-import { getModelIdentifier } from '../../core/utils';
-import { BaseProps, Config, Ec2Metadata, EcsSourceType, ModelConfig } from '../../schema';
+import { ECSCluster } from './ecsCluster';
+import { getModelIdentifier } from './utils';
+import { BaseProps, Config, Ec2Metadata, EcsSourceType, ModelConfig } from './schema';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -37,7 +37,7 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 5;
  */
 type ECSModelProps = {
     modelConfig: ModelConfig;
-    securityGroup: SecurityGroup;
+    securityGroup: ISecurityGroup;
     vpc: IVpc;
 } & BaseProps;
 

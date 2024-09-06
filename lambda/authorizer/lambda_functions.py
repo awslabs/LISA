@@ -101,14 +101,14 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         return allow_policy
 
+    # Try to authenticate with API Token
     elif path.startswith("/llm"):
-        logger.info("EVAAAANNNN")
         token = _get_api_token_info(id_token)
         if token:
             token_expiration = int(token.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
             current_time = int(datetime.now().timestamp())
             if current_time < token_expiration and path.removeprefix("/llm/v2/serve/") in OPENAI_ROUTES:  # token has not expired yet - NON Admin Route
-                allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=token["username"])
+                allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=f"ApiToken:{id_token}")
                 logger.debug(f"Generated policy: {allow_policy}")
                 logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
                 return allow_policy

@@ -45,7 +45,10 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
         and request.LoadBalancerConfig  # noqa: W503
     ):
         model_table.update_item(
-            Key={"model_id": request.ModelId}, AttributeUpdates={"Status": {"Value": "CREATING", "Action": "PUT"}}
+            Key={"model_id": request.ModelId},
+            UpdateExpression="SET #s = :status, ModelConfig = :modelConfig",
+            ExpressionAttributeValues={":status": {"S": "CREATING"}, ":modelConfig": {"M": event}},
+            ExpressionAttributeNames={"#s": "Status"},
         )
         output_dict["create_infra"] = True
     else:
@@ -104,7 +107,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
 
     prepared_event = {}
 
-    def camelize_object(o):
+    def camelize_object(o):  # type: ignore[no-untyped-def]
         o2 = {}
         for k in o:
             fixed_k = k[:1].lower() + k[1:]

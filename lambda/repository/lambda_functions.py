@@ -54,9 +54,7 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
 
     base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
 
-    embedding = LisaOpenAIEmbeddings(
-        lisa_openai_api_base=base_url, model=model_name, api_token=id_token
-    )
+    embedding = LisaOpenAIEmbeddings(lisa_openai_api_base=base_url, model=model_name, api_token=id_token)
     return embedding
 
 

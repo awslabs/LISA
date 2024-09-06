@@ -45,7 +45,10 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
         and request.LoadBalancerConfig  # noqa: W503
     ):
         model_table.update_item(
-            Key={"model_id": request.ModelId}, AttributeUpdates={"Status": {"Value": "CREATING", "Action": "PUT"}}
+            Key={"model_id": request.ModelId},
+            UpdateExpression="SET #s = :status, ModelConfig = :modelConfig",
+            ExpressionAttributeValues={":status": {"S": "CREATING"}, ":modelConfig": {"M": event}},
+            ExpressionAttributeNames={"#s": "Status"},
         )
         output_dict["create_infra"] = True
     else:

@@ -16,7 +16,7 @@
 
 import { Construct } from 'constructs';
 import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { Role, InstanceProfile, ServicePrincipal, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Role, InstanceProfile, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -25,9 +25,12 @@ import { createCdkId } from '../core/utils';
 
 export type DockerImageBuilderProps = {
     ecrUri: string;
+    mountS3DebUrl: string;
 };
 
 export class DockerImageBuilder extends Construct {
+    readonly dockerImageBuilderFn: Function;
+
     constructor (scope: Construct, id: string, props: DockerImageBuilderProps) {
         super(scope, id);
 
@@ -80,7 +83,10 @@ export class DockerImageBuilder extends Construct {
         const assumeCdkPolicy = new Policy(this, createCdkId([stackName, 'docker-image-builder-policy']), {
             statements: [
                 new PolicyStatement({
-                    actions: ['ec2:RunInstances'],
+                    actions: [
+                        'ec2:RunInstances',
+                        'ec2:CreateTags'
+                    ],
                     resources: ['*']
                 }),
                 new PolicyStatement({
@@ -95,6 +101,7 @@ export class DockerImageBuilder extends Construct {
         });
 
         role.attachInlinePolicy(assumeCdkPolicy);
+        role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
 
         const ec2InstanceProfileId = createCdkId([stackName, 'docker-image-builder-profile']);
         const ec2InstanceProfile = new InstanceProfile(this, ec2InstanceProfileId, {
@@ -103,7 +110,7 @@ export class DockerImageBuilder extends Construct {
         });
 
         const functionId = createCdkId([stackName, 'docker-image-builder']);
-        new Function(this, functionId, {
+        this.dockerImageBuilderFn = new Function(this, functionId, {
             functionName: functionId,
             runtime: Runtime.PYTHON_3_12,
             handler: 'dockerimagebuilder.handler',
@@ -114,7 +121,8 @@ export class DockerImageBuilder extends Construct {
             environment: {
                 'LISA_DOCKER_BUCKET': ec2DockerBucket.bucketName,
                 'LISA_ECR_URI': props.ecrUri,
-                'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn
+                'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn,
+                'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl
             }
         });
 

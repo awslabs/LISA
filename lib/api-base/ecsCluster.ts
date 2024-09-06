@@ -282,7 +282,7 @@ export class ECSCluster extends Construct {
         if (props.addNlb) {
             this.nlb = new NetworkLoadBalancer(this, createCdkId([ecsConfig.identifier, 'NLB']), {
                 deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-                crossZoneEnabled: true,
+                crossZoneEnabled: false,
                 internetFacing: ecsConfig.internetFacing,
                 loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'NLB'], 32, 2),
                 securityGroups: [securityGroup],

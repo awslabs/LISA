@@ -279,15 +279,24 @@ def get_id_token(event: dict) -> str:
         auth_header = event["headers"]["authorization"].split(" ")
     elif "Authorization" in event["headers"]:
         auth_header = event["headers"]["Authorization"].split(" ")
-    elif "Api-Key" in event["headers"]:
-        auth_header = ["", event["headers"]["Api-Key"].removeprefix("Bearer ")]
-    elif "api-key" in event["headers"]:
-        auth_header = ["", event["headers"]["api-key"].removeprefix("Bearer ")]
-    else:
-        raise ValueError("Missing authorization token.")
 
     token = auth_header[1]
     return str(token)
+
+
+def get_api_key(event: dict) -> str:
+    """Return token from event request headers.
+
+    Extracts bearer token from authorization header in lambda event.
+    """
+    auth_header = None
+
+    if "Api-Key" in event["headers"]:
+        auth_header = event["headers"]["Api-Key"]
+    elif "api-key" in event["headers"]:
+        auth_header = event["headers"]["api-key"]
+
+    return auth_header
 
 
 @cache

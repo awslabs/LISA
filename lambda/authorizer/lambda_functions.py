@@ -23,7 +23,7 @@ import create_env_variables  # noqa: F401
 import boto3
 import jwt
 import requests
-from utilities.common_functions import authorization_wrapper, get_id_token
+from utilities.common_functions import authorization_wrapper, get_id_token, get_api_key
 
 logger = logging.getLogger(__name__)
 ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
@@ -55,9 +55,9 @@ OPENAI_ROUTES = (
     "audio/transcriptions",
     "v1/audio/transcriptions",
     # Health check routes
-    "health",
-    "health/readiness",
-    "health/liveliness",
+    "/llm/health",
+    "/llm/health/readiness",
+    "/llm/health/liveliness",
 )
 
 @authorization_wrapper
@@ -66,10 +66,12 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     logger.info("REST API authorization handler started")
 
     requested_resource = event["resource"]
+    path = event["path"]
 
     id_token = get_id_token(event)
+    api_key = get_api_key(event)
 
-    if not id_token:
+    if not id_token and not api_key:
         logger.warn("Missing id_token in request. Denying access.")
         logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
         return generate_policy(effect="Deny", resource=event["methodArn"])
@@ -82,7 +84,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
 
-    if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
+    if id_token and (jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority)):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])
         allow_policy["context"] = {"username": jwt_data["sub"]}
@@ -91,7 +93,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
             username = jwt_data.get("sub", "user")
             logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
             return deny_policy
-        elif requested_resource.startswith("/llm") and requested_resource.removeprefix("/llm/v2/serve") not in OPENAI_ROUTES and not is_admin_user:
+        elif path.startswith("/llm") and path.removeprefix("/llm/v2/serve/") not in OPENAI_ROUTES and not is_admin_user:
             username = jwt_data.get("sub", "user")
             logger.info(f"Deny access to {username} due to non-admin accessing litellm admin api.")
             return deny_policy
@@ -100,12 +102,12 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         return allow_policy
 
-    elif requested_resource.startswith("/llm"):
-        token = _get_api_token_info(id_token)
+    elif api_key and path.startswith("/llm"):
+        token = _get_api_token_info(api_key)
         if token:
             token_expiration = int(token.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
             current_time = int(datetime.now().timestamp())
-            if current_time < token_expiration:  # token has not expired yet
+            if current_time < token_expiration and path.removeprefix("/llm/v2/serve/") in OPENAI_ROUTES:  # token has not expired yet - NON Admin Route
                 allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=token["username"])
                 logger.debug(f"Generated policy: {allow_policy}")
                 logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")

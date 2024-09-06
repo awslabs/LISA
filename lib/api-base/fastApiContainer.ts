@@ -16,7 +16,7 @@
 
 import { CfnOutput } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { SecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -25,6 +25,7 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
 import {
+    AuthorizationType,
     ConnectionType,
     Cors,
     IAuthorizer,
@@ -149,6 +150,7 @@ export class FastApiContainer extends Construct {
             anyMethod: true,
             defaultMethodOptions: {
                 authorizer: props.authorizer,
+                authorizationType: AuthorizationType.CUSTOM,
                 requestParameters: {
                     'method.request.path.proxy': true
                 }

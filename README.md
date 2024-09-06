@@ -155,7 +155,7 @@ permissions to the "REST-Role" that was created in the IAM stack:
 ```
 
 After adding those permissions and access in the VPC, LiteLLM will now be able to route traffic to those entities, and
-they will be accessible through the LISA APIGateway, using the OpenAI specification for programmatic access.
+they will be accessible through the LISA API Gateway, using the OpenAI specification for programmatic access.
 
 #### Recommended Configuration Options
 
@@ -472,7 +472,7 @@ window.env = {
   ADMIN_GROUP: '<The admin group you would like LISA to check the JWT token for>',
   CUSTOM_SCOPES:[<add your optional list of custom scopes to pull groups from your IdP here>],
   // Alternatively you can set this to be your REST api elb endpoint
-  API_BASE_URL: '<API GW session endpoint>',
+  API_BASE_URL: 'https://${deployment_id}.execute-api.${regional_domain}/${deployment_stage}',
   RESTAPI_VERSION: 'v2',
   "MODELS": [
     {
@@ -525,7 +525,7 @@ routes as long as your underlying models can also respond to them.
 By supporting the OpenAI spec, we can more easily allow users to integrate their collection of models into their LLM applications and workflows. In LISA, users can authenticate
 using their OpenID Connect Identity Provider, or with an API token created through the DynamoDB token workflow as described [here](#programmatic-api-tokens). Once the token
 is retrieved, users can use that in direct requests to the LISA Serve REST API. If using the IdP, users must set the 'Authorization' header, otherwise if using the API token,
-users can set either the 'Api-Key' header or the 'Authorization' header. After that, requests to `https://${lisa_api_gateway}/llm/v2/serve` will handle the OpenAI API calls. As an example, the following call can list all
+users can set the 'Authorization' header. After that, requests to `https://${lisa_api_gateway}/llm/v2/serve` will handle the OpenAI API calls. As an example, the following call can list all
 models that LISA is aware of, assuming usage of the API token.
 
 ```shell
@@ -583,6 +583,18 @@ To use the models being served by LISA, the client needs only a few changes:
 2. Add the API key that you generated from the [token generation steps](#programmatic-api-tokens) as your `api_key` field.
 
 The Code block will now look like this and you can continue to use the library without any other modifications.
+
+```python
+# main client library
+from openai import DefaultHttpxClient, OpenAI
+
+client = OpenAI(
+  api_key="my_key", # pragma: allowlist-secret not a real key
+  base_url="https://<lisa_api_gw>/llm/v2/serve",
+  http_client=DefaultHttpxClient(),
+)
+client.models.list()
+```
 
 ## License Notice
 

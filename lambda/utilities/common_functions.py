@@ -284,21 +284,6 @@ def get_id_token(event: dict) -> str:
     return str(token)
 
 
-def get_api_key(event: dict) -> str:
-    """Return token from event request headers.
-
-    Extracts bearer token from authorization header in lambda event.
-    """
-    auth_header = None
-
-    if "Api-Key" in event["headers"]:
-        auth_header = event["headers"]["Api-Key"]
-    elif "api-key" in event["headers"]:
-        auth_header = event["headers"]["api-key"]
-
-    return auth_header
-
-
 @cache
 def get_cert_path(iam_client: Any) -> Union[str, bool]:
     """

@@ -91,6 +91,8 @@ export class CustomAuthorizer extends Construct {
             securityGroups: securityGroups,
         });
 
+        props.tokenTable?.grantReadData(authorizerLambda);
+
         // Update
         this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {
             handler: authorizerLambda,

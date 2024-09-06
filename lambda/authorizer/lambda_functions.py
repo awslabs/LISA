@@ -23,7 +23,7 @@ import create_env_variables  # noqa: F401
 import boto3
 import jwt
 import requests
-from utilities.common_functions import authorization_wrapper, get_id_token, get_api_key
+from utilities.common_functions import authorization_wrapper, get_id_token
 
 logger = logging.getLogger(__name__)
 ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
@@ -69,9 +69,8 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     path = event["path"]
 
     id_token = get_id_token(event)
-    api_key = get_api_key(event)
 
-    if not id_token and not api_key:
+    if not id_token:
         logger.warn("Missing id_token in request. Denying access.")
         logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
         return generate_policy(effect="Deny", resource=event["methodArn"])
@@ -84,7 +83,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
 
-    if id_token and (jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority)):
+    if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])
         allow_policy["context"] = {"username": jwt_data["sub"]}
@@ -102,8 +101,9 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         return allow_policy
 
-    elif api_key and path.startswith("/llm"):
-        token = _get_api_token_info(api_key)
+    elif path.startswith("/llm"):
+        logger.info("EVAAAANNNN")
+        token = _get_api_token_info(id_token)
         if token:
             token_expiration = int(token.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
             current_time = int(datetime.now().timestamp())

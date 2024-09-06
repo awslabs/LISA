@@ -17,44 +17,39 @@
 import json
 import os
 
-import boto3
 from models.exception import ModelNotFoundError
-from utilities.common_functions import retry_config
 
 from ..domain_objects import DeleteModelResponse, ModelStatus
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
 
-stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
-dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
-
 
 class DeleteModelHandler(BaseApiHandler):
     """Handler class for DeleteModel requests."""
 
-    def __call__(self, unique_id: str) -> DeleteModelResponse:  # type: ignore
+    def __call__(self, model_id: str) -> DeleteModelResponse:  # type: ignore
         """Kick off state machine to delete infrastructure and remove model reference from LiteLLM."""
-        table_item = model_table.get_item(Key={"model_id": unique_id}).get("Item", None)
+        table_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not table_item:
-            raise ModelNotFoundError(f"Model '{unique_id}' was not found")
+            raise ModelNotFoundError(f"Model '{model_id}' was not found")
 
-        stepfunctions.start_execution(
-            stateMachineArn=os.environ["DELETE_SFN_ARN"], input=json.dumps({"model_id": unique_id})
+        self._stepfunctions.start_execution(
+            stateMachineArn=os.environ["DELETE_SFN_ARN"], input=json.dumps({"modelId": model_id})
         )
 
         # Placeholder info until all model info is properly stored in DDB
         lisa_model = to_lisa_model(
             {
-                "model_name": unique_id,
+                "model_name": model_id,
                 "litellm_params": {
-                    "model": unique_id,
+                    "model": table_item["model_config"]["modelName"],
                 },
                 "model_info": {
-                    "id": unique_id,
+                    "id": table_item["litellm_id"],
                     "model_status": ModelStatus.DELETING,
+                    "streaming": table_item["model_config"]["streaming"],
                 },
             }
         )
 
-        return DeleteModelResponse(Model=lisa_model)
+        return DeleteModelResponse(model=lisa_model)

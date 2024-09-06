@@ -65,99 +65,98 @@ class ModelType(str, Enum):
 class MetricConfig(BaseModel):
     """Metric configuration for autoscaling."""
 
-    AlbMetricName: str
-    TargetValue: int
-    Duration: int
-    EstimatedInstanceWarmup: int
+    albMetricName: str
+    targetValue: int
+    duration: int
+    estimatedInstanceWarmup: int
 
 
 class LoadBalancerHealthCheckConfig(BaseModel):
     """Health check configuration for a load balancer."""
 
-    Path: str
-    Interval: int
-    Timeout: int
-    HealthyThresholdCount: int
-    UnhealthyThresholdCount: int
+    path: str
+    interval: int
+    timeout: int
+    healthyThresholdCount: int
+    unhealthyThresholdCount: int
 
 
 class LoadBalancerConfig(BaseModel):
     """Load balancer configuration."""
 
-    HealthCheckConfig: LoadBalancerHealthCheckConfig
+    healthCheckConfig: LoadBalancerHealthCheckConfig
 
 
 class AutoScalingConfig(BaseModel):
     """Autoscaling configuration."""
 
-    MinCapacity: int
-    MaxCapacity: int
-    Cooldown: int
-    DefaultInstanceWarmup: int
-    MetricConfig: MetricConfig
+    minCapacity: int
+    maxCapacity: int
+    cooldown: int
+    defaultInstanceWarmup: int
+    metricConfig: MetricConfig
 
 
 class ContainerHealthCheckConfig(BaseModel):
     """Health check configuration for a container."""
 
-    Command: Union[str, list[str]]
-    Interval: int
-    StartPeriod: int
-    Timeout: int
-    Retries: int
+    command: Union[str, list[str]]
+    interval: int
+    startPeriod: int
+    timeout: int
+    retries: int
 
 
 class ContainerConfigImage(BaseModel):
     """Image image configuration for a container."""
 
-    BaseImage: str
-    Path: str
-    Type: str
+    baseImage: str
+    path: str
+    type: str
 
 
 class ContainerConfig(BaseModel):
     """Container configuration."""
 
-    BaseImage: ContainerConfigImage
-    SharedMemorySize: int
-    HealthCheckConfig: ContainerHealthCheckConfig
-    Environment: dict[str, str]
+    baseImage: ContainerConfigImage
+    sharedMemorySize: int
+    healthCheckConfig: ContainerHealthCheckConfig
+    environment: dict[str, str]
 
 
 class LISAModel(BaseModel):
     """Core model definition fields."""
 
-    AutoScalingConfig: Optional[AutoScalingConfig]
-    ContainerConfig: Optional[ContainerConfig]
-    LoadBalancerConfig: Optional[LoadBalancerConfig]
-    ModelId: str
-    ModelName: str
-    ModelType: ModelType
-    ModelUrl: Optional[str]
-    Status: ModelStatus
-    Streaming: bool
-    UniqueId: str
+    autoScalingConfig: Optional[AutoScalingConfig] = None
+    containerConfig: Optional[ContainerConfig] = None
+    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    modelId: str
+    modelName: str
+    modelType: ModelType
+    modelUrl: Optional[str] = None
+    status: ModelStatus
+    streaming: bool
 
 
 class ApiResponseBase(BaseModel):
     """Common API response definition for most API calls."""
 
-    Model: LISAModel
+    model: LISAModel
 
 
 class CreateModelRequest(BaseModel):
     """Request object when creating a new model."""
 
-    AutoScalingConfig: Optional[AutoScalingConfig]
-    ContainerConfig: Optional[ContainerConfig]
-    InferenceContainer: Optional[InferenceContainer]
-    InstanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]]
-    LoadBalancerConfig: Optional[LoadBalancerConfig]
-    ModelId: str
-    ModelName: str
-    ModelType: ModelType
-    ModelUrl: Optional[str]
-    Streaming: bool
+    autoScalingConfig: Optional[AutoScalingConfig] = None
+    containerConfig: Optional[ContainerConfig] = None
+    inferenceContainer: Optional[InferenceContainer] = None
+    instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
+    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    modelId: str
+    modelName: str
+    modelType: ModelType
+    modelUrl: Optional[str] = None
+    streaming: bool
 
 
 class CreateModelResponse(ApiResponseBase):
@@ -169,7 +168,7 @@ class CreateModelResponse(ApiResponseBase):
 class ListModelsResponse(BaseModel):
     """Response object when listing models."""
 
-    Models: List[LISAModel]
+    models: List[LISAModel]
 
 
 class GetModelResponse(ApiResponseBase):
@@ -181,15 +180,15 @@ class GetModelResponse(ApiResponseBase):
 class UpdateModelRequest(BaseModel):
     """Request object when updating a model."""
 
-    AutoScalingConfig: Optional[AutoScalingConfig]
-    ContainerConfig: Optional[ContainerConfig]
-    InferenceContainer: Optional[InferenceContainer]
-    InstanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]]
-    LoadBalancerConfig: Optional[LoadBalancerConfig]
-    ModelId: Optional[str]
-    ModelName: Optional[str]
-    ModelType: Optional[ModelType]
-    Streaming: Optional[bool]
+    autoScalingConfig: Optional[AutoScalingConfig] = None
+    containerConfig: Optional[ContainerConfig] = None
+    inferenceContainer: Optional[InferenceContainer] = None
+    instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
+    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    modelId: str
+    modelName: Optional[str] = None
+    modelType: Optional[ModelType] = None
+    streaming: Optional[bool] = None
 
 
 class UpdateModelResponse(ApiResponseBase):

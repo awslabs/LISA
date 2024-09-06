@@ -31,6 +31,7 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
+import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -38,6 +39,7 @@ type DeleteModelStateMachineProps = BaseProps & {
     role?: IRole,
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];
+    restApiContainerEndpointPs: IStringParameter;
 };
 
 
@@ -50,7 +52,13 @@ export class DeleteModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: DeleteModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, lambdaLayers, role, vpc, securityGroups } = props;
+        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs } = props;
+
+        const environment = {  // Environment variables to set in all Lambda functions
+            MODEL_TABLE_NAME: modelTable.tableName,
+            LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
+            REST_API_VERSION: config.restApiConfig.apiVersion,
+        };
 
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.
         // Input payload to state machine contains the model name that we want to delete.
@@ -65,9 +73,7 @@ export class DeleteModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -83,9 +89,7 @@ export class DeleteModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -101,9 +105,7 @@ export class DeleteModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -119,9 +121,7 @@ export class DeleteModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -137,9 +137,7 @@ export class DeleteModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });

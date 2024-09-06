@@ -22,14 +22,13 @@ from ..domain_objects import LISAModel, ModelStatus
 def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
     """Convert LiteLLM model dictionary to a LISAModel object."""
     return LISAModel(
-        ModelId=model_dict["model_name"],
-        ModelName=model_dict["litellm_params"]["model"].removeprefix("openai/"),
-        UniqueId=model_dict["model_info"]["id"],
-        Status=model_dict["model_info"].get("model_status", ModelStatus.IN_SERVICE),
-        ModelType=model_dict["model_info"].get("model_type", "textgen"),
-        Streaming=model_dict["model_info"].get("streaming", False),
-        ModelUrl=model_dict["litellm_params"].get("api_base", None),
-        ContainerConfig=model_dict["model_info"].get("container_config", None),
-        AutoScalingConfig=model_dict["model_info"].get("autoscaling_config", None),
-        LoadBalancerConfig=model_dict["model_info"].get("loadbalancer_config", None),
+        modelId=model_dict["model_name"],
+        modelName=model_dict["litellm_params"]["model"].removeprefix("openai/"),
+        status=model_dict["model_info"].get("model_status", ModelStatus.IN_SERVICE),
+        modelType=model_dict["model_info"].get("model_type", "textgen"),
+        streaming=model_dict["model_info"].get("streaming", False),
+        modelUrl=model_dict["litellm_params"].get("api_base", None),
+        containerConfig=model_dict["model_info"].get("container_config", None),
+        autoScalingConfig=model_dict["model_info"].get("autoscaling_config", None),
+        loadBalancerConfig=model_dict["model_info"].get("loadbalancer_config", None),
     )

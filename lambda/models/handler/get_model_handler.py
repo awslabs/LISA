@@ -22,7 +22,7 @@ from .utils import to_lisa_model
 class GetModelHandler(BaseApiHandler):
     """Handler class for GetModel requests."""
 
-    def __call__(self, unique_id: str) -> GetModelResponse:  # type: ignore
+    def __call__(self, model_id: str) -> GetModelResponse:  # type: ignore
         """Get model metadata from LiteLLM and translate to a model management response object."""
-        model = self._litellm_client.get_model(unique_id=unique_id)
+        model = self._litellm_client.get_model(identifier=model_id)
         return GetModelResponse(Model=to_lisa_model(model))

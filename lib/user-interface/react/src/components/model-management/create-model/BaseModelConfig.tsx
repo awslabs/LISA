@@ -21,7 +21,7 @@ import Input from '@cloudscape-design/components/input';
 import Toggle from '@cloudscape-design/components/toggle';
 import Select from '@cloudscape-design/components/select';
 import { IModelRequest, InferenceContainer, ModelType } from '../../../shared/model/model-management.model';
-import { SpaceBetween } from '@cloudscape-design/components';
+import { Grid, SpaceBetween } from '@cloudscape-design/components';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
@@ -44,15 +44,6 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 <Input value={props.item.ModelUrl} inputMode='text' onBlur={() => props.touchFields(['ModelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'ModelUrl': detail.value });
                 }}/>
-            </FormField>
-            <FormField label='Streaming' errorText={props.formErrors?.Streaming}>
-                <Toggle
-                    onChange={({ detail }) =>
-                        props.setFields({'Streaming': detail.checked})
-                    }
-                    onBlur={() => props.touchFields(['Streaming'])}
-                    checked={props.item.Streaming}
-                />
             </FormField>
             <FormField label='Model Type' errorText={props.formErrors?.ModelType}>
                 <Select
@@ -91,6 +82,26 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     ]}
                 />
             </FormField>
+            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                <FormField label='LISA Hosted Model' errorText={props.formErrors?.LisaHostedModel}>
+                    <Toggle
+                        onChange={({ detail }) =>
+                            props.setFields({'LisaHostedModel': detail.checked})
+                        }
+                        onBlur={() => props.touchFields(['LisaHostedModel'])}
+                        checked={props.item.LisaHostedModel}
+                    />
+                </FormField>
+                <FormField label='Streaming' errorText={props.formErrors?.Streaming}>
+                    <Toggle
+                        onChange={({ detail }) =>
+                            props.setFields({'Streaming': detail.checked})
+                        }
+                        onBlur={() => props.touchFields(['Streaming'])}
+                        checked={props.item.Streaming}
+                    />
+                </FormField>
+            </Grid>
         </SpaceBetween>
     );
 }

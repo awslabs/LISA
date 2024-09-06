@@ -78,7 +78,6 @@ dev:
         duration: 60
         estimatedInstanceWarmup: 30
     loadBalancerConfig:
-      sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
       healthCheckConfig:
         path: /health
         interval: 60

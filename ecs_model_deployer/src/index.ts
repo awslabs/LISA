@@ -17,9 +17,6 @@
 import { spawnSync, spawn, ChildProcess } from 'child_process';
 import { readdirSync, symlinkSync, rmSync } from 'fs';
 
-const ACTION_DEPLOY = 'deploy';
-const ACTION_DESTROY = 'destroy';
-
 /*
   cdk CLI always wants ./ to be writable in order to write cdk.context.json.
   This should really be an environment variable or something, but this function
@@ -54,17 +51,9 @@ const createWritableEnv = () => {
 };
 
 export const handler = async (event: any) => {
-    if (!event.action) {
-        console.log(`action not provided in ${JSON.stringify(event)}`);
-        throw new Error('action not provided');
-    } else if ( ![ACTION_DESTROY, ACTION_DEPLOY].includes(event.action) ) {
-        console.log(`Invalid action ${event.action}`);
-        throw new Error(`Invalid action ${event.action}`);
-    }
-
     if (!event.modelConfig) {
         console.log(`modelConfig not provided in ${JSON.stringify(event)}`);
-        throw new Error('modeConfig not provided');
+        throw new Error('modelConfig not provided');
     }
     const modelConfig = event.modelConfig;
     process.env['LISA_MODEL_CONFIG'] = JSON.stringify(modelConfig);
@@ -79,8 +68,7 @@ export const handler = async (event: any) => {
 
     const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out']);
 
-    let stdout = String(ret.output[1]);
-    let stderr = String(ret.output[2]);
+    const stderr = String(ret.output[2]);
     if ( ret.status !== 0 ) {
         console.log(`cdk synth failed with stderr: ${stderr}`);
         throw new Error('Stack failed to synthesize');
@@ -88,56 +76,34 @@ export const handler = async (event: any) => {
 
 
     const stackName = `${config.deploymentName}-${modelConfig.modelId}`;
-    if ( event.action === ACTION_DEPLOY ) {
-        const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
-            const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
+    const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
+        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
 
-            cp.on('close', (code) => {
-                console.log(`cdk deploy exited early, code ${code}`);
-                resolve(cp);
-            });
-
-            cp.stdout.on('data', (data) => {
-                console.log(`Got data: ${data}`);
-            });
-
-            cp.stderr.on('data', (data) => {
-                console.log(`Got err data: ${data}`);
-            });
-
-            setTimeout(() => {
-                console.log('180 second timeout');
-                resolve(undefined);
-            }, 180 * 1000);
+        cp.on('close', (code) => {
+            console.log(`cdk deploy exited early, code ${code}`);
+            resolve(cp);
         });
 
-        const cp = await deploy_promise;
-        if ( cp ) {
-            if ( cp.exitCode !== 0 ) {
-                throw new Error('Stack failed to deploy');
-            }
-        }
-    } else if ( event.action === ACTION_DESTROY ) {
-        const deploy_promise: Promise<Number> = new Promise( (resolve) => {
-            const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['destroy', '-f', stackName, '-o', '/tmp/cdk.out']);
-
-            cp.on('close', (code) => {
-                resolve(code ?? -1);
-            });
-
-            setTimeout(() => {
-                console.log('60 second timeout');
-                resolve(0);
-            }, 180 * 1000);
+        cp.stdout.on('data', (data) => {
+            console.log(`Got data: ${data}`);
         });
 
-        const exitCode = await deploy_promise;
-        stdout = String(ret.output[1]);
-        stderr = String(ret.output[2]);
-        if ( exitCode !== 0 ) {
-            console.log(`cdk destroy failed with stdout: ${stdout}, stderr: ${stderr}`);
-            throw new Error('Stack failed to destroy');
+        cp.stderr.on('data', (data) => {
+            console.log(`Got err data: ${data}`);
+        });
+
+        setTimeout(() => {
+            console.log('180 second timeout');
+            resolve(undefined);
+        }, 180 * 1000);
+    });
+
+    const cp = await deploy_promise;
+    if ( cp ) {
+        if ( cp.exitCode !== 0 ) {
+            throw new Error('Stack failed to deploy');
         }
     }
-    return stackName;
+
+    return {stackName: stackName};
 };

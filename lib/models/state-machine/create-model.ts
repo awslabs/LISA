@@ -23,6 +23,7 @@ import {
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
+import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -30,12 +31,14 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[];
     dockerImageBuilderFnArn: string;
-    ecsModelImageRepositoryName: string;
+    ecsModelDeployerFnArn: string;
+    ecsModelImageRepository: Repository;
     role?: IRole,
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];
@@ -50,7 +53,7 @@ export class CreateModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateModelStateMachineProps) {
         super(scope, id);
 
-        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelImageRepositoryName, role, vpc, securityGroups} = props;
+        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups} = props;
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
@@ -103,7 +106,7 @@ export class CreateModelStateMachine extends Construct {
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: {
-                    ECR_REPOSITORY_NAME: ecsModelImageRepositoryName,
+                    ECR_REPOSITORY_NAME: ecsModelImageRepository.repositoryName,
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
@@ -121,13 +124,15 @@ export class CreateModelStateMachine extends Construct {
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
-                timeout: LAMBDA_TIMEOUT,
+                timeout: Duration.minutes(8),
                 memorySize: LAMBDA_MEMORY,
                 role: role,
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: {
+                    ECS_MODEL_DEPLOYER_FN_ARN: ecsModelDeployerFnArn,
+                    ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),

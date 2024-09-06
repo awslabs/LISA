@@ -400,7 +400,7 @@ const LoadBalancerConfigSchema = z.object({
  *
  */
 const MetricConfigSchema = z.object({
-    AlbMetricName: z.string(),
+    albMetricName: z.string(),
     targetValue: z.number(),
     duration: z.number().default(60),
     estimatedInstanceWarmup: z.number().min(0).default(180),

@@ -280,9 +280,9 @@ def get_id_token(event: dict) -> str:
     elif "Authorization" in event["headers"]:
         auth_header = event["headers"]["Authorization"].split(" ")
     elif "Api-Key" in event["headers"]:
-        auth_header = ["", event["headers"]["Api-Key"]]
+        auth_header = ["", event["headers"]["Api-Key"].removeprefix("Bearer ")]
     elif "api-key" in event["headers"]:
-        auth_header = ["", event["headers"]["api-key"]]
+        auth_header = ["", event["headers"]["api-key"].removeprefix("Bearer ")]
     else:
         raise ValueError("Missing authorization token.")
 

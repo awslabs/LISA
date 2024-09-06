@@ -36,28 +36,28 @@ TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 # management API.
 OPENAI_ROUTES = (
     # List models
-    "/llm/models",
-    "/llm/v1/models",
+    "models",
+    "v1/models",
     # Text completions
-    "/llm/chat/completions",
-    "/llm/v1/chat/completions",
-    "/llm/completions",
-    "/llm/v1/completions",
+    "chat/completions",
+    "v1/chat/completions",
+    "completions",
+    "v1/completions",
     # Embeddings
-    "/llm/embeddings",
-    "/llm/v1/embeddings",
+    "embeddings",
+    "v1/embeddings",
     # Create images
-    "/llm/images/generations",
-    "/llm/v1/images/generations",
+    "images/generations",
+    "v1/images/generations",
     # Audio routes
-    "/llm/audio/speech",
-    "/llm/v1/audio/speech",
-    "/llm/audio/transcriptions",
-    "/llm/v1/audio/transcriptions",
+    "audio/speech",
+    "v1/audio/speech",
+    "audio/transcriptions",
+    "v1/audio/transcriptions",
     # Health check routes
-    "/llm/health",
-    "/llm/health/readiness",
-    "/llm/health/liveliness",
+    "health",
+    "health/readiness",
+    "health/liveliness",
 )
 
 @authorization_wrapper
@@ -91,7 +91,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
             username = jwt_data.get("sub", "user")
             logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
             return deny_policy
-        elif requested_resource.startswith("/llm") and requested_resource not in OPENAI_ROUTES and not is_admin_user:
+        elif requested_resource.startswith("/llm") and requested_resource.removeprefix("/llm/v2/serve") not in OPENAI_ROUTES and not is_admin_user:
             username = jwt_data.get("sub", "user")
             logger.info(f"Deny access to {username} due to non-admin accessing litellm admin api.")
             return deny_policy

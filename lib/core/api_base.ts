@@ -45,7 +45,7 @@ export class LisaApiBaseStack extends Stack {
         if (config.restApiConfig.internetFacing) {
             // Create DynamoDB Table for enabling API token usage
             tokenTable = new Table(this, 'TokenTable', {
-                tableName: `${config.deploymentName}-LISAApiTokenTable`,
+                tableName: `${config.deploymentName}-LISAApiTokensTable`,
                 partitionKey: {
                     name: 'token',
                     type: AttributeType.STRING,

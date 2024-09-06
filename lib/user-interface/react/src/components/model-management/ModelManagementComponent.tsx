@@ -75,7 +75,7 @@ export function ModelManagementComponent () : ReactElement {
                 loadingText='Loading models'
                 items={matchedModels}
                 selectionType='single' // single | multi
-                trackBy='UniqueId'
+                trackBy='ModelId'
                 variant='full-page'
                 loading={fetchingModels}
                 cardsPerRow={[{ cards: 3 }]}

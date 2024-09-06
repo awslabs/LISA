@@ -87,7 +87,6 @@ export type IContainerConfig = {
 };
 
 export type IModel = {
-    UniqueId: string;
     ModelId: string;
     ModelName: string;
     ModelUrl: string;
@@ -105,7 +104,6 @@ export type IModelListResponse = {
 };
 
 export type IModelRequest = {
-    UniqueId: string;
     ModelId: string;
     ModelName: string;
     ModelUrl: string;
@@ -116,6 +114,7 @@ export type IModelRequest = {
     ContainerConfig: IContainerConfig;
     AutoScalingConfig: IAutoScalingConfig;
     LoadBalancerConfig: ILoadBalancerConfig;
+    LisaHostedModel: boolean;
 };
 
 const containerHealthCheckConfigSchema = z.object({
@@ -172,6 +171,7 @@ export const ModelRequestSchema = z.object({
     ModelName: z.string().default(''),
     ModelUrl: z.string().default(''),
     Streaming: z.boolean().default(true),
+    LisaHostedModel: z.boolean().default(false),
     ModelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     InstanceType: z.string().default(''),
     InferenceContainer: z.nativeEnum(InferenceContainer).optional(),

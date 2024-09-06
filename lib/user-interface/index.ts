@@ -185,7 +185,6 @@ export class UserInterfaceStack extends Stack {
             ADMIN_GROUP: config.authConfig!.adminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
             CUSTOM_SCOPES: config.authConfig!.additionalScopes,
-            RESTAPI_URI: config.apiGatewayConfig?.domainName ? '/llm' : `/${config.deploymentStage}/llm`,
             RESTAPI_VERSION: config.restApiConfig.apiVersion,
             RAG_ENABLED: config.deployRag,
             SYSTEM_BANNER: {

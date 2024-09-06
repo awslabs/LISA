@@ -122,10 +122,12 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     function handleSubmit () {
         const submittedObject : IModelRequest = {
             ...state.form,
-            ContainerConfig: {
+            ContainerConfig: (state.form.LisaHostedModel ? {
                 ...state.form.ContainerConfig,
                 Environment: Object.fromEntries(Object.entries(state.form.ContainerConfig.Environment || {}).filter((entry: any) => !!entry.key))
-            }
+            } : null),
+            LoadBalancerConfig: (state.form.LisaHostedModel ? state.form.LoadBalancerConfig : null),
+            AutoScalingConfig: (state.form.LisaHostedModel ? state.form.AutoScalingConfig : null)
         };
         if (isValid && !props.isEdit) {
             createModelMutation(submittedObject);
@@ -144,7 +146,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     ContainerConfig: {
                         ...parsedValue,
                         Environment: props.selectedItems[0].ContainerConfig?.Environment ? Object.entries(props.selectedItems[0].ContainerConfig?.Environment).map(([key, value]) => ({ key, value })) : [],
-                    }
+                    },
+                    LisaHostedModel: props.selectedItems[0].ContainerConfig || props.selectedItems[0].AutoScalingConfig || props.selectedItems[0].LoadBalancerConfig
                 }
             });
         }

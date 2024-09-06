@@ -107,7 +107,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
 
     prepared_event = {}
 
-    def camelize_object(o):
+    def camelize_object(o):  # type: ignore[no-untyped-def]
         o2 = {}
         for k in o:
             fixed_k = k[:1].lower() + k[1:]

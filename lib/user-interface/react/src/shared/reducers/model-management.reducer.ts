@@ -60,7 +60,7 @@ export const modelManagementApi = createApi({
         }),
         updateModel: builder.mutation<IModel, IModelRequest>({
             query: (modelRequest) => ({
-                url: `/models/${modelRequest.UniqueId}`,
+                url: `/models/${modelRequest.ModelId}`,
                 method: 'PUT',
                 data: modelRequest
             }),

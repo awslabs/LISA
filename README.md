@@ -472,9 +472,8 @@ window.env = {
   ADMIN_GROUP: '<The admin group you would like LISA to check the JWT token for>',
   CUSTOM_SCOPES:[<add your optional list of custom scopes to pull groups from your IdP here>],
   // Alternatively you can set this to be your REST api elb endpoint
-  RESTAPI_URI: 'http://localhost:8080/',
+  API_BASE_URL: '<API GW session endpoint>',
   RESTAPI_VERSION: 'v2',
-  SESSION_REST_API_URI: '<API GW session endpoint>',
   "MODELS": [
     {
       "model": "streaming-textgen-model",

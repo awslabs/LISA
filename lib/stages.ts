@@ -145,6 +145,7 @@ export class LisaServeApplicationStage extends Stage {
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
             stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
             vpc: networkingStack.vpc,
+            tokenTable: apiBaseStack.tokenTable
         });
         stacks.push(serveStack);
 

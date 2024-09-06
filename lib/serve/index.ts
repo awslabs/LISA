@@ -18,7 +18,6 @@
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -29,6 +28,7 @@ import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 const HERE = path.resolve(__dirname);
 
@@ -37,6 +37,7 @@ type CustomLisaStackProps = {
     authorizer: IAuthorizer;
     restApiId: string;
     rootResourceId: string;
+    tokenTable: ITable | undefined;
 } & BaseProps;
 type LisaStackProps = CustomLisaStackProps & StackProps;
 
@@ -57,23 +58,8 @@ export class LisaServeApplicationStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaStackProps) {
         super(scope, id, props);
 
-        const { config, vpc } = props;
+        const { config, vpc, tokenTable } = props;
         const rdsConfig = config.restApiConfig.rdsConfig;
-
-        let tokenTable;
-        if (config.restApiConfig.internetFacing) {
-            // Create DynamoDB Table for enabling API token usage
-            tokenTable = new Table(this, 'TokenTable', {
-                tableName: `${config.deploymentName}-LISAApiTokenTable`,
-                partitionKey: {
-                    name: 'token',
-                    type: AttributeType.STRING,
-                },
-                billingMode: BillingMode.PAY_PER_REQUEST,
-                encryption: TableEncryption.AWS_MANAGED,
-                removalPolicy: config.removalPolicy,
-            });
-        }
 
         // Create REST API
         const restApi = new FastApiContainer(this, 'RestApi', {

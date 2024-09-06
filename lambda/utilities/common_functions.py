@@ -279,6 +279,8 @@ def get_id_token(event: dict) -> str:
         auth_header = event["headers"]["authorization"].split(" ")
     elif "Authorization" in event["headers"]:
         auth_header = event["headers"]["Authorization"].split(" ")
+    else:
+        raise ValueError("Missing authorization token.")
 
     token = auth_header[1]
     return str(token)

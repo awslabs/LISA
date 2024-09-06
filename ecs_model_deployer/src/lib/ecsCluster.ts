@@ -271,7 +271,7 @@ export class ECSCluster extends Construct {
         // Create application load balancer
         const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-            internetFacing: ecsConfig.internetFacing,
+            internetFacing: false,
             loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             dropInvalidHeaderFields: true,
             securityGroup,
@@ -280,18 +280,14 @@ export class ECSCluster extends Construct {
 
         // Add listener
         const listenerProps: BaseApplicationListenerProps = {
-            port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
-            open: ecsConfig.internetFacing,
-            certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
-                ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
-                : undefined,
+            port: 80,
+            open: false,
         };
 
         const listener = loadBalancer.addListener(
             createCdkId([ecsConfig.identifier, 'ApplicationListener']),
             listenerProps,
         );
-        const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
         // Add targets
         const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
@@ -311,7 +307,7 @@ export class ECSCluster extends Construct {
         // ALB metric for ASG to use for auto scaling EC2 instances
         // TODO: Update this to step scaling for embedding models??
         const requestCountPerTargetMetric = new Metric({
-            metricName: ecsConfig.autoScalingConfig.metricConfig.AlbMetricName,
+            metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
             namespace: 'AWS/ApplicationELB',
             dimensionsMap: {
                 TargetGroup: targetGroup.targetGroupFullName,
@@ -332,7 +328,7 @@ export class ECSCluster extends Construct {
       ecsConfig.loadBalancerConfig.domainName !== null
           ? ecsConfig.loadBalancerConfig.domainName
           : loadBalancer.loadBalancerDnsName;
-        const endpoint = `${protocol}://${domain}`;
+        const endpoint = `http://${domain}`;
         this.endpointUrl = endpoint;
 
         // Update

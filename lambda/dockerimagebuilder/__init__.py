@@ -28,10 +28,21 @@ systemctl start docker
 mkdir /home/ec2-user/docker_resources
 aws --region ${AWS_REGION} s3 sync s3://{{BUCKET_NAME}} /home/ec2-user/docker_resources
 cd /home/ec2-user/docker_resources/{{LAYER_TO_ADD}}
-docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} .
-docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}}
-aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin {{ECR_URI}}
-docker push {{ECR_URI}}:{{IMAGE_ID}}
+
+while [ 1 ]; do
+    shutdown -c;
+    sleep 5;
+done &
+
+function buildTagPush() {
+    docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} . && \
+    docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}} && \
+    aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin {{ECR_URI}} && \
+    docker push {{ECR_URI}}:{{IMAGE_ID}}
+    return $?
+}
+
+(r=3;while ! buildTagPush ; do ((--r))||exit;sleep 10; done)
 """
 
 

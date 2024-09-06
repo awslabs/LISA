@@ -20,13 +20,16 @@ from copy import deepcopy
 from typing import Any, Dict
 
 import boto3
+from botocore.config import Config
 from models.domain_objects import CreateModelRequest
 
-lambdaClient = boto3.client("lambda")
+lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
+lambdaClient = boto3.client("lambda", config=lambdaConfig)
 ecrClient = boto3.client("ecr")
 ec2Client = boto3.client("ec2")
 ddbResource = boto3.resource("dynamodb")
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
+cfnClient = boto3.client("cloudformation")
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -42,7 +45,10 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
         and request.LoadBalancerConfig  # noqa: W503
     ):
         model_table.update_item(
-            Key={"model_id": request.ModelId}, AttributeUpdates={"Status": {"Value": "CREATING", "Action": "PUT"}}
+            Key={"model_id": request.ModelId},
+            UpdateExpression="SET #s = :status, ModelConfig = :modelConfig",
+            ExpressionAttributeValues={":status": {"S": "CREATING"}, ":modelConfig": {"M": event}},
+            ExpressionAttributeNames={"#s": "Status"},
         )
         output_dict["create_infra"] = True
     else:
@@ -97,14 +103,69 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
 def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Start model infrastructure creation."""
     output_dict = deepcopy(event)
+    request = CreateModelRequest.validate(event)
+
+    prepared_event = {}
+
+    def camelize_object(o):  # type: ignore[no-untyped-def]
+        o2 = {}
+        for k in o:
+            fixed_k = k[:1].lower() + k[1:]
+            if isinstance(o[k], dict):
+                o2[fixed_k] = camelize_object(o[k])
+            else:
+                o2[fixed_k] = o[k]
+        return o2
+
+    prepared_event = camelize_object(event)
+    prepared_event["containerConfig"]["environment"] = event["ContainerConfig"]["Environment"]
+    prepared_event["containerConfig"]["image"] = {
+        "repositoryArn": os.environ["ECR_REPOSITORY_ARN"],
+        "tag": event["image_info"]["image_tag"],
+        "type": "ecr",
+    }
+
+    response = lambdaClient.invoke(
+        FunctionName=os.environ["ECS_MODEL_DEPLOYER_FN_ARN"],
+        Payload=json.dumps({"modelConfig": prepared_event}),
+    )
+
+    payload = response["Payload"].read()
+    payload = json.loads(payload)
+    stack_name = payload.get("stackName")
+
+    response = cfnClient.describe_stacks(StackName=stack_name)
+    stack_arn = response["Stacks"][0]["StackId"]
+    output_dict["stack_name"] = stack_name
+    output_dict["stack_arn"] = stack_arn
+
+    model_table.update_item(
+        Key={"model_id": request.ModelId},
+        UpdateExpression="SET StackName = :stack_name, StackArn = :stack_arn",
+        ExpressionAttributeValues={":stack_name": {"S": stack_name}, ":stack_arn": {"S": stack_arn}},
+    )
+
+    output_dict["remaining_polls_stack"] = 30
+
     return output_dict
 
 
 def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Check that model infrastructure creation has completed or not."""
     output_dict = deepcopy(event)
-    output_dict["continue_polling_stack"] = False
-    return output_dict
+    response = cfnClient.describe_stacks(StackName=event["stack_name"])
+    stackStatus = response["Stacks"][0]["StackStatus"]
+    if stackStatus in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+        output_dict["continue_polling_stack"] = False
+        return output_dict
+    elif stackStatus in ["CREATE_IN_PROGRESS", "UPDATE_IN_PROGRESS"]:
+        output_dict["continue_polling_stack"] = True
+        output_dict["remaining_polls_stack"] -= 1
+        if output_dict["remaining_polls_stack"] <= 0:
+            raise Exception("Maximum number of CloudFormation polls reached")
+        return output_dict
+    else:
+        raise Exception(f"Stack in unexpected state: {stackStatus}")
 
 
 def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

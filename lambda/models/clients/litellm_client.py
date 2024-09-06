@@ -43,7 +43,6 @@ class LiteLLMClient:
             self._base_uri + "/model/info",
             headers=self._headers,
             timeout=self._timeout,
-            verify=self._verify,
         )
         all_models = resp.json()
         models_list: List[Dict[str, Any]] = all_models["data"]

@@ -16,7 +16,7 @@
 
 import { Construct } from 'constructs';
 import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { Role, ServicePrincipal, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration, Size } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
@@ -29,6 +29,7 @@ export type ECSModelDeployerProps = {
 } & BaseProps;
 
 export class ECSModelDeployer extends Construct {
+    readonly ecsModelDeployerFn: Function;
     constructor (scope: Construct, id: string, props: ECSModelDeployerProps) {
         super(scope, id);
         const stackName = Stack.of(scope).stackName;
@@ -46,6 +47,7 @@ export class ECSModelDeployer extends Construct {
         });
 
         role.attachInlinePolicy(assumeCdkPolicy);
+        role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
 
         const stripped_config = {
             'appName': props.config.appName,
@@ -58,7 +60,7 @@ export class ECSModelDeployer extends Construct {
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
-        new Function(this, functionId, {
+        this.ecsModelDeployerFn = new Function(this, functionId, {
             functionName: functionId,
             runtime: Runtime.NODEJS_18_X,
             handler: 'index.handler',

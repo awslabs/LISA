@@ -34,6 +34,8 @@ import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[];
+    dockerImageBuilderFnArn: string;
+    ecsModelImageRepositoryName: string;
     role?: IRole,
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];
@@ -48,7 +50,7 @@ export class CreateModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateModelStateMachineProps) {
         super(scope, id);
 
-        const {config, modelTable, lambdaLayers, role, vpc, securityGroups} = props;
+        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelImageRepositoryName, role, vpc, securityGroups} = props;
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
@@ -82,6 +84,7 @@ export class CreateModelStateMachine extends Construct {
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: {
+                    DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),
@@ -100,6 +103,7 @@ export class CreateModelStateMachine extends Construct {
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: {
+                    ECR_REPOSITORY_NAME: ecsModelImageRepositoryName,
                     MODEL_TABLE_NAME: modelTable.tableName,
                 },
             }),

@@ -28,6 +28,7 @@ import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
+import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 const HERE = path.resolve(__dirname);
@@ -137,6 +138,33 @@ export class LisaServeApplicationStack extends Stack {
         // Add parameter as container environment variable for both RestAPI and RagAPI
         restApi.container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
         restApi.node.addDependency(this.modelsPs);
+
+        // Additional permissions for REST API Role
+        const invocation_permissions = new Policy(this, 'ModelInvokePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'bedrock:InvokeModel',
+                        'bedrock:InvokeModelWithResponseStream',
+                    ],
+                    resources: [
+                        'arn:*:bedrock:*::foundation-model/*'
+                    ]
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'sagemaker:InvokeEndpoint',
+                        'sagemaker:InvokeEndpointWithResponseStream',
+                    ],
+                    resources: [
+                        'arn:*:sagemaker:*:*:endpoint/*'
+                    ],
+                }),
+            ]
+        });
+        restApi.taskRole.attachInlinePolicy(invocation_permissions);
 
         // Update
         this.restApi = restApi;

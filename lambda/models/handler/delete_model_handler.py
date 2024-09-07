@@ -19,7 +19,7 @@ import os
 
 from models.exception import ModelNotFoundError
 
-from ..domain_objects import DeleteModelResponse, ModelStatus
+from ..domain_objects import DeleteModelResponse
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
 
@@ -37,19 +37,5 @@ class DeleteModelHandler(BaseApiHandler):
             stateMachineArn=os.environ["DELETE_SFN_ARN"], input=json.dumps({"modelId": model_id})
         )
 
-        # Placeholder info until all model info is properly stored in DDB
-        lisa_model = to_lisa_model(
-            {
-                "model_name": model_id,
-                "litellm_params": {
-                    "model": table_item["model_config"]["modelName"],
-                },
-                "model_info": {
-                    "id": table_item["litellm_id"],
-                    "model_status": ModelStatus.DELETING,
-                    "streaming": table_item["model_config"]["streaming"],
-                },
-            }
-        )
-
+        lisa_model = to_lisa_model(table_item)
         return DeleteModelResponse(model=lisa_model)

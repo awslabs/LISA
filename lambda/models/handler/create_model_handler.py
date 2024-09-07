@@ -42,15 +42,11 @@ class CreateModelHandler(BaseApiHandler):
         # Placeholder data until model data is persisted in database via state machine workflow
         lisa_model = to_lisa_model(
             {
-                "model_name": model_id,
-                "litellm_params": {
-                    "model": create_request.modelName,
-                },
-                "model_info": {
-                    "id": model_id,
-                    "model_status": ModelStatus.CREATING,
-                    "streaming": create_request.streaming,
-                },
+                "modelId": model_id,
+                "modelName": create_request.modelName,
+                "modelType": create_request.modelType,
+                "status": ModelStatus.CREATING,
+                "streaming": create_request.streaming,
             }
         )
         return CreateModelResponse(model=lisa_model)

@@ -216,7 +216,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
             ":ms": ModelStatus.IN_SERVICE,
             ":lid": litellm_id,
             ":lm": int(datetime.utcnow().timestamp()),
-            ":mu": litellm_params.get("api_base", "")
+            ":mu": litellm_params.get("api_base", ""),
         },
     )
 

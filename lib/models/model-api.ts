@@ -323,6 +323,7 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'dynamodb:GetItem',
+                        'dynamodb:Scan',
                     ],
                     resources: [
                         modelTable.tableArn,

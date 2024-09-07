@@ -16,19 +16,13 @@
 
 from typing import Any, Dict
 
-from ..domain_objects import LISAModel, ModelStatus
+from ..domain_objects import LISAModel
 
 
 def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
-    """Convert LiteLLM model dictionary to a LISAModel object."""
-    return LISAModel(
-        modelId=model_dict["model_name"],
-        modelName=model_dict["litellm_params"]["model"].removeprefix("openai/"),
-        status=model_dict["model_info"].get("model_status", ModelStatus.IN_SERVICE),
-        modelType=model_dict["model_info"].get("model_type", "textgen"),
-        streaming=model_dict["model_info"].get("streaming", False),
-        modelUrl=model_dict["litellm_params"].get("api_base", None),
-        containerConfig=model_dict["model_info"].get("container_config", None),
-        autoScalingConfig=model_dict["model_info"].get("autoscaling_config", None),
-        loadBalancerConfig=model_dict["model_info"].get("loadbalancer_config", None),
-    )
+    """Convert DDB model entry dictionary to a LISAModel object."""
+    model_dict["model_config"]["status"] = model_dict["model_status"]
+    if "model_url" in model_dict:
+        model_dict["model_config"]["modelUrl"] = model_dict["model_url"]
+    lisa_model: LISAModel = LISAModel.model_validate(model_dict["model_config"])
+    return lisa_model

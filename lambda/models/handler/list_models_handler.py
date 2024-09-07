@@ -24,6 +24,14 @@ class ListModelsHandler(BaseApiHandler):
 
     def __call__(self) -> ListModelsResponse:  # type: ignore
         """Call handler to get all models from LiteLLM database and transform results into API response format."""
-        litellm_models = self._litellm_client.list_models()
-        models_list = [to_lisa_model(m) for m in litellm_models]
-        return ListModelsResponse(Models=models_list)
+        ddb_models = []
+        models_response = self._model_table.scan()
+        ddb_models.extend(models_response.get("Items", []))
+        pagination_key = models_response.get("LastEvaluatedKey", None)
+        while pagination_key:
+            models_response = self._model_table.scan(ExclusiveStartKey=pagination_key)
+            ddb_models.extend(models_response.get("Items", []))
+            pagination_key = models_response.get("LastEvaluatedKey", None)
+
+        models_list = [to_lisa_model(m) for m in ddb_models]
+        return ListModelsResponse(models=models_list)

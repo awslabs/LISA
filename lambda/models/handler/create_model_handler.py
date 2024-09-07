@@ -39,14 +39,10 @@ class CreateModelHandler(BaseApiHandler):
             stateMachineArn=os.environ["CREATE_SFN_ARN"], input=create_request.model_dump_json()
         )
 
-        # Placeholder data until model data is persisted in database via state machine workflow
         lisa_model = to_lisa_model(
             {
-                "modelId": model_id,
-                "modelName": create_request.modelName,
-                "modelType": create_request.modelType,
-                "status": ModelStatus.CREATING,
-                "streaming": create_request.streaming,
+                "model_config": create_request.model_dump(),
+                "model_status": ModelStatus.CREATING,
             }
         )
         return CreateModelResponse(model=lisa_model)

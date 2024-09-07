@@ -127,10 +127,10 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 environment: state.form.containerConfig.environment.reduce((r,{key,value}) => (r[key] = value,r), {})
             }) : null),
             loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
-            AutoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
-            InferenceContainer: state.form.inferenceContainer ?? null,
-            InstanceType: state.form.instanceType ? state.form.instanceType : null,
-            ModelUrl: state.form.modelUrl ? state.form.modelUrl : null
+            autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
+            inferenceContainer: state.form.inferenceContainer ?? null,
+            instanceType: state.form.instanceType ? state.form.instanceType : null,
+            modelUrl: state.form.modelUrl ? state.form.modelUrl : null
         };
         delete submittedObject.lisaHostedModel;
         if (isValid && !props.isEdit) {
@@ -147,11 +147,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 ...state,
                 form: {
                     ...parsedValue,
-                    ContainerConfig: {
+                    containerConfig: {
                         ...parsedValue,
-                        Environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
+                        environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
                     },
-                    LisaHostedModel: props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig
+                    lisaHostedModel: props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig
                 }
             });
         }

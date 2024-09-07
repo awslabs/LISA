@@ -122,13 +122,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     function handleSubmit () {
         const submittedObject : IModelRequest = {
             ...state.form,
-            ContainerConfig: (state.form.LisaHostedModel ? {
-                ...state.form.ContainerConfig,
-                Environment: Object.fromEntries(Object.entries(state.form.ContainerConfig.Environment || {}).filter((entry: any) => !!entry.key))
-            } : null),
-            LoadBalancerConfig: (state.form.LisaHostedModel ? state.form.LoadBalancerConfig : null),
-            AutoScalingConfig: (state.form.LisaHostedModel ? state.form.AutoScalingConfig : null)
+            containerConfig: (state.form.lisaHostedModel ? ({
+                ...state.form.containerConfig,
+                environment: state.form.containerConfig.environment.reduce((r,{key,value}) => (r[key]=value,r), {})
+            }) : null),
+            loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
+            AutoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
+            InferenceContainer: state.form.inferenceContainer ?? null,
+            InstanceType: state.form.instanceType ? state.form.instanceType : null,
+            ModelUrl: state.form.modelUrl ? state.form.modelUrl : null
         };
+        delete submittedObject.lisaHostedModel;
         if (isValid && !props.isEdit) {
             createModelMutation(submittedObject);
         } else if (isValid && props.isEdit) {
@@ -145,9 +149,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     ...parsedValue,
                     ContainerConfig: {
                         ...parsedValue,
-                        Environment: props.selectedItems[0].ContainerConfig?.Environment ? Object.entries(props.selectedItems[0].ContainerConfig?.Environment).map(([key, value]) => ({ key, value })) : [],
+                        Environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
                     },
-                    LisaHostedModel: props.selectedItems[0].ContainerConfig || props.selectedItems[0].AutoScalingConfig || props.selectedItems[0].LoadBalancerConfig
+                    LisaHostedModel: props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig
                 }
             });
         }
@@ -156,7 +160,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     useEffect(() => {
         if (!isCreating && isCreateSuccess) {
-            notificationService.generateNotification(`Successfully created model: ${state.form.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully created model: ${state.form.modelId}`, 'success');
             props.setVisible(false);
             props.setIsEdit(false);
             resetState();
@@ -168,7 +172,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     useEffect(() => {
         if (!isUpdating && isUpdateSuccess) {
-            notificationService.generateNotification(`Successfully updated model: ${state.form.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully updated model: ${state.form.modelId}`, 'success');
             props.setVisible(false);
             props.setIsEdit(false);
             resetState();
@@ -241,21 +245,21 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     {
                         title: 'Container Configuration',
                         content: (
-                            <ContainerConfig item={state.form.ContainerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                            <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
                         isOptional: true
                     },
                     {
                         title: 'Auto Scaling Configuration',
                         content: (
-                            <AutoScalingConfig item={state.form.AutoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                            <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
                         isOptional: true
                     },
                     {
                         title: 'Load Balancer Configuration',
                         content: (
-                            <LoadBalancerConfig item={state.form.LoadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                            <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
                         isOptional: true
                     },

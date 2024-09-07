@@ -124,7 +124,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             ...state.form,
             containerConfig: (state.form.lisaHostedModel ? ({
                 ...state.form.containerConfig,
-                environment: state.form.containerConfig.environment.reduce((r,{key,value}) => (r[key]=value,r), {})
+                environment: state.form.containerConfig.environment.reduce((r,{key,value}) => (r[key] = value,r), {})
             }) : null),
             loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
             AutoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),

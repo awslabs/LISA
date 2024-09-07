@@ -32,12 +32,12 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
 };
 
 export const CARD_DEFINITIONS = {
-    header: (model: IModel) => <div>{model.modelName}</div>,
+    header: (model: IModel) => <div>{model.modelId}</div>,
     sections: [
         {
-            id: 'modelId',
-            header: 'ID',
-            content: (model: IModel) => model.modelId,
+            id: 'modelName',
+            header: 'Name',
+            content: (model: IModel) => model.modelName,
         },
         {
             id: 'modelType',
@@ -83,14 +83,14 @@ export const PAGE_SIZE_OPTIONS = [
 
 export const DEFAULT_PREFERENCES = {
     pageSize: 12,
-    visibleContent: ['modelId', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
+    visibleContent: ['modelName', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
     {
         label: 'Displayed Properties',
         options: [
-            { id: 'modelId', label: 'ID' },
+            { id: 'modelName', label: 'Name' },
             { id: 'modelType', label: 'Type' },
             { id: 'modelUrl', label: 'URL' },
             { id: 'streaming', label: 'Streaming' },

@@ -42,7 +42,7 @@ export function LoadBalancerConfig (props: FormProps<ILoadBalancerConfig>) : Rea
                 </FormField>
                 <FormField label='Timeout' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.timeout}>
                     <Input value={props.item.healthCheckConfig.timeout.toString()} inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
-                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.yimeout': Number(detail.value) });
+                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.timeout': Number(detail.value) });
                     }}/>
                 </FormField>
                 <FormField label='Healthy Threshold Count' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.healthyThresholdCount}>

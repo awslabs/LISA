@@ -57,7 +57,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'hosting',
             header: 'Hosted in LISA',
-            content: (model: IModel) => String(model.containerConfig === null && model.autoScalingConfig === null && model.loadBalancerConfig === null),
+            content: (model: IModel) => String(model.containerConfig !== null && model.autoScalingConfig !== null && model.loadBalancerConfig !== null),
         },
         {
             id: 'instanceType',

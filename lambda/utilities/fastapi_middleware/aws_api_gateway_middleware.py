@@ -41,6 +41,7 @@ class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
         else:
             if "aws.event" in request.scope and "pathParameters" in request.scope["aws.event"]:
                 stage = request.scope["aws.event"]["requestContext"]["stage"]
+                stage_path = f"/{stage}"
                 # Check if stage is the default, if so, we don't need to do anything
                 if stage != "$default":
                     # If stage is not $default, it means we are behind an APIGateway
@@ -53,10 +54,16 @@ class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
                     # which is the path after the stage_part. We can use this to
                     # set the path.
 
-                    # Set root_path value to APIGateway stage in requestContext
-                    stage_path = f"/{stage}"
-                    self.app.root_path = stage_path
-                    request.scope["root_path"] = stage_path
+                    # if serving with a stage prefix, prepend that to the openapi definition because /docs
+                    # doesn't get served with the stage prefix
+                    if request.scope["aws.event"]["requestContext"]["path"].startswith(stage_path):
+                        request.app.openapi_url = f"{stage_path}/openapi.json"
+
+                    # if not serving /docs, ensure root_path is set correctly so fataspi can resolve endpoints properly
+                    if request.scope["aws.event"]["path"] != "/docs":
+                        # Set root_path value to APIGateway stage in requestContext
+                        self.app.root_path = stage_path
+                        request.scope["root_path"] = stage_path
 
         response = await call_next(request)
         return response

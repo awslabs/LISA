@@ -44,7 +44,7 @@ export type EnvironmentVariablesProps = {
 
 export function EnvironmentVariables (props: FormProps<Readonly<any>> & EnvironmentVariablesProps): ReactElement {
     const { item, setFields, touchFields, formErrors, propertyPath } = props;
-    const property = props.propertyPath ? propertyPath?.join('.') : 'Environment';
+    const property = props.propertyPath ? propertyPath?.join('.') : 'environment';
 
     function findProperty (obj, path) {
         const parts = path.split('.');
@@ -70,7 +70,7 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
                 <FormField label='' description=''>
                     <AttributeEditor
                         onAddButtonClick={() => {
-                            setFields({ [property]: (item.Environment || []).concat({
+                            setFields({ [property]: (item.environment || []).concat({
                                 key: '',
                                 value: '',
                             })});
@@ -80,7 +80,7 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
                             toRemove[`${property}[${itemIndex}]`] = true;
                             setFields(toRemove, ModifyMethod.Unset);
                         }}
-                        items={item.Environment}
+                        items={item.environment}
                         addButtonText='Add environment variable'
                         definition={[
                             {

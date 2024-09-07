@@ -30,29 +30,29 @@ export function LoadBalancerConfig (props: FormProps<ILoadBalancerConfig>) : Rea
                     <Header variant='h2'>Health Check Config</Header>
                 }
             >
-                <FormField label='Path' errorText={props.formErrors?.LoadBalancerConfig?.HealthCheckConfig?.Path}>
-                    <Input value={props.item.HealthCheckConfig.Path} inputMode='text' onBlur={() => props.touchFields(['LoadBalancerConfig.HealthCheckConfig.Path'])} onChange={({ detail }) => {
-                        props.setFields({ 'LoadBalancerConfig.HealthCheckConfig.Path': detail.value });
+                <FormField label='Path' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.path}>
+                    <Input value={props.item.healthCheckConfig.path} inputMode='text' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.path'])} onChange={({ detail }) => {
+                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.path': detail.value });
                     }}/>
                 </FormField>
-                <FormField label='Interval' errorText={props.formErrors?.LoadBalancerConfig?.HealthCheckConfig?.Interval}>
-                    <Input value={props.item.HealthCheckConfig.Interval.toString()} inputMode='numeric' onBlur={() => props.touchFields(['LoadBalancerConfig.HealthCheckConfig.Interval'])} onChange={({ detail }) => {
-                        props.setFields({ 'LoadBalancerConfig.HealthCheckConfig.Interval': Number(detail.value) });
+                <FormField label='Interval' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.interval}>
+                    <Input value={props.item.healthCheckConfig.interval.toString()} inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
+                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.interval': Number(detail.value) });
                     }}/>
                 </FormField>
-                <FormField label='Timeout' errorText={props.formErrors?.LoadBalancerConfig?.HealthCheckConfig?.Timeout}>
-                    <Input value={props.item.HealthCheckConfig.Timeout.toString()} inputMode='numeric' onBlur={() => props.touchFields(['LoadBalancerConfig.HealthCheckConfig.Timeout'])} onChange={({ detail }) => {
-                        props.setFields({ 'LoadBalancerConfig.HealthCheckConfig.Timeout': Number(detail.value) });
+                <FormField label='Timeout' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.timeout}>
+                    <Input value={props.item.healthCheckConfig.timeout.toString()} inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
+                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.yimeout': Number(detail.value) });
                     }}/>
                 </FormField>
-                <FormField label='Healthy Threshold Count' errorText={props.formErrors?.LoadBalancerConfig?.HealthCheckConfig?.HealthyThresholdCount}>
-                    <Input value={props.item.HealthCheckConfig.HealthyThresholdCount.toString()} inputMode='numeric' onBlur={() => props.touchFields(['LoadBalancerConfig.HealthCheckConfig.HealthyThresholdCount'])} onChange={({ detail }) => {
-                        props.setFields({ 'LoadBalancerConfig.HealthCheckConfig.HealthyThresholdCount': Number(detail.value) });
+                <FormField label='Healthy Threshold Count' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.healthyThresholdCount}>
+                    <Input value={props.item.healthCheckConfig.healthyThresholdCount.toString()} inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.healthyThresholdCount'])} onChange={({ detail }) => {
+                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.healthyThresholdCount': Number(detail.value) });
                     }}/>
                 </FormField>
-                <FormField label='Unhealthy Threshold Count' errorText={props.formErrors?.LoadBalancerConfig?.HealthCheckConfig?.UnhealthyThresholdCount}>
-                    <Input value={props.item.HealthCheckConfig.UnhealthyThresholdCount.toString()} inputMode='numeric' onBlur={() => props.touchFields(['LoadBalancerConfig.HealthCheckConfig.UnhealthyThresholdCount'])} onChange={({ detail }) => {
-                        props.setFields({ 'LoadBalancerConfig.HealthCheckConfig.UnhealthyThresholdCount': Number(detail.value) });
+                <FormField label='Unhealthy Threshold Count' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.unhealthyThresholdCount}>
+                    <Input value={props.item.healthCheckConfig.unhealthyThresholdCount.toString()} inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount'])} onChange={({ detail }) => {
+                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount': Number(detail.value) });
                     }}/>
                 </FormField>
             </Container>

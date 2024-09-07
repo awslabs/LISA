@@ -39,143 +39,143 @@ export enum InferenceContainer {
 }
 
 export type IContainerHealthCheckConfig = {
-    Command: string[];
-    Interval: number;
-    StartPeriod: number;
-    Timeout: number;
-    Retries: number;
+    command: string[];
+    interval: number;
+    startPeriod: number;
+    timeout: number;
+    retries: number;
 };
 
 export type IContainerConfigImage = {
-    BaseImage: string;
-    Path: string;
-    Type: string;
+    baseImage: string;
+    path: string;
+    type: string;
 };
 
 export type IMetricConfig = {
-    AlbMetricName: string;
-    TargetValue: number;
-    Duration: number;
-    EstimatedInstanceWarmup: number;
+    albMetricName: string;
+    targetValue: number;
+    duration: number;
+    estimatedInstanceWarmup: number;
 };
 
 export type ILoadBalancerHealthCheckConfig = {
-    Path: string;
-    Interval: number;
-    Timeout: number;
-    HealthyThresholdCount: number;
-    UnhealthyThresholdCount: number;
+    path: string;
+    interval: number;
+    timeout: number;
+    healthyThresholdCount: number;
+    unhealthyThresholdCount: number;
 };
 
 export type ILoadBalancerConfig = {
-    HealthCheckConfig: ILoadBalancerHealthCheckConfig
+    healthCheckConfig: ILoadBalancerHealthCheckConfig
 };
 
 export type IAutoScalingConfig = {
-    MinCapacity: number;
-    MaxCapacity: number;
-    Cooldown: number;
-    DefaultInstanceWarmup: number;
-    MetricConfig: IMetricConfig;
+    minCapacity: number;
+    maxCapacity: number;
+    cooldown: number;
+    defaultInstanceWarmup: number;
+    metricConfig: IMetricConfig;
 };
 
 export type IContainerConfig = {
-    BaseImage: IContainerConfigImage;
-    SharedMemorySize: number;
-    HealthCheckConfig: IContainerHealthCheckConfig;
-    Environment?: Record<string, string>[];
+    baseImage: IContainerConfigImage;
+    sharedMemorySize: number;
+    healthCheckConfig: IContainerHealthCheckConfig;
+    environment?: Record<string, string>[];
 };
 
 export type IModel = {
-    ModelId: string;
-    ModelName: string;
-    ModelUrl: string;
-    Streaming: boolean;
-    ModelType: ModelType;
-    InstanceType: string;
-    InferenceContainer: InferenceContainer;
-    ContainerConfig: IContainerConfig;
-    AutoScalingConfig: IAutoScalingConfig;
-    LoadBalancerConfig: ILoadBalancerConfig;
+    modelId: string;
+    modelName: string;
+    modelUrl: string;
+    streaming: boolean;
+    modelType: ModelType;
+    instanceType: string;
+    inferenceContainer: InferenceContainer;
+    containerConfig: IContainerConfig;
+    autoScalingConfig: IAutoScalingConfig;
+    loadBalancerConfig: ILoadBalancerConfig;
 };
 
 export type IModelListResponse = {
-    Models: IModel[];
+    models: IModel[];
 };
 
 export type IModelRequest = {
-    ModelId: string;
-    ModelName: string;
-    ModelUrl: string;
-    Streaming: boolean;
-    ModelType: ModelType;
-    InstanceType: string;
-    InferenceContainer: InferenceContainer;
-    ContainerConfig: IContainerConfig;
-    AutoScalingConfig: IAutoScalingConfig;
-    LoadBalancerConfig: ILoadBalancerConfig;
-    LisaHostedModel: boolean;
+    modelId: string;
+    modelName: string;
+    modelUrl: string;
+    streaming: boolean;
+    modelType: ModelType;
+    instanceType: string;
+    inferenceContainer: InferenceContainer;
+    containerConfig: IContainerConfig;
+    autoScalingConfig: IAutoScalingConfig;
+    loadBalancerConfig: ILoadBalancerConfig;
+    lisaHostedModel: boolean;
 };
 
 const containerHealthCheckConfigSchema = z.object({
-    Command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
-    Interval: z.number().default(10),
-    StartPeriod: z.number().default(30),
-    Timeout: z.number().default(5),
-    Retries: z.number().default(2),
+    command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
+    interval: z.number().default(10),
+    startPeriod: z.number().default(30),
+    timeout: z.number().default(5),
+    retries: z.number().default(2),
 });
 
 
 const containerConfigImageSchema = z.object({
-    BaseImage: z.string().default(''),
-    Path: z.string().default(''),
-    Type: z.string().default(''),
+    baseImage: z.string().default(''),
+    path: z.string().default(''),
+    type: z.string().default(''),
 });
 
 export const metricConfigSchema = z.object({
-    AlbMetricName: z.string().default(''),
-    TargetValue: z.number().default(0),
-    Duration: z.number().default(60),
-    EstimatedInstanceWarmup: z.number().default(180),
+    albMetricName: z.string().default(''),
+    targetValue: z.number().default(0),
+    duration: z.number().default(60),
+    estimatedInstanceWarmup: z.number().default(180),
 });
 
 export const loadBalancerHealthCheckConfigSchema = z.object({
-    Path: z.string().default(''),
-    Interval: z.number().default(10),
-    Timeout: z.number().default(5),
-    HealthyThresholdCount: z.number().default(1),
-    UnhealthyThresholdCount: z.number().default(1),
+    path: z.string().default(''),
+    interval: z.number().default(10),
+    timeout: z.number().default(5),
+    healthyThresholdCount: z.number().default(1),
+    unhealthyThresholdCount: z.number().default(1),
 });
 
 export const loadBalancerConfigSchema = z.object({
-    HealthCheckConfig: loadBalancerHealthCheckConfigSchema.default(loadBalancerHealthCheckConfigSchema.parse({})),
+    healthCheckConfig: loadBalancerHealthCheckConfigSchema.default(loadBalancerHealthCheckConfigSchema.parse({})),
 });
 
 export const autoScalingConfigSchema = z.object({
-    MinCapacity: z.number().min(1).default(1),
-    MaxCapacity: z.number().min(1).default(2),
-    Cooldown: z.number().min(1).default(420),
-    DefaultInstanceWarmup: z.number().default(180),
-    MetricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
+    minCapacity: z.number().min(1).default(1),
+    maxCapacity: z.number().min(1).default(2),
+    cooldown: z.number().min(1).default(420),
+    defaultInstanceWarmup: z.number().default(180),
+    metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
 });
 
 export const containerConfigSchema = z.object({
-    BaseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
-    SharedMemorySize: z.number().min(0).default(0),
-    HealthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
-    Environment: AttributeEditorSchema,
+    baseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
+    sharedMemorySize: z.number().min(0).default(0),
+    healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
+    environment: AttributeEditorSchema,
 });
 
 export const ModelRequestSchema = z.object({
-    ModelId: z.string().default(''),
-    ModelName: z.string().default(''),
-    ModelUrl: z.string().default(''),
-    Streaming: z.boolean().default(true),
-    LisaHostedModel: z.boolean().default(false),
-    ModelType: z.nativeEnum(ModelType).default(ModelType.textgen),
-    InstanceType: z.string().default(''),
-    InferenceContainer: z.nativeEnum(InferenceContainer).optional(),
-    ContainerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
-    AutoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
-    LoadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
+    modelId: z.string().default(''),
+    modelName: z.string().default(''),
+    modelUrl: z.string().default(''),
+    streaming: z.boolean().default(true),
+    lisaHostedModel: z.boolean().default(false),
+    modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
+    instanceType: z.string().default(''),
+    inferenceContainer: z.nativeEnum(InferenceContainer).optional(),
+    containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
+    autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
+    loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
 });

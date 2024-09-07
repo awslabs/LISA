@@ -23,10 +23,10 @@ LISA accelerates the use of generative AI applications by providing scalable, lo
 
 ## Background
 
-LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](https://github.com/aws-samples/aws-genai-llm-chatbot) and deploys LLMs using the [text-generation-inference](https://github.com/huggingface/text-generation-inference/tree/main) container from HuggingFace. LISA is different from it's inspiration in a few ways:
+LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](https://github.com/aws-samples/aws-genai-llm-chatbot) and deploys LLMs using the [text-generation-inference](https://github.com/huggingface/text-generation-inference/tree/main) container from HuggingFace. LISA is different from its inspiration in a few ways:
 
 1.  LISA is designed to operate in Amazon Dedicated Cloud (ADC) partitions.
-2.  LISA is designed to be composable so we've separated the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
+2.  LISA is designed to be composable, so we've separated the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
 3.  LISA is designed to support the OpenAI specification, so anywhere you can use the OpenAI API in your applications, you can insert LISA in its place.
 
 ## Deprecation Notes
@@ -38,6 +38,26 @@ We intend to fully remove the v1 routes in the next release of LISA, anticipatin
 
 For users dependent on the v1 OpenAI endpoint, all you have to do to migrate is change your base URL route from `/v1/openai` to `/v2/serve`. Please note that model names may change once you list models again, but this comes with the benefit of being
 able to list both models hosted by LISA and models that are configured with the new LiteLLM configuration options.
+
+## Breaking Changes in v2 to v3 Migration
+
+With the release of LISA v3.0.0, we have made some major architectural changes that will not be compatible with previous installation versions. Although this will cause friction for existing users, our intent is to make the overall deloyment experience
+much easier overall. We highlight the following items that will impact existing LISA users who wish to upgrade to v3+.
+
+1. Existing models that have been deployed via EC2 and ECS through the `config.yaml` file's `ecsModels` list **will be deleted** upon upgrade. We are migrating to a new model deployment system, which requires that it manages all the models on its end instead of through the config file. To mitigate, we recommend that you back up the settings you have for these
+   models so that you may redeploy them with minimal downtime through our model management API.
+2. Core networking changes have affected cross-stack dependencies, and as a result, we require the LISA installation to be completely torn down using `make destroy` in order to apply the changes that we need for v3+. Although this can still be a risk for future releases, we do not anticipate upcoming network changes that would necessitate another full-tear down and reinstall.
+   Users may also need to manually delete resources, such as ECR Repositories or S3 Buckets if they were populated with items before the CloudFormation Stack deletion was started. Please see the CloudFormation Console for details about why a particular stack was unable to delete.
+   This operation is **destructive** and **irreversible** so please make sure to back up your settings before attempting the upgrade so that you can get your installation back to normal with minimal other friction.
+    1. Although part of the tear-down and reinstall, the S3 RAG Bucket and DynamoDB Persistent Tokens tables were both renamed, so they would have been torn down and recreated as well. If you have existing files or configurations in each of these resources, we recommend backing them up so that you can populate them again in the latest LISA installation.
+3. With the new Model Management API, we require an "admin" key for LiteLLM so that it may track models that users can make inference requests against. This key, although otherwise transparent to LISA users and administrators alike, is required by LiteLLM and it must be present. The key can be any arbitrary string that starts with `sk-`, and it must be set in the `config.yaml` file.
+   The LISA schema validator will let you know if this key is missing or does not follow this format.
+
+## Behavioral Differences between v2 and v3
+
+LISA v3 introduces the Model Management API, and the model configuration is expected to be a one-to-one match from how it was defined in the `config.yaml` file compared to its equivalent CreateModel payload. The following are differences in original payload behavior to current behavior.
+1. Inside the model config, inside `containerConfig.image.path`, we solicit a path for the directory in which we can find files for building a custom LISA entrypoint into the Docker image that is specified in `containerConfig.image.baseImage`. This path was originally relative to the LISA repository root, so a valid values here would be `lib/serve/ecs-model/textgen/tgi` or `lib/serve/ecs-model/vllm`
+   for the tgi or vLLM containers, respectively. In the new Model Management API, the same parameter is given relative to the `lib/serve/ecs-model` directory in the LISA repository root, so _now_ the valid values in the CreateModel API call would be `textgen/tgi` or `vllm` for the tgi or vLLM containers, respectively.
 
 ## Getting Started
 

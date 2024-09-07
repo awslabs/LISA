@@ -237,7 +237,7 @@ listStacks:
 	@npx cdk list
 
 buildEcsDeployer:
-	@cd ./ecs_model_deployer && npm install && npm run build >& /dev/null
+	@cd ./ecs_model_deployer && npm install && npm run build &> /dev/null
 
 ## Deploy all infrastructure
 deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer

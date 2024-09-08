@@ -68,6 +68,19 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         activeStepIndex: 0,
     } as ModelCreateState);
 
+    const toSubmit: IModelRequest = {
+        ...state.form,
+        containerConfig: (state.form.lisaHostedModel ? ({
+            ...state.form.containerConfig,
+            environment: state.form.containerConfig.environment?.reduce((r,{key,value}) => (r[key] = value,r), {})
+        }) : null),
+        loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
+        autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
+        inferenceContainer: state.form.inferenceContainer ?? null,
+        instanceType: state.form.instanceType ? state.form.instanceType : null,
+        modelUrl: state.form.modelUrl ? state.form.modelUrl : null
+    };
+
     function resetState () {
         setState({
             validateAll: false as boolean,
@@ -115,28 +128,16 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     }
 
     const changesDiff = useMemo(() => {
-        return props.isEdit ? getJsonDifference(props.selectedItems[0], state.form) : getJsonDifference({}, state.form);
+        return props.isEdit ? getJsonDifference(props.selectedItems[0], toSubmit) : getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.form, initialForm, props.isEdit]);
+    }, [toSubmit, initialForm, props.isEdit]);
 
     function handleSubmit () {
-        const submittedObject : IModelRequest = {
-            ...state.form,
-            containerConfig: (state.form.lisaHostedModel ? ({
-                ...state.form.containerConfig,
-                environment: state.form.containerConfig.environment.reduce((r,{key,value}) => (r[key] = value,r), {})
-            }) : null),
-            loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
-            autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
-            inferenceContainer: state.form.inferenceContainer ?? null,
-            instanceType: state.form.instanceType ? state.form.instanceType : null,
-            modelUrl: state.form.modelUrl ? state.form.modelUrl : null
-        };
-        delete submittedObject.lisaHostedModel;
+        delete toSubmit.lisaHostedModel;
         if (isValid && !props.isEdit) {
-            createModelMutation(submittedObject);
+            createModelMutation(toSubmit);
         } else if (isValid && props.isEdit) {
-            updateModelMutation(submittedObject);
+            updateModelMutation(toSubmit);
         }
     }
 
@@ -148,10 +149,10 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 form: {
                     ...parsedValue,
                     containerConfig: {
-                        ...parsedValue,
+                        ...parsedValue.containerConfig,
                         environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
                     },
-                    lisaHostedModel: props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig
+                    lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
                 }
             });
         }
@@ -265,7 +266,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     },
                     {
                         title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
-                        description: 'Review configuration prior to submitting.',
+                        description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
                         content: (
                             <ReviewModelChanges jsonDiff={changesDiff}/>
                         )

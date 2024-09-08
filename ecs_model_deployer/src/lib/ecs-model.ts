@@ -23,6 +23,7 @@ import { Construct } from 'constructs';
 import { ECSCluster } from './ecsCluster';
 import { getModelIdentifier } from './utils';
 import { BaseProps, Config, Ec2Metadata, EcsSourceType, ModelConfig } from './schema';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -99,6 +100,7 @@ export class EcsModel extends Construct {
             MODEL_NAME: modelConfig.modelName,
             LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
             AWS_REGION: config.region, // needed for s5cmd
+            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`)
         };
 
         if (modelConfig.modelType === 'embedding') {

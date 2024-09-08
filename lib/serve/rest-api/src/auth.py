@@ -18,6 +18,7 @@ import ssl
 import sys
 from datetime import datetime
 from pathlib import Path
+from time import time
 from typing import Any, Dict, Optional
 
 import boto3
@@ -135,6 +136,7 @@ class OIDCHTTPBearer(HTTPBearer):
     def __init__(self, **kwargs: Dict[str, Any]):
         super().__init__(**kwargs)
         self._token_authorizer = ApiTokenAuthorizer()
+        self._management_token_authorizer = ManagementTokenAuthorizer()
 
         self._jwks_client = get_jwks_client()
 
@@ -142,6 +144,8 @@ class OIDCHTTPBearer(HTTPBearer):
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
         if self._token_authorizer.is_valid_api_token(request.headers):
             return None  # valid API token, not continuing with OIDC auth
+        elif self._management_token_authorizer.is_valid_api_token(request.headers):
+            return None  # valid management token, not continuing with OIDC auth
         http_auth_creds = await super().__call__(request)
         if not id_token_is_valid(
             id_token=http_auth_creds.credentials,
@@ -181,4 +185,46 @@ class ApiTokenAuthorizer:
                     current_time = int(datetime.now().timestamp())
                     if current_time < token_expiration:  # token has not expired yet
                         return True
+        return False
+
+
+class ManagementTokenAuthorizer:
+    """Class for checking Management tokens against a SecretsManager secret."""
+
+    def __init__(self) -> None:
+        self._secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+        self._secret_tokens: list[str] = []
+        self._last_run = 0
+
+    def _refreshTokens(self) -> None:
+        """Return DDB entry for token if it exists."""
+        current_time = int(time())
+        if current_time - (self._last_run or 0) > 3600:
+            secret_tokens = []
+            secret_tokens.append(
+                self._secrets_manager.get_secret_value(
+                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
+                )["SecretString"]
+            )
+            try:
+                secret_tokens.append(
+                    self._secrets_manager.get_secret_value(
+                        SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
+                    )["SecretString"]
+                )
+            except Exception:
+                logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
+            logger.info(f"Updating tokens {secret_tokens}")
+            self._secret_tokens = secret_tokens
+            self._last_run = current_time
+
+    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+        """Return if API Token from request headers is valid if found."""
+        self._refreshTokens()
+
+        for header_name in API_KEY_HEADER_NAMES:
+            token = headers.get(header_name, "").removeprefix("Bearer").strip()
+            if token:
+                if token in self._secret_tokens:
+                    return True
         return False

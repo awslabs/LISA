@@ -191,10 +191,19 @@ export class ModelsApi extends Construct {
                                 lisaServeEndpointUrlPs.parameterArn
                             ],
                         }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'secretsmanager:GetSecretValue'
+                            ],
+                            resources: ['*'],
+                        }),
                     ]
                 }),
             }
         });
+
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
@@ -207,6 +216,7 @@ export class ModelsApi extends Construct {
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
             ecsModelImageRepository: ecsModelImages.repo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
+            managementKeyName
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {

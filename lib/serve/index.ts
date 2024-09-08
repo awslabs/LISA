@@ -17,7 +17,7 @@
 // LISA-serve Stack.
 import path from 'path';
 
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
@@ -29,6 +29,7 @@ import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 const HERE = path.resolve(__dirname);
 
@@ -82,6 +83,57 @@ export class LisaServeApplicationStack extends Stack {
             tokenTable: tokenTable,
             vpc: vpc.vpc,
         });
+
+        const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
+            secretName: `lisa_management_key_secret-${Date.now()}`, // pragma: allowlist secret`
+            description: 'This is a secret created with AWS CDK',
+            generateSecretString: {
+                excludePunctuation: true,
+                passwordLength: 16
+            },
+        });
+
+        // const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
+        //     this,
+        //     'base-common-lambda-layer',
+        //     StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        // );
+
+        // const rotateManagementKeyLambdaId = createCdkId([id, 'RotateManagementKeyLambda'])
+        // const rotateManagementKeyLambda = new Function(this, rotateManagementKeyLambdaId, {
+        //     functionName: rotateManagementKeyLambdaId,
+        //     runtime: Runtime.PYTHON_3_12,
+        //     handler: 'management_key.rotate_management_key',
+        //     code: Code.fromAsset('./lambda/'),
+        //     timeout: Duration.minutes(1),
+        //     memorySize: 1024,
+        //     environment: {
+        //         MANAGEMENT_KEY_NAME: managementKeySecret.secretName
+        //     },
+        //     layers: [commonLambdaLayer],
+        //     vpc: props.vpc.vpc,
+        // });
+
+        // managementKeySecret.grantRead(rotateManagementKeyLambda);
+
+        // new RotationSchedule(this, createCdkId([id, 'RotateManagementRotationSchedule']), {
+        //     secret: managementKeySecret,
+        //     rotationLambda: rotateManagementKeyLambda,
+        //     automaticallyAfter: Duration.days(1), // Rotate every 30 days
+        //   });
+
+        // You can now use the `secret` variable to access the created secret
+        // For example, you might output the secret's ARN for reference
+        new CfnOutput(this, createCdkId([id, 'RotateManagementKey']), {
+            value: managementKeySecret.secretArn,
+            description: 'The ARN of the secret',
+        });
+
+        const managementKeySecretNameStringParameter = new StringParameter(this, createCdkId(['ManagementKeySecretName']), {
+            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
+            stringValue: managementKeySecret.secretName,
+        });
+        restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';

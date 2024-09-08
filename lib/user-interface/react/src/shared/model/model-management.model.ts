@@ -167,8 +167,8 @@ export const containerConfigSchema = z.object({
 });
 
 export const ModelRequestSchema = z.object({
-    modelId: z.string().default(''),
-    modelName: z.string().default(''),
+    modelId: z.string().min(1).default(' '),
+    modelName: z.string().min(1).default(' '),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(true),
     lisaHostedModel: z.boolean().default(false),

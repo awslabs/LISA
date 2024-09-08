@@ -68,6 +68,19 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         activeStepIndex: 0,
     } as ModelCreateState);
 
+    const toSubmit: IModelRequest = {
+        ...state.form,
+        containerConfig: (state.form.lisaHostedModel ? ({
+            ...state.form.containerConfig,
+            environment: state.form.containerConfig.environment?.reduce((r,{key,value}) => (r[key] = value,r), {})
+        }) : null),
+        loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
+        autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
+        inferenceContainer: state.form.inferenceContainer ?? null,
+        instanceType: state.form.instanceType ? state.form.instanceType : null,
+        modelUrl: state.form.modelUrl ? state.form.modelUrl : null
+    };
+
     function resetState () {
         setState({
             validateAll: false as boolean,
@@ -115,24 +128,16 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     }
 
     const changesDiff = useMemo(() => {
-        return props.isEdit ? getJsonDifference(props.selectedItems[0], state.form) : getJsonDifference({}, state.form);
+        return props.isEdit ? getJsonDifference(props.selectedItems[0], toSubmit) : getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.form, initialForm, props.isEdit]);
+    }, [toSubmit, initialForm, props.isEdit]);
 
     function handleSubmit () {
-        const submittedObject : IModelRequest = {
-            ...state.form,
-            ContainerConfig: (state.form.LisaHostedModel ? {
-                ...state.form.ContainerConfig,
-                Environment: Object.fromEntries(Object.entries(state.form.ContainerConfig.Environment || {}).filter((entry: any) => !!entry.key))
-            } : null),
-            LoadBalancerConfig: (state.form.LisaHostedModel ? state.form.LoadBalancerConfig : null),
-            AutoScalingConfig: (state.form.LisaHostedModel ? state.form.AutoScalingConfig : null)
-        };
+        delete toSubmit.lisaHostedModel;
         if (isValid && !props.isEdit) {
-            createModelMutation(submittedObject);
+            createModelMutation(toSubmit);
         } else if (isValid && props.isEdit) {
-            updateModelMutation(submittedObject);
+            updateModelMutation(toSubmit);
         }
     }
 
@@ -143,11 +148,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 ...state,
                 form: {
                     ...parsedValue,
-                    ContainerConfig: {
-                        ...parsedValue,
-                        Environment: props.selectedItems[0].ContainerConfig?.Environment ? Object.entries(props.selectedItems[0].ContainerConfig?.Environment).map(([key, value]) => ({ key, value })) : [],
+                    containerConfig: {
+                        ...parsedValue.containerConfig,
+                        environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
                     },
-                    LisaHostedModel: props.selectedItems[0].ContainerConfig || props.selectedItems[0].AutoScalingConfig || props.selectedItems[0].LoadBalancerConfig
+                    lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
                 }
             });
         }
@@ -156,7 +161,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     useEffect(() => {
         if (!isCreating && isCreateSuccess) {
-            notificationService.generateNotification(`Successfully created model: ${state.form.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully created model: ${state.form.modelId}`, 'success');
             props.setVisible(false);
             props.setIsEdit(false);
             resetState();
@@ -168,7 +173,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     useEffect(() => {
         if (!isUpdating && isUpdateSuccess) {
-            notificationService.generateNotification(`Successfully updated model: ${state.form.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully updated model: ${state.form.modelId}`, 'success');
             props.setVisible(false);
             props.setIsEdit(false);
             resetState();
@@ -241,27 +246,27 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     {
                         title: 'Container Configuration',
                         content: (
-                            <ContainerConfig item={state.form.ContainerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                            <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
                         isOptional: true
                     },
                     {
                         title: 'Auto Scaling Configuration',
                         content: (
-                            <AutoScalingConfig item={state.form.AutoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                            <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
                         isOptional: true
                     },
                     {
                         title: 'Load Balancer Configuration',
                         content: (
-                            <LoadBalancerConfig item={state.form.LoadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                            <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
                         ),
                         isOptional: true
                     },
                     {
                         title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
-                        description: 'Review configuration prior to submitting.',
+                        description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
                         content: (
                             <ReviewModelChanges jsonDiff={changesDiff}/>
                         )

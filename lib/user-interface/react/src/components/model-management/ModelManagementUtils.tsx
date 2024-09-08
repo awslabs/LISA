@@ -32,43 +32,43 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
 };
 
 export const CARD_DEFINITIONS = {
-    header: (model: IModel) => <div>{model.ModelName}</div>,
+    header: (model: IModel) => <div>{model.modelId}</div>,
     sections: [
         {
-            id: 'ModelId',
-            header: 'ID',
-            content: (model: IModel) => model.ModelId,
+            id: 'modelName',
+            header: 'Name',
+            content: (model: IModel) => model.modelName,
         },
         {
-            id: 'ModelType',
+            id: 'modelType',
             header: 'Type',
-            content: (model: IModel) => model.ModelType,
+            content: (model: IModel) => model.modelType,
         },
         {
-            id: 'ModelUrl',
+            id: 'modelUrl',
             header: 'URL',
-            content: (model: IModel) => model.ModelUrl ?? 'Model URL not defined',
+            content: (model: IModel) => model.modelUrl ? model.modelUrl : 'Model URL not defined',
         },
         {
-            id: 'Streaming',
+            id: 'streaming',
             header: 'Streaming',
-            content: (model: IModel) => String(model.Streaming),
+            content: (model: IModel) => String(model.streaming),
         },
         {
-            id: 'Hosting',
+            id: 'hosting',
             header: 'Hosted in LISA',
-            content: (model: IModel) => String(model.ContainerConfig === null && model.AutoScalingConfig === null && model.LoadBalancerConfig === null),
+            content: (model: IModel) => String(model.containerConfig !== null && model.autoScalingConfig !== null && model.loadBalancerConfig !== null),
         },
         {
-            id: 'InstanceType',
+            id: 'instanceType',
             header: 'Instance Type',
-            content: (model: IModel) => model.InstanceType ?? 'Instance Type not defined',
+            content: (model: IModel) => model.instanceType ?  model.instanceType : 'Instance Type not defined',
         },
         {
-            id: 'ModelStatus',
+            id: 'modelStatus',
             header: 'Status',
             content: (model: IModel) => (
-                <StatusIndicator type={MODEL_STATUS_LOOKUP[model.Status]}>{model.Status}</StatusIndicator>
+                <StatusIndicator type={MODEL_STATUS_LOOKUP[model.status]}>{model.status}</StatusIndicator>
             ),
         },
     ],
@@ -83,20 +83,20 @@ export const PAGE_SIZE_OPTIONS = [
 
 export const DEFAULT_PREFERENCES = {
     pageSize: 12,
-    visibleContent: ['ModelId', 'ModelType', 'ModelUrl', 'Streaming', 'Hosting', 'InstanceType', 'ModelStatus'],
+    visibleContent: ['modelName', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
     {
         label: 'Displayed Properties',
         options: [
-            { id: 'ModelId', label: 'ID' },
-            { id: 'ModelType', label: 'Type' },
-            { id: 'ModelUrl', label: 'URL' },
-            { id: 'Streaming', label: 'Streaming' },
-            { id: 'Hosting', label: 'LISA-Hosted Infrastructure' },
-            { id: 'InstanceType', label: 'Instance Type' },
-            { id: 'ModelStatus', label: 'Status' },
+            { id: 'modelName', label: 'Name' },
+            { id: 'modelType', label: 'Type' },
+            { id: 'modelUrl', label: 'URL' },
+            { id: 'streaming', label: 'Streaming' },
+            { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
+            { id: 'instanceType', label: 'Instance Type' },
+            { id: 'modelStatus', label: 'Status' },
         ],
     },
 ];

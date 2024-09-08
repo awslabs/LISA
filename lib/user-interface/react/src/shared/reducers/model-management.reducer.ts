@@ -26,7 +26,7 @@ export const modelManagementApi = createApi({
             query: () => ({
                 url: '/models',
             }),
-            transformResponse: (response) => response.Models,
+            transformResponse: (response) => response.models,
             providesTags:['models'],
         }),
         deleteModel: builder.mutation<IModel, string>({
@@ -60,7 +60,7 @@ export const modelManagementApi = createApi({
         }),
         updateModel: builder.mutation<IModel, IModelRequest>({
             query: (modelRequest) => ({
-                url: `/models/${modelRequest.ModelId}`,
+                url: `/models/${modelRequest.modelId}`,
                 method: 'PUT',
                 data: modelRequest
             }),

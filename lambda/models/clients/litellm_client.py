@@ -14,10 +14,9 @@
 
 """Client for interfacing with the LiteLLM proxy's management options directly."""
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 import requests
-from starlette.datastructures import Headers
 
 from ..exception import ModelNotFoundError
 
@@ -25,11 +24,9 @@ from ..exception import ModelNotFoundError
 class LiteLLMClient:
     """Client definition for interfacing directly with LiteLLM management operations."""
 
-    def __init__(self, base_uri: str, headers: Headers, verify: Union[str, bool], timeout: int = 30):
+    def __init__(self, base_uri: str, timeout: int = 30):
         self._base_uri = base_uri
-        self._headers = headers
         self._timeout = timeout
-        self._verify = verify
 
     def list_models(self) -> List[Dict[str, Any]]:
         """
@@ -41,14 +38,13 @@ class LiteLLMClient:
         """
         resp = requests.get(
             self._base_uri + "/model/info",
-            headers=self._headers,
             timeout=self._timeout,
         )
         all_models = resp.json()
         models_list: List[Dict[str, Any]] = all_models["data"]
         return models_list
 
-    def add_model(self, model_name: str, litellm_params: Dict[str, str], additional_metadata: Dict[str, Any]) -> None:
+    def add_model(self, model_name: str, litellm_params: Dict[str, str]) -> Dict[str, Any]:
         """
         Add a new model configuration to the database.
 
@@ -58,34 +54,30 @@ class LiteLLMClient:
         two models with the same name, which causes ambiguous results when using the OpenAI API for listing models as
         that only shows one model per model name.
         """
-        requests.post(
+        resp = requests.post(
             self._base_uri + "/model/new",
-            headers=self._headers,
             json={
                 "model_name": model_name,
                 "litellm_params": litellm_params,
-                "model_info": additional_metadata,
             },
             timeout=self._timeout,
-            verify=self._verify,
         )
+        return resp.json()  # type: ignore [no-any-return]
 
-    def delete_model(self, unique_id: str) -> None:
+    def delete_model(self, identifier: str) -> None:
         """
         Delete a model from the database.
 
-        The unique_id is the ID that LiteLLM generates on its end when creating a model, regardless of if the model
+        The identifier is the ID that LiteLLM generates on its end when creating a model, regardless of if the model
         was defined in a static configuration file or if it was added dynamically.
         """
         requests.post(
             self._base_uri + "/model/delete",
-            headers=self._headers,
-            json={"id": unique_id},
+            json={"id": identifier},
             timeout=self._timeout,
-            verify=self._verify,
         )
 
-    def get_model(self, unique_id: str) -> Dict[str, Any]:
+    def get_model(self, identifier: str) -> Dict[str, Any]:
         """
         Get model metadata from the database.
 
@@ -93,7 +85,7 @@ class LiteLLMClient:
         list all models then filter out the one we want for this method call.
         """
         all_models = self.list_models()
-        filtered_models = [m for m in all_models if m["model_info"]["id"] == unique_id]
+        filtered_models = [m for m in all_models if m["model_info"]["id"] == identifier]
         if len(filtered_models) < 1:
             raise ModelNotFoundError("Specified model was not found.")
         return filtered_models[0]

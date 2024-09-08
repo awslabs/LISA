@@ -181,7 +181,16 @@ export class ModelsApi extends Construct {
                             conditions: {
                                 'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
                             }
-                        })
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ssm:GetParameter'
+                            ],
+                            resources: [
+                                lisaServeEndpointUrlPs.parameterArn
+                            ],
+                        }),
                     ]
                 }),
             }
@@ -196,7 +205,8 @@ export class ModelsApi extends Construct {
             securityGroups: securityGroups,
             dockerImageBuilderFnArn: dockerImageBuilder.dockerImageBuilderFn.functionArn,
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
-            ecsModelImageRepository: ecsModelImages.repo
+            ecsModelImageRepository: ecsModelImages.repo,
+            restApiContainerEndpointPs: lisaServeEndpointUrlPs,
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
@@ -206,6 +216,7 @@ export class ModelsApi extends Construct {
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
+            restApiContainerEndpointPs: lisaServeEndpointUrlPs,
         });
 
         const environment = {
@@ -312,6 +323,7 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'dynamodb:GetItem',
+                        'dynamodb:Scan',
                     ],
                     resources: [
                         modelTable.tableArn,

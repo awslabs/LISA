@@ -75,7 +75,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
 
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedModel) {
-            notificationService.generateNotification(`Successfully deleted model: ${selectedModel.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully deleted model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedModel) {
             notificationService.generateNotification(`Error deleting model: ${deleteError.data?.message ?? deleteError.data}`, 'error');
@@ -86,7 +86,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
 
     useEffect(() => {
         if (!isStopLoading && isStopSuccess && selectedModel) {
-            notificationService.generateNotification(`Successfully stopped model: ${selectedModel.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully stopped model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isStopLoading && isStopError && selectedModel) {
             notificationService.generateNotification(`Error stopping model: ${stopError.data?.message ?? stopError.data}`, 'error');
@@ -97,7 +97,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
 
     useEffect(() => {
         if (!isStartLoading && isStartSuccess && selectedModel) {
-            notificationService.generateNotification(`Successfully started model: ${selectedModel.ModelId}`, 'success');
+            notificationService.generateNotification(`Successfully started model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isStartLoading && isStartError && selectedModel) {
             notificationService.generateNotification(`Error starting model: ${startError.data?.message ?? startError.data}`, 'error');
@@ -157,8 +157,8 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Start',
                     resourceName: 'Model',
-                    onConfirm: () => startMutation(selectedModel.ModelId),
-                    description: `This will start the following model: ${selectedModel.ModelId}.`
+                    onConfirm: () => startMutation(selectedModel.modelId),
+                    description: `This will start the following model: ${selectedModel.modelId}.`
                 })
             );
             break;
@@ -167,8 +167,8 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Stop',
                     resourceName: 'Model',
-                    onConfirm: () => stopMutation(selectedModel.ModelId),
-                    description: `This will stop the following model: ${selectedModel.ModelId}.`
+                    onConfirm: () => stopMutation(selectedModel.modelId),
+                    description: `This will stop the following model: ${selectedModel.modelId}.`
                 })
             );
             break;
@@ -181,8 +181,8 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Delete',
                     resourceName: 'Model',
-                    onConfirm: () => deleteMutation(selectedModel.ModelId),
-                    description: `This will delete the following model: ${selectedModel.ModelId}.`
+                    onConfirm: () => deleteMutation(selectedModel.modelId),
+                    description: `This will delete the following model: ${selectedModel.modelId}.`
                 })
             );
             break;

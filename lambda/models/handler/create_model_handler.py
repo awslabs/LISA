@@ -16,17 +16,11 @@
 
 import os
 
-import boto3
 from models.exception import ModelAlreadyExistsError
-from utilities.common_functions import retry_config
 
 from ..domain_objects import CreateModelRequest, CreateModelResponse, ModelStatus
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
-
-stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
-dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
 
 
 class CreateModelHandler(BaseApiHandler):
@@ -34,28 +28,21 @@ class CreateModelHandler(BaseApiHandler):
 
     def __call__(self, create_request: CreateModelRequest) -> CreateModelResponse:  # type: ignore
         """Create model infrastructure and add model data to LiteLLM database."""
-        unique_id = create_request.ModelId
+        model_id = create_request.modelId
 
         # If model exists in DDB, then fail out. ModelId must be unique.
-        table_item = model_table.get_item(Key={"model_id": unique_id}).get("Item", None)
+        table_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if table_item:
-            raise ModelAlreadyExistsError(f"Model '{unique_id}' already exists. Please select another name.")
+            raise ModelAlreadyExistsError(f"Model '{model_id}' already exists. Please select another name.")
 
-        stepfunctions.start_execution(
+        self._stepfunctions.start_execution(
             stateMachineArn=os.environ["CREATE_SFN_ARN"], input=create_request.model_dump_json()
         )
 
-        # Placeholder data until model data is persisted in database via state machine workflow
         lisa_model = to_lisa_model(
             {
-                "model_name": unique_id,
-                "litellm_params": {
-                    "model": unique_id,
-                },
-                "model_info": {
-                    "id": unique_id,
-                    "model_status": ModelStatus.CREATING,
-                },
+                "model_config": create_request.model_dump(),
+                "model_status": ModelStatus.CREATING,
             }
         )
-        return CreateModelResponse(Model=lisa_model)
+        return CreateModelResponse(model=lisa_model)

@@ -32,6 +32,7 @@ import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './c
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
+import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -42,6 +43,7 @@ type CreateModelStateMachineProps = BaseProps & {
     role?: IRole,
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];
+    restApiContainerEndpointPs: IStringParameter;
 };
 
 /**
@@ -53,7 +55,17 @@ export class CreateModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateModelStateMachineProps) {
         super(scope, id);
 
-        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups} = props;
+        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs} = props;
+
+        const environment = {
+            DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
+            ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,
+            ECR_REPOSITORY_NAME: ecsModelImageRepository.repositoryName,
+            ECS_MODEL_DEPLOYER_FN_ARN: ecsModelDeployerFnArn,
+            LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
+            MODEL_TABLE_NAME: modelTable.tableName,
+            REST_API_VERSION: config.restApiConfig.apiVersion,
+        };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
@@ -66,9 +78,7 @@ export class CreateModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -86,10 +96,7 @@ export class CreateModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -105,10 +112,7 @@ export class CreateModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    ECR_REPOSITORY_NAME: ecsModelImageRepository.repositoryName,
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH
         });
@@ -130,11 +134,7 @@ export class CreateModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    ECS_MODEL_DEPLOYER_FN_ARN: ecsModelDeployerFnArn,
-                    ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -150,9 +150,7 @@ export class CreateModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });
@@ -174,9 +172,7 @@ export class CreateModelStateMachine extends Construct {
                 vpc: vpc,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: {
-                    MODEL_TABLE_NAME: modelTable.tableName,
-                },
+                environment: environment,
             }),
             outputPath: OUTPUT_PATH,
         });

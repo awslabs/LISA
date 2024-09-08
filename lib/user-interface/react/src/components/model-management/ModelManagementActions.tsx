@@ -109,20 +109,26 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
     const items = [];
     if (selectedModel) {
         items.push({
+            text: 'Delete',
+            id: 'deleteModel',
+        });
+        items.push({
             text: 'Start',
             id: 'startModel',
+            disabled: true,
+            disabledReason: "This action will be available with LISA release 3.0.1",
         });
         items.push({
             text: 'Stop',
             id: 'stopModel',
+            disabled: true,
+            disabledReason: "This action will be available with LISA release 3.0.1",
         });
         items.push({
             text: 'Update',
             id: 'editModel',
-        });
-        items.push({
-            text: 'Delete',
-            id: 'deleteModel',
+            disabled: true,
+            disabledReason: "This action will be available with LISA release 3.0.1",
         });
     }
 

@@ -37,20 +37,14 @@ import {
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
-import {
-    ApplicationLoadBalancer,
-    ApplicationProtocol,
-    BaseApplicationListenerProps,
-    NetworkLoadBalancer,
-    NetworkTargetGroup
-} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
-import { AlbTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
+import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
+import { ECSConfig } from '../schema';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -63,7 +57,6 @@ type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: SecurityGroup;
     vpc: IVpc;
-    addNlb?: boolean;
 } & BaseProps;
 
 /**
@@ -78,10 +71,6 @@ export class ECSCluster extends Construct {
 
     /** Endpoint URL of application load balancer for the cluster. */
     public readonly endpointUrl: string;
-
-    public readonly alb: ApplicationLoadBalancer;
-
-    public readonly nlb: NetworkLoadBalancer;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -270,50 +259,29 @@ export class ECSCluster extends Construct {
         service.node.addDependency(autoScalingGroup);
 
         // Create application load balancer
-        this.alb = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
+        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-            internetFacing: false,
-            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'ALB'], 32, 2),
+            internetFacing: ecsConfig.internetFacing,
+            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc,
         });
 
-        if (props.addNlb) {
-            this.nlb = new NetworkLoadBalancer(this, createCdkId([ecsConfig.identifier, 'NLB']), {
-                deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-                crossZoneEnabled: false,
-                internetFacing: false,
-                loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier, 'NLB'], 32, 2),
-                securityGroups: [securityGroup],
-                vpc,
-            });
-
-            const nlbListener = this.nlb.addListener('Listener', { port: 80 });
-
-            const albTargetGroup = new NetworkTargetGroup(this, 'ALB-Target-Group', {
-                port: 80,
-                vpc: vpc,
-                targets: [new AlbTarget(this.alb, 80)],
-                healthCheck: {
-                    path: ecsConfig.loadBalancerConfig.healthCheckConfig.path
-                }
-            });
-
-            nlbListener.addTargetGroups('ALB-Target-Group', albTargetGroup);
-        }
-
         // Add listener
         const listenerProps: BaseApplicationListenerProps = {
-            port: 80,
-            open: false,
-            protocol: ApplicationProtocol.HTTP
+            port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
+            open: ecsConfig.internetFacing,
+            certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
+                ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
+                : undefined,
         };
 
-        const listener = this.alb.addListener(
+        const listener = loadBalancer.addListener(
             createCdkId([ecsConfig.identifier, 'ApplicationListener']),
             listenerProps,
         );
+        const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
         // Add targets
         const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
@@ -337,7 +305,7 @@ export class ECSCluster extends Construct {
             namespace: 'AWS/ApplicationELB',
             dimensionsMap: {
                 TargetGroup: targetGroup.targetGroupFullName,
-                LoadBalancer: this.alb.loadBalancerFullName,
+                LoadBalancer: loadBalancer.loadBalancerFullName,
             },
             statistic: Stats.SAMPLE_COUNT,
             period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
@@ -353,8 +321,8 @@ export class ECSCluster extends Construct {
         const domain =
       ecsConfig.loadBalancerConfig.domainName !== null
           ? ecsConfig.loadBalancerConfig.domainName
-          : this.alb.loadBalancerDnsName;
-        const endpoint = `http://${domain}`;
+          : loadBalancer.loadBalancerDnsName;
+        const endpoint = `${protocol}://${domain}`;
         this.endpointUrl = endpoint;
 
         // Update

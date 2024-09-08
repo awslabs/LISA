@@ -402,10 +402,12 @@ const HealthCheckConfigSchema = z.object({
 /**
  * Configuration schema for the load balancer.
  *
+ * @property {string} [sslCertIamArn=null] - SSL certificate IAM ARN for load balancer.
  * @property {HealthCheckConfig} healthCheckConfig - Health check configuration for the load balancer.
  * @property {string} domainName - Domain name to use instead of the load balancer's default DNS name.
  */
 const LoadBalancerConfigSchema = z.object({
+    sslCertIamArn: z.string().optional().nullable().default(null),
     healthCheckConfig: HealthCheckConfigSchema,
     domainName: z.string().optional().nullable().default(null),
 });
@@ -460,6 +462,7 @@ const AutoScalingConfigSchema = z.object({
  * @property {Record<string,string>} environment - Environment variables set on the task container
  * @property {identifier} modelType - Unique identifier for the cluster which will be used when naming resources
  * @property {string} instanceType - EC2 instance type for running the model.
+ * @property {boolean} [internetFacing=false] - Whether or not the cluster will be configured as internet facing
  * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
  */
 const EcsBaseConfigSchema = z.object({
@@ -471,6 +474,7 @@ const EcsBaseConfigSchema = z.object({
     environment: z.record(z.string()),
     identifier: z.string(),
     instanceType: z.enum(VALID_INSTANCE_KEYS),
+    internetFacing: z.boolean().default(false),
     loadBalancerConfig: LoadBalancerConfigSchema,
 });
 
@@ -600,6 +604,7 @@ const RdsInstanceConfig = z.object({
  * @property {ContainerConfig} containerConfig - Configuration for the container.
  * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
  * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
+ * @property {boolean} [internetFacing=true] - Whether or not the REST API ALB will be configured as internet facing.
  * @property {RdsInstanceConfig} rdsConfig - Configuration for LiteLLM scaling database.
  */
 const FastApiContainerConfigSchema = z.object({
@@ -608,6 +613,7 @@ const FastApiContainerConfigSchema = z.object({
     containerConfig: ContainerConfigSchema,
     autoScalingConfig: AutoScalingConfigSchema,
     loadBalancerConfig: LoadBalancerConfigSchema,
+    internetFacing: z.boolean().default(true),
     rdsConfig: RdsInstanceConfig.optional()
         .default({
             dbName: 'postgres',
@@ -947,14 +953,14 @@ const RawConfigSchema = z
     .refine(
         (config) => {
             return (
-                !(config.deployChat || config.deployRag || config.deployUi ) ||
+                !(config.deployChat || config.deployRag || config.deployUi || config.restApiConfig.internetFacing) ||
         config.authConfig
             );
         },
         {
             message:
-        'An auth config must be provided when deploying the chat, RAG, or UI stacks. ' +
-        'Check that `deployChat`, `deployRag`, and `deployUi` are all ' +
+        'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
+        'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
         'false or that an `authConfig` is provided.',
         },
     );

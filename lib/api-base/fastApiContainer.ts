@@ -24,16 +24,7 @@ import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
-import {
-    AuthorizationType,
-    ConnectionType,
-    Cors,
-    IAuthorizer,
-    Integration,
-    IntegrationType,
-    RestApi,
-    VpcLink
-} from 'aws-cdk-lib/aws-apigateway';
+import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -95,8 +86,17 @@ export class FastApiContainer extends Construct {
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
             LITELLM_KEY: config.litellmConfig.general_settings.master_key,
-            USE_AUTH: 'false',
         };
+
+        if (config.restApiConfig.internetFacing) {
+            environment.USE_AUTH = 'true';
+            environment.AUTHORITY = config.authConfig!.authority;
+            environment.CLIENT_ID = config.authConfig!.clientId;
+            environment.ADMIN_GROUP = config.authConfig!.adminGroup;
+            environment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
+        } else {
+            environment.USE_AUTH = 'false';
+        }
 
         if (tokenTable) {
             environment.TOKEN_TABLE_NAME = tokenTable.tableName;
@@ -113,52 +113,11 @@ export class FastApiContainer extends Construct {
                 environment,
                 identifier: props.apiName,
                 instanceType: taskConfig.instanceType,
+                internetFacing: config.restApiConfig.internetFacing,
                 loadBalancerConfig: taskConfig.loadBalancerConfig,
             },
             securityGroup,
             vpc,
-            addNlb: true
-        });
-
-        const nlbVpcLink = new VpcLink(this, 'nlb-vpc-link', {
-            targets: [apiCluster.nlb]
-        });
-
-        // get the rest api
-        const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
-            restApiId: props.restApiId,
-            rootResourceId: props.rootResourceId,
-        });
-
-        const integration = new Integration({
-            type: IntegrationType.HTTP_PROXY,
-            integrationHttpMethod: 'ANY',
-            options: {
-                connectionType: ConnectionType.VPC_LINK,
-                vpcLink: nlbVpcLink,
-                requestParameters: {
-                    'integration.request.path.proxy': 'method.request.path.proxy'
-                },
-            },
-            uri: `${apiCluster.endpointUrl}/{proxy}`,
-        });
-
-        // create the proxy
-        const resource = restApi.root.addResource('llm').addProxy({
-            defaultIntegration: integration,
-            anyMethod: true,
-            defaultMethodOptions: {
-                authorizer: props.authorizer,
-                authorizationType: AuthorizationType.CUSTOM,
-                requestParameters: {
-                    'method.request.path.proxy': true
-                }
-            }
-        });
-
-        resource.addCorsPreflight({
-            allowOrigins: Cors.ALL_ORIGINS,
-            allowHeaders: ['*'],
         });
 
         if (tokenTable) {

@@ -170,7 +170,7 @@ export const ModelRequestSchema = z.object({
     modelId: z.string().min(1).default(' '),
     modelName: z.string().min(1).default(' '),
     modelUrl: z.string().default(''),
-    streaming: z.boolean().default(true),
+    streaming: z.boolean().default(false),
     lisaHostedModel: z.boolean().default(false),
     modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     instanceType: z.string().default(''),

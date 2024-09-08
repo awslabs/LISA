@@ -24,7 +24,7 @@ import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, ModelStatus
-from utilities.common_functions import get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
 lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)
@@ -33,7 +33,10 @@ ec2Client = boto3.client("ec2", region_name=os.environ["AWS_REGION"], config=ret
 ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
 cfnClient = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
-litellm_client = LiteLLMClient(base_uri=get_rest_api_container_endpoint())
+iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
+litellm_client = LiteLLMClient(
+    base_uri=get_rest_api_container_endpoint(), headers=None, verify=get_cert_path(iam_client)
+)
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

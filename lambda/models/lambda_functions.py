@@ -21,7 +21,7 @@ from fastapi import FastAPI, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.common_functions import get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .clients.litellm_client import LiteLLMClient
@@ -64,9 +64,7 @@ app.add_middleware(
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
-
-
-litellm_client = LiteLLMClient(base_uri=get_rest_api_container_endpoint())
+iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 @app.exception_handler(ModelNotFoundError)  # type: ignore
@@ -88,19 +86,23 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
     create_handler = CreateModelHandler(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
-        litellm_client=litellm_client,
+        litellm_client=LiteLLMClient(
+            base_uri=get_rest_api_container_endpoint(), headers=create_request.headers, verify=get_cert_path(iam_client)
+        ),
     )
     return create_handler(create_request=create_request)
 
 
 @app.get(path="", include_in_schema=False)  # type: ignore
 @app.get(path="/")  # type: ignore
-async def list_models() -> ListModelsResponse:
+async def list_models(request: Request) -> ListModelsResponse:
     """Endpoint to list models."""
     list_handler = ListModelsHandler(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
-        litellm_client=litellm_client,
+        litellm_client=LiteLLMClient(
+            base_uri=get_rest_api_container_endpoint(), headers=request.headers, verify=get_cert_path(iam_client)
+        ),
     )
     return list_handler()
 
@@ -155,13 +157,15 @@ def _create_dummy_model(model_name: str, model_type: ModelType, model_status: Mo
 
 @app.get(path="/{model_id}")  # type: ignore
 async def get_model(
-    model_id: Annotated[str, Path(title="The unique model ID of the model to get")]
+    model_id: Annotated[str, Path(title="The unique model ID of the model to get")], request: Request
 ) -> GetModelResponse:
     """Endpoint to describe a model."""
     get_handler = GetModelHandler(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
-        litellm_client=litellm_client,
+        litellm_client=LiteLLMClient(
+            base_uri=get_rest_api_container_endpoint(), headers=request.headers, verify=get_cert_path(iam_client)
+        ),
     )
     return get_handler(model_id=model_id)
 
@@ -199,13 +203,15 @@ async def stop_model(
 
 @app.delete(path="/{model_id}")  # type: ignore
 async def delete_model(
-    model_id: Annotated[str, Path(title="The unique model ID of the model to delete")]
+    model_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
     delete_handler = DeleteModelHandler(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
-        litellm_client=litellm_client,
+        litellm_client=LiteLLMClient(
+            base_uri=get_rest_api_container_endpoint(), headers=request.headers, verify=get_cert_path(iam_client)
+        ),
     )
     return delete_handler(model_id=model_id)
 

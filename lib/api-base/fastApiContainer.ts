@@ -24,7 +24,6 @@ import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
-import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -37,9 +36,6 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 2;
  * @property {SecurityGroup} securityGroups - The security groups of the application.
  */
 type FastApiContainerProps = {
-    authorizer: IAuthorizer;
-    restApiId: string;
-    rootResourceId: string;
     apiName: string;
     resourcePath: string;
     securityGroup: SecurityGroup;

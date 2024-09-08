@@ -14,9 +14,10 @@
 
 """Client for interfacing with the LiteLLM proxy's management options directly."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import requests
+from starlette.datastructures import Headers
 
 from ..exception import ModelNotFoundError
 
@@ -24,9 +25,11 @@ from ..exception import ModelNotFoundError
 class LiteLLMClient:
     """Client definition for interfacing directly with LiteLLM management operations."""
 
-    def __init__(self, base_uri: str, timeout: int = 30):
+    def __init__(self, base_uri: str, headers: Headers, verify: Union[str, bool], timeout: int = 30):
         self._base_uri = base_uri
+        self._headers = headers
         self._timeout = timeout
+        self._verify = verify
 
     def list_models(self) -> List[Dict[str, Any]]:
         """
@@ -38,7 +41,9 @@ class LiteLLMClient:
         """
         resp = requests.get(
             self._base_uri + "/model/info",
+            headers=self._headers,
             timeout=self._timeout,
+            verify=self._verify,
         )
         all_models = resp.json()
         models_list: List[Dict[str, Any]] = all_models["data"]
@@ -56,11 +61,13 @@ class LiteLLMClient:
         """
         resp = requests.post(
             self._base_uri + "/model/new",
+            headers=self._headers,
             json={
                 "model_name": model_name,
                 "litellm_params": litellm_params,
             },
             timeout=self._timeout,
+            verify=self._verify,
         )
         return resp.json()  # type: ignore [no-any-return]
 
@@ -73,8 +80,10 @@ class LiteLLMClient:
         """
         requests.post(
             self._base_uri + "/model/delete",
+            headers=self._headers,
             json={"id": identifier},
             timeout=self._timeout,
+            verify=self._verify,
         )
 
     def get_model(self, identifier: str) -> Dict[str, Any]:

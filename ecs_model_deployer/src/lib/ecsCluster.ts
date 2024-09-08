@@ -271,7 +271,7 @@ export class ECSCluster extends Construct {
         // Create application load balancer
         const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-            internetFacing: false,
+            internetFacing: ecsConfig.internetFacing,
             loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             dropInvalidHeaderFields: true,
             securityGroup,
@@ -280,14 +280,18 @@ export class ECSCluster extends Construct {
 
         // Add listener
         const listenerProps: BaseApplicationListenerProps = {
-            port: 80,
-            open: false,
+            port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
+            open: ecsConfig.internetFacing,
+            certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
+                ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
+                : undefined,
         };
 
         const listener = loadBalancer.addListener(
             createCdkId([ecsConfig.identifier, 'ApplicationListener']),
             listenerProps,
         );
+        const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
         // Add targets
         const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
@@ -324,7 +328,12 @@ export class ECSCluster extends Construct {
             estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
         });
 
-        this.endpointUrl = loadBalancer.loadBalancerDnsName;
+        const domain =
+            ecsConfig.loadBalancerConfig.domainName !== null
+                ? ecsConfig.loadBalancerConfig.domainName
+                : loadBalancer.loadBalancerDnsName;
+
+        this.endpointUrl = `${protocol}://${domain}`;
 
         new CfnOutput(this, 'modelEndpointurl', {
             key: 'modelEndpointUrl',

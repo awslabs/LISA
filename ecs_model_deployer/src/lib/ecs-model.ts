@@ -68,6 +68,7 @@ export class EcsModel extends Construct {
                 environment: this.getEnvironmentVariables(config, modelConfig),
                 identifier: getModelIdentifier(modelConfig),
                 instanceType: modelConfig.instanceType,
+                internetFacing: false,
                 loadBalancerConfig: modelConfig.loadBalancerConfig,
             },
             securityGroup,

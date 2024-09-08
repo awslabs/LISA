@@ -23,7 +23,6 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { BaseProps } from '../schema';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -37,7 +36,6 @@ type AuthorizerProps = {
     role?: IRole;
     vpc?: IVpc;
     securityGroups?: ISecurityGroup[];
-    tokenTable: ITable | undefined;
 } & BaseProps;
 
 /**
@@ -84,14 +82,11 @@ export class CustomAuthorizer extends Construct {
                 AUTHORITY: config.authConfig!.authority,
                 ADMIN_GROUP: config.authConfig!.adminGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-                TOKEN_TABLE_NAME: props.tokenTable?.tableName ?? ''
             },
             role: role,
             vpc: vpc,
             securityGroups: securityGroups,
         });
-
-        props.tokenTable?.grantReadData(authorizerLambda);
 
         // Update
         this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {

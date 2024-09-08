@@ -30,75 +30,74 @@ export type BaseModelConfigCustomProps = {
 export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConfigCustomProps) : ReactElement {
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Model ID' errorText={props.formErrors?.ModelId}>
-                <Input value={props.item.ModelId} inputMode='text' onBlur={() => props.touchFields(['ModelId'])} onChange={({ detail }) => {
-                    props.setFields({ 'ModelId': detail.value });
+            <FormField label='Model ID' errorText={props.formErrors?.modelId}>
+                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelId': detail.value });
                 }} disabled={props.isEdit}/>
             </FormField>
-            <FormField label='Model Name' errorText={props.formErrors?.ModelName}>
-                <Input value={props.item.ModelName} inputMode='text' onBlur={() => props.touchFields(['ModelName'])} onChange={({ detail }) => {
-                    props.setFields({ 'ModelName': detail.value });
+            <FormField label='Model Name' errorText={props.formErrors?.modelName}>
+                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelName': detail.value });
                 }}/>
             </FormField>
-            <FormField label='Model URL' errorText={props.formErrors?.ModelUrl}>
-                <Input value={props.item.ModelUrl} inputMode='text' onBlur={() => props.touchFields(['ModelUrl'])} onChange={({ detail }) => {
-                    props.setFields({ 'ModelUrl': detail.value });
+            <FormField label='Model URL' errorText={props.formErrors?.modelUrl}>
+                <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelUrl': detail.value });
                 }}/>
             </FormField>
-            <FormField label='Model Type' errorText={props.formErrors?.ModelType}>
+            <FormField label='Model Type' errorText={props.formErrors?.modelType}>
                 <Select
-                    selectedOption={{label: props.item.ModelType.toUpperCase(), value: props.item.ModelType}}
+                    selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
                     onChange={({ detail }) =>
                         props.setFields({
-                            'ModelType': detail.selectedOption.value,
+                            'modelType': detail.selectedOption.value,
                         })
                     }
-                    onBlur={() => props.touchFields(['ModelType'])}
+                    onBlur={() => props.touchFields(['modelType'])}
                     options={[
                         { label: 'TEXTGEN', value: ModelType.textgen },
                         { label: 'EMBEDDING', value: ModelType.embedding },
                     ]}
                 />
             </FormField>
-            <FormField label='Instance Type' errorText={props.formErrors?.InstanceType}>
-                <Input value={props.item.InstanceType} inputMode='text' onBlur={() => props.touchFields(['InstanceType'])} onChange={({ detail }) => {
-                    props.setFields({ 'InstanceType': detail.value });
+            <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
+                <Input value={props.item.instanceType} inputMode='text' onBlur={() => props.touchFields(['instanceType'])} onChange={({ detail }) => {
+                    props.setFields({ 'instanceType': detail.value });
                 }}/>
             </FormField>
-            <FormField label='Inference Container' errorText={props.formErrors?.InferenceContainer}>
+            <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
                 <Select
-                    selectedOption={{label: props.item.InferenceContainer?.toUpperCase(), value: props.item.InferenceContainer}}
-                    onBlur={() => props.touchFields(['InferenceContainer'])}
+                    selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
+                    onBlur={() => props.touchFields(['inferenceContainer'])}
                     onChange={({ detail }) =>
                         props.setFields({
-                            'InferenceContainer': detail.selectedOption.value,
+                            'inferenceContainer': detail.selectedOption.value,
                         })
                     }
                     options={[
                         { label: 'TGI', value: InferenceContainer.TGI },
                         { label: 'TEI', value: InferenceContainer.TEI },
                         { label: 'VLLM', value: InferenceContainer.VLLM },
-                        { label: 'INSTRUCTOR', value: InferenceContainer.INSTRUCTOR },
                     ]}
                 />
             </FormField>
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
-                <FormField label='LISA Hosted Model' errorText={props.formErrors?.LisaHostedModel}>
+                <FormField label='LISA Hosted Model' errorText={props.formErrors?.lisaHostedModel}>
                     <Toggle
                         onChange={({ detail }) =>
-                            props.setFields({'LisaHostedModel': detail.checked})
+                            props.setFields({'lisaHostedModel': detail.checked})
                         }
-                        onBlur={() => props.touchFields(['LisaHostedModel'])}
-                        checked={props.item.LisaHostedModel}
+                        onBlur={() => props.touchFields(['lisaHostedModel'])}
+                        checked={props.item.lisaHostedModel}
                     />
                 </FormField>
-                <FormField label='Streaming' errorText={props.formErrors?.Streaming}>
+                <FormField label='Streaming' errorText={props.formErrors?.streaming}>
                     <Toggle
                         onChange={({ detail }) =>
-                            props.setFields({'Streaming': detail.checked})
+                            props.setFields({'streaming': detail.checked})
                         }
-                        onBlur={() => props.touchFields(['Streaming'])}
-                        checked={props.item.Streaming}
+                        onBlur={() => props.touchFields(['streaming'])}
+                        checked={props.item.streaming}
                     />
                 </FormField>
             </Grid>

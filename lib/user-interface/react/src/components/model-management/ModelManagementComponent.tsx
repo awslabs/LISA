@@ -67,7 +67,7 @@ export function ModelManagementComponent () : ReactElement {
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
                 ariaLabels={{
-                    itemSelectionLabel: (e, t) => `select ${t.ModelName}`,
+                    itemSelectionLabel: (e, t) => `select ${t.modelName}`,
                     selectionGroupLabel: 'Model selection',
                 }}
                 cardDefinition={CARD_DEFINITIONS}
@@ -75,7 +75,7 @@ export function ModelManagementComponent () : ReactElement {
                 loadingText='Loading models'
                 items={matchedModels}
                 selectionType='single' // single | multi
-                trackBy='ModelId'
+                trackBy='modelId'
                 variant='full-page'
                 loading={fetchingModels}
                 cardsPerRow={[{ cards: 3 }]}

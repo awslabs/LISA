@@ -17,19 +17,23 @@
 import json
 import os
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict
 
 import boto3
 from botocore.config import Config
-from models.domain_objects import CreateModelRequest
+from models.clients.litellm_client import LiteLLMClient
+from models.domain_objects import CreateModelRequest, ModelStatus
+from utilities.common_functions import get_rest_api_container_endpoint, retry_config
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
-lambdaClient = boto3.client("lambda", config=lambdaConfig)
-ecrClient = boto3.client("ecr")
-ec2Client = boto3.client("ec2")
-ddbResource = boto3.resource("dynamodb")
+lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)
+ecrClient = boto3.client("ecr", region_name=os.environ["AWS_REGION"], config=retry_config)
+ec2Client = boto3.client("ec2", region_name=os.environ["AWS_REGION"], config=retry_config)
+ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
-cfnClient = boto3.client("cloudformation")
+cfnClient = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
+litellm_client = LiteLLMClient(base_uri=get_rest_api_container_endpoint())
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -37,22 +41,29 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
     output_dict = deepcopy(event)
     request = CreateModelRequest.validate(event)
 
-    if (
-        request.AutoScalingConfig  # noqa: W503
-        and request.ContainerConfig  # noqa: W503
-        and request.InferenceContainer  # noqa: W503
-        and request.InstanceType  # noqa: W503
-        and request.LoadBalancerConfig  # noqa: W503
-    ):
-        model_table.update_item(
-            Key={"model_id": request.ModelId},
-            UpdateExpression="SET #s = :status, ModelConfig = :modelConfig",
-            ExpressionAttributeValues={":status": {"S": "CREATING"}, ":modelConfig": {"M": event}},
-            ExpressionAttributeNames={"#s": "Status"},
+    is_lisa_managed = all(
+        (
+            bool(request_param)
+            for request_param in (
+                request.autoScalingConfig,
+                request.containerConfig,
+                request.inferenceContainer,
+                request.instanceType,
+                request.loadBalancerConfig,
+            )
         )
-        output_dict["create_infra"] = True
-    else:
-        output_dict["create_infra"] = False
+    )
+
+    model_table.update_item(
+        Key={"model_id": request.modelId},
+        UpdateExpression="SET model_status = :model_status, model_config = :model_config, last_modified_date = :lm",
+        ExpressionAttributeValues={
+            ":model_status": ModelStatus.CREATING,
+            ":model_config": event,
+            ":lm": int(datetime.utcnow().timestamp()),
+        },
+    )
+    output_dict["create_infra"] = is_lisa_managed
     return output_dict
 
 
@@ -65,8 +76,8 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
         FunctionName=os.environ["DOCKER_IMAGE_BUILDER_FN_ARN"],
         Payload=json.dumps(
             {
-                "base_image": request.ContainerConfig.BaseImage.BaseImage,
-                "layer_to_add": request.ContainerConfig.BaseImage.Path,
+                "base_image": request.containerConfig.baseImage.baseImage,
+                "layer_to_add": request.containerConfig.baseImage.path,
             }
         ),
     )
@@ -105,8 +116,6 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     output_dict = deepcopy(event)
     request = CreateModelRequest.validate(event)
 
-    prepared_event = {}
-
     def camelize_object(o):  # type: ignore[no-untyped-def]
         o2 = {}
         for k in o:
@@ -118,7 +127,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         return o2
 
     prepared_event = camelize_object(event)
-    prepared_event["containerConfig"]["environment"] = event["ContainerConfig"]["Environment"]
+    prepared_event["containerConfig"]["environment"] = event["containerConfig"]["environment"]
     prepared_event["containerConfig"]["image"] = {
         "repositoryArn": os.environ["ECR_REPOSITORY_ARN"],
         "tag": event["image_info"]["image_tag"],
@@ -140,9 +149,14 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     output_dict["stack_arn"] = stack_arn
 
     model_table.update_item(
-        Key={"model_id": request.ModelId},
-        UpdateExpression="SET StackName = :stack_name, StackArn = :stack_arn",
-        ExpressionAttributeValues={":stack_name": {"S": stack_name}, ":stack_arn": {"S": stack_arn}},
+        Key={"model_id": request.modelId},
+        UpdateExpression="SET #csn = :stack_name, #csa = :stack_arn, last_modified_date = :lm",
+        ExpressionAttributeNames={"#csn": "cloudformation_stack_name", "#csa": "cloudformation_stack_arn"},
+        ExpressionAttributeValues={
+            ":stack_name": stack_name,
+            ":stack_arn": stack_arn,
+            ":lm": int(datetime.utcnow().timestamp()),
+        },
     )
 
     output_dict["remaining_polls_stack"] = 30
@@ -153,9 +167,13 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
 def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Check that model infrastructure creation has completed or not."""
     output_dict = deepcopy(event)
-    response = cfnClient.describe_stacks(StackName=event["stack_name"])
-    stackStatus = response["Stacks"][0]["StackStatus"]
+    stack = cfnClient.describe_stacks(StackName=event["stack_name"])["Stacks"][0]
+    stackStatus = stack["StackStatus"]
     if stackStatus in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+        outputs = stack["Outputs"]
+        for output in outputs:
+            if output["OutputKey"] == "modelEndpointUrl":
+                output_dict["modelUrl"] = output["OutputValue"]
         output_dict["continue_polling_stack"] = False
         return output_dict
     elif stackStatus in ["CREATE_IN_PROGRESS", "UPDATE_IN_PROGRESS"]:
@@ -171,4 +189,35 @@ def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, A
 def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Add model to LiteLLM once it is created."""
     output_dict = deepcopy(event)
+    is_lisa_managed = event["create_infra"]
+
+    litellm_params = {
+        "api_key": "ignored"  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
+    }
+
+    if is_lisa_managed:
+        # get load balancer from cloudformation stack
+        litellm_params["model"] = f'openai/{event["modelName"]}'
+        litellm_params["api_base"] = f"http://{event['modelUrl']}/v1"  # model's OpenAI-compliant route
+    else:
+        litellm_params["model"] = event["modelName"]
+
+    litellm_response = litellm_client.add_model(
+        model_name=event["modelId"],
+        litellm_params=litellm_params,
+    )
+    litellm_id = litellm_response["model_info"]["id"]
+    output_dict["litellm_id"] = litellm_id
+
+    model_table.update_item(
+        Key={"model_id": event["modelId"]},
+        UpdateExpression="SET model_status = :ms, litellm_id = :lid, last_modified_date = :lm, model_url = :mu",
+        ExpressionAttributeValues={
+            ":ms": ModelStatus.IN_SERVICE,
+            ":lid": litellm_id,
+            ":lm": int(datetime.utcnow().timestamp()),
+            ":mu": litellm_params.get("api_base", ""),
+        },
+    )
+
     return output_dict

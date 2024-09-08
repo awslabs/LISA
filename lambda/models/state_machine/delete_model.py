@@ -21,24 +21,27 @@ from typing import Any, Dict
 from uuid import uuid4
 
 import boto3
-from utilities.common_functions import retry_config
+from models.clients.litellm_client import LiteLLMClient
+from utilities.common_functions import get_rest_api_container_endpoint, retry_config
 
 from ..domain_objects import ModelStatus
 
+# Clients
 cloudformation = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ddb_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
+litellm_client = LiteLLMClient(base_uri=get_rest_api_container_endpoint())
 
 # DDB and Payload fields
 CFN_STACK_ARN = "cloudformation_stack_arn"
-MODEL_ID = "model_id"
+LITELLM_ID = "litellm_id"
 
 
 def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Start deletion workflow based on user-specified model input."""
     output_dict = deepcopy(event)
-    model_id = event[MODEL_ID]
-    model_key = {MODEL_ID: model_id}
+    model_id = event["modelId"]
+    model_key = {"model_id": model_id}
     item = ddb_table.get_item(
         Key=model_key,
         ConsistentRead=True,
@@ -47,6 +50,7 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
     if not item:
         raise RuntimeError(f"Requested model '{model_id}' was not found in DynamoDB table.")
     output_dict[CFN_STACK_ARN] = item.get(CFN_STACK_ARN, None)
+    output_dict[LITELLM_ID] = item[LITELLM_ID]
 
     ddb_table.update_item(
         Key=model_key,
@@ -61,9 +65,8 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
 
 def handle_delete_from_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Delete model reference from LiteLLM."""
-    output_dict = deepcopy(event)
-    pass  # TODO: allow LiteLLM direct modifications from SFN/Lambda without direct user credentials
-    return output_dict
+    litellm_client.delete_model(identifier=event[LITELLM_ID])
+    return event
 
 
 def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -96,6 +99,6 @@ def handle_monitor_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str
 
 def handle_delete_from_ddb(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Delete item from DDB after successful deletion workflow."""
-    model_key = {MODEL_ID: event[MODEL_ID]}
+    model_key = {"model_id": event["modelId"]}
     ddb_table.delete_item(Key=model_key)
     return event

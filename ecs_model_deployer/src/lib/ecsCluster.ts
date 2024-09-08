@@ -15,7 +15,7 @@
 */
 
 // ECS Cluster Construct.
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
@@ -324,12 +324,12 @@ export class ECSCluster extends Construct {
             estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
         });
 
-        const domain =
-      ecsConfig.loadBalancerConfig.domainName !== null
-          ? ecsConfig.loadBalancerConfig.domainName
-          : loadBalancer.loadBalancerDnsName;
-        const endpoint = `http://${domain}`;
-        this.endpointUrl = endpoint;
+        this.endpointUrl = loadBalancer.loadBalancerDnsName;
+
+        new CfnOutput(this, 'modelEndpointurl', {
+            key: 'modelEndpointUrl',
+            value: this.endpointUrl,
+        });
 
         // Update
         this.container = container;

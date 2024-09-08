@@ -47,7 +47,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'modelUrl',
             header: 'URL',
-            content: (model: IModel) => model.modelUrl ?? 'Model URL not defined',
+            content: (model: IModel) => model.modelUrl ? 'Model URL not defined' : model.modelUrl,
         },
         {
             id: 'streaming',
@@ -62,7 +62,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'instanceType',
             header: 'Instance Type',
-            content: (model: IModel) => model.instanceType ?? 'Instance Type not defined',
+            content: (model: IModel) => model.instanceType ? 'Instance Type not defined' : model.instanceType,
         },
         {
             id: 'modelStatus',

@@ -18,6 +18,7 @@ import crypto from 'node:crypto';
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     Effect,
     IRole,
@@ -36,10 +37,8 @@ import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
-import { EcsModelImageRepository } from './ecs-model-image-repo';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
-import { createCdkId } from '../core/utils';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
@@ -110,7 +109,7 @@ export class ModelsApi extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
-        const ecsModelImages = new EcsModelImageRepository(this, createCdkId(['ecs-image-model-repo']));
+        const ecsModelBuildRepo = new Repository(this, 'ecs-model-build-repo');
 
         const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {
             securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
@@ -119,7 +118,7 @@ export class ModelsApi extends Construct {
         });
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
-            ecrUri: ecsModelImages.repo.repositoryUri,
+            ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!
         });
 
@@ -214,7 +213,7 @@ export class ModelsApi extends Construct {
             securityGroups: securityGroups,
             dockerImageBuilderFnArn: dockerImageBuilder.dockerImageBuilderFn.functionArn,
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
-            ecsModelImageRepository: ecsModelImages.repo,
+            ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName
         });

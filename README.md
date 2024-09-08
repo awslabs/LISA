@@ -9,11 +9,11 @@ LISA accelerates the use of generative AI applications by providing scalable, lo
 
 - [Background](#background)
 - [Get Started](#get-started)
-  - [Define Environment Variables](#define-environment-variables)
-  - [Setting Up Your Environment](#setup-up-your-environment)
-  - [Staging Model Weights](#staging-model-weights)
-  - [Customize Configuration](#customize-configuration)
-  - [Bootstrap](#bootstrap)
+    - [Define Environment Variables](#define-environment-variables)
+    - [Setting Up Your Environment](#setup-up-your-environment)
+    - [Staging Model Weights](#staging-model-weights)
+    - [Customize Configuration](#customize-configuration)
+    - [Bootstrap](#bootstrap)
 - [Deployment](#deployment)
 - [Programmatic API Tokens](#programmatic-api-tokens)
 - [Model Compatibility](#model-compatibility)
@@ -286,29 +286,29 @@ you can do so.
   the corresponding entry in `config.yaml`. For container images you can provide a path to a directory
   from which a docker container will be built (default), a path to a tarball, an ECR repository arn and
   optional tag, or a public registry path.
-  - We provide immediate support for HuggingFace TGI and TEI containers and for vLLM containers. The `example_config.yaml`
-    file provides examples for TGI and TEI, and the only difference for using vLLM is to change the
-    `inferenceContainer`, `baseImage`, and `path` options, as indicated in the snippet below. All other options can
-    remain the same as the model definition examples we have for the TGI or TEI models. vLLM can also support embedding
-    models in this way, so all you need to do is refer to the embedding model artifacts and remove the `streaming` field
-    to deploy the embedding model.
-  - vLLM has support for the OpenAI Embeddings API, but model support for it is limited because the feature is new. Currently,
-    the only supported embedding model with vLLM is [intfloat/e5-mistral-7b-instruct](https://huggingface.co/intfloat/e5-mistral-7b-instruct),
-    but this list is expected to grow over time as vLLM updates.
-    ```yaml
-    ecsModels:
-      - modelName: mistralai/Mistral-7B-Instruct-v0.2
-        modelId: mistral7b-vllm
-        deploy: true
-        modelType: textgen # can also be 'embedding'
-        streaming: true # remove option if modelType is 'embedding'
-        instanceType: g5.xlarge
-        inferenceContainer: vllm # vLLM-specific config
-        containerConfig:
-          image:
-            baseImage: vllm/vllm-openai:v0.5.0 # vLLM-specific config
-            path: lib/serve/ecs-model/vllm # vLLM-specific config
-    ```
+    - We provide immediate support for HuggingFace TGI and TEI containers and for vLLM containers. The `example_config.yaml`
+      file provides examples for TGI and TEI, and the only difference for using vLLM is to change the
+      `inferenceContainer`, `baseImage`, and `path` options, as indicated in the snippet below. All other options can
+      remain the same as the model definition examples we have for the TGI or TEI models. vLLM can also support embedding
+      models in this way, so all you need to do is refer to the embedding model artifacts and remove the `streaming` field
+      to deploy the embedding model.
+    - vLLM has support for the OpenAI Embeddings API, but model support for it is limited because the feature is new. Currently,
+      the only supported embedding model with vLLM is [intfloat/e5-mistral-7b-instruct](https://huggingface.co/intfloat/e5-mistral-7b-instruct),
+      but this list is expected to grow over time as vLLM updates.
+      ```yaml
+      ecsModels:
+        - modelName: mistralai/Mistral-7B-Instruct-v0.2
+          modelId: mistral7b-vllm
+          deploy: true
+          modelType: textgen # can also be 'embedding'
+          streaming: true # remove option if modelType is 'embedding'
+          instanceType: g5.xlarge
+          inferenceContainer: vllm # vLLM-specific config
+          containerConfig:
+            image:
+              baseImage: vllm/vllm-openai:v0.5.0 # vLLM-specific config
+              path: lib/serve/ecs-model/vllm # vLLM-specific config
+      ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built
   website assets using the top level `webAppAssetsPath` parameter in `config.yaml`. Specifying this path
   (typically `lib/user-interface/react/dist`) will avoid using a container to build and bundle the assets
@@ -610,7 +610,7 @@ To use the models being served by LISA, the client needs only a few changes:
 1. Specify the `base_url` as the LISA Serve ALB, using the /v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
 2. Add the API key that you generated from the [token generation steps](#programmatic-api-tokens) as your `api_key` field.
 3. If using a self-signed cert, you must provide a certificate path for validating SSL. If you're using an ACM or public cert, then this may be omitted.
-  1. We provide a convenience function in the `lisa-sdk` for generating a cert path from an IAM certificate ARN if one is provided in the `RESTAPI_SSL_CERT_ARN` environment variable.
+1. We provide a convenience function in the `lisa-sdk` for generating a cert path from an IAM certificate ARN if one is provided in the `RESTAPI_SSL_CERT_ARN` environment variable.
 
 The Code block will now look like this and you can continue to use the library without any other modifications.
 
@@ -625,9 +625,9 @@ iam_client = boto3.client("iam")
 cert_path = get_cert_path(iam_client)
 
 client = OpenAI(
-  api_key="my_key", # pragma: allowlist-secret not a real key
-  base_url="https://<lisa_serve_alb>/v2/serve",
-  http_client=DefaultHttpxClient(verify=cert_path), # needed for self-signed certs on your ALB, can be omitted otherwise
+    api_key="my_key", # pragma: allowlist-secret not a real key
+    base_url="https://<lisa_serve_alb>/v2/serve",
+    http_client=DefaultHttpxClient(verify=cert_path), # needed for self-signed certs on your ALB, can be omitted otherwise
 )
 client.models.list()
 ```

@@ -156,7 +156,7 @@ class CreateModelRequest(BaseModel):
     modelName: str
     modelType: ModelType
     modelUrl: Optional[str] = None
-    streaming: bool
+    streaming: Optional[bool] = False
 
 
 class CreateModelResponse(ApiResponseBase):

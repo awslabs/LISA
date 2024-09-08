@@ -54,7 +54,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         updateModelMutation,
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
     ] = useUpdateModelMutation();
-    const initialForm = ModelRequestSchema.parse({});
+    const initialForm = {
+        ...ModelRequestSchema.parse({}),
+        modelId: '',
+        modelName: '',
+    };
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -141,6 +145,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }
     }
 
+    const requiredFields = [['modelId', 'modelName'], [], [], [], []];
+
     useEffect(() => {
         const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
         if (props.isEdit) {
@@ -211,6 +217,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         case 'next':
                         case 'skip':
                             {
+                                touchFields(requiredFields[state.activeStepIndex]);
                                 if (isValid) {
                                     setState({
                                         ...state,

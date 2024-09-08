@@ -33,7 +33,7 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
             >
                 <SpaceBetween size={'s'}>
                     <FormField label='Shared Memory Size' errorText={props.formErrors?.containerConfig?.sharedMemorySize}>
-                        <Input value={props.item.sharedMemorySize.toString()} inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])} onChange={({ detail }) => {
+                        <Input value={props.item.sharedMemorySize.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.sharedMemorySize': Number(detail.value) });
                         }}/>
                     </FormField>
@@ -92,22 +92,22 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
                         </SpaceBetween>
                     </FormField>
                     <FormField label='Interval' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.interval}>
-                        <Input value={props.item.healthCheckConfig.interval.toString()} inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
+                        <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.healthCheckConfig.interval': Number(detail.value) });
                         }}/>
                     </FormField>
                     <FormField label='Start Period' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.startPeriod}>
-                        <Input value={props.item.healthCheckConfig.startPeriod.toString()} inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.startPeriod'])} onChange={({ detail }) => {
+                        <Input value={props.item.healthCheckConfig.startPeriod.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.startPeriod'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.healthCheckConfig.startPeriod': Number(detail.value) });
                         }}/>
                     </FormField>
                     <FormField label='Timeout' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.timeout}>
-                        <Input value={props.item.healthCheckConfig.timeout.toString()} inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
+                        <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.healthCheckConfig.timeout': Number(detail.value) });
                         }}/>
                     </FormField>
                     <FormField label='Retries' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.retries}>
-                        <Input value={props.item.healthCheckConfig.retries.toString()} inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.retries'])} onChange={({ detail }) => {
+                        <Input value={props.item.healthCheckConfig.retries.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.retries'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.healthCheckConfig.retries': Number(detail.value) });
                         }}/>
                     </FormField>

@@ -32,22 +32,22 @@ export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : React
                 }
             >
                 <FormField label='Min Capacity' errorText={props.formErrors?.autoScalingConfig?.minCapacity}>
-                    <Input value={props.item.minCapacity.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {
+                    <Input value={props.item.minCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {
                         props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
                     }}/>
                 </FormField>
                 <FormField label='Max Capacity' errorText={props.formErrors?.autoScalingConfig?.maxCapacity}>
-                    <Input value={props.item.maxCapacity.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])} onChange={({ detail }) => {
+                    <Input value={props.item.maxCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])} onChange={({ detail }) => {
                         props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
                     }}/>
                 </FormField>
                 <FormField label='Cooldown' errorText={props.formErrors?.autoScalingConfig?.cooldown}>
-                    <Input value={props.item.cooldown.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.cooldown'])} onChange={({ detail }) => {
+                    <Input value={props.item.cooldown.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.cooldown'])} onChange={({ detail }) => {
                         props.setFields({ 'autoScalingConfig.Cooldown': Number(detail.value) });
                     }}/>
                 </FormField>
                 <FormField label='Default Instance Warmup' errorText={props.formErrors?.autoScalingConfig?.defaultInstanceWarmup}>
-                    <Input value={props.item.defaultInstanceWarmup.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.defaultInstanceWarmup'])} onChange={({ detail }) => {
+                    <Input value={props.item.defaultInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.defaultInstanceWarmup'])} onChange={({ detail }) => {
                         props.setFields({ 'autoScalingConfig.defaultInstanceWarmup': Number(detail.value) });
                     }}/>
                 </FormField>
@@ -64,17 +64,17 @@ export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : React
                         }}/>
                     </FormField>
                     <FormField label='Target Value' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.targetValue}>
-                        <Input value={props.item.metricConfig.targetValue.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.targetValue'])} onChange={({ detail }) => {
+                        <Input value={props.item.metricConfig.targetValue.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.targetValue'])} onChange={({ detail }) => {
                             props.setFields({ 'autoScalingConfig.metricConfig.targetValue': Number(detail.value) });
                         }}/>
                     </FormField>
                     <FormField label='Duration' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.duration}>
-                        <Input value={props.item.metricConfig.duration.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.duration'])} onChange={({ detail }) => {
+                        <Input value={props.item.metricConfig.duration.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.duration'])} onChange={({ detail }) => {
                             props.setFields({ 'autoScalingConfig.metricConfig.duration': Number(detail.value) });
                         }}/>
                     </FormField>
                     <FormField label='Estimated Instance Warmup' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.estimatedInstanceWarmup}>
-                        <Input value={props.item.metricConfig.estimatedInstanceWarmup.toString()} inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.estimatedInstanceWarmup'])} onChange={({ detail }) => {
+                        <Input value={props.item.metricConfig.estimatedInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.estimatedInstanceWarmup'])} onChange={({ detail }) => {
                             props.setFields({ 'autoScalingConfig.metricConfig.estimatedInstanceWarmup': Number(detail.value) });
                         }}/>
                     </FormField>

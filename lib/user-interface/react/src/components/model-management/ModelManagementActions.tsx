@@ -116,19 +116,19 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             text: 'Start',
             id: 'startModel',
             disabled: true,
-            disabledReason: "This action will be available with LISA release 3.0.1",
+            disabledReason: 'This action will be available with LISA release 3.0.1',
         });
         items.push({
             text: 'Stop',
             id: 'stopModel',
             disabled: true,
-            disabledReason: "This action will be available with LISA release 3.0.1",
+            disabledReason: 'This action will be available with LISA release 3.0.1',
         });
         items.push({
             text: 'Update',
             id: 'editModel',
             disabled: true,
-            disabledReason: "This action will be available with LISA release 3.0.1",
+            disabledReason: 'This action will be available with LISA release 3.0.1',
         });
     }
 

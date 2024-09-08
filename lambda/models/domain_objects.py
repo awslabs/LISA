@@ -32,7 +32,6 @@ class InferenceContainer(str, Enum):
     TGI = "tgi"
     TEI = "tei"
     VLLM = "vllm"
-    INSTRUCTOR = "instructor"
 
 
 class ModelStatus(str, Enum):
@@ -130,6 +129,7 @@ class LISAModel(BaseModel):
     autoScalingConfig: Optional[AutoScalingConfig] = None
     containerConfig: Optional[ContainerConfig] = None
     loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
     modelId: str
     modelName: str
     modelType: ModelType

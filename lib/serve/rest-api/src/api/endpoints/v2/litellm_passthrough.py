@@ -100,8 +100,10 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers = dict(request.headers.items())
 
     logger.info("attempting passthrough")
+    print("attempting passthrough")
     if not is_valid_management_token(headers):
         logger.info("mgmt token not valid")
+        print("mgmt token not valid")
         # If not handling an OpenAI request, we will also check if the user is an Admin user before allowing the
         # request, otherwise, we will block it. This prevents non-admins from invoking model management APIs
         # directly. If LISA Serve is deployed without an IdP configuration, we cannot determine who is an admin
@@ -128,6 +130,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     # to the LiteLLM instance.
     headers["Authorization"] = f"Bearer {LITELLM_KEY}"
     logger.info(f"overriding authorization token with {LITELLM_KEY}")
+    print(f"overriding authorization token with {LITELLM_KEY}")
 
     http_method = request.method
     if http_method == "GET":
@@ -169,7 +172,9 @@ def refresh_management_tokens() -> None:
 
 def is_valid_management_token(headers: dict[str, str]) -> bool:
     """Return if API Token from request headers is valid if found."""
+    global secret_tokens
     refresh_management_tokens()
     token = headers.get("Authorization", "").strip()
     logger.info(f"Checking if {token} is in {secret_tokens}")
+    print(f"Checking if {token} is in {secret_tokens}")
     return token in secret_tokens

@@ -145,6 +145,7 @@ class OIDCHTTPBearer(HTTPBearer):
         if self._token_authorizer.is_valid_api_token(request.headers):
             return None  # valid API token, not continuing with OIDC auth
         elif self._management_token_authorizer.is_valid_api_token(request.headers):
+            logger.info("looks like a valid mgmt token")
             return None  # valid management token, not continuing with OIDC auth
         http_auth_creds = await super().__call__(request)
         if not id_token_is_valid(
@@ -223,5 +224,5 @@ class ManagementTokenAuthorizer:
         self._refreshTokens()
 
         token = headers.get("Authorization", "").strip()
-        logger.info(f"Checking if {token} is in {self._secret_tokens}")
+        logger.info(f"Checking if {token} is in {self._secret_tokens} == {token in self._secret_tokens}")
         return token in self._secret_tokens

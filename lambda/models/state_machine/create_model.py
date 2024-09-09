@@ -210,7 +210,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     if is_lisa_managed:
         # get load balancer from cloudformation stack
         litellm_params["model"] = f'openai/{event["modelName"]}'
-        litellm_params["api_base"] = f"http://{event['modelUrl']}/v1"  # model's OpenAI-compliant route
+        litellm_params["api_base"] = f"{event['modelUrl']}/v1"  # model's OpenAI-compliant route
     else:
         litellm_params["model"] = event["modelName"]
 

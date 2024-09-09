@@ -194,8 +194,8 @@
     },
     {
       "Effect": "Allow",
-      "Action": "secretsmanager:*",
-      "Resource": "arn:${AWS::Partition}:secretsmanager::*:secret:*"
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "*"
     }
   ]
 }

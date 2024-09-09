@@ -289,7 +289,6 @@ def get_id_token(event: dict) -> str:
     return str(token)
 
 
-@cache
 def get_cert_path(iam_client: Any) -> Union[str, bool]:
     """
     Get cert path for IAM certs for SSL validation against LISA Serve endpoint.

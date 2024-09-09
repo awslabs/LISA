@@ -81,13 +81,13 @@ async def model_already_exists_handler(request: Request, exc: ModelAlreadyExists
 
 @app.post(path="", include_in_schema=False)  # type: ignore
 @app.post(path="/")  # type: ignore
-async def create_model(create_request: CreateModelRequest) -> CreateModelResponse:
+async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
     create_handler = CreateModelHandler(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         litellm_client=LiteLLMClient(
-            base_uri=get_rest_api_container_endpoint(), headers=create_request.headers, verify=get_cert_path(iam_client)
+            base_uri=get_rest_api_container_endpoint(), headers=request.headers, verify=get_cert_path(iam_client)
         ),
     )
     return create_handler(create_request=create_request)

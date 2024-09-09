@@ -17,8 +17,10 @@
 import logging
 import os
 from collections.abc import Iterator
+from time import time
 from typing import Union
 
+import boto3
 import requests
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -65,6 +67,10 @@ OPENAI_ROUTES = (
 # required for the db and injecting that into all requests instead to overcome that requirement.
 LITELLM_KEY = os.environ["LITELLM_KEY"]
 
+secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+secret_tokens: list[str] = []
+last_run = 0
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -93,31 +99,35 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     litellm_path = f"{LITELLM_URL}/{api_path}"
     headers = dict(request.headers.items())
 
-    # If not handling an OpenAI request, we will also check if the user is an Admin user before allowing the request,
-    # otherwise, we will block it. This prevents non-admins from invoking model management APIs directly. If LISA
-    # Serve is deployed without an IdP configuration, we cannot determine who is an admin user, so all API routes
-    # will default to being openly accessible.
-    if api_path not in OPENAI_ROUTES and is_idp_used():
-        client_id = os.environ.get("CLIENT_ID", "")
-        authority = os.environ.get("AUTHORITY", "")
-        admin_group = os.environ.get("ADMIN_GROUP", "")
-        jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
+    logger.info("attempting passthrough")
+    if not is_valid_management_token(headers):
+        logger.info("mgmt token not valid")
+        # If not handling an OpenAI request, we will also check if the user is an Admin user before allowing the
+        # request, otherwise, we will block it. This prevents non-admins from invoking model management APIs
+        # directly. If LISA Serve is deployed without an IdP configuration, we cannot determine who is an admin
+        # user, so all API routes will default to being openly accessible.
+        if api_path not in OPENAI_ROUTES and is_idp_used():
+            client_id = os.environ.get("CLIENT_ID", "")
+            authority = os.environ.get("AUTHORITY", "")
+            admin_group = os.environ.get("ADMIN_GROUP", "")
+            jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
-        id_token = get_authorization_token(headers=headers, header_name="Authorization")
-        jwks_client = get_jwks_client()
-        if jwt_data := id_token_is_valid(
-            id_token=id_token, authority=authority, client_id=client_id, jwks_client=jwks_client
-        ):
-            if not is_admin(jwt_data=jwt_data, admin_group=admin_group, jwt_groups_property=jwt_groups_property):
+            id_token = get_authorization_token(headers=headers, header_name="Authorization")
+            jwks_client = get_jwks_client()
+            if jwt_data := id_token_is_valid(
+                id_token=id_token, authority=authority, client_id=client_id, jwks_client=jwks_client
+            ):
+                if not is_admin(jwt_data=jwt_data, admin_group=admin_group, jwt_groups_property=jwt_groups_property):
+                    raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+            else:
                 raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-        else:
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
     # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid
     # soliciting yet another form of auth from the user, we add the existing LiteLLM key to the headers that go directly
     # to the LiteLLM instance.
     headers["Authorization"] = f"Bearer {LITELLM_KEY}"
+    logger.info(f"overriding authorization token with {LITELLM_KEY}")
 
     http_method = request.method
     if http_method == "GET":
@@ -129,3 +139,37 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         return StreamingResponse(generate_response(response.iter_lines()))
     else:  # not a streaming request
         return JSONResponse(requests.request(method=http_method, url=litellm_path, json=params, headers=headers).json())
+
+
+def refresh_management_tokens() -> None:
+    """Return DDB entry for token if it exists."""
+    global last_run
+    global secret_tokens
+    current_time = int(time())
+    if current_time - (last_run or 0) > 3600:
+        new_secret_tokens = []
+        new_secret_tokens.append(
+            secrets_manager.get_secret_value(SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT")[
+                "SecretString"
+            ]
+        )
+        try:
+            new_secret_tokens.append(
+                secrets_manager.get_secret_value(
+                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
+                )["SecretString"]
+            )
+        except Exception:
+            logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
+
+        secret_tokens = new_secret_tokens
+        logger.info(f"Updating tokens {secret_tokens}")
+        last_run = current_time
+
+
+def is_valid_management_token(headers: dict[str, str]) -> bool:
+    """Return if API Token from request headers is valid if found."""
+    refresh_management_tokens()
+    token = headers.get("Authorization", "").strip()
+    logger.info(f"Checking if {token} is in {secret_tokens}")
+    return token in secret_tokens

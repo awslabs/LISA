@@ -222,9 +222,6 @@ class ManagementTokenAuthorizer:
         """Return if API Token from request headers is valid if found."""
         self._refreshTokens()
 
-        for header_name in API_KEY_HEADER_NAMES:
-            token = headers.get(header_name, "").removeprefix("Bearer").strip()
-            if token:
-                if token in self._secret_tokens:
-                    return True
-        return False
+        token = headers.get("Authorization", "").strip()
+        logger.info(f"Checking if {token} is in {self._secret_tokens}")
+        return token in self._secret_tokens

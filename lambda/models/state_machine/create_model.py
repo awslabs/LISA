@@ -36,7 +36,6 @@ cfnClient = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"],
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
-
 litellm_client = LiteLLMClient(
     base_uri=get_rest_api_container_endpoint(),
     verify=get_cert_path(iam_client),

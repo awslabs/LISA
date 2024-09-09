@@ -15,28 +15,28 @@
 """Model information routes."""
 
 import logging
+import os
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from ..auth import OIDCHTTPBearer
-from .endpoints.v1 import embeddings, generation, models
 from .endpoints.v2 import litellm_passthrough
 
 logger = logging.getLogger(__name__)
 
-security = OIDCHTTPBearer()
 router = APIRouter()
 
-router.include_router(models.router, prefix="/v1", tags=["models"], dependencies=[Depends(security)], deprecated=True)
+if os.getenv("USE_AUTH", "true").lower() == "false":
+    dependencies = []
+    logger.info("Auth disabled")
+else:
+    security = OIDCHTTPBearer()
+    dependencies = [Depends(security)]
+    logger.info("Auth enabled")
+
 router.include_router(
-    embeddings.router, prefix="/v1", tags=["embeddings"], dependencies=[Depends(security)], deprecated=True
-)
-router.include_router(
-    generation.router, prefix="/v1", tags=["generation"], dependencies=[Depends(security)], deprecated=True
-)
-router.include_router(
-    litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=[Depends(security)]
+    litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=dependencies
 )
 
 

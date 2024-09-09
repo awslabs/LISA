@@ -32,65 +32,67 @@ import { BaseProps } from '../schema';
  * @property {IRole} role - Execution role for lambdas
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  */
-interface AuthorizerProps extends BaseProps {
-  role?: IRole;
-  vpc?: IVpc;
-  securityGroups?: ISecurityGroup[];
-}
+type AuthorizerProps = {
+    role?: IRole;
+    vpc?: IVpc;
+    securityGroups?: ISecurityGroup[];
+} & BaseProps;
 
 /**
  * Lambda Authorizer Construct.
  */
 export class CustomAuthorizer extends Construct {
-  /** Authorizer Lambda */
-  public readonly authorizer: RequestAuthorizer;
+    /** Authorizer Lambda */
+    public readonly authorizer: RequestAuthorizer;
 
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {AuthorizerProps} props - The properties of the construct.
    */
-  constructor(scope: Construct, id: string, props: AuthorizerProps) {
-    super(scope, id);
+    constructor (scope: Construct, id: string, props: AuthorizerProps) {
+        super(scope, id);
 
-    const { config, role, vpc, securityGroups } = props;
+        const { config, role, vpc, securityGroups } = props;
 
-    const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'base-common-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-    );
+        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'base-common-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        );
 
-    const authorizerLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'base-authorizer-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
-    );
+        const authorizerLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'base-authorizer-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
+        );
 
-    // Create Lambda authorizer
-    const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-      runtime: config.lambdaConfig.pythonRuntime,
-      handler: `authorizer.lambda_functions.lambda_handler`,
-      functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
-      code: Code.fromAsset(config.lambdaSourcePath),
-      description: 'REST API and UI Authorization Lambda',
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 128,
-      layers: [authorizerLambdaLayer, commonLambdaLayer],
-      environment: {
-        CLIENT_ID: config.authConfig.clientId,
-        AUTHORITY: config.authConfig.authority,
-      },
-      role: role,
-      vpc: vpc,
-      securityGroups: securityGroups,
-    });
+        // Create Lambda authorizer
+        const authorizerLambda = new Function(this, 'AuthorizerLambda', {
+            runtime: config.lambdaConfig.pythonRuntime,
+            handler: 'authorizer.lambda_functions.lambda_handler',
+            functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
+            code: Code.fromAsset(config.lambdaSourcePath),
+            description: 'REST API and UI Authorization Lambda',
+            timeout: cdk.Duration.seconds(30),
+            memorySize: 128,
+            layers: [authorizerLambdaLayer, commonLambdaLayer],
+            environment: {
+                CLIENT_ID: config.authConfig!.clientId,
+                AUTHORITY: config.authConfig!.authority,
+                ADMIN_GROUP: config.authConfig!.adminGroup,
+                JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
+            },
+            role: role,
+            vpc: vpc,
+            securityGroups: securityGroups,
+        });
 
-    // Update
-    this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {
-      handler: authorizerLambda,
-      resultsCacheTtl: cdk.Duration.seconds(0),
-      identitySources: [IdentitySource.header('Authorization')],
-    });
-  }
+        // Update
+        this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {
+            handler: authorizerLambda,
+            resultsCacheTtl: cdk.Duration.seconds(0),
+            identitySources: [IdentitySource.header('Authorization')],
+        });
+    }
 }

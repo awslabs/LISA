@@ -17,9 +17,13 @@ import copy
 import functools
 import json
 import logging
+import os
+import tempfile
 from contextvars import ContextVar
+from functools import cache
 from typing import Any, Callable, Dict, TypeVar, Union
 
+import boto3
 import create_env_variables  # noqa type: ignore
 from botocore.config import Config
 
@@ -33,6 +37,8 @@ ctx_context: ContextVar[Any] = ContextVar("lamdbacontext")
 F = TypeVar("F", bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
 logging_configured = False
+
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 class LambdaContextFilter(logging.Filter):
@@ -281,3 +287,36 @@ def get_id_token(event: dict) -> str:
 
     token = auth_header[1]
     return str(token)
+
+
+@cache
+def get_cert_path(iam_client: Any) -> Union[str, bool]:
+    """
+    Get cert path for IAM certs for SSL validation against LISA Serve endpoint.
+
+    If no SSL Cert ARN is specified just default verify to true and the cert will need to be
+    signed by a known CA. Assume cert is signed with known CA if coming from ACM.
+
+    Note: this function is a copy of the same function in the lisa-sdk path. To avoid inflating the deployment size of
+    the Lambda functions, this function was copied here instead of including the entire lisa-sdk path.
+    """
+    cert_arn = os.environ.get("RESTAPI_SSL_CERT_ARN", "")
+    if not cert_arn or cert_arn.split(":")[2] == "acm":
+        return True
+
+    # We have the arn, but we need the name which is the last part of the arn
+    rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_arn.split("/")[1])
+    cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
+    cert_file = tempfile.NamedTemporaryFile(delete=False)
+    cert_file.write(cert_body.encode("utf-8"))
+    rest_api_cert_path = cert_file.name
+
+    return rest_api_cert_path
+
+
+@cache
+def get_rest_api_container_endpoint() -> str:
+    """Get REST API container base URI from SSM Parameter Store."""
+    lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
+    lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
+    return f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"

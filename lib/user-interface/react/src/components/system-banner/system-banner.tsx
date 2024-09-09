@@ -18,33 +18,33 @@ import { TextContent } from '@cloudscape-design/components';
 import React from 'react';
 
 type BannerOptions = {
-  position: 'TOP' | 'BOTTOM';
+    position: 'TOP' | 'BOTTOM';
 };
 
 export const SystemBanner = ({ position }: BannerOptions) => {
-  const bannerStyle: React.CSSProperties = {
-    width: '100%',
-    position: 'fixed',
-    zIndex: 4999,
-    textAlign: 'center',
-    padding: '2px 0px',
-    backgroundColor: window.env.SYSTEM_BANNER.backgroundColor,
-    color: window.env.SYSTEM_BANNER.fontColor,
-  };
+    const bannerStyle: React.CSSProperties = {
+        width: '100%',
+        position: 'fixed',
+        zIndex: 4999,
+        textAlign: 'center',
+        padding: '2px 0px',
+        backgroundColor: window.env.SYSTEM_BANNER.backgroundColor,
+        color: window.env.SYSTEM_BANNER.fontColor,
+    };
 
-  if (position === 'TOP') {
-    bannerStyle.top = 0;
-  } else {
-    bannerStyle.bottom = 0;
-  }
+    if (position === 'TOP') {
+        bannerStyle.top = 0;
+    } else {
+        bannerStyle.bottom = 0;
+    }
 
-  return (
-    <TextContent>
-      <div style={bannerStyle} id={position === 'TOP' ? 'topBanner' : 'bottomBanner'}>
-        <span>{window.env.SYSTEM_BANNER.text}</span>
-      </div>
-    </TextContent>
-  );
+    return (
+        <TextContent>
+            <div style={bannerStyle} id={position === 'TOP' ? 'topBanner' : 'bottomBanner'}>
+                <span>{window.env.SYSTEM_BANNER.text}</span>
+            </div>
+        </TextContent>
+    );
 };
 
 export default SystemBanner;

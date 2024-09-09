@@ -27,32 +27,35 @@
 import * as cdk from 'aws-cdk-lib';
 import { Duration } from 'aws-cdk-lib';
 import {
-  AuthorizationType,
-  IAuthorizer,
-  IResource,
-  LambdaIntegration,
-  IRestApi,
-  Cors,
+    AuthorizationType,
+    IAuthorizer,
+    IResource,
+    LambdaIntegration,
+    IRestApi,
+    Cors,
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, Runtime, ILayerVersion, IFunction } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, Runtime, ILayerVersion, IFunction, CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 /**
  * Type representing python lambda function
  */
 export type PythonLambdaFunction = {
-  id?: string;
-  name: string;
-  resource?: string;
-  description: string;
-  path: string;
-  method: string;
-  environment?: {
-    [key: string]: string;
-  };
-  timeout?: Duration;
+    id?: string;
+    name: string;
+    resource?: string;
+    description: string;
+    path: string;
+    method: string;
+    environment?: {
+        [key: string]: string;
+    };
+    timeout?: Duration;
+    disambiguator?: string;
+    existingFunction?: string;
+    disableAuthorizer?: boolean;
 };
 
 /**
@@ -69,54 +72,78 @@ export type PythonLambdaFunction = {
  * @param securityGroups security groups for Lambdas
  * @returns
  */
-export function registerAPIEndpoint(
-  scope: Construct,
-  api: IRestApi,
-  authorizer: IAuthorizer,
-  lambdaSourcePath: string,
-  layers: ILayerVersion[],
-  funcDef: PythonLambdaFunction,
-  pythonRuntime: Runtime,
-  role?: IRole,
-  vpc?: IVpc,
-  securityGroups?: ISecurityGroup[],
+export function registerAPIEndpoint (
+    scope: Construct,
+    api: IRestApi,
+    authorizer: IAuthorizer,
+    lambdaSourcePath: string,
+    layers: ILayerVersion[],
+    funcDef: PythonLambdaFunction,
+    pythonRuntime: Runtime,
+    role?: IRole,
+    vpc?: IVpc,
+    securityGroups?: ISecurityGroup[],
 ): IFunction {
-  const functionId = `${funcDef.id || [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name].join('-')}`;
-  const handler = new Function(scope, functionId, {
-    functionName: functionId,
-    runtime: pythonRuntime,
-    handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
-    code: Code.fromAsset(lambdaSourcePath),
-    description: funcDef.description,
-    environment: {
-      ...funcDef.environment,
-    },
-    timeout: funcDef.timeout || Duration.seconds(180),
-    memorySize: 512,
-    layers,
-    role,
-    vpc,
-    securityGroups,
-  });
-  const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
-  functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
-    authorizer,
-    authorizationType: AuthorizationType.CUSTOM,
-  });
-  return handler;
+    const functionId = `${
+        funcDef.id ||
+    [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
+    }`;
+    const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
+    let handler;
+
+    if (funcDef.existingFunction) {
+        handler = Function.fromFunctionArn(scope, functionId, funcDef.existingFunction);
+
+        // create a CFN L1 primitive because `handler.addPermission` doesn't behave as expected
+        // https://stackoverflow.com/questions/71075361/aws-cdk-lambda-resource-based-policy-for-a-function-with-an-alias
+        new CfnPermission(scope, `LambdaInvokeAccessRemote-${functionId}`, {
+            action: 'lambda:InvokeFunction',
+            sourceArn: api.arnForExecuteApi(funcDef.method, `/${funcDef.path}`),
+            functionName: handler.functionName,
+            principal: 'apigateway.amazonaws.com',
+        });
+    } else {
+        handler = new Function(scope, functionId, {
+            functionName: functionId,
+            runtime: pythonRuntime,
+            handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
+            code: Code.fromAsset(lambdaSourcePath),
+            description: funcDef.description,
+            environment: {
+                ...funcDef.environment,
+            },
+            timeout: funcDef.timeout || Duration.seconds(180),
+            memorySize: 512,
+            layers,
+            role,
+            vpc,
+            securityGroups,
+        });
+    }
+
+    if (funcDef.disableAuthorizer) {
+        functionResource.addMethod(funcDef.method, new LambdaIntegration(handler));
+    } else {
+        functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
+            authorizer,
+            authorizationType: AuthorizationType.CUSTOM,
+        });
+    }
+
+    return handler;
 }
 
-function getOrCreateResource(scope: Construct, parentResource: IResource, path: string[]): IResource {
-  let resource = parentResource.getResource(path[0]);
-  if (!resource) {
-    resource = parentResource.addResource(path[0]);
-    resource.addCorsPreflight({
-      allowOrigins: Cors.ALL_ORIGINS,
-      allowHeaders: Cors.DEFAULT_HEADERS,
-    });
-  }
-  if (path.length > 1) {
-    return getOrCreateResource(scope, resource, path.slice(1));
-  }
-  return resource;
+function getOrCreateResource (scope: Construct, parentResource: IResource, path: string[]): IResource {
+    let resource = parentResource.getResource(path[0]);
+    if (!resource) {
+        resource = parentResource.addResource(path[0]);
+        resource.addCorsPreflight({
+            allowOrigins: Cors.ALL_ORIGINS,
+            allowHeaders: Cors.DEFAULT_HEADERS,
+        });
+    }
+    if (path.length > 1) {
+        return getOrCreateResource(scope, resource, path.slice(1));
+    }
+    return resource;
 }

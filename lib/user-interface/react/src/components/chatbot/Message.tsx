@@ -25,39 +25,39 @@ import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { LisaChatMessage } from '../types';
 
-interface MessageProps {
-  message?: LisaChatMessage;
-  isRunning: boolean;
-  showMetadata?: boolean;
-}
+type MessageProps = {
+    message?: LisaChatMessage;
+    isRunning: boolean;
+    showMetadata?: boolean;
+};
 
-export default function Message({ message, isRunning, showMetadata }: MessageProps) {
-  return (
-    <div className="mt-2">
-      {isRunning && (
-        <Container>
-          <Box float="left">
-            <Spinner />
-          </Box>
-        </Container>
-      )}
-      {message?.type !== 'human' && !isRunning && (
-        <Container>
-          <SpaceBetween size="s" direction="vertical">
-            <ReactMarkdown children={message.content} />
-            {message.metadata && showMetadata && (
-              <ExpandableSection variant="footer" headerText="Metadata">
-                <JsonView data={message.metadata} style={darkStyles} />
-              </ExpandableSection>
+export default function Message ({ message, isRunning, showMetadata }: MessageProps) {
+    return (
+        <div className='mt-2'>
+            {isRunning && (
+                <Container>
+                    <Box float='left'>
+                        <Spinner />
+                    </Box>
+                </Container>
             )}
-          </SpaceBetween>
-        </Container>
-      )}
-      {message?.type === 'human' && (
-        <TextContent>
-          <strong>{message.content}</strong>
-        </TextContent>
-      )}
-    </div>
-  );
+            {message?.type !== 'human' && !isRunning && (
+                <Container>
+                    <SpaceBetween size='s' direction='vertical'>
+                        <ReactMarkdown children={message.content} />
+                        {message.metadata && showMetadata && (
+                            <ExpandableSection variant='footer' headerText='Metadata'>
+                                <JsonView data={message.metadata} style={darkStyles} />
+                            </ExpandableSection>
+                        )}
+                    </SpaceBetween>
+                </Container>
+            )}
+            {message?.type === 'human' && (
+                <TextContent>
+                    <strong>{message.content}</strong>
+                </TextContent>
+            )}
+        </div>
+    );
 }

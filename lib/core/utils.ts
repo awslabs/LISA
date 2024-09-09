@@ -26,10 +26,10 @@ import { Config, ModelConfig } from '../schema';
 const IAM_DIR = path.join(__dirname, 'iam');
 
 type JSONPolicyStatement = {
-  Effect: iam.Effect;
-  Action: string[];
-  Resource: string | string[];
-  Condition: Record<string, Record<string, string | string[]>>;
+    Effect: iam.Effect;
+    Action: string[];
+    Resource: string | string[];
+    Condition: Record<string, Record<string, string | string[]>>;
 };
 
 /**
@@ -40,22 +40,22 @@ type JSONPolicyStatement = {
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
 const extractPolicyStatementsFromJson = (config: Config, serviceName: string): iam.PolicyStatement[] => {
-  const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
-  const statements = JSON.parse(statementData).Statement;
+    const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
+    const statements = JSON.parse(statementData).Statement;
 
-  statements.forEach((statement: JSONPolicyStatement) => {
-    if (statement.Resource) {
-      const resources = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
-      statement.Resource = resources.map((resource: string) => {
-        return resource
-          .replace(/\${AWS::AccountId}/gi, cdk.Aws.ACCOUNT_ID)
-          .replace(/\${AWS::Partition}/gi, cdk.Aws.PARTITION)
-          .replace(/\${AWS::Region}/gi, cdk.Aws.REGION);
-      });
-    }
-  });
+    statements.forEach((statement: JSONPolicyStatement) => {
+        if (statement.Resource) {
+            const resources = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
+            statement.Resource = resources.map((resource: string) => {
+                return resource
+                    .replace(/\${AWS::AccountId}/gi, cdk.Aws.ACCOUNT_ID)
+                    .replace(/\${AWS::Partition}/gi, cdk.Aws.PARTITION)
+                    .replace(/\${AWS::Region}/gi, cdk.Aws.REGION);
+            });
+        }
+    });
 
-  return statements.map((statement: JSONPolicyStatement) => iam.PolicyStatement.fromJson(statement));
+    return statements.map((statement: JSONPolicyStatement) => iam.PolicyStatement.fromJson(statement));
 };
 
 /**
@@ -65,7 +65,7 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): i
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
 export const getIamPolicyStatements = (config: Config, serviceName: string): iam.PolicyStatement[] => {
-  return extractPolicyStatementsFromJson(config, serviceName);
+    return extractPolicyStatementsFromJson(config, serviceName);
 };
 
 /**
@@ -77,16 +77,16 @@ export const getIamPolicyStatements = (config: Config, serviceName: string): iam
  * @throws {Error} Throws an error if the generated CDK ID is longer than 64 characters.
  * @returns {string} The generated CDK ID for the model resource.
  */
-export function createCdkId(idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
-  let cdkId = idParts.join('-');
-  const length = cdkId.length;
+export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
+    let cdkId = idParts.join('-');
+    const length = cdkId.length;
 
-  if (length > maxLength) {
-    idParts[truncationIdx] = idParts[truncationIdx].slice(0, maxLength - length);
-    cdkId = idParts.join('-');
-  }
+    if (length > maxLength) {
+        idParts[truncationIdx] = idParts[truncationIdx].slice(0, maxLength - length);
+        cdkId = idParts.join('-');
+    }
 
-  return cdkId;
+    return cdkId;
 }
 
 /**
@@ -97,6 +97,6 @@ export function createCdkId(idParts: string[], maxLength: number = 64, truncatio
  * @param {string} modelConfig model config
  * @returns {string} normalized model name for use in CDK identifiers/resource names
  */
-export function getModelIdentifier(modelConfig: ModelConfig): string {
-  return (modelConfig.modelId || modelConfig.modelName).replace(/[^a-zA-Z0-9]/g, '');
+export function getModelIdentifier (modelConfig: ModelConfig): string {
+    return (modelConfig.modelId || modelConfig.modelName).replace(/[^a-zA-Z0-9]/g, '');
 }

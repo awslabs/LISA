@@ -14,12 +14,13 @@
   limitations under the License.
 */
 
+// eslint-disable-next-line no-undef
 module.exports = {
-  testEnvironment: 'node',
-  roots: ['<rootDir>/test'],
-  testMatch: ['**/*.test.ts'],
-  transform: {
-    '^.+\\.tsx?$': 'ts-jest'
-  },
-  collectCoverage: true,
+    testEnvironment: 'node',
+    roots: ['<rootDir>/test'],
+    testMatch: ['**/*.test.ts'],
+    transform: {
+        '^.+\\.tsx?$': 'ts-jest'
+    },
+    collectCoverage: true,
 };

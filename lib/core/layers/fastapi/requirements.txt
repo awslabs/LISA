@@ -1,0 +1,5 @@
+boto3==1.34.131
+fastapi==0.111.0
+mangum==0.17.0
+pydantic==2.8.2
+requests==2.32.2

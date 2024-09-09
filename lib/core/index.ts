@@ -27,58 +27,75 @@ import { BaseProps } from '../schema';
 
 const HERE = path.resolve(__dirname);
 const COMMON_LAYER_PATH = path.join(HERE, 'layers', 'common');
+const FASTAPI_LAYER_PATH = path.join(HERE, 'layers', 'fastapi');
 const AUTHORIZER_LAYER_PATH = path.join(HERE, 'layers', 'authorizer');
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
 
-interface CustomCoreStackProps extends BaseProps {
-  vpc: Vpc;
-}
+type CustomCoreStackProps = {
+    vpc: Vpc;
+} & BaseProps;
 type CoreStackProps = CustomCoreStackProps & cdk.StackProps;
 
 /**
  * Creates a virtual private cloud (VPC) and other networking resources.
  */
 export class CoreStack extends cdk.Stack {
-  /**
+    /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    */
-  constructor(scope: Construct, id: string, props: CoreStackProps) {
-    super(scope, id, props);
-    const { config } = props;
+    constructor (scope: Construct, id: string, props: CoreStackProps) {
+        super(scope, id, props);
+        const { config } = props;
 
-    // Create Lambda Layers
-    // Build common Lambda layer
-    const commonLambdaLayer = new Layer(this, 'CommonLayer', {
-      config: config,
-      path: COMMON_LAYER_PATH,
-      description: 'Common requirements for REST API Lambdas',
-      architecture: ARCHITECTURE,
-      autoUpgrade: true,
-      assetPath: config.lambdaLayerAssets?.commonLayerPath,
-    });
+        // Create Lambda Layers
+        // Build common Lambda layer
+        const commonLambdaLayer = new Layer(this, 'CommonLayer', {
+            config: config,
+            path: COMMON_LAYER_PATH,
+            description: 'Common requirements for REST API Lambdas',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.commonLayerPath,
+        });
 
-    // Build authorizer Lambda layer
-    const authorizerLambdaLayer = new Layer(this, 'AuthorizerLayer', {
-      config: config,
-      path: AUTHORIZER_LAYER_PATH,
-      description: 'API authorization dependencies for REST API',
-      architecture: ARCHITECTURE,
-      autoUpgrade: true,
-      assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
-    });
+        // Build fastapi Lambda layer
+        const fastapiLambdaLayer = new Layer(this, 'FastapiLayer', {
+            config: config,
+            path: FASTAPI_LAYER_PATH,
+            description: 'FastAPI requirements for REST API Lambdas',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.fastapiLayerPath,
+        });
 
-    new StringParameter(this, 'LisaCommonLamdaLayerStringParameter', {
-      parameterName: `${config.deploymentPrefix}/layerVersion/common`,
-      stringValue: commonLambdaLayer.layer.layerVersionArn,
-      description: `Layer Version ARN for LISA Common Lambda Layer`,
-    });
+        // Build authorizer Lambda layer
+        const authorizerLambdaLayer = new Layer(this, 'AuthorizerLayer', {
+            config: config,
+            path: AUTHORIZER_LAYER_PATH,
+            description: 'API authorization dependencies for REST API',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
+        });
 
-    new StringParameter(this, 'LisaAuthorizerLamdaLayerStringParameter', {
-      parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
-      stringValue: authorizerLambdaLayer.layer.layerVersionArn,
-      description: `Layer Version ARN for LISA Authorizer Lambda Layer`,
-    });
-  }
+        new StringParameter(this, 'LisaCommonLamdaLayerStringParameter', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/common`,
+            stringValue: commonLambdaLayer.layer.layerVersionArn,
+            description: 'Layer Version ARN for LISA Common Lambda Layer',
+        });
+
+        new StringParameter(this, 'LisaFastapiLamdaLayerStringParameter', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/fastapi`,
+            stringValue: fastapiLambdaLayer.layer.layerVersionArn,
+            description: 'Layer Version ARN for LISA FastAPI Lambda Layer',
+        });
+
+        new StringParameter(this, 'LisaAuthorizerLamdaLayerStringParameter', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
+            stringValue: authorizerLambdaLayer.layer.layerVersionArn,
+            description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
+        });
+    }
 }

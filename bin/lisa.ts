@@ -35,57 +35,57 @@ let configEnv = configFile.env || 'dev';
 
 // Select configuration environment
 if (process.env.ENV) {
-  configEnv = process.env.ENV;
+    configEnv = process.env.ENV;
 }
 const configData = configFile[configEnv];
 if (!configData) {
-  throw new Error(`Configuration for environment "${configEnv}" not found.`);
+    throw new Error(`Configuration for environment "${configEnv}" not found.`);
 }
 
 // Other command line argument overrides
 type EnvMapping = [string, keyof Config];
 const mappings: EnvMapping[] = [
-  ['PROFILE', 'profile'],
-  ['DEPLOYMENT_NAME', 'deploymentName'],
-  ['ACCOUNT_NUMBER', 'accountNumber'],
-  ['REGION', 'region'],
+    ['PROFILE', 'profile'],
+    ['DEPLOYMENT_NAME', 'deploymentName'],
+    ['ACCOUNT_NUMBER', 'accountNumber'],
+    ['REGION', 'region'],
 ];
 mappings.forEach(([envVar, configVar]) => {
-  const envValue = process.env[envVar];
-  if (envValue) {
-    (configData as any)[configVar] = envValue;
-  }
+    const envValue = process.env[envVar];
+    if (envValue) {
+        (configData as any)[configVar] = envValue;
+    }
 });
 
 // Validate and parse configuration
 let config: Config;
 try {
-  config = ConfigSchema.parse(configData);
+    config = ConfigSchema.parse(configData);
 } catch (error) {
-  if (error instanceof Error) {
-    console.error('Error parsing the configuration:', error.message);
-  } else {
-    console.error('An unexpected error occurred:', error);
-  }
-  process.exit(1);
+    if (error instanceof Error) {
+        console.error('Error parsing the configuration:', error.message);
+    } else {
+        console.error('An unexpected error occurred:', error);
+    }
+    process.exit(1);
 }
 
 // Define environment
 const env: cdk.Environment = {
-  account: config.accountNumber,
-  region: config.region,
+    account: config.accountNumber,
+    region: config.region,
 };
 
 // Application
 const app = new cdk.App();
 // Run CDK-nag on app if specified
 if (config.runCdkNag) {
-  Aspects.of(app).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
+    Aspects.of(app).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
 }
 
 new LisaServeApplicationStage(app, config.deploymentStage, {
-  env: env,
-  config: config,
+    env: env,
+    config: config,
 });
 
 app.synth();

@@ -12,6 +12,7 @@ dev:
   # lambdaLayerAssets:
   #   authorizerLayerPath: /path/to/authorizer_layer.zip
   #   commonLayerPath: /path/to/common_layer.zip
+  #   fastapiLayerPath: /path/to/fastapi_layer.zip
   #   ragLayerPath: /path/to/rag_layer.zip
   #   sdkLayerPath: /path/to/sdk_layer.zip
   # stackSynthesizer: CliCredentialsStackSynthesizer
@@ -34,6 +35,8 @@ dev:
   accountNumbersEcr:
     - 012345678901
   deployRag: true
+  deployChat: true
+  deployUi: true
   lambdaConfig:
     pythonRuntime: PYTHON_3_10
     logLevel: DEBUG
@@ -46,6 +49,8 @@ dev:
   authConfig:
     authority:
     clientId:
+    adminGroup:
+    jwtGroupsProperty:
   logLevel: DEBUG
   # NOTE: The following configuration will allow for using a custom domain for the chat user interface.
   # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
@@ -76,6 +81,7 @@ dev:
         targetValue: 1000
         duration: 60
         estimatedInstanceWarmup: 30
+    internetFacing: true
     loadBalancerConfig:
       sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
       healthCheckConfig:
@@ -116,7 +122,7 @@ dev:
   ecsModels:
     - modelName: mistralai/Mistral-7B-Instruct-v0.2
       modelId: mistral7b
-      deploy: true
+      deploy: false
       streaming: true
       modelType: textgen
       instanceType: g5.xlarge
@@ -156,7 +162,7 @@ dev:
           unhealthyThresholdCount: 10
     - modelName: intfloat/e5-large-v2
       modelId: e5v2
-      deploy: true
+      deploy: false
       modelType: embedding
       instanceType: g5.xlarge
       inferenceContainer: tei
@@ -194,7 +200,7 @@ dev:
           healthyThresholdCount: 2
           unhealthyThresholdCount: 10
     # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
-    #   deploy: true
+    #   deploy: false
     #   streaming: true
     #   modelType: textgen
     #   instanceType: g5.12xlarge
@@ -244,6 +250,8 @@ dev:
   litellmConfig:
     litellm_settings:
       telemetry: false  # Don't try to send telemetry to LiteLLM servers.
+    general_settings:
+      master_key: sk-d7a77bcb-3e23-483c-beec-2700f2baeeb1  # A key is required for model management purposes
     model_list: # Add any of your existing (not LISA-hosted) models here.
 #      - model_name: mymodel
 #        litellm_params:

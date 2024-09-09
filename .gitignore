@@ -23,11 +23,12 @@ cdk.context.json
 .vscode
 .venv
 .DS_Store
+*.iml
 
 # Coverage Statistic Folders
 coverage
 
 # Model Cache Folders
-models
+/models
 # Deployment configuration file
 config.yaml

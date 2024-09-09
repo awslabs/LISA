@@ -18,66 +18,66 @@ import { sendAuthenticatedRequest } from '../utils';
 import { Document } from '@langchain/core/documents';
 import { BaseRetriever, BaseRetrieverInput } from '@langchain/core/retrievers';
 
-export interface LisaRAGRetrieverInput extends BaseRetrieverInput {
-  /**
+export type LisaRAGRetrieverInput = {
+    /**
    * The URI of the LISA RAG API
    */
-  uri: string;
+    uri: string;
 
-  /**
+    /**
    * Name of model to use for embeddings
    */
-  modelName: string;
+    modelName: string;
 
-  /**
+    /**
    * Authentication token to use when communicating with RAG API
    */
-  idToken: string;
+    idToken: string;
 
-  /**
+    /**
    * Id of the RAG repository to query
    */
-  repositoryId: string;
+    repositoryId: string;
 
-  /**
+    /**
    * Type of the RAG repository to query
    */
-  repositoryType: string;
+    repositoryType: string;
 
-  /**
+    /**
    * The number of relevant documents to retrieve
    */
-  topK?: number;
-}
+    topK?: number;
+} & BaseRetrieverInput;
 
 export class LisaRAGRetriever extends BaseRetriever {
-  lc_namespace: string[];
+    lc_namespace: string[];
 
-  private uri: string;
-  public modelName: string;
-  public idToken: string;
-  public repositoryId: string;
-  public repositoryType: string;
-  public topK: number;
+    private uri: string;
+    public modelName: string;
+    public idToken: string;
+    public repositoryId: string;
+    public repositoryType: string;
+    public topK: number;
 
-  constructor(fields?: LisaRAGRetrieverInput) {
-    super(fields);
+    constructor (fields?: LisaRAGRetrieverInput) {
+        super(fields);
 
-    this.uri = fields.uri;
-    this.modelName = fields.modelName;
-    this.idToken = fields.idToken;
-    this.repositoryId = fields.repositoryId;
-    this.repositoryType = fields.repositoryType;
-    this.topK = fields.topK || 3;
-  }
+        this.uri = fields.uri;
+        this.modelName = fields.modelName;
+        this.idToken = fields.idToken;
+        this.repositoryId = fields.repositoryId;
+        this.repositoryType = fields.repositoryType;
+        this.topK = fields.topK || 3;
+    }
 
-  async _getRelevantDocuments(query: string): Promise<Document[]> {
-    const resp = await sendAuthenticatedRequest(
-      `repository/${this.repositoryId}/similaritySearch?query=${query}&modelName=${this.modelName}&repositoryType=${this.repositoryType}&topK=${this.topK}`,
-      'GET',
-      this.idToken,
-    );
-    const searchResults = await resp.json();
-    return searchResults.docs;
-  }
+    async _getRelevantDocuments (query: string): Promise<Document[]> {
+        const resp = await sendAuthenticatedRequest(
+            `repository/${this.repositoryId}/similaritySearch?query=${query}&modelName=${this.modelName}&repositoryType=${this.repositoryType}&topK=${this.topK}`,
+            'GET',
+            this.idToken,
+        );
+        const searchResults = await resp.json();
+        return searchResults.docs;
+    }
 }

@@ -35,134 +35,134 @@ import { BaseProps } from '../../schema';
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  */
-interface SessionApiProps extends BaseProps {
-  authorizer: IAuthorizer;
-  lambdaExecutionRole?: IRole;
-  restApiId: string;
-  rootResourceId: string;
-  securityGroups?: ISecurityGroup[];
-  vpc?: IVpc;
-}
+type SessionApiProps = {
+    authorizer: IAuthorizer;
+    lambdaExecutionRole?: IRole;
+    restApiId: string;
+    rootResourceId: string;
+    securityGroups?: ISecurityGroup[];
+    vpc?: IVpc;
+} & BaseProps;
 
 /**
  * API which Maintains sessions state in DynamoDB
  */
 export class SessionApi extends Construct {
-  constructor(scope: Construct, id: string, props: SessionApiProps) {
-    super(scope, id);
+    constructor (scope: Construct, id: string, props: SessionApiProps) {
+        super(scope, id);
 
-    const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-    // Get common layer based on arn from SSM due to issues with cross stack references
-    const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-      this,
-      'session-common-lambda-layer',
-      StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-    );
+        // Get common layer based on arn from SSM due to issues with cross stack references
+        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'session-common-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        );
 
-    // Create DynamoDB table to handle chat sessions
-    const sessionTable = new dynamodb.Table(this, 'SessionsTable', {
-      partitionKey: {
-        name: 'sessionId',
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'userId',
-        type: dynamodb.AttributeType.STRING,
-      },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      encryption: dynamodb.TableEncryption.AWS_MANAGED,
-      removalPolicy: config.removalPolicy,
-    });
-    const byUserIdIndex = 'byUserId';
-    sessionTable.addGlobalSecondaryIndex({
-      indexName: byUserIdIndex,
-      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-    });
+        // Create DynamoDB table to handle chat sessions
+        const sessionTable = new dynamodb.Table(this, 'SessionsTable', {
+            partitionKey: {
+                name: 'sessionId',
+                type: dynamodb.AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'userId',
+                type: dynamodb.AttributeType.STRING,
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+        });
+        const byUserIdIndex = 'byUserId';
+        sessionTable.addGlobalSecondaryIndex({
+            indexName: byUserIdIndex,
+            partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+        });
 
-    const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
-      restApiId: restApiId,
-      rootResourceId: rootResourceId,
-    });
+        const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
+            restApiId: restApiId,
+            rootResourceId: rootResourceId,
+        });
 
-    // Create API Lambda functions
-    const apis: PythonLambdaFunction[] = [
-      {
-        name: 'list_sessions',
-        resource: 'session',
-        description: 'Lists available sessions for user',
-        path: 'session',
-        method: 'GET',
-        environment: {
-          SESSIONS_TABLE_NAME: sessionTable.tableName,
-          SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-        },
-      },
-      {
-        name: 'get_session',
-        resource: 'session',
-        description: 'Returns the selected session',
-        path: 'session/{sessionId}',
-        method: 'GET',
-        environment: {
-          SESSIONS_TABLE_NAME: sessionTable.tableName,
-          SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-        },
-      },
-      {
-        name: 'delete_session',
-        resource: 'session',
-        description: 'Deletes selected session',
-        path: 'session/{sessionId}',
-        method: 'DELETE',
-        environment: {
-          SESSIONS_TABLE_NAME: sessionTable.tableName,
-          SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-        },
-      },
-      {
-        name: 'delete_user_sessions',
-        resource: 'session',
-        description: 'Deletes all sessions for selected user',
-        path: 'session',
-        method: 'DELETE',
-        environment: {
-          SESSIONS_TABLE_NAME: sessionTable.tableName,
-          SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-        },
-      },
-      {
-        name: 'put_session',
-        resource: 'session',
-        description: 'Creates or updates selected session',
-        path: 'session/{sessionId}',
-        method: 'PUT',
-        environment: {
-          SESSIONS_TABLE_NAME: sessionTable.tableName,
-          SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-        },
-      },
-    ];
-    apis.forEach((f) => {
-      const lambdaFunction = registerAPIEndpoint(
-        this,
-        restApi,
-        authorizer,
-        config.lambdaSourcePath,
-        [commonLambdaLayer],
-        f,
-        config.lambdaConfig.pythonRuntime,
-        lambdaExecutionRole,
-        vpc,
-        securityGroups,
-      );
-      if (f.method === 'POST' || f.method === 'PUT') {
-        sessionTable.grantWriteData(lambdaFunction);
-      } else if (f.method == 'GET') {
-        sessionTable.grantReadData(lambdaFunction);
-      } else if (f.method === 'DELETE') {
-        sessionTable.grantReadWriteData(lambdaFunction);
-      }
-    });
-  }
+        // Create API Lambda functions
+        const apis: PythonLambdaFunction[] = [
+            {
+                name: 'list_sessions',
+                resource: 'session',
+                description: 'Lists available sessions for user',
+                path: 'session',
+                method: 'GET',
+                environment: {
+                    SESSIONS_TABLE_NAME: sessionTable.tableName,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                },
+            },
+            {
+                name: 'get_session',
+                resource: 'session',
+                description: 'Returns the selected session',
+                path: 'session/{sessionId}',
+                method: 'GET',
+                environment: {
+                    SESSIONS_TABLE_NAME: sessionTable.tableName,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                },
+            },
+            {
+                name: 'delete_session',
+                resource: 'session',
+                description: 'Deletes selected session',
+                path: 'session/{sessionId}',
+                method: 'DELETE',
+                environment: {
+                    SESSIONS_TABLE_NAME: sessionTable.tableName,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                },
+            },
+            {
+                name: 'delete_user_sessions',
+                resource: 'session',
+                description: 'Deletes all sessions for selected user',
+                path: 'session',
+                method: 'DELETE',
+                environment: {
+                    SESSIONS_TABLE_NAME: sessionTable.tableName,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                },
+            },
+            {
+                name: 'put_session',
+                resource: 'session',
+                description: 'Creates or updates selected session',
+                path: 'session/{sessionId}',
+                method: 'PUT',
+                environment: {
+                    SESSIONS_TABLE_NAME: sessionTable.tableName,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                },
+            },
+        ];
+        apis.forEach((f) => {
+            const lambdaFunction = registerAPIEndpoint(
+                this,
+                restApi,
+                authorizer,
+                config.lambdaSourcePath,
+                [commonLambdaLayer],
+                f,
+                config.lambdaConfig.pythonRuntime,
+                lambdaExecutionRole,
+                vpc,
+                securityGroups,
+            );
+            if (f.method === 'POST' || f.method === 'PUT') {
+                sessionTable.grantWriteData(lambdaFunction);
+            } else if (f.method === 'GET') {
+                sessionTable.grantReadData(lambdaFunction);
+            } else if (f.method === 'DELETE') {
+                sessionTable.grantReadWriteData(lambdaFunction);
+            }
+        });
+    }
 }

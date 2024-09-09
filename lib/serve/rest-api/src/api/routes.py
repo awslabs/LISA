@@ -38,7 +38,6 @@ else:
 router.include_router(
     litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=dependencies
 )
-router.include_router(litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"])
 
 
 @router.get("/health")  # type: ignore

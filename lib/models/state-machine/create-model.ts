@@ -44,6 +44,7 @@ type CreateModelStateMachineProps = BaseProps & {
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
+    managementKeyName: string
 };
 
 /**
@@ -55,7 +56,7 @@ export class CreateModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateModelStateMachineProps) {
         super(scope, id);
 
-        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs} = props;
+        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName} = props;
 
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
@@ -65,6 +66,8 @@ export class CreateModelStateMachine extends Construct {
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             MODEL_TABLE_NAME: modelTable.tableName,
             REST_API_VERSION: config.restApiConfig.apiVersion,
+            MANAGEMENT_KEY_NAME: managementKeyName,
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {

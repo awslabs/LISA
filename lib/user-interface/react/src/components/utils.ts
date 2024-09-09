@@ -29,21 +29,17 @@ const stripTrailingSlash = (str) => {
     return str && str.endsWith('/') ? str.slice(0, -1) : str;
 };
 
+export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
+export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
+
 /**
  * Gets base URI for API Gateway. This can either be the APIGW execution URL directly or a
  * custom domain.
  */
 export const getBaseURI = (): string => {
-    const baseUrl = window.env.API_BASE_URL;
-    if (baseUrl.startsWith('https://')) {
-        return `${stripTrailingSlash(baseUrl)}/`;
-    }
-
-    return `${stripTrailingSlash(`${window.location.protocol}//${window.location.hostname}${baseUrl}`)}/`;
+    return window.env.API_BASE_URL;
 };
 
-export const RESTAPI_URI = `${getBaseURI()}llm`;
-export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
 
 /**
  * Send an authenticated request to the backend. Handles adding the proper authorization header

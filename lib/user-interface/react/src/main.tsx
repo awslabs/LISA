@@ -33,6 +33,7 @@ declare global {
             ADMIN_GROUP?: string;
             JWT_GROUPS_PROP?: string;
             CUSTOM_SCOPES: string[];
+            RESTAPI_URI: string;
             RESTAPI_VERSION: string;
             RAG_ENABLED: boolean;
             API_BASE_URL: string;

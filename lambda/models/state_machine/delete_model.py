@@ -22,7 +22,7 @@ from uuid import uuid4
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
-from utilities.common_functions import get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 from ..domain_objects import ModelStatus
 
@@ -30,7 +30,19 @@ from ..domain_objects import ModelStatus
 cloudformation = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ddb_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
-litellm_client = LiteLLMClient(base_uri=get_rest_api_container_endpoint())
+iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+litellm_client = LiteLLMClient(
+    base_uri=get_rest_api_container_endpoint(),
+    verify=get_cert_path(iam_client),
+    headers={
+        "Authorization": secrets_manager.get_secret_value(
+            SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
+        )["SecretString"],
+        "Content-Type": "application/json",
+    },
+)
 
 # DDB and Payload fields
 CFN_STACK_ARN = "cloudformation_stack_arn"

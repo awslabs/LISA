@@ -18,6 +18,7 @@
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -27,18 +28,13 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
-import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 const HERE = path.resolve(__dirname);
 
 type CustomLisaStackProps = {
     vpc: Vpc;
-    authorizer: IAuthorizer;
-    restApiId: string;
-    rootResourceId: string;
-    tokenTable: ITable | undefined;
 } & BaseProps;
 type LisaStackProps = CustomLisaStackProps & StackProps;
 
@@ -50,6 +46,7 @@ export class LisaServeApplicationStack extends Stack {
     public readonly restApi: FastApiContainer;
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
+    public readonly managementKeySecret: Secret;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -59,14 +56,26 @@ export class LisaServeApplicationStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaStackProps) {
         super(scope, id, props);
 
-        const { config, vpc, tokenTable } = props;
+        const { config, vpc } = props;
         const rdsConfig = config.restApiConfig.rdsConfig;
+
+        let tokenTable;
+        if (config.restApiConfig.internetFacing) {
+            // Create DynamoDB Table for enabling API token usage
+            tokenTable = new Table(this, 'TokenTable', {
+                tableName: `${config.deploymentName}-LISAApiTokenTable`,
+                partitionKey: {
+                    name: 'token',
+                    type: AttributeType.STRING,
+                },
+                billingMode: BillingMode.PAY_PER_REQUEST,
+                encryption: TableEncryption.AWS_MANAGED,
+                removalPolicy: config.removalPolicy,
+            });
+        }
 
         // Create REST API
         const restApi = new FastApiContainer(this, 'RestApi', {
-            authorizer: props.authorizer,
-            restApiId: props.restApiId,
-            rootResourceId: props.rootResourceId,
             apiName: 'REST',
             config: config,
             resourcePath: path.join(HERE, 'rest-api'),
@@ -75,6 +84,57 @@ export class LisaServeApplicationStack extends Stack {
             tokenTable: tokenTable,
             vpc: vpc.vpc,
         });
+
+        this.managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
+            secretName: `lisa_management_key_secret-${Date.now()}`, // pragma: allowlist secret`
+            description: 'This is a secret created with AWS CDK',
+            generateSecretString: {
+                excludePunctuation: true,
+                passwordLength: 16
+            },
+        });
+
+        // const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
+        //     this,
+        //     'base-common-lambda-layer',
+        //     StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        // );
+
+        // const rotateManagementKeyLambdaId = createCdkId([id, 'RotateManagementKeyLambda'])
+        // const rotateManagementKeyLambda = new Function(this, rotateManagementKeyLambdaId, {
+        //     functionName: rotateManagementKeyLambdaId,
+        //     runtime: Runtime.PYTHON_3_12,
+        //     handler: 'management_key.rotate_management_key',
+        //     code: Code.fromAsset('./lambda/'),
+        //     timeout: Duration.minutes(1),
+        //     memorySize: 1024,
+        //     environment: {
+        //         MANAGEMENT_KEY_NAME: managementKeySecret.secretName
+        //     },
+        //     layers: [commonLambdaLayer],
+        //     vpc: props.vpc.vpc,
+        // });
+
+        // managementKeySecret.grantRead(rotateManagementKeyLambda);
+
+        // new RotationSchedule(this, createCdkId([id, 'RotateManagementRotationSchedule']), {
+        //     secret: managementKeySecret,
+        //     rotationLambda: rotateManagementKeyLambda,
+        //     automaticallyAfter: Duration.days(1), // Rotate every 30 days
+        //   });
+
+        // You can now use the `secret` variable to access the created secret
+        // For example, you might output the secret's ARN for reference
+        // new CfnOutput(this, createCdkId([id, 'RotateManagementKey']), {
+        //     value: managementKeySecret.secretArn,
+        //     description: 'The ARN of the secret',
+        // });
+
+        const managementKeySecretNameStringParameter = new StringParameter(this, createCdkId(['ManagementKeySecretName']), {
+            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
+            stringValue: this.managementKeySecret.secretName,
+        });
+        restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';

@@ -42,6 +42,7 @@ import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 /**
  * Properties for ModelsApi Construct.
@@ -61,6 +62,7 @@ type ModelsApiProps = BaseProps & {
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
     vpc: Vpc;
+    managementKeySecret: Secret;
 };
 
 /**
@@ -70,7 +72,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc, managementKeySecret } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -190,10 +192,19 @@ export class ModelsApi extends Construct {
                                 lisaServeEndpointUrlPs.parameterArn
                             ],
                         }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'secretsmanager:GetSecretValue'
+                            ],
+                            resources: [managementKeySecret.secretArn],
+                        }),
                     ]
                 }),
             }
         });
+
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
@@ -206,6 +217,7 @@ export class ModelsApi extends Construct {
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
             ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
+            managementKeyName: managementKeyName,
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
@@ -216,11 +228,13 @@ export class ModelsApi extends Construct {
             vpc: vpc.vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
+            managementKeyName: managementKeyName,
         });
 
         const environment = {
             LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
             REST_API_VERSION: config.restApiConfig.apiVersion,
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
             CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
@@ -247,6 +261,20 @@ export class ModelsApi extends Construct {
             securityGroups,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
+
+        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+            const certPerms = new Policy(this, 'ModelsApiCertPerms', {
+                statements: [
+                    new PolicyStatement({
+                        actions: ['iam:GetServerCertificate'],
+                        resources: [config.restApiConfig.loadBalancerConfig.sslCertIamArn],
+                        effect: Effect.ALLOW,
+                    })
+                ]
+            });
+            lambdaFunction.role!.attachInlinePolicy(certPerms);
+            stateMachinesLambdaRole.attachInlinePolicy(certPerms);
+        }
 
         const apis: PythonLambdaFunction[] = [
             // create endpoint for /models without a trailing slash but reuse

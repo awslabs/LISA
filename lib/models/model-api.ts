@@ -215,7 +215,7 @@ export class ModelsApi extends Construct {
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
             ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
-            managementKeyName
+            managementKeyName: managementKeyName,
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
@@ -226,6 +226,7 @@ export class ModelsApi extends Construct {
             vpc: vpc.vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
+            managementKeyName: managementKeyName,
         });
 
         const environment = {
@@ -260,7 +261,7 @@ export class ModelsApi extends Construct {
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
         if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
-            const additionalPerms = new Policy(this, 'ModelsApiAdditionalPerms', {
+            const certPerms = new Policy(this, 'ModelsApiCertPerms', {
                 statements: [
                     new PolicyStatement({
                         actions: ['iam:GetServerCertificate'],
@@ -269,7 +270,7 @@ export class ModelsApi extends Construct {
                     })
                 ]
             });
-            lambdaFunction.role!.attachInlinePolicy(additionalPerms);
+            lambdaFunction.role!.attachInlinePolicy(certPerms);
         }
 
         const apis: PythonLambdaFunction[] = [

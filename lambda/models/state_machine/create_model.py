@@ -24,7 +24,7 @@ import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, ModelStatus
-from utilities.common_functions import get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
 lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)
@@ -38,8 +38,7 @@ iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=re
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 litellm_client = LiteLLMClient(
     base_uri=get_rest_api_container_endpoint(),
-    # verify=get_cert_path(iam_client),
-    verify=False,
+    verify=get_cert_path(iam_client),
     headers={
         "Authorization": secrets_manager.get_secret_value(
             SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"

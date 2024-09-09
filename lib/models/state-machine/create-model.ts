@@ -66,7 +66,8 @@ export class CreateModelStateMachine extends Construct {
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             MODEL_TABLE_NAME: modelTable.tableName,
             REST_API_VERSION: config.restApiConfig.apiVersion,
-            MANAGEMENT_KEY_NAME: managementKeyName
+            MANAGEMENT_KEY_NAME: managementKeyName,
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn,
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {

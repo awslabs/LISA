@@ -40,6 +40,7 @@ type DeleteModelStateMachineProps = BaseProps & {
     vpc?: IVpc,
     securityGroups?: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
+    managementKeyName: string;
 };
 
 
@@ -52,12 +53,14 @@ export class DeleteModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: DeleteModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs } = props;
+        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName } = props;
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: config.restApiConfig.apiVersion,
+            MANAGEMENT_KEY_NAME: managementKeyName,
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn,
         };
 
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.

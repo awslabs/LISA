@@ -21,7 +21,6 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from ..auth import OIDCHTTPBearer
-from .endpoints.v1 import embeddings, generation, models
 from .endpoints.v2 import litellm_passthrough
 
 logger = logging.getLogger(__name__)
@@ -36,13 +35,10 @@ else:
     dependencies = [Depends(security)]
     logger.info("Auth enabled")
 
-
-router.include_router(models.router, prefix="/v1", tags=["models"], dependencies=dependencies, deprecated=True)
-router.include_router(embeddings.router, prefix="/v1", tags=["embeddings"], dependencies=dependencies, deprecated=True)
-router.include_router(generation.router, prefix="/v1", tags=["generation"], dependencies=dependencies, deprecated=True)
 router.include_router(
     litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=dependencies
 )
+router.include_router(litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"])
 
 
 @router.get("/health")  # type: ignore

@@ -1,113 +1,259 @@
-# LLM inference solution for Amazon Dedicated Cloud (LISA)
+# LISA (LLM Inference Solution for Amazon Dedicated Cloud)
+![LISA Architecture](./assets/LisaArchitecture.png)
+LISA is an advanced, AWS-native infrastructure designed for scalable, secure, and efficient hosting of Large Language
+Models (LLMs) and embedding models. Built to accelerate the deployment and management of Generative AI applications,
+LISA provides low-latency access to models, allowing users to focus on experimenting with LLMs and developing AI-driven
+solutions.
 
-LISA is an enabling service to easily deploy generative AI applications in AWS customer environments. LISA is an infrastructure-as-code solution. It allows customers to provision their own infrastructure within an AWS account. Customers then bring their own models to LISA for hosting and inference.
-LISA accelerates the use of generative AI applications by providing scalable, low latency access to customers’ generative LLMs and embedding language models. Using LISA to support hosting and inference allows customers to focus on experimenting with LLMs and developing generative AI applications. LISA includes an example chatbot user interface that customers can use to experiment. Also included are retrieval augmented generation (RAG) integrations with Amazon OpenSearch and PGVector. This capability allows customers to bring specialized data to LISA for incorporation into the LLM responses without requiring the model to be retrained.
+The platform supports model inference, retrieval-augmented generation (RAG), full model lifecycle management via a
+REST API, and a customizable chat-based user interface. Leveraging AWS services such as Cognito for authentication,
+ECS for containerized model hosting with auto-scaling, API Gateway for secure API routing, and DynamoDB for session
+and model management, LISA ensures that each component scales independently while maintaining high availability and
+fault tolerance.
 
-![LISA Serve Architecture](./assets/LisaArchitecture.png)
+LISA also integrates external models via the LiteLLM proxy, which supports OpenAI’s API specification. This allows
+for seamless integration with models hosted on platforms like AWS SageMaker or Bedrock, and enables LISA to serve
+as a standardized orchestration layer across all LiteLLM-compatible model providers. The platform can act as a drop-in
+replacement for OpenAI-centric tools such as the OpenAI Python library or LangChain.
 
-## Table of contents
+Furthermore, LISA enhances model output by integrating retrieval-augmented generation (RAG) with Amazon OpenSearch or
+PostgreSQL’s PGVector extension, incorporating external knowledge sources into model responses. This helps reduce the
+need for fine-tuning and delivers more contextually relevant outputs.
 
+---
+# Table of Contents
+
+- [LISA (LLM Inference Solution for Amazon Dedicated Cloud)](#lisa-llm-inference-solution-for-amazon-dedicated-cloud)
+- [Breaking Changes in v2 to v3 Migration](#breaking-changes-in-v2-to-v3-migration)
 - [Background](#background)
-- [Get Started](#get-started)
-    - [Define Environment Variables](#define-environment-variables)
-    - [Setting Up Your Environment](#setup-up-your-environment)
-    - [Staging Model Weights](#staging-model-weights)
-    - [Customize Configuration](#customize-configuration)
-    - [Bootstrap](#bootstrap)
+- [System Overview](#system-overview)
+- [LISA Components](#lisa-components)
+    - [LISA Model Management](#lisa-model-management)
+    - [LISA Serve](#lisa-serve)
+    - [LISA Chat](#lisa-chat)
+- [Interaction Flow](#interaction-flow)
+- [Getting Started with LISA](#getting-started-with-lisa)
+    - [Prerequisites](#prerequisites)
+    - [Step 1: Clone the Repository](#step-1-clone-the-repository)
+    - [Step 2: Set Up Environment Variables](#step-2-set-up-environment-variables)
+    - [Step 3: Set Up Python and TypeScript Environments](#step-3-set-up-python-and-typescript-environments)
+    - [Step 4: Configure LISA](#step-4-configure-lisa)
+    - [Step 5: Stage Model Weights](#step-5-stage-model-weights)
+    - [Step 6: Configure Identity Provider](#step-6-configure-identity-provider)
+    - [Step 7: Configure LiteLLM](#step-7-configure-litellm)
+    - [Step 8: Set Up SSL Certificates (Development Only)](#step-8-set-up-ssl-certificates-development-only)
+    - [Step 9: Customize Model Deployment](#step-9-customize-model-deployment)
+    - [Step 10: Bootstrap CDK (If Not Already Done)](#step-10-bootstrap-cdk-if-not-already-done)
+- [Recommended LiteLLM Configuration Options](#recommended-litellm-configuration-options)
+- [API Usage Overview](#api-usage-overview)
+    - [User-facing OpenAI-Compatible API](#user-facing-openai-compatible-api)
+    - [Admin-level Model Management API](#admin-level-model-management-api)
+- [Error Handling for API Requests](#error-handling-for-api-requests)
 - [Deployment](#deployment)
+    - [Using Pre-built Resources](#using-pre-built-resources)
+    - [Deploying](#deploying)
 - [Programmatic API Tokens](#programmatic-api-tokens)
 - [Model Compatibility](#model-compatibility)
-- [Load Testing](#load-testing)
 - [Chatbot Example](#chatbot-example)
 - [Usage and Features](#usage-and-features)
+    - [OpenAI Specification Compatibility](#openai-specification-compatibility)
+    - [Continue JetBrains and VS Code Plugin](#continue-jetbrains-and-vs-code-plugin)
+    - [Usage in LLM Libraries](#usage-in-llm-libraries)
+- [License Notice](#license-notice)
+
+---
+# Breaking Changes in v2 to v3 Migration
+
+With the release of LISA v3.0.0, we have introduced several architectural changes that are incompatible with previous versions. Although these changes may cause some friction for existing users, they aim to simplify the deployment experience and enhance long-term scalability. The following breaking changes are critical for existing users planning to upgrade:
+
+1. Model Deletion Upon Upgrade: Models deployed via EC2 and ECS using the config.yaml file’s ecsModels list will be deleted during the upgrade process. LISA has migrated to a new model deployment system that manages models internally, rendering the ecsModels list obsolete. We recommend backing up your model settings to facilitate their redeployment through the new Model Management API with minimal downtime.
+1. Networking Changes and Full Teardown: Core networking changes require a complete teardown of the existing LISA installation using the make destroy command before upgrading. Cross-stack dependencies have been modified, necessitating this full teardown to ensure proper application of the v3 infrastructure changes. Additionally, users may need to manually delete some resources, such as ECR repositories or S3 buckets, if they were populated before CloudFormation began deleting the stack. This operation is destructive and irreversible, so it is crucial to back up any critical configurations and data (e.g., S3 RAG bucket contents, DynamoDB token tables) before proceeding with the upgrade.
+1. New LiteLLM Admin Key Requirement: The new Model Management API requires an "admin" key for LiteLLM to track models for inference requests. This key, while transparent to users, must be present and conform to the required format (starting with sk-). The key is defined in the config.yaml file, and the LISA schema validator will prompt an error if it is missing or incorrectly formatted.
+
+---
 
 ## Background
 
-LISA was inspired by another AWS open source project [aws-genai-llm-chatbot](https://github.com/aws-samples/aws-genai-llm-chatbot) and deploys LLMs using the [text-generation-inference](https://github.com/huggingface/text-generation-inference/tree/main) container from HuggingFace. LISA is different from its inspiration in a few ways:
+LISA is a robust, AWS-native platform designed to simplify the deployment and management of Large Language Models (LLMs) in scalable, secure, and highly available environments. Drawing inspiration from the AWS open-source project [aws-genai-llm-chatbot](https://github.com/aws-samples/aws-genai-llm-chatbot), LISA builds on this foundation by offering more specialized functionality, particularly in the areas of security, modularity, and flexibility.
 
-1.  LISA is designed to operate in Amazon Dedicated Cloud (ADC) partitions.
-2.  LISA is designed to be composable, so we've separated the underlying LLM serving capability, this repository contains, LISA-Serve and the chat frontend, LISA-Chat, which are deployable as separate stacks.
-3.  LISA is designed to support the OpenAI specification, so anywhere you can use the OpenAI API in your applications, you can insert LISA in its place.
+One of the key differentiators of LISA is its ability to leverage the [text-generation-inference](https://github.com/huggingface/text-generation-inference/tree/main) text-generation-inference container from HuggingFace, allowing users to deploy cutting-edge LLMs. LISA also introduces several innovations that extend beyond its inspiration:
 
-## Deprecation Notes
+1. **Support for Amazon Dedicated Cloud (ADC):** LISA is designed to operate in highly controlled environments like Amazon Dedicated Cloud (ADC) partitions, making it ideal for industries with stringent regulatory and security requirements. This focus on secure, isolated deployments differentiates LISA from other open-source platforms.
+1. **Modular Design for Composability:** LISA's architecture is designed to be composable, splitting its components into distinct services. The core components, LISA Serve (for LLM serving and inference) and LISA Chat (for the chat interface), can be deployed as independent stacks. This modularity allows users to deploy only the parts they need, enhancing flexibility and scalability across different deployment environments.
+1. **OpenAI API Specification Support:** LISA is built to support the OpenAI API specification, allowing users to replace OpenAI’s API with LISA without needing to change existing application code. This makes LISA a drop-in replacement for any workflow or application that already leverages OpenAI’s tooling, such as the OpenAI Python library or LangChain.
 
-With the release of the LISA v2.0.0 we have deprecated the v1 endpoint routes in LISA Serve. These routes, such as the `/v1/openai` route, will still work in the current v2 release, but we actively encourage users to migrate to the v2 endpoints
-as they will have greater support for listing and using models, along with greater support for the OpenAI API specification.
+---
 
-We intend to fully remove the v1 routes in the next release of LISA, anticipating July 2024.
+## System Overview
 
-For users dependent on the v1 OpenAI endpoint, all you have to do to migrate is change your base URL route from `/v1/openai` to `/v2/serve`. Please note that model names may change once you list models again, but this comes with the benefit of being
-able to list both models hosted by LISA and models that are configured with the new LiteLLM configuration options.
+LISA is designed using a modular, microservices-based architecture, where each service performs a distinct function. It is composed of three core components: LISA Model Management, LISA Serve, and LISA Chat. Each of these components is responsible for specific functionality and interacts via well-defined API endpoints to ensure scalability, security, and fault tolerance across the system.
 
-## Breaking Changes in v2 to v3 Migration
+**Key System Functionalities:**
 
-With the release of LISA v3.0.0, we have made some major architectural changes that will not be compatible with previous installation versions. Although this will cause friction for existing users, our intent is to make the overall deloyment experience
-much easier overall. We highlight the following items that will impact existing LISA users who wish to upgrade to v3+.
+* **Authentication and Authorization** via AWS Cognito or OpenID Connect (OIDC) providers, ensuring secure access to both the REST API and Chat UI through token-based authentication and role-based access control.
+* **Model Hosting** on AWS ECS with autoscaling and efficient traffic management using Application Load Balancers (ALBs), providing scalable and high-performance model inference.
+* **Model Management** using AWS Step Functions to orchestrate complex workflows for creating, updating, and deleting models, automatically managing underlying ECS infrastructure.
+* **Inference Requests** served via both the REST API and the Chat UI, dynamically routing user inputs to the appropriate ECS-hosted models for real-time inference.
+* **Chat Interface** enabling users to interact with LISA through a user-friendly web interface, offering seamless real-time model interaction and session continuity.
+* **Retrieval-Augmented Generation (RAG) Operations**, leveraging either OpenSearch or PGVector for efficient retrieval of relevant external data to enhance model responses.
 
-1. Existing models that have been deployed via EC2 and ECS through the `config.yaml` file's `ecsModels` list **will be deleted** upon upgrade. We are migrating to a new model deployment system, which requires that it manages all the models on its end instead of through the config file. To mitigate, we recommend that you back up the settings you have for these
-   models so that you may redeploy them with minimal downtime through our model management API.
-2. Core networking changes have affected cross-stack dependencies, and as a result, we require the LISA installation to be completely torn down using `make destroy` in order to apply the changes that we need for v3+. Although this can still be a risk for future releases, we do not anticipate upcoming network changes that would necessitate another full-tear down and reinstall.
-   Users may also need to manually delete resources, such as ECR Repositories or S3 Buckets if they were populated with items before the CloudFormation Stack deletion was started. Please see the CloudFormation Console for details about why a particular stack was unable to delete.
-   This operation is **destructive** and **irreversible** so please make sure to back up your settings before attempting the upgrade so that you can get your installation back to normal with minimal other friction.
-    1. Although part of the tear-down and reinstall, the S3 RAG Bucket and DynamoDB Persistent Tokens tables were both renamed, so they would have been torn down and recreated as well. If you have existing files or configurations in each of these resources, we recommend backing them up so that you can populate them again in the latest LISA installation.
-3. With the new Model Management API, we require an "admin" key for LiteLLM so that it may track models that users can make inference requests against. This key, although otherwise transparent to LISA users and administrators alike, is required by LiteLLM and it must be present. The key can be any arbitrary string that starts with `sk-`, and it must be set in the `config.yaml` file.
-   The LISA schema validator will let you know if this key is missing or does not follow this format.
+---
 
-## Behavioral Differences between v2 and v3
+## LISA Components
 
-LISA v3 introduces the Model Management API, and the model configuration is expected to be a one-to-one match from how it was defined in the `config.yaml` file compared to its equivalent CreateModel payload. The following are differences in original payload behavior to current behavior.
-1. Inside the model config, inside `containerConfig.image.path`, we solicit a path for the directory in which we can find files for building a custom LISA entrypoint into the Docker image that is specified in `containerConfig.image.baseImage`. This path was originally relative to the LISA repository root, so a valid values here would be `lib/serve/ecs-model/textgen/tgi` or `lib/serve/ecs-model/vllm`
-   for the tgi or vLLM containers, respectively. In the new Model Management API, the same parameter is given relative to the `lib/serve/ecs-model` directory in the LISA repository root, so _now_ the valid values in the CreateModel API call would be `textgen/tgi` or `vllm` for the tgi or vLLM containers, respectively.
+### LISA Model Management
+![LISA Model Management Architecture](./assets/LisaModelManagement.png)
+The Model Management component is responsible for managing the entire lifecycle of models in LISA. This includes creation, updating, deletion, and scaling of models deployed on ECS. The system automates and scales these operations, ensuring that the underlying infrastructure is managed efficiently.
 
-## Getting Started
+* **Model Hosting**: Models are containerized and deployed on AWS ECS, with each model hosted in its own isolated ECS task. This design allows models to be independently scaled based on demand. Traffic to the models is balanced using Application Load Balancers (ALBs), ensuring that the autoscaling mechanism reacts to load fluctuations in real time, optimizing both performance and availability.
+* **External Model Routing**: LISA utilizes the LiteLLM proxy to route traffic to different model providers, no matter their API and payload format. Users may add models from external providers, such as SageMaker or Bedrock, to their system to allow requests to models hosted in those systems and services. LISA will simply add the configuration to LiteLLM without creating any additional supporting infrastructure.
+* **Model Lifecycle Management**: AWS Step Functions are used to orchestrate the lifecycle of models, handling the creation, update, and deletion workflows. Each workflow provisions the required resources using CloudFormation templates, which manage infrastructure components like EC2 instances, security groups, and ECS services. The system ensures that the necessary security, networking, and infrastructure components are automatically deployed and configured.
+    * The CloudFormation stacks define essential resources using the LISA core VPC configuration, ensuring best practices for security and access across all resources in the environment.
+    * DynamoDB stores model metadata, while Amazon S3 securely manages model weights, enabling ECS instances to retrieve the weights dynamically during deployment.
 
-LISA leverages AWS's cloud development toolkit (cdk). Users of LISA should be familiar with CDK and infrastructure-as-code principles. If CDK is new to you please see the [documentation on CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and talk to your AWS support team to help get you started.
+#### Technical Implementation
 
-LISA uses a `make` system that leverages both environment variables and a configuration file. Most of the commands to deploy LISA are wrapped in high level `make` actions, please see [Makefile](./Makefile).
+* **Model Lifecycle**: Lifecycle operations such as creation, update, and deletion are executed by Step Functions and backed by AWS Lambda in ```lambda/models/lambda_functions.py```.
+* **CloudFormation**: Infrastructure components are provisioned using CloudFormation templates, as defined in ```ecs_model_deployer/src/lib/lisa_model_stack.ts```.
+* **ECS Cluster**: ECS cluster and task definitions are located in ```ecs_model_deployer/src/lib/ecsCluster.ts```, with model containers specified in ```ecs_model_deployer/src/lib/ecs-model.ts```.
 
-Let's start by downloading the repository. Use the "main" branch to ensure that you are using a stable LISA release.
+---
 
-```
+### LISA Serve
+![LISA Serve Architecture](./assets/LisaServe.png)
+LISA Serve is responsible for processing inference requests and serving model predictions. This component manages user requests to interact with LLMs and ensures that the models deliver low-latency responses.
+
+* **Inference Requests**: Requests are routed via ALB, which serves as the main entry point to LISA’s backend infrastructure. The ALB forwards requests to the appropriate ECS-hosted model or externally-hosted model based on the request parameters. For models hosted within LISA, traffic to the models is managed with model-specific ALBs, which enable autoscaling if the models are under heavy load. LISA supports both direct REST API-based interaction and interaction through the Chat UI, enabling programmatic access or a user-friendly chat experience.
+* **RAG (Retrieval-Augmented Generation)**: RAG operations enhance model responses by integrating external data sources. LISA leverages OpenSearch or PGVector (PostgreSQL) as vector stores, enabling vector-based search and retrieval of relevant knowledge to augment LLM outputs dynamically.
+
+#### Technical Implementation
+
+* RAG operations are managed through ```lambda/rag/lambda_functions.py```, which handles embedding generation and document retrieval via OpenSearch and PostgreSQL.
+* Direct requests to the LISA Serve ALB entrypoint must utilize the OpenAI API spec, which we support through the use of the LiteLLM proxy.
+
+---
+
+### LISA Chat
+![LISA Chatbot Architecture](./assets/LisaChat.png)
+LISA Chat provides a customizable chat interface that enables users to interact with models in real-time. This component ensures that users have a seamless experience for submitting queries and maintaining session continuity.
+
+* **Chat Interface**: The Chat UI is hosted as a static website on Amazon S3 and is served via API Gateway. Users can interact with models directly through the web-based frontend, sending queries and viewing real-time responses from the models. The interface is integrated with LISA's backend services for model inference, retrieval augmented generation, and session management.
+* **Session History Management**: LISA maintains session histories using DynamoDB, allowing users to retrieve and continue previous conversations seamlessly. This feature is crucial for maintaining continuity in multi-turn conversations with the models.
+
+#### Technical Implementation
+
+* The Chat UI is implemented in the ```lib/user-interface/react/``` folder and is deployed using the scripts in the ```scripts/``` folder.
+* Session management logic is handled in ```lambda/session/lambda_functions.py```, where session data is stored and retrieved from DynamoDB.
+* RAG operations are defined in lambda/repository/lambda_functions.py
+
+---
+
+## Interaction Flow
+
+1. **User Interaction with Chat UI or API:** Users can interact with LISA through the Chat UI or REST API. Each interaction is authenticated using AWS Cognito or OIDC, ensuring secure access.
+1. **Request Routing:** The API Gateway securely routes user requests to the appropriate backend services, whether for fetching the chat UI, performing RAG operations, or managing models.
+1. **Model Management:** Administrators can deploy, update, or delete models via the Model Management API, which triggers ECS deployment and scaling workflows.
+1. **Model Inference:** Inference requests are routed to ECS-hosted models or external models via the LiteLLM proxy. Responses are served back to users through the ALB.
+1. **RAG Integration:** When RAG is enabled, LISA retrieves relevant documents from OpenSearch or PGVector, augmenting the model's response with external knowledge.
+1. **Session Continuity:** User session data is stored in DynamoDB, ensuring that users can retrieve and continue previous conversations across multiple interactions.
+1. **Autoscaling:** ECS tasks automatically scale based on system load, with ALBs distributing traffic across available instances to ensure performance.
+
+---
+
+# Getting Started with LISA
+
+LISA (LLM Inference Solution for Amazon Dedicated Cloud) is an advanced infrastructure solution for deploying and
+managing Large Language Models (LLMs) on AWS. This guide will walk you through the setup process, from prerequisites
+to deployment.
+
+## Prerequisites
+
+Before beginning, ensure you have:
+
+1. An AWS account with appropriate permissions
+2. AWS CLI installed and configured
+3. Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
+4. Python 3.9 or later
+5. Node.js 14 or later
+6. Docker installed and running
+7. Sufficient disk space for model downloads and conversions
+
+If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and consult with your AWS support team.
+
+---
+
+## Step 1: Clone the Repository
+
+Ensure you're working with the latest stable release of LISA:
+
+```bash
 git clone -b main --single-branch <path-to-lisa-repo>
 cd lisa
 ```
 
-### Define Environment Variables
+---
 
-As we stated earlier you will need to define some parameters in environment though most parameters are provided by the example configuration file, [example_config.yaml](./examle_config.yaml). You'll need to create a copy of that file and name it `config.yaml`. Any deployment specific values should be set in the `config.yaml` file which will be used when running the make commands.
+## Step 2: Set Up Environment Variables
+
+Create and configure your `config.yaml` file:
 
 ```bash
-# you can also leave this blank
-export PROFILE=my-aws-profile
-# this will prepend the stack name in cloud formation
+cp example_config.yaml config.yaml
+```
+
+Set the following environment variables:
+
+```bash
+export PROFILE=my-aws-profile  # Optional, can be left blank
 export DEPLOYMENT_NAME=my-deployment
-# the type of deployment likely dev, test or prod
-export ENV=dev
+export ENV=dev  # Options: dev, test, or prod
 ```
 
-### Setting Up Your Environment
+---
 
-LISA uses both Python and TypeScript so we need to setup these environments first. These are one time operations and do not need to be repeated each time LISA is deployed from the same developer machine/account. Let's first install Python requirements:
+## Step 3: Set Up Python and TypeScript Environments
+
+Install system dependencies and set up both Python and TypeScript environments:
 
 ```bash
-# required for parsing the Makefile
-sudo apt-get install jq
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install -y jq
+
+# Install Python packages
+pip3 install --user --upgrade pip
 pip3 install yq huggingface_hub s5cmd
+
+# Set up Python environment
 make createPythonEnvironment
-activate your python environment (command required is output from the previous make command)
+
+# Activate your python environment
+# The command is the output from the previous make command)
+
+# Install Python Requirements
 make installPythonRequirements
-```
 
-Next we can setup the typescript environment.
-
-```bash
+# Set up TypeScript environment
 make createTypeScriptEnvironment
 make installTypeScriptRequirements
 ```
 
-### Staging Model Weights
+---
 
-All model weights are stored in S3. LISA was built to use your account's S3 bucket and not publicly available model repositories. Here we assume that the s3 bucket is formatted as follows:
+## Step 4: Configure LISA
+
+Edit the `config.yaml` file to customize your LISA deployment. Key configurations include:
+
+- AWS account and region settings
+- Model configurations
+- Authentication settings
+- Networking and infrastructure preferences
+
+---
+
+## Step 5: Stage Model Weights
+
+LISA uses your AWS account's S3 bucket for model storage. Ensure your S3 bucket is structured as follows:
 
 ```
 s3://<bucket-name>/<hf-model-id-1>
@@ -117,34 +263,61 @@ s3://<bucket-name>/<hf-model-id-1>/<file-2>
 s3://<bucket-name>/<hf-model-id-2>
 ```
 
-We also will need `.safetensors`. In order to reduce the startup time we will do this ahead of time. A check is run at deploy time to ensure all models have safetensors. You will be provided with the opportunity to convert models without safetensors. Model download and conversion occurs locally, so make sure you have a sufficient space on your disk. On internet connected systems, models will be downloaded via HuggingFace using the provided HuggingFace model ID. On airgapped systems, we expect model artifacts to be downloaded locally and placed in a `models` directory in the project root. Models should be placed in HuggingFace format like `models/<model-id>` where `model-id` is the `/` delimited string `<model org>/<model name>` matching the model card on HuggingFace's model repo.
+To optimize startup time, convert models to `.safetensors` format:
 
-Note: we have primarily designed and tested this with HuggingFace models in mind. Any models outside of this format will require you to create and upload safetensors manually.
+```bash
+make modelCheck
+```
 
-### Identity Provider Configuration
+This command will check for models, download them if necessary, and convert them to the required format. Ensure you have sufficient disk space for this operation.
 
-In the config.yaml file, you will find a block for the `authConfig`. This configuration is required for deploying LISA, and it is used for identifying the
-OpenID Connect identity provider (IdP) that will be used for authenticating users who want to use LISA features, such as the Chat UI. Common usage patterns
-include using Cognito within your AWS Account or using [Keycloak](https://www.keycloak.org/) configured by your organization. The `authConfig` will require
-four values and an optional fifth: the `authority`, the `clientId`, the `adminGroup` for writing and updating available models, the `jwtGroupsProperty` which
-is the path to the field that contains the list of groups a user is a part of in the returned JWT token ex: `cognito:groups` for cognito or `realm_access.roles`
-for Keycloak. The optional property is `additionalScopes` which is a list of extra scopes that might be required to request the needed group membership information.
+For air-gapped systems, manually download model artifacts and place them in a `models` directory in the project root, following the structure: `models/<model-id>`.
 
-#### Cognito
+**Note:** We have primarily designed and tested this with HuggingFace models in mind. Any models outside of this format will require you to create and upload safetensors manually.
 
+---
+
+## Step 6: Configure Identity Provider
+
+In the `config.yaml` file, configure the `authConfig` block for authentication. LISA supports OpenID Connect (OIDC) providers such as AWS Cognito or Keycloak. Required fields include:
+
+- `authority`: URL of your identity provider
+- `clientId`: Client ID for your application
+- `adminGroup`: Group name for users with model management permissions
+- `jwtGroupsProperty`: Path to the groups field in the JWT token
+- `additionalScopes` (optional): Extra scopes for group membership information
+
+#### Cognito Configuration Example:
 In Cognito, the `authority` will be the URL to your User Pool. As an example, if your User Pool ID, not the name, is `us-east-1_example`, and if it is
 running in `us-east-1`, then the URL to put in the `authority` field would be `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example`. The `clientId`
 can be found in your User Pool's "App integration" tab from within the AWS Management Console, and at the bottom of the page, you will see the list of clients
 and their associated Client IDs. The ID here is what we will need for the `clientId` field.
 
-#### Keycloak
 
+```yaml
+authConfig:
+  authority: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example
+  clientId: your-client-id
+  adminGroup: AdminGroup
+  jwtGroupsProperty: cognito:groups
+```
+
+#### Keycloak Configuration Example:
 In Keycloak, the `authority` will be the URL to your Keycloak server. The `clientId` is likely not a random string like in the Cognito clients, and instead
 will be a string configured by your Keycloak administrator. Your administrator will be able to give you a client name or create a client for you to use for
 this application. Once you have this string, use that as the `clientId` within the `authConfig` block.
 
-### LiteLLM Configuration
+```yaml
+authConfig:
+  authority: https://your-keycloak-server.com
+  clientId: your-client-name
+  adminGroup: AdminGroup
+  jwtGroupsProperty: realm_access.roles
+```
 
+---
+
+## Step 7: Configure LiteLLM
 We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
 With the models that we are hosted using the process above, we automatically add them to our LiteLLM configuration with
 no additional configuration required from the user. We expose the [LiteLLM configuration](https://litellm.vercel.app/docs/proxy/configs)
@@ -158,31 +331,132 @@ model, we ask if it supports streaming or not. If the model is an embedding mode
 These fields will allow us to organize the models in the Chat UI so that the models show in
 the correct locations. These fields can be seen in the example configuration below.
 
-#### SageMaker Endpoints and Bedrock Models
 
-We support adding existing SageMaker Endpoints and Bedrock Models to the LiteLLM configuration, and as long as the
-services you use are in the same region as the LISA installation, LISA will be able to use those models alongside any
-other models you have deployed. After installing LISA without referencing the SageMaker Endpoint, create a SageMaker Model using
-the private subnets of the LISA deployment, and that will allow the REST API container to reach out to any Endpoint that
-uses that SageMaker Model. SageMaker Endpoints and Bedrock Models may be configured statically at LISA deployment time
-or dynamically using the LISA Model Management API. Any Endpoints or Models that were statically defined at LISA
-deployment time cannot be removed or updated by the LISA Model Management API.
+```yaml
+litellmConfig:
+  litellm_settings:
+    telemetry: false
+    drop_params: true
+  model_list:
+    - model_name: example-model
+      litellm_params:
+        model: sagemaker/example-endpoint
+        api_key: ignored
+      lisa_params:
+        model_type: textgen
+        streaming: true
+```
 
-#### Recommended Configuration Options
+This configuration supports various model types, including SageMaker endpoints, Bedrock models, and custom OpenAI-compatible models.
 
-There is no one-size-fits-all configuration, especially when it comes to invoking models whose infrastructure is defined outside
-the scope of LISA, but we do recommend the following settings for a minimal setup to invoke those existing models. The following example
-assumes a SageMaker Endpoint called "test-endpoint," access to the "amazon.titan-text-express-v1" Bedrock Model, a self-hosted OpenAI-compatible
-text generation model with an endpoint you can access from the VPC, and a similarly configured embedding model. The SageMaker Endpoint and
-Bedrock Model must be in the same region as the LISA installation.
+---
+
+## Step 8: Set Up SSL Certificates (Development Only)
+
+**WARNING: THIS IS FOR DEV ONLY**
+When deploying for dev and testing you can use a self-signed certificate for the REST API ALB. You can create this by using the script: `gen-cert.sh` and uploading it to `IAM`.
+
+```bash
+export REGION=<your-region>
+./scripts/gen-certs.sh
+aws iam upload-server-certificate --server-certificate-name <cert-name> --certificate-body file://scripts/server.pem --private-key file://scripts/server.key
+```
+
+Update your `config.yaml` with the certificate ARN:
+
+```yaml
+restApiConfig:
+  loadBalancerConfig:
+    sslCertIamArn: arn:aws:iam::<account-number>:server-certificate/<certificate-name>
+```
+---
+
+## Step 9: Customize Model Deployment
+
+In the `ecsModels` section of `config.yaml`, configure the models you want to deploy.
+
+The configuration file will determine which models are deployed. In order to deploy an additional model or a
+different model the only required change is to the configuration file, as long as it is compatible with the inference
+container. Specifically, see the `ecsModels` section of the [config.yaml](./config.yaml) file.
+Here we define the model name, if we want to deploy, the type of instance we want to deploy to, the type of model
+(textgen or embedding), the inference container and then the containerConfig. There are many more parameters for the
+ecs models, many for autoscaling and health checks. However, let's focus on the model specific ones:
+
+```yaml
+ecsModels:
+  - modelName: your-model-name
+    deploy: false
+    instanceType: g4dn.12xlarge
+    modelType: textgen
+    inferenceContainer: tgi
+    containerConfig:
+      baseImage: ghcr.io/huggingface/text-generation-inference:1.0.2
+      environment:
+        QUANTIZE: bitsandbytes-nf4
+        MAX_CONCURRENT_REQUESTS: 128
+        MAX_INPUT_LENGTH: 1024
+        MAX_TOTAL_TOKENS: 2048
+```
+
+Adjust these parameters based on your specific model requirements and performance needs. These parameters will
+be used when the model endpoint is deployed and are likely to change with different model types. For more information
+on these parameters please see the [inference container documentation](https://github.com/huggingface/text-generation-inference/tree/main).
+
+---
+
+## Step 10: Bootstrap CDK (If Not Already Done)
+
+If you haven't bootstrapped your AWS account for CDK:
+
+```bash
+make bootstrap
+```
+
+---
+
+## Recommended LiteLLM Configuration Options
+
+While LISA is designed to be flexible, configuring external models requires careful consideration. The following guide
+provides a recommended minimal setup for integrating various model types with LISA using LiteLLM.
+
+### Configuration Overview
+
+This example configuration demonstrates how to set up:
+1. A SageMaker Endpoint
+2. An Amazon Bedrock Model
+3. A self-hosted OpenAI-compatible text generation model
+4. A self-hosted OpenAI-compatible embedding model
+
+**Note:** Ensure that all endpoints and models are in the same AWS region as your LISA installation.
+
+### SageMaker Endpoints and Bedrock Models
+
+LISA supports adding existing SageMaker Endpoints and Bedrock Models to the LiteLLM configuration. As long as these
+services are in the same region as the LISA installation, LISA can use them alongside any other deployed models.
+
+**To use a SageMaker Endpoint:**
+1. Install LISA without initially referencing the SageMaker Endpoint.
+2. Create a SageMaker Model using the private subnets of the LISA deployment.
+3. This setup allows the LISA REST API container to communicate with any Endpoint using that SageMaker Model.
+
+**SageMaker Endpoints and Bedrock Models can be configured:**
+- Statically at LISA deployment time
+- Dynamically using the LISA Model Management API
+
+**Important:** Endpoints or Models statically defined during LISA deployment cannot be removed or updated using the
+LISA Model Management API.
+
+### Example Configuration
 
 ```yaml
 dev:
   litellmConfig:
     litellm_settings:
-      telemetry: false # Don't attempt to send telemetry to LiteLLM servers from within VPC
-      drop_params: true # Don't fail if params not recognized, instead ignore unrecognized params
+      telemetry: false  # Disable telemetry to LiteLLM servers (recommended for VPC deployments)
+      drop_params: true # Ignore unrecognized parameters instead of failing
+
     model_list:
+      # 1. SageMaker Endpoint Configuration
       - model_name: test-endpoint # Human-readable name, can be anything and will be used for OpenAI API calls
         litellm_params:
           model: sagemaker/test-endpoint # Prefix required for SageMaker Endpoints and "test-endpoint" matches Endpoint name
@@ -191,6 +465,7 @@ dev:
           model_type: textgen
           streaming: true
 
+      # 2. Amazon Bedrock Model Configuration
       - model_name: bedrock-titan-express # Human-readable name for future OpenAI API calls
         litellm_params:
           model: bedrock/amazon.titan-text-express-v1 # Prefix required for Bedrock Models, and exact name of Model to use
@@ -199,15 +474,17 @@ dev:
           model_type: textgen
           streaming: true
 
+      # 3. Custom OpenAI-compatible Text Generation Model
       - model_name: custom-openai-model # Used in future OpenAI-compatible calls to LiteLLM
         litellm_params:
-          model: openai/modelProvider/modelName # Prefix required for OpenAI-compatible models followed by model provider and name details
+          model: openai/custom-provider/textgen-model  # Format: openai/<provider>/<model-name>
           api_base: https://your-domain-here:443/v1 # Your model's base URI
           api_key: ignored # Provide an ignorable placeholder key to avoid LiteLLM deployment failures
         lisa_params:
           model_type: textgen
           streaming: true
 
+      # 4. Custom OpenAI-compatible Embedding Model
       - model_name: custom-openai-embedding-model # Used in future OpenAI-compatible calls to LiteLLM
         litellm_params:
           model: openai/modelProvider/modelName # Prefix required for OpenAI-compatible models followed by model provider and name details
@@ -217,65 +494,347 @@ dev:
           model_type: embedding
 ```
 
-### DEV ONLY: Create Self-Signed Certificates for ALB
-**WARNING: THIS IS FOR DEV ONLY**
-When deploying for dev and testing you can use a self-signed certificate for the REST API ALB. You can create this by using the script: `gen-cert.sh` and uploading it to `IAM`.
+---
 
-```
-export REGION=<region>
-./scripts/gen-certs.sh
-aws iam upload-server-certificate --server-certificate-name <certificate-name> --certificate-body file://scripts/server.pem --private-key file://scripts/server.key
-```
-And you will need to update the ALB certificate path in the config.yaml file:
-```yaml
-restApiConfig:
-  loadBalancerConfig:
-    sslCertIamArn: arn:aws:iam::<account-number>:server-certificate/<certificate-name>
-```
+# API Usage Overview
 
-### Customize Configuration
+LISA provides robust API endpoints for managing models, both for users and administrators. These endpoints allow for operations such as listing, creating, updating, and deleting models.
 
-The [config.yaml](./config.yaml) file has many parameters and many of them can be left as defaults but it's important to discuss a few key ones.
+## API Gateway and ALB Endpoints
 
-#### Models To Be Deployed
+LISA uses two primary APIs for model management:
 
-The configuration file will determine which models are deployed. In order to deploy an additional model or a different model the only required change is to the configuration file, as long as it is compatible with the inference container. Specifically, see the `ecsModels` section of the [config.yaml](./config.yaml) file:
+1. **User-facing OpenAI-Compatible API**: Available to all users for inference tasks and accessible through the LISA Serve ALB. This API provides an interface for querying and interacting with models deployed on Amazon ECS, Amazon Bedrock, or through LiteLLM.
+2. **Admin-level Model Management API**: Available only to administrators through the API Gateway (APIGW). This API allows for full control of model lifecycle management, including creating, updating, and deleting models.
 
-```yaml
-  ecsModels:
-    - modelName: falcon-40b-instruct
-      deploy: true
-      instanceType: g4dn.12xlarge
-      modelType: textgen
-      inferenceContainer: tgi
-      containerConfig:
-        baseImage: ghcr.io/huggingface/text-generation-inference:1.0.2
-        ...
+### LiteLLM Routing in All Models
+
+Every model request is routed through LiteLLM, regardless of whether infrastructure (like ECS) is created for it. Whether deployed on ECS, external models via Bedrock, or managed through LiteLLM, all models are added to LiteLLM for traffic routing. The distinction is whether infrastructure is created (determined by request payloads), but LiteLLM integration is consistent for all models. The model management APIs will handle adding or removing model configurations from LiteLLM, and the LISA Serve endpoint will handle the inference requests against models available in LiteLLM.
+
+## User-facing OpenAI-Compatible API
+
+The OpenAI-compatible API is accessible through the LISA Serve ALB and allows users to list models available for inference tasks. Although not specifically part of the model management APIs, any model that is added or removed from LiteLLM via the model management API Gateway APIs will be reflected immediately upon queries to LiteLLM through the LISA Serve ALB.
+
+### Listing Models
+
+The `/v2/serve/models` endpoint on the LISA Serve ALB allows users to list all models available for inference in the LISA system.
+
+#### Request Example:
+
+```bash
+curl -s -H 'Authorization: Bearer <your_token>' -X GET https://<alb_endpoint>/v2/serve/models
 ```
 
-Here we define the model name, if we want to deploy, the type of instance we want to deploy to, the type of model (textgen or embedding), the inference container and then the containerConfig. There are many more parameters for the ecs models, many for autoscaling and health checks. However, let's focus on the model specific ones:
+#### Response Example:
 
-```yaml
-environment:
-  QUANTIZE: bitsandbytes-nf4
-  MAX_CONCURRENT_REQUESTS: 128
-  MAX_INPUT_LENGTH: 1024
-  MAX_TOTAL_TOKENS: 2048
+```json
+{
+  "data": [
+    {
+      "id": "bedrock-embed-text-v2",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "openai"
+    },
+    {
+      "id": "titan-express-v1",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "openai"
+    },
+    {
+      "id": "sagemaker-amazon-mistrallite",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "openai"
+    }
+  ],
+  "object": "list"
+}
 ```
 
-These parameters will be used when the model endpoint is deployed and are likely to change with different model types. For more information on these parameters please see the [inference container documentation](https://github.com/huggingface/text-generation-inference/tree/main).
+#### Explanation of Response Fields:
 
-### Bootstrap
+These fields are all defined by the OpenAI API specification, which is documented [here](https://platform.openai.com/docs/api-reference/models/list).
 
-If you have not bootstrapped your account for CDK you must first do so. If you have move on to the next stage.
+- `id`: A unique identifier for the model.
+- `object`: The type of object, which is "model" in this case.
+- `created`: A Unix timestamp representing when the model was created.
+- `owned_by`: The entity responsible for the model, such as "openai."
+
+## Admin-level Model Management API
+
+This API is only accessible by administrators via the API Gateway and is used to create, update, and delete models. It supports full model lifecycle management.
+
+### Listing Models (Admin API)
+
+The `/models` route allows admins to list all models managed by the system. This includes models that are either creating, deleting, already active, or in a failed state. Models can be deployed via ECS or managed externally through a LiteLLM configuration.
+
+#### Request Example:
+
+```bash
+curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>/models
+```
+
+#### Response Example:
+
+```json
+{
+  "models": [
+    {
+      "autoScalingConfig": {
+        "minCapacity": 1,
+        "maxCapacity": 1,
+        "cooldown": 420,
+        "defaultInstanceWarmup": 180,
+        "metricConfig": {
+          "albMetricName": "RequestCountPerTarget",
+          "targetValue": 30,
+          "duration": 60,
+          "estimatedInstanceWarmup": 330
+        }
+      },
+      "containerConfig": {
+        "baseImage": {
+          "baseImage": "vllm/vllm-openai:v0.5.0",
+          "path": "vllm",
+          "type": "asset"
+        },
+        "sharedMemorySize": 2048,
+        "healthCheckConfig": {
+          "command": [
+            "CMD-SHELL",
+            "exit 0"
+          ],
+          "interval": 10,
+          "startPeriod": 30,
+          "timeout": 5,
+          "retries": 3
+        },
+        "environment": {
+          "MAX_TOTAL_TOKENS": "2048",
+          "MAX_CONCURRENT_REQUESTS": "128",
+          "MAX_INPUT_LENGTH": "1024"
+        }
+      },
+      "loadBalancerConfig": {
+        "healthCheckConfig": {
+          "path": "/health",
+          "interval": 60,
+          "timeout": 30,
+          "healthyThresholdCount": 2,
+          "unhealthyThresholdCount": 10
+        }
+      },
+      "instanceType": "g5.xlarge",
+      "modelId": "mistral-vllm",
+      "modelName": "mistralai/Mistral-7B-Instruct-v0.2",
+      "modelType": "textgen",
+      "modelUrl": null,
+      "status": "Creating",
+      "streaming": true
+    },
+    {
+      "autoScalingConfig": null,
+      "containerConfig": null,
+      "loadBalancerConfig": null,
+      "instanceType": null,
+      "modelId": "titan-express-v1",
+      "modelName": "bedrock/amazon.titan-text-express-v1",
+      "modelType": "textgen",
+      "modelUrl": null,
+      "status": "InService",
+      "streaming": true
+    }
+  ]
+}
+```
+
+#### Explanation of Response Fields:
+
+- `modelId`: A unique identifier for the model.
+- `modelName`: The name of the model, typically referencing the underlying service (Bedrock, SageMaker, etc.).
+- `status`: The current state of the model, e.g., "Creating," "Active," or "Failed."
+- `streaming`: Whether the model supports streaming inference.
+- `instanceType` (optional): The instance type if the model is deployed via ECS.
+
+### Creating a Model (Admin API)
+
+LISA provides the `/models` endpoint for creating both ECS and LiteLLM-hosted models. Depending on the request payload, infrastructure will be created or bypassed (e.g., for LiteLLM-only models).
+
+#### Request Example:
 
 ```
-make bootstrap
+POST https://<apigw_endpoint>/models
 ```
 
-## Deployment
+#### Example Payload for ECS Model:
 
-### Using pre-built resources
+```json
+{
+  "modelId": "mistral-vllm",
+  "modelName": "mistralai/Mistral-7B-Instruct-v0.2",
+  "modelType": "textgen",
+  "instanceType": "g5.xlarge",
+  "streaming": true,
+  "containerConfig": {
+    "baseImage": {
+      "baseImage": "vllm/vllm-openai:v0.5.0",
+      "path": "vllm",
+      "type": "asset"
+    },
+    "sharedMemorySize": 2048,
+    "environment": {
+      "MAX_CONCURRENT_REQUESTS": "128",
+      "MAX_INPUT_LENGTH": "1024",
+      "MAX_TOTAL_TOKENS": "2048"
+    },
+    "healthCheckConfig": {
+      "command": ["CMD-SHELL", "exit 0"],
+      "interval": 10,
+      "startPeriod": 30,
+      "timeout": 5,
+      "retries": 3
+    }
+  },
+  "autoScalingConfig": {
+    "minCapacity": 1,
+    "maxCapacity": 1,
+    "cooldown": 420,
+    "metricConfig": {
+      "albMetricName": "RequestCountPerTarget",
+      "targetValue": 30,
+      "duration": 60
+    }
+  },
+  "loadBalancerConfig": {
+    "healthCheckConfig": {
+      "path": "/health",
+      "interval": 60,
+      "timeout": 30,
+      "healthyThresholdCount": 2,
+      "unhealthyThresholdCount": 10
+    }
+  }
+}
+```
+
+#### Creating a LiteLLM-Only Model:
+
+```json
+{
+  "modelId": "titan-express-v1",
+  "modelName": "bedrock/amazon.titan-text-express-v1",
+  "modelType": "textgen",
+  "streaming": true
+}
+```
+
+#### Explanation of Key Fields for Creation Payload:
+
+- `modelId`: The unique identifier for the model.
+- `modelName`: The name of the model as it appears in the system.
+- `modelType`: The type of model, such as text generation (textgen).
+- `streaming`: Whether the model supports streaming inference.
+- `instanceType`: The type of EC2 instance to be used (only applicable for ECS models).
+- `containerConfig`: Details about the Docker container, memory allocation, and environment variables.
+- `autoScalingConfig`: Configuration related to ECS autoscaling.
+- `loadBalancerConfig`: Health check configuration for load balancers.
+
+### Deleting a Model (Admin API)
+
+Admins can delete a model using the following endpoint. Deleting a model removes the infrastructure (ECS) or disconnects from LiteLLM.
+
+#### Request Example:
+
+```
+DELETE https://<apigw_endpoint>/models/{modelId}
+```
+
+#### Response Example:
+
+```json
+{
+  "status": "success",
+  "message": "Model mistral-vllm has been deleted successfully."
+}
+```
+
+---
+
+# Error Handling for API Requests
+
+In the LISA model management API, error handling is designed to ensure robustness and consistent responses when errors occur during the execution of API requests. This section provides a detailed explanation of the error handling mechanisms in place, including the types of errors that are managed, how they are raised, and what kind of responses clients can expect when these errors occur.
+
+## Common Errors and Their HTTP Responses
+
+Below is a list of common errors that can occur in the system, along with the HTTP status codes and response structures that are returned to the client.
+
+### ModelNotFoundError
+
+* **Description**: Raised when a model that is requested for retrieval or deletion is not found in the system.
+* **HTTP Status Code**: `404 Not Found`
+* **Response Body**:
+
+```json
+{
+    "error": "ModelNotFoundError",
+    "message": "The requested model with ID <model_id> could not be found."
+}
+```
+
+* **Example Scenario**: When a client attempts to fetch details of a model that does not exist in the database, the `ModelNotFoundError` is raised.
+
+### ModelAlreadyExistsError
+
+* **Description:** Raised when a request to create a model is made, but the model already exists in the system.
+* **HTTP Status Code**: `400`
+* **Response Body**:
+
+```json
+{
+    "error": "ModelAlreadyExistsError",
+    "message": "A model with the given configuration already exists."
+}
+```
+
+* **Example Scenario:** A client attempts to create a model with an ID or name that already exists in the database. The system detects the conflict and raises the `ModelAlreadyExistsError`.
+
+### InvalidInputError (Hypothetical Example)
+
+* **Description**: Raised when the input provided by the client for creating or updating a model is invalid or does not conform to expected formats.
+* **HTTP Status Code**: `400 Bad Request`
+* **Response Body**:
+
+```json
+{
+    "error": "InvalidInputError",
+    "message": "The input provided is invalid. Please check the required fields and formats."
+}
+```
+
+* **Example Scenario**: The client submits a malformed JSON body or omits required fields in a model creation request, triggering an `InvalidInputError`.
+
+## Handling Validation Errors
+
+Validation errors are handled across the API via utility functions and model transformation logic. These errors typically occur when user inputs fail validation checks or when required data is missing from a request.
+
+### Example Response for Validation Error:
+
+* **HTTP Status Code**: `422 Unprocessable Entity`
+* **Response Body**:
+
+```json
+{
+    "error": "ValidationError",
+    "message": "The input provided does not meet the required validation criteria."
+}
+```
+
+---
+
+# Deployment
+## Using pre-built resources
 
 A default configuration will build the necessary containers, lambda layers, and production optimized
 web application at build time. In the event that you would like to use pre-built resources due to
@@ -299,7 +858,7 @@ you can do so.
       ecsModels:
         - modelName: mistralai/Mistral-7B-Instruct-v0.2
           modelId: mistral7b-vllm
-          deploy: true
+          deploy: false
           modelType: textgen # can also be 'embedding'
           streaming: true # remove option if modelType is 'embedding'
           instanceType: g5.xlarge
@@ -323,8 +882,9 @@ lambdaLayerAssets:
   fastapiLayerPath: /path/to/fastapi_layer.zip
   sdkLayerPath: lib/rag/layers/sdk_layer.zip
 ```
+---
 
-### Deploying
+## Deploying
 
 Now that we have everything setup we are ready to deploy.
 
@@ -351,6 +911,8 @@ You can test the deployment with the integration test:
 ```bash
 pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.crt> | false
 ```
+
+---
 
 ## Programmatic API Tokens
 
@@ -430,6 +992,8 @@ aws --region $AWS_REGION dynamodb delete-item --table-name $DEPLOYMENT_NAME-LISA
     --key '{"token": {"S": "'${token_string}'"}}'
 ```
 
+---
+
 ## Model Compatibility
 
 ### HuggingFace Generation Models
@@ -457,9 +1021,9 @@ See the [deployment](#deployment) section for details on how to set up the vLLM 
 HuggingFace website, vLLM will do the same, and our configuration will allow you to serve these artifacts automatically. vLLM does not have many supported models for embeddings, but as they become available,
 LISA will support them as long as the vLLM container version is updated in the config.yaml file and as long as the model's safetensors can be found in S3.
 
-## Chatbot Example
+---
 
-![LISA Chatbot Architecture](./assets/LisaChat.png)
+# Chatbot Example
 
 This repository include an example chatbot web application. The react based web application can be optionally deployed to demonstrate the capabilities of LISA Serve. The chatbot consists of a static react based single page application hosted via API GW S3 proxy integration. The app connects to the LISA Serve REST API and an optional RAG API. The app integrates with an OIDC compatible IdP and allows users to interact directly with any of the textgen models hosted with LISA Serve. If the optional RAG stack is deployed then users can also leverage the embeddings models and AWS OpenSearch or PGVector to demonstrate chat with RAG. Chat sessions are maintained in dynamodb table and a number of parameters are exposed through the UI to allow experimentation with various parameters including prompt, temperature, top k, top p, max tokens, and more.
 
@@ -528,17 +1092,16 @@ Launch the Chat UI:
 cd lib/user-interface/react/
 npm run dev
 ```
+---
 
-## Usage and Features
+# Usage and Features
 
 The LISA Serve endpoint can be used independently of the Chat UI, and the following shows a few examples of how to do that. The Serve endpoint
 will still validate user auth, so if you have a Bearer token from the IdP configured with LISA, we will honor it, or if you've set up an API
 token using the [DynamoDB instructions](#programmatic-api-tokens), we will also accept that. This diagram shows the LISA Serve components that
 would be utilized during direct REST API requests.
 
-![LISA Serve Architecture](./assets/LisaServe.png)
-
-### OpenAI Specification Compatibility
+## OpenAI Specification Compatibility
 
 We now provide greater support for the [OpenAI specification](https://platform.openai.com/docs/api-reference) for model inference and embeddings.
 We utilize LiteLLM as a proxy for both models we spin up on behalf of the user and additional models configured through the config.yaml file, and because of that, the
@@ -569,7 +1132,9 @@ curl -s -H 'Authorization: Bearer your-token' -X GET https://${lisa_serve_alb}/v
 When using a library that requests an OpenAI-compatible base_url, you can provide `https://${lisa_serve_alb}/v2/serve` here. All of the OpenAI routes will
 automatically be added to the base URL, just as we appended `/models` to the `/v2/serve` route for listing all models tracked by LISA.
 
-#### Continue JetBrains and VS Code Plugin
+---
+
+## Continue JetBrains and VS Code Plugin
 
 For developers that desire an LLM assistant to help with programming tasks, we support adding LISA as an LLM provider for the [Continue plugin](https://www.continue.dev).
 To add LISA as a provider, open up the Continue plugin's `config.json` file and locate the `models` list. In this list, add the following block, replacing the placeholder URL
@@ -590,7 +1155,7 @@ with "LISA" or with the string you place in the `title` field of the config abov
 generate code and perform AI assistant tasks within your development environment. See the [Continue documentation](https://docs.continue.dev/how-to-use-continue) for more
 information about its features, capabilities, and usage.
 
-#### Usage in LLM Libraries
+### Usage in LLM Libraries
 
 If your workflow includes using libraries, such as [LangChain](https://python.langchain.com/v0.2/docs/introduction/) or [OpenAI](https://github.com/openai/openai-python),
 then you can place LISA right in your application by changing only the endpoint and headers for the client objects. As an example, using the OpenAI library, the client would
@@ -632,7 +1197,9 @@ client = OpenAI(
 client.models.list()
 ```
 
-## License Notice
+---
+
+# License Notice
 
 Although this repository is released under the Apache 2.0 license, when configured to use PGVector as a RAG store it uses
 the third party `psycopg2-binary` library. The `psycopg2-binary` project's licensing includes the [LGPL with exceptions](https://github.com/psycopg/psycopg2/blob/master/LICENSE) license.

@@ -1,4 +1,4 @@
-# LISA (LLM Inference Solution for Amazon Dedicated Cloud)
+# LLM Inference Solution for Amazon Dedicated Cloud (LISA)
 ![LISA Architecture](./assets/LisaArchitecture.png)
 LISA is an infrastructure-as-code solution that supports model hosting and inference. Customers deploy LISA directly
 into an AWS account and provision their own infrastructure. Customers bring their own models to LISA for hosting and

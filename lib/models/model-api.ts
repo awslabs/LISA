@@ -271,6 +271,7 @@ export class ModelsApi extends Construct {
                 ]
             });
             lambdaFunction.role!.attachInlinePolicy(certPerms);
+            stateMachinesLambdaRole.attachInlinePolicy(certPerms);
         }
 
         const apis: PythonLambdaFunction[] = [

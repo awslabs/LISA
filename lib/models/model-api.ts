@@ -42,6 +42,7 @@ import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 /**
  * Properties for ModelsApi Construct.
@@ -61,6 +62,7 @@ type ModelsApiProps = BaseProps & {
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
     vpc: Vpc;
+    managementKeySecret: Secret;
 };
 
 /**
@@ -70,7 +72,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc, managementKeySecret } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -195,7 +197,7 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'secretsmanager:GetSecretValue'
                             ],
-                            resources: ['*'],
+                            resources: [managementKeySecret.secretArn],
                         }),
                     ]
                 }),

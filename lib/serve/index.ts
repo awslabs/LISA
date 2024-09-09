@@ -17,7 +17,7 @@
 // LISA-serve Stack.
 import path from 'path';
 
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
@@ -46,6 +46,7 @@ export class LisaServeApplicationStack extends Stack {
     public readonly restApi: FastApiContainer;
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
+    public readonly managementKeySecret: Secret;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -84,7 +85,7 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc.vpc,
         });
 
-        const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
+        this.managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
             secretName: `lisa_management_key_secret-${Date.now()}`, // pragma: allowlist secret`
             description: 'This is a secret created with AWS CDK',
             generateSecretString: {
@@ -124,14 +125,14 @@ export class LisaServeApplicationStack extends Stack {
 
         // You can now use the `secret` variable to access the created secret
         // For example, you might output the secret's ARN for reference
-        new CfnOutput(this, createCdkId([id, 'RotateManagementKey']), {
-            value: managementKeySecret.secretArn,
-            description: 'The ARN of the secret',
-        });
+        // new CfnOutput(this, createCdkId([id, 'RotateManagementKey']), {
+        //     value: managementKeySecret.secretArn,
+        //     description: 'The ARN of the secret',
+        // });
 
         const managementKeySecretNameStringParameter = new StringParameter(this, createCdkId(['ManagementKeySecretName']), {
             parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
-            stringValue: managementKeySecret.secretName,
+            stringValue: this.managementKeySecret.secretName,
         });
         restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
 

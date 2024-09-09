@@ -161,8 +161,10 @@ export class LisaServeApplicationStage extends Stage {
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
-            vpc: networkingStack.vpc
+            vpc: networkingStack.vpc,
+            managementKeySecret: serveStack.managementKeySecret,
         });
+        modelsApiDeploymentStack.addDependency(serveStack);
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
         stacks.push(modelsApiDeploymentStack);
 

@@ -19,7 +19,6 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from .endpoints.v1 import embeddings, generation, models
 from .endpoints.v2 import litellm_passthrough
 
 logger = logging.getLogger(__name__)
@@ -27,9 +26,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-router.include_router(models.router, prefix="/v1", tags=["models"], deprecated=True)
-router.include_router(embeddings.router, prefix="/v1", tags=["embeddings"], deprecated=True)
-router.include_router(generation.router, prefix="/v1", tags=["generation"], deprecated=True)
 router.include_router(litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"])
 
 

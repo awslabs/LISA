@@ -131,7 +131,7 @@ LISA Serve is responsible for processing inference requests and serving model pr
 * RAG operations are managed through ```lambda/rag/lambda_functions.py```, which handles embedding generation and document retrieval via OpenSearch and PostgreSQL.
 * Direct requests to the LISA Serve ALB entrypoint must utilize the OpenAI API spec, which we support through the use of the LiteLLM proxy.
 
---- 
+---
 
 ### LISA Chat
 ![LISA Chatbot Architecture](./assets/LisaChat.png)

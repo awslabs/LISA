@@ -1,24 +1,21 @@
 # LISA (LLM Inference Solution for Amazon Dedicated Cloud)
 ![LISA Architecture](./assets/LisaArchitecture.png)
-LISA is an advanced, AWS-native infrastructure designed for scalable, secure, and efficient hosting of Large Language
-Models (LLMs) and embedding models. Built to accelerate the deployment and management of Generative AI applications,
-LISA provides low-latency access to models, allowing users to focus on experimenting with LLMs and developing AI-driven
-solutions.
+LISA is an infrastructure-as-code solution that supports model hosting and inference. Customers deploy LISA directly
+into an AWS account and provision their own infrastructure. Customers bring their own models to LISA for hosting and
+inference through Amazon ECS. LISA accelerates the use of Generative AI (GenAI) applications by providing scalable,
+low latency access to customers’ generative LLMs and embedding language models. Customers can then focus on
+experimenting with LLMs and developing GenAI applications.
 
-The platform supports model inference, retrieval-augmented generation (RAG), full model lifecycle management via a
-REST API, and a customizable chat-based user interface. Leveraging AWS services such as Cognito for authentication,
-ECS for containerized model hosting with auto-scaling, API Gateway for secure API routing, and DynamoDB for session
-and model management, LISA ensures that each component scales independently while maintaining high availability and
-fault tolerance.
+LISA’s chatbot user interface can be used for experiment with features and for production use cases. LISA enhances model
+output by integrating retrieval-augmented generation (RAG) with Amazon OpenSearch or PostgreSQL’s PGVector extension,
+incorporating external knowledge sources into model responses. This helps reduce the need for fine-tuning and delivers
+more contextually relevant outputs.
 
-LISA also integrates external models via the LiteLLM proxy, which supports OpenAI’s API specification. This allows
-for seamless integration with models hosted on platforms like AWS SageMaker or Bedrock, and enables LISA to serve
-as a standardized orchestration layer across all LiteLLM-compatible model providers. The platform can act as a drop-in
-replacement for OpenAI-centric tools such as the OpenAI Python library or LangChain.
-
-Furthermore, LISA enhances model output by integrating retrieval-augmented generation (RAG) with Amazon OpenSearch or
-PostgreSQL’s PGVector extension, incorporating external knowledge sources into model responses. This helps reduce the
-need for fine-tuning and delivers more contextually relevant outputs.
+LISA supports OpenAI’s API Spec via the LiteLLM proxy. This means that LISA is compatible for customers to configure
+with models hosted externally by supported model providers. LiteLLM also allows customers to use LISA to standardize
+model orchestration and communication across model providers instead of managing each individually. With OpenAI API spec
+support, LISA can also be used as a stand-in replacement for any application that already utilizes OpenAI-centric
+tooling (ex: OpenAI’s Python library, LangChain).
 
 ---
 # Table of Contents

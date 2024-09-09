@@ -219,8 +219,6 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         litellm_params=litellm_params,
     )
 
-    print(f"LITELLM RESP {litellm_response}")
-
     litellm_id = litellm_response["model_info"]["id"]
     output_dict["litellm_id"] = litellm_id
 

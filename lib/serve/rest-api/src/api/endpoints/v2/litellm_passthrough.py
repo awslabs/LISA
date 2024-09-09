@@ -96,13 +96,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     litellm_path = f"{LITELLM_URL}/{api_path}"
     headers = dict(request.headers.items())
 
-    print(f"HEADERS OBJ {headers}")
-
-    logger.info("attempting passthrough")
-    print("attempting passthrough")
     if not is_valid_management_token(headers):
-        logger.info("mgmt token not valid")
-        print("mgmt token not valid")
         # If not handling an OpenAI request, we will also check if the user is an Admin user before allowing the
         # request, otherwise, we will block it. This prevents non-admins from invoking model management APIs
         # directly. If LISA Serve is deployed without an IdP configuration, we cannot determine who is an admin
@@ -120,18 +114,18 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             ):
                 if not is_admin(jwt_data=jwt_data, admin_group=admin_group, jwt_groups_property=jwt_groups_property):
                     raise HTTPException(
-                        status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in passthrough - 125"
+                        status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough"
                     )
             else:
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in passthrough - 127")
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough"
+                )
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
     # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid
     # soliciting yet another form of auth from the user, we add the existing LiteLLM key to the headers that go directly
     # to the LiteLLM instance.
     headers["Authorization"] = f"Bearer {LITELLM_KEY}"
-    logger.info(f"overriding authorization token with {LITELLM_KEY}")
-    print(f"overriding authorization token with {LITELLM_KEY}")
 
     http_method = request.method
     if http_method == "GET":
@@ -170,10 +164,4 @@ def is_valid_management_token(headers: dict[str, str]) -> bool:
     """Return if API Token from request headers is valid if found."""
     secret_tokens = refresh_management_tokens()
     token = get_authorization_token(headers=headers, header_name="Authorization").strip()
-    logger.info(f"Checking if {token} is in {secret_tokens}")
-
-    print(f"Headers in is_valid_management_token {headers}")
-    print(f"Headers in is_valid_management_token {headers}")
-
-    print(f"Checking if {token} is in {secret_tokens}")
     return token in secret_tokens

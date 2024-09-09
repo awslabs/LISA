@@ -215,14 +215,11 @@ class ManagementTokenAuthorizer:
                 )
             except Exception:
                 logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
-            logger.info(f"Updating tokens {secret_tokens}")
             self._secret_tokens = secret_tokens
             self._last_run = current_time
 
     def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         self._refreshTokens()
-
         token = headers.get("Authorization", "").strip()
-        logger.info(f"Checking if {token} is in {self._secret_tokens} == {token in self._secret_tokens}")
         return token in self._secret_tokens

@@ -24,7 +24,7 @@ import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, ModelStatus
-from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import get_rest_api_container_endpoint, retry_config
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
 lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)
@@ -38,11 +38,13 @@ iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=re
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 litellm_client = LiteLLMClient(
     base_uri=get_rest_api_container_endpoint(),
-    verify=get_cert_path(iam_client),
+    # verify=get_cert_path(iam_client),
+    verify=False,
     headers={
         "Authorization": secrets_manager.get_secret_value(
             SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
-        )["SecretString"]
+        )["SecretString"],
+        "Content-Type": "application/json",
     },
 )
 
@@ -217,6 +219,9 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         model_name=event["modelId"],
         litellm_params=litellm_params,
     )
+
+    print(f"LITELLM RESP {litellm_response}")
+
     litellm_id = litellm_response["model_info"]["id"]
     output_dict["litellm_id"] = litellm_id
 

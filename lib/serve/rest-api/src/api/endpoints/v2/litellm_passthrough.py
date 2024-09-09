@@ -17,7 +17,6 @@
 import logging
 import os
 from collections.abc import Iterator
-from time import time
 from typing import Union
 
 import boto3
@@ -68,8 +67,6 @@ OPENAI_ROUTES = (
 LITELLM_KEY = os.environ["LITELLM_KEY"]
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
-secret_tokens: list[str] = []
-last_run = 0
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +96,8 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     litellm_path = f"{LITELLM_URL}/{api_path}"
     headers = dict(request.headers.items())
 
+    print(f"HEADERS OBJ {headers}")
+
     logger.info("attempting passthrough")
     print("attempting passthrough")
     if not is_valid_management_token(headers):
@@ -120,9 +119,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                 id_token=id_token, authority=authority, client_id=client_id, jwks_client=jwks_client
             ):
                 if not is_admin(jwt_data=jwt_data, admin_group=admin_group, jwt_groups_property=jwt_groups_property):
-                    raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+                    raise HTTPException(
+                        status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in passthrough - 125"
+                    )
             else:
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in passthrough - 127")
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
     # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid
@@ -144,37 +145,35 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         return JSONResponse(requests.request(method=http_method, url=litellm_path, json=params, headers=headers).json())
 
 
-def refresh_management_tokens() -> None:
+def refresh_management_tokens() -> list[str]:
     """Return DDB entry for token if it exists."""
-    global last_run
-    global secret_tokens
-    current_time = int(time())
-    if current_time - (last_run or 0) > 3600:
-        new_secret_tokens = []
-        new_secret_tokens.append(
+    secret_tokens = []
+
+    try:
+        secret_tokens.append(
             secrets_manager.get_secret_value(SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT")[
                 "SecretString"
             ]
         )
-        try:
-            new_secret_tokens.append(
-                secrets_manager.get_secret_value(
-                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
-                )["SecretString"]
-            )
-        except Exception:
-            logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
+        secret_tokens.append(
+            secrets_manager.get_secret_value(
+                SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
+            )["SecretString"]
+        )
+    except Exception:
+        logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
 
-        secret_tokens = new_secret_tokens
-        logger.info(f"Updating tokens {secret_tokens}")
-        last_run = current_time
+    return secret_tokens
 
 
 def is_valid_management_token(headers: dict[str, str]) -> bool:
     """Return if API Token from request headers is valid if found."""
-    global secret_tokens
-    refresh_management_tokens()
-    token = headers.get("Authorization", "").strip()
+    secret_tokens = refresh_management_tokens()
+    token = get_authorization_token(headers=headers, header_name="Authorization").strip()
     logger.info(f"Checking if {token} is in {secret_tokens}")
+
+    print(f"Headers in is_valid_management_token {headers}")
+    print(f"Headers in is_valid_management_token {headers}")
+
     print(f"Checking if {token} is in {secret_tokens}")
     return token in secret_tokens

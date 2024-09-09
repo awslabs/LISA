@@ -1,4 +1,33 @@
-## March 26, 2024
+# v3.0.0
+## Key Features
+### Model Management Administration
+- Supports customers creating and deleting models through a new model management user interface (UI), or APIs
+- Our new Model Management access limits these privileges to users in the configured IDP LISA administration group
+- This feature prevents customers from having to re-deploy every time they want to add or remove available models
+
+### Note
+- These changes will require a redeployment of LISA
+- Take note of your configuration file and the models you have previously configured. Upon deployment of LISA 3.0 these models will be deleted and will need to be added back via the new model management APIs or UI
+- You can see breaking changes with migrating from 2.0 -> 3.0 in the README
+
+## Enhancements
+- Updated our documentation to include more details and to account for model management
+
+## Coming Soon
+- 3.0.1 will expand support for model management. Administrators will be able to modify, activate, and deactivate models through the UI or APIs. The following release we will continue to ease deployment steps for customers through a new deployment wizard and updated documentation.
+
+## Acknowledgements
+* @jtblack-aws
+* @buejosep
+* @petermuller
+* @stephensmith-aws
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v2.0.1...v3.0.0
+
+
+# March 26, 2024
 
 #### Breaking changes
 

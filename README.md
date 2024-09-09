@@ -385,7 +385,7 @@ ecs models, many for autoscaling and health checks. However, let's focus on the 
 ```yaml
 ecsModels:
   - modelName: your-model-name
-    deploy: true
+    deploy: false
     instanceType: g4dn.12xlarge
     modelType: textgen
     inferenceContainer: tgi
@@ -858,7 +858,7 @@ you can do so.
       ecsModels:
         - modelName: mistralai/Mistral-7B-Instruct-v0.2
           modelId: mistral7b-vllm
-          deploy: true
+          deploy: false
           modelType: textgen # can also be 'embedding'
           streaming: true # remove option if modelType is 'embedding'
           instanceType: g5.xlarge

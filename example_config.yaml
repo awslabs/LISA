@@ -122,7 +122,7 @@ dev:
   ecsModels:
     - modelName: mistralai/Mistral-7B-Instruct-v0.2
       modelId: mistral7b
-      deploy: true
+      deploy: false
       streaming: true
       modelType: textgen
       instanceType: g5.xlarge
@@ -162,7 +162,7 @@ dev:
           unhealthyThresholdCount: 10
     - modelName: intfloat/e5-large-v2
       modelId: e5v2
-      deploy: true
+      deploy: false
       modelType: embedding
       instanceType: g5.xlarge
       inferenceContainer: tei
@@ -200,7 +200,7 @@ dev:
           healthyThresholdCount: 2
           unhealthyThresholdCount: 10
     # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
-    #   deploy: true
+    #   deploy: false
     #   streaming: true
     #   modelType: textgen
     #   instanceType: g5.12xlarge

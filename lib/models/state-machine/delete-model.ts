@@ -60,7 +60,7 @@ export class DeleteModelStateMachine extends Construct {
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: config.restApiConfig.apiVersion,
             MANAGEMENT_KEY_NAME: managementKeyName,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn,
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
         };
 
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.

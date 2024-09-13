@@ -24,7 +24,6 @@ import { Vpc } from '../networking/vpc';
 import { ModelsApi } from './model-api';
 import { BaseProps } from '../schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 type LisaModelsApiStackProps = BaseProps &
   StackProps & {
@@ -34,7 +33,6 @@ type LisaModelsApiStackProps = BaseProps &
       rootResourceId: string;
       securityGroups?: ISecurityGroup[];
       vpc: Vpc;
-      managementKeySecret: Secret;
   };
 
 /**
@@ -49,7 +47,7 @@ export class LisaModelsApiStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaModelsApiStackProps) {
         super(scope, id, props);
 
-        const { authorizer, lisaServeEndpointUrlPs, config, restApiId, rootResourceId, securityGroups, vpc, managementKeySecret } = props;
+        const { authorizer, lisaServeEndpointUrlPs, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Add REST API Lambdas to APIGW
         new ModelsApi(this, 'ModelsApi', {
@@ -60,7 +58,6 @@ export class LisaModelsApiStack extends Stack {
             rootResourceId,
             securityGroups,
             vpc,
-            managementKeySecret,
         });
     }
 }

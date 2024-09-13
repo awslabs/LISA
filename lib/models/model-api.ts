@@ -198,7 +198,7 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'secretsmanager:GetSecretValue'
                             ],
-                            resources: [Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn],
+                            resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
                         }),
                     ]
                 }),

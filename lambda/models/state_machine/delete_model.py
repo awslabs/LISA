@@ -62,7 +62,7 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
     if not item:
         raise RuntimeError(f"Requested model '{model_id}' was not found in DynamoDB table.")
     output_dict[CFN_STACK_ARN] = item.get(CFN_STACK_ARN, None)
-    output_dict[LITELLM_ID] = item[LITELLM_ID]
+    output_dict[LITELLM_ID] = item.get(LITELLM_ID, None)
 
     ddb_table.update_item(
         Key=model_key,
@@ -77,7 +77,8 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
 
 def handle_delete_from_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Delete model reference from LiteLLM."""
-    litellm_client.delete_model(identifier=event[LITELLM_ID])
+    if event[LITELLM_ID]:  # if non-null ID
+        litellm_client.delete_model(identifier=event[LITELLM_ID])
     return event
 
 

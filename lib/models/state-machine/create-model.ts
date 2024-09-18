@@ -18,6 +18,7 @@ import {
     Choice,
     Condition,
     DefinitionBody,
+    Fail,
     StateMachine,
     Succeed,
     Wait,
@@ -117,7 +118,23 @@ export class CreateModelStateMachine extends Construct {
                 layers: lambdaLayers,
                 environment: environment,
             }),
-            outputPath: OUTPUT_PATH
+            outputPath: OUTPUT_PATH,
+        });
+
+        const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
+            lambdaFunction: new Function(this, 'HandleFailureFunc', {
+                runtime: config.lambdaConfig.pythonRuntime,
+                handler: 'models.state_machine.create_model.handle_failure',
+                code: Code.fromAsset(config.lambdaSourcePath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
         });
 
         const pollDockerImageChoice = new Choice(this, 'PollDockerImageChoice');
@@ -181,6 +198,7 @@ export class CreateModelStateMachine extends Construct {
         });
 
         const successState = new Succeed(this, 'CreateSuccess');
+        const failState = new Fail(this, 'CreateFailed');
 
         // State Machine definition
         setModelToCreating.next(createModelInfraChoice);
@@ -188,20 +206,36 @@ export class CreateModelStateMachine extends Construct {
             .when(Condition.booleanEquals('$.create_infra', true), startCopyDockerImage)
             .otherwise(addModelToLitellm);
 
+        // poll ECR image copy status loop
         startCopyDockerImage.next(pollDockerImageAvailable);
         pollDockerImageAvailable.next(pollDockerImageChoice);
+        pollDockerImageAvailable.addCatch(handleFailureState, {  // fail if exception thrown from code
+            errors: ['MaxPollsExceededException'],
+        });
         pollDockerImageChoice
             .when(Condition.booleanEquals('$.continue_polling_docker', true), waitBeforePollingDockerImage)
             .otherwise(startCreateStack);
         waitBeforePollingDockerImage.next(pollDockerImageAvailable);
 
+        // poll CloudFormation stack status loop
         startCreateStack.next(pollCreateStack);
+        startCreateStack.addCatch(handleFailureState, {  // fail if CDK failed to create model stack
+            errors: ['StackFailedToCreateException']
+        });
         pollCreateStack.next(pollCreateStackChoice);
+        pollCreateStack.addCatch(handleFailureState, {  // fail if model failed or failed to create in time
+            errors: [
+                'MaxPollsExceededException',
+                'UnexpectedCloudFormationStateException',
+            ],
+        });
         pollCreateStackChoice
             .when(Condition.booleanEquals('$.continue_polling_stack', true), waitBeforePollingCreateStack)
             .otherwise(addModelToLitellm);
         waitBeforePollingCreateStack.next(pollCreateStack);
 
+        // terminal states
+        handleFailureState.next(failState);
         addModelToLitellm.next(successState);
 
         const stateMachine = new StateMachine(this, 'CreateModelSM', {

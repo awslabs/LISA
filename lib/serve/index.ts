@@ -131,7 +131,7 @@ export class LisaServeApplicationStack extends Stack {
         //     description: 'The ARN of the secret',
         // });
 
-        this.managementKeySecretNameStringParameter = new StringParameter(this, createCdkId(['ManagementKeySecretName']), {
+        this.managementKeySecretNameStringParameter = new StringParameter(this, createCdkId([id, 'ManagementKeySecretName']), {
             parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
             stringValue: this.managementKeySecret.secretName,
         });

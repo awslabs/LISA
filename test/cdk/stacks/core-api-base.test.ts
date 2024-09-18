@@ -112,6 +112,6 @@ describe.each(regions)('API Core Nag Pack Tests | Region Test: %s', (awsRegion) 
 
     test('NIST800.53r5 CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-        expect(errors.length).toBe(6);
+        expect(errors.length).toBe(7);
     });
 });

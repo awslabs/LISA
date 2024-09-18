@@ -18,7 +18,7 @@ from enum import Enum
 from typing import Annotated, List, Optional, Union
 
 from pydantic import BaseModel
-from pydantic.functional_validators import AfterValidator
+from pydantic.functional_validators import AfterValidator, field_validator
 from utilities.validators import validate_instance_type
 
 
@@ -87,13 +87,21 @@ class LoadBalancerConfig(BaseModel):
 
 
 class AutoScalingConfig(BaseModel):
-    """Autoscaling configuration."""
+    """Autoscaling configuration upon model creation."""
 
     minCapacity: int
     maxCapacity: int
     cooldown: int
     defaultInstanceWarmup: int
     metricConfig: MetricConfig
+
+
+class AutoScalingInstanceConfig(BaseModel):
+    """Autoscaling instance count configuration upon model update."""
+
+    minCapacity: Optional[int] = None
+    maxCapacity: Optional[int] = None
+    desiredCapacity: Optional[int] = None
 
 
 class ContainerHealthCheckConfig(BaseModel):
@@ -180,15 +188,22 @@ class GetModelResponse(ApiResponseBase):
 class UpdateModelRequest(BaseModel):
     """Request object when updating a model."""
 
-    autoScalingConfig: Optional[AutoScalingConfig] = None
-    containerConfig: Optional[ContainerConfig] = None
-    inferenceContainer: Optional[InferenceContainer] = None
-    instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
-    loadBalancerConfig: Optional[LoadBalancerConfig] = None
-    modelId: str
-    modelName: Optional[str] = None
+    autoScalingInstanceConfig: Optional[AutoScalingInstanceConfig] = None
     modelType: Optional[ModelType] = None
     streaming: Optional[bool] = None
+
+    @field_validator("autoScalingInstanceConfig")  # type: ignore
+    @classmethod
+    def validate_autoscaling_instance_config(cls, config: AutoScalingInstanceConfig) -> AutoScalingInstanceConfig:
+        """Validate that the AutoScaling instance config has at least one positive value."""
+        if not config:
+            raise ValueError("The autoScalingInstanceConfig must not be null if defined in request payload.")
+        config_fields = (config.minCapacity, config.maxCapacity, config.desiredCapacity)
+        if all((field is None for field in config_fields)):
+            raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
+        if any((isinstance(field, int) and field < 0 for field in config_fields)):
+            raise ValueError("All autoScalingInstanceConfig fields must be >= 0.")
+        return config
 
 
 class UpdateModelResponse(ApiResponseBase):

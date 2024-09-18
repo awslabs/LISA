@@ -46,8 +46,6 @@ export class LisaServeApplicationStack extends Stack {
     public readonly restApi: FastApiContainer;
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
-    public readonly managementKeySecret: Secret;
-    public readonly managementKeySecretNameStringParameter: StringParameter;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -86,7 +84,7 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc.vpc,
         });
 
-        this.managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
+        const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
             secretName: `lisa_management_key_secret-${Date.now()}`, // pragma: allowlist secret`
             description: 'This is a secret created with AWS CDK',
             generateSecretString: {
@@ -131,11 +129,11 @@ export class LisaServeApplicationStack extends Stack {
         //     description: 'The ARN of the secret',
         // });
 
-        this.managementKeySecretNameStringParameter = new StringParameter(this, createCdkId([id, 'ManagementKeySecretName']), {
+        const managementKeySecretNameStringParameter = new StringParameter(this, createCdkId(['ManagementKeySecretName']), {
             parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
-            stringValue: this.managementKeySecret.secretName,
+            stringValue: managementKeySecret.secretName,
         });
-        restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', this.managementKeySecretNameStringParameter.stringValue);
+        restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';

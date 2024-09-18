@@ -18,6 +18,7 @@ import functools
 import json
 import logging
 import os
+import re
 import tempfile
 from contextvars import ContextVar
 from functools import cache
@@ -279,18 +280,14 @@ def get_id_token(event: dict) -> str:
     auth_header = None
 
     if "authorization" in event["headers"]:
-        auth_header = event["headers"]["authorization"].split(" ")
+        auth_header = event["headers"]["authorization"]
     elif "Authorization" in event["headers"]:
-        auth_header = event["headers"]["Authorization"].split(" ")
+        auth_header = event["headers"]["Authorization"]
     else:
         raise ValueError("Missing authorization token.")
 
-    if len(auth_header) == 1:
-        # secret management token won't be split into multiple segments
-        return str(auth_header[0])
-    else:
-        # Bearer tokens will have the token in the second segment
-        return str(auth_header[1])
+    # remove bearer token prefix if present
+    return re.sub(r"Bearer ", "", str(auth_header), flags=re.I).strip()
 
 
 @cache

@@ -18,12 +18,16 @@ import os
 import ssl
 from typing import Any, Dict
 
+import boto3
 import create_env_variables  # noqa: F401
 import jwt
 import requests
 from utilities.common_functions import authorization_wrapper, get_id_token
 
 logger = logging.getLogger(__name__)
+
+secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+secret_tokens = []
 
 
 @authorization_wrapper
@@ -47,6 +51,11 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
+
+    if is_valid_management_token(id_token):
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username="lisa-management-token")
+        logger.debug(f"Generated policy: {allow_policy}")
+        return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
@@ -134,3 +143,30 @@ def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: st
         else:
             return False
     return admin_group in current_node
+
+
+def refresh_management_tokens() -> list[str]:
+    """Return secret management tokens if they exist."""
+    global secret_tokens
+
+    if len(secret_tokens) == 0:
+        try:
+            secret_tokens.append(
+                secrets_manager.get_secret_value(
+                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
+                )["SecretString"]
+            )
+            secret_tokens.append(
+                secrets_manager.get_secret_value(
+                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
+                )["SecretString"]
+            )
+        except Exception:
+            logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
+
+    return secret_tokens
+
+
+def is_valid_management_token(id_token: str) -> bool:
+    """Return if API Token is valid."""
+    return id_token in refresh_management_tokens()

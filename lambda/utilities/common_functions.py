@@ -285,8 +285,12 @@ def get_id_token(event: dict) -> str:
     else:
         raise ValueError("Missing authorization token.")
 
-    token = auth_header[1]
-    return str(token)
+    if len(auth_header) == 1:
+        # secret management token won't be split into multiple segments
+        return str(auth_header[0])
+    else:
+        # Bearer tokens will have the token in the second segment
+        return str(auth_header[1])
 
 
 @cache

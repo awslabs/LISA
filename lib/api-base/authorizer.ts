@@ -23,6 +23,8 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { BaseProps } from '../schema';
+import { createCdkId } from '../core/utils';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -67,6 +69,8 @@ export class CustomAuthorizer extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
         );
 
+        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
+
         // Create Lambda authorizer
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
             runtime: config.lambdaConfig.pythonRuntime,
@@ -82,11 +86,15 @@ export class CustomAuthorizer extends Construct {
                 AUTHORITY: config.authConfig!.authority,
                 ADMIN_GROUP: config.authConfig!.adminGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
+                MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
             },
             role: role,
             vpc: vpc,
             securityGroups: securityGroups,
         });
+
+        const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);
+        managementKeySecret.grantRead(authorizerLambda);
 
         // Update
         this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {

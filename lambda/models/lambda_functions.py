@@ -123,7 +123,7 @@ def _create_dummy_model(model_name: str, model_type: ModelType, model_status: Mo
             ),
             sharedMemorySize=2048,
             healthCheckConfig=ContainerHealthCheckConfig(
-                command=["CMD-SHELL", "exit 0"], Interval=10, StartPeriod=30, Timeout=5, Retries=5
+                command=["CMD-SHELL", "exit 0"], interval=10, startPeriod=30, timeout=5, retries=5
             ),
             environment={
                 "MAX_CONCURRENT_REQUESTS": "128",
@@ -177,7 +177,7 @@ async def update_model(
 ) -> UpdateModelResponse:
     """Endpoint to update a model."""
     # TODO add service to update model
-    model = _create_dummy_model("model_name", ModelType.TEXTGEN, ModelStatus.UPDATING)
+    model = _create_dummy_model(model_id, ModelType.TEXTGEN, ModelStatus.UPDATING)
     return UpdateModelResponse(model=model)
 
 

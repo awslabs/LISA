@@ -15,6 +15,9 @@
 """Exception definitions for model management APIs."""
 
 
+# LiteLLM errors
+
+
 class ModelNotFoundError(LookupError):
     """Error to raise when a specified model cannot be found in the database."""
 
@@ -23,5 +26,26 @@ class ModelNotFoundError(LookupError):
 
 class ModelAlreadyExistsError(LookupError):
     """Error to raise when a specified model already exists in the database."""
+
+    pass
+
+
+# State machine exceptions
+
+
+class MaxPollsExceededException(Exception):
+    """Exception to indicate that polling for a state timed out."""
+
+    pass
+
+
+class StackFailedToCreateException(Exception):
+    """Exception to indicate that the CDK for creating a model stack failed."""
+
+    pass
+
+
+class UnexpectedCloudFormationStateException(Exception):
+    """Exception to indicate that the CloudFormation stack has transitioned to a non-healthy state."""
 
     pass

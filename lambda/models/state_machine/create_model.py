@@ -24,6 +24,11 @@ import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, ModelStatus
+from models.exception import (
+    MaxPollsExceededException,
+    StackFailedToCreateException,
+    UnexpectedCloudFormationStateException,
+)
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
@@ -113,8 +118,13 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
         output_dict["image_info"]["remaining_polls"] -= 1
         if output_dict["image_info"]["remaining_polls"] <= 0:
             ec2Client.terminate_instances(InstanceIds=[event["image_info"]["instance_id"]])
-            raise Exception(
-                "Maximum number of ECR poll attempts reached. Something went wrong building the docker image."
+            raise MaxPollsExceededException(
+                json.dumps(
+                    {
+                        "error": "Max number of ECR polls reached. Docker Image was not replicated successfully.",
+                        "event": event,
+                    }
+                )
             )
         return output_dict
 
@@ -153,7 +163,17 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
 
     payload = response["Payload"].read()
     payload = json.loads(payload)
-    stack_name = payload.get("stackName")
+    stack_name = payload.get("stackName", None)
+
+    if not stack_name:
+        raise StackFailedToCreateException(
+            json.dumps(
+                {
+                    "error": "Failed to create Model CloudFormation Stack. Please validate model parameters are valid.",
+                    "event": event,
+                }
+            )
+        )
 
     response = cfnClient.describe_stacks(StackName=stack_name)
     stack_arn = response["Stacks"][0]["StackId"]
@@ -192,10 +212,24 @@ def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, A
         output_dict["continue_polling_stack"] = True
         output_dict["remaining_polls_stack"] -= 1
         if output_dict["remaining_polls_stack"] <= 0:
-            raise Exception("Maximum number of CloudFormation polls reached")
+            raise MaxPollsExceededException(
+                json.dumps(
+                    {
+                        "error": "Max number of CloudFormation polls reached.",
+                        "event": event,
+                    }
+                )
+            )
         return output_dict
     else:
-        raise Exception(f"Stack in unexpected state: {stackStatus}")
+        raise UnexpectedCloudFormationStateException(
+            json.dumps(
+                {
+                    "error": f"Stack entered unexpected state: {stackStatus}",
+                    "event": event,
+                }
+            )
+        )
 
 
 def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -234,3 +268,38 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     )
 
     return output_dict
+
+
+def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Handle failures from state machine.
+
+    Possible causes of failures would be:
+    1. Docker Image failed to replicate into ECR in expected amount of time
+    2. CloudFormation Stack creation failed from parameter validation.
+    3. CloudFormation Stack creation failed from taking too long to stand up.
+
+    Expectation of this function is to terminate the EC2 instance if it is still running, and to set the model status
+    to Failed. Cleaning up the CloudFormation stack, if it still exists, will happen in the DeleteModel API.
+    """
+    error_dict = json.loads(  # error from SFN is json payload on top of json payload we add to the exception
+        json.loads(event["Cause"])["errorMessage"]
+    )
+    error_reason = error_dict["error"]
+    original_event = error_dict["event"]
+
+    # terminate EC2 instance if we have one recorded
+    if "image_info" in original_event and "instance_id" in original_event["image_info"]:
+        ec2Client.terminate_instances(InstanceIds=[original_event["image_info"]["instance_id"]])
+
+    # set model as Failed in DDB, so it shows as such in the UI. adds error reason as well.
+    model_table.update_item(
+        Key={"model_id": original_event["modelId"]},
+        UpdateExpression="SET model_status = :ms, last_modified_date = :lm, failure_reason = :fr",
+        ExpressionAttributeValues={
+            ":ms": ModelStatus.FAILED,
+            ":lm": int(datetime.utcnow().timestamp()),
+            ":fr": error_reason,
+        },
+    )
+    return event

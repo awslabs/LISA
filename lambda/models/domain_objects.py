@@ -189,6 +189,7 @@ class UpdateModelRequest(BaseModel):
     """Request object when updating a model."""
 
     autoScalingInstanceConfig: Optional[AutoScalingInstanceConfig] = None
+    enabled: Optional[bool] = None
     modelType: Optional[ModelType] = None
     streaming: Optional[bool] = None
 

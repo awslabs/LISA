@@ -276,6 +276,7 @@ export class ECSCluster extends Construct {
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc,
+            idleTimeout: Duration.seconds(600)
         });
 
         // Add listener

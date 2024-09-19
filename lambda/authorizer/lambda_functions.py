@@ -28,7 +28,7 @@ from utilities.common_functions import authorization_wrapper, get_id_token, retr
 
 logger = logging.getLogger(__name__)
 
-secrets_manager = boto3.client("secretsmanager", config=retry_config)
+secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 @authorization_wrapper

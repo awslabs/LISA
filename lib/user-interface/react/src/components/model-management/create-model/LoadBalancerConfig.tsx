@@ -19,7 +19,7 @@ import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import { ILoadBalancerConfig } from '../../../shared/model/model-management.model';
-import { Header } from '@cloudscape-design/components';
+import { Grid, Header } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
 
 export function LoadBalancerConfig (props: FormProps<ILoadBalancerConfig>) : ReactElement {
@@ -36,14 +36,20 @@ export function LoadBalancerConfig (props: FormProps<ILoadBalancerConfig>) : Rea
                     }}/>
                 </FormField>
                 <FormField label='Interval' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.interval}>
-                    <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
-                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.interval': Number(detail.value) });
-                    }}/>
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                        <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
+                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.interval': Number(detail.value) });
+                        }}/>
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                    </Grid>
                 </FormField>
                 <FormField label='Timeout' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.timeout}>
-                    <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
-                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.timeout': Number(detail.value) });
-                    }}/>
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                        <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
+                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.timeout': Number(detail.value) });
+                        }}/>
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                    </Grid>
                 </FormField>
                 <FormField label='Healthy Threshold Count' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.healthyThresholdCount}>
                     <Input value={props.item.healthCheckConfig.healthyThresholdCount.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.healthyThresholdCount'])} onChange={({ detail }) => {

@@ -109,6 +109,11 @@ export class ECSCluster extends Construct {
             ],
         });
 
+        new CfnOutput(this, 'autoScalingGroup', {
+            key: 'autoScalingGroup',
+            value: autoScalingGroup.autoScalingGroupName,
+        });
+
         const environment = ecsConfig.environment;
         const volumes: Volume[] = [];
         const mountPoints: MountPoint[] = [];

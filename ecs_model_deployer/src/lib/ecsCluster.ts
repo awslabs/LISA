@@ -272,7 +272,7 @@ export class ECSCluster extends Construct {
         const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: false,
-            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc,
@@ -295,7 +295,7 @@ export class ECSCluster extends Construct {
         // Add targets
         const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
         const targetGroup = listener.addTargets(createCdkId([ecsConfig.identifier, 'TgtGrp']), {
-            targetGroupName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+            targetGroupName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
             healthCheck: {
                 path: loadBalancerHealthCheckConfig.path,
                 interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

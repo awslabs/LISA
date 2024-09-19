@@ -20,4 +20,4 @@ litellm -c litellm_config.yaml &
 echo "Starting Gunicorn with $THREADS workers..."
 
 # Start Gunicorn with Uvicorn workers.
-exec gunicorn -k uvicorn.workers.UvicornWorker -w "$THREADS" -b "$HOST:$PORT" "src.main:app"
+exec gunicorn -k uvicorn.workers.UvicornWorker -t 600 -w "$THREADS" -b "$HOST:$PORT" "src.main:app"

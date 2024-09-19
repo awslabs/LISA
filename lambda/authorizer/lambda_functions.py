@@ -16,14 +16,19 @@
 import logging
 import os
 import ssl
+from functools import cache
 from typing import Any, Dict
 
+import boto3
 import create_env_variables  # noqa: F401
 import jwt
 import requests
-from utilities.common_functions import authorization_wrapper, get_id_token
+from botocore.exceptions import ClientError
+from utilities.common_functions import authorization_wrapper, get_id_token, retry_config
 
 logger = logging.getLogger(__name__)
+
+secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 @authorization_wrapper
@@ -47,6 +52,11 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
+
+    if id_token in get_management_tokens():
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username="lisa-management-token")
+        logger.debug(f"Generated policy: {allow_policy}")
+        return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
@@ -134,3 +144,22 @@ def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: st
         else:
             return False
     return admin_group in current_node
+
+
+@cache
+def get_management_tokens() -> list[str]:
+    """Return secret management tokens if they exist."""
+    secret_tokens: list[str] = []
+    secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
+
+    try:
+        secret_tokens.append(
+            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
+        )
+        secret_tokens.append(
+            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+        )
+    except ClientError as e:
+        logger.warn(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
+
+    return secret_tokens

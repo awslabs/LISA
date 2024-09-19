@@ -140,7 +140,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
 
 def refresh_management_tokens() -> list[str]:
-    """Return DDB entry for token if it exists."""
+    """Return secret management tokens if they exist."""
     secret_tokens = []
 
     try:

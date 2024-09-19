@@ -18,7 +18,6 @@ import functools
 import json
 import logging
 import os
-import re
 import tempfile
 from contextvars import ContextVar
 from functools import cache
@@ -287,7 +286,7 @@ def get_id_token(event: dict) -> str:
         raise ValueError("Missing authorization token.")
 
     # remove bearer token prefix if present
-    return re.sub(r"Bearer ", "", str(auth_header), flags=re.I).strip()
+    return str(auth_header).removeprefix("Bearer ").removeprefix("bearer ").strip()
 
 
 @cache

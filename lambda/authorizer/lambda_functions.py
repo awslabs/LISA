@@ -152,16 +152,14 @@ def get_management_tokens() -> list[str]:
     secret_tokens: list[str] = []
     secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
 
-    if len(secret_tokens) == 0:
-        try:
-            secret_tokens.append(
-                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
-            )
-            secret_tokens.append(
-                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
-            )
-        except ClientError as e:
-            logger.warn(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
-            return []
+    try:
+        secret_tokens.append(
+            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
+        )
+        secret_tokens.append(
+            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+        )
+    except ClientError as e:
+        logger.warn(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
 
     return secret_tokens

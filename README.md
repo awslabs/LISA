@@ -659,6 +659,10 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
 
 LISA provides the `/models` endpoint for creating both ECS and LiteLLM-hosted models. Depending on the request payload, infrastructure will be created or bypassed (e.g., for LiteLLM-only models).
 
+This API accepts the same model definition parameters that were accepted in the V2 model definitions within the config.yaml file with one notable difference: the `containerConfig.baseImage.path` field is
+now a path relative to the `lib/serve/ecs-model` directory, instead of from its original path relative to the repository root. This means that if the path used to be `lib/serve/ecs-model/textgen/tgi`, then
+it will now be `textgen/tgi` for the CreateModel API. For vLLM models, the `path` will be `vllm`, and for TEI, it will be `embedding/tei`.
+
 #### Request Example:
 
 ```

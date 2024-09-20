@@ -198,7 +198,7 @@ class ManagementTokenAuthorizer:
         self._last_run = 0
 
     def _refreshTokens(self) -> None:
-        """Return DDB entry for token if it exists."""
+        """Refresh secret management tokens."""
         current_time = int(time())
         if current_time - (self._last_run or 0) > 3600:
             secret_tokens = []

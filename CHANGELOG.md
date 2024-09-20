@@ -1,3 +1,25 @@
+# v3.0.1
+## Bug fixes
+- Updated our Lambda admin validation to work for no-auth if user has the admin secret token. This applies to model management APIs.
+- State machine for create model was not reporting failed status
+- Delete state machine could not delete models that weren't stored in LiteLLM DB
+
+## Enhancements
+- Added units to the create model wizard to help with clarity
+- Increased default timeouts to 10 minutes to enable large documentation processing without errors
+- Updated ALB and Target group names to be lower cased by default to prevent networking issues
+
+## Coming Soon
+- 3.1.0 will expand support for model management. Administrators will be able to modify, activate, and deactivate models through the UI or APIs. The following release we will continue to ease deployment steps for customers through a new deployment wizard and updated documentation.
+
+## Acknowledgements
+* @petermuller
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.0.0...v3.0.1
+
+
 # v3.0.0
 ## Key Features
 ### Model Management Administration

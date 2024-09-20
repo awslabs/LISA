@@ -62,7 +62,6 @@ type ModelsApiProps = BaseProps & {
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
     vpc: Vpc;
-    managementKeySecret: Secret;
 };
 
 /**
@@ -72,7 +71,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc, managementKeySecret } = props;
+        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -123,6 +122,8 @@ export class ModelsApi extends Construct {
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!
         });
+
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
 
         const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
@@ -197,14 +198,12 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'secretsmanager:GetSecretValue'
                             ],
-                            resources: [managementKeySecret.secretArn],
+                            resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
                         }),
                     ]
                 }),
             }
         });
-
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,

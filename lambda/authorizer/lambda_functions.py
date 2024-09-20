@@ -64,9 +64,11 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         allow_policy["context"] = {"username": jwt_data["sub"]}
 
         if requested_resource.startswith("/models") and not is_admin_user:
-            username = jwt_data.get("sub", "user")
-            logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
-            return deny_policy
+            # non-admin users can still list models
+            if event["path"].rstrip("/") != "/models":
+                username = jwt_data.get("sub", "user")
+                logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
+                return deny_policy
 
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")

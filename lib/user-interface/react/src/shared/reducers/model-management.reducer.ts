@@ -22,7 +22,7 @@ export const modelManagementApi = createApi({
     reducerPath: 'models',
     baseQuery: lisaBaseQuery(),
     endpoints: (builder) => ({
-        getAllModels: builder.query<IModelListResponse, void>({
+        getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({
                 url: '/models',
             }),

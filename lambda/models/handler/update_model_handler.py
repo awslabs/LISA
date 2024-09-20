@@ -32,7 +32,7 @@ class UpdateModelHandler(BaseApiHandler):
         if not ddb_item:
             raise ModelNotFoundError(f"Model '{model_id}' was not found.")
 
-        # package together database item plus payload into a single input for state machine
+        # package model ID and request payload into single payload for step functions
         state_machine_payload = {"model_id": model_id, "update_payload": update_request.model_dump()}
         self._stepfunctions.start_execution(
             stateMachineArn=os.environ["UPDATE_SFN_ARN"], input=json.dumps(state_machine_payload)

@@ -213,18 +213,6 @@ class UpdateModelResponse(ApiResponseBase):
     pass
 
 
-class StartModelResponse(ApiResponseBase):
-    """Response object when stopping a model."""
-
-    pass
-
-
-class StopModelResponse(ApiResponseBase):
-    """Response object when stopping a model."""
-
-    pass
-
-
 class DeleteModelResponse(ApiResponseBase):
     """Response object when deleting a model."""
 

@@ -42,6 +42,7 @@ import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
+import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 /**
@@ -230,12 +231,24 @@ export class ModelsApi extends Construct {
             managementKeyName: managementKeyName,
         });
 
+        const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
+            config: config,
+            modelTable: modelTable,
+            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            restApiContainerEndpointPs: lisaServeEndpointUrlPs,
+            managementKeyName: managementKeyName,
+        });
+
         const environment = {
             LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
             REST_API_VERSION: config.restApiConfig.apiVersion,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
             CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
+            UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
         };
 
@@ -343,6 +356,7 @@ export class ModelsApi extends Construct {
                     resources: [
                         createModelStateMachine.stateMachineArn,
                         deleteModelStateMachine.stateMachineArn,
+                        updateModelStateMachine.stateMachineArn,
                     ],
                 }),
                 new PolicyStatement({

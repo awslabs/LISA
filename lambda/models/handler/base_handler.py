@@ -17,8 +17,6 @@
 
 from typing import Any
 
-from ..clients.litellm_client import LiteLLMClient
-
 
 class BaseApiHandler:
     """Base Handler class for all model management APIs."""
@@ -27,12 +25,10 @@ class BaseApiHandler:
         self,
         stepfunctions_client: Any,
         model_table_resource: Any,
-        litellm_client: LiteLLMClient,
     ):
         """Make all clients available for use in any handler class."""
         self._stepfunctions = stepfunctions_client
         self._model_table = model_table_resource
-        self._litellm_client = litellm_client
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:
         """All handlers must implement the __call__ method."""

@@ -17,14 +17,12 @@
 import React, { ReactElement, useEffect } from 'react';
 import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
-import { IModel } from '../../shared/model/model-management.model';
+import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
 import {
     modelManagementApi,
-    useDeleteModelMutation,
-    useStartModelMutation,
-    useStopModelMutation,
+    useDeleteModelMutation, useUpdateModelMutation,
 } from '../../shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
@@ -66,12 +64,11 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         deleteMutation,
         { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
     ] = useDeleteModelMutation();
-    const [stopMutation, { isSuccess: isStopSuccess, isError: isStopError, error: stopError, isLoading: isStopLoading }] =
-    useStopModelMutation();
+
     const [
-        startMutation,
-        { isSuccess: isStartSuccess, isError: isStartError, error: startError, isLoading: isStartLoading },
-    ] = useStartModelMutation();
+        updateModelMutation,
+        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
+    ] = useUpdateModelMutation();
 
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedModel) {
@@ -85,26 +82,15 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
 
     useEffect(() => {
-        if (!isStopLoading && isStopSuccess && selectedModel) {
-            notificationService.generateNotification(`Successfully stopped model: ${selectedModel.modelId}`, 'success');
+        if (!isUpdating && isUpdateSuccess && selectedModel) {
+            notificationService.generateNotification(`Successfully updated model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
-        } else if (!isStopLoading && isStopError && selectedModel) {
-            notificationService.generateNotification(`Error stopping model: ${stopError.data?.message ?? stopError.data}`, 'error');
-            props.setSelectedItems([]);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isStopSuccess, isStopError, stopError, isStopLoading]);
-
-    useEffect(() => {
-        if (!isStartLoading && isStartSuccess && selectedModel) {
-            notificationService.generateNotification(`Successfully started model: ${selectedModel.modelId}`, 'success');
-            props.setSelectedItems([]);
-        } else if (!isStartLoading && isStartError && selectedModel) {
-            notificationService.generateNotification(`Error starting model: ${startError.data?.message ?? startError.data}`, 'error');
+        } else if (!isUpdating && isUpdateError && selectedModel) {
+            notificationService.generateNotification(`Error updating model: ${updateError.data?.message ?? updateError.data}`, 'error');
             props.setSelectedItems([]);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isStartSuccess, isStartError, startError, isStartLoading]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateSuccess, isUpdateError, updateError, isUpdating]);
 
     const items = [];
     if (selectedModel) {
@@ -115,14 +101,14 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Start',
             id: 'startModel',
-            disabled: true,
-            disabledReason: 'This action will be available with LISA release 3.0.1',
+            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || selectedModel.status !== ModelStatus.Stopped,
+            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to start a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.Stopped ? 'Unable to start a model that is not in Stopped state' : '',
         });
         items.push({
             text: 'Stop',
             id: 'stopModel',
-            disabled: true,
-            disabledReason: 'This action will be available with LISA release 3.0.1',
+            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || selectedModel.status !== ModelStatus.InService,
+            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to stop a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.InService ? 'Unable to stop a model that is not in InService state' : '',
         });
         items.push({
             text: 'Update',
@@ -137,9 +123,9 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             items={items}
             variant='primary'
             disabled={!selectedModel}
-            loading={isDeleteLoading || isStopLoading || isStartLoading}
+            loading={isDeleteLoading || isUpdating}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedModel, dispatch, deleteMutation, stopMutation, startMutation, props.setNewModelModelVisible, props.setEdit)
+                ModelActionHandler(e, selectedModel, dispatch, deleteMutation, updateModelMutation, props.setNewModelModelVisible, props.setEdit)
             }
         >
             Actions
@@ -152,8 +138,7 @@ const ModelActionHandler = async (
     selectedModel: IModel,
     dispatch: ThunkDispatch<any, any, Action>,
     deleteMutation: MutationTrigger<any>,
-    stopMutation: MutationTrigger<any>,
-    startMutation: MutationTrigger<any>,
+    updateMutation: MutationTrigger<any>,
     setNewModelModelVisible: (boolean) => void,
     setEdit: (boolean) => void
 ) => {
@@ -163,7 +148,10 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Start',
                     resourceName: 'Model',
-                    onConfirm: () => startMutation(selectedModel.modelId),
+                    onConfirm: () => updateMutation({
+                            modelId: selectedModel.modelId,
+                            enabled: true
+                        }),
                     description: `This will start the following model: ${selectedModel.modelId}.`
                 })
             );
@@ -173,7 +161,10 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Stop',
                     resourceName: 'Model',
-                    onConfirm: () => stopMutation(selectedModel.modelId),
+                    onConfirm: () => updateMutation({
+                        modelId: selectedModel.modelId,
+                        enabled: false
+                    }),
                     description: `This will stop the following model: ${selectedModel.modelId}.`
                 })
             );

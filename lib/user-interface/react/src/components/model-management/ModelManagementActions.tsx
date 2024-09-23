@@ -149,9 +149,9 @@ const ModelActionHandler = async (
                     action: 'Start',
                     resourceName: 'Model',
                     onConfirm: () => updateMutation({
-                            modelId: selectedModel.modelId,
-                            enabled: true
-                        }),
+                        modelId: selectedModel.modelId,
+                        enabled: true
+                    }),
                     description: `This will start the following model: ${selectedModel.modelId}.`
                 })
             );

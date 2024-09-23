@@ -23,7 +23,7 @@ class ListModelsHandler(BaseApiHandler):
     """Handler class for ListModels requests."""
 
     def __call__(self) -> ListModelsResponse:  # type: ignore
-        """Call handler to get all models from LiteLLM database and transform results into API response format."""
+        """Call handler to get all models from DynamoDB and transform results into API response format."""
         ddb_models = []
         models_response = self._model_table.scan()
         ddb_models.extend(models_response.get("Items", []))

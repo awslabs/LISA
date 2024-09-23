@@ -1,6 +1,6 @@
 {
   "name": "lisa",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "bin": {
     "lisa": "bin/lisa.js"
   },

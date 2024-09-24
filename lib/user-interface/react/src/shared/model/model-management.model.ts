@@ -117,6 +117,14 @@ export type IModelRequest = {
     lisaHostedModel: boolean;
 };
 
+export type IModelUpdateRequest = {
+    modelId: string;
+    streaming?: boolean;
+    enabled?: boolean;
+    modelType?: ModelType;
+    autoScalingConfig?: IAutoScalingConfig;
+};
+
 const containerHealthCheckConfigSchema = z.object({
     command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
     interval: z.number().default(10),

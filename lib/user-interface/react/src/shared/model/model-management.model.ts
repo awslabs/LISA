@@ -130,29 +130,29 @@ const containerHealthCheckConfigSchema = z.object({
     interval: z.number().default(10),
     startPeriod: z.number().default(30),
     timeout: z.number().default(5),
-    retries: z.number().default(2),
+    retries: z.number().default(3),
 });
 
 
 const containerConfigImageSchema = z.object({
     baseImage: z.string().default(''),
     path: z.string().default(''),
-    type: z.string().default(''),
+    type: z.string().default('asset'),
 });
 
 export const metricConfigSchema = z.object({
-    albMetricName: z.string().default(''),
-    targetValue: z.number().default(0),
+    albMetricName: z.string().default('RequestCountPerTarget'),
+    targetValue: z.number().default(30),
     duration: z.number().default(60),
-    estimatedInstanceWarmup: z.number().default(180),
+    estimatedInstanceWarmup: z.number().default(330),
 });
 
 export const loadBalancerHealthCheckConfigSchema = z.object({
-    path: z.string().default(''),
-    interval: z.number().default(10),
-    timeout: z.number().default(5),
-    healthyThresholdCount: z.number().default(1),
-    unhealthyThresholdCount: z.number().default(1),
+    path: z.string().default('/health'),
+    interval: z.number().default(60),
+    timeout: z.number().default(30),
+    healthyThresholdCount: z.number().default(2),
+    unhealthyThresholdCount: z.number().default(10),
 });
 
 export const loadBalancerConfigSchema = z.object({
@@ -161,7 +161,7 @@ export const loadBalancerConfigSchema = z.object({
 
 export const autoScalingConfigSchema = z.object({
     minCapacity: z.number().min(1).default(1),
-    maxCapacity: z.number().min(1).default(2),
+    maxCapacity: z.number().min(1).default(1),
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
     metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
@@ -169,7 +169,7 @@ export const autoScalingConfigSchema = z.object({
 
 export const containerConfigSchema = z.object({
     baseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
-    sharedMemorySize: z.number().min(0).default(0),
+    sharedMemorySize: z.number().min(0).default(2048),
     healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
     environment: AttributeEditorSchema,
 });

@@ -492,18 +492,8 @@ export type ECSConfig = EcsBaseConfig;
  * Configuration schema for an ECS model.
  *
  * @property {string} modelName - Name of the model.
- * @property {string} modelId - An optional short id to use when creating cdk ids for model related
- *                              resources
- * @property {boolean} [deploy=true] - Whether to deploy model.
- * @property {boolean} [streaming=null] - Whether the model supports streaming.
- * @property {string} modelType - Type of model.
- * @property {string} instanceType - EC2 instance type for running the model.
+ * @property {string} baseImage - Base image for the container.
  * @property {string} inferenceContainer - Prebuilt inference container for serving model.
- * @property {ContainerConfig} containerConfig - Configuration for the container.
- * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
- * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
- * @property {string} [localModelCode='/opt/model-code'] - Path in container for local model code.
- * @property {string} [modelHosting='ecs'] - Model hosting.
  */
 const EcsModelConfigSchema = z
     .object({

@@ -21,7 +21,7 @@ import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
-import { Config, ModelConfig } from '../schema';
+import { Config } from '../schema';
 
 const IAM_DIR = path.join(__dirname, 'iam');
 

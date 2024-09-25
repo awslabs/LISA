@@ -372,15 +372,15 @@ restApiConfig:
 
 In the `ecsModels` section of `config.yaml`, allow our deployment process to pull the model weights for you.
 
-During the deployment proces, lisa will optionally attempt to download your model weights if you specify an optional`ecsModels`
-array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of the [config.yaml](./config.yaml) file.
+During the deployment process, LISA will optionally attempt to download your model weights if you specify an optional `ecsModels`
+array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of the [example_config.yaml](./example_config.yaml) file.
 Here we define the model name, inference container, and baseImage:
 
 ```yaml
 ecsModels:
   - modelName: your-model-name
     inferenceContainer: tgi
-    baseImage: ghcr.io/huggingface/text-generation-inference:1.0.2
+    baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
 ```
 
 ---
@@ -842,8 +842,8 @@ you can do so.
       ```yaml
       ecsModels:
         - modelName: your-model-name
-          inferenceContainer: tgi # vLLM-specific config
-          baseImage: ghcr.io/huggingface/text-generation-inference:1.0.2 # vLLM-specific config
+          inferenceContainer: tgi 
+          baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
       ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built
   website assets using the top level `webAppAssetsPath` parameter in `config.yaml`. Specifying this path

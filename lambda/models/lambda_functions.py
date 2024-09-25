@@ -14,7 +14,7 @@
 
 """APIGW endpoints for managing models."""
 import os
-from typing import Annotated
+from typing import Annotated, Union
 
 import boto3
 from fastapi import FastAPI, Path, Request
@@ -33,7 +33,7 @@ from .domain_objects import (
     UpdateModelRequest,
     UpdateModelResponse,
 )
-from .exception import ModelAlreadyExistsError, ModelNotFoundError
+from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
 from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler
 
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
@@ -48,10 +48,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
+autoscaling = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
+model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
+stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 @app.exception_handler(ModelNotFoundError)  # type: ignore
@@ -60,9 +61,13 @@ async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> 
     return JSONResponse(status_code=404, content={"message": str(exc)})
 
 
+@app.exception_handler(InvalidStateTransitionError)  # type: ignore
 @app.exception_handler(ModelAlreadyExistsError)  # type: ignore
-async def model_already_exists_handler(request: Request, exc: ModelAlreadyExistsError) -> JSONResponse:
-    """Handle exception when model is found and translate to a 400 error."""
+@app.exception_handler(ValueError)  # type: ignore
+async def user_error_handler(
+    request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
+) -> JSONResponse:
+    """Handle errors when customer requests options that cannot be processed."""
     return JSONResponse(status_code=400, content={"message": str(exc)})
 
 
@@ -71,6 +76,7 @@ async def model_already_exists_handler(request: Request, exc: ModelAlreadyExists
 async def create_model(create_request: CreateModelRequest) -> CreateModelResponse:
     """Endpoint to create a model."""
     create_handler = CreateModelHandler(
+        autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
@@ -82,6 +88,7 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
 async def list_models() -> ListModelsResponse:
     """Endpoint to list models."""
     list_handler = ListModelsHandler(
+        autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
@@ -94,6 +101,7 @@ async def get_model(
 ) -> GetModelResponse:
     """Endpoint to describe a model."""
     get_handler = GetModelHandler(
+        autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
@@ -107,6 +115,7 @@ async def update_model(
 ) -> UpdateModelResponse:
     """Endpoint to update a model."""
     update_handler = UpdateModelHandler(
+        autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
@@ -119,6 +128,7 @@ async def delete_model(
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
     delete_handler = DeleteModelHandler(
+        autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )

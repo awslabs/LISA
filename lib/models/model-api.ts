@@ -371,6 +371,13 @@ export class ModelsApi extends Construct {
                         `${modelTable.tableArn}/*`
                     ],
                 }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'autoscaling:DescribeAutoScalingGroups',
+                    ],
+                    resources: ['*'],  // we do not know ASG names in advance
+                }),
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);

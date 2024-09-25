@@ -23,10 +23,12 @@ class BaseApiHandler:
 
     def __init__(
         self,
+        autoscaling_client: Any,
         stepfunctions_client: Any,
         model_table_resource: Any,
     ):
         """Make all clients available for use in any handler class."""
+        self._autoscaling = autoscaling_client
         self._stepfunctions = stepfunctions_client
         self._model_table = model_table_resource
 

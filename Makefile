@@ -180,7 +180,7 @@ modelCheck:
 						echo "What is your huggingface access token? "; \
 						read -s access_token; \
 						echo "Converting and uploading safetensors for model: $(MODEL_ID)"; \
-						tgiImage=$$(yq '[.$(ENV).ecsModels[] | select(.inferenceContainer == "tgi") | .containerConfig.image.baseImage] | first' $(PROJECT_DIR)/config.yaml | sed "s/^['\"]//;s/['\"]$$//"); \
+						tgiImage=$$(yq -r '[.$(ENV).ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config.yaml); \
 						echo $$tgiImage; \
 						$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $(MODEL_ID) -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
 				fi; \

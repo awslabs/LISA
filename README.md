@@ -370,34 +370,18 @@ restApiConfig:
 
 ## Step 9: Customize Model Deployment
 
-In the `ecsModels` section of `config.yaml`, configure the models you want to deploy.
+In the `ecsModels` section of `config.yaml`, allow our deployment process to pull the model weights for you.
 
-The configuration file will determine which models are deployed. In order to deploy an additional model or a
-different model the only required change is to the configuration file, as long as it is compatible with the inference
-container. Specifically, see the `ecsModels` section of the [config.yaml](./config.yaml) file.
-Here we define the model name, if we want to deploy, the type of instance we want to deploy to, the type of model
-(textgen or embedding), the inference container and then the containerConfig. There are many more parameters for the
-ecs models, many for autoscaling and health checks. However, let's focus on the model specific ones:
+During the deployment process, LISA will optionally attempt to download your model weights if you specify an optional `ecsModels`
+array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of the [example_config.yaml](./example_config.yaml) file.
+Here we define the model name, inference container, and baseImage:
 
 ```yaml
 ecsModels:
   - modelName: your-model-name
-    deploy: false
-    instanceType: g4dn.12xlarge
-    modelType: textgen
     inferenceContainer: tgi
-    containerConfig:
-      baseImage: ghcr.io/huggingface/text-generation-inference:1.0.2
-      environment:
-        QUANTIZE: bitsandbytes-nf4
-        MAX_CONCURRENT_REQUESTS: 128
-        MAX_INPUT_LENGTH: 1024
-        MAX_TOTAL_TOKENS: 2048
+    baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
 ```
-
-Adjust these parameters based on your specific model requirements and performance needs. These parameters will
-be used when the model endpoint is deployed and are likely to change with different model types. For more information
-on these parameters please see the [inference container documentation](https://github.com/huggingface/text-generation-inference/tree/main).
 
 ---
 
@@ -857,17 +841,9 @@ you can do so.
       but this list is expected to grow over time as vLLM updates.
       ```yaml
       ecsModels:
-        - modelName: mistralai/Mistral-7B-Instruct-v0.2
-          modelId: mistral7b-vllm
-          deploy: false
-          modelType: textgen # can also be 'embedding'
-          streaming: true # remove option if modelType is 'embedding'
-          instanceType: g5.xlarge
-          inferenceContainer: vllm # vLLM-specific config
-          containerConfig:
-            image:
-              baseImage: vllm/vllm-openai:v0.5.0 # vLLM-specific config
-              path: lib/serve/ecs-model/vllm # vLLM-specific config
+        - modelName: your-model-name
+          inferenceContainer: tgi
+          baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
       ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built
   website assets using the top level `webAppAssetsPath` parameter in `config.yaml`. Specifying this path

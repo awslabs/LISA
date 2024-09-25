@@ -21,7 +21,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 
-import { createCdkId, getIamPolicyStatements, getModelIdentifier } from './core/utils';
+import { createCdkId, getIamPolicyStatements } from './core/utils';
 import { BaseProps } from './schema';
 
 /**
@@ -42,7 +42,6 @@ type RoleInfo = {
 
 enum ECSTaskType {
     API = 'API',
-    MODEL = 'model endpoint',
 }
 
 /**
@@ -116,14 +115,6 @@ export class LisaServeIAMStack extends Stack {
                 type: ECSTaskType.API,
             },
         ];
-        for (const modelConfig of config.ecsModels) {
-            if (modelConfig.deploy) {
-                ecsRoles.push({
-                    id: getModelIdentifier(modelConfig),
-                    type: ECSTaskType.MODEL,
-                });
-            }
-        }
         ecsRoles.forEach((role) => {
             const roleName = createCdkId([config.deploymentName, role.id, 'Role']);
             const taskRole = new Role(this, createCdkId([role.id, 'Role']), {

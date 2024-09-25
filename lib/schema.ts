@@ -508,41 +508,13 @@ export type ECSConfig = EcsBaseConfig;
 const EcsModelConfigSchema = z
     .object({
         modelName: z.string(),
-        modelId: z.string().optional(),
-        deploy: z.boolean().default(true),
-        streaming: z.boolean().nullable().default(null),
-        modelType: z.nativeEnum(ModelType),
-        instanceType: z.enum(VALID_INSTANCE_KEYS),
+        baseImage: z.string(),
         inferenceContainer: z
             .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
-            }),
-        containerConfig: ContainerConfigSchema,
-        autoScalingConfig: AutoScalingConfigSchema,
-        loadBalancerConfig: LoadBalancerConfigSchema,
-        localModelCode: z.string().default('/opt/model-code'),
-        modelHosting: z
-            .string()
-            .default('ecs')
-            .refine((data) => {
-                return !data.includes('.'); // string cannot contain a period
-            }),
-    })
-    .refine(
-        (data) => {
-            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
-            const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
-            const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
-
-            return isValidForTextgen || isValidForEmbedding;
-        },
-        {
-            message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
-            path: ['streaming'],
-        },
-    );
+            })
+    });
 
 /**
  * Type representing configuration for an ECS model.
@@ -898,7 +870,7 @@ const RawConfigSchema = z
         ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
         ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
         restApiConfig: FastApiContainerConfigSchema,
-        ecsModels: z.array(EcsModelConfigSchema),
+        ecsModels: z.array(EcsModelConfigSchema).optional(),
         apiGatewayConfig: ApiGatewayConfigSchema.optional(),
         nvmeHostMountPath: z.string().default('/nvme'),
         nvmeContainerMountPath: z.string().default('/nvme'),

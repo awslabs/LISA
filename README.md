@@ -842,7 +842,7 @@ you can do so.
       ```yaml
       ecsModels:
         - modelName: your-model-name
-          inferenceContainer: tgi 
+          inferenceContainer: tgi
           baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
       ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built

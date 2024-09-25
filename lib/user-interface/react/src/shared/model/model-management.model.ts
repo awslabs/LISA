@@ -74,6 +74,7 @@ export type ILoadBalancerConfig = {
 export type IAutoScalingConfig = {
     minCapacity: number;
     maxCapacity: number;
+    desiredCapacity?: number;
     cooldown: number;
     defaultInstanceWarmup: number;
     metricConfig: IMetricConfig;
@@ -162,9 +163,24 @@ export const loadBalancerConfigSchema = z.object({
 export const autoScalingConfigSchema = z.object({
     minCapacity: z.number().min(1).default(1),
     maxCapacity: z.number().min(1).default(1),
+    desiredCapacity: z.number().optional(),
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
     metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
+}).superRefine((value, context) => {
+    // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
+    if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {
+        const validator = z.number().min(Number(value.minCapacity)).max(Number(value.maxCapacity));
+        const result = validator.safeParse(value.desiredCapacity);
+        if (result.success === false) {
+            for (const error of result.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['desiredCapacity']
+                });
+            }
+        }
+    }
 });
 
 export const containerConfigSchema = z.object({

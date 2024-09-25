@@ -113,8 +113,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: true,
-            disabledReason: 'This action will be available with LISA release 3.0.1',
+            disabled: !selectedModel,
+            disabledReason: 'No model selected.',
         });
     }
 

@@ -141,7 +141,15 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         if (isValid && !props.isEdit) {
             createModelMutation(toSubmit);
         } else if (isValid && props.isEdit) {
-            updateModelMutation(toSubmit);
+            // pick only the values we care about
+            updateModelMutation(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
+                'modelId',
+                'streaming',
+                'enabled',
+                'modelType',
+                'autoScalingConfig.minCapacity',
+                'autoScalingConfig.maxCapacity'
+            ]));
         }
     }
 
@@ -188,6 +196,48 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateError, updateError, isUpdating, isUpdateSuccess]);
+
+    const steps = [
+        {
+            title: 'Base Model Configuration',
+            description: 'Define your model\'s configuration settings using these forms.',
+            content: (
+                <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+            ),
+            onEdit: true
+        },
+        {
+            title: 'Container Configuration',
+            content: (
+                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+            ),
+            isOptional: true
+        },
+        {
+            title: 'Auto Scaling Configuration',
+            content: (
+                <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+            ),
+            isOptional: true,
+            onEdit: true && state.form.lisaHostedModel
+        },
+        {
+            title: 'Load Balancer Configuration',
+            content: (
+                <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+            ),
+            isOptional: true
+        },
+        {
+            title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
+            description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
+            content: (
+                <ReviewModelChanges jsonDiff={changesDiff}/>
+            ),
+            onEdit: state.form.lisaHostedModel
+        }
+    ].filter((step) => props.isEdit ? step.onEdit : true);
+
 
     return (
         <Modal size={'large'} onDismiss={() => {
@@ -242,43 +292,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 activeStepIndex={state.activeStepIndex}
                 isLoadingNextStep={isCreating || isUpdating}
                 allowSkipTo
-                steps={[
-                    {
-                        title: 'Base Model Configuration',
-                        description: 'Define your model\'s configuration settings using these forms.',
-                        content: (
-                            <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
-                        )
-                    },
-                    {
-                        title: 'Container Configuration',
-                        content: (
-                            <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
-                        ),
-                        isOptional: true
-                    },
-                    {
-                        title: 'Auto Scaling Configuration',
-                        content: (
-                            <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
-                        ),
-                        isOptional: true
-                    },
-                    {
-                        title: 'Load Balancer Configuration',
-                        content: (
-                            <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
-                        ),
-                        isOptional: true
-                    },
-                    {
-                        title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
-                        description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
-                        content: (
-                            <ReviewModelChanges jsonDiff={changesDiff}/>
-                        )
-                    }
-                ]}
+                steps={steps}
             />
         </Modal>
     );

@@ -38,12 +38,12 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Model Name' errorText={props.formErrors?.modelName}>
                 <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
                     props.setFields({ 'modelName': detail.value });
-                }}/>
+                }} disabled={props.isEdit}/>
             </FormField>
             <FormField label='Model URL' errorText={props.formErrors?.modelUrl}>
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
-                }}/>
+                }} disabled={props.isEdit}/>
             </FormField>
             <FormField label='Model Type' errorText={props.formErrors?.modelType}>
                 <Select
@@ -63,7 +63,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
                 <Input value={props.item.instanceType} inputMode='text' onBlur={() => props.touchFields(['instanceType'])} onChange={({ detail }) => {
                     props.setFields({ 'instanceType': detail.value });
-                }}/>
+                }} disabled={props.isEdit}/>
             </FormField>
             <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
                 <Select
@@ -79,6 +79,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         { label: 'TEI', value: InferenceContainer.TEI },
                         { label: 'VLLM', value: InferenceContainer.VLLM },
                     ]}
+                    disabled={props.isEdit}
                 />
             </FormField>
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
@@ -89,6 +90,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         }
                         onBlur={() => props.touchFields(['lisaHostedModel'])}
                         checked={props.item.lisaHostedModel}
+                        disabled={props.isEdit}
                     />
                 </FormField>
                 <FormField label='Streaming' errorText={props.formErrors?.streaming}>

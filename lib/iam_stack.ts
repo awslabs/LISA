@@ -116,14 +116,6 @@ export class LisaServeIAMStack extends Stack {
                 type: ECSTaskType.API,
             },
         ];
-        for (const modelConfig of config.ecsModels) {
-            if (modelConfig.deploy) {
-                ecsRoles.push({
-                    id: getModelIdentifier(modelConfig),
-                    type: ECSTaskType.MODEL,
-                });
-            }
-        }
         ecsRoles.forEach((role) => {
             const roleName = createCdkId([config.deploymentName, role.id, 'Role']);
             const taskRole = new Role(this, createCdkId([role.id, 'Role']), {

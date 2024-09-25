@@ -21,7 +21,7 @@ import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
-import { Config, ModelConfig } from '../schema';
+import { Config } from '../schema';
 
 const IAM_DIR = path.join(__dirname, 'iam');
 
@@ -87,16 +87,4 @@ export function createCdkId (idParts: string[], maxLength: number = 64, truncati
     }
 
     return cdkId;
-}
-
-/**
- * Creates a "normalized" identifier based on the provided model config. If a modelId has been
- * defined the id will be used otherwise the model name will be used. This normalized identifier
- * strips all non alpha numeric characters.
- *
- * @param {string} modelConfig model config
- * @returns {string} normalized model name for use in CDK identifiers/resource names
- */
-export function getModelIdentifier (modelConfig: ModelConfig): string {
-    return (modelConfig.modelId || modelConfig.modelName).replace(/[^a-zA-Z0-9]/g, '');
 }

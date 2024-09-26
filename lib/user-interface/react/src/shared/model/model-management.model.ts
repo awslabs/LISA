@@ -191,8 +191,11 @@ export const containerConfigSchema = z.object({
 });
 
 export const ModelRequestSchema = z.object({
-    modelId: z.string().min(1).default(' '),
-    modelName: z.string().min(1).default(' '),
+    modelId: z.string()
+        .regex(/^[a-z\d-]+$/i, {message: 'Only alphanumeric characters and hyphens allowed'})
+        .regex(/^[a-z0-9].*[a-z0-9]$/i, {message: 'Must start and end with an alphanumeric character.'})
+        .default(''),
+    modelName: z.string().min(1).default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
     lisaHostedModel: z.boolean().default(false),
@@ -202,4 +205,28 @@ export const ModelRequestSchema = z.object({
     containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
     autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
+}).superRefine((value, context) => {
+    if (value.lisaHostedModel) {
+        const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
+        const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
+        if (instanceTypeResult.success === false) {
+            for (const error of instanceTypeResult.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['instanceType']
+                });
+            }
+        }
+
+        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {required_error: 'Required for LISA hosted models.'});
+        const inferenceContainerResult = inferenceContainerValidator.safeParse(value.inferenceContainer);
+        if (inferenceContainerResult.success === false) {
+            for (const error of inferenceContainerResult.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['inferenceContainer']
+                });
+            }
+        }
+    }
 });

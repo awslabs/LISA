@@ -48,11 +48,18 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Model Type' errorText={props.formErrors?.modelType}>
                 <Select
                     selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
-                    onChange={({ detail }) =>
-                        props.setFields({
+                    onChange={({ detail }) => {
+                        const fields = {
                             'modelType': detail.selectedOption.value,
-                        })
-                    }
+                        };
+
+                        // turn off streaming for embedded models
+                        if (fields.modelType === ModelType.embedding) {
+                            fields['streaming'] = false;
+                        }
+
+                        props.setFields(fields);
+                    }}
                     onBlur={() => props.touchFields(['modelType'])}
                     options={[
                         { label: 'TEXTGEN', value: ModelType.textgen },
@@ -99,6 +106,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             props.setFields({'streaming': detail.checked})
                         }
                         onBlur={() => props.touchFields(['streaming'])}
+                        disabled={props.item.modelType === ModelType.embedding}
                         checked={props.item.streaming}
                     />
                 </FormField>

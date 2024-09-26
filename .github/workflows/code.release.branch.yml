@@ -25,6 +25,7 @@ jobs:
           git config --global user.name "github_actions_lisa"
           RELEASE_TAG=${{ github.event.inputs.release_tag }}
           git checkout -b release/${{ github.event.inputs.release_tag }}
+          echo "$( jq --arg version ${RELEASE_TAG:1} '.version = $version' lib/user-interface/react/package.json )" > lib/user-interface/react/package.json
           echo "$( jq --arg version ${RELEASE_TAG:1} '.version = $version' package.json )" > package.json
           sed -E -i -e "s/version = \"[0-9\.].+\"/version = \"${RELEASE_TAG:1}\"/g" lisa-sdk/pyproject.toml
           echo ${RELEASE_TAG:1} > VERSION

@@ -50,6 +50,10 @@ declare global {
                 },
             ];
         };
+        gitInfo?: {
+            revisionTag?: string;
+            gitHash?: string;
+        };
     }
 }
 

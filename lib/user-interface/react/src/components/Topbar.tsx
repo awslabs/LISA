@@ -107,7 +107,8 @@ function Topbar () {
                         }
                     },
                     iconName: 'user-profile',
-                    items: [auth.isAuthenticated ? { id: 'signout', text: 'Sign out' } : { id: 'signin', text: 'Sign in' }],
+                    items: [{id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true},
+                        auth.isAuthenticated ? { id: 'signout', text: 'Sign out' } : { id: 'signin', text: 'Sign in' }],
                 },
                 {
                     type: 'button',

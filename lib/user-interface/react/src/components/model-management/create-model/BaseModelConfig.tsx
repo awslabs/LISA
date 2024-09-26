@@ -95,7 +95,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         onChange={({ detail }) =>
                             props.setFields({'lisaHostedModel': detail.checked})
                         }
-                        onBlur={() => props.touchFields(['lisaHostedModel'])}
+                        onBlur={() => props.touchFields(['lisaHostedModel', 'instanceType', 'inferenceContainer'])}
                         checked={props.item.lisaHostedModel}
                         disabled={props.isEdit}
                     />

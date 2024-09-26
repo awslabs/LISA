@@ -28,6 +28,7 @@ import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { ReviewModelChanges } from './ReviewModelChanges';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
+import { z } from 'zod';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -45,6 +46,38 @@ export type ModelCreateState = {
     activeStepIndex: number;
 };
 
+// Builds an object consisting of the default values for all validators.
+// https://github.com/colinhacks/zod/discussions/1953#discussioncomment-5695528
+function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEffects<any> ): z.infer<T> {
+
+    // Check if it's a ZodEffect
+    if (schema instanceof z.ZodEffects) {
+        // Check if it's a recursive ZodEffect
+        if (schema.innerType() instanceof z.ZodEffects) return getDefaults(schema.innerType());
+        // return schema inner shape as a fresh zodObject
+        return getDefaults(z.ZodObject.create(schema.innerType().shape));
+    }
+
+    function getDefaultValue (schema: z.ZodTypeAny): unknown {
+        if (schema instanceof z.ZodDefault) return schema._def.defaultValue();
+        // return an empty array if it is
+        if (schema instanceof z.ZodArray) return [];
+        // return an empty string if it is
+        if (schema instanceof z.ZodString) return '';
+        // return an content of object recursively
+        if (schema instanceof z.ZodObject) return getDefaults(schema);
+
+        if (!('innerType' in schema._def)) return undefined;
+        return getDefaultValue(schema._def.innerType);
+    }
+
+    return Object.fromEntries(
+        Object.entries( schema.shape ).map( ( [ key, value ] ) => {
+            return [key, getDefaultValue(value)];
+        } )
+    );
+}
+
 export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const [
         createModelMutation,
@@ -55,9 +88,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
     ] = useUpdateModelMutation();
     const initialForm = {
-        ...ModelRequestSchema.parse({}),
-        modelId: '',
-        modelName: '',
+        ...getDefaults(ModelRequestSchema),
     };
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);

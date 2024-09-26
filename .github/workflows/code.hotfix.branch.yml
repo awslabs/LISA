@@ -30,6 +30,7 @@ jobs:
           DST_TAG=${{ github.event.inputs.dest_tag }}
           git checkout -b hotfix/${{ github.event.inputs.dest_tag }}
           sed -i -e "s/\"version\": \"${SRC_TAG:1}\"/\"version\": \"${DST_TAG:1}\"/g" package.json
+          sed -i -e "s/\"version\": \"${SRC_TAG:1}\"/\"version\": \"${DST_TAG:1}\"/g" lib/user-interface/react/package.json
           sed -i -e "s/version = \"${SRC_TAG:1}\"/version = \"${DST_TAG:1}\"/g" lisa-sdk/pyproject.toml
           sed -i -e "s/${SRC_TAG:1}/${DST_TAG:1}/g" VERSION
           git commit -a -m "Updating version for hotfix ${{ github.event.inputs.dest_tag }}"

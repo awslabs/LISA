@@ -177,6 +177,9 @@ Before beginning, ensure you have:
 
 If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and consult with your AWS support team.
 
+> [!TIP]
+> To minimize version conflicts and ensure a consistent deployment environment, it is recommended to execute the following steps on a dedicated EC2 instance. However, LISA can be deployed from any machine that meets the prerequisites listed above.
+
 ---
 
 ## Step 1: Clone the Repository
@@ -250,7 +253,7 @@ Edit the `config.yaml` file to customize your LISA deployment. Key configuration
 
 ## Step 5: Stage Model Weights
 
-LISA uses your AWS account's S3 bucket for model storage. Ensure your S3 bucket is structured as follows:
+LISA requires model weights to be staged in the S3 bucket specified in your `config.yaml` file, assuming the S3 bucket follows this structure:
 
 ```
 s3://<bucket-name>/<hf-model-id-1>
@@ -260,17 +263,31 @@ s3://<bucket-name>/<hf-model-id-1>/<file-2>
 s3://<bucket-name>/<hf-model-id-2>
 ```
 
-To optimize startup time, convert models to `.safetensors` format:
+**Example:**
+
+```
+s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2
+s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-1>
+s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-2>
+...
+```
+
+To automatically download and stage the model weights defined by the `ecsModels` parameter in your `config.yaml`, use the following command:
 
 ```bash
 make modelCheck
 ```
 
-This command will check for models, download them if necessary, and convert them to the required format. Ensure you have sufficient disk space for this operation.
+This command verifies if the model's weights are already present in your S3 bucket. If not, it downloads the weights, converts them to the required format, and uploads them to your S3 bucket. Ensure adequate disk space is available for this process.
 
-For air-gapped systems, manually download model artifacts and place them in a `models` directory in the project root, following the structure: `models/<model-id>`.
+> **WARNING**
+> As of LISA 3.0, the `ecsModels` parameter in `config.yaml` is solely for staging model weights in your S3 bucket. Previously, before models could be managed through the [API](https://github.com/awslabs/LISA/blob/develop/README.md#creating-a-model-admin-api) or via the Model Management section of the [Chatbot](https://github.com/awslabs/LISA/blob/develop/README.md#chatbot-example), this parameter also dictated which models were deployed.
 
-**Note:** We have primarily designed and tested this with HuggingFace models in mind. Any models outside of this format will require you to create and upload safetensors manually.
+> **NOTE**
+> For air-gapped systems, before running `make modelCheck` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
+
+> **NOTE**
+> This process is primarily designed and tested for HuggingFace models. For other model formats, you will need to manually create and upload safetensors.
 
 ---
 
@@ -660,6 +677,7 @@ POST https://<apigw_endpoint>/models
   "modelId": "mistral-vllm",
   "modelName": "mistralai/Mistral-7B-Instruct-v0.2",
   "modelType": "textgen",
+  "inferenceContainer": "vllm",
   "instanceType": "g5.xlarge",
   "streaming": true,
   "containerConfig": {
@@ -686,10 +704,12 @@ POST https://<apigw_endpoint>/models
     "minCapacity": 1,
     "maxCapacity": 1,
     "cooldown": 420,
+    "defaultInstanceWarmup": 180,
     "metricConfig": {
       "albMetricName": "RequestCountPerTarget",
       "targetValue": 30,
-      "duration": 60
+      "duration": 60,
+      "estimatedInstanceWarmup": 330
     }
   },
   "loadBalancerConfig": {

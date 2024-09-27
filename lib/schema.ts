@@ -893,8 +893,8 @@ const RawConfigSchema = z
         permissionsBoundaryAspect: z
             .object({
                 permissionsBoundaryPolicyName: z.string(),
-                rolePrefix: z.string().optional(),
-                policyPrefix: z.string().optional(),
+                rolePrefix: z.string().max(20).optional(),
+                policyPrefix: z.string().max(20).optional(),
                 instanceProfilePrefix: z.string().optional(),
             })
             .optional(),

@@ -37,6 +37,7 @@ export class DockerImageBuilder extends Construct {
         const stackName = Stack.of(scope).stackName;
 
         const ec2InstanceProfileRole = new Role(this, createCdkId([stackName, 'docker-image-builder-ec2-role']), {
+            roleName: createCdkId([stackName, 'docker-image-builder-ec2-role']),
             assumedBy: new ServicePrincipal('ec2.amazonaws.com')
         });
 
@@ -77,6 +78,7 @@ export class DockerImageBuilder extends Construct {
         ec2InstanceProfileRole.attachInlinePolicy(ec2InstanceProfilePolicy);
 
         const role = new Role(this, createCdkId([stackName, 'docker_image_builder_role']), {
+            roleName: createCdkId([stackName, 'docker_image_builder_role']),
             assumedBy: new ServicePrincipal('lambda.amazonaws.com')
         });
 

@@ -22,6 +22,8 @@ import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
 import { Config } from '../schema';
+import { Effect, ManagedPolicy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
 
 const IAM_DIR = path.join(__dirname, 'iam');
 
@@ -39,7 +41,7 @@ type JSONPolicyStatement = {
  * @param {string} serviceName - AWS service name.
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
-const extractPolicyStatementsFromJson = (config: Config, serviceName: string): iam.PolicyStatement[] => {
+const extractPolicyStatementsFromJson = (config: Config, serviceName: string, tableName: string = ''): iam.PolicyStatement[] => {
     const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
     const statements = JSON.parse(statementData).Statement;
 
@@ -50,7 +52,8 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): i
                 return resource
                     .replace(/\${AWS::AccountId}/gi, cdk.Aws.ACCOUNT_ID)
                     .replace(/\${AWS::Partition}/gi, cdk.Aws.PARTITION)
-                    .replace(/\${AWS::Region}/gi, cdk.Aws.REGION);
+                    .replace(/\${AWS::Region}/gi, cdk.Aws.REGION)
+                    .replace(/\${LAMBDA::Table}/gi, tableName);
             });
         }
     });
@@ -62,10 +65,46 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): i
  * Wrapper to get IAM policy statements.
  * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
+ * @param {string} tableName - DynamoDB table name.
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
-export const getIamPolicyStatements = (config: Config, serviceName: string): iam.PolicyStatement[] => {
-    return extractPolicyStatementsFromJson(config, serviceName);
+export const getIamPolicyStatements = (config: Config, serviceName: string, tableName: string = ''): iam.PolicyStatement[] => {
+    return extractPolicyStatementsFromJson(config, serviceName, tableName);
+};
+
+export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '') => {
+    return new Role(construct, `Lisa${lambdaName}LambdaExecutionRole`, {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        roleName: createCdkId([deploymentName, `Lisa${lambdaName}LambdaExecutionRole`]),
+        description: `Role used by LISA ${lambdaName} lambdas to access AWS resources`,
+        managedPolicies: [
+            ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+        ],
+        inlinePolicies: {
+            lambdaPermissions: new PolicyDocument({
+                statements: [...(tableArn ? [
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'dynamodb:BatchGetItem',
+                            'dynamodb:ConditionCheckItem',
+                            'dynamodb:DescribeTable',
+                            'dynamodb:GetItem',
+                            'dynamodb:GetRecords',
+                            'dynamodb:GetShardIterator',
+                            'dynamodb:Query',
+                            'dynamodb:Scan'
+                        ],
+                        resources: [
+                            tableArn,
+                            `${tableArn}/*`,
+                        ]
+                    })
+                ] : []),
+                ]
+            }),
+        }
+    });
 };
 
 /**

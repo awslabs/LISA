@@ -33,14 +33,14 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Model ID' errorText={props.formErrors?.modelId}>
                 <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
                     props.setFields({ 'modelId': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
             </FormField>
             <FormField label='Model Name' errorText={props.formErrors?.modelName}>
                 <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
                     props.setFields({ 'modelName': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
             </FormField>
-            <FormField label='Model URL' errorText={props.formErrors?.modelUrl}>
+            <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
                 }} disabled={props.isEdit}/>
@@ -70,7 +70,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
                 <Input value={props.item.instanceType} inputMode='text' onBlur={() => props.touchFields(['instanceType'])} onChange={({ detail }) => {
                     props.setFields({ 'instanceType': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder='g5.xlarge'/>
             </FormField>
             <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
                 <Select
@@ -95,7 +95,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         onChange={({ detail }) =>
                             props.setFields({'lisaHostedModel': detail.checked})
                         }
-                        onBlur={() => props.touchFields(['lisaHostedModel'])}
+                        onBlur={() => props.touchFields(['lisaHostedModel', 'instanceType', 'inferenceContainer'])}
                         checked={props.item.lisaHostedModel}
                         disabled={props.isEdit}
                     />

@@ -201,6 +201,14 @@ export class ModelsApi extends Construct {
                             ],
                             resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
                         }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'autoscaling:DescribeAutoScalingGroups',
+                                'autoscaling:UpdateAutoScalingGroup',
+                            ],
+                            resources: ['*'],  // We do not know the ASG names in advance
+                        }),
                     ]
                 }),
             }

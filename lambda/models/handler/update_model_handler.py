@@ -78,14 +78,14 @@ class UpdateModelHandler(BaseApiHandler):
 
             # Min capacity can't be greater than the deployed ASG's max capacity
             if asg_config.minCapacity is not None:
-                if asg_config.minCapacity > model_asg["MaxSize"]:
+                if asg_config.maxCapacity is None and asg_config.minCapacity > model_asg["MaxSize"]:
                     raise ValueError(f"Min capacity cannot exceed ASG max of {model_asg['MaxSize']}.")
                 # Note: there is explicitly not a validation for minSize > existing desiredCapacity because
                 # setting the min will update desired capacity if needed if the request is valid.
 
             # Max capacity can't be less than the deployed ASG's min capacity
             if asg_config.maxCapacity is not None:
-                if asg_config.maxCapacity < model_asg["MinSize"]:
+                if asg_config.minCapacity is None and asg_config.maxCapacity < model_asg["MinSize"]:
                     raise ValueError(f"Max capacity cannot be less than ASG min of {model_asg['MinSize']}.")
 
         # Post-validation. Send work to state machine.

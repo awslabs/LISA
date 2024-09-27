@@ -44,6 +44,7 @@ class ModelStatus(str, Enum):
 
     CREATING = "Creating"
     IN_SERVICE = "InService"
+    STARTING = "Starting"
     STOPPING = "Stopping"
     STOPPED = "Stopped"
     UPDATING = "Updating"

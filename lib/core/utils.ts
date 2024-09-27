@@ -41,7 +41,7 @@ type JSONPolicyStatement = {
  * @param {string} serviceName - AWS service name.
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
-const extractPolicyStatementsFromJson = (config: Config, serviceName: string, tableName: string = ''): iam.PolicyStatement[] => {
+const extractPolicyStatementsFromJson = (config: Config, serviceName: string): iam.PolicyStatement[] => {
     const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
     const statements = JSON.parse(statementData).Statement;
 
@@ -52,8 +52,7 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string, ta
                 return resource
                     .replace(/\${AWS::AccountId}/gi, cdk.Aws.ACCOUNT_ID)
                     .replace(/\${AWS::Partition}/gi, cdk.Aws.PARTITION)
-                    .replace(/\${AWS::Region}/gi, cdk.Aws.REGION)
-                    .replace(/\${LAMBDA::Table}/gi, tableName);
+                    .replace(/\${AWS::Region}/gi, cdk.Aws.REGION);
             });
         }
     });
@@ -65,11 +64,10 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string, ta
  * Wrapper to get IAM policy statements.
  * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
- * @param {string} tableName - DynamoDB table name.
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
-export const getIamPolicyStatements = (config: Config, serviceName: string, tableName: string = ''): iam.PolicyStatement[] => {
-    return extractPolicyStatementsFromJson(config, serviceName, tableName);
+export const getIamPolicyStatements = (config: Config, serviceName: string): iam.PolicyStatement[] => {
+    return extractPolicyStatementsFromJson(config, serviceName);
 };
 
 export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '') => {

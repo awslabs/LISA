@@ -609,6 +609,14 @@ const RawConfigSchema = z
             )
             .optional(),
         deploymentPrefix: z.string().optional(),
+        permissionsBoundaryAspect: z
+            .object({
+                permissionsBoundaryPolicyName: z.string(),
+                rolePrefix: z.string().max(20).optional(),
+                policyPrefix: z.string().max(20).optional(),
+                instanceProfilePrefix: z.string().optional(),
+            })
+            .optional(),
     })
     .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
         message: 'Must set PypiConfig if in an iso region',

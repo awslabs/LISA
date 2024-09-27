@@ -120,7 +120,8 @@ export class ModelsApi extends Construct {
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
             ecrUri: ecsModelBuildRepo.repositoryUri,
-            mountS3DebUrl: config.mountS3DebUrl!
+            mountS3DebUrl: config.mountS3DebUrl!,
+            config: config
         });
 
         const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);

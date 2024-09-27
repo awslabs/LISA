@@ -15,15 +15,16 @@
 */
 
 import { Construct } from 'constructs';
-import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function } from 'aws-cdk-lib/aws-lambda';
 import { Role, InstanceProfile, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 
 import { createCdkId } from '../core/utils';
+import { BaseProps } from '../schema';
 
-export type DockerImageBuilderProps = {
+export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
     mountS3DebUrl: string;
 };
@@ -114,7 +115,7 @@ export class DockerImageBuilder extends Construct {
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
             functionName: functionId,
-            runtime: Runtime.PYTHON_3_12,
+            runtime: props.config.lambdaConfig.pythonRuntime,
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),

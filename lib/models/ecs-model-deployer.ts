@@ -56,7 +56,8 @@ export class ECSModelDeployer extends Construct {
             'deploymentStage': props.config.deploymentStage,
             'removalPolicy': props.config.removalPolicy,
             's3BucketModels': props.config.s3BucketModels,
-            'mountS3DebUrl': props.config.mountS3DebUrl
+            'mountS3DebUrl': props.config.mountS3DebUrl,
+            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);

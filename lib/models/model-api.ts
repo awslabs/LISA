@@ -21,7 +21,6 @@ import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     Effect,
-    IRole,
     ManagedPolicy,
     Policy,
     PolicyDocument,
@@ -44,6 +43,7 @@ import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { createLambdaRole } from '../core/utils';
 
 /**
  * Properties for ModelsApi Construct.
@@ -57,7 +57,6 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
  */
 type ModelsApiProps = BaseProps & {
     authorizer: IAuthorizer;
-    lambdaExecutionRole?: IRole;
     lisaServeEndpointUrlPs: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -72,7 +71,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lambdaExecutionRole, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -121,7 +120,8 @@ export class ModelsApi extends Construct {
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
             ecrUri: ecsModelBuildRepo.repositoryUri,
-            mountS3DebUrl: config.mountS3DebUrl!
+            mountS3DebUrl: config.mountS3DebUrl!,
+            config: config
         });
 
         const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
@@ -252,6 +252,7 @@ export class ModelsApi extends Construct {
             MODEL_TABLE_NAME: modelTable.tableName,
         };
 
+        const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn);
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
@@ -268,7 +269,7 @@ export class ModelsApi extends Construct {
                 environment
             },
             config.lambdaConfig.pythonRuntime,
-            lambdaExecutionRole,
+            lambdaRole,
             vpc.vpc,
             securityGroups,
         );
@@ -340,7 +341,7 @@ export class ModelsApi extends Construct {
                 [commonLambdaLayer],
                 f,
                 config.lambdaConfig.pythonRuntime,
-                lambdaExecutionRole,
+                lambdaRole,
                 vpc.vpc,
                 securityGroups,
             );

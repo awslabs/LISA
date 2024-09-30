@@ -17,13 +17,14 @@
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { Role } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
+import { createLambdaRole } from '../../core/utils';
 
 /**
  * Properties for SessionApi Construct.
@@ -37,7 +38,6 @@ import { BaseProps } from '../../schema';
  */
 type SessionApiProps = {
     authorizer: IAuthorizer;
-    lambdaExecutionRole?: IRole;
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
@@ -51,7 +51,7 @@ export class SessionApi extends Construct {
     constructor (scope: Construct, id: string, props: SessionApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lambdaExecutionRole, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -143,6 +143,9 @@ export class SessionApi extends Construct {
                 },
             },
         ];
+
+        const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'SessionApi', sessionTable.tableArn);
+
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
@@ -152,7 +155,7 @@ export class SessionApi extends Construct {
                 [commonLambdaLayer],
                 f,
                 config.lambdaConfig.pythonRuntime,
-                lambdaExecutionRole,
+                lambdaRole,
                 vpc,
                 securityGroups,
             );

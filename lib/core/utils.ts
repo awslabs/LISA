@@ -19,7 +19,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
 
 import { Config } from '../schema';
 import { Effect, ManagedPolicy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
@@ -28,7 +27,7 @@ import { Construct } from 'constructs';
 const IAM_DIR = path.join(__dirname, 'iam');
 
 type JSONPolicyStatement = {
-    Effect: iam.Effect;
+    Effect: Effect;
     Action: string[];
     Resource: string | string[];
     Condition: Record<string, Record<string, string | string[]>>;
@@ -41,7 +40,7 @@ type JSONPolicyStatement = {
  * @param {string} serviceName - AWS service name.
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
-const extractPolicyStatementsFromJson = (config: Config, serviceName: string): iam.PolicyStatement[] => {
+const extractPolicyStatementsFromJson = (config: Config, serviceName: string): PolicyStatement[] => {
     const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
     const statements = JSON.parse(statementData).Statement;
 
@@ -57,7 +56,7 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): i
         }
     });
 
-    return statements.map((statement: JSONPolicyStatement) => iam.PolicyStatement.fromJson(statement));
+    return statements.map((statement: JSONPolicyStatement) => PolicyStatement.fromJson(statement));
 };
 
 /**
@@ -66,7 +65,7 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): i
  * @param {string} serviceName - AWS service name.
  * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
  */
-export const getIamPolicyStatements = (config: Config, serviceName: string): iam.PolicyStatement[] => {
+export const getIamPolicyStatements = (config: Config, serviceName: string): PolicyStatement[] => {
     return extractPolicyStatementsFromJson(config, serviceName);
 };
 

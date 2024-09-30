@@ -38,7 +38,7 @@ type JSONPolicyStatement = {
  *
  * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
- * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
+ * @returns {PolicyStatement[]} - Extracted IAM policy statements.
  */
 const extractPolicyStatementsFromJson = (config: Config, serviceName: string): PolicyStatement[] => {
     const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
@@ -63,7 +63,7 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): P
  * Wrapper to get IAM policy statements.
  * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
- * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
+ * @returns {PolicyStatement[]} - Extracted IAM policy statements.
  */
 export const getIamPolicyStatements = (config: Config, serviceName: string): PolicyStatement[] => {
     return extractPolicyStatementsFromJson(config, serviceName);

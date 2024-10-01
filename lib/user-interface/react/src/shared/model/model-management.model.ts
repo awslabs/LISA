@@ -20,6 +20,7 @@ export enum ModelStatus {
     Creating = 'Creating',
     InService = 'InService',
     Stopping = 'Stopping',
+    Starting = 'Starting',
     Stopped = 'Stopped',
     Updating = 'Updating',
     Deleting = 'Deleting',
@@ -88,6 +89,7 @@ export type IContainerConfig = {
 };
 
 export type IModel = {
+    status?: ModelStatus;
     modelId: string;
     modelName: string;
     modelUrl: string;
@@ -123,7 +125,7 @@ export type IModelUpdateRequest = {
     streaming?: boolean;
     enabled?: boolean;
     modelType?: ModelType;
-    autoScalingConfig?: IAutoScalingConfig;
+    autoScalingInstanceConfig?: IAutoScalingConfig;
 };
 
 const containerHealthCheckConfigSchema = z.object({

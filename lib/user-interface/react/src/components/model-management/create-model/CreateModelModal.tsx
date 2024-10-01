@@ -173,14 +173,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             createModelMutation(toSubmit);
         } else if (isValid && props.isEdit) {
             // pick only the values we care about
-            updateModelMutation(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
+            updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
                 'modelId',
                 'streaming',
                 'enabled',
                 'modelType',
                 'autoScalingConfig.minCapacity',
                 'autoScalingConfig.maxCapacity'
-            ]));
+            ]), (value: any, key: string) => {
+                if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
+                return key;
+            }));
         }
     }
 

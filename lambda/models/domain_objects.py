@@ -138,8 +138,9 @@ class LISAModel(BaseModel):
 
     autoScalingConfig: Optional[AutoScalingConfig] = None
     containerConfig: Optional[ContainerConfig] = None
-    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    inferenceContainer: Optional[InferenceContainer] = None
     instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
+    loadBalancerConfig: Optional[LoadBalancerConfig] = None
     modelId: str
     modelName: str
     modelType: ModelType

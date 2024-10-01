@@ -82,14 +82,14 @@ export class ECSCluster extends Construct {
         const { config, vpc, securityGroup, ecsConfig } = props;
 
         // Create ECS cluster
-        const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
+        const cluster = new Cluster(this, createCdkId(['Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             vpc: vpc,
             containerInsights: !config.region.includes('iso'),
         });
 
         // Create auto scaling group
-        const autoScalingGroup = cluster.addCapacity(createCdkId([ecsConfig.identifier, 'ASG']), {
+        const autoScalingGroup = cluster.addCapacity(createCdkId(['ASG']), {
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,

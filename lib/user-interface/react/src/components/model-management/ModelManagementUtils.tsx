@@ -25,6 +25,7 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
     [ModelStatus.Creating]: 'in-progress',
     [ModelStatus.InService]: 'success',
     [ModelStatus.Stopping]: 'in-progress',
+    [ModelStatus.Starting]: 'in-progress',
     [ModelStatus.Stopped]: 'stopped',
     [ModelStatus.Updating]: 'in-progress',
     [ModelStatus.Deleting]: 'in-progress',

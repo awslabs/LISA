@@ -24,7 +24,7 @@ import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
-import { Choice, Condition, DefinitionBody, StateMachine, Succeed, Wait } from 'aws-cdk-lib/aws-stepfunctions';
+import { Choice, Condition, DefinitionBody, StateMachine, Succeed, Wait, WaitTime } from 'aws-cdk-lib/aws-stepfunctions';
 
 
 type UpdateModelStateMachineProps = BaseProps & {
@@ -125,6 +125,9 @@ export class UpdateModelStateMachine extends Construct {
         const waitBeforePollAsg = new Wait(this, 'WaitBeforePollAsg', {
             time: POLLING_TIMEOUT
         });
+        const waitBeforeModelAvailable = new Wait(this, 'WaitBeforeModelAvailable', {
+            time: WaitTime.secondsPath('$.model_warmup_seconds'),
+        });
 
         // State Machine definition
         handleJobIntake.next(hasCapacityUpdateChoice);
@@ -134,8 +137,10 @@ export class UpdateModelStateMachine extends Construct {
 
         handlePollCapacity.next(pollAsgChoice);
         pollAsgChoice.when(Condition.booleanEquals('$.should_continue_capacity_polling', true), waitBeforePollAsg)
-            .otherwise(handleFinishUpdate);
+            .otherwise(waitBeforeModelAvailable);
         waitBeforePollAsg.next(handlePollCapacity);
+
+        waitBeforeModelAvailable.next(handleFinishUpdate);
 
         handleFinishUpdate.next(successState);
 

@@ -16,7 +16,11 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
+import {
+    IModel,
+    IModelRequest,
+    ModelRequestSchema
+} from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -173,14 +177,18 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             createModelMutation(toSubmit);
         } else if (isValid && props.isEdit) {
             // pick only the values we care about
-            updateModelMutation(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
+            updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
                 'modelId',
                 'streaming',
                 'enabled',
                 'modelType',
                 'autoScalingConfig.minCapacity',
-                'autoScalingConfig.maxCapacity'
-            ]));
+                'autoScalingConfig.maxCapacity',
+                'autoScalingConfig.desiredCapacity'
+            ]), (value: any, key: string) => {
+                if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
+                return key;
+            }));
         }
     }
 

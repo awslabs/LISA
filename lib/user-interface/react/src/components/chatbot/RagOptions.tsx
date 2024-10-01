@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { listRagRepositories } from '../utils';
 import { AuthContextProps } from 'react-oidc-context';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
-import { IModel, ModelType } from '../../shared/model/model-management.model';
+import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 
 export type RagConfig = {
     embeddingModel: IModel;
@@ -42,7 +42,7 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
     const [repositoryMap, setRepositoryMap] = useState(new Map());
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {selectFromResult: (state) => ({
         isFetching: state.isFetching,
-        data: (state.data || []).filter((model) => model.modelType === ModelType.embedding),
+        data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
     })});
     const embeddingOptions = useMemo(() => {
         return allModels?.map((model) => ({value: model.modelId})) || [];

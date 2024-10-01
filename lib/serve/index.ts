@@ -103,7 +103,7 @@ export class LisaServeApplicationStack extends Stack {
         // const rotateManagementKeyLambdaId = createCdkId([id, 'RotateManagementKeyLambda'])
         // const rotateManagementKeyLambda = new Function(this, rotateManagementKeyLambdaId, {
         //     functionName: rotateManagementKeyLambdaId,
-        //     runtime: Runtime.PYTHON_3_12,
+        //     runtime: config.lambdaConfig.pythonRuntime,
         //     handler: 'management_key.rotate_management_key',
         //     code: Code.fromAsset('./lambda/'),
         //     timeout: Duration.minutes(1),

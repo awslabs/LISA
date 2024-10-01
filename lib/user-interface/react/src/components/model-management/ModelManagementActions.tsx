@@ -49,7 +49,10 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 New Model
             </Button>
             <Button
-                onClick={() => dispatch(modelManagementApi.util.invalidateTags(['models']))}
+                onClick={() => {
+                    props.setSelectedItems([]);
+                    dispatch(modelManagementApi.util.invalidateTags(['models']));
+                }}
                 ariaLabel={'Refresh models cards'}
             >
                 <Icon name='refresh' />

@@ -16,7 +16,11 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
+import {
+    IModel,
+    IModelRequest,
+    ModelRequestSchema
+} from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -179,7 +183,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 'enabled',
                 'modelType',
                 'autoScalingConfig.minCapacity',
-                'autoScalingConfig.maxCapacity'
+                'autoScalingConfig.maxCapacity',
+                'autoScalingConfig.desiredCapacity'
             ]), (value: any, key: string) => {
                 if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
                 return key;

@@ -18,7 +18,8 @@ from enum import Enum
 from typing import Annotated, List, Optional, Union
 
 from pydantic import BaseModel
-from pydantic.functional_validators import AfterValidator, field_validator
+from pydantic.functional_validators import AfterValidator, field_validator, model_validator
+from typing_extensions import Self
 from utilities.validators import validate_instance_type
 
 
@@ -43,6 +44,7 @@ class ModelStatus(str, Enum):
 
     CREATING = "Creating"
     IN_SERVICE = "InService"
+    STARTING = "Starting"
     STOPPING = "Stopping"
     STOPPED = "Stopped"
     UPDATING = "Updating"
@@ -166,6 +168,14 @@ class CreateModelRequest(BaseModel):
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
 
+    @model_validator(mode="after")  # type: ignore
+    def validate_create_model_request(self) -> Self:
+        """Validate whole request object."""
+        # Validate that an embedding model cannot be set as streaming-enabled
+        if self.modelType == ModelType.EMBEDDING and self.streaming:
+            raise ValueError("Embedding model cannot be set with streaming enabled.")
+        return self
+
 
 class CreateModelResponse(ApiResponseBase):
     """Response object when creating a model."""
@@ -193,6 +203,27 @@ class UpdateModelRequest(BaseModel):
     modelType: Optional[ModelType] = None
     streaming: Optional[bool] = None
 
+    @model_validator(mode="after")  # type: ignore
+    def validate_update_model_request(self) -> Self:
+        """Validate whole request object."""
+        fields = (
+            self.autoScalingInstanceConfig,
+            self.enabled,
+            self.modelType,
+            self.streaming,
+        )
+        # Validate that at minimum one field is defined, otherwise there's no action to take in this update
+        if all((field is None for field in fields)):
+            raise ValueError(
+                "At least one field out of 'autoScalingInstanceConfig', 'enabled', 'modelType', or "
+                "'streaming' must be defined in request payload."
+            )
+
+        # Validate that an embedding model cannot be set as streaming-enabled
+        if self.modelType == ModelType.EMBEDDING and self.streaming:
+            raise ValueError("Embedding model cannot be set with streaming enabled.")
+        return self
+
     @field_validator("autoScalingInstanceConfig")  # type: ignore
     @classmethod
     def validate_autoscaling_instance_config(cls, config: AutoScalingInstanceConfig) -> AutoScalingInstanceConfig:
@@ -202,8 +233,15 @@ class UpdateModelRequest(BaseModel):
         config_fields = (config.minCapacity, config.maxCapacity, config.desiredCapacity)
         if all((field is None for field in config_fields)):
             raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
-        if any((isinstance(field, int) and field < 0 for field in config_fields)):
-            raise ValueError("All autoScalingInstanceConfig fields must be >= 0.")
+        if any((isinstance(field, int) and field < 1 for field in config_fields)):
+            raise ValueError("All autoScalingInstanceConfig fields must be >= 1.")
+        # if desired and max are greater than 1, and desired is greater than requested max, throw error
+        if config.desiredCapacity and config.maxCapacity and config.desiredCapacity > config.maxCapacity:
+            raise ValueError("Desired capacity must be <= max capacity.")
+        # if desired and min are 0 or more, and desired is less than requested min, throw error
+        if isinstance(config.desiredCapacity, int) and isinstance(config.minCapacity, int):
+            if config.desiredCapacity < config.minCapacity:
+                raise ValueError("Desired capacity must be >= min capacity.")
         return config
 
 

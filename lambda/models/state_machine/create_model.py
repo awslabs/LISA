@@ -206,6 +206,8 @@ def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, A
         for output in outputs:
             if output["OutputKey"] == "modelEndpointUrl":
                 output_dict["modelUrl"] = output["OutputValue"]
+            elif output["OutputKey"] == "autoScalingGroup":
+                output_dict["autoScalingGroup"] = output["OutputValue"]
         output_dict["continue_polling_stack"] = False
         return output_dict
     elif stackStatus in ["CREATE_IN_PROGRESS", "UPDATE_IN_PROGRESS"]:
@@ -258,12 +260,16 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
 
     model_table.update_item(
         Key={"model_id": event["modelId"]},
-        UpdateExpression="SET model_status = :ms, litellm_id = :lid, last_modified_date = :lm, model_url = :mu",
+        UpdateExpression=(
+            "SET model_status = :ms, litellm_id = :lid, last_modified_date = :lm, model_url = :mu, "
+            "auto_scaling_group = :asg"
+        ),
         ExpressionAttributeValues={
             ":ms": ModelStatus.IN_SERVICE,
             ":lid": litellm_id,
             ":lm": int(datetime.utcnow().timestamp()),
             ":mu": litellm_params.get("api_base", ""),
+            ":asg": event.get("autoScalingGroup", ""),
         },
     )
 

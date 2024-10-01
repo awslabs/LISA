@@ -61,7 +61,7 @@ import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
-import { IModel, ModelType } from '../../shared/model/model-management.model';
+import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 
 export default function Chat ({ sessionId }) {
     const [userPrompt, setUserPrompt] = useState('');
@@ -79,7 +79,7 @@ export default function Chat ({ sessionId }) {
 
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {selectFromResult: (state) => ({
         isFetching: state.isFetching,
-        data: (state.data || []).filter((model) => model.modelType === ModelType.textgen),
+        data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
     })});
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [modelConfig, setModelConfig] = useState<ModelConfig>();

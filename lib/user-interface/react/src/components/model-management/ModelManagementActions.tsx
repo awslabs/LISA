@@ -49,7 +49,10 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 New Model
             </Button>
             <Button
-                onClick={() => dispatch(modelManagementApi.util.invalidateTags(['models']))}
+                onClick={() => {
+                    props.setSelectedItems([]);
+                    dispatch(modelManagementApi.util.invalidateTags(['models']));
+                }}
                 ariaLabel={'Refresh models cards'}
             >
                 <Icon name='refresh' />
@@ -97,6 +100,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Delete',
             id: 'deleteModel',
+            disabled: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status),
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending state' : '',
         });
         items.push({
             text: 'Start',
@@ -113,8 +118,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: !selectedModel,
-            disabledReason: 'No model selected.',
+            disabled: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status),
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending state' : '',
         });
     }
 

@@ -62,7 +62,7 @@ export function ModelManagementComponent () : ReactElement {
 
     return (
         <>
-            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems}/>
+            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems}/>
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}

@@ -79,9 +79,9 @@ export default function Chat ({ sessionId }) {
 
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
-        isFetching: state.isFetching,
-        data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
-    })});
+            isFetching: state.isFetching,
+            data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
+        })});
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [modelConfig, setModelConfig] = useState<ModelConfig>();
     const [selectedModel, setSelectedModel] = useState<IModel>();

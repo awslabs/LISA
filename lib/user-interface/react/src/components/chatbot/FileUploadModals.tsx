@@ -243,7 +243,7 @@ export function RagUploadModal ({
                 auth.user?.id_token,
                 fileKeys,
                 ragConfig.repositoryId,
-                ragConfig.embeddingModel,
+                { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
                 ragConfig.repositoryType,
                 chunkSize,
                 chunkOverlap,

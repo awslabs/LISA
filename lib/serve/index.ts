@@ -17,7 +17,7 @@
 // LISA-serve Stack.
 import path from 'path';
 
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
@@ -91,7 +91,6 @@ export class LisaServeApplicationStack extends Stack {
                 excludePunctuation: true,
                 passwordLength: 16
             },
-            removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE
         });
 
         // const commonLambdaLayer = LayerVersion.fromLayerVersionArn(

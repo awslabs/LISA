@@ -40,6 +40,7 @@ export type CreateModelModalProps = {
     setIsEdit: (boolean) => void;
     setVisible: (boolean) => void;
     selectedItems: IModel[];
+    setSelectedItems: (items: IModel[]) => void;
 };
 
 export type ModelCreateState = {
@@ -229,6 +230,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             notificationService.generateNotification(`Successfully updated model: ${state.form.modelId}`, 'success');
             props.setVisible(false);
             props.setIsEdit(false);
+            props.setSelectedItems([]);
             resetState();
         } else if (!isUpdating && isUpdateError) {
             notificationService.generateNotification(`Error updating model: ${updateError.data.message ?? updateError.data}`, 'error');

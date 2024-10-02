@@ -197,6 +197,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     useEffect(() => {
         const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
+        if (parsedValue.inferenceContainer === null){
+            delete parsedValue.inferenceContainer;
+        }
         if (props.isEdit) {
             setState({
                 ...state,

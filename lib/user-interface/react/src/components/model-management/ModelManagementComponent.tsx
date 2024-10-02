@@ -29,7 +29,7 @@ import { ModelActions } from './ModelManagementActions';
 import { IModel } from '../../shared/model/model-management.model';
 
 export function ModelManagementComponent () : ReactElement {
-    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery();
+    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: true});
     const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);

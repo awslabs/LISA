@@ -77,7 +77,8 @@ export default function Chat ({ sessionId }) {
           ${aiPrefix}:`,
     );
 
-    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {selectFromResult: (state) => ({
+    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+        selectFromResult: (state) => ({
         isFetching: state.isFetching,
         data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
     })});

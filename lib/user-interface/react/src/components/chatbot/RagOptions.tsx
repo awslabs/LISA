@@ -40,7 +40,8 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
     const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<SelectProps.Option | undefined>(undefined);
     const [selectedRepositoryOption, setSelectedRepositoryOption] = useState<SelectProps.Option | undefined>(undefined);
     const [repositoryMap, setRepositoryMap] = useState(new Map());
-    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {selectFromResult: (state) => ({
+    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+        selectFromResult: (state) => ({
         isFetching: state.isFetching,
         data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
     })});

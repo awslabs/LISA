@@ -168,7 +168,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     }
 
     const changesDiff = useMemo(() => {
-        return props.isEdit ? getJsonDifference(props.selectedItems[0], toSubmit) : getJsonDifference({}, toSubmit);
+        return props.isEdit ? getJsonDifference({
+            ...props.selectedItems[0],
+            lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
+        }, toSubmit) :
+            getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, props.isEdit]);
 

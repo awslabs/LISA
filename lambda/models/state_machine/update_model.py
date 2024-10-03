@@ -74,14 +74,17 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     model_config = ddb_item["model_config"]  # all model creation params
     model_status = ddb_item["model_status"]
-    model_asg = ddb_item["auto_scaling_group"]
+    model_asg = ddb_item.get("auto_scaling_group", None)  # ASG name for LISA-hosted models. None if LiteLLM-only model.
 
     output_dict["asg_name"] = model_asg  # add to event dict for convenience in later functions
 
     # keep track of model wait time for model startup later. autoscaling marks instances as healthy even though the
     # models have not fully stood up yet, so this is another protection to make sure that the model is actually
-    # running before users can run inference against it
-    output_dict["model_warmup_seconds"] = model_config["autoScalingConfig"]["metricConfig"]["estimatedInstanceWarmup"]
+    # running before users can run inference against it. Will not be defined for LiteLLM-only models.
+    if model_asg:
+        output_dict["model_warmup_seconds"] = model_config["autoScalingConfig"]["metricConfig"][
+            "estimatedInstanceWarmup"
+        ]
 
     # Two checks for enabling: check that value was not omitted, then check that it was actually True.
     is_activation_request = event["update_payload"].get("enabled", None) is not None
@@ -89,6 +92,9 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     is_disable = is_activation_request and not is_enable
 
     is_autoscaling_update = event["update_payload"].get("autoScalingInstanceConfig", None) is not None
+
+    if not model_asg and (is_activation_request or is_autoscaling_update):
+        raise RuntimeError("Cannot request AutoScaling updates to models that are not hosted by LISA.")
 
     if is_activation_request and is_autoscaling_update:
         raise RuntimeError(

@@ -560,7 +560,9 @@ export default function Chat ({ sessionId }) {
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
                                                     e.preventDefault();
-                                                    handleSendGenerateRequest();
+                                                    if (!isRunning) {
+                                                        handleSendGenerateRequest();
+                                                    }
                                                 }
                                             }}
                                             value={userPrompt}

@@ -15,7 +15,7 @@
 */
 
 import { Construct } from 'constructs';
-import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { DockerImageCode, DockerImageFunction, IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration, Size } from 'aws-cdk-lib';
 
@@ -29,7 +29,7 @@ export type ECSModelDeployerProps = {
 } & BaseProps;
 
 export class ECSModelDeployer extends Construct {
-    readonly ecsModelDeployerFn: Function;
+    readonly ecsModelDeployerFn: IFunction;
     constructor (scope: Construct, id: string, props: ECSModelDeployerProps) {
         super(scope, id);
         const stackName = Stack.of(scope).stackName;
@@ -61,11 +61,9 @@ export class ECSModelDeployer extends Construct {
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
-        this.ecsModelDeployerFn = new Function(this, functionId, {
+        this.ecsModelDeployerFn = new DockerImageFunction(this, functionId, {
             functionName: functionId,
-            runtime: Runtime.NODEJS_18_X,
-            handler: 'index.handler',
-            code: Code.fromAsset('./ecs_model_deployer/dist/'),
+            code: DockerImageCode.fromImageAsset('./ecs_model_deployer/'),
             timeout: Duration.minutes(10),
             ephemeralStorageSize: Size.mebibytes(2048),
             memorySize: 1024,

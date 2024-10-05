@@ -14,7 +14,8 @@
   limitations under the License.
 */
 
-import { App } from 'aws-cdk-lib';
+import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
+import { Aspects, App } from 'aws-cdk-lib';
 import { LisaModelStack, LisaModelStackProps } from './lisa_model_stack';
 
 import { ConfigFile, ConfigSchema } from './schema';
@@ -37,4 +38,8 @@ const stackProps: LisaModelStackProps = {
     modelConfig: modelConfig
 };
 
-new LisaModelStack(app, `${config.deploymentName}-${modelConfig.modelId}`, stackProps);
+const lisaModelStack = new LisaModelStack(app, `${config.deploymentName}-${modelConfig.modelId}`, stackProps);
+
+if (config.permissionsBoundaryAspect) {
+    Aspects.of(lisaModelStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+}

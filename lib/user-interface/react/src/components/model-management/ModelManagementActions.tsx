@@ -118,8 +118,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status),
-            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending state' : '',
+            disabled: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending or failed state' : '',
         });
     }
 

@@ -58,7 +58,7 @@ export class EcsModel extends Construct {
         super(scope, id);
         const { config, modelConfig, securityGroup, vpc } = props;
 
-        const modelCluster = new ECSCluster(scope, 'Model', {
+        const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
             config,
             ecsConfig: {
                 amiHardwareType: AmiHardwareType.GPU,

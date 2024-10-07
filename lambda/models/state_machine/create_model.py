@@ -171,7 +171,6 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
                 {
                     "error": "Failed to create Model CloudFormation Stack. Please validate model parameters are valid.",
                     "event": event,
-                    "model_deployer_response": payload,
                 }
             )
         )

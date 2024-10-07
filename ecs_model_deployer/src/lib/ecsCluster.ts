@@ -73,27 +73,23 @@ export class ECSCluster extends Construct {
     public readonly endpointUrl: string;
 
     /**
-   * @param {Construct} parent - The parent or owner of the construct. Note: Most resources in this file will use the
-       `parent` scope instead of `this` scope because the PermissionsBoundaryAspect makes excessively long names if the
-       stack has too much Construct nesting. Placing objects in the parent scope partially alleviates these issues at
-       the detriment of proper metadata tree resolution. Because the model stacks are self-contained, this structure is
-       fine to flatten out, similar to how a normal CloudFormation template would resolve, where everything is flat.
+   * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor (parent: Construct, id: string, props: ECSClusterProps) {
-        super(parent, id);
+    constructor (scope: Construct, id: string, props: ECSClusterProps) {
+        super(scope, id);
         const { config, vpc, securityGroup, ecsConfig } = props;
 
         // Create ECS cluster
-        const cluster = new Cluster(parent, 'Cluster', {
+        const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             vpc: vpc,
             containerInsights: !config.region.includes('iso'),
         });
 
         // Create auto scaling group
-        const autoScalingGroup = cluster.addCapacity('Asg', {
+        const autoScalingGroup = cluster.addCapacity(createCdkId([ecsConfig.identifier, 'ASG']), {
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
@@ -185,21 +181,24 @@ export class ECSCluster extends Construct {
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
         }
 
-        const taskPolicy = ManagedPolicy.fromManagedPolicyName(parent, createCdkId([(config.permissionsBoundaryAspect?.policyPrefix ?? '') + config.deploymentName, 'ECSPolicy']), createCdkId([(config.permissionsBoundaryAspect?.policyPrefix ?? '') + config.deploymentName, 'ECSPolicy']));
+        const taskPolicy = ManagedPolicy.fromManagedPolicyName(this, createCdkId([(config.permissionsBoundaryAspect?.policyPrefix ?? '') + config.deploymentName, 'ECSPolicy']), createCdkId([(config.permissionsBoundaryAspect?.policyPrefix ?? '') + config.deploymentName, 'ECSPolicy']));
         const role_id = ecsConfig.identifier;
-        const taskRole = new Role(parent, 'TaskRole', {
+        const roleName = createCdkId([config.deploymentName, role_id, 'Role']);
+        const taskRole = new Role(this, createCdkId([role_id, 'Role']), {
             assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+            roleName,
             description: `Allow ${role_id} ${role_id} ECS task access to AWS resources`,
             managedPolicies: [taskPolicy],
         });
-        new StringParameter(parent, createCdkId([config.deploymentName, role_id, 'SP']), {
+        new StringParameter(this, createCdkId([config.deploymentName, role_id, 'SP']), {
             parameterName: `${config.deploymentPrefix}/roles/${role_id}`,
             stringValue: taskRole.roleArn,
             description: `Role ARN for LISA ${role_id} ${role_id} ECS Task`,
         });
 
         // Create ECS task definition
-        const taskDefinition = new Ec2TaskDefinition(parent, 'TaskDef', {
+        const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
+            family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskRole: taskRole,
             volumes: volumes,
         });
@@ -216,7 +215,7 @@ export class ECSCluster extends Construct {
 
         const linuxParameters =
       ecsConfig.containerConfig.sharedMemorySize > 0
-          ? new LinuxParameters(parent, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
+          ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
               sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
           })
           : undefined;
@@ -225,7 +224,7 @@ export class ECSCluster extends Construct {
         switch (ecsConfig.containerConfig.image.type) {
             case EcsSourceType.ECR: {
                 const repository = Repository.fromRepositoryArn(
-                    parent,
+                    this,
                     createCdkId([ecsConfig.identifier, 'Repo']),
                     ecsConfig.containerConfig.image.repositoryArn,
                 );
@@ -247,6 +246,7 @@ export class ECSCluster extends Construct {
         }
 
         const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
+            containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             image,
             environment,
             logging: LogDriver.awsLogs({ streamPrefix: ecsConfig.identifier }),
@@ -269,12 +269,12 @@ export class ECSCluster extends Construct {
             circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
         };
 
-        const service = new Ec2Service(parent, 'Ec2Svc', serviceProps);
+        const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
 
         service.node.addDependency(autoScalingGroup);
 
         // Create application load balancer
-        const loadBalancer = new ApplicationLoadBalancer(parent, 'Alb', {
+        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: false,
             loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
@@ -299,7 +299,8 @@ export class ECSCluster extends Construct {
 
         // Add targets
         const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
-        const targetGroup = listener.addTargets('TgtGrp', {
+        const targetGroup = listener.addTargets(createCdkId([ecsConfig.identifier, 'TgtGrp']), {
+            targetGroupName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
             healthCheck: {
                 path: loadBalancerHealthCheckConfig.path,
                 interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

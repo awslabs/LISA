@@ -34,13 +34,13 @@ export class LisaModelStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaModelStackProps) {
         super(scope, id, props);
 
-        const vpc = Vpc.fromLookup(this, 'vpc', {
+        const vpc = Vpc.fromLookup(this, `${id}-vpc`, {
             vpcId: props.vpcId
         });
 
-        const securityGroup = SecurityGroup.fromLookupById(this, 'sg', props.securityGroupId);
+        const securityGroup = SecurityGroup.fromLookupById(this, `${id}-sg`, props.securityGroupId);
 
-        new EcsModel(this, 'EcsModel', {
+        new EcsModel(this, `${id}-ecsModel`, {
             config: props.config,
             modelConfig: props.modelConfig,
             securityGroup: securityGroup,

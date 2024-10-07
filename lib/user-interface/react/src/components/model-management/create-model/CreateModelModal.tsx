@@ -178,9 +178,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     function handleSubmit () {
         delete toSubmit.lisaHostedModel;
-        if (isValid && !props.isEdit) {
+        if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
             createModelMutation(toSubmit);
-        } else if (isValid && props.isEdit) {
+        } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
             // pick only the values we care about
             updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
                 'modelId',

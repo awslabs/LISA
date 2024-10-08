@@ -150,6 +150,8 @@ export class LisaServeApplicationStage extends Stage {
 
         const apiDeploymentStack = new LisaApiDeploymentStack(this, 'LisaApiDeployment', {
             ...baseStackProps,
+            description: `LISA-api-deployment: ${config.deploymentName}-${config.deploymentStage}`,
+            stackName: createCdkId([config.deploymentName, config.appName, 'api-deployment', config.deploymentStage]),
             restApiId: apiBaseStack.restApiId,
         });
         apiDeploymentStack.addDependency(apiBaseStack);

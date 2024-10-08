@@ -79,7 +79,7 @@ export class LisaRagStack extends Stack {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`;
+        const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`.toLowerCase();
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
             bucketName,
             cors: [

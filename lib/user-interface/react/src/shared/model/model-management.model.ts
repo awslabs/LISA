@@ -49,7 +49,6 @@ export type IContainerHealthCheckConfig = {
 
 export type IContainerConfigImage = {
     baseImage: string;
-    path: string;
     type: string;
 };
 
@@ -139,7 +138,6 @@ const containerHealthCheckConfigSchema = z.object({
 
 const containerConfigImageSchema = z.object({
     baseImage: z.string().default(''),
-    path: z.string().default(''),
     type: z.string().default('asset'),
 });
 

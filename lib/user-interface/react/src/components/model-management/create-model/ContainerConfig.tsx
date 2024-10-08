@@ -45,11 +45,6 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
                             props.setFields({ 'containerConfig.baseImage.baseImage': detail.value });
                         }}/>
                     </FormField>
-                    <FormField label='Path' errorText={props.formErrors?.containerConfig?.baseImage?.path}>
-                        <Input value={props.item.baseImage.path} inputMode='text' onBlur={() => props.touchFields(['containerConfig.baseImage.path'])} onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.baseImage.path': detail.value });
-                        }}/>
-                    </FormField>
                     <FormField label='Type' errorText={props.formErrors?.containerConfig?.baseImage?.type}>
                         <Input value={props.item.baseImage.type} inputMode='text' onBlur={() => props.touchFields(['containerConfig.baseImage.type'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.baseImage.type': detail.value });

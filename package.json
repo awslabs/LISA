@@ -14,7 +14,7 @@
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
     "@aws-sdk/client-iam": "^3.490.0",
-    "@cdklabs/cdk-enterprise-iac": "^0.0.400",
+    "@cdklabs/cdk-enterprise-iac": "^0.0.512",
     "@stylistic/eslint-plugin": "^2.7.2",
     "@types/jest": "^29.5.12",
     "@types/js-yaml": "^4.0.5",

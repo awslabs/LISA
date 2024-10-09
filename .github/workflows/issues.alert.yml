@@ -16,8 +16,8 @@ jobs:
             SLACK_COLOR: 'success'
             SLACK_TITLE: 'Issue Created'
             SLACK_FOOTER: ''
-            MSG_MINIMAL: 'actions url'
-            SLACK_MESSAGE: '<!here> Issue ${{ github.event.issue.title }} created by ${{ github.event.sender.login }}'
+            MSG_MINIMAL: 'true'
+            SLACK_MESSAGE: '<!here> Issue <${{ github.event.issue.html_url }}|${{ github.event.issue.title }}> created by ${{ github.event.sender.login }}'
         - name: Send slack notification for issue reopened
           uses: rtCamp/action-slack-notify@v2
           if: github.event.action == 'reopened'
@@ -26,5 +26,5 @@ jobs:
             SLACK_COLOR: 'success'
             SLACK_TITLE: 'Issue Reopened'
             SLACK_FOOTER: ''
-            MSG_MINIMAL: 'actions url'
-            SLACK_MESSAGE: '<!here> Issue ${{ github.event.issue.title }} reopened by ${{ github.event.sender.login }}'
+            MSG_MINIMAL: 'true'
+            SLACK_MESSAGE: '<!here> Issue <${{ github.event.issue.html_url }}|${{ github.event.issue.title }}> reopened by ${{ github.event.sender.login }}'

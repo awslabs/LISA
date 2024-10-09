@@ -105,7 +105,8 @@ export class LisaServeIAMStack extends Stack {
      * specific roles
      */
         const statements = getIamPolicyStatements(config, 'ecs');
-        const taskPolicy = new ManagedPolicy(this, createCdkId([config.deploymentName, 'ECSPolicy']), {
+        const taskPolicyId = createCdkId([config.deploymentName, 'ECSPolicy']);
+        const taskPolicy = new ManagedPolicy(this, taskPolicyId, {
             managedPolicyName: createCdkId([config.deploymentName, 'ECSPolicy']),
             statements,
         });
@@ -115,6 +116,13 @@ export class LisaServeIAMStack extends Stack {
                 type: ECSTaskType.API,
             },
         ];
+
+        new StringParameter(this, createCdkId(['ECSPolicy', 'SP']), {
+            parameterName: `${config.deploymentPrefix}/policies/${taskPolicyId}`,
+            stringValue: taskPolicy.managedPolicyArn,
+            description: `Managed Policy ARN for LISA ${taskPolicyId}`,
+        });
+
         ecsRoles.forEach((role) => {
             const roleName = createCdkId([config.deploymentName, role.id, 'Role']);
             const taskRole = new Role(this, createCdkId([role.id, 'Role']), {

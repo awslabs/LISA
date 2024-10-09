@@ -81,7 +81,7 @@ export type IAutoScalingConfig = {
 };
 
 export type IContainerConfig = {
-    baseImage: IContainerConfigImage;
+    image: IContainerConfigImage;
     sharedMemorySize: number;
     healthCheckConfig: IContainerHealthCheckConfig;
     environment?: Record<string, string>[];
@@ -184,7 +184,7 @@ export const autoScalingConfigSchema = z.object({
 });
 
 export const containerConfigSchema = z.object({
-    baseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
+    image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
     sharedMemorySize: z.number().min(0).default(2048),
     healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
     environment: AttributeEditorSchema,

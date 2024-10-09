@@ -28,7 +28,7 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
         <SpaceBetween size={'s'}>
             <Container
                 header={
-                    <Header variant='h2'>Memory Size & Base Image Config</Header>
+                    <Header variant='h2'>Memory Size & Image Config</Header>
                 }
             >
                 <SpaceBetween size={'s'}>
@@ -40,14 +40,14 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>MiB</span>
                         </Grid>
                     </FormField>
-                    <FormField label='Base Image' errorText={props.formErrors?.containerConfig?.baseImage?.baseImage}>
-                        <Input value={props.item.baseImage.baseImage} inputMode='text' onBlur={() => props.touchFields(['containerConfig.baseImage.baseImage'])} onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.baseImage.baseImage': detail.value });
+                    <FormField label='Base Image' errorText={props.formErrors?.containerConfig?.image?.baseImage}>
+                        <Input value={props.item.image.baseImage} inputMode='text' onBlur={() => props.touchFields(['containerConfig.image.baseImage'])} onChange={({ detail }) => {
+                            props.setFields({ 'containerConfig.image.baseImage': detail.value });
                         }}/>
                     </FormField>
-                    <FormField label='Type' errorText={props.formErrors?.containerConfig?.baseImage?.type}>
-                        <Input value={props.item.baseImage.type} inputMode='text' onBlur={() => props.touchFields(['containerConfig.baseImage.type'])} onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.baseImage.type': detail.value });
+                    <FormField label='Type' errorText={props.formErrors?.containerConfig?.image?.type}>
+                        <Input value={props.item.image.type} inputMode='text' onBlur={() => props.touchFields(['containerConfig.image.type'])} onChange={({ detail }) => {
+                            props.setFields({ 'containerConfig.image.type': detail.value });
                         }}/>
                     </FormField>
                 </SpaceBetween>

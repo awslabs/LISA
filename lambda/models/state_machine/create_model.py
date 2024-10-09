@@ -23,7 +23,7 @@ from typing import Any, Dict
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, ModelStatus
+from models.domain_objects import CreateModelRequest, InferenceContainer, ModelStatus
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -51,6 +51,20 @@ litellm_client = LiteLLMClient(
         "Content-Type": "application/json",
     },
 )
+
+
+def get_container_path(inference_container_type: InferenceContainer):
+    """
+    Get the LISA repository path for referencing container build scripts.
+
+    Paths are relative to <LISA Repository root>/lib/serve/ecs-model/
+    """
+    path_mapping = {
+        InferenceContainer.TEI: "embedding/tei",
+        InferenceContainer.TGI: "textgen/tgi",
+        InferenceContainer.VLLM: "vllm",
+    }
+    return path_mapping[inference_container_type]  # API validation before state machine guarantees the value exists.
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -89,12 +103,15 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     output_dict = deepcopy(event)
     request = CreateModelRequest.validate(event)
 
+    image_path = get_container_path(request.inferenceContainer)
+    output_dict["containerConfig"]["image"]["path"] = image_path
+
     response = lambdaClient.invoke(
         FunctionName=os.environ["DOCKER_IMAGE_BUILDER_FN_ARN"],
         Payload=json.dumps(
             {
-                "base_image": request.containerConfig.baseImage.baseImage,
-                "layer_to_add": request.containerConfig.baseImage.path,
+                "base_image": request.containerConfig.image.baseImage,
+                "layer_to_add": image_path,
             }
         ),
     )

@@ -49,7 +49,6 @@ export type IContainerHealthCheckConfig = {
 
 export type IContainerConfigImage = {
     baseImage: string;
-    path: string;
     type: string;
 };
 
@@ -82,7 +81,7 @@ export type IAutoScalingConfig = {
 };
 
 export type IContainerConfig = {
-    baseImage: IContainerConfigImage;
+    image: IContainerConfigImage;
     sharedMemorySize: number;
     healthCheckConfig: IContainerHealthCheckConfig;
     environment?: Record<string, string>[];
@@ -139,7 +138,6 @@ const containerHealthCheckConfigSchema = z.object({
 
 const containerConfigImageSchema = z.object({
     baseImage: z.string().default(''),
-    path: z.string().default(''),
     type: z.string().default('asset'),
 });
 
@@ -186,7 +184,7 @@ export const autoScalingConfigSchema = z.object({
 });
 
 export const containerConfigSchema = z.object({
-    baseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
+    image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
     sharedMemorySize: z.number().min(0).default(2048),
     healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
     environment: AttributeEditorSchema,

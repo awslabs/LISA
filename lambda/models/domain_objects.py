@@ -120,14 +120,13 @@ class ContainerConfigImage(BaseModel):
     """Image image configuration for a container."""
 
     baseImage: str
-    path: str
     type: str
 
 
 class ContainerConfig(BaseModel):
     """Container configuration."""
 
-    baseImage: ContainerConfigImage
+    image: ContainerConfigImage
     sharedMemorySize: int
     healthCheckConfig: ContainerHealthCheckConfig
     environment: dict[str, str]

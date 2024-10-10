@@ -595,7 +595,6 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
       "containerConfig": {
         "image": {
           "baseImage": "vllm/vllm-openai:v0.5.0",
-          "path": "vllm",
           "type": "asset"
         },
         "sharedMemorySize": 2048,
@@ -661,7 +660,7 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
 LISA provides the `/models` endpoint for creating both ECS and LiteLLM-hosted models. Depending on the request payload, infrastructure will be created or bypassed (e.g., for LiteLLM-only models).
 
 This API accepts the same model definition parameters that were accepted in the V2 model definitions within the config.yaml file with one notable difference: the `containerConfig.image.path` field is
-now omitted because it corresponded with the `inferenceContainer` selection. As a convenience, this path s no longer required.
+now omitted because it corresponded with the `inferenceContainer` selection. As a convenience, this path is no longer required.
 
 #### Request Example:
 
@@ -682,7 +681,6 @@ POST https://<apigw_endpoint>/models
   "containerConfig": {
     "image": {
       "baseImage": "vllm/vllm-openai:v0.5.0",
-      "path": "vllm",
       "type": "asset"
     },
     "sharedMemorySize": 2048,

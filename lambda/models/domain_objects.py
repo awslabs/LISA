@@ -131,7 +131,7 @@ class ContainerHealthCheckConfig(BaseModel):
     """Health check configuration for a container."""
 
     command: Union[str, List[str]]
-    interval: NonNegativeInt
+    interval: PositiveInt
     startPeriod: PositiveInt
     timeout: PositiveInt
     retries: PositiveInt

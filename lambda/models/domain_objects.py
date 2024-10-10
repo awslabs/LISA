@@ -14,13 +14,14 @@
 
 """Domain objects for interacting with the model endpoints."""
 
+from decimal import Decimal
 from enum import Enum
-from typing import Annotated, List, Optional, Union
+from typing import Annotated, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
-from utilities.validators import validate_instance_type
+from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
 
 
 class InferenceContainer(str, Enum):
@@ -66,20 +67,20 @@ class ModelType(str, Enum):
 class MetricConfig(BaseModel):
     """Metric configuration for autoscaling."""
 
-    albMetricName: str
-    targetValue: int
-    duration: int
-    estimatedInstanceWarmup: int
+    albMetricName: str = Field(min_length=1)
+    targetValue: Decimal
+    duration: PositiveInt
+    estimatedInstanceWarmup: PositiveInt
 
 
 class LoadBalancerHealthCheckConfig(BaseModel):
     """Health check configuration for a load balancer."""
 
-    path: str
-    interval: int
-    timeout: int
-    healthyThresholdCount: int
-    unhealthyThresholdCount: int
+    path: str = Field(min_length=1)
+    interval: PositiveInt
+    timeout: PositiveInt
+    healthyThresholdCount: PositiveInt
+    unhealthyThresholdCount: PositiveInt
 
 
 class LoadBalancerConfig(BaseModel):
@@ -91,45 +92,75 @@ class LoadBalancerConfig(BaseModel):
 class AutoScalingConfig(BaseModel):
     """Autoscaling configuration upon model creation."""
 
-    minCapacity: int
-    maxCapacity: int
-    cooldown: int
-    defaultInstanceWarmup: int
+    minCapacity: NonNegativeInt
+    maxCapacity: NonNegativeInt
+    cooldown: PositiveInt
+    defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
+
+    @model_validator(mode="after")  # type: ignore
+    def validate_auto_scaling_config(self) -> Self:
+        """Validate autoScalingConfig values."""
+        if self.minCapacity > self.maxCapacity:
+            raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
+        return self
 
 
 class AutoScalingInstanceConfig(BaseModel):
     """Autoscaling instance count configuration upon model update."""
 
-    minCapacity: Optional[int] = None
-    maxCapacity: Optional[int] = None
-    desiredCapacity: Optional[int] = None
+    minCapacity: Optional[PositiveInt] = None
+    maxCapacity: Optional[PositiveInt] = None
+    desiredCapacity: Optional[PositiveInt] = None
+
+    @model_validator(mode="after")  # type: ignore
+    def validate_auto_scaling_instance_config(self) -> Self:
+        """Validate autoScalingInstanceConfig values."""
+        config_fields = [self.minCapacity, self.maxCapacity, self.desiredCapacity]
+        if not validate_any_fields_defined(config_fields):
+            raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
+        # if desired and max are greater than 1, and desired is greater than requested max, throw error
+        if self.desiredCapacity and self.maxCapacity and self.desiredCapacity > self.maxCapacity:
+            raise ValueError("Desired capacity must be less than or equal to max capacity.")
+        # if desired and min are 1 or more, and desired is less than requested min, throw error
+        if self.desiredCapacity and self.minCapacity and self.desiredCapacity < self.minCapacity:
+            raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
+        return self
 
 
 class ContainerHealthCheckConfig(BaseModel):
     """Health check configuration for a container."""
 
-    command: Union[str, list[str]]
-    interval: int
-    startPeriod: int
-    timeout: int
-    retries: int
+    command: Union[str, List[str]]
+    interval: NonNegativeInt
+    startPeriod: PositiveInt
+    timeout: PositiveInt
+    retries: PositiveInt
 
 
 class ContainerConfigImage(BaseModel):
     """Image image configuration for a container."""
 
-    baseImage: str
-    type: str
+    baseImage: str = Field(min_length=1)
+    type: str = Field(min_length=1)
 
 
 class ContainerConfig(BaseModel):
     """Container configuration."""
 
     image: ContainerConfigImage
-    sharedMemorySize: int
+    sharedMemorySize: PositiveInt
     healthCheckConfig: ContainerHealthCheckConfig
-    environment: dict[str, str]
+    environment: Optional[Dict[str, str]] = {}
+
+    @field_validator("environment")  # type: ignore
+    @classmethod
+    def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
+        """Validate that all keys in Dict are not empty."""
+        if environment:
+            if not all((key for key in environment.keys())):
+                raise ValueError("Empty strings are not allowed for environment variable key names.")
+        return environment
 
 
 class LISAModel(BaseModel):
@@ -162,8 +193,8 @@ class CreateModelRequest(BaseModel):
     inferenceContainer: Optional[InferenceContainer] = None
     instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
     loadBalancerConfig: Optional[LoadBalancerConfig] = None
-    modelId: str
-    modelName: str
+    modelId: str = Field(min_length=1)
+    modelName: str = Field(min_length=1)
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
@@ -174,6 +205,22 @@ class CreateModelRequest(BaseModel):
         # Validate that an embedding model cannot be set as streaming-enabled
         if self.modelType == ModelType.EMBEDDING and self.streaming:
             raise ValueError("Embedding model cannot be set with streaming enabled.")
+
+        required_hosting_fields = [
+            self.autoScalingConfig,
+            self.containerConfig,
+            self.inferenceContainer,
+            self.instanceType,
+            self.loadBalancerConfig,
+        ]
+        # If any of these fields are defined, assume LISA-hosted model. If LISA-hosted model, then ALL fields required.
+        if validate_any_fields_defined(required_hosting_fields):
+            if not validate_all_fields_defined(required_hosting_fields):
+                raise ValueError(
+                    "All of the following fields must be defined if creating a LISA-hosted model: "
+                    "autoScalingConfig, containerConfig, inferenceContainer, instanceType, and loadBalancerConfig"
+                )
+
         return self
 
 
@@ -206,17 +253,17 @@ class UpdateModelRequest(BaseModel):
     @model_validator(mode="after")  # type: ignore
     def validate_update_model_request(self) -> Self:
         """Validate whole request object."""
-        fields = (
+        fields = [
             self.autoScalingInstanceConfig,
             self.enabled,
             self.modelType,
             self.streaming,
-        )
+        ]
         # Validate that at minimum one field is defined, otherwise there's no action to take in this update
-        if all((field is None for field in fields)):
+        if not validate_any_fields_defined(fields):
             raise ValueError(
-                "At least one field out of 'autoScalingInstanceConfig', 'enabled', 'modelType', or "
-                "'streaming' must be defined in request payload."
+                "At least one field out of autoScalingInstanceConfig, enabled, modelType, or "
+                "streaming must be defined in request payload."
             )
 
         # Validate that an embedding model cannot be set as streaming-enabled
@@ -230,18 +277,6 @@ class UpdateModelRequest(BaseModel):
         """Validate that the AutoScaling instance config has at least one positive value."""
         if not config:
             raise ValueError("The autoScalingInstanceConfig must not be null if defined in request payload.")
-        config_fields = (config.minCapacity, config.maxCapacity, config.desiredCapacity)
-        if all((field is None for field in config_fields)):
-            raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
-        if any((isinstance(field, int) and field < 1 for field in config_fields)):
-            raise ValueError("All autoScalingInstanceConfig fields must be >= 1.")
-        # if desired and max are greater than 1, and desired is greater than requested max, throw error
-        if config.desiredCapacity and config.maxCapacity and config.desiredCapacity > config.maxCapacity:
-            raise ValueError("Desired capacity must be <= max capacity.")
-        # if desired and min are 0 or more, and desired is less than requested min, throw error
-        if isinstance(config.desiredCapacity, int) and isinstance(config.minCapacity, int):
-            if config.desiredCapacity < config.minCapacity:
-                raise ValueError("Desired capacity must be >= min capacity.")
         return config
 
 

@@ -14,7 +14,6 @@
 
 """Domain objects for interacting with the model endpoints."""
 
-from decimal import Decimal
 from enum import Enum
 from typing import Annotated, Dict, List, Optional, Union
 
@@ -68,7 +67,7 @@ class MetricConfig(BaseModel):
     """Metric configuration for autoscaling."""
 
     albMetricName: str = Field(min_length=1)
-    targetValue: Decimal
+    targetValue: NonNegativeInt
     duration: PositiveInt
     estimatedInstanceWarmup: PositiveInt
 

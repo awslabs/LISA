@@ -74,7 +74,7 @@ With the release of LISA v3.0.0, we have introduced several architectural change
 In preparation of the v3.1.0 release, there are several changes that we needed to make in order to ensure the stability of the LISA system.
 1. The CreateModel API `containerConfig` object has been changed so that the Docker Image repository is listed in `containerConfig.image.baseImage` instead of
    its previous location at `containerConfig.baseImage.baseImage`. This change makes the configuration consistent with the config.yaml file in LISA v2.0 and prior.
-2. The CreateModel API `containerConfig.image` object no longer requires the `path` option. We identified tha this was a confusing and redundant option to set, considering
+2. The CreateModel API `containerConfig.image` object no longer requires the `path` option. We identified that this was a confusing and redundant option to set, considering
    that the path was based on the LISA code repository structure, and that we already had an option to specify if a model was using TGI, TEI, or vLLM. Specifying the `inferenceContainer`
    is sufficient for the system to infer which files to use so that the user does not have to provide this information.
 3. The ApiDeployment stack now follows the same naming convention as the rest of the stacks that we deploy, utilization the deployment name and the deploymentStage names. This allows users
@@ -83,7 +83,7 @@ In preparation of the v3.1.0 release, there are several changes that we needed t
 4. If you have installed v3.0.0 or v3.0.1, you will need to **delete** the Models API stack so that the model deployer function will deploy again. The function was converted to a Docker Image
    Function so that the growing Function size would fit within the Lambda constraints. We recommend that you take the following actions to avoid leaked resources:
    1. Use the Model Management UI to **delete all models** from LISA. This is needed so that we delete any CloudFormation stacks that track GPU instances. Failure to do this will require manual
-      resource cleanup to rid the account of inaccessible EC2 instances. Once the Models DynamoDB Table is deleted, we do not have a programmatic way to re-reference deployd models, so that is
+      resource cleanup to rid the account of inaccessible EC2 instances. Once the Models DynamoDB Table is deleted, we do not have a programmatic way to re-reference deployed models, so that is
       why we recommend deleting them first.
    2. **Only after deleting all models through the Model Management UI**, manually delete the Model Management API stack in CloudFormation. This will take at least 45 minutes due to Lambda's use
       of Elastic Network Interfaces for VPC access. The stack name will look like: `${deployment}-lisa-models-${deploymentStage}`.

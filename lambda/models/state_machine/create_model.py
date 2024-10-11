@@ -53,7 +53,7 @@ litellm_client = LiteLLMClient(
 )
 
 
-def get_container_path(inference_container_type: InferenceContainer):
+def get_container_path(inference_container_type: InferenceContainer) -> str:
     """
     Get the LISA repository path for referencing container build scripts.
 

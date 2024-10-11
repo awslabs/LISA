@@ -14,6 +14,8 @@
 
 """Functional validators for use with Pydantic."""
 
+from typing import Any, List
+
 import botocore.session
 
 sess = botocore.session.Session()
@@ -25,3 +27,13 @@ def validate_instance_type(type: str) -> str:
         return type
 
     raise ValueError("Invalid EC2 instance type.")
+
+
+def validate_all_fields_defined(fields: List[Any]) -> bool:
+    """Validate that all fields are non-null in the field list."""
+    return all((field is not None for field in fields))
+
+
+def validate_any_fields_defined(fields: List[Any]) -> bool:
+    """Validate that at least one field is non-null in the field list."""
+    return any((field is not None for field in fields))

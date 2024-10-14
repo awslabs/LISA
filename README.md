@@ -88,6 +88,8 @@ In preparation of the v3.1.0 release, there are several changes that we needed t
    2. **Only after deleting all models through the Model Management UI**, manually delete the Model Management API stack in CloudFormation. This will take at least 45 minutes due to Lambda's use
       of Elastic Network Interfaces for VPC access. The stack name will look like: `${deployment}-lisa-models-${deploymentStage}`.
    3. After the stack has been deleted, deploy LISA v3.1.0, which will recreate the Models API stack, along with the Docker Lambda Function.
+5. The `ecsModels` section of `config.yaml` has been stripped down to only 3 fields per model: `modelName`, `inferenceContainer`, and `baseImage`. Just as before, the system will check to see if the models
+   defined here exist in your models S3 bucket prior to LISA deployment. These values will be needed later when invoking the Model Management API to create a model.
 ---
 
 ## Background

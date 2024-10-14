@@ -5,7 +5,6 @@ on:
     types: [released]
 
 permissions:
-  id-token: write
   contents: write
 
 jobs:
@@ -16,6 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          ssh-key: ${{ secrets.DEPLOYMENT_SSH_KEY }}
       - name: merge main into develop
         run: |
           git config --global user.email "petermul@amazon.com"
@@ -23,10 +23,8 @@ jobs:
           git fetch --unshallow
           git checkout develop
           git pull
-          git merge --no-ff origin/main -m "Auto-merge main back to dev post release"
+          git merge --no-ff origin/main -m "Auto-merge main back to develop post release"
           git push --force origin develop
-        env:
-          GH_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
   send_final_slack_notification:
     name: Send Final Slack Notification
     needs: [conduct_merge]

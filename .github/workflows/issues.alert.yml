@@ -12,7 +12,7 @@ jobs:
           uses: rtCamp/action-slack-notify@v2
           if: github.event.action == 'opened'
           env:
-            SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+            SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
             SLACK_COLOR: 'success'
             SLACK_TITLE: 'Issue Created'
             SLACK_FOOTER: ''
@@ -22,7 +22,7 @@ jobs:
           uses: rtCamp/action-slack-notify@v2
           if: github.event.action == 'reopened'
           env:
-            SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+            SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
             SLACK_COLOR: 'success'
             SLACK_TITLE: 'Issue Reopened'
             SLACK_FOOTER: ''

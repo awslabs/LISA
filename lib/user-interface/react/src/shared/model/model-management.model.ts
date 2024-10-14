@@ -20,6 +20,7 @@ export enum ModelStatus {
     Creating = 'Creating',
     InService = 'InService',
     Stopping = 'Stopping',
+    Starting = 'Starting',
     Stopped = 'Stopped',
     Updating = 'Updating',
     Deleting = 'Deleting',
@@ -48,7 +49,6 @@ export type IContainerHealthCheckConfig = {
 
 export type IContainerConfigImage = {
     baseImage: string;
-    path: string;
     type: string;
 };
 
@@ -74,19 +74,21 @@ export type ILoadBalancerConfig = {
 export type IAutoScalingConfig = {
     minCapacity: number;
     maxCapacity: number;
+    desiredCapacity?: number;
     cooldown: number;
     defaultInstanceWarmup: number;
     metricConfig: IMetricConfig;
 };
 
 export type IContainerConfig = {
-    baseImage: IContainerConfigImage;
+    image: IContainerConfigImage;
     sharedMemorySize: number;
     healthCheckConfig: IContainerHealthCheckConfig;
     environment?: Record<string, string>[];
 };
 
 export type IModel = {
+    status?: ModelStatus;
     modelId: string;
     modelName: string;
     modelUrl: string;
@@ -117,34 +119,41 @@ export type IModelRequest = {
     lisaHostedModel: boolean;
 };
 
+export type IModelUpdateRequest = {
+    modelId: string;
+    streaming?: boolean;
+    enabled?: boolean;
+    modelType?: ModelType;
+    autoScalingInstanceConfig?: IAutoScalingConfig;
+};
+
 const containerHealthCheckConfigSchema = z.object({
     command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
     interval: z.number().default(10),
     startPeriod: z.number().default(30),
     timeout: z.number().default(5),
-    retries: z.number().default(2),
+    retries: z.number().default(3),
 });
 
 
 const containerConfigImageSchema = z.object({
     baseImage: z.string().default(''),
-    path: z.string().default(''),
-    type: z.string().default(''),
+    type: z.string().default('asset'),
 });
 
 export const metricConfigSchema = z.object({
-    albMetricName: z.string().default(''),
-    targetValue: z.number().default(0),
+    albMetricName: z.string().default('RequestCountPerTarget'),
+    targetValue: z.number().default(30),
     duration: z.number().default(60),
-    estimatedInstanceWarmup: z.number().default(180),
+    estimatedInstanceWarmup: z.number().default(330),
 });
 
 export const loadBalancerHealthCheckConfigSchema = z.object({
-    path: z.string().default(''),
-    interval: z.number().default(10),
-    timeout: z.number().default(5),
-    healthyThresholdCount: z.number().default(1),
-    unhealthyThresholdCount: z.number().default(1),
+    path: z.string().default('/health'),
+    interval: z.number().default(60),
+    timeout: z.number().default(30),
+    healthyThresholdCount: z.number().default(2),
+    unhealthyThresholdCount: z.number().default(10),
 });
 
 export const loadBalancerConfigSchema = z.object({
@@ -153,22 +162,40 @@ export const loadBalancerConfigSchema = z.object({
 
 export const autoScalingConfigSchema = z.object({
     minCapacity: z.number().min(1).default(1),
-    maxCapacity: z.number().min(1).default(2),
+    maxCapacity: z.number().min(1).default(1),
+    desiredCapacity: z.number().optional(),
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
     metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
+}).superRefine((value, context) => {
+    // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
+    if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {
+        const validator = z.number().min(Number(value.minCapacity)).max(Number(value.maxCapacity));
+        const result = validator.safeParse(value.desiredCapacity);
+        if (result.success === false) {
+            for (const error of result.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['desiredCapacity']
+                });
+            }
+        }
+    }
 });
 
 export const containerConfigSchema = z.object({
-    baseImage: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
-    sharedMemorySize: z.number().min(0).default(0),
+    image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
+    sharedMemorySize: z.number().min(0).default(2048),
     healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
     environment: AttributeEditorSchema,
 });
 
 export const ModelRequestSchema = z.object({
-    modelId: z.string().min(1).default(' '),
-    modelName: z.string().min(1).default(' '),
+    modelId: z.string()
+        .regex(/^[a-z\d-]+$/i, {message: 'Only alphanumeric characters and hyphens allowed'})
+        .regex(/^[a-z0-9].*[a-z0-9]$/i, {message: 'Must start and end with an alphanumeric character.'})
+        .default(''),
+    modelName: z.string().min(1).default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
     lisaHostedModel: z.boolean().default(false),
@@ -178,4 +205,28 @@ export const ModelRequestSchema = z.object({
     containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
     autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
+}).superRefine((value, context) => {
+    if (value.lisaHostedModel) {
+        const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
+        const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
+        if (instanceTypeResult.success === false) {
+            for (const error of instanceTypeResult.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['instanceType']
+                });
+            }
+        }
+
+        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {required_error: 'Required for LISA hosted models.'});
+        const inferenceContainerResult = inferenceContainerValidator.safeParse(value.inferenceContainer);
+        if (inferenceContainerResult.success === false) {
+            for (const error of inferenceContainerResult.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['inferenceContainer']
+                });
+            }
+        }
+    }
 });

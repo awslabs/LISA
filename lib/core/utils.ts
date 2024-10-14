@@ -19,14 +19,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
 
-import { Config, ModelConfig } from '../schema';
+import { Config } from '../schema';
+import { Effect, ManagedPolicy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
 
 const IAM_DIR = path.join(__dirname, 'iam');
 
 type JSONPolicyStatement = {
-    Effect: iam.Effect;
+    Effect: Effect;
     Action: string[];
     Resource: string | string[];
     Condition: Record<string, Record<string, string | string[]>>;
@@ -37,9 +38,9 @@ type JSONPolicyStatement = {
  *
  * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
- * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
+ * @returns {PolicyStatement[]} - Extracted IAM policy statements.
  */
-const extractPolicyStatementsFromJson = (config: Config, serviceName: string): iam.PolicyStatement[] => {
+const extractPolicyStatementsFromJson = (config: Config, serviceName: string): PolicyStatement[] => {
     const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
     const statements = JSON.parse(statementData).Statement;
 
@@ -55,17 +56,52 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): i
         }
     });
 
-    return statements.map((statement: JSONPolicyStatement) => iam.PolicyStatement.fromJson(statement));
+    return statements.map((statement: JSONPolicyStatement) => PolicyStatement.fromJson(statement));
 };
 
 /**
  * Wrapper to get IAM policy statements.
  * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
- * @returns {iam.PolicyStatement[]} - Extracted IAM policy statements.
+ * @returns {PolicyStatement[]} - Extracted IAM policy statements.
  */
-export const getIamPolicyStatements = (config: Config, serviceName: string): iam.PolicyStatement[] => {
+export const getIamPolicyStatements = (config: Config, serviceName: string): PolicyStatement[] => {
     return extractPolicyStatementsFromJson(config, serviceName);
+};
+
+export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '') => {
+    return new Role(construct, `Lisa${lambdaName}LambdaExecutionRole`, {
+        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        roleName: createCdkId([deploymentName, `Lisa${lambdaName}LambdaExecutionRole`]),
+        description: `Role used by LISA ${lambdaName} lambdas to access AWS resources`,
+        managedPolicies: [
+            ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+        ],
+        inlinePolicies: {
+            lambdaPermissions: new PolicyDocument({
+                statements: [...(tableArn ? [
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'dynamodb:BatchGetItem',
+                            'dynamodb:ConditionCheckItem',
+                            'dynamodb:DescribeTable',
+                            'dynamodb:GetItem',
+                            'dynamodb:GetRecords',
+                            'dynamodb:GetShardIterator',
+                            'dynamodb:Query',
+                            'dynamodb:Scan'
+                        ],
+                        resources: [
+                            tableArn,
+                            `${tableArn}/*`,
+                        ]
+                    })
+                ] : []),
+                ]
+            }),
+        }
+    });
 };
 
 /**
@@ -87,16 +123,4 @@ export function createCdkId (idParts: string[], maxLength: number = 64, truncati
     }
 
     return cdkId;
-}
-
-/**
- * Creates a "normalized" identifier based on the provided model config. If a modelId has been
- * defined the id will be used otherwise the model name will be used. This normalized identifier
- * strips all non alpha numeric characters.
- *
- * @param {string} modelConfig model config
- * @returns {string} normalized model name for use in CDK identifiers/resource names
- */
-export function getModelIdentifier (modelConfig: ModelConfig): string {
-    return (modelConfig.modelId || modelConfig.modelName).replace(/[^a-zA-Z0-9]/g, '');
 }

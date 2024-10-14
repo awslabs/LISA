@@ -21,7 +21,6 @@ import {
     Button,
     TextContent,
     FileUpload,
-    Alert,
     FormField,
     Grid,
     Input,
@@ -33,6 +32,8 @@ import { useState } from 'react';
 import { getPresignedUrl, ingestDocuments, uploadToS3 } from '../utils';
 import { RagConfig } from './RagOptions';
 import { AuthContextProps } from 'react-oidc-context';
+import { useAppDispatch } from '../../config/store';
+import { useNotificationService } from '../../shared/util/hooks';
 
 const handleUpload = async (
     selectedFiles: File[],
@@ -80,10 +81,11 @@ export function ContextUploadModal ({
     setFileContext,
 }: ContextUploadProps) {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
-    const [alerts, setAlerts] = useState<string[] | undefined>([]);
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
 
     function handleError (error: string) {
-        setAlerts((oldItems) => [...oldItems, error]);
+        notificationService.generateNotification(error, 'error');
     }
 
     async function processFile (file: File): Promise<boolean> {
@@ -99,7 +101,6 @@ export function ContextUploadModal ({
             onDismiss={() => {
                 setShowContextUploadModal(false);
                 setSelectedFiles([]);
-                setAlerts([]);
             }}
             visible={showContextUploadModal}
             header='Manage File Context'
@@ -109,12 +110,7 @@ export function ContextUploadModal ({
                     <SpaceBetween direction='horizontal' size='xs'>
                         <Button
                             onClick={async () => {
-                                setAlerts([]);
                                 await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 10240);
-                                if (alerts.length === 0) {
-                                    setShowContextUploadModal(false);
-                                    setSelectedFiles([]);
-                                }
                             }}
                             disabled={selectedFiles.length === 0}
                         >
@@ -125,7 +121,6 @@ export function ContextUploadModal ({
                                 setShowContextUploadModal(false);
                                 setFileContext('');
                                 setSelectedFiles([]);
-                                setAlerts([]);
                             }}
                             disabled={!fileContext}
                         >
@@ -160,23 +155,6 @@ export function ContextUploadModal ({
                     tokenLimit={3}
                     constraintText='Allowed file type is plain text. File size limit is 10 KB'
                 />
-                {alerts.map(function (error: string) {
-                    if (error !== '') {
-                        return (
-                            <Alert
-                                type='error'
-                                statusIconAriaLabel='Error'
-                                header='File upload error:'
-                                dismissible
-                                onDismiss={() => {
-                                    setAlerts([]);
-                                }}
-                            >
-                                {error}
-                            </Alert>
-                        );
-                    }
-                })}
             </SpaceBetween>
         </Modal>
     );
@@ -208,10 +186,11 @@ export function RagUploadModal ({
     const [ingestionType, setIngestionType] = useState(StatusTypes.LOADING);
     const [chunkSize, setChunkSize] = useState(512);
     const [chunkOverlap, setChunkOverlap] = useState(51);
-    const [alerts, setAlerts] = useState<string[] | undefined>([]);
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
 
     function handleError (error: string): void {
-        setAlerts((oldItems) => [...oldItems, error]);
+        notificationService.generateNotification(error, 'error');
     }
 
     async function processFile (file: File, fileIndex: number): Promise<boolean> {
@@ -225,7 +204,7 @@ export function RagUploadModal ({
             }
             return true;
         } catch (err) {
-            setAlerts((oldItems) => [...oldItems, `Error encountered while uploading file ${file.name}`]);
+            handleError(`Error encountered while uploading file ${file.name}`);
             return false;
         } finally {
             setProgressBarValue((fileIndex / selectedFiles.length) * 100);
@@ -243,7 +222,7 @@ export function RagUploadModal ({
                 auth.user?.id_token,
                 fileKeys,
                 ragConfig.repositoryId,
-                ragConfig.embeddingModel,
+                { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
                 ragConfig.repositoryType,
                 chunkSize,
                 chunkOverlap,
@@ -282,7 +261,6 @@ export function RagUploadModal ({
             onDismiss={() => {
                 setShowRagUploadModal(false);
                 setSelectedFiles([]);
-                setAlerts([]);
                 setIngestingFiles(false);
             }}
             visible={showRagUploadModal}
@@ -293,7 +271,6 @@ export function RagUploadModal ({
                     <SpaceBetween direction='horizontal' size='xs'>
                         <Button
                             onClick={async () => {
-                                setAlerts([]);
                                 //Initialize the progress bar values
                                 setProgressBarLabel('Uploading files to S3');
                                 setDisplayProgressBar(true);
@@ -310,10 +287,6 @@ export function RagUploadModal ({
                                 setDisplayProgressBar(false);
                                 if (successfulUploads.length > 0) {
                                     await indexFiles(successfulUploads);
-                                }
-                                if (alerts.length === 0) {
-                                    setShowRagUploadModal(false);
-                                    setSelectedFiles([]);
                                 }
                             }}
                             disabled={selectedFiles.length === 0}
@@ -382,23 +355,6 @@ export function RagUploadModal ({
                     tokenLimit={3}
                     constraintText='Allowed file types are plain text, PDF, and docx. File size limit is 50 MB'
                 />
-                {alerts.map(function (error: string) {
-                    if (error !== '') {
-                        return (
-                            <Alert
-                                type='error'
-                                statusIconAriaLabel='Error'
-                                header='File upload error:'
-                                dismissible
-                                onDismiss={() => {
-                                    setAlerts([]);
-                                }}
-                            >
-                                {error}
-                            </Alert>
-                        );
-                    }
-                })}
                 {displayProgressBar && (
                     <ProgressBar
                         status='in-progress'

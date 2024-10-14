@@ -16,7 +16,11 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
+import {
+    IModel,
+    IModelRequest,
+    ModelRequestSchema
+} from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -28,6 +32,7 @@ import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { ReviewModelChanges } from './ReviewModelChanges';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
+import { z } from 'zod';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -35,6 +40,7 @@ export type CreateModelModalProps = {
     setIsEdit: (boolean) => void;
     setVisible: (boolean) => void;
     selectedItems: IModel[];
+    setSelectedItems: (items: IModel[]) => void;
 };
 
 export type ModelCreateState = {
@@ -44,6 +50,38 @@ export type ModelCreateState = {
     formSubmitting: boolean;
     activeStepIndex: number;
 };
+
+// Builds an object consisting of the default values for all validators.
+// https://github.com/colinhacks/zod/discussions/1953#discussioncomment-5695528
+function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEffects<any> ): z.infer<T> {
+
+    // Check if it's a ZodEffect
+    if (schema instanceof z.ZodEffects) {
+        // Check if it's a recursive ZodEffect
+        if (schema.innerType() instanceof z.ZodEffects) return getDefaults(schema.innerType());
+        // return schema inner shape as a fresh zodObject
+        return getDefaults(z.ZodObject.create(schema.innerType().shape));
+    }
+
+    function getDefaultValue (schema: z.ZodTypeAny): unknown {
+        if (schema instanceof z.ZodDefault) return schema._def.defaultValue();
+        // return an empty array if it is
+        if (schema instanceof z.ZodArray) return [];
+        // return an empty string if it is
+        if (schema instanceof z.ZodString) return '';
+        // return an content of object recursively
+        if (schema instanceof z.ZodObject) return getDefaults(schema);
+
+        if (!('innerType' in schema._def)) return undefined;
+        return getDefaultValue(schema._def.innerType);
+    }
+
+    return Object.fromEntries(
+        Object.entries( schema.shape ).map( ( [ key, value ] ) => {
+            return [key, getDefaultValue(value)];
+        } )
+    );
+}
 
 export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const [
@@ -55,9 +93,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
     ] = useUpdateModelMutation();
     const initialForm = {
-        ...ModelRequestSchema.parse({}),
-        modelId: '',
-        modelName: '',
+        ...getDefaults(ModelRequestSchema),
     };
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
@@ -132,16 +168,32 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     }
 
     const changesDiff = useMemo(() => {
-        return props.isEdit ? getJsonDifference(props.selectedItems[0], toSubmit) : getJsonDifference({}, toSubmit);
+        return props.isEdit ? getJsonDifference({
+            ...props.selectedItems[0],
+            lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
+        }, toSubmit) :
+            getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, props.isEdit]);
 
     function handleSubmit () {
         delete toSubmit.lisaHostedModel;
-        if (isValid && !props.isEdit) {
+        if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
             createModelMutation(toSubmit);
-        } else if (isValid && props.isEdit) {
-            updateModelMutation(toSubmit);
+        } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
+            // pick only the values we care about
+            updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
+                'modelId',
+                'streaming',
+                'enabled',
+                'modelType',
+                'autoScalingConfig.minCapacity',
+                'autoScalingConfig.maxCapacity',
+                'autoScalingConfig.desiredCapacity'
+            ]), (value: any, key: string) => {
+                if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
+                return key;
+            }));
         }
     }
 
@@ -149,6 +201,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     useEffect(() => {
         const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
+        if (parsedValue.inferenceContainer === null){
+            delete parsedValue.inferenceContainer;
+        }
         if (props.isEdit) {
             setState({
                 ...state,
@@ -182,12 +237,55 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             notificationService.generateNotification(`Successfully updated model: ${state.form.modelId}`, 'success');
             props.setVisible(false);
             props.setIsEdit(false);
+            props.setSelectedItems([]);
             resetState();
         } else if (!isUpdating && isUpdateError) {
             notificationService.generateNotification(`Error updating model: ${updateError.data.message ?? updateError.data}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateError, updateError, isUpdating, isUpdateSuccess]);
+
+    const steps = [
+        {
+            title: 'Base Model Configuration',
+            description: 'Define your model\'s configuration settings using these forms.',
+            content: (
+                <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+            ),
+            onEdit: true
+        },
+        {
+            title: 'Container Configuration',
+            content: (
+                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+            ),
+            isOptional: true
+        },
+        {
+            title: 'Auto Scaling Configuration',
+            content: (
+                <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+            ),
+            isOptional: true,
+            onEdit: true && state.form.lisaHostedModel
+        },
+        {
+            title: 'Load Balancer Configuration',
+            content: (
+                <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+            ),
+            isOptional: true
+        },
+        {
+            title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
+            description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
+            content: (
+                <ReviewModelChanges jsonDiff={changesDiff}/>
+            ),
+            onEdit: state.form.lisaHostedModel
+        }
+    ].filter((step) => props.isEdit ? step.onEdit : true);
+
 
     return (
         <Modal size={'large'} onDismiss={() => {
@@ -242,43 +340,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 activeStepIndex={state.activeStepIndex}
                 isLoadingNextStep={isCreating || isUpdating}
                 allowSkipTo
-                steps={[
-                    {
-                        title: 'Base Model Configuration',
-                        description: 'Define your model\'s configuration settings using these forms.',
-                        content: (
-                            <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
-                        )
-                    },
-                    {
-                        title: 'Container Configuration',
-                        content: (
-                            <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
-                        ),
-                        isOptional: true
-                    },
-                    {
-                        title: 'Auto Scaling Configuration',
-                        content: (
-                            <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
-                        ),
-                        isOptional: true
-                    },
-                    {
-                        title: 'Load Balancer Configuration',
-                        content: (
-                            <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
-                        ),
-                        isOptional: true
-                    },
-                    {
-                        title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
-                        description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
-                        content: (
-                            <ReviewModelChanges jsonDiff={changesDiff}/>
-                        )
-                    }
-                ]}
+                steps={steps}
             />
         </Modal>
     );

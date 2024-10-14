@@ -23,7 +23,7 @@ from typing import Any, Dict
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, ModelStatus
+from models.domain_objects import CreateModelRequest, InferenceContainer, ModelStatus
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -51,6 +51,20 @@ litellm_client = LiteLLMClient(
         "Content-Type": "application/json",
     },
 )
+
+
+def get_container_path(inference_container_type: InferenceContainer) -> str:
+    """
+    Get the LISA repository path for referencing container build scripts.
+
+    Paths are relative to <LISA Repository root>/lib/serve/ecs-model/
+    """
+    path_mapping = {
+        InferenceContainer.TEI: "embedding/tei",
+        InferenceContainer.TGI: "textgen/tgi",
+        InferenceContainer.VLLM: "vllm",
+    }
+    return path_mapping[inference_container_type]  # API validation before state machine guarantees the value exists.
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -89,12 +103,15 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     output_dict = deepcopy(event)
     request = CreateModelRequest.validate(event)
 
+    image_path = get_container_path(request.inferenceContainer)
+    output_dict["containerConfig"]["image"]["path"] = image_path
+
     response = lambdaClient.invoke(
         FunctionName=os.environ["DOCKER_IMAGE_BUILDER_FN_ARN"],
         Payload=json.dumps(
             {
-                "base_image": request.containerConfig.baseImage.baseImage,
-                "layer_to_add": request.containerConfig.baseImage.path,
+                "base_image": request.containerConfig.image.baseImage,
+                "layer_to_add": image_path,
             }
         ),
     )
@@ -206,6 +223,8 @@ def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, A
         for output in outputs:
             if output["OutputKey"] == "modelEndpointUrl":
                 output_dict["modelUrl"] = output["OutputValue"]
+            elif output["OutputKey"] == "autoScalingGroup":
+                output_dict["autoScalingGroup"] = output["OutputValue"]
         output_dict["continue_polling_stack"] = False
         return output_dict
     elif stackStatus in ["CREATE_IN_PROGRESS", "UPDATE_IN_PROGRESS"]:
@@ -258,12 +277,16 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
 
     model_table.update_item(
         Key={"model_id": event["modelId"]},
-        UpdateExpression="SET model_status = :ms, litellm_id = :lid, last_modified_date = :lm, model_url = :mu",
+        UpdateExpression=(
+            "SET model_status = :ms, litellm_id = :lid, last_modified_date = :lm, model_url = :mu, "
+            "auto_scaling_group = :asg"
+        ),
         ExpressionAttributeValues={
             ":ms": ModelStatus.IN_SERVICE,
             ":lid": litellm_id,
             ":lm": int(datetime.utcnow().timestamp()),
             ":mu": litellm_params.get("api_base", ""),
+            ":asg": event.get("autoScalingGroup", ""),
         },
     )
 

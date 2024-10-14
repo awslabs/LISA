@@ -15,7 +15,13 @@
 """Exception definitions for model management APIs."""
 
 
-# LiteLLM errors
+# Synchronous API errors
+
+
+class InvalidStateTransitionError(ValueError):
+    """Error to raise when a modification is requested but cannot be processed due to current model state."""
+
+    pass
 
 
 class ModelNotFoundError(LookupError):

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Button from '@cloudscape-design/components/button';
@@ -41,11 +41,10 @@ import { SelectProps } from '@cloudscape-design/components/select';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatSession, Model, ModelConfig, LisaChatMessageMetadata } from '../types';
+import { LisaChatMessage, LisaChatSession, ModelConfig, LisaChatMessageMetadata } from '../types';
 import {
     getSession,
     putSession,
-    describeModels,
     isModelInterfaceHealthy,
     RESTAPI_URI,
     formatDocumentsAsString,
@@ -61,6 +60,8 @@ import { BufferWindowMemory } from 'langchain/memory';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
+import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
+import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 
 export default function Chat ({ sessionId }) {
     const [userPrompt, setUserPrompt] = useState('');
@@ -75,11 +76,16 @@ export default function Chat ({ sessionId }) {
           ${humanPrefix}: {input}
           ${aiPrefix}:`,
     );
-    const [models, setModels] = useState<Model[]>([]);
-    const [modelsOptions, setModelsOptions] = useState<SelectProps.Options>([]);
-    const [modelConfig, setModelConfig] = useState<ModelConfig | undefined>(undefined);
-    const [selectedModel, setSelectedModel] = useState<Model | undefined>(undefined);
-    const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option | undefined>(undefined);
+
+    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+        selectFromResult: (state) => ({
+            isFetching: state.isFetching,
+            data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
+        })});
+    const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
+    const [modelConfig, setModelConfig] = useState<ModelConfig>();
+    const [selectedModel, setSelectedModel] = useState<IModel>();
+    const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option>();
     const [session, setSession] = useState<LisaChatSession>({
         history: [],
         sessionId: '',
@@ -89,11 +95,9 @@ export default function Chat ({ sessionId }) {
     const [streamingEnabled, setStreamingEnabled] = useState(false);
     const [chatHistoryBufferSize, setChatHistoryBufferSize] = useState<number>(3);
     const [ragTopK, setRagTopK] = useState<number>(3);
-    const [modelCanStream, setModelCanStream] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
-    const [isLoadingModels, setIsLoadingModels] = useState(false);
     const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
     const [showMetadata, setShowMetadata] = useState(false);
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
@@ -128,25 +132,9 @@ export default function Chat ({ sessionId }) {
     });
 
     useEffect(() => {
-        describeTextGenModels();
         isBackendHealthy().then((flag) => setIsConnected(flag));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    useEffect(() => {
-        if (selectedModelOption) {
-            const model = models.filter((model) => model.id === selectedModelOption.value)[0];
-            if (!model.streaming && model.streaming !== undefined && streamingEnabled) {
-                setStreamingEnabled(false);
-            }
-            setModelCanStream(model.streaming || model.streaming === undefined);
-            setSelectedModel(model);
-        }
-    }, [models, selectedModelOption, streamingEnabled]);
-
-    useEffect(() => {
-        setModelsOptions(models.map((model) => ({ label: model.id, value: model.id })));
-    }, [models]);
 
     useEffect(() => {
         if (!isRunning && session.history.length) {
@@ -242,7 +230,7 @@ export default function Chat ({ sessionId }) {
                 }
                 const prompt = await PromptTemplate.fromTemplate(promptTemplate).format(promptValues);
                 const metadata: LisaChatMessageMetadata = {
-                    modelName: selectedModel.id,
+                    modelName: selectedModel.modelId,
                     modelKwargs: modelConfig,
                     userId: auth.user.profile.sub,
                     messages: prompt,
@@ -280,7 +268,7 @@ export default function Chat ({ sessionId }) {
 
     const createOpenAiClient = (streaming: boolean) => {
         return new ChatOpenAI({
-            modelName: selectedModel?.id,
+            modelName: selectedModel?.modelId,
             openAIApiKey: auth.user?.id_token,
             configuration: {
                 baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
@@ -350,7 +338,7 @@ export default function Chat ({ sessionId }) {
                 idToken: auth.user?.id_token,
                 repositoryId: ragConfig.repositoryId,
                 repositoryType: ragConfig.repositoryType,
-                modelName: ragConfig.embeddingModel.id,
+                modelName: ragConfig.embeddingModel.modelId,
                 topK: ragTopK,
             });
 
@@ -457,13 +445,6 @@ export default function Chat ({ sessionId }) {
         setUserPrompt('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userPrompt, metadata, streamingEnabled]);
-
-    const describeTextGenModels = useCallback(async () => {
-        setIsLoadingModels(true);
-        setModels(await describeModels(auth.user?.id_token, 'textgen'));
-        setIsLoadingModels(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     return (
         <>
@@ -579,7 +560,9 @@ export default function Chat ({ sessionId }) {
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
                                                     e.preventDefault();
-                                                    handleSendGenerateRequest();
+                                                    if (!isRunning) {
+                                                        handleSendGenerateRequest();
+                                                    }
                                                 }
                                             }}
                                             value={userPrompt}
@@ -589,7 +572,7 @@ export default function Chat ({ sessionId }) {
                                         <div className='flex mb-2 justify-end mt-3'>
                                             <div>
                                                 <Button
-                                                    disabled={!models.length || isRunning || !selectedModel || userPrompt === ''}
+                                                    disabled={!allModels.length || isRunning || !selectedModel || userPrompt === ''}
                                                     onClick={handleSendGenerateRequest}
                                                     iconAlign='right'
                                                     iconName='angle-right-double'
@@ -647,20 +630,31 @@ export default function Chat ({ sessionId }) {
                                         >
                                             <Select
                                                 disabled={isRunning}
-                                                statusType={isLoadingModels ? 'loading' : 'finished'}
+                                                statusType={isFetchingModels ? 'loading' : 'finished'}
                                                 loadingText='Loading models (might take few seconds)...'
                                                 placeholder='Select a model'
                                                 empty={<div className='text-gray-500'>No models available.</div>}
                                                 filteringType='auto'
                                                 selectedOption={selectedModelOption}
-                                                onChange={({ detail }) => setSelectedModelOption(detail.selectedOption)}
+                                                onChange={({ detail: { selectedOption } }) => {
+                                                    setSelectedModelOption(selectedOption);
+
+                                                    const model = allModels.find((model) => model.modelId === selectedOption.value);
+                                                    if (model) {
+                                                        if (!model.streaming && streamingEnabled) {
+                                                            setStreamingEnabled(false);
+                                                        }
+
+                                                        setSelectedModel(model);
+                                                    }
+                                                }}
                                                 options={modelsOptions}
                                             />
                                             <div style={{ paddingTop: 4 }}>
                                                 <Toggle
                                                     onChange={({ detail }) => setStreamingEnabled(detail.checked)}
                                                     checked={streamingEnabled}
-                                                    disabled={!modelCanStream || isRunning}
+                                                    disabled={!selectedModel?.streaming || isRunning}
                                                 >
                                                     Streaming
                                                 </Toggle>

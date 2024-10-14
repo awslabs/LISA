@@ -181,7 +181,11 @@ export class ECSCluster extends Construct {
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
         }
 
-        const taskPolicy = ManagedPolicy.fromManagedPolicyName(this, createCdkId([config.deploymentName, 'ECSPolicy']), createCdkId([config.deploymentName, 'ECSPolicy']));
+        const taskPolicyId = createCdkId([config.deploymentName, 'ECSPolicy']);
+        const taskPolicyStringParam = StringParameter.fromStringParameterName(this, 'taskPolicyStringParam',
+            `${config.deploymentPrefix}/policies/${taskPolicyId}`
+        );
+        const taskPolicy = ManagedPolicy.fromManagedPolicyArn(this, taskPolicyId, taskPolicyStringParam.stringValue);
         const role_id = ecsConfig.identifier;
         const roleName = createCdkId([config.deploymentName, role_id, 'Role']);
         const taskRole = new Role(this, createCdkId([role_id, 'Role']), {

@@ -1,11 +1,11 @@
 {
-  "name": "react",
+  "name": "lisa-web",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node ./scripts/set-revision-info.mjs && tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(tsx|js|ts|json)\""
@@ -19,6 +19,7 @@
     "@microsoft/fetch-event-source": "^2.0.1",
     "@reduxjs/toolkit": "^1.9.5",
     "axios": "^1.7.4",
+    "git-repo-info": "^2.1.1",
     "langchain": "^0.1.12",
     "lodash": "^4.17.21",
     "luxon": "^3.4.0",

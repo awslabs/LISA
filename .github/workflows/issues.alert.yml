@@ -1,0 +1,30 @@
+name: Alert on Issue Creation
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  send_slack_notification:
+    name: Send Issue Alert Slack Notification
+    runs-on: ubuntu-latest
+    steps:
+        - name: Send slack notification for issue created
+          uses: rtCamp/action-slack-notify@v2
+          if: github.event.action == 'opened'
+          env:
+            SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
+            SLACK_COLOR: 'success'
+            SLACK_TITLE: 'Issue Created'
+            SLACK_FOOTER: ''
+            MSG_MINIMAL: 'true'
+            SLACK_MESSAGE: '<!here> Issue <${{ github.event.issue.html_url }}|${{ github.event.issue.title }}> created by ${{ github.event.sender.login }}'
+        - name: Send slack notification for issue reopened
+          uses: rtCamp/action-slack-notify@v2
+          if: github.event.action == 'reopened'
+          env:
+            SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
+            SLACK_COLOR: 'success'
+            SLACK_TITLE: 'Issue Reopened'
+            SLACK_FOOTER: ''
+            MSG_MINIMAL: 'true'
+            SLACK_MESSAGE: '<!here> Issue <${{ github.event.issue.html_url }}|${{ github.event.issue.title }}> reopened by ${{ github.event.sender.login }}'

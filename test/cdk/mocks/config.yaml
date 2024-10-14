@@ -116,124 +116,14 @@ dev:
     chunkOverlap: 51
   ecsModels:
     - modelName: mistralai/Mistral-7B-Instruct-v0.2
-      modelId: mistral7b
-      deploy: true
-      streaming: true
-      modelType: textgen
-      instanceType: g5.xlarge
       inferenceContainer: tgi
-      containerConfig:
-        image:
-          baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
-          path: lib/serve/ecs-model/textgen/tgi
-          type: asset
-        sharedMemorySize: 2048
-        healthCheckConfig:
-          command: ["CMD-SHELL", "exit 0"]
-          interval: 10
-          startPeriod: 30
-          timeout: 5
-          retries: 3
-        environment:
-          MAX_CONCURRENT_REQUESTS: 128
-          MAX_INPUT_LENGTH: 1024
-          MAX_TOTAL_TOKENS: 2048
-      autoScalingConfig:
-        minCapacity: 1
-        maxCapacity: 1
-        defaultInstanceWarmup: 180
-        cooldown: 420
-        metricConfig:
-          AlbMetricName: RequestCountPerTarget
-          targetValue: 30
-          duration: 60
-          estimatedInstanceWarmup: 330
-      loadBalancerConfig:
-        healthCheckConfig:
-          path: /health
-          interval: 60
-          timeout: 30
-          healthyThresholdCount: 2
-          unhealthyThresholdCount: 10
+      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
     - modelName: intfloat/e5-large-v2
-      modelId: e5v2
-      deploy: true
-      modelType: embedding
-      instanceType: g5.xlarge
       inferenceContainer: tei
-      containerConfig:
-        image:
-          baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
-          path: lib/serve/ecs-model/embedding/tei
-          type: asset
-        sharedMemorySize: 2048
-        healthCheckConfig:
-          command: ["CMD-SHELL", "exit 0"]
-          interval: 10
-          startPeriod: 30
-          timeout: 5
-          retries: 3
-        environment:
-          MAX_CONCURRENT_REQUESTS: 512
-          MAX_CLIENT_BATCH_SIZE: 1024
-          MAX_BATCH_TOKENS: 16384
-      autoScalingConfig:
-        minCapacity: 1
-        maxCapacity: 1
-        cooldown: 420
-        defaultInstanceWarmup: 180
-        metricConfig:
-          AlbMetricName: RequestCountPerTarget
-          targetValue: 60
-          duration: 60
-          estimatedInstanceWarmup: 330
-      loadBalancerConfig:
-        healthCheckConfig:
-          path: /health
-          interval: 30
-          timeout: 10
-          healthyThresholdCount: 2
-          unhealthyThresholdCount: 10
+      baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
     # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
-    #   deploy: true
-    #   streaming: true
-    #   modelType: textgen
-    #   instanceType: g5.12xlarge
     #   inferenceContainer: tgi
-    #   containerConfig:
-    #     image:
-    #       baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
-    #       path: lib/serve/ecs-model/textgen/tgi
-    #       type: asset
-    #     sharedMemorySize: 2048
-    #     healthCheckConfig:
-    #       command: ["CMD-SHELL", "exit 0"]
-    #       interval: 10
-    #       startPeriod: 30
-    #       timeout: 5
-    #       retries: 3
-    #     environment:
-    #       QUANTIZE: bitsandbytes-nf4
-    #       MAX_CONCURRENT_REQUESTS: 128
-    #       MAX_INPUT_LENGTH: 1024
-    #       MAX_TOTAL_TOKENS: 2048
-    #   autoScalingConfig:
-    #     minCapacity: 1
-    #     maxCapacity: 1
-    #     defaultInstanceWarmup: 180
-    #     cooldown: 420
-    #     metricConfig:
-    #       AlbMetricName: RequestCountPerTarget
-    #       targetValue: 30
-    #       duration: 60
-    #       estimatedInstanceWarmup: 330
-    #   loadBalancerConfig:
-    #     healthCheckConfig:
-    #       path: /health
-    #       interval: 60
-    #       timeout: 30
-    #       healthyThresholdCount: 2
-    #       unhealthyThresholdCount: 10
+    #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
   litellmConfig:
     general_settings:
       master_key: sk-012345

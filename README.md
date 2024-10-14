@@ -59,7 +59,9 @@ tooling (ex: OpenAI’s Python library, LangChain).
 - [License Notice](#license-notice)
 
 ---
-# Breaking Changes in v2 to v3 Migration
+# Breaking Changes
+
+## v2 to v3 Migration
 
 With the release of LISA v3.0.0, we have introduced several architectural changes that are incompatible with previous versions. Although these changes may cause some friction for existing users, they aim to simplify the deployment experience and enhance long-term scalability. The following breaking changes are critical for existing users planning to upgrade:
 
@@ -67,6 +69,27 @@ With the release of LISA v3.0.0, we have introduced several architectural change
 1. Networking Changes and Full Teardown: Core networking changes require a complete teardown of the existing LISA installation using the make destroy command before upgrading. Cross-stack dependencies have been modified, necessitating this full teardown to ensure proper application of the v3 infrastructure changes. Additionally, users may need to manually delete some resources, such as ECR repositories or S3 buckets, if they were populated before CloudFormation began deleting the stack. This operation is destructive and irreversible, so it is crucial to back up any critical configurations and data (e.g., S3 RAG bucket contents, DynamoDB token tables) before proceeding with the upgrade.
 1. New LiteLLM Admin Key Requirement: The new Model Management API requires an "admin" key for LiteLLM to track models for inference requests. This key, while transparent to users, must be present and conform to the required format (starting with sk-). The key is defined in the config.yaml file, and the LISA schema validator will prompt an error if it is missing or incorrectly formatted.
 
+## v3.0.0 to v3.1.0
+
+In preparation of the v3.1.0 release, there are several changes that we needed to make in order to ensure the stability of the LISA system.
+1. The CreateModel API `containerConfig` object has been changed so that the Docker Image repository is listed in `containerConfig.image.baseImage` instead of
+   its previous location at `containerConfig.baseImage.baseImage`. This change makes the configuration consistent with the config.yaml file in LISA v2.0 and prior.
+2. The CreateModel API `containerConfig.image` object no longer requires the `path` option. We identified that this was a confusing and redundant option to set, considering
+   that the path was based on the LISA code repository structure, and that we already had an option to specify if a model was using TGI, TEI, or vLLM. Specifying the `inferenceContainer`
+   is sufficient for the system to infer which files to use so that the user does not have to provide this information.
+3. The ApiDeployment stack now follows the same naming convention as the rest of the stacks that we deploy, utilization the deployment name and the deploymentStage names. This allows users
+   to have multiple LISA installations with different parameters in the same account without needing to change region or account entirely. After successful deployment, you may safely delete the
+   previous `${deploymentStage}-LisaApiDeployment` stack, as it is no longer in use.
+4. If you have installed v3.0.0 or v3.0.1, you will need to **delete** the Models API stack so that the model deployer function will deploy again. The function was converted to a Docker Image
+   Function so that the growing Function size would fit within the Lambda constraints. We recommend that you take the following actions to avoid leaked resources:
+   1. Use the Model Management UI to **delete all models** from LISA. This is needed so that we delete any CloudFormation stacks that track GPU instances. Failure to do this will require manual
+      resource cleanup to rid the account of inaccessible EC2 instances. Once the Models DynamoDB Table is deleted, we do not have a programmatic way to re-reference deployed models, so that is
+      why we recommend deleting them first.
+   2. **Only after deleting all models through the Model Management UI**, manually delete the Model Management API stack in CloudFormation. This will take at least 45 minutes due to Lambda's use
+      of Elastic Network Interfaces for VPC access. The stack name will look like: `${deployment}-lisa-models-${deploymentStage}`.
+   3. After the stack has been deleted, deploy LISA v3.1.0, which will recreate the Models API stack, along with the Docker Lambda Function.
+5. The `ecsModels` section of `config.yaml` has been stripped down to only 3 fields per model: `modelName`, `inferenceContainer`, and `baseImage`. Just as before, the system will check to see if the models
+   defined here exist in your models S3 bucket prior to LISA deployment. These values will be needed later when invoking the Model Management API to create a model.
 ---
 
 ## Background
@@ -167,7 +190,10 @@ to deployment.
 
 Before beginning, ensure you have:
 
-1. An AWS account with appropriate permissions
+1. An AWS account with appropriate permissions.
+   1. Because of all the resource creation that happens as part of CDK deployments, we expect Administrator or Administrator-like permissions with resource creation and mutation permissions.
+   Installation will not succeed if this profile does not have permissions to create and edit arbitrary resources for the system.
+   **Note**: This level of permissions is not required for the runtime of LISA, only its deployment and subsequent updates.
 2. AWS CLI installed and configured
 3. Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
 4. Python 3.9 or later
@@ -176,6 +202,9 @@ Before beginning, ensure you have:
 7. Sufficient disk space for model downloads and conversions
 
 If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and consult with your AWS support team.
+
+> [!TIP]
+> To minimize version conflicts and ensure a consistent deployment environment, it is recommended to execute the following steps on a dedicated EC2 instance. However, LISA can be deployed from any machine that meets the prerequisites listed above.
 
 ---
 
@@ -250,7 +279,7 @@ Edit the `config.yaml` file to customize your LISA deployment. Key configuration
 
 ## Step 5: Stage Model Weights
 
-LISA uses your AWS account's S3 bucket for model storage. Ensure your S3 bucket is structured as follows:
+LISA requires model weights to be staged in the S3 bucket specified in your `config.yaml` file, assuming the S3 bucket follows this structure:
 
 ```
 s3://<bucket-name>/<hf-model-id-1>
@@ -260,17 +289,31 @@ s3://<bucket-name>/<hf-model-id-1>/<file-2>
 s3://<bucket-name>/<hf-model-id-2>
 ```
 
-To optimize startup time, convert models to `.safetensors` format:
+**Example:**
+
+```
+s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2
+s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-1>
+s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-2>
+...
+```
+
+To automatically download and stage the model weights defined by the `ecsModels` parameter in your `config.yaml`, use the following command:
 
 ```bash
 make modelCheck
 ```
 
-This command will check for models, download them if necessary, and convert them to the required format. Ensure you have sufficient disk space for this operation.
+This command verifies if the model's weights are already present in your S3 bucket. If not, it downloads the weights, converts them to the required format, and uploads them to your S3 bucket. Ensure adequate disk space is available for this process.
 
-For air-gapped systems, manually download model artifacts and place them in a `models` directory in the project root, following the structure: `models/<model-id>`.
+> **WARNING**
+> As of LISA 3.0, the `ecsModels` parameter in `config.yaml` is solely for staging model weights in your S3 bucket. Previously, before models could be managed through the [API](https://github.com/awslabs/LISA/blob/develop/README.md#creating-a-model-admin-api) or via the Model Management section of the [Chatbot](https://github.com/awslabs/LISA/blob/develop/README.md#chatbot-example), this parameter also dictated which models were deployed.
 
-**Note:** We have primarily designed and tested this with HuggingFace models in mind. Any models outside of this format will require you to create and upload safetensors manually.
+> **NOTE**
+> For air-gapped systems, before running `make modelCheck` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
+
+> **NOTE**
+> This process is primarily designed and tested for HuggingFace models. For other model formats, you will need to manually create and upload safetensors.
 
 ---
 
@@ -316,35 +359,20 @@ authConfig:
 
 ## Step 7: Configure LiteLLM
 We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
-With the models that we are hosted using the process above, we automatically add them to our LiteLLM configuration with
-no additional configuration required from the user. We expose the [LiteLLM configuration](https://litellm.vercel.app/docs/proxy/configs)
-file directly within the LISA config.yaml file, so any options defined there can be defined directly in the LISA config file, under the `litellmConfig` option.
-This also means that we will also support calling other existing models that your VPC configuration allows. For more
-information about adding models, please see the LiteLLM docs [here](https://litellm.vercel.app/docs/proxy/configs).
-
-For the LISA implementation, we added one more block under the models within the `model_list` so that we can gather information about your
-models for usage in the LISA Chat UI. We ask for whether the model is a `textgen` or `embedding` model, and then if the model is a `textgen`
-model, we ask if it supports streaming or not. If the model is an embedding model, then the `streaming` option must be null or omitted.
-These fields will allow us to organize the models in the Chat UI so that the models show in
-the correct locations. These fields can be seen in the example configuration below.
+For LiteLLM configuration, a key must be set up so that the system may communicate with a database for tracking all the models that are added or removed
+using the [Model Management API](#admin-level-model-management-api). The key must start with `sk-` and then can be any arbitrary string. We recommend generating a new UUID and then using that as
+the key. Configuration example is below.
 
 
 ```yaml
 litellmConfig:
-  litellm_settings:
-    telemetry: false
-    drop_params: true
-  model_list:
-    - model_name: example-model
-      litellm_params:
-        model: sagemaker/example-endpoint
-        api_key: ignored
-      lisa_params:
-        model_type: textgen
-        streaming: true
+  general_settings:
+    master_key: sk-00000000-0000-0000-0000-000000000000  # needed for db operations, create your own key # pragma: allowlist-secret
+  model_list: []
 ```
 
-This configuration supports various model types, including SageMaker endpoints, Bedrock models, and custom OpenAI-compatible models.
+**Note**: It is possible to add LiteLLM-only models to this configuration, but it is not recommended as the models in this configuration will not show in the
+Chat or Model Management UIs. Instead, use the [Model Management UI](#admin-level-model-management-api) to add or remove LiteLLM-only model configurations.
 
 ---
 
@@ -370,34 +398,18 @@ restApiConfig:
 
 ## Step 9: Customize Model Deployment
 
-In the `ecsModels` section of `config.yaml`, configure the models you want to deploy.
+In the `ecsModels` section of `config.yaml`, allow our deployment process to pull the model weights for you.
 
-The configuration file will determine which models are deployed. In order to deploy an additional model or a
-different model the only required change is to the configuration file, as long as it is compatible with the inference
-container. Specifically, see the `ecsModels` section of the [config.yaml](./config.yaml) file.
-Here we define the model name, if we want to deploy, the type of instance we want to deploy to, the type of model
-(textgen or embedding), the inference container and then the containerConfig. There are many more parameters for the
-ecs models, many for autoscaling and health checks. However, let's focus on the model specific ones:
+During the deployment process, LISA will optionally attempt to download your model weights if you specify an optional `ecsModels`
+array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of the [example_config.yaml](./example_config.yaml) file.
+Here we define the model name, inference container, and baseImage:
 
 ```yaml
 ecsModels:
   - modelName: your-model-name
-    deploy: false
-    instanceType: g4dn.12xlarge
-    modelType: textgen
     inferenceContainer: tgi
-    containerConfig:
-      baseImage: ghcr.io/huggingface/text-generation-inference:1.0.2
-      environment:
-        QUANTIZE: bitsandbytes-nf4
-        MAX_CONCURRENT_REQUESTS: 128
-        MAX_INPUT_LENGTH: 1024
-        MAX_TOTAL_TOKENS: 2048
+    baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
 ```
-
-Adjust these parameters based on your specific model requirements and performance needs. These parameters will
-be used when the model endpoint is deployed and are likely to change with different model types. For more information
-on these parameters please see the [inference container documentation](https://github.com/huggingface/text-generation-inference/tree/main).
 
 ---
 
@@ -441,7 +453,8 @@ services are in the same region as the LISA installation, LISA can use them alon
 - Dynamically using the LISA Model Management API
 
 **Important:** Endpoints or Models statically defined during LISA deployment cannot be removed or updated using the
-LISA Model Management API.
+LISA Model Management API, and they will not show in the Chat UI. These will only show as part of the OpenAI `/models` API.
+Although there is support for it, we recommend using the [Model Management API](#admin-level-model-management-api) instead of the following static configuration.
 
 ### Example Configuration
 
@@ -592,9 +605,8 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
         }
       },
       "containerConfig": {
-        "baseImage": {
+        "image": {
           "baseImage": "vllm/vllm-openai:v0.5.0",
-          "path": "vllm",
           "type": "asset"
         },
         "sharedMemorySize": 2048,
@@ -659,9 +671,8 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
 
 LISA provides the `/models` endpoint for creating both ECS and LiteLLM-hosted models. Depending on the request payload, infrastructure will be created or bypassed (e.g., for LiteLLM-only models).
 
-This API accepts the same model definition parameters that were accepted in the V2 model definitions within the config.yaml file with one notable difference: the `containerConfig.baseImage.path` field is
-now a path relative to the `lib/serve/ecs-model` directory, instead of from its original path relative to the repository root. This means that if the path used to be `lib/serve/ecs-model/textgen/tgi`, then
-it will now be `textgen/tgi` for the CreateModel API. For vLLM models, the `path` will be `vllm`, and for TEI, it will be `embedding/tei`.
+This API accepts the same model definition parameters that were accepted in the V2 model definitions within the config.yaml file with one notable difference: the `containerConfig.image.path` field is
+now omitted because it corresponded with the `inferenceContainer` selection. As a convenience, this path is no longer required.
 
 #### Request Example:
 
@@ -676,12 +687,12 @@ POST https://<apigw_endpoint>/models
   "modelId": "mistral-vllm",
   "modelName": "mistralai/Mistral-7B-Instruct-v0.2",
   "modelType": "textgen",
+  "inferenceContainer": "vllm",
   "instanceType": "g5.xlarge",
   "streaming": true,
   "containerConfig": {
-    "baseImage": {
+    "image": {
       "baseImage": "vllm/vllm-openai:v0.5.0",
-      "path": "vllm",
       "type": "asset"
     },
     "sharedMemorySize": 2048,
@@ -702,10 +713,12 @@ POST https://<apigw_endpoint>/models
     "minCapacity": 1,
     "maxCapacity": 1,
     "cooldown": 420,
+    "defaultInstanceWarmup": 180,
     "metricConfig": {
       "albMetricName": "RequestCountPerTarget",
       "targetValue": 30,
-      "duration": 60
+      "duration": 60,
+      "estimatedInstanceWarmup": 330
     }
   },
   "loadBalancerConfig": {
@@ -733,8 +746,14 @@ POST https://<apigw_endpoint>/models
 
 #### Explanation of Key Fields for Creation Payload:
 
-- `modelId`: The unique identifier for the model.
-- `modelName`: The name of the model as it appears in the system.
+- `modelId`: The unique identifier for the model. This is any name you would like it to be.
+- `modelName`: The name of the model as it appears in the system. For LISA-hosted models, this must be the S3 Key to your model artifacts, otherwise
+   this is the LiteLLM-compatible reference to a SageMaker Endpoint or Bedrock Foundation Model. Note: Bedrock and SageMaker resources must exist in the
+   same region as your LISA deployment. If your LISA installation is in us-east-1, then all SageMaker and Bedrock calls will also happen in us-east-1.
+   Configuration examples:
+  - LISA hosting: If your model artifacts are in `s3://${lisa_models_bucket}/path/to/model/weights`, then the `modelName` value here should be `path/to/model/weights`
+  - LiteLLM-only, Bedrock: If you want to use `amazon.titan-text-lite-v1`, your `modelName` value should be `bedrock/amazon.titan-text-lite-v1`
+  - LiteLLM-only, SageMaker: If you want to use a SageMaker Endpoint named `my-sm-endpoint`, then the `modelName` value should be `sagemaker/my-sm-endpoint`.
 - `modelType`: The type of model, such as text generation (textgen).
 - `streaming`: Whether the model supports streaming inference.
 - `instanceType`: The type of EC2 instance to be used (only applicable for ECS models).
@@ -758,6 +777,96 @@ DELETE https://<apigw_endpoint>/models/{modelId}
 {
   "status": "success",
   "message": "Model mistral-vllm has been deleted successfully."
+}
+```
+
+### Updating a Model
+
+LISA offers basic updating functionality for both LISA-hosted and LiteLLM-only models. For both types, the model type and streaming support can be updated
+in the cases that the models were originally created with the wrong parameters. For example, if an embedding model was accidentally created as a `textgen`
+model, the UpdateModel API can be used to set it to the intended `embedding` value. Additionally, for LISA-hosted models, users may update the AutoScaling
+configuration to increase or decrease capacity usage for each model. Users may use this API to completely shut down all instances behind a model until
+they want to add capacity back to the model for usage later. This feature can help users to effectively manage costs so that instances do not have to stay
+running in time periods of little or no expected usage.
+
+The UpdateModel API has mutually exclusive payload fields to avoid conflicting requests. The API does not allow for shutting off a model at the same time
+as updating its AutoScaling configuration, as these would introduce ambiguous intents. The API does not allow for setting AutoScaling limits to 0 and instead
+requires the usage of the enable/disable functionality to allow models to fully scale down or turn back on. Metadata updates, such as changing the model type
+or streaming compatibility, can happen in either type of update or simply by themselves.
+
+#### Request Example
+
+```
+PUT https://<apigw_endpoint>/models/{modelId}
+```
+
+#### Example Payloads
+
+##### Update Model Metadata
+
+This payload will simply update the model metadata, which will complete within seconds of invoking. If setting a model as an `embedding` model, then the
+`streaming` option must be set to `false` or omitted as LISA does not support streaming with embedding models. Both the `streaming` and `modelType` options
+may be included in any other update request.
+
+```json
+{
+  "streaming": true,
+  "modelType": "textgen"
+}
+```
+
+##### Update AutoScaling Configuration
+
+This payload will update the AutoScaling configuration for minimum, maximum, and desired number of instances. The desired number must be between the
+minimum or maximum numbers, inclusive, and all the numbers must be strictly greater than 0. If the model currently has less than the minimum number, then
+the desired count will automatically raise to the minimum if a desired count is not specified. Despite setting a desired capacity, the model will scale down
+to the minimum number over time if you are not hitting the scaling thresholds set when creating the model in the first place.
+
+The AutoScaling configuration **can** be updated while the model is in the Stopped state, but it won't be applied immediately. Instead, the configuration will
+be saved until the model is started again, in which it will use the most recently updated AutoScaling configuration.
+
+The request will fail if the `autoScalingInstanceConfig` is defined at the same time as the `enabled` field. These options are mutually exclusive and must be
+handled as separate operations. Any or all of the options within the `autoScalingInstanceConfig` may be set as needed, so if you only wish to change the `desiredCapacity`,
+then that is the only option that you need to specify in the request object within the `autoScalingInstanceConfig`.
+
+```json
+{
+  "autoScalingInstanceConfig": {
+    "minCapacity": 2,
+    "maxCapacity": 4,
+    "desiredCapacity": 3
+  }
+}
+```
+
+##### Stop Model - Scale Down to 0 Instances
+
+This payload will stop all model EC2 instances and remove the model reference from LiteLLM so that users are unable to make inference requests against a model
+with no capacity. This option is useful for users who wish to manage costs and turn off instances when the model is not currently needed but will be used again
+in the future.
+
+The request will fail if the `enabled` field is defined at the same time as the `autoScalingInstanceConfig` field. These options are mutually exclusive and must be
+handled as separate operations.
+
+```json
+{
+  "enabled": false
+}
+```
+
+##### Start Model - Restore Previous AutoScaling Configuration
+
+After stopping a model, this payload will turn the model back on by spinning up instances, waiting for the expected spin-up time to allow models to initialize, and then
+adding the reference back to LiteLLM so that users may query the model again. This is expected to be a much faster operation than creating the model through the CreateModel
+API, so as long as the model details don't have to change, this in combination with the Stop payload will help to manage costs while still providing model availability as
+quickly as the system can spin it up again.
+
+The request will fail if the `enabled` field is defined at the same time as the `autoScalingInstanceConfig` field. These options are mutually exclusive and must be
+handled as separate operations.
+
+```json
+{
+  "enabled": true
 }
 ```
 
@@ -857,17 +966,9 @@ you can do so.
       but this list is expected to grow over time as vLLM updates.
       ```yaml
       ecsModels:
-        - modelName: mistralai/Mistral-7B-Instruct-v0.2
-          modelId: mistral7b-vllm
-          deploy: false
-          modelType: textgen # can also be 'embedding'
-          streaming: true # remove option if modelType is 'embedding'
-          instanceType: g5.xlarge
-          inferenceContainer: vllm # vLLM-specific config
-          containerConfig:
-            image:
-              baseImage: vllm/vllm-openai:v0.5.0 # vLLM-specific config
-              path: lib/serve/ecs-model/vllm # vLLM-specific config
+        - modelName: your-model-name
+          inferenceContainer: tgi
+          baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
       ```
 - If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built
   website assets using the top level `webAppAssetsPath` parameter in `config.yaml`. Specifying this path

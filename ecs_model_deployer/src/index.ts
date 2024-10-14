@@ -51,6 +51,7 @@ const createWritableEnv = () => {
 };
 
 export const handler = async (event: any) => {
+    console.log(`Event payload: ${JSON.stringify(event)}`);
     if (!event.modelConfig) {
         console.log(`modelConfig not provided in ${JSON.stringify(event)}`);
         throw new Error('modelConfig not provided');

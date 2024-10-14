@@ -16,13 +16,13 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { IModel, IModelListResponse, IModelRequest } from '../model/model-management.model';
+import { IModel, IModelListResponse, IModelRequest, IModelUpdateRequest } from '../model/model-management.model';
 
 export const modelManagementApi = createApi({
     reducerPath: 'models',
     baseQuery: lisaBaseQuery(),
     endpoints: (builder) => ({
-        getAllModels: builder.query<IModelListResponse, void>({
+        getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({
                 url: '/models',
             }),
@@ -36,20 +36,6 @@ export const modelManagementApi = createApi({
             }),
             invalidatesTags: ['models'],
         }),
-        startModel: builder.mutation<IModel, string>({
-            query: (modelId) => ({
-                url: `/models/${modelId}/start`,
-                method: 'PUT',
-            }),
-            invalidatesTags: ['models'],
-        }),
-        stopModel: builder.mutation<IModel, string>({
-            query: (modelId) => ({
-                url: `/models/${modelId}/stop`,
-                method: 'PUT',
-            }),
-            invalidatesTags: ['models'],
-        }),
         createModel: builder.mutation<IModel, IModelRequest>({
             query: (modelRequest) => ({
                 url: '/models',
@@ -58,7 +44,7 @@ export const modelManagementApi = createApi({
             }),
             invalidatesTags: ['models'],
         }),
-        updateModel: builder.mutation<IModel, IModelRequest>({
+        updateModel: builder.mutation<IModel, IModelUpdateRequest>({
             query: (modelRequest) => ({
                 url: `/models/${modelRequest.modelId}`,
                 method: 'PUT',
@@ -69,5 +55,5 @@ export const modelManagementApi = createApi({
     }),
 });
 
-export const { useGetAllModelsQuery, useDeleteModelMutation, useStopModelMutation, useStartModelMutation, useCreateModelMutation, useUpdateModelMutation } =
+export const { useGetAllModelsQuery, useDeleteModelMutation, useCreateModelMutation, useUpdateModelMutation } =
   modelManagementApi;

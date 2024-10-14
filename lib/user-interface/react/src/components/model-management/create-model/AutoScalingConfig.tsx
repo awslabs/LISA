@@ -23,7 +23,11 @@ import { IAutoScalingConfig } from '../../../shared/model/model-management.model
 import { Grid, Header, SpaceBetween } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
 
-export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : ReactElement {
+type AutoScalingConfigProps = FormProps<IAutoScalingConfig> & {
+    isEdit: boolean
+};
+
+export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement {
     return (
         <SpaceBetween size={'s'}>
             <Container
@@ -47,11 +51,21 @@ export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : React
                         <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                     </Grid>
                 </FormField>
+                { props.isEdit &&
+                    <FormField label='Desired Capacity' errorText={props.formErrors?.autoScalingConfig?.desiredCapacity}>
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={String(props.item.desiredCapacity)} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.desiredCapacity': detail.value.trim().length > 0 ? Number(detail.value) : undefined });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
+                        </Grid>
+                    </FormField>
+                }
                 <FormField label='Cooldown' errorText={props.formErrors?.autoScalingConfig?.cooldown}>
                     <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={props.item.cooldown.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.cooldown'])} onChange={({ detail }) => {
                             props.setFields({ 'autoScalingConfig.Cooldown': Number(detail.value) });
-                        }}/>
+                        }} disabled={props.isEdit}/>
                         <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                     </Grid>
                 </FormField>
@@ -59,12 +73,13 @@ export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : React
                     <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={props.item.defaultInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.defaultInstanceWarmup'])} onChange={({ detail }) => {
                             props.setFields({ 'autoScalingConfig.defaultInstanceWarmup': Number(detail.value) });
-                        }}/>
+                        }} disabled={props.isEdit}/>
                         <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                     </Grid>
                 </FormField>
             </Container>
-            <Container
+
+            { !props.isEdit && <Container
                 header={
                     <Header variant='h3'>Metric Config</Header>
                 }
@@ -97,7 +112,7 @@ export function AutoScalingConfig (props: FormProps<IAutoScalingConfig>) : React
                         </Grid>
                     </FormField>
                 </SpaceBetween>
-            </Container>
+            </Container>}
         </SpaceBetween>
     );
 }

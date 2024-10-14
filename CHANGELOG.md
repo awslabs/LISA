@@ -1,3 +1,33 @@
+# v3.1.0
+## Enhancements
+### Model Management Administration
+- Supports customers updating a subset of model properties through the model management user interface (UI) or APIs
+- These new model management features are also limited to users in the configured IDP LISA administration group
+- This feature prevents customers from having to delete and re-create models every time they want to make changes to available models already deployed in the infrastructure
+
+### Other Enhancements
+- Updated the chat UI to pull available models from the model management APIs instead of LiteLLM. This will allow the UI to pull all metadata that is stored about a model to properly enable/disable features, current model status is used to ensure users can only interact with `InService` models when chatting
+- Updated default Model Creation values, so that there are fewer fields that should need updating when creating a model through the UI
+- Removed the unnecessary fields for ECS config in the properties file. LISA will be able to go and pull the weights with these optional values and if an internet connection is available
+- Added the deployed LISA version in the UI profile dropdown so users understand what version of the software they are using
+
+## Bug fixes
+- Updated naming prefixes if they are populated to prevent potential name clashes, customers can now  more easily use prefix resource names with LISA
+- Fixed an issue where a hard reload was not pulling in the latest models
+- Resolved a deployment issue where the SSM deployment parameter was being retained
+- Addressed an issue where users could interact with the chat API if a request was being processed by hitting the `Enter` key
+
+## Coming Soon
+- Version 3.2.0 will simplify the deployment process by removing all but the key properties required for the deployment, and extracting constants into a separate file as optional items to override. This will make LISA's deployment process a lot easier to understand and manage.
+
+## Acknowledgements
+* @petermuller
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.0.1...v3.1.0
+
+
 # v3.0.1
 ## Bug fixes
 - Updated our Lambda admin validation to work for no-auth if user has the admin secret token. This applies to model management APIs.

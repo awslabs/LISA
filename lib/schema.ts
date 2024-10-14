@@ -492,57 +492,19 @@ export type ECSConfig = EcsBaseConfig;
  * Configuration schema for an ECS model.
  *
  * @property {string} modelName - Name of the model.
- * @property {string} modelId - An optional short id to use when creating cdk ids for model related
- *                              resources
- * @property {boolean} [deploy=true] - Whether to deploy model.
- * @property {boolean} [streaming=null] - Whether the model supports streaming.
- * @property {string} modelType - Type of model.
- * @property {string} instanceType - EC2 instance type for running the model.
+ * @property {string} baseImage - Base image for the container.
  * @property {string} inferenceContainer - Prebuilt inference container for serving model.
- * @property {ContainerConfig} containerConfig - Configuration for the container.
- * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
- * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
- * @property {string} [localModelCode='/opt/model-code'] - Path in container for local model code.
- * @property {string} [modelHosting='ecs'] - Model hosting.
  */
 const EcsModelConfigSchema = z
     .object({
         modelName: z.string(),
-        modelId: z.string().optional(),
-        deploy: z.boolean().default(true),
-        streaming: z.boolean().nullable().default(null),
-        modelType: z.nativeEnum(ModelType),
-        instanceType: z.enum(VALID_INSTANCE_KEYS),
+        baseImage: z.string(),
         inferenceContainer: z
             .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
-            }),
-        containerConfig: ContainerConfigSchema,
-        autoScalingConfig: AutoScalingConfigSchema,
-        loadBalancerConfig: LoadBalancerConfigSchema,
-        localModelCode: z.string().default('/opt/model-code'),
-        modelHosting: z
-            .string()
-            .default('ecs')
-            .refine((data) => {
-                return !data.includes('.'); // string cannot contain a period
-            }),
-    })
-    .refine(
-        (data) => {
-            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
-            const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
-            const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
-
-            return isValidForTextgen || isValidForEmbedding;
-        },
-        {
-            message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
-            path: ['streaming'],
-        },
-    );
+            })
+    });
 
 /**
  * Type representing configuration for an ECS model.
@@ -898,7 +860,7 @@ const RawConfigSchema = z
         ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
         ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
         restApiConfig: FastApiContainerConfigSchema,
-        ecsModels: z.array(EcsModelConfigSchema),
+        ecsModels: z.array(EcsModelConfigSchema).optional(),
         apiGatewayConfig: ApiGatewayConfigSchema.optional(),
         nvmeHostMountPath: z.string().default('/nvme'),
         nvmeContainerMountPath: z.string().default('/nvme'),
@@ -931,8 +893,8 @@ const RawConfigSchema = z
         permissionsBoundaryAspect: z
             .object({
                 permissionsBoundaryPolicyName: z.string(),
-                rolePrefix: z.string().optional(),
-                policyPrefix: z.string().optional(),
+                rolePrefix: z.string().max(20).optional(),
+                policyPrefix: z.string().max(20).optional(),
                 instanceProfilePrefix: z.string().optional(),
             })
             .optional(),

@@ -15,13 +15,14 @@
 */
 
 import { Button, Grid, Select, SelectProps, SpaceBetween } from '@cloudscape-design/components';
-import { useEffect, useState } from 'react';
-import { Model } from '../types';
-import { describeModels, listRagRepositories } from '../utils';
+import { useEffect, useMemo, useState } from 'react';
+import { listRagRepositories } from '../utils';
 import { AuthContextProps } from 'react-oidc-context';
+import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
+import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 
 export type RagConfig = {
-    embeddingModel: Model;
+    embeddingModel: IModel;
     repositoryId: string;
     repositoryType: string;
 };
@@ -34,23 +35,22 @@ type RagControlProps = {
 };
 
 export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig }: RagControlProps) {
-    const [embeddingModels, setEmbeddingModels] = useState<Model[]>([]);
-    const [embeddingOptions, setEmbeddingOptions] = useState<SelectProps.Options>([]);
-    const [isLoadingEmbeddingModels, setIsLoadingEmbeddingModels] = useState(false);
     const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
     const [repositoryOptions, setRepositoryOptions] = useState<SelectProps.Options>([]);
     const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<SelectProps.Option | undefined>(undefined);
     const [selectedRepositoryOption, setSelectedRepositoryOption] = useState<SelectProps.Option | undefined>(undefined);
     const [repositoryMap, setRepositoryMap] = useState(new Map());
+    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+        selectFromResult: (state) => ({
+            isFetching: state.isFetching,
+            data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
+        })});
+    const embeddingOptions = useMemo(() => {
+        return allModels?.map((model) => ({value: model.modelId})) || [];
+    }, [allModels]);
 
     useEffect(() => {
-        setIsLoadingEmbeddingModels(true);
         setIsLoadingRepositories(true);
-
-        describeModels(auth.user?.id_token, 'embedding').then((resp) => {
-            setEmbeddingModels(resp);
-            setIsLoadingEmbeddingModels(false);
-        });
 
         listRagRepositories(auth.user?.id_token).then((repositories) => {
             setRepositoryOptions(
@@ -67,10 +67,6 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
     // We only want this to run a single time on component mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    useEffect(() => {
-        setEmbeddingOptions(embeddingModels.map((model) => ({ label: model.id, value: model.id })));
-    }, [embeddingModels]);
 
     useEffect(() => {
         setUseRag(!!selectedEmbeddingOption && !!selectedRepositoryOption);
@@ -120,8 +116,8 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
                     Clear
                 </Button>
                 <Select
-                    disabled={isRunning}
-                    statusType={isLoadingEmbeddingModels ? 'loading' : 'finished'}
+                    disabled={!selectedRepositoryOption || isRunning}
+                    statusType={isFetchingModels ? 'loading' : 'finished'}
                     loadingText='Loading embedding models (might take few seconds)...'
                     placeholder='Select an embedding model'
                     empty={<div className='text-gray-500'>No embedding models available.</div>}
@@ -129,10 +125,14 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
                     selectedOption={selectedEmbeddingOption}
                     onChange={({ detail }) => {
                         setSelectedEmbeddingOption(detail.selectedOption);
-                        setRagConfig((config) => ({
-                            ...config,
-                            embeddingModel: embeddingModels.filter((model) => model.id === detail.selectedOption.value)[0],
-                        }));
+
+                        const model = allModels.find((model) => model.modelId === detail.selectedOption.value);
+                        if (model) {
+                            setRagConfig((config) => ({
+                                ...config,
+                                embeddingModel: model,
+                            }));
+                        }
                     }}
                     options={embeddingOptions}
                 />

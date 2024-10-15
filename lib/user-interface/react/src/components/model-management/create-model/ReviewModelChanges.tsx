@@ -16,11 +16,13 @@
 
 import React, { ReactElement } from 'react';
 import _ from 'lodash';
-import { SpaceBetween, TextContent } from '@cloudscape-design/components';
+import { Alert, SpaceBetween, TextContent } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
+import { SerializedError } from '@reduxjs/toolkit';
 
 export type ReviewModelChangesProps = {
-    jsonDiff: object
+    jsonDiff: object,
+    error?: SerializedError
 };
 
 export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactElement {
@@ -52,6 +54,14 @@ export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactEleme
                     {_.isEmpty(props.jsonDiff) ? <p>No changes detected</p> : jsonToOutline(props.jsonDiff)}
                 </TextContent>
             </Container>
+
+            { props?.error && <Alert
+                type='error'
+                statusIconAriaLabel='Error'
+                header={props?.error?.name || 'Model Error'}
+            >
+                { props?.error?.message }
+            </Alert>}
         </SpaceBetween>
     );
 }

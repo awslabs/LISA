@@ -33,6 +33,7 @@ import { useNotificationService } from '../../../shared/util/hooks';
 import { ReviewModelChanges } from './ReviewModelChanges';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { z } from 'zod';
+import { SerializedError } from '@reduxjs/toolkit';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -86,11 +87,11 @@ function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEff
 export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const [
         createModelMutation,
-        { isSuccess: isCreateSuccess, isError: isCreateError, error: createError, isLoading: isCreating },
+        { isSuccess: isCreateSuccess, isError: isCreateError, error: createError, isLoading: isCreating, reset: resetCreate },
     ] = useCreateModelMutation();
     const [
         updateModelMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
+        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
     ] = useUpdateModelMutation();
     const initialForm = {
         ...getDefaults(ModelRequestSchema),
@@ -131,6 +132,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             },
             activeStepIndex: 0,
         }, ModifyMethod.Set);
+        resetCreate();
+        resetUpdate();
     }
 
     /**
@@ -179,9 +182,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     function handleSubmit () {
         delete toSubmit.lisaHostedModel;
         if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
+            resetCreate();
             createModelMutation(toSubmit);
         } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
             // pick only the values we care about
+            resetUpdate();
             updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
                 'modelId',
                 'streaming',
@@ -226,11 +231,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             props.setVisible(false);
             props.setIsEdit(false);
             resetState();
-        } else if (!isCreating && isCreateError) {
-            notificationService.generateNotification(`Error creating model: ${createError.data.message ?? createError.data}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isCreateError, createError, isCreating, isCreateSuccess]);
+    }, [isCreating, isCreateSuccess]);
 
     useEffect(() => {
         if (!isUpdating && isUpdateSuccess) {
@@ -239,11 +242,33 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             props.setIsEdit(false);
             props.setSelectedItems([]);
             resetState();
-        } else if (!isUpdating && isUpdateError) {
-            notificationService.generateNotification(`Error updating model: ${updateError.data.message ?? updateError.data}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdateError, updateError, isUpdating, isUpdateSuccess]);
+    }, [isUpdating, isUpdateSuccess]);
+
+    const normalizeError = (error: SerializedError | {status: string, data: any}): SerializedError | undefined => {
+        // type predicate to help discriminate between types
+        function isResponseError<T extends {status: string, data: any}> (responseError: SerializedError | T): responseError is T {
+            return (responseError as T)?.status !== undefined;
+        }
+
+        if (error !== undefined) {
+            if (isResponseError(error)) {
+                return {
+                    name: 'Model Error',
+                    message: error.status
+                };
+            } else if (error) {
+                return {
+                    name: error?.name || 'Model Error',
+                    message: error?.message
+                };
+            }
+        }
+
+        return undefined;
+    };
+    const reviewError = normalizeError(isCreateError ? createError : isUpdateError ? updateError : undefined);
 
     const steps = [
         {
@@ -280,7 +305,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
             content: (
-                <ReviewModelChanges jsonDiff={changesDiff}/>
+                <ReviewModelChanges jsonDiff={changesDiff} error={reviewError} />
             ),
             onEdit: state.form.lisaHostedModel
         }

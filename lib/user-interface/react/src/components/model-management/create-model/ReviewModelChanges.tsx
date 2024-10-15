@@ -35,7 +35,7 @@ export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactEleme
 
         for (const key in json) {
             const value = json[key];
-                output.push((<li><p><strong>{_.startCase(key)}</strong>{_.isPlainObject(value) ? '' : `: ${value}`}</p></li>));
+            output.push((<li><p><strong>{_.startCase(key)}</strong>{_.isPlainObject(value) ? '' : `: ${value}`}</p></li>));
 
             if (_.isPlainObject(value)) {
                 const recursiveJson = jsonToOutline(value); // recursively call

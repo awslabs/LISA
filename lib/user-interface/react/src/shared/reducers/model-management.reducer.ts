@@ -42,6 +42,13 @@ export const modelManagementApi = createApi({
                 method: 'POST',
                 data: modelRequest
             }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Create Model Error',
+                    message: baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                };
+            },
             invalidatesTags: ['models'],
         }),
         updateModel: builder.mutation<IModel, IModelUpdateRequest>({
@@ -50,6 +57,13 @@ export const modelManagementApi = createApi({
                 method: 'PUT',
                 data: modelRequest
             }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Update Model Error',
+                    message: baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                };
+            },
             invalidatesTags: ['models'],
         }),
         getInstances: builder.query<string[], void>({

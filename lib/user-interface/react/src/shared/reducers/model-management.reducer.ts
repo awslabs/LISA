@@ -66,8 +66,18 @@ export const modelManagementApi = createApi({
             },
             invalidatesTags: ['models'],
         }),
+        getInstances: builder.query<string[], void>({
+            query: () => ({
+                url: '/models/metadata/instances'
+            })
+        })
     }),
 });
 
-export const { useGetAllModelsQuery, useDeleteModelMutation, useCreateModelMutation, useUpdateModelMutation } =
-  modelManagementApi;
+export const {
+    useGetAllModelsQuery,
+    useDeleteModelMutation,
+    useCreateModelMutation,
+    useUpdateModelMutation,
+    useGetInstancesQuery
+} = modelManagementApi;

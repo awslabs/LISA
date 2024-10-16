@@ -17,6 +17,7 @@ import os
 from typing import Annotated, Union
 
 import boto3
+import botocore.session
 from fastapi import FastAPI, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -36,6 +37,7 @@ from .domain_objects import (
 from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
 from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler
 
+sess = botocore.session.Session()
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
 app.add_middleware(AWSAPIGatewayMiddleware)
 
@@ -133,6 +135,12 @@ async def delete_model(
         model_table_resource=model_table,
     )
     return delete_handler(model_id=model_id)
+
+
+@app.get(path="/metadata/instances")  # type: ignore
+async def get_instances() -> list[str]:
+    """Endpoint to list available instances in this region."""
+    return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")

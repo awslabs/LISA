@@ -21,8 +21,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as cdk from 'aws-cdk-lib';
-import { Aspects } from 'aws-cdk-lib';
-import { AwsSolutionsChecks } from 'cdk-nag';
 import * as yaml from 'js-yaml';
 
 import { Config, ConfigFile, ConfigSchema } from '../lib/schema';
@@ -78,10 +76,6 @@ const env: cdk.Environment = {
 
 // Application
 const app = new cdk.App();
-// Run CDK-nag on app if specified
-if (config.runCdkNag) {
-    Aspects.of(app).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
-}
 
 new LisaServeApplicationStage(app, config.deploymentStage, {
     env: env,

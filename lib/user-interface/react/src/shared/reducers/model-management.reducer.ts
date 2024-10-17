@@ -46,7 +46,7 @@ export const modelManagementApi = createApi({
                 // transform into SerializedError
                 return {
                     name: 'Create Model Error',
-                    message: baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
                 };
             },
             invalidatesTags: ['models'],
@@ -61,7 +61,7 @@ export const modelManagementApi = createApi({
                 // transform into SerializedError
                 return {
                     name: 'Update Model Error',
-                    message: baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
                 };
             },
             invalidatesTags: ['models'],

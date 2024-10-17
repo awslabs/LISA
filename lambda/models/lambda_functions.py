@@ -19,6 +19,8 @@ from typing import Annotated, Union
 import boto3
 import botocore.session
 from fastapi import FastAPI, Path, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
@@ -61,6 +63,14 @@ stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
     return JSONResponse(status_code=404, content={"message": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)  # type: ignore
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle exception when request fails validation and and translate to a 422 error."""
+    return JSONResponse(
+        status_code=422, content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"}
+    )
 
 
 @app.exception_handler(InvalidStateTransitionError)  # type: ignore

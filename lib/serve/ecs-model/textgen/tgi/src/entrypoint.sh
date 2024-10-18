@@ -27,8 +27,16 @@ echo "Setting environment variables"
 export MAX_CONCURRENT_REQUESTS="${MAX_CONCURRENT_REQUESTS}"
 export MAX_INPUT_LENGTH="${MAX_INPUT_LENGTH}"
 export MAX_TOTAL_TOKENS="${MAX_TOTAL_TOKENS}"
+
+startArgs=()
+startArgs+=('--model-id' "${LOCAL_MODEL_PATH}")
+startArgs+=('--port' '8080')
+startArgs+=('--num-shard' "${NUM_SHARD}")
+startArgs+=('--json-output')
+
 if [[ -n "${QUANTIZE}" ]]; then
   export QUANTIZE="${QUANTIZE}"
+  startArgs+=('--quantize' "${QUANTIZE}")
 fi
 # Check if CUDA_VISIBLE_DEVICES is set, otherwise set it to use GPU 0
 if [[ -z "${CUDA_VISIBLE_DEVICES}" ]]; then

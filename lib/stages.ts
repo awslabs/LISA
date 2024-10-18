@@ -28,6 +28,7 @@ import {
     Tags,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 
 import { LisaChatApplicationStack } from './chat';
 import { CoreStack, ARCHITECTURE } from './core';
@@ -235,6 +236,14 @@ export class LisaServeApplicationStage extends Stage {
         if (config.permissionsBoundaryAspect) {
             stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+            });
+        }
+
+        // Run CDK-nag on app if specified
+        if (config.runCdkNag) {
+            stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
+                Aspects.of(lisaStack).add(new NIST80053R5Checks({ reports: true, verbose: true }));
             });
         }
 

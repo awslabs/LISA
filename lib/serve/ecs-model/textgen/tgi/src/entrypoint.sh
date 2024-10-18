@@ -29,10 +29,6 @@ export MAX_INPUT_LENGTH="${MAX_INPUT_LENGTH}"
 export MAX_TOTAL_TOKENS="${MAX_TOTAL_TOKENS}"
 
 startArgs=()
-startArgs+=('--model-id' "${LOCAL_MODEL_PATH}")
-startArgs+=('--port' '8080')
-startArgs+=('--num-shard' "${NUM_SHARD}")
-startArgs+=('--json-output')
 
 if [[ -n "${QUANTIZE}" ]]; then
   export QUANTIZE="${QUANTIZE}"
@@ -47,6 +43,11 @@ if [[ -z "${NUM_SHARD}" ]]; then
   export NUM_SHARD="${NUM_SHARD:-1}"
 fi
 echo "$(env)"
+
+startArgs+=('--model-id' "${LOCAL_MODEL_PATH}")
+startArgs+=('--port' '8080')
+startArgs+=('--num-shard' "${NUM_SHARD}")
+startArgs+=('--json-output')
 
 # Start the webserver
 echo "Starting TGI"

@@ -91,6 +91,7 @@ class LoadBalancerConfig(BaseModel):
 class AutoScalingConfig(BaseModel):
     """Autoscaling configuration upon model creation."""
 
+    blockDeviceVolumeSize: NonNegativeInt
     minCapacity: NonNegativeInt
     maxCapacity: NonNegativeInt
     cooldown: PositiveInt

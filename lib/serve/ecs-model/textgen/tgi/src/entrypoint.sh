@@ -30,8 +30,22 @@ export MAX_TOTAL_TOKENS="${MAX_TOTAL_TOKENS}"
 if [[ -n "${QUANTIZE}" ]]; then
   export QUANTIZE="${QUANTIZE}"
 fi
+# Check if CUDA_VISIBLE_DEVICES is set, otherwise set it to use GPU 0
+if [[ -z "${CUDA_VISIBLE_DEVICES}" ]]; then
+  export CUDA_VISIBLE_DEVICES="0"
+fi
+# Check if number of shards is set, otherwise set it to use 1
+if [[ -z "${NUM_SHARD}" ]]; then
+  export NUM_SHARD="${NUM_SHARD:-1}"
+fi
 echo "$(env)"
 
 # Start the webserver
 echo "Starting TGI"
-text-generation-launcher --model-id $LOCAL_MODEL_PATH --port 8080 --json-output
+CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} \
+text-generation-launcher \
+  --model-id $LOCAL_MODEL_PATH \
+  --quantize ${QUANTIZE} \
+  --port 8080 \
+  --num-shard ${NUM_SHARD} \
+  --json-output

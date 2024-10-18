@@ -51,9 +51,4 @@ echo "$(env)"
 # Start the webserver
 echo "Starting TGI"
 CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} \
-text-generation-launcher \
-  --model-id $LOCAL_MODEL_PATH \
-  --quantize ${QUANTIZE} \
-  --port 8080 \
-  --num-shard ${NUM_SHARD} \
-  --json-output
+text-generation-launcher "${startArgs[@]}"

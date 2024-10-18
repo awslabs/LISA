@@ -27,11 +27,29 @@ echo "Setting environment variables"
 export MAX_CONCURRENT_REQUESTS="${MAX_CONCURRENT_REQUESTS}"
 export MAX_INPUT_LENGTH="${MAX_INPUT_LENGTH}"
 export MAX_TOTAL_TOKENS="${MAX_TOTAL_TOKENS}"
+
+startArgs=()
+
 if [[ -n "${QUANTIZE}" ]]; then
   export QUANTIZE="${QUANTIZE}"
+  startArgs+=('--quantize' "${QUANTIZE}")
+fi
+# Check if CUDA_VISIBLE_DEVICES is set, otherwise set it to use GPU 0
+if [[ -z "${CUDA_VISIBLE_DEVICES}" ]]; then
+  export CUDA_VISIBLE_DEVICES="0"
+fi
+# Check if number of shards is set, otherwise set it to use 1
+if [[ -z "${NUM_SHARD}" ]]; then
+  export NUM_SHARD="${NUM_SHARD:-1}"
 fi
 echo "$(env)"
 
+startArgs+=('--model-id' "${LOCAL_MODEL_PATH}")
+startArgs+=('--port' '8080')
+startArgs+=('--num-shard' "${NUM_SHARD}")
+startArgs+=('--json-output')
+
 # Start the webserver
 echo "Starting TGI"
-text-generation-launcher --model-id $LOCAL_MODEL_PATH --port 8080 --json-output
+CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} \
+text-generation-launcher "${startArgs[@]}"

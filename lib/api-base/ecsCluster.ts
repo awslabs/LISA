@@ -102,7 +102,7 @@ export class ECSCluster extends Construct {
             blockDevices: [
                 {
                     deviceName: '/dev/xvda',
-                    volume: BlockDeviceVolume.ebs(30, {
+                    volume: BlockDeviceVolume.ebs(ecsConfig.autoScalingConfig.blockDeviceVolumeSize, {
                         encrypted: true,
                     }),
                 },

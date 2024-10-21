@@ -24,7 +24,7 @@ jobs:
           ref: refs/tags/${{ github.event.inputs.source_tag }}
       - name: Create Hotfix Branch and Update Version
         run: |
-          git config --global user.email "petermul@amazon.com"
+          git config --global user.email "evmann@amazon.com"
           git config --global user.name "github_actions_lisa"
           SRC_TAG=${{ github.event.inputs.source_tag }}
           DST_TAG=${{ github.event.inputs.dest_tag }}

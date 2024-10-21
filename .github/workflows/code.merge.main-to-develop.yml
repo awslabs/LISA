@@ -18,7 +18,7 @@ jobs:
           ssh-key: ${{ secrets.DEPLOYMENT_SSH_KEY }}
       - name: merge main into develop
         run: |
-          git config --global user.email "petermul@amazon.com"
+          git config --global user.email "evmann@amazon.com"
           git config --global user.name "github_actions_lisa"
           git fetch --unshallow
           git checkout develop

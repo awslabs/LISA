@@ -836,6 +836,7 @@ const RawConfigSchema = z
         deploymentStage: z.string(),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
         runCdkNag: z.boolean().default(false),
+        privateEndpoints: z.boolean().optional().default(false),
         s3BucketModels: z.string(),
         mountS3DebUrl: z.string().optional(),
         accountNumbersEcr: z

@@ -35,6 +35,14 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                     <Header variant='h3'>Auto Scaling Capacity</Header>
                 }
             >
+                <FormField label='Block Device Volume Size' errorText={props.formErrors?.autoScalingConfig?.blockDeviceVolumeSize}>
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                        <Input value={props.item.blockDeviceVolumeSize.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.blockDeviceVolumeSize'])} disabled={props.isEdit} onChange={({ detail }) => {
+                            props.setFields({ 'autoScalingConfig.blockDeviceVolumeSize': Number(detail.value) });
+                        }}/>
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>GBs</span>
+                    </Grid>
+                </FormField>
                 <FormField label='Min Capacity' errorText={props.formErrors?.autoScalingConfig?.minCapacity}>
                     <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={props.item.minCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {

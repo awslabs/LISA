@@ -440,6 +440,7 @@ const MetricConfigSchema = z.object({
 * @property {MetricConfig} metricConfig - Metric configuration for auto scaling.
 */
 const AutoScalingConfigSchema = z.object({
+    blockDeviceVolumeSize: z.number().min(30).default(30),
     minCapacity: z.number().min(1).default(1),
     maxCapacity: z.number().min(1).default(2),
     defaultInstanceWarmup: z.number().default(180),

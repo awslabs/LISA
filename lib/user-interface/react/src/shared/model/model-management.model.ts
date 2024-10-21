@@ -72,6 +72,7 @@ export type ILoadBalancerConfig = {
 };
 
 export type IAutoScalingConfig = {
+    blockDeviceVolumeSize: number;
     minCapacity: number;
     maxCapacity: number;
     desiredCapacity?: number;
@@ -161,6 +162,7 @@ export const loadBalancerConfigSchema = z.object({
 });
 
 export const autoScalingConfigSchema = z.object({
+    blockDeviceVolumeSize: z.number().min(30).default(30),
     minCapacity: z.number().min(1).default(1),
     maxCapacity: z.number().min(1).default(1),
     desiredCapacity: z.number().optional(),

@@ -10,6 +10,7 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+HEADLESS = false
 
 # Arguments defined through command line or config.yaml
 
@@ -241,7 +242,13 @@ buildEcsDeployer:
 
 ## Deploy all infrastructure
 deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
-ifdef PROFILE
+ifneq (,$(findstring true, $(HEADLESS)))
+	if [ -z ${PROFILE} ]; then \
+        npx cdk deploy ${STACK} -c ${ENV}='$(shell echo '${${ENV}}')'; \
+    else \
+        npx cdk deploy ${STACK} --profile ${PROFILE} -c ${ENV}='$(shell echo '${${ENV}}')'; \
+    fi;
+else ifdef PROFILE
 	@printf "\n \
 	DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
 	-----------------------------------\n \

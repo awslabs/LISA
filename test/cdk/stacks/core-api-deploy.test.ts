@@ -79,7 +79,7 @@ describe.each(regions)('API Core Deployment Nag Pack Tests | Region Test: %s', (
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
 
         tempStack.authorizer._attachToApi(tempStack.restApi);

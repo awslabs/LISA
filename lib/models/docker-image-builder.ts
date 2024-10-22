@@ -129,7 +129,7 @@ export class DockerImageBuilder extends Construct {
                 'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn,
                 'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl
             },
-            vpc: props.vpc?.vpc,
+            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
             vpcSubnets: props.vpc?.subnetSelection,
         });
 

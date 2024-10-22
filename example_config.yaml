@@ -37,6 +37,7 @@ dev:
   deployRag: true
   deployChat: true
   deployUi: true
+  privateEndpoints: false
   lambdaConfig:
     pythonRuntime: PYTHON_3_10
     logLevel: DEBUG

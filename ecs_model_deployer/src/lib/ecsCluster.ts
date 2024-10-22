@@ -18,7 +18,7 @@
 import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
@@ -57,6 +57,7 @@ type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
+    subnetSelection: SubnetSelection | undefined;
 } & BaseProps;
 
 /**
@@ -79,7 +80,7 @@ export class ECSCluster extends Construct {
    */
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
-        const { config, vpc, securityGroup, ecsConfig } = props;
+        const { config, vpc, securityGroup, ecsConfig, subnetSelection } = props;
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
@@ -90,6 +91,7 @@ export class ECSCluster extends Construct {
 
         // Create auto scaling group
         const autoScalingGroup = cluster.addCapacity(createCdkId([ecsConfig.identifier, 'ASG']), {
+            vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
@@ -285,6 +287,7 @@ export class ECSCluster extends Construct {
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc,
+            vpcSubnets: subnetSelection,
             idleTimeout: Duration.seconds(600)
         });
 

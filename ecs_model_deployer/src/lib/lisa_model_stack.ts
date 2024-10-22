@@ -16,7 +16,7 @@
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 
-import { Vpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Vpc, SecurityGroup, ISubnet, Subnet, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 
 import { Construct } from 'constructs';
 import { EcsModel } from './ecs-model';
@@ -38,13 +38,28 @@ export class LisaModelStack extends Stack {
             vpcId: props.vpcId
         });
 
+        let subnetSelection: SubnetSelection | undefined;
+
+        if (props.config.subnetIds && props.config.subnetIds.length > 0) {
+            const iSubnets: Map<number, ISubnet> = new Map();
+            props.config.subnetIds.forEach((subnet, index) => {
+                const importedSubnet = Subnet.fromSubnetId(this, index.toString(), subnet);
+                iSubnets.set(index, importedSubnet);
+            });
+
+            subnetSelection = {
+                subnets: Array.from(iSubnets!.values()),
+            };
+        }
+
         const securityGroup = SecurityGroup.fromLookupById(this, `${id}-sg`, props.securityGroupId);
 
         new EcsModel(this, `${id}-ecsModel`, {
             config: props.config,
             modelConfig: props.modelConfig,
             securityGroup: securityGroup,
-            vpc: vpc
+            vpc: vpc,
+            subnetSelection: subnetSelection
         });
     }
 }

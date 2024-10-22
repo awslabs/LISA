@@ -19,19 +19,20 @@ import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { Choice, Condition, DefinitionBody, StateMachine, Succeed, Wait, WaitTime } from 'aws-cdk-lib/aws-stepfunctions';
+import { Vpc } from '../../networking/vpc';
 
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[],
     role?: IRole,
-    vpc?: IVpc,
+    vpc?: Vpc,
     securityGroups?: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
@@ -74,7 +75,8 @@ export class UpdateModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -90,7 +92,8 @@ export class UpdateModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -106,7 +109,8 @@ export class UpdateModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,

@@ -15,7 +15,7 @@
 */
 
 // ECS Model Construct.
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
@@ -40,6 +40,7 @@ type ECSModelProps = {
     modelConfig: ModelConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
+    subnetSelection?: SubnetSelection | undefined;
 } & BaseProps;
 
 /**
@@ -56,7 +57,7 @@ export class EcsModel extends Construct {
    */
     constructor (scope: Construct, id: string, props: ECSModelProps) {
         super(scope, id);
-        const { config, modelConfig, securityGroup, vpc } = props;
+        const { config, modelConfig, securityGroup, vpc, subnetSelection } = props;
 
         const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
             config,
@@ -74,6 +75,7 @@ export class EcsModel extends Construct {
             },
             securityGroup,
             vpc,
+            subnetSelection
         });
 
         // Single bucket for all models

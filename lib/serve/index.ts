@@ -81,7 +81,7 @@ export class LisaServeApplicationStack extends Stack {
             securityGroup: vpc.securityGroups.restApiAlbSg,
             taskConfig: config.restApiConfig,
             tokenTable: tokenTable,
-            vpc: vpc.vpc,
+            vpc: vpc,
         });
 
         const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
@@ -159,6 +159,7 @@ export class LisaServeApplicationStack extends Stack {
         const litellmDb = new DatabaseInstance(this, 'LiteLLMScalingDB', {
             engine: DatabaseInstanceEngine.POSTGRES,
             vpc: vpc.vpc,
+            subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
             securityGroups: [litellmDbSg!],
             removalPolicy: config.removalPolicy,

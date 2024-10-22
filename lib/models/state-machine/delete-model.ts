@@ -28,16 +28,17 @@ import {
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { BaseProps } from '../../schema';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
+import { Vpc } from '../../networking/vpc';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[],
     role?: IRole,
-    vpc?: IVpc,
+    vpc?: Vpc,
     securityGroups?: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
@@ -73,7 +74,8 @@ export class DeleteModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -89,7 +91,8 @@ export class DeleteModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -105,7 +108,8 @@ export class DeleteModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -121,7 +125,8 @@ export class DeleteModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -137,7 +142,8 @@ export class DeleteModelStateMachine extends Construct {
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
-                vpc: vpc,
+                vpc: vpc?.vpc,
+                vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,

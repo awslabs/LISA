@@ -23,10 +23,12 @@ import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
     mountS3DebUrl: string;
+    vpc?: Vpc;
 };
 
 export class DockerImageBuilder extends Construct {
@@ -126,7 +128,9 @@ export class DockerImageBuilder extends Construct {
                 'LISA_ECR_URI': props.ecrUri,
                 'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn,
                 'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl
-            }
+            },
+            vpc: props.vpc?.vpc,
+            vpcSubnets: props.vpc?.subnetSelection,
         });
 
     }

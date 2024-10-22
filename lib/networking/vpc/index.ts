@@ -26,11 +26,14 @@ import {
     Port,
     SecurityGroup,
     SubnetType,
+    ISubnet,
+    Subnet, SubnetSelection
 } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
 import { SecurityGroups, BaseProps } from '../../schema';
+import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 
 type VpcProps = {} & BaseProps;
 
@@ -44,6 +47,12 @@ export class Vpc extends Construct {
     /** Security groups for application. */
     public readonly securityGroups: SecurityGroups;
 
+    /** Created from deployment configured Subnets for application. */
+    public readonly subnetGroup?: SubnetGroup | undefined;
+
+    /** Imported Subnets for application. */
+    public readonly subnetSelection?: SubnetSelection | undefined;
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -54,9 +63,35 @@ export class Vpc extends Construct {
 
         let vpc: IVpc;
         if (config.vpcId) {
+            /** Imports VPC for use by application if supplied, else creates a VPC. */
             vpc = ec2Vpc.fromLookup(this, 'imported-vpc', {
                 vpcId: config.vpcId,
             });
+
+            /** Checks if SubnetIds are provided in the config, if so we import them for use.
+             * A VPC must be supplied if Subnets are being used.
+            */
+
+            if (config.subnetIds && config.subnetIds.length > 0) {
+                const iSubnets: Map<number, ISubnet> = new Map();
+                config.subnetIds.forEach((subnet, index) => {
+                    const importedSubnet = Subnet.fromSubnetId(this, index.toString(), subnet);
+                    iSubnets.set(index, importedSubnet);
+                });
+
+                this.subnetSelection = {
+                    subnets: Array.from(iSubnets!.values()),
+                };
+                this.subnetGroup = new SubnetGroup(
+                    this,
+                    createCdkId([config.deploymentName, 'Imported-Subnets']),
+                    {
+                        vpc: this.vpc,
+                        description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
+                        vpcSubnets: this.subnetSelection,
+                    }
+                );
+            }
         } else {
             // Create VPC
             vpc = new ec2Vpc(this, 'VPC', {

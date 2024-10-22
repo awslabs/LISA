@@ -18,7 +18,7 @@
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
@@ -45,6 +45,7 @@ import { Construct } from 'constructs';
 import { createCdkId } from '../core/utils';
 import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
 import { ECSConfig } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -52,11 +53,12 @@ import { ECSConfig } from '../schema';
  * @property {IVpc} vpc - The virtual private cloud (VPC).
  * @property {SecurityGroups} securityGroups - The security group that the ECS cluster should use.
  * @property {ECSConfig} ecsConfig - The configuration for the cluster.
+ * @property {Map<number, ISubnet>} importedSubnets for the cluster.
  */
 type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: SecurityGroup;
-    vpc: IVpc;
+    vpc: Vpc;
 } & BaseProps;
 
 /**
@@ -84,12 +86,13 @@ export class ECSCluster extends Construct {
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId(['Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            vpc: vpc,
+            vpc: vpc.vpc,
             containerInsights: !config.region.includes('iso'),
         });
 
         // Create auto scaling group
         const autoScalingGroup = cluster.addCapacity(createCdkId(['ASG']), {
+            vpcSubnets: vpc.subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
@@ -265,7 +268,8 @@ export class ECSCluster extends Construct {
             loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
             dropInvalidHeaderFields: true,
             securityGroup,
-            vpc,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             idleTimeout: Duration.seconds(600)
         });
 

@@ -172,6 +172,7 @@ export class LisaRagStack extends Stack {
                         version: EngineVersion.OPENSEARCH_2_9,
                         enableVersionUpgrade: true,
                         vpc: vpc.vpc,
+                        vpcSubnets: vpc.subnetSelection ? [vpc.subnetSelection] : [],
                         ebs: {
                             enabled: true,
                             volumeSize: ragConfig.opensearchConfig.volumeSize,
@@ -249,7 +250,8 @@ export class LisaRagStack extends Stack {
                         description: 'Security group for RAG PGVector database',
                     });
 
-                    vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+                    const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                    subNets?.forEach((subnet) => {
                         pgvectorSg.connections.allowFrom(
                             Peer.ipv4(subnet.ipv4CidrBlock),
                             Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
@@ -262,6 +264,7 @@ export class LisaRagStack extends Stack {
                     const pgvector_db = new DatabaseInstance(this, 'PGVectorDB', {
                         engine: DatabaseInstanceEngine.POSTGRES,
                         vpc: vpc.vpc,
+                        subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
                         securityGroups: [pgvectorSg!],
                         removalPolicy: RemovalPolicy.DESTROY,
@@ -327,7 +330,7 @@ export class LisaRagStack extends Stack {
             authorizer,
             baseEnvironment,
             config,
-            vpc: vpc.vpc,
+            vpc: vpc,
             commonLayers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
             restApiId,
             rootResourceId,

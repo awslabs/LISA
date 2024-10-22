@@ -142,7 +142,9 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc.vpc,
             description: 'Security group for LiteLLM dynamic model management database.',
         });
-        vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+
+        const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+        subNets?.forEach((subnet) => {
             litellmDbSg.connections.allowFrom(
                 Peer.ipv4(subnet.ipv4CidrBlock),
                 Port.tcp(rdsConfig.dbPort),
@@ -164,6 +166,7 @@ export class LisaServeApplicationStack extends Stack {
             securityGroups: [litellmDbSg!],
             removalPolicy: config.removalPolicy,
         });
+
 
         const litellmDbPasswordSecret = litellmDb.secret!;
         const litellmDbConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {

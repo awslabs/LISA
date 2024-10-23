@@ -833,7 +833,7 @@ const RawConfigSchema = z
             }),
         region: z.string(),
         vpcId: z.string().optional(),
-        subnetIds: z.array(z.string()).optional(),
+        subnetIds: z.array(z.string().startsWith('subnet-')).optional(),
         deploymentStage: z.string(),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
         runCdkNag: z.boolean().default(false),

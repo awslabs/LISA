@@ -259,7 +259,7 @@ endef
 deploy:
 	$(call print_config)
 ifneq (,$(findstring true, $(HEADLESS)))
-	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')'; \
+	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';
 else
 	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\

@@ -47,10 +47,10 @@ export class Vpc extends Construct {
     public readonly securityGroups: SecurityGroups;
 
     /** Created from deployment configured Subnets for application. */
-    public readonly subnetGroup?: SubnetGroup | undefined;
+    public readonly subnetGroup?: SubnetGroup;
 
     /** Imported Subnets for application. */
-    public readonly subnetSelection?: SubnetSelection | undefined;
+    public readonly subnetSelection?: SubnetSelection;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -62,15 +62,13 @@ export class Vpc extends Construct {
 
         let vpc: IVpc;
         if (config.vpcId) {
-            /** Imports VPC for use by application if supplied, else creates a VPC. */
+            // Imports VPC for use by application if supplied, else creates a VPC.
             vpc = ec2Vpc.fromLookup(this, 'imported-vpc', {
                 vpcId: config.vpcId,
             });
 
-            /** Checks if SubnetIds are provided in the config, if so we import them for use.
-             * A VPC must be supplied if Subnets are being used.
-            */
-
+            // Checks if SubnetIds are provided in the config, if so we import them for use.
+            // A VPC must be supplied if Subnets are being used.
             if (config.subnetIds && config.subnetIds.length > 0) {
                 this.subnetSelection = {
                     subnets: props.config.subnetIds?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet))

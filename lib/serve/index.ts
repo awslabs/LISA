@@ -167,7 +167,6 @@ export class LisaServeApplicationStack extends Stack {
             removalPolicy: config.removalPolicy,
         });
 
-
         const litellmDbPasswordSecret = litellmDb.secret!;
         const litellmDbConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/${connectionParamName}`,

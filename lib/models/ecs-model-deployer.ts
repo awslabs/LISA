@@ -75,7 +75,7 @@ export class ECSModelDeployer extends Construct {
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,
                 'LISA_CONFIG': JSON.stringify(stripped_config)
             },
-            vpc:props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
+            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
             vpcSubnets: props.vpc?.subnetSelection,
         });
     }

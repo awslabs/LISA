@@ -53,7 +53,6 @@ import { Vpc } from '../networking/vpc';
  * @property {IVpc} vpc - The virtual private cloud (VPC).
  * @property {SecurityGroups} securityGroups - The security group that the ECS cluster should use.
  * @property {ECSConfig} ecsConfig - The configuration for the cluster.
- * @property {Map<number, ISubnet>} importedSubnets for the cluster.
  */
 type ECSClusterProps = {
     ecsConfig: ECSConfig;

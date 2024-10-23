@@ -57,7 +57,7 @@ type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
-    subnetSelection: SubnetSelection | undefined;
+    subnetSelection?: SubnetSelection;
 } & BaseProps;
 
 /**

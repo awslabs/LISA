@@ -73,15 +73,10 @@ export class Vpc extends Construct {
             */
 
             if (config.subnetIds && config.subnetIds.length > 0) {
-                const iSubnets: Map<number, ISubnet> = new Map();
-                config.subnetIds.forEach((subnet, index) => {
-                    const importedSubnet = Subnet.fromSubnetId(this, index.toString(), subnet);
-                    iSubnets.set(index, importedSubnet);
-                });
-
                 this.subnetSelection = {
-                    subnets: Array.from(iSubnets!.values()),
+                    subnets: props.config.subnetIds?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet))
                 };
+
                 this.subnetGroup = new SubnetGroup(
                     this,
                     createCdkId([config.deploymentName, 'Imported-Subnets']),

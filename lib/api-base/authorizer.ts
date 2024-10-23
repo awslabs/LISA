@@ -40,7 +40,6 @@ type AuthorizerProps = {
     role?: IRole;
     vpc?: Vpc;
     securityGroups?: ISecurityGroup[];
-    importedSubnets?: Map<number, ISubnet>;
 } & BaseProps;
 
 /**

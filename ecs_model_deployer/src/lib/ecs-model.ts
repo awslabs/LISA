@@ -40,7 +40,7 @@ type ECSModelProps = {
     modelConfig: ModelConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
-    subnetSelection?: SubnetSelection | undefined;
+    subnetSelection?: SubnetSelection;
 } & BaseProps;
 
 /**

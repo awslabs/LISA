@@ -256,7 +256,7 @@ define print_config
 endef
 
 ## Deploy all infrastructure
-deploy:
+deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
 	$(call print_config)
 ifneq (,$(findstring true, $(HEADLESS)))
 	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';

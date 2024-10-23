@@ -27,7 +27,7 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -67,14 +67,14 @@ export class CreateModelStateMachine extends Construct {
             ECS_MODEL_DEPLOYER_FN_ARN: ecsModelDeployerFnArn,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             MODEL_TABLE_NAME: modelTable.tableName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
+            REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -93,7 +93,7 @@ export class CreateModelStateMachine extends Construct {
 
         const startCopyDockerImage = new LambdaInvoke(this, 'StartCopyDockerImage', {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -110,7 +110,7 @@ export class CreateModelStateMachine extends Construct {
 
         const pollDockerImageAvailable = new LambdaInvoke(this, 'PollDockerImageAvailable', {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -127,7 +127,7 @@ export class CreateModelStateMachine extends Construct {
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_failure',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -150,7 +150,7 @@ export class CreateModelStateMachine extends Construct {
 
         const startCreateStack = new LambdaInvoke(this, 'StartCreateStack', {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: Duration.minutes(8),
@@ -167,7 +167,7 @@ export class CreateModelStateMachine extends Construct {
 
         const pollCreateStack = new LambdaInvoke(this, 'PollCreateStack', {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -190,7 +190,7 @@ export class CreateModelStateMachine extends Construct {
 
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,

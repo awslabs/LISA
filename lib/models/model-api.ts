@@ -28,7 +28,7 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -253,8 +253,8 @@ export class ModelsApi extends Construct {
 
         const environment = {
             LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+            REST_API_VERSION: 'v2',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
@@ -277,19 +277,19 @@ export class ModelsApi extends Construct {
                 method: 'ANY',
                 environment
             },
-            config.lambdaConfig.pythonRuntime,
+            Runtime.PYTHON_3_10,
             lambdaRole,
             vpc,
             securityGroups,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+        if (config.restApiConfig?.sslCertIamArn) {
             const certPerms = new Policy(this, 'ModelsApiCertPerms', {
                 statements: [
                     new PolicyStatement({
                         actions: ['iam:GetServerCertificate'],
-                        resources: [config.restApiConfig.loadBalancerConfig.sslCertIamArn],
+                        resources: [config.restApiConfig?.sslCertIamArn],
                         effect: Effect.ALLOW,
                     })
                 ]
@@ -349,7 +349,7 @@ export class ModelsApi extends Construct {
                 config.lambdaSourcePath,
                 [commonLambdaLayer],
                 f,
-                config.lambdaConfig.pythonRuntime,
+                Runtime.PYTHON_3_10,
                 lambdaRole,
                 vpc,
                 securityGroups,

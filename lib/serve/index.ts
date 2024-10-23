@@ -56,7 +56,6 @@ export class LisaServeApplicationStack extends Stack {
         super(scope, id, props);
 
         const { config, vpc } = props;
-        const rdsConfig = config.restApiConfig.rdsConfig;
 
         let tokenTable;
         if (config.restApiConfig.internetFacing) {
@@ -79,7 +78,6 @@ export class LisaServeApplicationStack extends Stack {
             config: config,
             resourcePath: path.join(HERE, 'rest-api'),
             securityGroup: vpc.securityGroups.restApiAlbSg,
-            taskConfig: config.restApiConfig,
             tokenTable: tokenTable,
             vpc: vpc,
         });
@@ -147,12 +145,12 @@ export class LisaServeApplicationStack extends Stack {
         subNets?.forEach((subnet) => {
             litellmDbSg.connections.allowFrom(
                 Peer.ipv4(subnet.ipv4CidrBlock),
-                Port.tcp(rdsConfig.dbPort),
+                Port.tcp(5432),
                 'Allow REST API private subnets to communicate with LiteLLM database',
             );
         });
 
-        const username = rdsConfig.username;
+        const username = 'postgres';
         const dbCreds = Credentials.fromGeneratedSecret(username);
 
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
@@ -174,8 +172,8 @@ export class LisaServeApplicationStack extends Stack {
                 username: username,
                 passwordSecretId: litellmDbPasswordSecret.secretName,
                 dbHost: litellmDb.dbInstanceEndpointAddress,
-                dbName: rdsConfig.dbName,
-                dbPort: rdsConfig.dbPort,
+                dbName: 'postgres',
+                dbPort: 5432,
             }),
         });
         litellmDbPasswordSecret.grantRead(restApi.taskRole);

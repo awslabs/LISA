@@ -18,7 +18,7 @@ import * as cdk from 'aws-cdk-lib';
 import { RequestAuthorizer, IdentitySource } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -75,7 +75,7 @@ export class CustomAuthorizer extends Construct {
 
         // Create Lambda authorizer
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-            runtime: config.lambdaConfig.pythonRuntime,
+            runtime: Runtime.PYTHON_3_10,
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
             code: Code.fromAsset(config.lambdaSourcePath),

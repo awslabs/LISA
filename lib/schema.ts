@@ -21,34 +21,16 @@ import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { z } from 'zod';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
 const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
-const PYTHON_VERSIONS: Record<string, lambda.Runtime> = {
-    PYTHON_3_8: lambda.Runtime.PYTHON_3_8,
-    PYTHON_3_9: lambda.Runtime.PYTHON_3_9,
-    PYTHON_3_10: lambda.Runtime.PYTHON_3_10,
-    PYTHON_3_11: lambda.Runtime.PYTHON_3_11,
-};
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,
     retain: cdk.RemovalPolicy.RETAIN,
 };
-
-/**
- * Configuration schema for Lambda.
- */
-const lambdaConfigSchema = z.object({
-    pythonRuntime: z
-        .union([z.literal('PYTHON_3_8'), z.literal('PYTHON_3_9'), z.literal('PYTHON_3_10'), z.literal('PYTHON_3_11')])
-        .default('PYTHON_3_9')
-        .transform((value) => PYTHON_VERSIONS[value]),
-    logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
-});
 
 /**
  * Enum for different types of models.
@@ -571,27 +553,8 @@ const RdsInstanceConfig = z.object({
  * @property {RdsInstanceConfig} rdsConfig - Configuration for LiteLLM scaling database.
  */
 const FastApiContainerConfigSchema = z.object({
-    apiVersion: z.literal('v2'),
-    instanceType: z.enum(VALID_INSTANCE_KEYS),
-    containerConfig: ContainerConfigSchema,
-    autoScalingConfig: AutoScalingConfigSchema,
-    loadBalancerConfig: LoadBalancerConfigSchema,
     internetFacing: z.boolean().default(true),
-    rdsConfig: RdsInstanceConfig.optional()
-        .default({
-            dbName: 'postgres',
-            username: 'postgres',
-        })
-        .refine(
-            (config) => {
-                return !config.dbHost && !config.passwordSecretId;
-            },
-            {
-                message:
-            'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
-            'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
-            },
-        ),
+    sslCertIamArn: z.string().optional().nullable().default(null),
 });
 
 /**
@@ -675,110 +638,15 @@ const ApiGatewayConfigSchema = z
     .optional();
 
 /**
- * Configuration for models inside the LiteLLM Config
- * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details.
- *
- * The `lisa_params` are custom for the LISA installation to add model metadata to allow the models to be referenced
- * correctly within the Chat UI. LiteLLM will ignore these parameters as it is not looking for them, and it will not
- * fail to initialize as a result of them existing.
- */
-const LiteLLMModel = z.object({
-    model_name: z.string(),
-    litellm_params: z.object({
-        model: z.string(),
-        api_base: z.string().optional(),
-        api_key: z.string().optional(),
-        aws_region_name: z.string().optional(),
-    }),
-    lisa_params: z
-        .object({
-            streaming: z.boolean().nullable().default(null),
-            model_type: z.nativeEnum(ModelType),
-        })
-        .refine(
-            (data) => {
-                // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
-                const isValidForTextgen = data.model_type === 'textgen' && typeof data.streaming === 'boolean';
-                const isValidForEmbedding = data.model_type === 'embedding' && data.streaming === null;
-
-                return isValidForTextgen || isValidForEmbedding;
-            },
-            {
-                message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
-                path: ['streaming'],
-            },
-        ),
-    model_info: z
-        .object({
-            id: z.string().optional(),
-            mode: z.string().optional(),
-            input_cost_per_token: z.number().optional(),
-            output_cost_per_token: z.number().optional(),
-            max_tokens: z.number().optional(),
-            base_model: z.string().optional(),
-        })
-        .optional(),
-});
-
-/**
  * Core LiteLLM configuration.
  * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.
  */
 const LiteLLMConfig = z.object({
-    environment_variables: z.map(z.string(), z.string()).optional(),
-    model_list: z
-        .array(LiteLLMModel)
-        .optional()
-        .nullable()
-        .default([])
-        .transform((value) => value ?? []),
-    litellm_settings: z.object({
-    // ALL (https://github.com/BerriAI/litellm/blob/main/litellm/__init__.py)
-        telemetry: z.boolean().default(false).optional(),
-        drop_params: z.boolean().default(true).optional(),
-    }),
-    general_settings: z
-        .object({
-            completion_model: z.string().optional(),
-            disable_spend_logs: z.boolean().optional(), // turn off writing each transaction to the db
-            disable_master_key_return: z.boolean().optional(), // turn off returning master key on UI
-            disable_reset_budget: z.boolean().optional(), // turn off reset budget scheduled task
-            enable_jwt_auth: z.boolean().optional(), // allow proxy admin to auth in via jwt tokens with 'litellm_proxy_admin'
-            enforce_user_param: z.boolean().optional(), // requires all openai endpoint requests to have a 'user' param
-            allowed_routes: z.array(z.string()).optional(), // list of allowed proxy API routes a user can access. (JWT only)
-            key_management_system: z.string().optional(), // either google_kms or azure_kms
-            master_key: z.string().refine(
-                (key) => key.startsWith('sk-'), // key needed for model management actions
-                'Key string must be defined for model management operations, and it must start with "sk-".' +
-                'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
-            ),
-            database_url: z.string().optional(),
-            database_connection_pool_limit: z.number().optional(), // default 100
-            database_connection_timeout: z.number().optional(), // default 60s
-            database_type: z.string().optional(),
-            database_args: z
-                .object({
-                    billing_mode: z.string().optional(),
-                    read_capacity_units: z.number().optional(),
-                    write_capacity_units: z.number().optional(),
-                    ssl_verify: z.boolean().optional(),
-                    region_name: z.string().optional(),
-                    user_table_name: z.string().optional(),
-                    key_table_name: z.string().optional(),
-                    config_table_name: z.string().optional(),
-                    spend_table_name: z.string().optional(),
-                })
-                .optional(),
-            otel: z.boolean().optional(),
-            custom_auth: z.string().optional(),
-            max_parallel_requests: z.number().optional(),
-            infer_model_from_keys: z.boolean().optional(),
-            background_health_checks: z.boolean().optional(),
-            health_check_interval: z.number().optional(),
-            alerting: z.array(z.string()).optional(),
-            alerting_threshold: z.number().optional(),
-        }),
+    db_key: z.string().refine(
+        (key) => key.startsWith('sk-'), // key needed for model management actions
+        'Key string must be defined for model management operations, and it must start with "sk-".' +
+        'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
+    ),
 });
 
 /**
@@ -792,7 +660,6 @@ const LiteLLMConfig = z.object({
  * @property {string} deploymentStage - Deployment stage for the application.
  * @property {string} removalPolicy - Removal policy for resources (destroy or retain).
  * @property {boolean} [runCdkNag=false] - Whether to run CDK Nag checks.
- * @property {lambdaConfigSchema} lambdaConfig - Lambda configuration.
  * @property {string} [lambdaSourcePath='./lambda'] - Path to Lambda source code dir.
  * @property {string} s3BucketModels - S3 bucket for models.
  * @property {string} mountS3DebUrl - URL for S3-mounted Debian package.
@@ -802,7 +669,6 @@ const LiteLLMConfig = z.object({
  * @property {boolean} [deployUi=true] - Whether to deploy UI stacks.
  * @property {string} logLevel - Log level for application.
  * @property {AuthConfigSchema} authConfig - Authorization configuration.
- * @property {FastApiContainerConfigSchema} restApiConfig - REST API configuration.
  * @property {RagRepositoryConfigSchema} ragRepositoryConfig - Rag Repository configuration.
  * @property {RagFileProcessingConfigSchema} ragFileProcessingConfig - Rag file processing configuration.
  * @property {EcsModelConfigSchema[]} ecsModels - Array of ECS model configurations.
@@ -832,6 +698,7 @@ const RawConfigSchema = z
                 message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             }),
         region: z.string(),
+        restApiConfig: FastApiContainerConfigSchema,
         vpcId: z.string().optional(),
         subnetIds: z.array(z.string().startsWith('subnet-')).optional(),
         deploymentStage: z.string(),
@@ -851,7 +718,6 @@ const RawConfigSchema = z
         deployChat: z.boolean().optional().default(true),
         deployUi: z.boolean().optional().default(true),
         logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
-        lambdaConfig: lambdaConfigSchema,
         lambdaSourcePath: z.string().optional().default('./lambda'),
         authConfig: AuthConfigSchema.optional(),
         pypiConfig: PypiConfigSchema.optional().default({
@@ -862,7 +728,6 @@ const RawConfigSchema = z
         certificateAuthorityBundle: z.string().optional().default(''),
         ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
         ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
-        restApiConfig: FastApiContainerConfigSchema,
         ecsModels: z.array(EcsModelConfigSchema).optional(),
         apiGatewayConfig: ApiGatewayConfigSchema.optional(),
         nvmeHostMountPath: z.string().default('/nvme'),
@@ -918,7 +783,7 @@ const RawConfigSchema = z
     .refine(
         (config) => {
             return (
-                !(config.deployChat || config.deployRag || config.deployUi || config.restApiConfig.internetFacing) ||
+                !(config.deployChat || config.deployRag || config.deployUi) ||
         config.authConfig
             );
         },

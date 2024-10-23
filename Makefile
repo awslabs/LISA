@@ -14,50 +14,45 @@ HEADLESS = false
 
 # Arguments defined through command line or config.yaml
 
-# ENV
-ifeq (${ENV},)
-ENV := $(shell cat $(PROJECT_DIR)/config.yaml | yq '.env')
-endif
-
-ifeq (${ENV},)
-$(error env must be set in command line using ENV variable or config.yaml)
-endif
-
 # PROFILE (optional argument)
 ifeq (${PROFILE},)
-TEMP_PROFILE := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).profile)
+TEMP_PROFILE := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .profile)
 ifneq ($(TEMP_PROFILE), null)
 PROFILE := ${TEMP_PROFILE}
 else
-$(warning profile is not set in the command line using PROFILE variable or config.yaml, attempting deployment without this variable)
+$(warning profile is not set in the command line using PROFILE variable or config files, attempting deployment without this variable)
 endif
 endif
 
 # DEPLOYMENT_NAME
 ifeq (${DEPLOYMENT_NAME},)
-DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).deploymentName)
+DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .deploymentName)
 endif
 
-ifeq (${DEPLOYMENT_NAME},)
-$(error deploymentName must be set in command line using DEPLOYMENT_NAME variable or config.yaml)
+ifeq (${DEPLOYMENT_NAME}, null)
+DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentName)
+endif
+
+ifeq (${DEPLOYMENT_NAME}, null)
+$(error deploymentName must be set in command line using DEPLOYMENT_NAME variable or config files)
 endif
 
 # ACCOUNT_NUMBER
 ifeq (${ACCOUNT_NUMBER},)
-ACCOUNT_NUMBER := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).accountNumber)
+ACCOUNT_NUMBER := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumber)
 endif
 
 ifeq (${ACCOUNT_NUMBER},)
-$(error accountNumber must be set in command line using ACCOUNT_NUMBER variable or config.yaml)
+$(error accountNumber must be set in command line using ACCOUNT_NUMBER variable or config files)
 endif
 
 # REGION
 ifeq (${REGION},)
-REGION := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).region)
+REGION := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .region)
 endif
 
 ifeq (${REGION},)
-$(error region must be set in command line using REGION variable or config.yaml)
+$(error region must be set in command line using REGION variable or config files)
 endif
 
 # URL_SUFFIX - used for the docker login
@@ -67,22 +62,30 @@ else
 URL_SUFFIX := c2s.ic.gov
 endif
 
-# Arguments defined through config.yaml
+# Arguments defined through config files
 
 # APP_NAME
-APP_NAME := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).appName)
-ifeq (${APP_NAME},)
-$(error appName must be set in config.yaml)
+APP_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .appName)
+ifeq (${APP_NAME}, null)
+APP_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .appName)
+endif
+
+ifeq (${APP_NAME}, null)
+$(error appName must be set in config files)
 endif
 
 # DEPLOYMENT_STAGE
-DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).deploymentStage)
-ifeq (${DEPLOYMENT_STAGE},)
-$(error deploymentStage must be set in config.yaml)
+DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .deploymentStage)
+ifeq (${DEPLOYMENT_STAGE}, null)
+DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentStage)
+endif
+
+ifeq (${DEPLOYMENT_STAGE}, null)
+$(error deploymentStage must be set in config files)
 endif
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR
-ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).accountNumbersEcr[])
+ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumbersEcr[])
 
 # Append deployed account number to array for dockerLogin rule
 ACCOUNT_NUMBERS_ECR := $(ACCOUNT_NUMBERS_ECR) $(ACCOUNT_NUMBER)
@@ -97,10 +100,10 @@ ifneq ($(findstring $(DEPLOYMENT_STAGE),$(STACK)),$(DEPLOYMENT_STAGE))
 endif
 
 # MODEL_IDS - IDs of models to deploy
-MODEL_IDS := $(shell cat $(PROJECT_DIR)/config.yaml | yq '.$(ENV).ecsModels[].modelName')
+MODEL_IDS := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels[].modelName')
 
 # MODEL_BUCKET - S3 bucket containing model artifacts
-MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config.yaml | yq '.$(ENV).s3BucketModels')
+MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketModels')
 
 
 #################################################################################
@@ -181,7 +184,7 @@ modelCheck:
 						echo "What is your huggingface access token? "; \
 						read -s access_token; \
 						echo "Converting and uploading safetensors for model: $(MODEL_ID)"; \
-						tgiImage=$$(yq -r '[.$(ENV).ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config.yaml); \
+						tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
 						echo $$tgiImage; \
 						$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $(MODEL_ID) -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
 				fi; \

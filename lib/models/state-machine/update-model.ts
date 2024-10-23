@@ -17,7 +17,7 @@
 
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -62,14 +62,14 @@ export class UpdateModelStateMachine extends Construct {
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
+            REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
 
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_job_intake',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -86,7 +86,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
@@ -103,7 +103,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_finish_update',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,

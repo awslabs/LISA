@@ -18,7 +18,7 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Role } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -156,7 +156,7 @@ export class SessionApi extends Construct {
                 config.lambdaSourcePath,
                 [commonLambdaLayer],
                 f,
-                config.lambdaConfig.pythonRuntime,
+                Runtime.PYTHON_3_10,
                 lambdaRole,
                 vpc,
                 securityGroups,

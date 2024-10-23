@@ -23,7 +23,7 @@ import { Construct } from 'constructs';
 import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
-import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
+import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
@@ -41,7 +41,6 @@ type FastApiContainerProps = {
     apiName: string;
     resourcePath: string;
     securityGroup: SecurityGroup;
-    taskConfig: FastApiContainerConfig;
     tokenTable: ITable | undefined;
     vpc: Vpc;
 } & BaseProps;
@@ -67,23 +66,20 @@ export class FastApiContainer extends Construct {
     constructor (scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);
 
-        const { config, securityGroup, taskConfig, tokenTable, vpc } = props;
+        const { config, securityGroup, tokenTable, vpc } = props;
 
-        let buildArgs: Record<string, string> | undefined = undefined;
-        if (taskConfig.containerConfig.image.type === EcsSourceType.ASSET) {
-            buildArgs = {
-                BASE_IMAGE: taskConfig.containerConfig.image.baseImage,
-                PYPI_INDEX_URL: config.pypiConfig.indexUrl,
-                PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
-                LITELLM_CONFIG: yamlDump(config.litellmConfig),
-            };
-        }
+        const buildArgs: Record<string, string> | undefined = {
+            BASE_IMAGE: 'python:3.10',
+            PYPI_INDEX_URL: config.pypiConfig.indexUrl,
+            PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
+            LITELLM_CONFIG: yamlDump(config.litellmConfig),
+        };
         const environment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
-            THREADS: Ec2Metadata.get(taskConfig.instanceType).vCpus.toString(),
-            LITELLM_KEY: config.litellmConfig.general_settings.master_key,
+            THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
+            LITELLM_KEY: config.litellmConfig.db_key,
         };
 
         if (config.restApiConfig.internetFacing) {
@@ -104,15 +100,52 @@ export class FastApiContainer extends Construct {
             config,
             ecsConfig: {
                 amiHardwareType: AmiHardwareType.STANDARD,
-                autoScalingConfig: taskConfig.autoScalingConfig,
+                autoScalingConfig: {
+                    blockDeviceVolumeSize: 30,
+                    minCapacity: 1,
+                    maxCapacity: 1,
+                    cooldown: 60,
+                    defaultInstanceWarmup: 60,
+                    metricConfig: {
+                        AlbMetricName: 'RequestCountPerTarget',
+                        targetValue: 1000,
+                        duration: 60,
+                        estimatedInstanceWarmup: 30
+                    }
+                },
                 buildArgs,
-                containerConfig: taskConfig.containerConfig,
+                containerConfig: {
+                    image: {
+                        baseImage: 'python:3.10',
+                        path: 'lib/serve/rest-api',
+                        type: EcsSourceType.ASSET
+                    },
+                    healthCheckConfig: {
+                        command: ['CMD-SHELL', 'exit 0'],
+                        interval: 10,
+                        startPeriod: 30,
+                        timeout: 5,
+                        retries: 3
+                    },
+                    environment: {},
+                    sharedMemorySize: 0
+                },
                 containerMemoryBuffer: CONTAINER_MEMORY_BUFFER,
                 environment,
                 identifier: props.apiName,
-                instanceType: taskConfig.instanceType,
+                instanceType: 'm5.large',
                 internetFacing: config.restApiConfig.internetFacing,
-                loadBalancerConfig: taskConfig.loadBalancerConfig,
+                loadBalancerConfig: {
+                    healthCheckConfig: {
+                        path: '/health',
+                        interval: 60,
+                        timeout: 30,
+                        healthyThresholdCount: 2,
+                        unhealthyThresholdCount: 10
+                    },
+                    domainName: null,
+                    sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,
+                },
             },
             securityGroup,
             vpc

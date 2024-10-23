@@ -16,7 +16,7 @@
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 
-import { Vpc, SecurityGroup, ISubnet, Subnet, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
+import { Vpc, SecurityGroup, Subnet, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 
 import { Construct } from 'constructs';
 import { EcsModel } from './ecs-model';

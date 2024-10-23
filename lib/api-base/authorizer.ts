@@ -16,7 +16,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { RequestAuthorizer, IdentitySource } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, ISubnet } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';

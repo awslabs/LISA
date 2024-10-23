@@ -26,7 +26,6 @@ import {
     Port,
     SecurityGroup,
     SubnetType,
-    ISubnet,
     Subnet, SubnetSelection
 } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';

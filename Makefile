@@ -240,96 +240,43 @@ listStacks:
 buildEcsDeployer:
 	@cd ./ecs_model_deployer && npm install && npm run build
 
+define print_config
+    @printf "\n \
+    DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
+    -----------------------------------\n \
+    Account Number         $(ACCOUNT_NUMBER)\n \
+    Region                 $(REGION)\n \
+    App Name               $(APP_NAME)\n \
+    Deployment Stage       $(DEPLOYMENT_STAGE)\n \
+    Deployment Name        $(DEPLOYMENT_NAME)"
+    @if [ -n "$(PROFILE)" ]; then \
+        printf "\n Deployment Profile     $(PROFILE)"; \
+    fi
+    @printf "\n-----------------------------------\n"
+endef
+
 ## Deploy all infrastructure
-deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
+deploy:
+	$(call print_config)
 ifneq (,$(findstring true, $(HEADLESS)))
-	if [ -z ${PROFILE} ]; then \
-        npx cdk deploy ${STACK} -c ${ENV}='$(shell echo '${${ENV}}')'; \
-    else \
-        npx cdk deploy ${STACK} --profile ${PROFILE} -c ${ENV}='$(shell echo '${${ENV}}')'; \
-    fi;
-else ifdef PROFILE
-	@printf "\n \
-	DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Deployment Profile     ${PROFILE}\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
-	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk deploy ${STACK} \
-				--profile ${PROFILE} \
-				-c ${ENV}='$(shell echo '${${ENV}}')'; \
-	fi;
+	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')'; \
 else
-	@printf "\n \
-	DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
+	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk deploy ${STACK} \
-				-c ${ENV}='$(shell echo '${${ENV}}')'; \
+	if [ $${confirm_config:-'N'} = 'y' ]; then \
+		npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE})  -c ${ENV}='$(shell echo '${${ENV}}')'; \
 	fi;
 endif
 
 
 ## Tear down all infrastructure
 destroy: cleanMisc
-ifdef PROFILE
-	@printf "\n \
-	DESTROYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Deployment Profile     ${PROFILE}\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
+	$(call print_config)
+	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk destroy ${STACK} \
-				--force \
-				--profile ${PROFILE}; \
+	if [ $${confirm_config:-'N'} = 'y' ]; then \
+		npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE}); \
 	fi;
-else
-	@printf "\n \
-	DESTROYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
-	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk destroy ${STACK} \
-				--force; \
-	fi;
-endif
 
 
 #################################################################################

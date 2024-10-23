@@ -34,7 +34,7 @@ const baseConfigFile = yaml.load(fs.readFileSync(baseConfigFilePath, 'utf8')) as
 const customConfigFile = yaml.load(fs.readFileSync(customConfigFilePath, 'utf8')) as ConfigFile;
 const configData = _.merge(baseConfigFile, customConfigFile);
 
-console.log("MERGED CONFIG FILE:\n" + yaml.dump(configData));
+console.log('MERGED CONFIG FILE:\n' + yaml.dump(configData));
 
 // Other command line argument overrides
 type EnvMapping = [string, keyof Config];

@@ -35,57 +35,12 @@ dev:
   accountNumbersEcr:
     - '012345678901'
   deployRag: true
-  lambdaConfig:
-    pythonRuntime: PYTHON_3_10
-    logLevel: DEBUG
-    vpcAutoscalingConfig:
-      provisionedConcurrentExecutions: 5
-      minCapacity: 1
-      maxCapacity: 50
-      targetValue: 0.80
-      cooldown: 30
   authConfig:
     authority: test
     clientId: test
   logLevel: DEBUG
-  # NOTE: The following configuration will allow for using a custom domain for the chat user interface.
-  # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
-  # Users must use the custom domain for the user interface to work if this option is populated.
-  apiGatewayConfig:
-    domainName:
   restApiConfig:
-    apiVersion: v2
-    instanceType: m5.large
-    containerConfig:
-      image:
-        baseImage: python:3.9
-        path: lib/serve/rest-api
-        type: asset
-      healthCheckConfig:
-        command: ["CMD-SHELL", "exit 0"]
-        interval: 10
-        startPeriod: 30
-        timeout: 5
-        retries: 3
-    autoScalingConfig:
-      minCapacity: 1
-      maxCapacity: 1
-      cooldown: 60
-      defaultInstanceWarmup: 60
-      metricConfig:
-        AlbMetricName: RequestCountPerTarget
-        targetValue: 1000
-        duration: 60
-        estimatedInstanceWarmup: 30
-    loadBalancerConfig:
-      sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
-      healthCheckConfig:
-        path: /health
-        interval: 60
-        timeout: 30
-        healthyThresholdCount: 2
-        unhealthyThresholdCount: 10
-      domainName:
+    sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
   ragRepositories:
     - repositoryId: pgvector-rag
       type: pgvector
@@ -125,8 +80,4 @@ dev:
     #   inferenceContainer: tgi
     #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
   litellmConfig:
-    general_settings:
-      master_key: sk-012345
-    litellm_settings:
-      telemetry: false
-    model_list:
+    db_key: sk-012345

@@ -67,11 +67,12 @@ def generate_config(filepath: str) -> None:
         f"/{db_params['dbName']}"
     )
 
-    general_settings = config_contents["general_settings"]
+    general_settings = {}
     general_settings.update(
         {
             "store_model_in_db": True,
             "database_url": connection_str,
+            "master_key": config_contents["db_key"],
         }
     )
 

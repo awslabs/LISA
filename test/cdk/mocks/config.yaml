@@ -80,4 +80,4 @@ dev:
     #   inferenceContainer: tgi
     #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
   litellmConfig:
-    db_key: sk-012345
+    db_key: sk-012345 #pragma: allowlist secret`

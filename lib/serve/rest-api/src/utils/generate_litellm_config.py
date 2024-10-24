@@ -77,8 +77,6 @@ def generate_config(filepath: str) -> None:
         }
     )
 
-    print("EVAAAANNNN", config_contents)
-
     # Write updated config back to original path
     with open(filepath, "w") as fp:
         yaml.safe_dump(config_contents, fp)

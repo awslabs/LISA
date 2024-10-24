@@ -161,8 +161,6 @@ export class UserInterfaceStack extends Stack {
             },
         );
 
-        const litellmModels = config.litellmConfig.model_list ? config.litellmConfig.model_list : [];
-
 
         // Website bucket deployment
         // Copy auth and LISA-Serve info to UI deployment bucket
@@ -177,7 +175,7 @@ export class UserInterfaceStack extends Stack {
                 createCdkId(['LisaRestApiUri', 'StringParameter']),
                 `${config.deploymentPrefix}/lisaServeRestApiUri`,
             ).stringValue,
-            RESTAPI_VERSION: config.restApiConfig.apiVersion,
+            RESTAPI_VERSION: 'v2',
             RAG_ENABLED: config.deployRag,
             SYSTEM_BANNER: {
                 text: config.systemBanner?.text,
@@ -185,7 +183,6 @@ export class UserInterfaceStack extends Stack {
                 fontColor: config.systemBanner?.fontColor,
             },
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
-            MODELS: litellmModels,
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

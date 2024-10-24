@@ -1,12 +1,5 @@
-appName: lisa
-deploymentName: prod
-deploymentStage: prod
-removalPolicy: destroy
-runCdkNag: false
 mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
-deployRag: true
 stackSynthesizer: CliCredentialsStackSynthesizer
-logLevel: DEBUG
 ragRepositories:
   - repositoryId: pgvector-rag
     type: pgvector

@@ -145,7 +145,7 @@ export class Vpc extends Construct {
         // All HTTP VPC traffic -> ECS model ALB
         ecsModelAlbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(80), 'Allow VPC traffic on port 80');
 
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+        if (config.restApiConfig?.sslCertIamArn) {
             // All HTTPS IPV4 traffic -> REST API ALB
             restApiAlbSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), 'Allow any traffic on port 443');
         } else {

@@ -71,7 +71,7 @@ APP_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .appName)
 endif
 
 ifeq (${APP_NAME}, null)
-$(error appName must be set in config files)
+APP_NAME := lisa
 endif
 
 # DEPLOYMENT_STAGE

@@ -67,14 +67,17 @@ def generate_config(filepath: str) -> None:
         f"/{db_params['dbName']}"
     )
 
-    general_settings = {}
-    general_settings.update(
+    config_contents.update(
         {
-            "store_model_in_db": True,
-            "database_url": connection_str,
-            "master_key": config_contents["db_key"],
+            "general_settings": {
+                "store_model_in_db": True,
+                "database_url": connection_str,
+                "master_key": config_contents["db_key"],
+            }
         }
     )
+
+    print("EVAAAANNNN", config_contents)
 
     # Write updated config back to original path
     with open(filepath, "w") as fp:

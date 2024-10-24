@@ -49,7 +49,7 @@ def generate_config(filepath: str) -> None:
         }
         for model in registered_models
     ]
-    config_models = config_contents["model_list"] or []  # ensure config_models is a list and not None
+    config_models = []  # ensure config_models is a list and not None
     config_models.extend(litellm_model_params)
     config_contents["model_list"] = config_models
     config_contents["litellm_settings"] = {

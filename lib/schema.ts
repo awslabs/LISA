@@ -689,7 +689,7 @@ const RawConfigSchema = z
             .optional()
             .nullable()
             .transform((value) => value ?? ''),
-        deploymentName: z.string(),
+        deploymentName: z.string().default('prod'),
         accountNumber: z
             .number()
             .or(z.string())
@@ -701,8 +701,8 @@ const RawConfigSchema = z
         restApiConfig: FastApiContainerConfigSchema,
         vpcId: z.string().optional(),
         subnetIds: z.array(z.string().startsWith('subnet-')).optional(),
-        deploymentStage: z.string(),
-        removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
+        deploymentStage: z.string().default('prod'),
+        removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]).default('destroy'),
         runCdkNag: z.boolean().default(false),
         privateEndpoints: z.boolean().optional().default(false),
         s3BucketModels: z.string(),
@@ -714,10 +714,10 @@ const RawConfigSchema = z
                 message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             })
             .optional(),
-        deployRag: z.boolean().optional().default(false),
+        deployRag: z.boolean().optional().default(true),
         deployChat: z.boolean().optional().default(true),
         deployUi: z.boolean().optional().default(true),
-        logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]),
+        logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]).default('DEBUG'),
         lambdaSourcePath: z.string().optional().default('./lambda'),
         authConfig: AuthConfigSchema.optional(),
         pypiConfig: PypiConfigSchema.optional().default({

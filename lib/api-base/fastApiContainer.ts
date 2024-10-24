@@ -35,7 +35,6 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 2;
  *
  * @property {IVpc} vpc - The virtual private cloud (VPC).
  * @property {SecurityGroup} securityGroups - The security groups of the application.
- * @property {Map<number, ISubnet>} importedSubnets for application.
  */
 type FastApiContainerProps = {
     apiName: string;

@@ -545,12 +545,8 @@ const RdsInstanceConfig = z.object({
 /**
  * Configuration schema for REST API.
  *
- * @property {string} instanceType - EC2 instance type.
- * @property {ContainerConfig} containerConfig - Configuration for the container.
- * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
- * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
- * @property {boolean} [internetFacing=true] - Whether or not the REST API ALB will be configured as internet facing.
- * @property {RdsInstanceConfig} rdsConfig - Configuration for LiteLLM scaling database.
+ * @property {boolean} [internetFacing=true] - Whether the REST API ALB will be configured as internet facing.
+ * @property {string} sslCertIamArn - ARN of the self-signed cert to be used throughout the system
  */
 const FastApiContainerConfigSchema = z.object({
     internetFacing: z.boolean().default(true),
@@ -718,7 +714,6 @@ const RawConfigSchema = z
         deployChat: z.boolean().optional().default(true),
         deployUi: z.boolean().optional().default(true),
         logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]).default('DEBUG'),
-        lambdaSourcePath: z.string().optional().default('./lambda'),
         authConfig: AuthConfigSchema.optional(),
         pypiConfig: PypiConfigSchema.optional().default({
             indexUrl: '',

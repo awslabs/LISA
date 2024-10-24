@@ -78,7 +78,7 @@ export class CustomAuthorizer extends Construct {
             runtime: Runtime.PYTHON_3_10,
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
-            code: Code.fromAsset(config.lambdaSourcePath),
+            code: Code.fromAsset('./lambda'),
             description: 'REST API and UI Authorization Lambda',
             timeout: cdk.Duration.seconds(30),
             memorySize: 128,

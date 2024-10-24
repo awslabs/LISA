@@ -71,7 +71,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_job_intake',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -88,7 +88,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -105,7 +105,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_finish_update',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

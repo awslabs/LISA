@@ -76,7 +76,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -95,7 +95,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -112,7 +112,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -129,7 +129,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_failure',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -152,7 +152,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: Duration.minutes(8),
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -169,7 +169,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -192,7 +192,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

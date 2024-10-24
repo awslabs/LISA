@@ -267,7 +267,7 @@ export class ModelsApi extends Construct {
             this,
             restApi,
             authorizer,
-            config.lambdaSourcePath,
+            './lambda',
             [commonLambdaLayer, fastapiLambdaLayer],
             {
                 name: 'handler',
@@ -346,7 +346,7 @@ export class ModelsApi extends Construct {
                 this,
                 restApi,
                 authorizer,
-                config.lambdaSourcePath,
+                './lambda',
                 [commonLambdaLayer],
                 f,
                 Runtime.PYTHON_3_10,

@@ -58,7 +58,6 @@ export class RepositoryApi extends Construct {
         const {
             authorizer,
             baseEnvironment,
-            config,
             commonLayers,
             lambdaExecutionRole,
             restApiId,
@@ -131,7 +130,7 @@ export class RepositoryApi extends Construct {
                 this,
                 restApi,
                 authorizer,
-                config.lambdaSourcePath,
+                './lambda',
                 commonLayers,
                 f,
                 Runtime.PYTHON_3_10,

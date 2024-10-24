@@ -70,7 +70,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'SetModelToDeletingFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -87,7 +87,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteFromLitellmFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -104,7 +104,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteStackFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -121,7 +121,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'MonitorDeleteStackFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -138,7 +138,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteFromDdbFunc', {
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

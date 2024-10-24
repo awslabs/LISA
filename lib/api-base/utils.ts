@@ -34,10 +34,11 @@ import {
     IRestApi,
     Cors,
 } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, Runtime, ILayerVersion, IFunction, CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
+import { Vpc } from '../networking/vpc';
 
 /**
  * Type representing python lambda function
@@ -81,7 +82,7 @@ export function registerAPIEndpoint (
     funcDef: PythonLambdaFunction,
     pythonRuntime: Runtime,
     role?: IRole,
-    vpc?: IVpc,
+    vpc?: Vpc,
     securityGroups?: ISecurityGroup[],
 ): IFunction {
     const functionId = `${
@@ -116,8 +117,9 @@ export function registerAPIEndpoint (
             memorySize: 512,
             layers,
             role,
-            vpc,
+            vpc: vpc?.vpc,
             securityGroups,
+            vpcSubnets: vpc?.subnetSelection,
         });
     }
 

@@ -114,14 +114,15 @@ export class ModelsApi extends Construct {
 
         const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {
             securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
-            vpcId: vpc.vpc.vpcId,
-            config: config
+            config: config,
+            vpc: vpc
         });
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
-            config: config
+            config: config,
+            vpc
         });
 
         const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
@@ -219,7 +220,7 @@ export class ModelsApi extends Construct {
             modelTable: modelTable,
             lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
+            vpc: vpc,
             securityGroups: securityGroups,
             dockerImageBuilderFnArn: dockerImageBuilder.dockerImageBuilderFn.functionArn,
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
@@ -233,7 +234,7 @@ export class ModelsApi extends Construct {
             modelTable: modelTable,
             lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
+            vpc: vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
@@ -244,7 +245,7 @@ export class ModelsApi extends Construct {
             modelTable: modelTable,
             lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
+            vpc: vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
@@ -278,7 +279,7 @@ export class ModelsApi extends Construct {
             },
             config.lambdaConfig.pythonRuntime,
             lambdaRole,
-            vpc.vpc,
+            vpc,
             securityGroups,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
@@ -350,7 +351,7 @@ export class ModelsApi extends Construct {
                 f,
                 config.lambdaConfig.pythonRuntime,
                 lambdaRole,
-                vpc.vpc,
+                vpc,
                 securityGroups,
             );
         });

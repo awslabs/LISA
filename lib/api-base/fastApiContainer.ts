@@ -16,7 +16,7 @@
 
 import { CfnOutput } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -24,6 +24,7 @@ import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType, FastApiContainerConfig } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -34,6 +35,7 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 2;
  *
  * @property {IVpc} vpc - The virtual private cloud (VPC).
  * @property {SecurityGroup} securityGroups - The security groups of the application.
+ * @property {Map<number, ISubnet>} importedSubnets for application.
  */
 type FastApiContainerProps = {
     apiName: string;
@@ -41,7 +43,7 @@ type FastApiContainerProps = {
     securityGroup: SecurityGroup;
     taskConfig: FastApiContainerConfig;
     tokenTable: ITable | undefined;
-    vpc: IVpc;
+    vpc: Vpc;
 } & BaseProps;
 
 /**
@@ -113,7 +115,7 @@ export class FastApiContainer extends Construct {
                 loadBalancerConfig: taskConfig.loadBalancerConfig,
             },
             securityGroup,
-            vpc,
+            vpc
         });
 
         if (tokenTable) {

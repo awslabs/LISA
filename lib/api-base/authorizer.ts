@@ -16,7 +16,7 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { RequestAuthorizer, IdentitySource } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -25,6 +25,7 @@ import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { Vpc } from '../networking/vpc';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -33,10 +34,11 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
  * @property {Layer} authorizerLayer - Lambda layer for authorizer lambda.
  * @property {IRole} role - Execution role for lambdas
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
+ * @property {Map<number, ISubnet>} importedSubnets for Lambdas
  */
 type AuthorizerProps = {
     role?: IRole;
-    vpc?: IVpc;
+    vpc?: Vpc;
     securityGroups?: ISecurityGroup[];
 } & BaseProps;
 
@@ -89,8 +91,9 @@ export class CustomAuthorizer extends Construct {
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
             },
             role: role,
-            vpc: vpc,
+            vpc: vpc?.vpc,
             securityGroups: securityGroups,
+            vpcSubnets: vpc?.subnetSelection
         });
 
         const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);

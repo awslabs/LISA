@@ -26,11 +26,13 @@ import {
     Port,
     SecurityGroup,
     SubnetType,
+    Subnet, SubnetSelection
 } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
 import { SecurityGroups, BaseProps } from '../../schema';
+import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 
 type VpcProps = {} & BaseProps;
 
@@ -44,6 +46,12 @@ export class Vpc extends Construct {
     /** Security groups for application. */
     public readonly securityGroups: SecurityGroups;
 
+    /** Created from deployment configured Subnets for application. */
+    public readonly subnetGroup?: SubnetGroup;
+
+    /** Imported Subnets for application. */
+    public readonly subnetSelection?: SubnetSelection;
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -54,9 +62,28 @@ export class Vpc extends Construct {
 
         let vpc: IVpc;
         if (config.vpcId) {
+            // Imports VPC for use by application if supplied, else creates a VPC.
             vpc = ec2Vpc.fromLookup(this, 'imported-vpc', {
                 vpcId: config.vpcId,
             });
+
+            // Checks if SubnetIds are provided in the config, if so we import them for use.
+            // A VPC must be supplied if Subnets are being used.
+            if (config.subnetIds && config.subnetIds.length > 0) {
+                this.subnetSelection = {
+                    subnets: props.config.subnetIds?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet))
+                };
+
+                this.subnetGroup = new SubnetGroup(
+                    this,
+                    createCdkId([config.deploymentName, 'Imported-Subnets']),
+                    {
+                        vpc: this.vpc,
+                        description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
+                        vpcSubnets: this.subnetSelection,
+                    }
+                );
+            }
         } else {
             // Create VPC
             vpc = new ec2Vpc(this, 'VPC', {

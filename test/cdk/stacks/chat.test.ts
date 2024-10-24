@@ -79,7 +79,7 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
 
         stack = new LisaChatApplicationStack(app, 'LisaChat', {
@@ -89,7 +89,7 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
             description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
 
         // WHEN

@@ -143,7 +143,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
         apiBaseStack.addDependency(coreStack);
         apiBaseStack.addDependency(serveStack);
@@ -178,7 +178,7 @@ export class LisaServeApplicationStage extends Stage {
             description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
         chatStack.addDependency(apiBaseStack);
         chatStack.addDependency(coreStack);

@@ -17,18 +17,19 @@
 // LisaChat Stack.
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { SessionApi } from './api/session';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 type CustomLisaChatStackProps = {
     authorizer: IAuthorizer;
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
-    vpc?: IVpc;
+    vpc?: Vpc;
 } & BaseProps;
 type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
 

@@ -25,6 +25,8 @@ dev:
   #   text: 'LISA System'
   #   backgroundColor: orange
   #   fontColor: black
+  # vpcId: vpc-0123456789abcdef,
+  # subnetIds: [subnet-fedcba9876543210, subnet-0987654321fedcba],
   s3BucketModels: hf-models-gaiic
   # aws partition mountS3 package location
   mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb

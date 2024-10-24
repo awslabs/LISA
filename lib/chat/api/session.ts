@@ -16,7 +16,7 @@
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Role } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -25,6 +25,7 @@ import { Construct } from 'constructs';
 import { PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { Vpc } from '../../networking/vpc';
 
 /**
  * Properties for SessionApi Construct.
@@ -35,13 +36,14 @@ import { createLambdaRole } from '../../core/utils';
  * @property {IRole} lambdaExecutionRole - Execution role for lambdas
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
+ * @property {Map<number, ISubnet> }importedSubnets for application.
  */
 type SessionApiProps = {
     authorizer: IAuthorizer;
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
-    vpc?: IVpc;
+    vpc?: Vpc;
 } & BaseProps;
 
 /**

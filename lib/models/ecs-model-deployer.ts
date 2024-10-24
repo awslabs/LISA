@@ -21,11 +21,12 @@ import { Stack, Duration, Size } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 export type ECSModelDeployerProps = {
-    vpcId: string;
     securityGroupId: string;
     config: Config;
+    vpc: Vpc;
 } & BaseProps;
 
 export class ECSModelDeployer extends Construct {
@@ -57,7 +58,8 @@ export class ECSModelDeployer extends Construct {
             'removalPolicy': props.config.removalPolicy,
             's3BucketModels': props.config.s3BucketModels,
             'mountS3DebUrl': props.config.mountS3DebUrl,
-            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect
+            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
+            'subnetIds': props.config.subnetIds
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
@@ -69,10 +71,12 @@ export class ECSModelDeployer extends Construct {
             memorySize: 1024,
             role: role,
             environment: {
-                'LISA_VPC_ID': props.vpcId,
+                'LISA_VPC_ID': props.vpc?.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,
                 'LISA_CONFIG': JSON.stringify(stripped_config)
-            }
+            },
+            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
+            vpcSubnets: props.vpc?.subnetSelection,
         });
     }
 }

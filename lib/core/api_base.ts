@@ -16,14 +16,14 @@
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 type LisaApiBaseStackProps = {
-    vpc: IVpc;
+    vpc: Vpc;
 } & BaseProps &
   StackProps;
 

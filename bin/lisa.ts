@@ -34,8 +34,6 @@ const baseConfigFile = yaml.load(fs.readFileSync(baseConfigFilePath, 'utf8')) as
 const customConfigFile = yaml.load(fs.readFileSync(customConfigFilePath, 'utf8')) as ConfigFile;
 const configData = _.merge(baseConfigFile, customConfigFile);
 
-console.log('MERGED CONFIG FILE:\n' + yaml.dump(configData));
-
 // Other command line argument overrides
 type EnvMapping = [string, keyof Config];
 const mappings: EnvMapping[] = [
@@ -55,6 +53,7 @@ mappings.forEach(([envVar, configVar]) => {
 let config: Config;
 try {
     config = ConfigSchema.parse(configData);
+    console.log('MERGED CONFIG FILE:\n' + yaml.dump(config));
 } catch (error) {
     if (error instanceof Error) {
         console.error('Error parsing the configuration:', error.message);

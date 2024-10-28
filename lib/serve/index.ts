@@ -145,12 +145,12 @@ export class LisaServeApplicationStack extends Stack {
         subNets?.forEach((subnet) => {
             litellmDbSg.connections.allowFrom(
                 Peer.ipv4(subnet.ipv4CidrBlock),
-                Port.tcp(5432),
+                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
                 'Allow REST API private subnets to communicate with LiteLLM database',
             );
         });
 
-        const username = 'postgres';
+        const username = config.restApiConfig.rdsConfig.username;
         const dbCreds = Credentials.fromGeneratedSecret(username);
 
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
@@ -172,8 +172,8 @@ export class LisaServeApplicationStack extends Stack {
                 username: username,
                 passwordSecretId: litellmDbPasswordSecret.secretName,
                 dbHost: litellmDb.dbInstanceEndpointAddress,
-                dbName: 'postgres',
-                dbPort: 5432,
+                dbName: config.restApiConfig.rdsConfig.dbName,
+                dbPort: config.restApiConfig.rdsConfig.dbPort,
             }),
         });
         litellmDbPasswordSecret.grantRead(restApi.taskRole);

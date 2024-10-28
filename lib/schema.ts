@@ -551,6 +551,22 @@ const RdsInstanceConfig = z.object({
 const FastApiContainerConfigSchema = z.object({
     internetFacing: z.boolean().default(true),
     sslCertIamArn: z.string().optional().nullable().default(null),
+    rdsConfig: RdsInstanceConfig.optional()
+        .default({
+            dbName: 'postgres',
+            username: 'postgres',
+            dbPort: 5432
+        })
+        .refine(
+            (config) => {
+                return !config.dbHost && !config.passwordSecretId;
+            },
+            {
+                message:
+                    'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
+                    'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+            },
+        ),
 });
 
 /**

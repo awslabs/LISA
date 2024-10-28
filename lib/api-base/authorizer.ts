@@ -26,6 +26,7 @@ import { BaseProps } from '../schema';
 import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -75,6 +76,11 @@ export class CustomAuthorizer extends Construct {
 
         // Create Lambda authorizer
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
+            deadLetterQueueEnabled: true,
+            deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
+                queueName: 'AuthorizerLambdaDLQ',
+                enforceSSL: true,
+            }),
             runtime: config.lambdaConfig.pythonRuntime,
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
@@ -90,6 +96,7 @@ export class CustomAuthorizer extends Construct {
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
             },
+            reservedConcurrentExecutions: 1000,
             role: role,
             vpc: vpc?.vpc,
             securityGroups: securityGroups,

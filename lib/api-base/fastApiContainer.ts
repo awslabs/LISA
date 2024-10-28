@@ -142,7 +142,7 @@ export class FastApiContainer extends Construct {
                         healthyThresholdCount: 2,
                         unhealthyThresholdCount: 10
                     },
-                    domainName: null,
+                    domainName: config.restApiConfig.domainName,
                     sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,
                 },
             },

@@ -550,6 +550,7 @@ const RdsInstanceConfig = z.object({
  */
 const FastApiContainerConfigSchema = z.object({
     internetFacing: z.boolean().default(true),
+    domainName: z.string().optional().nullable().default(null),
     sslCertIamArn: z.string().optional().nullable().default(null),
     rdsConfig: RdsInstanceConfig.optional()
         .default({

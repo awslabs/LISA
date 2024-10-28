@@ -24,6 +24,7 @@ import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
@@ -116,12 +117,18 @@ export class DockerImageBuilder extends Construct {
 
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
+            deadLetterQueueEnabled: true,
+            deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
+                queueName: 'docker-image-builderDLQ',
+                enforceSSL: true,
+            }),
             functionName: functionId,
             runtime: props.config.lambdaConfig.pythonRuntime,
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),
             memorySize: 1024,
+            reservedConcurrentExecutions: 1000,
             role: role,
             environment: {
                 'LISA_DOCKER_BUCKET': ec2DockerBucket.bucketName,

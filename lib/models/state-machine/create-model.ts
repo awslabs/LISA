@@ -35,6 +35,7 @@ import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -74,11 +75,17 @@ export class CreateModelStateMachine extends Construct {
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'SetModelToCreatingDLQ', {
+                    queueName: 'SetModelToCreatingDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -93,11 +100,17 @@ export class CreateModelStateMachine extends Construct {
 
         const startCopyDockerImage = new LambdaInvoke(this, 'StartCopyDockerImage', {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'StartCopyDockerImageDLQ', {
+                    queueName: 'StartCopyDockerImageDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -110,11 +123,17 @@ export class CreateModelStateMachine extends Construct {
 
         const pollDockerImageAvailable = new LambdaInvoke(this, 'PollDockerImageAvailable', {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'PollDockerImageAvailableDLQ', {
+                    queueName: 'PollDockerImageAvailableDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -127,11 +146,17 @@ export class CreateModelStateMachine extends Construct {
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'HandleFailureDLQ', {
+                    queueName: 'HandleFailureDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_failure',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -150,11 +175,17 @@ export class CreateModelStateMachine extends Construct {
 
         const startCreateStack = new LambdaInvoke(this, 'StartCreateStack', {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'StartCreateStackDLQ', {
+                    queueName: 'StartCreateStackDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: Duration.minutes(8),
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -167,11 +198,17 @@ export class CreateModelStateMachine extends Construct {
 
         const pollCreateStack = new LambdaInvoke(this, 'PollCreateStack', {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'PollCreateStackDLQ', {
+                    queueName: 'PollCreateStackDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -190,11 +227,17 @@ export class CreateModelStateMachine extends Construct {
 
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'AddModelToLitellmDLQ', {
+                    queueName: 'AddModelToLitellmDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: config.lambdaConfig.pythonRuntime,
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
                 code: Code.fromAsset(config.lambdaSourcePath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,

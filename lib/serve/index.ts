@@ -99,6 +99,11 @@ export class LisaServeApplicationStack extends Stack {
 
         // const rotateManagementKeyLambdaId = createCdkId([id, 'RotateManagementKeyLambda'])
         // const rotateManagementKeyLambda = new Function(this, rotateManagementKeyLambdaId, {
+        //     deadLetterQueueEnabled: true,
+        //     deadLetterQueue: new Queue(this, 'RotateManagementKeyLambdaDLQ', {
+        //         queueName: 'RotateManagementKeyLambdaDLQ',
+        //         enforceSSL: true,
+        //     }),
         //     functionName: rotateManagementKeyLambdaId,
         //     runtime: config.lambdaConfig.pythonRuntime,
         //     handler: 'management_key.rotate_management_key',
@@ -110,6 +115,7 @@ export class LisaServeApplicationStack extends Stack {
         //     },
         //     layers: [commonLambdaLayer],
         //     vpc: props.vpc.vpc,
+        //     reservedConcurrentExecutions: 1000,
         // });
 
         // managementKeySecret.grantRead(rotateManagementKeyLambda);

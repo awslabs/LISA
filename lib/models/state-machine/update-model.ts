@@ -26,6 +26,7 @@ import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { Choice, Condition, DefinitionBody, StateMachine, Succeed, Wait, WaitTime } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 
 type UpdateModelStateMachineProps = BaseProps & {
@@ -69,11 +70,17 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'HandleJobIntakeDLQ', {
+                    queueName: 'HandleJobIntakeDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_job_intake',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -86,11 +93,17 @@ export class UpdateModelStateMachine extends Construct {
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'HandlePollCapacityDLQ', {
+                    queueName: 'HandlePollCapacityDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,
@@ -103,11 +116,17 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
+                deadLetterQueueEnabled: true,
+                deadLetterQueue: new Queue(this, 'HandleFinishUpdateDLQ', {
+                    queueName: 'HandleFinishUpdateDLQ',
+                    enforceSSL: true,
+                }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.update_model.handle_finish_update',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
+                reservedConcurrentExecutions: 1000,
                 role: role,
                 vpc: vpc?.vpc,
                 vpcSubnets: vpc?.subnetSelection,

@@ -120,6 +120,6 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
 
     test('NIST800.53r5 CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-        expect(errors.length).toBe(14);
+        expect(errors.length).toBe(4);
     });
 });

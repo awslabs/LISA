@@ -63,6 +63,7 @@ export default defineConfig({
   lang: 'en-US',
   title: 'LISA Documentation',
   description: 'LLM Inference Solution for Amazon Dedicated Cloud (LISA)',
+  outDir: '../dist/docs',
   base: '/lisa/',
   head: [['link', { rel: 'icon', href: '/lisa/assets/favicon.ico' }]],
   // https://vitepress.dev/reference/default-theme-config

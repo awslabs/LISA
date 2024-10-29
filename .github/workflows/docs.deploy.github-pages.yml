@@ -43,7 +43,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./lib/user-interface/react/docs/.vitepress/dist
+          path: ./lib/user-interface/react/dist/docs
   deploy:
     environment:
       name: github-pages

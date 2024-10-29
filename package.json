@@ -9,7 +9,8 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "migrate-properties": "node ./scripts/migrate-properties.mjs"
   },
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",

@@ -1,7 +1,7 @@
-name: Deploy Dev Environment
+name: Deploy Demo Environment
 on:
   push:
-    branches: [ "main", "develop", "release/**" ]
+    branches: [ "main"]
 
 permissions:
   id-token: write
@@ -17,7 +17,7 @@ jobs:
           timeout: 7200000
   DeployLISA:
     needs: CheckPendingWorkflow
-    environment: dev
+    environment: demo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,14 +52,14 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Send Notification that Dev Deploy Finished
+      - name: Send Notification that Demo Deploy Finished
         uses: rtCamp/action-slack-notify@v2
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
-          SLACK_TITLE: 'Dev Deploy Finished'
+          SLACK_TITLE: 'Demo Deploy Finished'
           SLACK_FOOTER: ''
           MSG_MINIMAL: 'actions url,commit'
-          SLACK_MESSAGE_ON_FAILURE: '<!here> Dev Deploy FAILED on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'
-          SLACK_MESSAGE_ON_SUCCESS: 'Dev Deploy SUCCESS on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>.'
-          SLACK_MESSAGE: 'Dev Deploy Finished with status ${{ job.status }} on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> Demo Deploy FAILED on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'
+          SLACK_MESSAGE_ON_SUCCESS: 'Demo Deploy SUCCESS on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>.'
+          SLACK_MESSAGE: 'Demo Deploy Finished with status ${{ job.status }} on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'

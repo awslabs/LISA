@@ -24,7 +24,7 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
@@ -98,12 +98,12 @@ export class LisaRagStack extends Stack {
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
+            REST_API_VERSION: 'v2',
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
-            baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig.loadBalancerConfig.sslCertIamArn;
+        if (config.restApiConfig?.sslCertIamArn) {
+            baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig?.sslCertIamArn;
         }
 
         const lambdaRole = Role.fromRoleArn(
@@ -312,14 +312,14 @@ export class LisaRagStack extends Stack {
         if (config.lambdaLayerAssets?.sdkLayerPath) {
             sdkLayer = new LayerVersion(this, 'SdkLayer', {
                 code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
+                compatibleRuntimes: [Runtime.PYTHON_3_10],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });
         } else {
             sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
                 entry: SDK_PATH,
-                compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
+                compatibleRuntimes: [Runtime.PYTHON_3_10],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });

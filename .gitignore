@@ -32,3 +32,4 @@ coverage
 /models
 # Deployment configuration file
 config.yaml
+config-custom.yaml

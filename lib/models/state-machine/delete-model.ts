@@ -25,7 +25,7 @@ import {
     Succeed,
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { BaseProps } from '../../schema';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -60,9 +60,9 @@ export class DeleteModelStateMachine extends Construct {
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
+            REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
 
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.
@@ -74,9 +74,9 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'SetModelToDeletingDLQ',
                     enforceSSL: true,
                 }),
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
@@ -97,9 +97,9 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'DeleteFromLitellmDLQ',
                     enforceSSL: true,
                 }),
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
@@ -120,9 +120,9 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'DeleteStackDLQ',
                     enforceSSL: true,
                 }),
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
@@ -143,9 +143,9 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'MonitorDeleteStackDLQ',
                     enforceSSL: true,
                 }),
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
@@ -166,9 +166,9 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'DeleteFromDdbDLQ',
                     enforceSSL: true,
                 }),
-                runtime: config.lambdaConfig.pythonRuntime,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
-                code: Code.fromAsset(config.lambdaSourcePath),
+                code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,

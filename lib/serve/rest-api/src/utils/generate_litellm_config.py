@@ -49,7 +49,7 @@ def generate_config(filepath: str) -> None:
         }
         for model in registered_models
     ]
-    config_models = config_contents["model_list"] or []  # ensure config_models is a list and not None
+    config_models = []  # ensure config_models is a list and not None
     config_models.extend(litellm_model_params)
     config_contents["model_list"] = config_models
     config_contents["litellm_settings"] = {
@@ -67,11 +67,13 @@ def generate_config(filepath: str) -> None:
         f"/{db_params['dbName']}"
     )
 
-    general_settings = config_contents["general_settings"]
-    general_settings.update(
+    config_contents.update(
         {
-            "store_model_in_db": True,
-            "database_url": connection_str,
+            "general_settings": {
+                "store_model_in_db": True,
+                "database_url": connection_str,
+                "master_key": config_contents["db_key"],
+            }
         }
     )
 

@@ -122,7 +122,7 @@ export function registerAPIEndpoint (
             timeout: funcDef.timeout || Duration.seconds(180),
             memorySize: 512,
             layers,
-            reservedConcurrentExecutions: 900,
+            reservedConcurrentExecutions: 20,
             role,
             vpc: vpc?.vpc,
             securityGroups,

@@ -128,7 +128,7 @@ export class DockerImageBuilder extends Construct {
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),
             memorySize: 1024,
-            reservedConcurrentExecutions: 900,
+            reservedConcurrentExecutions: 10,
             role: role,
             environment: {
                 'LISA_DOCKER_BUCKET': ec2DockerBucket.bucketName,

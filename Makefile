@@ -34,7 +34,7 @@ DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentN
 endif
 
 ifeq (${DEPLOYMENT_NAME}, null)
-$(error deploymentName must be set in command line using DEPLOYMENT_NAME variable or config files)
+DEPLOYMENT_NAME := prod
 endif
 
 # ACCOUNT_NUMBER
@@ -81,7 +81,7 @@ DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deployment
 endif
 
 ifeq (${DEPLOYMENT_STAGE}, null)
-$(error deploymentStage must be set in config files)
+DEPLOYMENT_STAGE := prod
 endif
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR

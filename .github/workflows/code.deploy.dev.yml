@@ -31,7 +31,7 @@ jobs:
       - name: Create config-custom.yaml
         id: create-yaml
         run: |
-          echo ${{vars.CONFIG_YAML}} > config-custom.yaml
+          echo "${{vars.CONFIG_YAML}}" > config-custom.yaml
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:

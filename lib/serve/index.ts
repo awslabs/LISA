@@ -117,7 +117,7 @@ export class LisaServeApplicationStack extends Stack {
         //     },
         //     layers: [commonLambdaLayer],
         //     vpc: props.vpc.vpc,
-        //     reservedConcurrentExecutions: 1000,
+        //     reservedConcurrentExecutions: 5,
         // });
 
         // managementKeySecret.grantRead(rotateManagementKeyLambda);

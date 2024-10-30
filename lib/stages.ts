@@ -42,7 +42,7 @@ import { LisaRagStack } from './rag';
 import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
-import { DocsStack } from './docs';
+import { LisaDocsStack } from './docs';
 
 type CustomLisaServeApplicationStageProps = {} & BaseProps;
 type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & StageProps;
@@ -228,7 +228,7 @@ export class LisaServeApplicationStage extends Stage {
         }
 
         if (config.deployDocs) {
-            const docsStack = new DocsStack(this, 'LisaDocs', {
+            const docsStack = new LisaDocsStack(this, 'LisaDocs', {
                 ...baseStackProps
             });
             stacks.push(docsStack);

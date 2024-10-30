@@ -1,4 +1,3 @@
----
 # https://vitepress.dev/reference/default-theme-home-page
 layout: home
 
@@ -24,7 +23,6 @@ features:
   - title: Retrieval-Augmented Generation (RAG) Operations
     details: leveraging either OpenSearch or PGVector for efficient retrieval of relevant external data to enhance model responses.
 
----
 
 ### License Notice
 

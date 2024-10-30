@@ -21,7 +21,7 @@
      text: 'System Administrator Guide',
      items: [
        { text: 'Architecture Overview', link: '/admin/architecture' },
-       { text: 'Lisa Components', link: '/admin/components' },
+       { text: 'LISA Components', link: '/admin/components' },
        { text: 'Getting Started', link: '/admin/getting-started' },
        { text: 'Configure IdP: Cognito & Keycloak Examples', link: '/admin/idp' },
        { text: 'Deployment', link: '/admin/deploy' },

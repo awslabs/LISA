@@ -40,7 +40,6 @@ lambdaLayerAssets:
   fastapiLayerPath: /path/to/fastapi_layer.zip
   sdkLayerPath: lib/rag/layers/sdk_layer.zip
 ```
----
 
 ## Deploying
 

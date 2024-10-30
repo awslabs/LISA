@@ -68,7 +68,6 @@ Launch the Chat UI:
 cd lib/user-interface/react/
 npm run dev
 ```
----
 
 # Usage and Features
 
@@ -108,7 +107,6 @@ curl -s -H 'Authorization: Bearer your-token' -X GET https://${lisa_serve_alb}/v
 When using a library that requests an OpenAI-compatible base_url, you can provide `https://${lisa_serve_alb}/v2/serve` here. All of the OpenAI routes will
 automatically be added to the base URL, just as we appended `/models` to the `/v2/serve` route for listing all models tracked by LISA.
 
----
 
 ## Continue JetBrains and VS Code Plugin
 

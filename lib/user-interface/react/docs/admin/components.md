@@ -16,7 +16,6 @@ The Model Management component is responsible for managing the entire lifecycle 
 * **CloudFormation**: Infrastructure components are provisioned using CloudFormation templates, as defined in ```ecs_model_deployer/src/lib/lisa_model_stack.ts```.
 * **ECS Cluster**: ECS cluster and task definitions are located in ```ecs_model_deployer/src/lib/ecsCluster.ts```, with model containers specified in ```ecs_model_deployer/src/lib/ecs-model.ts```.
 
----
 
 ### LISA Serve
 ![LISA Serve Architecture](../assets/LisaServe.png)
@@ -30,7 +29,6 @@ LISA Serve is responsible for processing inference requests and serving model pr
 * RAG operations are managed through ```lambda/rag/lambda_functions.py```, which handles embedding generation and document retrieval via OpenSearch and PostgreSQL.
 * Direct requests to the LISA Serve ALB entrypoint must utilize the OpenAI API spec, which we support through the use of the LiteLLM proxy.
 
----
 
 ### LISA Chat
 ![LISA Chatbot Architecture](../assets/LisaChat.png)
@@ -45,7 +43,6 @@ LISA Chat provides a customizable chat interface that enables users to interact 
 * Session management logic is handled in ```lambda/session/lambda_functions.py```, where session data is stored and retrieved from DynamoDB.
 * RAG operations are defined in lambda/repository/lambda_functions.py
 
----
 
 ## Interaction Flow
 

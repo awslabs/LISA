@@ -22,8 +22,6 @@ import { Annotations, Match } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 import * as yaml from 'js-yaml';
 
-import { ARCHITECTURE } from '../../../lib/core';
-import { createCdkId } from '../../../lib/core/utils';
 import { LisaDocsStack } from '../../../lib/docs/index';
 import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 

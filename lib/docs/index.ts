@@ -15,6 +15,7 @@
  */
 
 import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
@@ -24,26 +25,24 @@ import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 
- /**
-  * Properties for DocsStack Construct.
-  */
- type DocsProps = {} & BaseProps & StackProps;
-
+/**
+ * Properties for DocsStack Construct.
+ */
+type DocsProps = {} & BaseProps & StackProps;
 
 /**
-  * User Interface Construct.
-  */
+ * User Interface Construct.
+ */
 export class LisaDocsStack extends Stack {
 
     /**
-    * @param {Construct} scope - The parent or owner of the construct.
-    * @param {string} id - The unique identifier for the construct within its scope.
-    * @param {DocsProps} props - The properties of the construct.
-    */
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {DocsProps} props - The properties of the construct.
+     */
     constructor (scope: Construct, id: string, props: DocsProps) {
         super(scope, id, props);
         const { config } = props;
-        const docsPath = path.join(path.dirname(__dirname), 'user-interface', 'react', 'dist', 'docs');
 
         // Create Docs S3 bucket
         const docsBucket = new Bucket(this, 'DocsBucket', {
@@ -53,9 +52,14 @@ export class LisaDocsStack extends Stack {
             enforceSSL: true,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             websiteIndexDocument: 'index.html',
-            websiteErrorDocument: '404.html'
+            websiteErrorDocument: '404.html',
         });
 
+        // Ensure dist folder is created (for tests)
+        const docsPath = path.join(__dirname, 'dist');
+        if (!fs.existsSync(docsPath)) {
+            fs.mkdirSync(docsPath);
+        }
         // Deploy local folder to S3
         new BucketDeployment(this, 'DeployDocsWebsite', {
             sources: [Source.asset(docsPath)],
@@ -75,7 +79,7 @@ export class LisaDocsStack extends Stack {
             deployOptions: {
                 stageName: 'lisa',
             },
-            binaryMediaTypes: ['*/*']
+            binaryMediaTypes: ['*/*'],
         });
 
         const defaultIntegration = new AwsIntegration({
@@ -90,7 +94,7 @@ export class LisaDocsStack extends Stack {
                     responseParameters: {
                         'method.response.header.Content-Type': '\'text/html\'',
                     },
-                }]
+                }],
             },
         });
 
@@ -111,8 +115,8 @@ export class LisaDocsStack extends Stack {
                         responseParameters: {
                             'method.response.header.Content-Type': 'integration.response.header.Content-Type',
                             'method.response.header.Content-Disposition': 'integration.response.header.Content-Disposition',
-                            'method.response.header.Content-Length': 'integration.response.header.Content-Length'
-                        }
+                            'method.response.header.Content-Length': 'integration.response.header.Content-Length',
+                        },
                     },
                     {
                         selectionPattern: '403',
@@ -125,7 +129,7 @@ export class LisaDocsStack extends Stack {
                              #set($context.responseOverride.status = 404)
                              #set($context.responseOverride.header.Location = "$context.domainName/404.html")`,
                         },
-                    }
+                    },
                 ],
             },
         });
@@ -152,7 +156,7 @@ export class LisaDocsStack extends Stack {
                     responseParameters: {
                         'method.response.header.Content-Type': true,
                         'method.response.header.Content-Disposition': true,
-                        'method.response.header.Content-Length': true
+                        'method.response.header.Content-Length': true,
                     },
                 },
                 {

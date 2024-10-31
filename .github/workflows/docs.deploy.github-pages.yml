@@ -30,12 +30,12 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Install dependencies
-        working-directory: ./lib/user-interface/react
+        working-directory: ./lib/docs
         run: npm install
         env:
           CI: ""
       - name: Build with VitePress
-        working-directory: ./lib/user-interface/react
+        working-directory: ./lib/docs
         run: npm run docs:build
         env:
           CI: ""
@@ -43,7 +43,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./lib/user-interface/react/dist/docs
+          path: ./lib/docs/dist
   deploy:
     environment:
       name: github-pages

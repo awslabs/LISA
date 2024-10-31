@@ -86,8 +86,6 @@ Edit the `config.yaml` file to customize your LISA deployment. Key configuration
 - Authentication settings
 - Networking and infrastructure preferences
 
-The full configuration page can be found: [Configuration](../ref/config)
-
 ## Step 5: Stage Model Weights
 
 LISA requires model weights to be staged in the S3 bucket specified in your `config.yaml` file, assuming the S3 bucket follows this structure:

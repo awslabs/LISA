@@ -16,6 +16,7 @@
     "@cloudscape-design/components": "^3.0.638",
     "@cloudscape-design/global-styles": "^1.0.12",
     "@langchain/core": "^0.3.5",
+    "@langchain/openai": "^0.3.11",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@reduxjs/toolkit": "^1.9.5",
     "axios": "^1.7.4",

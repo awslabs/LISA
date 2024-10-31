@@ -101,14 +101,14 @@ export class ConfigurationApi extends Construct {
                                 'editNumOfRagDocument': {'BOOL': 'True'},
                                 'uploadRagDocs': {'BOOL': 'True'},
                                 'uploadContextDocs': {'BOOL': 'True'}
-                            },
+                            }},
                             'systemBanner': {'M': {
                                 'isEnabled': {'BOOL': 'False'},
                                 'text': {'S': ''},
                                 'textColor': {'S': ''},
                                 'backgroundColor': {'S': ''}
                             }}
-                        }
+                        }}
                     },
                 },
             },

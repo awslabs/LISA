@@ -30,6 +30,7 @@ import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
+import Configuration from './pages/Configuration';
 
 const PrivateRoute = ({ children }) => {
     const auth = useAuth();
@@ -110,6 +111,14 @@ function App () {
                             element={
                                 <AdminRoute>
                                     <ModelManagement setTools={setTools} />
+                                </AdminRoute>
+                            }
+                        />
+                        <Route
+                            path='configuration'
+                            element={
+                                <AdminRoute>
+                                    <Configuration setTools={setTools} />
                                 </AdminRoute>
                             }
                         />

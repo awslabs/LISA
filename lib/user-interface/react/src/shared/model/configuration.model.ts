@@ -41,7 +41,7 @@ export type ISystemBannerConfiguration = {
 export type BaseConfiguration = {
     configScope: string;
     versionId: number;
-    createdAt: number;
+    createdAt?: number;
     changedBy: string;
     changeReason: string;
 };

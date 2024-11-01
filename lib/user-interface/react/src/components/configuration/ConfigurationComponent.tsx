@@ -27,17 +27,18 @@ import { useAppDispatch, useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import { getJsonDifference } from '../../shared/util/utils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { useNotificationService } from '../../shared/util/hooks';
 
 export type ConfigState = {
     validateAll: boolean;
     form: SystemConfiguration;
     touched: any;
     formSubmitting: boolean;
-    activeStepIndex: number;
 };
 
 export function ConfigurationComponent () : ReactElement {
     const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
     const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
     const [
         updateConfigMutation,
@@ -52,7 +53,6 @@ export function ConfigurationComponent () : ReactElement {
         form: {
             ...initialForm
         },
-        activeStepIndex: 0,
     } as ConfigState);
 
     /**
@@ -93,13 +93,23 @@ export function ConfigurationComponent () : ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, isFetchingConfig]);
 
+    useEffect(() => {
+        if (!isUpdating && isUpdateSuccess) {
+            notificationService.generateNotification('Successfully updated configuration', 'success');
+            resetUpdate();
+        } else if (!isUpdating && isUpdateError) {
+            notificationService.generateNotification(`Error updating config: ${updateError.data?.message ?? updateError.data}`, 'error');
+            resetUpdate();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateSuccess, isUpdating, isUpdateError, updateError]);
+
     function handleSubmit () {
         if (isValid && !_.isEmpty(changesDiff)) {
             const toSubmit: IConfiguration = {
                 configuration: state.form,
                 configScope: 'global',
                 versionId: Number(config[0]?.versionId) + 1,
-                createdAt: config[0]?.createdAt,
                 changedBy: currentUsername ?? 'Admin',
                 changeReason: `Changes to: ${Object.keys(changesDiff)}`
             };
@@ -109,7 +119,6 @@ export function ConfigurationComponent () : ReactElement {
                     resourceName: 'Configuration',
                     onConfirm: () => updateConfigMutation(toSubmit),
                     description: _.isEmpty(changesDiff) ? <p>No changes detected</p> : jsonToOutline(changesDiff),
-                    htmlDescription: true
                 }));
         }
     }

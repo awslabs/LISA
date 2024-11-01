@@ -16,20 +16,22 @@
 
 import { TextContent } from '@cloudscape-design/components';
 import React from 'react';
+import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 
 type BannerOptions = {
     position: 'TOP' | 'BOTTOM';
 };
 
 export const SystemBanner = ({ position }: BannerOptions) => {
+    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
     const bannerStyle: React.CSSProperties = {
         width: '100%',
         position: 'fixed',
         zIndex: 4999,
         textAlign: 'center',
         padding: '2px 0px',
-        backgroundColor: window.env.SYSTEM_BANNER.backgroundColor,
-        color: window.env.SYSTEM_BANNER.fontColor,
+        backgroundColor: config[0]?.configuration.systemBanner.backgroundColor,
+        color: config[0]?.configuration.systemBanner.textColor,
     };
 
     if (position === 'TOP') {
@@ -41,7 +43,7 @@ export const SystemBanner = ({ position }: BannerOptions) => {
     return (
         <TextContent>
             <div style={bannerStyle} id={position === 'TOP' ? 'topBanner' : 'bottomBanner'}>
-                <span>{window.env.SYSTEM_BANNER.text}</span>
+                <span><b>{config[0]?.configuration.systemBanner.text}</b></span>
             </div>
         </TextContent>
     );

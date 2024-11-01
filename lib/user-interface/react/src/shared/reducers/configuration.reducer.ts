@@ -24,22 +24,20 @@ export const configurationApi = createApi({
     endpoints: (builder) => ({
         getConfiguration: builder.query<IConfiguration[], String>({
             query: (configScope) => ({
-                url: `/configuration?configScope=${configScope}`,
-
+                url: `/configuration?configScope=${configScope}`
             }),
-            transformResponse: (response) => response.models,
             providesTags:['configuration'],
         }),
         updateConfiguration: builder.mutation<IConfiguration, IConfiguration>({
             query: (updatedConfig) => ({
-                url: `/configuration`,
+                url: `/configuration/${updatedConfig.configScope}`,
                 method: 'PUT',
                 data: updatedConfig
             }),
             transformErrorResponse: (baseQueryReturnValue) => {
                 // transform into SerializedError
                 return {
-                    name: 'Update Model Error',
+                    name: 'Update Configuration Error',
                     message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
                 };
             },

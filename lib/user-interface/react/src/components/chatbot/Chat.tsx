@@ -62,8 +62,11 @@ import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
+import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { enabledComponentsSchema } from '../../shared/model/configuration.model';
 
 export default function Chat ({ sessionId }) {
+    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
     const [userPrompt, setUserPrompt] = useState('');
     const [humanPrefix, setHumanPrefix] = useState('User');
     const [aiPrefix, setAiPrefix] = useState('Assistant');
@@ -595,15 +598,15 @@ export default function Chat ({ sessionId }) {
                                             }`}
                                             actions={
                                                 <SpaceBetween direction='horizontal' size='m'>
-                                                    <Box float='left' variant='div'>
+                                                    {config && config[0]?.configuration.enabledComponents.uploadContextDocs && <Box float='left' variant='div'>
                                                         <Button
                                                             onClick={() => setShowContextUploadModal(true)}
                                                             disabled={isRunning || !selectedModelOption}
                                                         >
                                                             Manage file context
                                                         </Button>
-                                                    </Box>
-                                                    {window.env.RAG_ENABLED && (
+                                                    </Box>}
+                                                    {window.env.RAG_ENABLED && config[0]?.configuration.enabledComponents.uploadRagDocs && (
                                                         <Box float='left' variant='div'>
                                                             <Button
                                                                 onClick={() => setShowRagUploadModal(true)}
@@ -668,14 +671,19 @@ export default function Chat ({ sessionId }) {
                                                 />
                                             )}
                                         </Grid>
-                                        <ExpandableSection headerText='Advanced configuration' variant='footer'>
+                                        {config && (config[0]?.configuration.enabledComponents.viewMetaData ||
+                                            config[0]?.configuration.enabledComponents.editKwargs||
+                                            config[0]?.configuration.enabledComponents.editPromptTemplate||
+                                            config[0]?.configuration.enabledComponents.editChatHistoryBuffer||
+                                            config[0]?.configuration.enabledComponents.editNumOfRagDocument) &&
+                                            <ExpandableSection headerText='Advanced configuration' variant='footer'>
                                             <ColumnLayout columns={7}>
-                                                <Toggle onChange={({ detail }) => setShowMetadata(detail.checked)} checked={showMetadata}>
+                                                {config && config[0]?.configuration.enabledComponents.viewMetaData && <Toggle onChange={({ detail }) => setShowMetadata(detail.checked)} checked={showMetadata}>
                                                     Show metadata
-                                                </Toggle>
-                                                <Button onClick={() => setModelKwargsModalVisible(true)}>Edit Model Kwargs</Button>
-                                                <Button onClick={() => setPromptTemplateModalVisible(true)}>Edit Prompt Template</Button>
-                                                <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
+                                                </Toggle>}
+                                                {config && config[0]?.configuration.enabledComponents.editKwargs && <Button onClick={() => setModelKwargsModalVisible(true)}>Edit Model Kwargs</Button>}
+                                                {config && config[0]?.configuration.enabledComponents.editPromptTemplate && <Button onClick={() => setPromptTemplateModalVisible(true)}>Edit Prompt Template</Button>}
+                                                {config && config[0]?.configuration.enabledComponents.editChatHistoryBuffer && <><Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
                                                     Chat history buffer size:
                                                 </Box>
                                                 <Box float='left' variant='div'>
@@ -689,7 +697,8 @@ export default function Chat ({ sessionId }) {
                                                         onChange={({ detail }) => setChatHistoryBufferSize(parseInt(detail.selectedOption.value))}
                                                         options={oneThroughTenOptions}
                                                     />
-                                                </Box>
+                                                </Box></>}
+                                                {config && config[0]?.configuration.enabledComponents.editNumOfRagDocument && <>
                                                 <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
                                                     RAG documents:
                                                 </Box>
@@ -704,9 +713,9 @@ export default function Chat ({ sessionId }) {
                                                         onChange={({ detail }) => setRagTopK(parseInt(detail.selectedOption.value))}
                                                         options={oneThroughTenOptions}
                                                     />
-                                                </Box>
+                                        </Box> </>}
                                             </ColumnLayout>
-                                        </ExpandableSection>
+                                        </ExpandableSection>}
                                     </SpaceBetween>
                                 </Container>
                                 <SpaceBetween direction='vertical' size='xs'>

@@ -14,15 +14,16 @@
  limitations under the License.
  */
 
-import { ReactElement } from 'react';
+import { ReactElement, useEffect } from 'react';
 import ActivatedUserComponents from './ActivatedUserComponents';
 import SystemBannerConfiguration from './SystemBannerConfiguration';
 import { scrollToInvalid, useValidationReducer } from '../../shared/validation';
-import { SystemConfiguration, SystemConfigurationSchema } from '../../shared/model/configuration.model';
+import { IConfiguration, SystemConfiguration, SystemConfigurationSchema } from '../../shared/model/configuration.model';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { Button, Header } from '@cloudscape-design/components';
-import { ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { useGetConfigurationQuery, useUpdateConfigurationMutation } from '../../shared/reducers/configuration.reducer';
+import _ from 'lodash';
+import { useUpdateModelMutation } from '../../shared/reducers/model-management.reducer';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -33,11 +34,11 @@ export type ConfigState = {
 };
 
 export function ConfigurationComponent () : ReactElement {
-    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5,
-        selectFromResult: (state) => ({
-            isFetching: state.isFetching,
-            data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
-        })});
+    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: true});
+    const [
+        updateConfigMutation,
+        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
+    ] = useUpdateConfigurationMutation();
     const initialForm = SystemConfigurationSchema.parse({});
     const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(SystemConfigurationSchema, {
         validateAll: false as boolean,
@@ -48,6 +49,31 @@ export function ConfigurationComponent () : ReactElement {
         },
         activeStepIndex: 0,
     } as ConfigState);
+
+    useEffect(() => {
+        if(!isFetchingConfig && config != null) {
+            setState({
+                ...state,
+                form: {
+                    ...config[0].configuration
+                }
+            });
+        }
+    }, [config, isFetchingConfig]);
+
+    function handleSubmit () {
+        if (isValid) {
+            let toSubmit: IConfiguration = {
+                configuration: state.form,
+                configScope: "global",
+                versionId: Number(config[0]?.versionId) + 1,
+                createdAt: config[0]?.createdAt,
+                changedBy: "todo",
+                changeReason: "todo"
+            };
+            updateConfigMutation(toSubmit);
+        }
+    }
 
     return (
         <SpaceBetween size={'m'}>
@@ -67,18 +93,18 @@ export function ConfigurationComponent () : ReactElement {
                                        errors={errors}/>
             <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
                 <Button
-                    iconAlt='Update dynamic configuration'
+                    iconAlt='Update configuration'
                     variant='primary'
                     onClick={() => {
                         if (!isValid) {
                             setState({ validateAll: true, formSubmitting: false });
                             scrollToInvalid();
                         } else {
-                            // setModalVisible(true);
+                            handleSubmit();
                         }
                     }}
                     loading={state.formSubmitting}
-                    data-cy='dynamic-configuration-submit'
+                    data-cy='configuration-submit'
                     disabled={state.formSubmitting}
                 >
                     Save Changes

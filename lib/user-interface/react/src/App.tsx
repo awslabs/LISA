@@ -31,6 +31,7 @@ import ModelManagement from './pages/ModelManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
+import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 
 const PrivateRoute = ({ children }) => {
     const auth = useAuth();
@@ -59,6 +60,7 @@ function App () {
     const [showTools, setShowTools] = useState(false);
     const [tools, setTools] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
+    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
 
     useEffect(() => {
         if (tools) {
@@ -71,10 +73,10 @@ function App () {
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
     return (
         <HashRouter basename={baseHref}>
-            {window.env.SYSTEM_BANNER?.text && <SystemBanner position='TOP' />}
+            {config && config[0]?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
             <div
                 id='h'
-                style={{ position: 'sticky', top: 0, paddingTop: window.env.SYSTEM_BANNER?.text ? '1.5em' : 0, zIndex: 1002 }}
+                style={{ position: 'sticky', top: 0, paddingTop: config && config[0]?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
             >
                 <Topbar />
             </div>
@@ -126,7 +128,7 @@ function App () {
                 }
             />
             {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-            {window.env.SYSTEM_BANNER?.text && <SystemBanner position='BOTTOM' />}
+            {config && config[0]?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
         </HashRouter>
     );
 }

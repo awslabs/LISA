@@ -36,7 +36,7 @@ jobs:
           CI: ""
       - name: Build with VitePress
         working-directory: ./lib/docs
-        run: npm run docs:build
+        run: npm run build
         env:
           CI: ""
           DOCS_BASE_PATH: '/lisa/'

@@ -142,7 +142,7 @@ export function Sessions () {
                                     >
                                         Refresh
                                     </Button>
-                                    {config[0].configuration.enabledComponents.deleteSessionHistory &&
+                                    {config && config[0].configuration.enabledComponents.deleteSessionHistory &&
                                     <Button
                                         iconAlt='Delete all sessions'
                                         iconName='delete-marker'

@@ -14,7 +14,8 @@
  limitations under the License.
  */
 
-import { ReactElement, useEffect } from 'react';
+import _ from 'lodash';
+import React, { ReactElement, useEffect, useMemo } from 'react';
 import ActivatedUserComponents from './ActivatedUserComponents';
 import SystemBannerConfiguration from './SystemBannerConfiguration';
 import { scrollToInvalid, useValidationReducer } from '../../shared/validation';
@@ -22,6 +23,10 @@ import { IConfiguration, SystemConfiguration, SystemConfigurationSchema } from '
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { Button, Header } from '@cloudscape-design/components';
 import { useGetConfigurationQuery, useUpdateConfigurationMutation } from '../../shared/reducers/configuration.reducer';
+import { useAppDispatch, useAppSelector } from '../../config/store';
+import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
+import { getJsonDifference } from '../../shared/util/utils';
+import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -32,12 +37,14 @@ export type ConfigState = {
 };
 
 export function ConfigurationComponent () : ReactElement {
+    const dispatch = useAppDispatch();
     const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
     const [
         updateConfigMutation,
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
     ] = useUpdateConfigurationMutation();
     const initialForm = SystemConfigurationSchema.parse({});
+    const currentUsername = useAppSelector(selectCurrentUsername);
     const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(SystemConfigurationSchema, {
         validateAll: false as boolean,
         touched: {},
@@ -48,12 +55,38 @@ export function ConfigurationComponent () : ReactElement {
         activeStepIndex: 0,
     } as ConfigState);
 
+    /**
+     * Converts a JSON object into an outline structure represented as React nodes.
+     *
+     * @param {object} [json={}] - The JSON object to be converted.
+     * @returns {React.ReactNode[]} - An array of React nodes representing the outline structure.
+     */
+    function jsonToOutline (json = {}) {
+        const output: React.ReactNode[] = [];
+
+        for (const key in json) {
+            const value = json[key];
+            output.push((<li><p><strong>{_.startCase(key)}</strong>{_.isPlainObject(value) ? '' : `: ${value}`}</p></li>));
+
+            if (_.isPlainObject(value)) {
+                const recursiveJson = jsonToOutline(value); // recursively call
+                output.push((recursiveJson));
+            }
+        }
+        return <ul>{output}</ul>;
+    }
+
+    const changesDiff = useMemo(() => {
+        return getJsonDifference(config && config[0] ? config[0].configuration : initialForm, state.form);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialForm, state.form]);
+
     useEffect(() => {
         if (!isFetchingConfig && config != null) {
             setState({
                 ...state,
                 form: {
-                    ...config[0].configuration
+                    ...config[0]?.configuration
                 }
             });
         }
@@ -61,16 +94,23 @@ export function ConfigurationComponent () : ReactElement {
     }, [config, isFetchingConfig]);
 
     function handleSubmit () {
-        if (isValid) {
+        if (isValid && !_.isEmpty(changesDiff)) {
             const toSubmit: IConfiguration = {
                 configuration: state.form,
                 configScope: 'global',
                 versionId: Number(config[0]?.versionId) + 1,
                 createdAt: config[0]?.createdAt,
-                changedBy: 'todo',
-                changeReason: 'todo'
+                changedBy: currentUsername ?? 'Admin',
+                changeReason: `Changes to: ${Object.keys(changesDiff)}`
             };
-            updateConfigMutation(toSubmit);
+            dispatch(
+                setConfirmationModal({
+                    action: 'Update',
+                    resourceName: 'Configuration',
+                    onConfirm: () => updateConfigMutation(toSubmit),
+                    description: _.isEmpty(changesDiff) ? <p>No changes detected</p> : jsonToOutline(changesDiff),
+                    htmlDescription: true
+                }));
         }
     }
 
@@ -102,14 +142,13 @@ export function ConfigurationComponent () : ReactElement {
                             handleSubmit();
                         }
                     }}
-                    loading={state.formSubmitting}
+                    loading={isUpdating}
                     data-cy='configuration-submit'
-                    disabled={state.formSubmitting}
+                    disabled={isUpdating || _.isEmpty(changesDiff)}
                 >
                     Save Changes
                 </Button>
             </SpaceBetween>
-
         </SpaceBetween>
     );
 }

@@ -52,7 +52,7 @@ export type IConfiguration = BaseConfiguration & {
 
 export const systemBannerConfigSchema = z.object({
     isEnabled: z.boolean().default(false),
-    text: z.string().default('foobar'),
+    text: z.string().default(''),
     textColor: z.string().default(''),
     backgroundColor: z.string().default(''),
 }).refine((data) => !data.isEnabled || (data.isEnabled && data.text.length >= 1), {

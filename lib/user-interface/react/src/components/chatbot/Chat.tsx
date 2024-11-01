@@ -605,7 +605,7 @@ export default function Chat ({ sessionId }) {
                                                             Manage file context
                                                         </Button>
                                                     </Box>}
-                                                    {window.env.RAG_ENABLED && config[0]?.configuration.enabledComponents.uploadRagDocs && (
+                                                    {window.env.RAG_ENABLED && config && config[0]?.configuration.enabledComponents.uploadRagDocs && (
                                                         <Box float='left' variant='div'>
                                                             <Button
                                                                 onClick={() => setShowRagUploadModal(true)}

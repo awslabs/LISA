@@ -1,4 +1,4 @@
-[![Full Documentation](https://img.shields.io/badge/Full%20Documentation-blue?style=for-the-badge&logo=Vite&logoColor=white)](https://awslabs.github.io/lisa/)
+[![Full Documentation](https://img.shields.io/badge/Full%20Documentation-blue?style=for-the-badge&logo=Vite&logoColor=white)](https://awslabs.github.io/LISA/)
 
 # LLM Inference Solution for Amazon Dedicated Cloud (LISA)
 ![LISA Architecture](./assets/LisaArchitecture.png)

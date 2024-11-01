@@ -37,6 +37,7 @@ import { LisaApiDeploymentStack } from './core/api_deployment';
 import { createCdkId } from './core/utils';
 import { LisaServeIAMStack } from './iam_stack';
 import { LisaModelsApiStack } from './models';
+import { LisaCognitoStack } from './idm';
 import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
 import { BaseProps, stackSynthesizerType } from './schema';
@@ -221,8 +222,19 @@ export class LisaServeApplicationStage extends Stage {
                 apiDeploymentStack.addDependency(ragStack);
             }
         }
-
         stacks.push(apiDeploymentStack);
+
+        // Deploy Cognito
+        if (config.deployCognito) {
+            const cognitoStack = new LisaCognitoStack(this, 'LisaCognito', {
+                ...baseStackProps,
+                stackName: createCdkId([config.appName, 'cognito', config.deploymentStage]),
+                description: `LISA-cognito: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiUrl: apiBaseStack.restApiUrl,
+                stage: config.deploymentStage
+            });
+            stacks.push(cognitoStack);
+        }
 
         // Set resource tags
         if (!config.region.includes('iso')) {

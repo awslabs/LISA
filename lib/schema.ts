@@ -730,6 +730,7 @@ const RawConfigSchema = z
         deployRag: z.boolean().optional().default(true),
         deployChat: z.boolean().optional().default(true),
         deployUi: z.boolean().optional().default(true),
+        deployCognito: z.boolean().optional().default(false),
         logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]).default('DEBUG'),
         authConfig: AuthConfigSchema.optional(),
         pypiConfig: PypiConfigSchema.optional().default({

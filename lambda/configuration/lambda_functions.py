@@ -42,13 +42,14 @@ def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
             KeyConditionExpression="#s = :configScope",
             ExpressionAttributeNames={"#s": "configScope"},
             ExpressionAttributeValues={":configScope": config_scope},
+            ScanIndexForward=False,
         )
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
             logger.warning(f"No record found with session id: {config_scope}")
         else:
             logger.exception("Error fetching session")
-    return response.get("Item", {})  # type: ignore [no-any-return]
+    return response.get("Items", {})  # type: ignore [no-any-return]
 
 
 @api_wrapper
@@ -56,7 +57,7 @@ def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
-    body["created_at"]=time.time()
+    body["created_at"]=str(Decimal(time.time()))
 
     try:
         table.put_item(Item=body)

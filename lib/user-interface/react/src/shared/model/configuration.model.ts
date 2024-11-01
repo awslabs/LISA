@@ -14,8 +14,6 @@
  limitations under the License.
  */
 import { z } from 'zod';
-import { AttributeEditorSchema } from '../form/environment-variables';
-import { IModel } from './model-management.model';
 
 export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
@@ -38,7 +36,7 @@ export type ISystemBannerConfiguration = {
     text: string;
     textColor: string;
     backgroundColor: string;
-}
+};
 
 export type BaseConfiguration = {
     configScope: string;

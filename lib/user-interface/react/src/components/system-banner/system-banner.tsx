@@ -23,7 +23,7 @@ type BannerOptions = {
 };
 
 export const SystemBanner = ({ position }: BannerOptions) => {
-    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
+    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
     const bannerStyle: React.CSSProperties = {
         width: '100%',
         position: 'fixed',

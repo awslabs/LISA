@@ -60,7 +60,7 @@ function App () {
     const [showTools, setShowTools] = useState(false);
     const [tools, setTools] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
-    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
+    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
 
     useEffect(() => {
         if (tools) {

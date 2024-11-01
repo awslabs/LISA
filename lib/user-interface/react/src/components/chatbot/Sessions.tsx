@@ -31,7 +31,7 @@ import { listSessions, deleteSession, deleteUserSessions } from '../utils';
 import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 
 export function Sessions () {
-    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
+    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
     const auth = useAuth();
     const [sessions, setSessions] = useState<LisaChatSession[]>([]);
     const [isLoading, setIsLoading] = useState(true);

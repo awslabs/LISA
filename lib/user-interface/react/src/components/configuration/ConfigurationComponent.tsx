@@ -22,8 +22,6 @@ import { IConfiguration, SystemConfiguration, SystemConfigurationSchema } from '
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { Button, Header } from '@cloudscape-design/components';
 import { useGetConfigurationQuery, useUpdateConfigurationMutation } from '../../shared/reducers/configuration.reducer';
-import _ from 'lodash';
-import { useUpdateModelMutation } from '../../shared/reducers/model-management.reducer';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -34,7 +32,7 @@ export type ConfigState = {
 };
 
 export function ConfigurationComponent () : ReactElement {
-    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: true});
+    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
     const [
         updateConfigMutation,
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
@@ -51,7 +49,7 @@ export function ConfigurationComponent () : ReactElement {
     } as ConfigState);
 
     useEffect(() => {
-        if(!isFetchingConfig && config != null) {
+        if (!isFetchingConfig && config != null) {
             setState({
                 ...state,
                 form: {
@@ -59,17 +57,18 @@ export function ConfigurationComponent () : ReactElement {
                 }
             });
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, isFetchingConfig]);
 
     function handleSubmit () {
         if (isValid) {
-            let toSubmit: IConfiguration = {
+            const toSubmit: IConfiguration = {
                 configuration: state.form,
-                configScope: "global",
+                configScope: 'global',
                 versionId: Number(config[0]?.versionId) + 1,
                 createdAt: config[0]?.createdAt,
-                changedBy: "todo",
-                changeReason: "todo"
+                changedBy: 'todo',
+                changeReason: 'todo'
             };
             updateConfigMutation(toSubmit);
         }
@@ -79,18 +78,18 @@ export function ConfigurationComponent () : ReactElement {
         <SpaceBetween size={'m'}>
             <Header
                 variant='h1'
-                description={`The current configuration of LISA`}
+                description={'The current configuration of LISA'}
             >
                 LISA App Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
             <SystemBannerConfiguration setFields={setFields}
-                                       textColor={state.form.systemBanner.textColor}
-                                       backgroundColor={state.form.systemBanner.backgroundColor}
-                                       text={state.form.systemBanner.text}
-                                       isEnabled={state.form.systemBanner.isEnabled}
-                                       touchFields={touchFields}
-                                       errors={errors}/>
+                textColor={state.form.systemBanner.textColor}
+                backgroundColor={state.form.systemBanner.backgroundColor}
+                text={state.form.systemBanner.text}
+                isEnabled={state.form.systemBanner.isEnabled}
+                touchFields={touchFields}
+                errors={errors}/>
             <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
                 <Button
                     iconAlt='Update configuration'

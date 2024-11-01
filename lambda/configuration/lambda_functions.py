@@ -32,6 +32,7 @@ table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 
 @api_wrapper
 def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
+    """List configuration entries by configScope from DynamoDB."""
     config_scope = event["queryStringParameters"]["configScope"]
 
     response = {}
@@ -51,12 +52,11 @@ def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
 
 @api_wrapper
 def update_configuration(event: dict, context: dict) -> None:
+    """Update configuration in DynamoDB."""
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
 
     try:
-        table.put_item(
-            Item=body
-        )
+        table.put_item(Item=body)
     except ClientError:
         logger.exception("Error updating session in DynamoDB")

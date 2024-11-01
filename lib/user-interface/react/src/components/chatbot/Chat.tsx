@@ -63,10 +63,9 @@ import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
-import { enabledComponentsSchema } from '../../shared/model/configuration.model';
 
 export default function Chat ({ sessionId }) {
-    const { data: config } = useGetConfigurationQuery("global", {refetchOnMountOrArgChange: 5});
+    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
     const [userPrompt, setUserPrompt] = useState('');
     const [humanPrefix, setHumanPrefix] = useState('User');
     const [aiPrefix, setAiPrefix] = useState('Assistant');
@@ -672,50 +671,50 @@ export default function Chat ({ sessionId }) {
                                             )}
                                         </Grid>
                                         {config && (config[0]?.configuration.enabledComponents.viewMetaData ||
-                                            config[0]?.configuration.enabledComponents.editKwargs||
-                                            config[0]?.configuration.enabledComponents.editPromptTemplate||
-                                            config[0]?.configuration.enabledComponents.editChatHistoryBuffer||
+                                            config[0]?.configuration.enabledComponents.editKwargs ||
+                                            config[0]?.configuration.enabledComponents.editPromptTemplate ||
+                                            config[0]?.configuration.enabledComponents.editChatHistoryBuffer ||
                                             config[0]?.configuration.enabledComponents.editNumOfRagDocument) &&
                                             <ExpandableSection headerText='Advanced configuration' variant='footer'>
-                                            <ColumnLayout columns={7}>
-                                                {config && config[0]?.configuration.enabledComponents.viewMetaData && <Toggle onChange={({ detail }) => setShowMetadata(detail.checked)} checked={showMetadata}>
-                                                    Show metadata
-                                                </Toggle>}
-                                                {config && config[0]?.configuration.enabledComponents.editKwargs && <Button onClick={() => setModelKwargsModalVisible(true)}>Edit Model Kwargs</Button>}
-                                                {config && config[0]?.configuration.enabledComponents.editPromptTemplate && <Button onClick={() => setPromptTemplateModalVisible(true)}>Edit Prompt Template</Button>}
-                                                {config && config[0]?.configuration.enabledComponents.editChatHistoryBuffer && <><Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
-                                                    Chat history buffer size:
-                                                </Box>
-                                                <Box float='left' variant='div'>
-                                                    <Select
-                                                        disabled={isRunning}
-                                                        filteringType='auto'
-                                                        selectedOption={{
-                                                            value: chatHistoryBufferSize.toString(),
-                                                            label: chatHistoryBufferSize.toString(),
-                                                        }}
-                                                        onChange={({ detail }) => setChatHistoryBufferSize(parseInt(detail.selectedOption.value))}
-                                                        options={oneThroughTenOptions}
-                                                    />
-                                                </Box></>}
-                                                {config && config[0]?.configuration.enabledComponents.editNumOfRagDocument && <>
-                                                <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
-                                                    RAG documents:
-                                                </Box>
-                                                <Box float='left' variant='div'>
-                                                    <Select
-                                                        disabled={isRunning}
-                                                        filteringType='auto'
-                                                        selectedOption={{
-                                                            value: ragTopK.toString(),
-                                                            label: ragTopK.toString(),
-                                                        }}
-                                                        onChange={({ detail }) => setRagTopK(parseInt(detail.selectedOption.value))}
-                                                        options={oneThroughTenOptions}
-                                                    />
-                                        </Box> </>}
-                                            </ColumnLayout>
-                                        </ExpandableSection>}
+                                                <ColumnLayout columns={7}>
+                                                    {config && config[0]?.configuration.enabledComponents.viewMetaData && <Toggle onChange={({ detail }) => setShowMetadata(detail.checked)} checked={showMetadata}>
+                                                        Show metadata
+                                                    </Toggle>}
+                                                    {config && config[0]?.configuration.enabledComponents.editKwargs && <Button onClick={() => setModelKwargsModalVisible(true)}>Edit Model Kwargs</Button>}
+                                                    {config && config[0]?.configuration.enabledComponents.editPromptTemplate && <Button onClick={() => setPromptTemplateModalVisible(true)}>Edit Prompt Template</Button>}
+                                                    {config && config[0]?.configuration.enabledComponents.editChatHistoryBuffer && <><Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
+                                                        Chat history buffer size:
+                                                    </Box>
+                                                    <Box float='left' variant='div'>
+                                                        <Select
+                                                            disabled={isRunning}
+                                                            filteringType='auto'
+                                                            selectedOption={{
+                                                                value: chatHistoryBufferSize.toString(),
+                                                                label: chatHistoryBufferSize.toString(),
+                                                            }}
+                                                            onChange={({ detail }) => setChatHistoryBufferSize(parseInt(detail.selectedOption.value))}
+                                                            options={oneThroughTenOptions}
+                                                        />
+                                                    </Box></>}
+                                                    {config && config[0]?.configuration.enabledComponents.editNumOfRagDocument && <>
+                                                        <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
+                                                            RAG documents:
+                                                        </Box>
+                                                        <Box float='left' variant='div'>
+                                                            <Select
+                                                                disabled={isRunning}
+                                                                filteringType='auto'
+                                                                selectedOption={{
+                                                                    value: ragTopK.toString(),
+                                                                    label: ragTopK.toString(),
+                                                                }}
+                                                                onChange={({ detail }) => setRagTopK(parseInt(detail.selectedOption.value))}
+                                                                options={oneThroughTenOptions}
+                                                            />
+                                                        </Box> </>}
+                                                </ColumnLayout>
+                                            </ExpandableSection>}
                                     </SpaceBetween>
                                 </Container>
                                 <SpaceBetween direction='vertical' size='xs'>

@@ -81,6 +81,7 @@ export class LisaRagStack extends Stack {
 
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
             removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             cors: [
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],

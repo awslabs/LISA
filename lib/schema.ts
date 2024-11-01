@@ -679,6 +679,7 @@ const LiteLLMConfig = z.object({
  * @property {string[]} [accountNumbersEcr=null] - List of AWS account numbers for ECR repositories.
  * @property {boolean} [deployRag=false] - Whether to deploy RAG stacks.
  * @property {boolean} [deployChat=true] - Whether to deploy chat stacks.
+ * @property {boolean} [deployDocs=true] - Whether to deploy docs stacks.
  * @property {boolean} [deployUi=true] - Whether to deploy UI stacks.
  * @property {string} logLevel - Log level for application.
  * @property {AuthConfigSchema} authConfig - Authorization configuration.
@@ -729,6 +730,7 @@ const RawConfigSchema = z
             .optional(),
         deployRag: z.boolean().optional().default(true),
         deployChat: z.boolean().optional().default(true),
+        deployDocs: z.boolean().optional().default(true),
         deployUi: z.boolean().optional().default(true),
         logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]).default('DEBUG'),
         authConfig: AuthConfigSchema.optional(),
@@ -783,6 +785,14 @@ const RawConfigSchema = z
         },
         {
             message: 'Chat stack is needed for UI stack. You must set deployChat to true if deployUi is true.',
+        },
+    )
+    .refine(
+        (config) => {
+            return !(config.deployRag && !config.deployUi);
+        },
+        {
+            message: 'UI Stack is needed for Rag stack. You must set deployUI to true if deployRag is true.',
         },
     )
     .refine(

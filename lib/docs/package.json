@@ -1,0 +1,17 @@
+{
+  "name": "lisa-docs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Documentation of LISA",
+  "scripts": {
+    "build": "vitepress build .",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "vitepress": "^1.4.3"
+  }
+}

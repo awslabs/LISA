@@ -81,6 +81,7 @@ export class ConfigurationApi extends Construct {
         const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', configTable.tableArn);
 
         // Populate the App Config table with default config
+        const date = new Date();
         new AwsCustomResource(this, 'lisa-init-ddb-config', {
             onCreate: {
                 service: 'DynamoDB',
@@ -90,7 +91,10 @@ export class ConfigurationApi extends Construct {
                     TableName: configTable.tableName,
                     Item: {
                         'versionId': {'N': '0'},
+                        'changedBy': {'S': 'System'},
                         'configScope': {'S': 'global'},
+                        'changeReason': {'S': 'Initial deployment default config'},
+                        'createdAt': {'S': Math.round(date.getTime() / 1000).toString()},
                         'configuration': {'M': {
                             'enabledComponents': {'M': {
                                 'deleteSessionHistory': {'BOOL': 'True'},

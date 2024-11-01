@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+import time
 from decimal import Decimal
 from typing import Any, Dict
 
@@ -55,6 +56,7 @@ def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
+    body["created_at"]=time.time()
 
     try:
         table.put_item(Item=body)

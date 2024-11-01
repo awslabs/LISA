@@ -57,7 +57,7 @@ def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
-    body["created_at"]=str(Decimal(time.time()))
+    body["created_at"] = str(Decimal(time.time()))
 
     try:
         table.put_item(Item=body)

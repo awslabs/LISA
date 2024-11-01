@@ -14,12 +14,11 @@
  limitations under the License.
  */
 
-import { Modal as CloudscapeModal, Box, SpaceBetween, Button, TextContent } from '@cloudscape-design/components';
+import { Modal as CloudscapeModal, Box, SpaceBetween, Button } from '@cloudscape-design/components';
 import React, { ReactElement, useState } from 'react';
 import { useAppDispatch } from '../../config/store';
 import { dismissModal } from '../reducers/modal.reducer';
 import { MutationActionCreatorResult } from '@reduxjs/toolkit/query';
-import _ from 'lodash';
 
 export type CallbackFunction<T = any, R = void> = (props?: T) => R;
 

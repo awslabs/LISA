@@ -18,7 +18,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { AwsIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { AwsIntegration, EndpointType, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -76,6 +76,7 @@ export class LisaDocsStack extends Stack {
         // Create API Gateway
         const api = new RestApi(this, 'DocsApi', {
             description: 'API Gateway for S3 hosted website',
+            endpointConfiguration: { types: [EndpointType.REGIONAL] },
             deployOptions: {
                 stageName: 'lisa',
             },

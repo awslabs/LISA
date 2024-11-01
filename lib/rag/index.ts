@@ -79,11 +79,8 @@ export class LisaRagStack extends Stack {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`.toLowerCase();
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
-            bucketName,
-            removalPolicy: RemovalPolicy.DESTROY,
-            autoDeleteObjects: true,
+            removalPolicy: config.removalPolicy,
             cors: [
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
@@ -96,7 +93,7 @@ export class LisaRagStack extends Stack {
 
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
-            BUCKET_NAME: bucketName,
+            BUCKET_NAME: bucket.bucketName,
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,

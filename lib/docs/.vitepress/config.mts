@@ -68,7 +68,10 @@ export default defineConfig({
   head: [['link', { rel: 'icon', href: '/LISA/favicon.ico' }]],
   // https://vitepress.dev/reference/default-theme-config
   themeConfig: {
-    logo: '/logo.png',
+    logo: {
+      light: '/logo-light.svg',
+      dark: '/logo-dark.svg',
+    },
     nav: [
       { text: 'Home', link: '/' },
       ...navLinks,

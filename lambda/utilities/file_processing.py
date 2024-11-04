@@ -124,15 +124,25 @@ def _extract_docx_content(s3_object: dict) -> str:
     return output
 
 
-def process_record(s3_keys: List[str], chunk_size: Optional[int], chunk_overlap: Optional[int]) -> List[List[Document]]:
+def process_record(
+    s3_keys: List[str], chunk_size: Optional[int], chunk_overlap: Optional[int], bucket: Optional[str] = None
+) -> List[List[Document]]:
     """Process a single file from S3.
 
     Parameters
     ----------
-    record (dict): The S3 record to process.
+    s3_keys (List[str]): List of S3 keys to process
+    chunk_size (Optional[int]): Size of chunks to split text into
+    chunk_overlap (Optional[int]): Number of characters to overlap between chunks
+    bucket (Optional[str]): S3 bucket name. If not provided, uses os.environ["BUCKET_NAME"]
 
+    Returns
+    -------
+    List[List[Document]]: List of document chunks for each processed file
     """
-    bucket = os.environ["BUCKET_NAME"]
+    if bucket is None:
+        bucket = os.environ["BUCKET_NAME"]
+
     chunks = []
     for key in s3_keys:
         content_type = key.split(".")[-1]

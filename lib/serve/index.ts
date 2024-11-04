@@ -82,9 +82,10 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc,
         });
 
+        // Use a stable name for the management key secret
         const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
-            secretName: `lisa_management_key_secret-${Date.now()}`, // pragma: allowlist secret`
-            description: 'This is a secret created with AWS CDK',
+            secretName: `${config.deploymentName}-lisa-management-key`, // Use stable name based on deployment
+            description: 'LISA management key secret',
             generateSecretString: {
                 excludePunctuation: true,
                 passwordLength: 16

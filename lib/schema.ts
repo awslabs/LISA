@@ -594,22 +594,29 @@ const OpenSearchExistingClusterConfig = z.object({
 /**
  * Configuration schema for RAG repository. Defines settings for OpenSearch.
  */
-const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string(),
-        type: z.nativeEnum(RagRepositoryType),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-    })
-    .refine((input) => {
-        if (
-            (input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-      (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined)
-        ) {
-            return false;
-        }
-        return true;
-    });
+const RagRepositoryConfigSchema = z.object({
+    repositoryId: z.string(),
+    type: z.nativeEnum(RagRepositoryType),
+    opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
+    rdsConfig: RdsInstanceConfig.optional(),
+    pipelines: z.array(z.object({
+        chunkOverlap: z.number(),
+        chunkSize: z.number(),
+        embeddingModel: z.string(),
+        s3Bucket: z.string(),
+        s3Prefix: z.string(),
+        trigger: z.union([z.literal('daily'), z.literal('event')]),
+        collectionName: z.string()
+    })).optional()
+}).refine((input) => {
+    if (
+        (input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
+        (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined)
+    ) {
+        return false;
+    }
+    return true;
+});
 
 /**
  * Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.

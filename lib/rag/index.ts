@@ -24,7 +24,7 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Code, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, LayerVersion, Runtime, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
@@ -39,6 +39,8 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, RagRepositoryType } from '../schema';
+
+import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 
 const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
@@ -117,6 +119,34 @@ export class LisaRagStack extends Stack {
         bucket.grantRead(lambdaRole);
         bucket.grantPut(lambdaRole);
 
+        // Build RAG Lambda layer
+        const ragLambdaLayer = new Layer(this, 'RagLayer', {
+            config: config,
+            path: RAG_LAYER_PATH,
+            description: 'Lambad dependencies for RAG API',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.ragLayerPath,
+        });
+
+        // Build SDK Layer
+        let sdkLayer: ILayerVersion;
+        if (config.lambdaLayerAssets?.sdkLayerPath) {
+            sdkLayer = new LayerVersion(this, 'SdkLayer', {
+                code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
+                compatibleRuntimes: [Runtime.PYTHON_3_10],
+                removalPolicy: config.removalPolicy,
+                description: 'LISA SDK common layer',
+            });
+        } else {
+            sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
+                entry: SDK_PATH,
+                compatibleRuntimes: [Runtime.PYTHON_3_10],
+                removalPolicy: config.removalPolicy,
+                description: 'LISA SDK common layer',
+            });
+        }
+
         const registeredRepositories = [];
 
         for (const ragConfig of config.ragRepositories) {
@@ -172,7 +202,7 @@ export class LisaRagStack extends Stack {
                         version: EngineVersion.OPENSEARCH_2_9,
                         enableVersionUpgrade: true,
                         vpc: vpc.vpc,
-                        vpcSubnets: vpc.subnetSelection ? [vpc.subnetSelection] : [],
+                        ...vpc.subnetSelection ? {vpcSubnets: [vpc.subnetSelection]} : {},
                         ebs: {
                             enabled: true,
                             volumeSize: ragConfig.opensearchConfig.volumeSize,
@@ -286,6 +316,38 @@ export class LisaRagStack extends Stack {
                 rdsConnectionInfoPs.grantRead(lambdaRole);
                 baseEnvironment['RDS_CONNECTION_INFO_PS_NAME'] = rdsConnectionInfoPs.parameterName;
             }
+
+            // Create ingest pipeline state machines for each pipeline config
+            console.log('[DEBUG] Checking pipelines configuration:', {
+                hasPipelines: !!ragConfig.pipelines,
+                pipelinesLength: ragConfig.pipelines?.length || 0
+            });
+
+            if (ragConfig.pipelines) {
+                ragConfig.pipelines.forEach((pipelineConfig, index) => {
+                    console.log(`[DEBUG] Creating pipeline ${index}:`, {
+                        pipelineConfig: JSON.stringify(pipelineConfig, null, 2)
+                    });
+
+                    try {
+                        // Create a unique ID for each pipeline using repository ID and index
+                        const pipelineId = `IngestPipeline-${ragConfig.repositoryId}-${index}`;
+                        new IngestPipelineStateMachine(this, pipelineId, {
+                            config,
+                            vpc,
+                            pipelineConfig,
+                            rdsConfig: ragConfig.rdsConfig,
+                            repositoryId: ragConfig.repositoryId,
+                            type: ragConfig.type,
+                            layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer]
+                        });
+                        console.log(`[DEBUG] Successfully created pipeline ${index}`);
+                    } catch (error) {
+                        console.error(`[ERROR] Failed to create pipeline ${index}:`, error);
+                        throw error; // Re-throw to ensure CDK deployment fails
+                    }
+                });
+            }
         }
 
         // Create Parameter Store entry with RAG repositories
@@ -296,34 +358,6 @@ export class LisaRagStack extends Stack {
         });
 
         baseEnvironment['REGISTERED_REPOSITORIES_PS_NAME'] = ragRepositoriesParam.parameterName;
-
-        // Build RAG Lambda layer
-        const ragLambdaLayer = new Layer(this, 'RagLayer', {
-            config: config,
-            path: RAG_LAYER_PATH,
-            description: 'Lambad dependencies for RAG API',
-            architecture: ARCHITECTURE,
-            autoUpgrade: true,
-            assetPath: config.lambdaLayerAssets?.ragLayerPath,
-        });
-
-        // Build SDK Layer
-        let sdkLayer;
-        if (config.lambdaLayerAssets?.sdkLayerPath) {
-            sdkLayer = new LayerVersion(this, 'SdkLayer', {
-                code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [Runtime.PYTHON_3_10],
-                removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
-            });
-        } else {
-            sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
-                entry: SDK_PATH,
-                compatibleRuntimes: [Runtime.PYTHON_3_10],
-                removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
-            });
-        }
 
         // Add REST API Lambdas to APIGW
         new RepositoryApi(this, 'RepositoryApi', {

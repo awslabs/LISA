@@ -1,25 +1,71 @@
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "ec2:CreateNetworkInterface",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:DescribeSubnets",
-        "ec2:DeleteNetworkInterface",
-        "ec2:AssignPrivateIpAddresses",
-        "ec2:UnassignPrivateIpAddresses"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Action": ["iam:GetServerCertificate"],
-      "Resource": "arn:${AWS::Partition}:iam::${AWS::AccountId}:server-certificate/*",
-      "Effect": "Allow"
-    }
-  ]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateNetworkInterface",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeSubnets",
+                "ec2:DeleteNetworkInterface",
+                "ec2:AssignPrivateIpAddresses",
+                "ec2:UnassignPrivateIpAddresses"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:${AWS::Partition}:s3:::${S3Bucket}",
+                "arn:${AWS::Partition}:s3:::${S3Bucket}/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "execute-api:Invoke"
+            ],
+            "Resource": [
+                "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:*/*/POST/serve/embeddings"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter"
+            ],
+            "Resource": [
+                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/lisaServeRestApiUri",
+                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/LisaServeRagPGVectorConnectionInfo",
+                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/opensearchEndpoint"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetServerCertificate"
+            ],
+            "Resource": "arn:${AWS::Partition}:iam::${AWS::AccountId}:server-certificate/*"
+        }
+    ]
 }

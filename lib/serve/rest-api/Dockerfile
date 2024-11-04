@@ -1,6 +1,6 @@
 # Use an argument for the base image
 ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM --platform=linux/amd64  ${BASE_IMAGE}
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG

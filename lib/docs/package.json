@@ -5,9 +5,9 @@
   "description": "Documentation of LISA",
   "scripts": {
     "build": "vitepress build .",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:dev": "vitepress dev .",
+    "docs:build": "vitepress build .",
+    "docs:preview": "vitepress preview ."
   },
   "author": "",
   "license": "Apache-2.0",

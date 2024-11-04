@@ -39,7 +39,7 @@ jobs:
         run: npm run build
         env:
           CI: ""
-          DOCS_BASE_PATH: '/lisa/'
+          DOCS_BASE_PATH: '/LISA/'
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

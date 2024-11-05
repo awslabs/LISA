@@ -21,10 +21,6 @@ dev:
   #   rolePrefix: CustomPrefix
   #   policyPrefix: CustomPrefix
   #   instanceProfilePrefix: CustomPrefix
-  # systemBanner:
-  #   text: 'LISA System'
-  #   backgroundColor: orange
-  #   fontColor: black
   s3BucketModels: hf-models-gaiic
   # aws partition mountS3 package location
   mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb

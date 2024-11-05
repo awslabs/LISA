@@ -37,6 +37,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     logger.info("REST API authorization handler started")
 
     requested_resource = event["resource"]
+    request_method = event["httpMethod"]
 
     id_token = get_id_token(event)
 
@@ -69,7 +70,10 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
                 username = jwt_data.get("sub", "user")
                 logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
                 return deny_policy
-
+        if requested_resource.startswith("/configuration") and request_method == "PUT" and not is_admin_user:
+            username = jwt_data.get("sub", "user")
+            logger.info(f"Deny access to {username} due to non-admin trying to update configuration.")
+            return deny_policy
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         return allow_policy

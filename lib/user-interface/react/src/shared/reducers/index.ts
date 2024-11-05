@@ -20,14 +20,16 @@ import userReducer from './user.reducer';
 import notificationReducer from './notification.reducer';
 import modalReducer from './modal.reducer';
 import { modelManagementApi } from './model-management.reducer';
+import { configurationApi } from './configuration.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
     notification: notificationReducer,
     modal: modalReducer,
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
+    [configurationApi.reducerPath]: configurationApi.reducer,
 };
 
-export const rootMiddleware = [modelManagementApi.middleware];
+export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware];
 
 export default rootReducer;

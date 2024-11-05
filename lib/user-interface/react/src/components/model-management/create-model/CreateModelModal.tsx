@@ -34,6 +34,7 @@ import { ReviewModelChanges } from './ReviewModelChanges';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { z } from 'zod';
 import { SerializedError } from '@reduxjs/toolkit';
+import { getJsonDifference } from '../../../shared/util/utils';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -134,40 +135,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }, ModifyMethod.Set);
         resetCreate();
         resetUpdate();
-    }
-
-    /**
-     * Computes the difference between two JSON objects, recursively.
-     *
-     * This function takes two JSON objects as input and returns a new object that
-     * contains the differences between the two. Works with nested objects.
-     *
-     * @param {object} [obj1={}] - The first JSON object to compare.
-     * @param {object} [obj2={}] - The second JSON object to compare.
-     * @returns {object} - A new object containing the differences between the two input objects.
-     */
-    function getJsonDifference (obj1 = {}, obj2 = {}) {
-        const output = {},
-            merged = { ...obj1, ...obj2 }; // has properties of both
-
-        for (const key in merged) {
-            const value1 = obj1 && Object.keys(obj1).includes(key) ? obj1[key] : undefined;
-            const value2 = obj2 && Object.keys(obj2).includes(key) ? obj2[key] : undefined;
-
-            if (_.isPlainObject(value1) || _.isPlainObject(value2)) {
-                const value = getJsonDifference(value1, value2); // recursively call
-                if (Object.keys(value).length !== 0) {
-                    output[key] = value;
-                }
-
-            } else {
-                if (!_.isEqual(value1, value2) && (value1 || value2)) {
-                    output[key] = value2;
-                    // output[key][value2] = value2.
-                }
-            }
-        }
-        return output;
     }
 
     const changesDiff = useMemo(() => {

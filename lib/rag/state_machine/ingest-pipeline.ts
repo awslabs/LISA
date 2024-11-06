@@ -39,6 +39,7 @@ import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { createCdkId } from '../../core/utils';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -190,7 +191,7 @@ export class IngestPipelineStateMachine extends Construct {
                     actions: ['secretsmanager:GetSecretValue'],
                     resources: [
                         `${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`,  // question marks required to resolve the ARN correctly,
-                        `arn:aws:secretsmanager:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:secret:${config.deploymentName}LisaRAGPGVectorDBSecret--??????`
+                        `${Secret.fromSecretNameV2(this, createCdkId([config.deploymentName, 'RagRDSPwdSecret']), rdsConfig?.passwordSecretId ?? '').secretArn}:secret:${config.deploymentName}LisaRAGPGVectorDBSecret--??????`
                     ]
                 })
             ]

@@ -189,10 +189,7 @@ export class IngestPipelineStateMachine extends Construct {
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: ['secretsmanager:GetSecretValue'],
-                    resources: [
-                        `${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`,  // question marks required to resolve the ARN correctly,
-                        `${Secret.fromSecretNameV2(this, createCdkId([config.deploymentName, 'RagRDSPwdSecret']), rdsConfig?.passwordSecretId ?? '').secretArn}-??????`
-                    ]
+                    resources: ['*']
                 })
             ]
         });

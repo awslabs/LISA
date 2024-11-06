@@ -191,7 +191,7 @@ export class IngestPipelineStateMachine extends Construct {
                     actions: ['secretsmanager:GetSecretValue'],
                     resources: [
                         `${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`,  // question marks required to resolve the ARN correctly,
-                        `${Secret.fromSecretNameV2(this, createCdkId([config.deploymentName, 'RagRDSPwdSecret']), rdsConfig?.passwordSecretId ?? '').secretArn}:secret:${config.deploymentName}LisaRAGPGVectorDBSecret--??????`
+                        `${Secret.fromSecretNameV2(this, createCdkId([config.deploymentName, 'RagRDSPwdSecret']), rdsConfig?.passwordSecretId ?? '').secretArn}-??????`
                     ]
                 })
             ]

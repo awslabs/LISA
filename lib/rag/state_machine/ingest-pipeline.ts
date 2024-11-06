@@ -190,7 +190,7 @@ export class IngestPipelineStateMachine extends Construct {
                     actions: ['secretsmanager:GetSecretValue'],
                     resources: [
                         `${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`,  // question marks required to resolve the ARN correctly,
-                        `arn:aws:secretsmanager:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:secret:${config.deploymentName}LisaRAGPGVectorDBSecret*`
+                        `arn:aws:secretsmanager:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:secret:${config.deploymentName}-??????`
                     ]
                 })
             ]

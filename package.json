@@ -13,7 +13,7 @@
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "postinstall": "(cd lib/user-interface/react && npm install) && (cd lib/docs && npm install)",
     "postbuild": "(cd lib/user-interface/react && npm build) && (cd lib/docs && npm build)"
-},
+  },
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
     "@aws-sdk/client-iam": "^3.490.0",

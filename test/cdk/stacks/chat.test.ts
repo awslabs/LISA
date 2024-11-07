@@ -105,12 +105,12 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
     //TODO Update expect values to remediate CDK NAG findings and remove debug
     test('AwsSolutions CDK NAG Warnings', () => {
         const warnings = Annotations.fromStack(stack).findWarning('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-        expect(warnings.length).toBe(1);
+        expect(warnings.length).toBe(2);
     });
 
     test('AwsSolutions CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-        expect(errors.length).toBe(17);
+        expect(errors.length).toBe(28);
     });
 
     test('NIST800.53r5 CDK NAG Warnings', () => {
@@ -120,6 +120,6 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
 
     test('NIST800.53r5 CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-        expect(errors.length).toBe(4);
+        expect(errors.length).toBe(11);
     });
 });

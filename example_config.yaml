@@ -21,10 +21,6 @@ dev:
   #   rolePrefix: CustomPrefix
   #   policyPrefix: CustomPrefix
   #   instanceProfilePrefix: CustomPrefix
-  # systemBanner:
-  #   text: 'LISA System'
-  #   backgroundColor: orange
-  #   fontColor: black
   # vpcId: vpc-0123456789abcdef,
   # subnetIds: [subnet-fedcba9876543210, subnet-0987654321fedcba],
   s3BucketModels: hf-models-gaiic

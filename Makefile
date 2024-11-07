@@ -11,7 +11,8 @@
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HEADLESS = false
-
+DOCKER_CMD := $(CDK_DOCKER)
+DOCKER_CMD ?= docker
 # Arguments defined through command line or config.yaml
 
 # PROFILE (optional argument)
@@ -150,13 +151,11 @@ installTypeScriptRequirements:
 
 ## Make sure Docker is running
 dockerCheck:
-	@cmd_output=$$(docker ps); \
-	if \
-		[ $$? != 0 ]; \
-		then \
-			echo $$cmd_output; \
-			exit 1; \
-	fi; \
+	@cmd_output=$$(pgrep -f "${DOCKER_CMD}"); \
+	if [ $$? != 0 ]; then \
+		echo "Process $(DOCKER_CMD) is not running. Exiting..."; \
+		exit 1; \
+	fi \
 
 ## Check if models are uploaded
 modelCheck:
@@ -229,11 +228,11 @@ cleanMisc:
 dockerLogin: dockerCheck
 ifdef PROFILE
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | docker login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | ${DOCKER_CMD} login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
 	)
 else
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} | ${DOCKER_CMD} login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
 	)
 endif
 

@@ -151,7 +151,7 @@ installTypeScriptRequirements:
 
 ## Make sure Docker is running
 dockerCheck:
-@cmd_output=$$($(DOCKER_CMD) ps);
+        @cmd_output=$$($(DOCKER_CMD) ps); \
 	if [ $$? != 0 ]; then \
 		echo "Process $(DOCKER_CMD) is not running. Exiting..."; \
 		exit 1; \

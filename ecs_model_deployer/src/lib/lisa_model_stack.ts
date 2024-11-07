@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { Aspects, CfnResource, IAspect, Stack, StackProps } from 'aws-cdk-lib';
 
 import { Vpc, SecurityGroup, Subnet, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 
@@ -29,6 +29,28 @@ export type LisaModelStackProps = {
     config: Config;
     modelConfig: ModelConfig;
 } & StackProps;
+
+/**
+ * Modifies all AWS::EC2::LaunchTemplate resources in a CDK application. It directly adjusts the synthesized
+ * CloudFormation template, setting the HttpPutResponseHopLimit within MetadataOptions to 2 and HttpTokens to required.
+ */
+class UpdateLaunchTemplateMetadataOptions implements IAspect {
+    /**
+   * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::LaunchTemplate resource.
+   * If both conditions are true, it applies a direct override to the CloudFormation resource's properties, setting
+   * the HttpPutResponseHopLimit to 2 and HttpTokens to 'required'.
+   *
+   * @param {Construct} node - The CDK construct being visited.
+   */
+    public visit (node: Construct): void {
+    // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
+        if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::LaunchTemplate') {
+            // Directly modify the CloudFormation properties to include the desired settings
+            node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpPutResponseHopLimit', 2);
+            node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpTokens', 'required');
+        }
+    }
+}
 
 export class LisaModelStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaModelStackProps) {
@@ -55,5 +77,7 @@ export class LisaModelStack extends Stack {
             vpc: vpc,
             subnetSelection: subnetSelection
         });
+
+        Aspects.of(this).add(new UpdateLaunchTemplateMetadataOptions());
     }
 }

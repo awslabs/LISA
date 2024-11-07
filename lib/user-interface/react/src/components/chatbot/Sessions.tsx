@@ -28,10 +28,8 @@ import { useCollection } from '@cloudscape-design/collection-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { LisaChatSession } from '../types';
 import { listSessions, deleteSession, deleteUserSessions } from '../utils';
-import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 
 export function Sessions () {
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
     const auth = useAuth();
     const [sessions, setSessions] = useState<LisaChatSession[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -117,10 +115,9 @@ export function Sessions () {
                                 <Button variant='inline-link'>
                                     <Link to={`/chatbot/${item.sessionId}`}>Open</Link>
                                 </Button>
-                                {config && config[0]?.configuration.enabledComponents.deleteSessionHistory &&
                                 <Button variant='inline-link' onClick={() => doDeleteSession(item.sessionId)}>
                                     Delete
-                                </Button>}
+                                </Button>
                             </SpaceBetween>
                         ),
                         minWidth: 170,
@@ -142,7 +139,6 @@ export function Sessions () {
                                     >
                                         Refresh
                                     </Button>
-                                    {config && config[0].configuration.enabledComponents.deleteSessionHistory &&
                                     <Button
                                         iconAlt='Delete all sessions'
                                         iconName='delete-marker'
@@ -150,7 +146,7 @@ export function Sessions () {
                                         onClick={() => doDeleteUserSessions()}
                                     >
                                         Delete all
-                                    </Button>}
+                                    </Button>
                                 </SpaceBetween>
                             </div>
                         }

@@ -772,6 +772,13 @@ const RawConfigSchema = z
                 sdkLayerPath: z.string().optional(),
             })
             .optional(),
+        systemBanner: z
+            .object({
+                text: z.string(),
+                backgroundColor: z.string(),
+                fontColor: z.string(),
+            })
+            .optional(),
         permissionsBoundaryAspect: z
             .object({
                 permissionsBoundaryPolicyName: z.string(),

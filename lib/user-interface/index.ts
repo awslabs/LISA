@@ -177,6 +177,11 @@ export class UserInterfaceStack extends Stack {
             ).stringValue,
             RESTAPI_VERSION: 'v2',
             RAG_ENABLED: config.deployRag,
+            SYSTEM_BANNER: {
+                text: config.systemBanner?.text,
+                backgroundColor: config.systemBanner?.backgroundColor,
+                fontColor: config.systemBanner?.fontColor,
+            },
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
         };
 

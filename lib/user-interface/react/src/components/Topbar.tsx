@@ -71,16 +71,6 @@ function Topbar () {
                         {
                             type: 'button',
                             variant: 'link',
-                            text: 'Configuration',
-                            disableUtilityCollapse: false,
-                            external: false,
-                            onClick: () => {
-                                navigate('/configuration');
-                            },
-                        },
-                        {
-                            type: 'button',
-                            variant: 'link',
                             text: 'Model Management',
                             disableUtilityCollapse: false,
                             external: false,

@@ -23,7 +23,6 @@ import { Construct } from 'constructs';
 import { SessionApi } from './api/session';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { ConfigurationApi } from './api/configuration';
 
 type CustomLisaChatStackProps = {
     authorizer: IAuthorizer;
@@ -50,15 +49,6 @@ export class LisaChatApplicationStack extends Stack {
 
         // Add REST API Lambdas to APIGW
         new SessionApi(this, 'SessionApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
-
-        new ConfigurationApi(this, 'ConfigurationApi', {
             authorizer,
             config,
             restApiId,

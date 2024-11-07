@@ -22,11 +22,10 @@ import boto3
 from utilities.common_functions import retry_config
 from utilities.file_processing import process_record
 from utilities.validation import (
-    safe_error_response,
+    ValidationError,
     validate_chunk_params,
     validate_model_name,
     validate_repository_type,
-    ValidationError,
 )
 from utilities.vector_store import get_vector_store_client
 
@@ -70,6 +69,9 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
 
     Returns:
         Dictionary with status code and response body
+
+    Raises:
+        Exception: For any error to signal failure to Step Functions
     """
     try:
         # Get document location from event
@@ -151,19 +153,20 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         logger.info(f"Successfully processed {len(all_ids)} chunks from {s3_key} for repository {repository_id}")
 
         return {
-            "statusCode": 200,
-            "body": {
-                "message": f"Successfully processed document {s3_key}",
-                "repository_id": repository_id,
-                "repository_type": repository_type,
-                "chunks_processed": len(all_ids),
-                "document_ids": all_ids,
-            },
+            "message": f"Successfully processed document {s3_key}",
+            "repository_id": repository_id,
+            "repository_type": repository_type,
+            "chunks_processed": len(all_ids),
+            "document_ids": all_ids,
         }
 
     except ValidationError as e:
-        # Return 400 for validation errors
-        return safe_error_response(e)
+        # For validation errors, raise with clear message
+        error_msg = f"Validation error: {str(e)}"
+        logger.error(error_msg)
+        raise Exception(error_msg)
     except Exception as e:
-        # Return 500 for other errors
-        return safe_error_response(e)
+        # For all other errors, log and re-raise to signal failure
+        error_msg = f"Failed to process document: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise Exception(error_msg)

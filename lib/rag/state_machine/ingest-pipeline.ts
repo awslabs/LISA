@@ -196,33 +196,32 @@ export class IngestPipelineStateMachine extends Construct {
 
         const pipelineIngestDocumentsMap = new LambdaInvoke(this, 'pipelineIngestDocumentsMap', {
             lambdaFunction: pipelineIngestDocumentsFunction,
-            outputPath: OUTPUT_PATH,
+            retryOnServiceExceptions: true, // Enable retries for service exceptions
+            resultPath: '$.taskResult' // Store the entire result
         });
 
-        const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
-            lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: Runtime.PYTHON_3_10,
-                handler: 'repository.state_machine.create_model.handle_failure',
-                code: Code.fromAsset('./lambda'),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                vpc: vpc!.vpc,
-                environment: environment,
-                environmentEncryption: kmsKey,
-                layers: layers,
-            }),
-            outputPath: OUTPUT_PATH,
+        const failState = new Fail(this, 'CreateFailed', {
+            cause: 'Pipeline execution failed',
+            error: 'States.TaskFailed'
         });
 
         const successState = new Succeed(this, 'CreateSuccess');
-        const failState = new Fail(this, 'CreateFailed');
 
         // Map state for distributed processing with rate limiting
         const processFiles = new Map(this, 'ProcessFiles', {
-            maxConcurrency: 5, // Reduced from 10 for better rate limiting
+            maxConcurrency: 5,
             itemsPath: '$.files',
+            resultPath: '$.mapResults' // Store map results in mapResults field
         });
+
+        // Configure the iterator without error handling (will be handled at Map level)
         processFiles.iterator(pipelineIngestDocumentsMap);
+
+        // Add error handling at Map level
+        processFiles.addCatch(failState, {
+            errors: ['States.ALL'],
+            resultPath: '$.error'
+        });
 
         // Choice state to determine trigger type
         const triggerChoice = new Choice(this, 'DetermineTriggerType')
@@ -236,7 +235,6 @@ export class IngestPipelineStateMachine extends Construct {
         listModifiedObjects.next(processFiles);
         prepareSingleFile.next(processFiles);
         processFiles.next(successState);
-        handleFailureState.next(failState);
 
         const stateMachine = new StateMachine(this, 'IngestPipeline', {
             definitionBody: DefinitionBody.fromChainable(definition),

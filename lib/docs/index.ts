@@ -78,7 +78,7 @@ export class LisaDocsStack extends Stack {
             description: 'API Gateway for S3 hosted website',
             endpointConfiguration: { types: [EndpointType.REGIONAL] },
             deployOptions: {
-                stageName: 'LISA',
+                stageName: 'lisa',
             },
             binaryMediaTypes: ['*/*'],
         });

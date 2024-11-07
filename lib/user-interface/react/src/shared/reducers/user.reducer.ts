@@ -33,6 +33,7 @@ export const User = createSlice({
 });
 
 export const selectCurrentUserIsAdmin = (state: any) => state.user.info?.isAdmin ?? false;
+export const selectCurrentUsername = (state: any) => state.user.info?.preferred_username ?? '';
 
 export const { updateUserState } = User.actions;
 

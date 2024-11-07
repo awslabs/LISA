@@ -27,7 +27,7 @@ export type ConfirmationModalProps = {
     resourceName: string;
     onConfirm: () =>  MutationActionCreatorResult<any>;
     postConfirm?: CallbackFunction;
-    description?: string;
+    description?: string | ReactElement;
     disabled?: boolean;
 };
 

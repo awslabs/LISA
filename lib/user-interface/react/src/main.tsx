@@ -36,11 +36,6 @@ declare global {
             RESTAPI_VERSION: string;
             RAG_ENABLED: boolean;
             API_BASE_URL: string;
-            SYSTEM_BANNER?: {
-                text: string;
-                backgroundColor: string;
-                fontColor: string;
-            };
         };
         gitInfo?: {
             revisionTag?: string;

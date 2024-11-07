@@ -5,8 +5,69 @@ ragRepositories:
     type: pgvector
     rdsConfig:
       username: postgres
+    pipelines:
+      - chunkOverlap: 51
+        chunkSize: 512
+        embeddingModel: titan-embeddingsv2
+        s3Bucket: capstone-1-contentbu-398021697951
+        s3Prefix: /
+        trigger: event
+        collectionName: project-mainline
+  - repositoryId: opensearch-rag
+    type: opensearch
+    opensearchConfig:
+      dataNodes: 2
+      dataNodeInstanceType: r6g.large.search
+      masterNodes: 0
+      masterNodeInstanceType: r6g.large.search
+      volumeSize: 300
+    pipelines:
+      - chunkOverlap: 51
+        chunkSize: 512
+        embeddingModel: titan-embeddingsv2
+        s3Bucket: documents-djhorne
+        s3Prefix: /
+        trigger: daily
+        collectionName: project-mainline2
+
 ragFileProcessingConfig:
   chunkSize: 512
   chunkOverlap: 51
 litellmConfig:
   db_key: sk-a8814208-0388-480c-9fc7-fea59607ca38
+
+# Required fields
+appName: lisa
+deploymentName: prod
+deploymentStage: prod
+accountNumber: "398021697951"
+region: "us-east-1"
+
+
+# REST API configuration
+restApiConfig:
+  internetFacing: true
+  domainName: null
+  sslCertIamArn: arn:aws:iam::398021697951:server-certificate/lisa-cert2
+  apiVersion: "v2"
+  rdsConfig:
+    dbName: "postgres"
+    username: "postgres"
+    dbPort: 5432
+
+# S3 configuration
+s3BucketModels: "lisa-models-bucket"
+
+# Other required configurations
+deployRag: true
+deployChat: true
+deployUi: true
+logLevel: "DEBUG"
+
+# Auth configuration
+authConfig:
+  authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_tGK9TGRX7"
+  clientId: "1inkfrdvi3oug0rv7d0p29m90v"
+  adminGroup: "AdminGroup"
+  jwtGroupsProperty: "cognito:groups"
+  additionalScopes: []

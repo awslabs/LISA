@@ -37,6 +37,9 @@ import { Rule, Schedule, EventPattern, RuleTargetInput, EventField } from 'aws-c
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { createCdkId } from '../../core/utils';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -159,6 +162,7 @@ export class IngestPipelineStateMachine extends Construct {
             }
         });
 
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
         // Create the ingest documents function with S3 permissions
         const pipelineIngestDocumentsFunction = new Function(this, 'pipelineIngestDocumentsMapFunc', {
             runtime: Runtime.PYTHON_3_10,
@@ -185,10 +189,7 @@ export class IngestPipelineStateMachine extends Construct {
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: ['secretsmanager:GetSecretValue'],
-                    resources: [
-                        `arn:aws:secretsmanager:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:secret:${config.deploymentName}-lisa-management-key*`,
-                        `arn:aws:secretsmanager:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:secret:${config.deploymentName}LisaRAGPGVectorDBSecret*`
-                    ]
+                    resources: ['*']
                 })
             ]
         });

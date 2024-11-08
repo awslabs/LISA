@@ -17,7 +17,7 @@ Before beginning, ensure you have:
 3. Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
 4. Python 3.9 or later
 5. Node.js 14 or later
-6. Docker installed and running
+6. Docker/Finch installed and running
 7. Sufficient disk space for model downloads and conversions
 
 If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and consult with your AWS support team.
@@ -48,6 +48,7 @@ Set the following environment variables:
 export PROFILE=my-aws-profile  # Optional, can be left blank
 export DEPLOYMENT_NAME=my-deployment
 export ENV=dev  # Options: dev, test, or prod
+export CDK_DOCKER=finch # Optional, only required if not using docker as container engine
 ```
 
 ## Step 3: Set Up Python and TypeScript Environments

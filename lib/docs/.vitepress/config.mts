@@ -30,6 +30,7 @@ const navLinks = [
       { text: 'API Overview', link: '/admin/api' },
       { text: 'API Request Error Handling', link: '/admin/error' },
       { text: 'Security', link: '/admin/security' },
+
     ],
   },
   {
@@ -42,7 +43,9 @@ const navLinks = [
       { text: 'Rag Vector Stores', link: '/config/vector-stores' },
       { text: 'Usage & Features', link: '/config/features' },
       { text: 'Branding', link: '/config/branding' },
+      { text: 'Branding', link: '/config/branding' },
       { text: 'Hiding Advanced Chat UI Components', link: '/config/hiding-chat-components' },
+      { text: 'Configuration Schema', link: '/config/schema' },
     ],
   },
   {
@@ -55,6 +58,8 @@ const navLinks = [
       { text: 'Non-RAG in Context File Management', link: '/user/nonrag-management' },
       { text: 'Prompt Engineering', link: '/user/prompt-engineering' },
       { text: 'Session History', link: '/user/history' },
+      { text: 'Breaking Changes', link: '/user/breaking-changes' },
+      { text: 'Change Log', link: 'https://github.com/awslabs/LISA/releases' },
     ],
   }];
 

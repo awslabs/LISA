@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Documentation of LISA",
   "scripts": {
-    "build": "vitepress build .",
+    "prebuild": "(cd ../../ && npm run generateSchemaDocs)",
+    "build": "npm run docs:build",
     "docs:dev": "vitepress dev .",
     "docs:build": "vitepress build .",
     "docs:preview": "vitepress preview ."

@@ -255,33 +255,33 @@ const ContainerHealthCheckConfigSchema = z.object({
     timeout: z.number().default(5).describe('The maximum time allowed for each health check to complete, in seconds'),
     retries: z.number().default(2).describe('The number of times to retry a failed health check before considering the container as unhealthy.'),
 })
-  .describe('Configuration for container health checks');
+    .describe('Configuration for container health checks');
 
 const ImageTarballAsset = z.object({
     path: z.string(),
     type: z.literal(EcsSourceType.TARBALL),
 })
-  .describe('Container image that will use tarball on disk');
+    .describe('Container image that will use tarball on disk');
 
 const ImageSourceAsset = z.object({
     baseImage: z.string(),
     path: z.string(),
     type: z.literal(EcsSourceType.ASSET),
 })
-  .describe('Container image that will be built based on Dockerfile and assets at the supplied path');
+    .describe('Container image that will be built based on Dockerfile and assets at the supplied path');
 
 const ImageECRAsset = z.object({
     repositoryArn: z.string(),
     tag: z.string().optional(),
     type: z.literal(EcsSourceType.ECR),
 })
-  .describe('Container image that will be pulled from the specified ECR repository');
+    .describe('Container image that will be pulled from the specified ECR repository');
 
 const ImageRegistryAsset = z.object({
     registry: z.string(),
     type: z.literal(EcsSourceType.REGISTRY),
 })
-  .describe('Container image that will be pulled from the specified public registry');
+    .describe('Container image that will be pulled from the specified public registry');
 
 const ContainerConfigSchema = z.object({
     image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]).describe('Base image for the container.'),
@@ -296,8 +296,8 @@ const ContainerConfigSchema = z.object({
                 {} as Record<string, string>,
             );
         })
-      .default({})
-      .describe('Environment variables for the container.'),
+        .default({})
+        .describe('Environment variables for the container.'),
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
     healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
 }).describe('Configuration for the container.');
@@ -309,14 +309,14 @@ const HealthCheckConfigSchema = z.object({
     healthyThresholdCount: z.number().default(2).describe('Number of consecutive successful health checks required to consider the target healthy.'),
     unhealthyThresholdCount: z.number().default(2).describe('Number of consecutive failed health checks required to consider the target unhealthy.'),
 })
-  .describe('Health check configuration for the load balancer.');
+    .describe('Health check configuration for the load balancer.');
 
 const LoadBalancerConfigSchema = z.object({
     sslCertIamArn: z.string().nullish().default(null).describe('SSL certificate IAM ARN for load balancer.'),
     healthCheckConfig: HealthCheckConfigSchema,
     domainName: z.string().nullish().default(null).describe('Domain name to use instead of the load balancer\'s default DNS name.'),
 })
-  .describe('Configuration for load balancer settings.');
+    .describe('Configuration for load balancer settings.');
 
 const MetricConfigSchema = z.object({
     AlbMetricName: z.string().describe('Name of the ALB metric.'),
@@ -324,7 +324,7 @@ const MetricConfigSchema = z.object({
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
     estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
 })
-  .describe('Metric configuration for ECS auto scaling.');
+    .describe('Metric configuration for ECS auto scaling.');
 
 const AutoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(30),
@@ -334,16 +334,16 @@ const AutoScalingConfigSchema = z.object({
     cooldown: z.number().min(1).default(420).describe('Cool down period in seconds between scaling activities.'),
     metricConfig: MetricConfigSchema,
 })
-  .describe('Configuration for auto scaling settings.');
+    .describe('Configuration for auto scaling settings.');
 
 const EcsBaseConfigSchema = z.object({
     amiHardwareType: z.nativeEnum(AmiHardwareType).describe('Name of the model.'),
     autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
     buildArgs: z.record(z.string()).optional()
-      .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),
+        .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),
     containerConfig: ContainerConfigSchema,
     containerMemoryBuffer: z.number().default(1024 * 2)
-      .describe('This is the amount of memory to buffer (or subtract off)  from the total instance memory, ' +
+        .describe('This is the amount of memory to buffer (or subtract off)  from the total instance memory, ' +
         'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
     environment: z.record(z.string()).describe('Environment variables set on the task container'),
     identifier: z.string(),
@@ -351,7 +351,7 @@ const EcsBaseConfigSchema = z.object({
     internetFacing: z.boolean().default(false).describe('Whether or not the cluster will be configured as internet facing'),
     loadBalancerConfig: LoadBalancerConfigSchema,
 })
-  .describe('Configuration schema for an ECS model');
+    .describe('Configuration schema for an ECS model');
 
 /**
  * Type representing configuration for an ECS model.
@@ -372,9 +372,9 @@ const EcsModelConfigSchema = z
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
             })
-          .describe('Prebuilt inference container for serving model.'),
+            .describe('Prebuilt inference container for serving model.'),
     })
-  .describe('Configuration schema for an ECS model.');
+    .describe('Configuration schema for an ECS model.');
 
 /**
  * Type representing configuration for an ECS model.
@@ -394,7 +394,7 @@ const AuthConfigSchema = z.object({
             return value;
         }
     })
-      .describe('URL of OIDC authority.'),
+        .describe('URL of OIDC authority.'),
     clientId: z.string().describe('Client ID for OIDC IDP .'),
     adminGroup: z.string().default('').describe('Name of the admin group.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
@@ -426,8 +426,8 @@ const FastApiContainerConfigSchema = z.object({
             },
             {
                 message:
-                  'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
-                  'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+              'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
+              'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
             },
         ),
 }).describe('Configuration schema for REST API.');
@@ -462,21 +462,21 @@ const RagRepositoryConfigSchema = z
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-          (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+        (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
     })
-  .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
+    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
     chunkOverlap: z.number().min(0),
 })
-  .describe('Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.');
+    .describe('Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.');
 
 const PypiConfigSchema = z.object({
     indexUrl: z.string().default('').describe('URL for the pypi index.'),
     trustedHost: z.string().default('').describe('Trusted host for pypi.'),
 })
-  .describe('Configuration schema for pypi');
+    .describe('Configuration schema for pypi');
 
 /**
  * Enum for different types of stack synthesizers
@@ -491,8 +491,8 @@ const ApiGatewayConfigSchema = z
     .object({
         domainName: z.string().nullish().default(null).describe('Custom domain name for API Gateway Endpoint'),
     })
-  .optional()
-  .describe('Configuration schema for API Gateway Endpoint');
+    .optional()
+    .describe('Configuration schema for API Gateway Endpoint');
 
 const LiteLLMConfig = z.object({
     db_key: z.string().refine(
@@ -501,16 +501,16 @@ const LiteLLMConfig = z.object({
       'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
     ),
 })
-  .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
+    .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
 
 const RawConfigSchema = z
     .object({
         appName: z.string().default('lisa').describe('Name of the application.'),
         profile: z
             .string()
-          .nullish()
-          .transform((value) => value ?? '')
-          .describe('AWS CLI profile for deployment.'),
+            .nullish()
+            .transform((value) => value ?? '')
+            .describe('AWS CLI profile for deployment.'),
         deploymentName: z.string().default('prod').describe('Name of the deployment.'),
         accountNumber: z
             .number()
@@ -519,16 +519,16 @@ const RawConfigSchema = z
             .refine((value) => value.length === 12, {
                 message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             })
-          .describe('AWS account number for deployment. Must be 12 digits.'),
+            .describe('AWS account number for deployment. Must be 12 digits.'),
         region: z.string().describe('AWS region for deployment.'),
         restApiConfig: FastApiContainerConfigSchema,
         vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
         subnetIds: z.array(z.string().startsWith('subnet-')).optional().describe('Array of subnet ID for the application. (e.g. [subnet-fedcba9876543210]'),
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
-          .transform((value) => REMOVAL_POLICIES[value])
-          .default('destroy')
-          .describe('Removal policy for resources (destroy or retain).'),
+            .transform((value) => REMOVAL_POLICIES[value])
+            .default('destroy')
+            .describe('Removal policy for resources (destroy or retain).'),
         runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
         privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
         s3BucketModels: z.string().describe('S3 bucket for models.'),
@@ -539,15 +539,15 @@ const RawConfigSchema = z
             .refine((value) => value.every((num) => num.length === 12), {
                 message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             })
-          .optional()
-          .describe('List of AWS account numbers for ECR repositories.'),
+            .optional()
+            .describe('List of AWS account numbers for ECR repositories.'),
         deployRag: z.boolean().default(true).describe('Whether to deploy RAG stacks.'),
         deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
         deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
         deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
         logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
-          .default('DEBUG')
-          .describe('Log level for application.'),
+            .default('DEBUG')
+            .describe('Log level for application.'),
         authConfig: AuthConfigSchema.optional().describe('Authorization configuration.'),
         pypiConfig: PypiConfigSchema.default({
             indexUrl: '',
@@ -568,8 +568,8 @@ const RawConfigSchema = z
                     Value: z.string(),
                 }),
             )
-          .optional()
-          .describe('Array of key-value pairs for tagging.'),
+            .optional()
+            .describe('Array of key-value pairs for tagging.'),
         deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
         webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
         lambdaLayerAssets: z
@@ -580,8 +580,8 @@ const RawConfigSchema = z
                 ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
                 sdkLayerPath: z.string().optional().describe('Lambda SDK layer code path'),
             })
-          .optional()
-          .describe('Configuration for local Lambda layer code'),
+            .optional()
+            .describe('Configuration for local Lambda layer code'),
         permissionsBoundaryAspect: z
             .object({
                 permissionsBoundaryPolicyName: z.string(),
@@ -589,8 +589,8 @@ const RawConfigSchema = z
                 policyPrefix: z.string().max(20).optional(),
                 instanceProfilePrefix: z.string().optional(),
             })
-          .optional()
-          .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
+            .optional()
+            .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
         stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
         litellmConfig: LiteLLMConfig,
     })
@@ -617,17 +617,17 @@ const RawConfigSchema = z
         (config) => {
             return (
                 !(config.deployChat || config.deployRag || config.deployUi) ||
-                config.authConfig
+          config.authConfig
             );
         },
         {
             message:
-              'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
-              'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
-              'false or that an `authConfig` is provided.',
+          'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
+          'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
+          'false or that an `authConfig` is provided.',
         },
     )
-  .describe('Raw application configuration schema.');
+    .describe('Raw application configuration schema.');
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -677,8 +677,6 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
  * Application configuration type.
  */
 export type Config = z.infer<typeof ConfigSchema>;
-
-export type FastApiContainerConfig = z.infer<typeof FastApiContainerConfigSchema>;
 
 /**
  * Basic properties required for a stack definition in CDK.

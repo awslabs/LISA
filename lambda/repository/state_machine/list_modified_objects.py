@@ -74,7 +74,7 @@ def validate_bucket_prefix(bucket: str, prefix: str) -> bool:
     return True
 
 
-def handle_list_modified_objects(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_list_modified_objects(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
     """
     Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
 

@@ -21,12 +21,7 @@ from typing import Any, Dict, List
 import boto3
 from utilities.common_functions import retry_config
 from utilities.file_processing import process_record
-from utilities.validation import (
-    ValidationError,
-    validate_chunk_params,
-    validate_model_name,
-    validate_repository_type,
-)
+from utilities.validation import validate_chunk_params, validate_model_name, validate_repository_type, ValidationError
 from utilities.vector_store import get_vector_store_client
 
 from .lambda_functions import _get_embeddings_pipeline
@@ -49,8 +44,8 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     """
     batches = []
     for i in range(0, len(texts), batch_size):
-        text_batch = texts[i: i + batch_size]
-        metadata_batch = metadatas[i: i + batch_size]
+        text_batch = texts[i : i + batch_size]
+        metadata_batch = metadatas[i : i + batch_size]
         batches.append((text_batch, metadata_batch))
     return batches
 

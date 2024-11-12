@@ -22,8 +22,7 @@ import {
     ServicePrincipal,
     ManagedPolicy,
     Policy,
-    PolicyStatement,
-    Effect
+    PolicyStatement
 } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';

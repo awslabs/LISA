@@ -39,6 +39,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, RagRepositoryType } from '../schema';
+import { getSubnetCidrRange, isSubnetPublic } from '../api-base/utils';
 
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 
@@ -158,12 +159,17 @@ export class LisaRagStack extends Stack {
                     description: 'Security group for RAG OpenSearch domain',
                 });
                 // Allow communication from private subnets to ECS cluster
-                vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
-                    openSearchSg.connections.allowFrom(
-                        Peer.ipv4(subnet.ipv4CidrBlock),
-                        Port.tcp(443),
-                        'Allow private subnets to communicate with OpenSearch cluster',
-                    );
+                const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
+                    getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
+                        if (cidrRange){
+                            openSearchSg.connections.allowFrom(
+                                Peer.ipv4(cidrRange),
+                                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                                'Allow REST API private subnets to communicate with LiteLLM database',
+                            );
+                        }
+                    });
                 });
                 new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
 
@@ -281,12 +287,16 @@ export class LisaRagStack extends Stack {
                     });
 
                     const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                    subNets?.forEach((subnet) => {
-                        pgvectorSg.connections.allowFrom(
-                            Peer.ipv4(subnet.ipv4CidrBlock),
-                            Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
-                            'Allow private subnets to communicate with PGVector database',
-                        );
+                    subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
+                        getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
+                            if (cidrRange){
+                                pgvectorSg.connections.allowFrom(
+                                    Peer.ipv4(cidrRange),
+                                    Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                                    'Allow REST API private subnets to communicate with LiteLLM database',
+                                );
+                            }
+                        });
                     });
 
                     const username = ragConfig.rdsConfig.username;

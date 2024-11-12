@@ -46,7 +46,8 @@
     "lodash": "^4.17.21",
     "source-map-support": "^0.5.21",
     "util": "^0.12.5",
-    "zod": "^3.22.3"
+    "zod": "^3.22.3",
+    "aws-sdk": "^2.0.0"
   },
   "lint-staged": {
     "*.ts": [

@@ -149,15 +149,16 @@ export class LisaServeApplicationStack extends Stack {
         });
 
         const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-        subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach(async (subnet) => {
-            const cidrRange = await getSubnetCidrRange(subnet.subnetId);
-            if (cidrRange){
-                litellmDbSg.connections.allowFrom(
-                    Peer.ipv4(cidrRange),
-                    Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                    'Allow REST API private subnets to communicate with LiteLLM database',
-                );
-            }
+        subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
+            getSubnetCidrRange(subnet.subnetId).then(cidrRange => {
+                if (cidrRange){
+                    litellmDbSg.connections.allowFrom(
+                        Peer.ipv4(cidrRange),
+                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                        'Allow REST API private subnets to communicate with LiteLLM database',
+                    );
+                }
+            });
         });
 
         const username = config.restApiConfig.rdsConfig.username;

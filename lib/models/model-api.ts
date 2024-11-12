@@ -179,7 +179,13 @@ export class ModelsApi extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'ec2:TerminateInstances'
+                                'ec2:TerminateInstances',
+                                'ec2:CreateNetworkInterface',
+                                'ec2:DescribeNetworkInterfaces',
+                                'ec2:DescribeSubnets',
+                                'ec2:DeleteNetworkInterface',
+                                'ec2:AssignPrivateIpAddresses',
+                                'ec2:UnassignPrivateIpAddresses'
                             ],
                             resources: ['*'],
                             conditions: {

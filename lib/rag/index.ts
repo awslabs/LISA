@@ -256,12 +256,15 @@ export class LisaRagStack extends Stack {
                     });
 
                     const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                    subNets?.forEach((subnet) => {
-                        pgvectorSg.connections.allowFrom(
-                            Peer.ipv4(subnet.ipv4CidrBlock),
-                            Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
-                            'Allow private subnets to communicate with PGVector database',
-                        );
+                    subNets?.forEach(async (subnet) => {
+                        const cidrRange = await getSubnetCidrRange(subnet.subnetId);
+                        if (cidrRange) {
+                            pgvectorSg.connections.allowFrom(
+                                Peer.ipv4(cidrRange),
+                                Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
+                                'Allow private subnets to communicate with PGVector database',
+                            );
+                        }
                     });
 
                     const username = ragConfig.rdsConfig.username;

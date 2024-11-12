@@ -40,7 +40,7 @@ router.include_router(
 )
 
 
-@router.get("/health")  # type: ignore
+@router.get("/health")
 async def health_check() -> JSONResponse:
     """Health check path.
 

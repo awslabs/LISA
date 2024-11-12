@@ -22,13 +22,13 @@ from lisapy.errors import NotFoundError
 from lisapy.types import ModelKwargs, ModelType
 
 
-@pytest.fixture(scope="session")  # type: ignore
+@pytest.fixture(scope="session")
 def url(pytestconfig: pytest.Config) -> Any:
     """Get the url argument."""
     return pytestconfig.getoption("url")
 
 
-@pytest.fixture(scope="session")  # type: ignore
+@pytest.fixture(scope="session")
 def verify(pytestconfig: pytest.Config) -> Union[bool, Any]:
     """Get the verify argument."""
     if pytestconfig.getoption("verify") == "false":
@@ -114,7 +114,7 @@ def test_generate_stream(url: str, verify: Union[bool, str]) -> None:
     assert response.generated_tokens == 1
 
 
-@pytest.mark.asyncio  # type: ignore
+@pytest.mark.asyncio
 async def test_generate_async(url: str, verify: Union[bool, str]) -> None:
     """Generates a batch async response from a textgen.tgi model."""
     client = Lisa(url=url, verify=verify)
@@ -127,7 +127,7 @@ async def test_generate_async(url: str, verify: Union[bool, str]) -> None:
     assert response.generated_tokens == 1
 
 
-@pytest.mark.asyncio  # type: ignore
+@pytest.mark.asyncio
 async def test_generate_stream_async(url: str, verify: Union[bool, str]) -> None:
     """Generates a streaming async response from a textgen.tgi model."""
     client = Lisa(url=url, verify=verify)

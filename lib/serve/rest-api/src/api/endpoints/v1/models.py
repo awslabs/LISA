@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get(f"/{RestApiResource.DESCRIBE_MODEL.value}")  # type: ignore
+@router.get(f"/{RestApiResource.DESCRIBE_MODEL.value}")
 async def describe_model(
     provider: str = Query(
         None,
@@ -52,7 +52,7 @@ async def describe_model(
     return JSONResponse(content=response, status_code=200)
 
 
-@router.get(f"/{RestApiResource.DESCRIBE_MODELS.value}")  # type: ignore
+@router.get(f"/{RestApiResource.DESCRIBE_MODELS.value}")
 async def describe_models(
     model_types: Optional[List[ModelType]] = Query(
         None,
@@ -69,7 +69,7 @@ async def describe_models(
     return JSONResponse(content=response, status_code=200)
 
 
-@router.get(f"/{RestApiResource.LIST_MODELS.value}")  # type: ignore
+@router.get(f"/{RestApiResource.LIST_MODELS.value}")
 async def list_models(
     model_types: Optional[List[ModelType]] = Query(
         None,
@@ -86,7 +86,7 @@ async def list_models(
     return JSONResponse(content=response, status_code=200)
 
 
-@router.get(f"/{RestApiResource.OPENAI_LIST_MODELS.value}")  # type: ignore
+@router.get(f"/{RestApiResource.OPENAI_LIST_MODELS.value}")
 async def openai_list_models() -> JSONResponse:
     """List models for OpenAI Compatibility. Only returns TEXTGEN models."""
     response = await handle_openai_list_models()

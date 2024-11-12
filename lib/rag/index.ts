@@ -131,7 +131,7 @@ export class LisaRagStack extends Stack {
                 // Allow communication from private subnets to ECS cluster
                 const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                 subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
-                    getSubnetCidrRange(subnet.subnetId).then(cidrRange => {
+                    getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
                         if (cidrRange){
                             openSearchSg.connections.allowFrom(
                                 Peer.ipv4(cidrRange),
@@ -258,7 +258,7 @@ export class LisaRagStack extends Stack {
 
                     const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                     subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
-                        getSubnetCidrRange(subnet.subnetId).then(cidrRange => {
+                        getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
                             if (cidrRange){
                                 pgvectorSg.connections.allowFrom(
                                     Peer.ipv4(cidrRange),

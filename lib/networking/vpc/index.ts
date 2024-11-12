@@ -78,7 +78,7 @@ export class Vpc extends Construct {
                     this,
                     createCdkId([config.deploymentName, 'Imported-Subnets']),
                     {
-                        vpc: this.vpc,
+                        vpc: vpc,
                         description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
                         vpcSubnets: this.subnetSelection,
                     }

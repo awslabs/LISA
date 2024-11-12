@@ -40,6 +40,7 @@ import { Code, Function, Runtime, ILayerVersion, IFunction, CfnPermission } from
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
+import * as AWS from 'aws-sdk';
 
 /**
  * Type representing python lambda function
@@ -155,4 +156,23 @@ function getOrCreateResource (scope: Construct, parentResource: IResource, path:
         return getOrCreateResource(scope, resource, path.slice(1));
     }
     return resource;
+}
+
+export async function getSubnetCidrRange(subnet: string): Promise<string | undefined> {
+    const ec2 = new AWS.EC2();
+  try {
+        const describeSubnetsResponse = await ec2.describeSubnets({
+              SubnetIds: [subnet],
+            }).promise();
+
+            const retrievedSubnet = describeSubnetsResponse.Subnets?.[0];
+
+            if (retrievedSubnet && retrievedSubnet.CidrBlock) {
+              return retrievedSubnet.CidrBlock;
+            }
+      } catch (error) {
+        console.error('Error retrieving subnet CIDR range:', error);
+      }
+
+      return undefined;
 }

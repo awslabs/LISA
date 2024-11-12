@@ -39,6 +39,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, RagRepositoryType } from '../schema';
+import { getSubnetCidrRange } from '../api-base/utils';
 
 const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
@@ -128,12 +129,16 @@ export class LisaRagStack extends Stack {
                     description: 'Security group for RAG OpenSearch domain',
                 });
                 // Allow communication from private subnets to ECS cluster
-                vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
-                    openSearchSg.connections.allowFrom(
-                        Peer.ipv4(subnet.ipv4CidrBlock),
-                        Port.tcp(443),
-                        'Allow private subnets to communicate with OpenSearch cluster',
-                    );
+                const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                subNets?.forEach(async (subnet) => {
+                    const cidrRange = await getSubnetCidrRange(subnet.subnetId);
+                    if(cidrRange){
+                        openSearchSg.connections.allowFrom(
+                            Peer.ipv4(cidrRange),
+                            Port.tcp(443),
+                            'Allow private subnets to communicate with OpenSearch cluster',
+                        );
+                    }
                 });
                 new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
 

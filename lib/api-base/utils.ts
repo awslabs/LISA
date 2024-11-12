@@ -158,21 +158,21 @@ function getOrCreateResource (scope: Construct, parentResource: IResource, path:
     return resource;
 }
 
-export async function getSubnetCidrRange(subnet: string): Promise<string | undefined> {
+export async function getSubnetCidrRange (subnet: string): Promise<string | undefined> {
     const ec2 = new AWS.EC2();
-  try {
+    try {
         const describeSubnetsResponse = await ec2.describeSubnets({
-              SubnetIds: [subnet],
-            }).promise();
+            SubnetIds: [subnet],
+        }).promise();
 
-            const retrievedSubnet = describeSubnetsResponse.Subnets?.[0];
+        const retrievedSubnet = describeSubnetsResponse.Subnets?.[0];
 
-            if (retrievedSubnet && retrievedSubnet.CidrBlock) {
-              return retrievedSubnet.CidrBlock;
-            }
-      } catch (error) {
+        if (retrievedSubnet && retrievedSubnet.CidrBlock) {
+            return retrievedSubnet.CidrBlock;
+        }
+    } catch (error) {
         console.error('Error retrieving subnet CIDR range:', error);
-      }
+    }
 
-      return undefined;
+    return undefined;
 }

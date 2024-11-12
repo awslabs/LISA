@@ -151,7 +151,7 @@ export class LisaServeApplicationStack extends Stack {
         const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach(async (subnet) => {
             const cidrRange = await getSubnetCidrRange(subnet.subnetId);
-            if(cidrRange){
+            if (cidrRange){
                 litellmDbSg.connections.allowFrom(
                     Peer.ipv4(cidrRange),
                     Port.tcp(config.restApiConfig.rdsConfig.dbPort),

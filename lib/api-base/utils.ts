@@ -34,7 +34,7 @@ import {
     IRestApi,
     Cors,
 } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, ISubnet } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, Runtime, ILayerVersion, IFunction, CfnPermission } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
@@ -175,4 +175,22 @@ export async function getSubnetCidrRange (subnet: string): Promise<string | unde
     }
 
     return undefined;
+}
+
+export async function isSubnetPublic (subnet: ISubnet): Promise<boolean> {
+    const ec2 = new AWS.EC2();
+    try {
+        const describeSubnetsResponse = await ec2.describeSubnets({
+            SubnetIds: [subnet.subnetId],
+        }).promise();
+
+        const retrievedSubnet = describeSubnetsResponse.Subnets?.[0];
+
+        if (retrievedSubnet && retrievedSubnet.MapPublicIpOnLaunch) {
+            return true;
+        }
+    } catch (error) {
+        console.error('Error retrieving subnet CIDR range:', error);
+    }
+    return false;
 }

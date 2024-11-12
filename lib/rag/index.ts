@@ -39,7 +39,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, RagRepositoryType } from '../schema';
-import { getSubnetCidrRange } from '../api-base/utils';
+import { getSubnetCidrRange, isSubnetPublic } from '../api-base/utils';
 
 const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
@@ -130,7 +130,7 @@ export class LisaRagStack extends Stack {
                 });
                 // Allow communication from private subnets to ECS cluster
                 const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                subNets?.forEach(async (subnet) => {
+                subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach(async (subnet) => {
                     const cidrRange = await getSubnetCidrRange(subnet.subnetId);
                     if (cidrRange){
                         openSearchSg.connections.allowFrom(
@@ -256,7 +256,7 @@ export class LisaRagStack extends Stack {
                     });
 
                     const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                    subNets?.forEach(async (subnet) => {
+                    subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach(async (subnet) => {
                         const cidrRange = await getSubnetCidrRange(subnet.subnetId);
                         if (cidrRange) {
                             pgvectorSg.connections.allowFrom(

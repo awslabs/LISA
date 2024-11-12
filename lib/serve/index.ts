@@ -30,7 +30,7 @@ import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { getSubnetCidrRange } from '../api-base/utils';
+import { getSubnetCidrRange, isSubnetPublic } from '../api-base/utils';
 
 const HERE = path.resolve(__dirname);
 
@@ -149,7 +149,7 @@ export class LisaServeApplicationStack extends Stack {
         });
 
         const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-        subNets?.forEach(async (subnet) => {
+        subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach(async (subnet) => {
             const cidrRange = await getSubnetCidrRange(subnet.subnetId);
             if (cidrRange){
                 litellmDbSg.connections.allowFrom(

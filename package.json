@@ -45,7 +45,8 @@
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "source-map-support": "^0.5.21",
-    "zod": "^3.22.3"
+    "zod": "^3.22.3",
+    "aws-sdk": "^2.0.0"
   },
   "lint-staged": {
     "*.ts": [

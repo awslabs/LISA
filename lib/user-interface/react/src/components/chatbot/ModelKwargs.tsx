@@ -23,13 +23,13 @@ import {
     SpaceBetween,
     Input,
     Header,
-    FormField,
+    FormField
 } from '@cloudscape-design/components';
 import unraw from 'unraw';
 
 import { ModelConfig } from '../types';
 
-export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible }) {
+export default function ModelKwargsEditor({ setModelConfig, visible, setVisible }) {
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
     const [maxNewTokens, setMaxNewTokens] = useState(null);
@@ -57,32 +57,32 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                         return elem;
                     }
                 }),
-                seed,
-            },
+                seed
+            }
         };
         setModelConfig(modelConfig);
-    //Disabling exhaustive-deps here because we reference and update modelKwargs in the same hook
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        //Disabling exhaustive-deps here because we reference and update modelKwargs in the same hook
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [maxNewTokens, n, topP, frequencyPenalty, presencePenalty, temperature, stopSequences, seed]);
     return (
         <Modal
             onDismiss={() => setVisible(false)}
             visible={visible}
-            header={<Header variant='h1'>Edit model kwargs</Header>}
-            footer=''
-            size='large'
+            header={<Header variant="h1">Edit model kwargs</Header>}
+            footer=""
+            size="large"
         >
-            <SpaceBetween direction='vertical' size='l'>
+            <SpaceBetween direction="vertical" size="l">
                 <FormField
-                    label='max_tokens'
-                    constraintText='Must be greater than or equal to 0 - Defaults to null (no limit) if not specified.'
-                    description='The maximum number of tokens that can be generated in the completion.'
+                    label="max_tokens"
+                    constraintText="Must be greater than or equal to 0 - Defaults to null (no limit) if not specified."
+                    description="The maximum number of tokens that can be generated in the completion."
                 >
                     <Input
                         value={maxNewTokens?.toString()}
-                        type='number'
+                        type="number"
                         step={1}
-                        inputMode='numeric'
+                        inputMode="numeric"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const intVal = parseInt(event.detail.value);
@@ -95,15 +95,15 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='n'
-                    constraintText='Must be greater than or equal to 1 - Defaults to null if not specified.'
-                    description='How many completions to generate for each prompt.'
+                    label="n"
+                    constraintText="Must be greater than or equal to 1 - Defaults to null if not specified."
+                    description="How many completions to generate for each prompt."
                 >
                     <Input
                         value={n?.toString()}
-                        type='number'
+                        type="number"
                         step={1}
-                        inputMode='numeric'
+                        inputMode="numeric"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const intVal = parseInt(event.detail.value);
@@ -116,19 +116,19 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='top_p'
-                    constraintText='Must be between 0 and 1 - Defaults to 1 if not specified.'
-                    description='An alternative to sampling with temperature,
+                    label="top_p"
+                    constraintText="Must be between 0 and 1 - Defaults to 1 if not specified."
+                    description="An alternative to sampling with temperature,
                     called nucleus sampling, where the model considers
                     the results of the tokens with top_p probability mass.
                     So 0.1 means only the tokens comprising the top 10%
-                    probability mass are considered.'
+                    probability mass are considered."
                 >
                     <Input
                         value={topP?.toString()}
-                        type='number'
+                        type="number"
                         step={0.01}
-                        inputMode='decimal'
+                        inputMode="decimal"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const floatVal = parseFloat(event.detail.value);
@@ -141,8 +141,8 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='frequency_penalty'
-                    constraintText='Must be between -2.0 and 2.0 - Defaults to null if not specified.'
+                    label="frequency_penalty"
+                    constraintText="Must be between -2.0 and 2.0 - Defaults to null if not specified."
                     description="Number between -2.0 and 2.0. Positive values
                     penalize new tokens based on their existing
                     frequency in the text so far, decreasing the model's
@@ -150,9 +150,9 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                 >
                     <Input
                         value={frequencyPenalty?.toString()}
-                        type='number'
+                        type="number"
                         step={0.1}
-                        inputMode='decimal'
+                        inputMode="decimal"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const floatVal = parseFloat(event.detail.value);
@@ -165,8 +165,8 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='presence_penalty'
-                    constraintText='Must be between -2.0 and 2.0 - Defaults to null if not specified.'
+                    label="presence_penalty"
+                    constraintText="Must be between -2.0 and 2.0 - Defaults to null if not specified."
                     description="Number between -2.0 and 2.0. Positive values
                       penalize new tokens based on whether they appear
                       in the text so far, increasing the model's
@@ -174,9 +174,9 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                 >
                     <Input
                         value={presencePenalty?.toString()}
-                        type='number'
+                        type="number"
                         step={0.1}
-                        inputMode='decimal'
+                        inputMode="decimal"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const floatVal = parseFloat(event.detail.value);
@@ -189,18 +189,18 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='temperature'
-                    constraintText='Must be between 0 and 2.0 - Defaults to null if not specified.'
-                    description='What sampling temperature to use, between 0 and 2.
+                    label="temperature"
+                    constraintText="Must be between 0 and 2.0 - Defaults to null if not specified."
+                    description="What sampling temperature to use, between 0 and 2.
                   Higher values like 0.8 will make the output more random,
                   while lower values like 0.2 will make it more focused
-                  and deterministic.'
+                  and deterministic."
                 >
                     <Input
                         value={temperature?.toString()}
-                        type='number'
+                        type="number"
                         step={0.1}
-                        inputMode='decimal'
+                        inputMode="decimal"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const floatVal = parseFloat(event.detail.value);
@@ -212,12 +212,15 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                         }}
                     />
                 </FormField>
-                <FormField label='stop' description='Up to 4 sequences where the API will stop generating further tokens.'>
+                <FormField
+                    label="stop"
+                    description="Up to 4 sequences where the API will stop generating further tokens."
+                >
                     <Container>
                         <AttributeEditor
-                            addButtonText='Add'
+                            addButtonText="Add"
                             onAddButtonClick={() => setStopSequences((prev) => prev.concat(''))}
-                            removeButtonText='Remove'
+                            removeButtonText="Remove"
                             onRemoveButtonClick={(event) =>
                                 setStopSequences((prev) => prev.filter((elem, i) => event.detail.itemIndex !== i))
                             }
@@ -229,7 +232,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                                         return (
                                             <Input
                                                 value={item}
-                                                placeholder='null'
+                                                placeholder="null"
                                                 onChange={(event) => {
                                                     setStopSequences((prev) =>
                                                         prev.slice(0, 4).map((elem, j) => {
@@ -238,30 +241,30 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                                                             } else {
                                                                 return elem;
                                                             }
-                                                        }),
+                                                        })
                                                     );
                                                 }}
                                             />
                                         );
-                                    },
-                                },
+                                    }
+                                }
                             ]}
-                            empty='No stop sequences provided.'
+                            empty="No stop sequences provided."
                         />
                     </Container>
                 </FormField>
                 <FormField
-                    label='seed'
-                    description='If specified, our system will make a best
+                    label="seed"
+                    description="If specified, our system will make a best
                       effort to sample deterministically, such that
                       repeated requests with the same seed and
-                      parameters should return the same result.'
+                      parameters should return the same result."
                 >
                     <Input
                         value={seed?.toString()}
-                        type='number'
+                        type="number"
                         step={1}
-                        inputMode='numeric'
+                        inputMode="numeric"
                         disableBrowserAutocorrect={true}
                         onChange={(event) => {
                             const intVal = parseInt(event.detail.value);

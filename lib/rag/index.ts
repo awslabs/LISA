@@ -64,11 +64,11 @@ export class LisaRagStack extends Stack {
     public readonly ragApi: FastApiContainer;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaChatStackProps} props - Properties for the Stack.
-   */
-    constructor (scope: Construct, id: string, props: LisaRagStackProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaChatStackProps} props - Properties for the Stack.
+     */
+    constructor(scope: Construct, id: string, props: LisaRagStackProps) {
         super(scope, id, props);
 
         const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -77,7 +77,7 @@ export class LisaRagStack extends Stack {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'rag-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`)
         );
 
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
@@ -88,9 +88,9 @@ export class LisaRagStack extends Stack {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
                     allowedHeaders: ['*'],
                     allowedOrigins: ['*'],
-                    exposedHeaders: ['Access-Control-Allow-Origin'],
-                },
-            ],
+                    exposedHeaders: ['Access-Control-Allow-Origin']
+                }
+            ]
         });
 
         const baseEnvironment: Record<string, string> = {
@@ -99,7 +99,7 @@ export class LisaRagStack extends Stack {
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
-            REST_API_VERSION: 'v2',
+            REST_API_VERSION: 'v2'
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -112,8 +112,8 @@ export class LisaRagStack extends Stack {
             'LISARagAPILambdaExecutionRole',
             StringParameter.valueForStringParameter(
                 this,
-                `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, 'RAGRole'])}`,
-            ),
+                `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, 'RAGRole'])}`
+            )
         );
         bucket.grantRead(lambdaRole);
         bucket.grantPut(lambdaRole);
@@ -126,21 +126,26 @@ export class LisaRagStack extends Stack {
                 const openSearchSg = new SecurityGroup(this, 'LISA-OpenSearchSg', {
                     securityGroupName: createCdkId([config.deploymentName, 'OpenSearch-SG']),
                     vpc: vpc.vpc,
-                    description: 'Security group for RAG OpenSearch domain',
+                    description: 'Security group for RAG OpenSearch domain'
                 });
                 // Allow communication from private subnets to ECS cluster
-                const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
-                    getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
-                        if (cidrRange){
-                            openSearchSg.connections.allowFrom(
-                                Peer.ipv4(cidrRange),
-                                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                                'Allow REST API private subnets to communicate with LiteLLM database',
-                            );
-                        }
+                const subNets =
+                    config.subnetIds && config.vpcId
+                        ? vpc.subnetSelection?.subnets
+                        : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                subNets
+                    ?.filter((subnet) => !isSubnetPublic(subnet))
+                    .forEach((subnet) => {
+                        getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
+                            if (cidrRange) {
+                                openSearchSg.connections.allowFrom(
+                                    Peer.ipv4(cidrRange),
+                                    Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                                    'Allow REST API private subnets to communicate with LiteLLM database'
+                                );
+                            }
+                        });
                     });
-                });
                 new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
 
                 registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
@@ -150,24 +155,24 @@ export class LisaRagStack extends Stack {
                     openSearchDomain = Domain.fromDomainEndpoint(
                         this,
                         'ExistingOpenSearchDomain',
-                        ragConfig.opensearchConfig.endpoint,
+                        ragConfig.opensearchConfig.endpoint
                     );
                 } else {
                     // Service-linked role that Amazon OpenSearch Service will use
                     (async () => {
                         const iam = new IAMClient({
-                            region: config.region,
+                            region: config.region
                         });
                         const response = await iam.send(
                             new ListRolesCommand({
-                                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
-                            }),
+                                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/'
+                            })
                         );
 
                         // Only if the role for OpenSearch Service doesn't exist, it will be created.
                         if (response.Roles && response.Roles?.length === 0) {
                             new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
-                                awsServiceName: 'opensearchservice.amazonaws.com',
+                                awsServiceName: 'opensearchservice.amazonaws.com'
                             });
                         }
                     })();
@@ -181,29 +186,29 @@ export class LisaRagStack extends Stack {
                         vpcSubnets: vpc.subnetSelection ? [vpc.subnetSelection] : [],
                         ebs: {
                             enabled: true,
-                            volumeSize: ragConfig.opensearchConfig.volumeSize,
+                            volumeSize: ragConfig.opensearchConfig.volumeSize
                         },
                         zoneAwareness: {
                             availabilityZoneCount: vpc.vpc.privateSubnets.length,
-                            enabled: true,
+                            enabled: true
                         },
                         capacity: {
                             dataNodes: ragConfig.opensearchConfig.dataNodes,
                             dataNodeInstanceType: ragConfig.opensearchConfig.dataNodeInstanceType,
                             masterNodes: ragConfig.opensearchConfig.masterNodes,
                             masterNodeInstanceType: ragConfig.opensearchConfig.masterNodeInstanceType,
-                            multiAzWithStandbyEnabled: ragConfig.opensearchConfig.multiAzWithStandby,
+                            multiAzWithStandbyEnabled: ragConfig.opensearchConfig.multiAzWithStandby
                         },
                         accessPolicies: [
                             new PolicyStatement({
                                 actions: ['es:*'],
                                 resources: ['*'],
                                 effect: Effect.ALLOW,
-                                principals: [new AnyPrincipal()],
-                            }),
+                                principals: [new AnyPrincipal()]
+                            })
                         ],
                         removalPolicy: RemovalPolicy.DESTROY,
-                        securityGroups: [openSearchSg!],
+                        securityGroups: [openSearchSg!]
                     });
                 }
 
@@ -213,7 +218,7 @@ export class LisaRagStack extends Stack {
                 openSearchDomain.grantReadWrite(lambdaRole);
 
                 new CfnOutput(this, 'opensearchRagRepositoryEndpoint', {
-                    value: openSearchDomain.domainEndpoint,
+                    value: openSearchDomain.domainEndpoint
                 });
 
                 const openSearchEndpointPs = new StringParameter(
@@ -222,8 +227,8 @@ export class LisaRagStack extends Stack {
                     {
                         parameterName: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
                         stringValue: openSearchDomain.domainEndpoint,
-                        description: 'Endpoint for LISA Serve OpenSearch Rag Repository',
-                    },
+                        description: 'Endpoint for LISA Serve OpenSearch Rag Repository'
+                    }
                 );
 
                 // Add explicit dependency on OpenSearch Domain being created
@@ -238,36 +243,45 @@ export class LisaRagStack extends Stack {
                 let rdsConnectionInfoPs: StringParameter;
                 // if dbHost and passwordSecretId are defined, then connect to DB with existing params
                 if (!!ragConfig.rdsConfig.dbHost && !!ragConfig.rdsConfig.passwordSecretId) {
-                    rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
-                        parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
-                        stringValue: JSON.stringify(ragConfig.rdsConfig),
-                        description: 'Connection info for LISA Serve PGVector database',
-                    });
+                    rdsConnectionInfoPs = new StringParameter(
+                        this,
+                        createCdkId([connectionParamName, 'StringParameter']),
+                        {
+                            parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
+                            stringValue: JSON.stringify(ragConfig.rdsConfig),
+                            description: 'Connection info for LISA Serve PGVector database'
+                        }
+                    );
                     rdsPasswordSecret = Secret.fromSecretNameV2(
                         this,
                         createCdkId([config.deploymentName, 'RagRDSPwdSecret']),
-                        ragConfig.rdsConfig.passwordSecretId,
+                        ragConfig.rdsConfig.passwordSecretId
                     );
                 } else {
                     // Create new DB and SG
                     const pgvectorSg = new SecurityGroup(this, 'LISA-PGVectorSg', {
                         securityGroupName: 'LISA-PGVector-SG',
                         vpc: vpc.vpc,
-                        description: 'Security group for RAG PGVector database',
+                        description: 'Security group for RAG PGVector database'
                     });
 
-                    const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                    subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
-                        getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
-                            if (cidrRange){
-                                pgvectorSg.connections.allowFrom(
-                                    Peer.ipv4(cidrRange),
-                                    Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                                    'Allow REST API private subnets to communicate with LiteLLM database',
-                                );
-                            }
+                    const subNets =
+                        config.subnetIds && config.vpcId
+                            ? vpc.subnetSelection?.subnets
+                            : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                    subNets
+                        ?.filter((subnet) => !isSubnetPublic(subnet))
+                        .forEach((subnet) => {
+                            getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
+                                if (cidrRange) {
+                                    pgvectorSg.connections.allowFrom(
+                                        Peer.ipv4(cidrRange),
+                                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                                        'Allow REST API private subnets to communicate with LiteLLM database'
+                                    );
+                                }
+                            });
                         });
-                    });
 
                     const username = ragConfig.rdsConfig.username;
                     const dbCreds = Credentials.fromGeneratedSecret(username);
@@ -277,20 +291,24 @@ export class LisaRagStack extends Stack {
                         subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
                         securityGroups: [pgvectorSg!],
-                        removalPolicy: RemovalPolicy.DESTROY,
+                        removalPolicy: RemovalPolicy.DESTROY
                     });
                     rdsPasswordSecret = pgvector_db.secret!;
-                    rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
-                        parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
-                        stringValue: JSON.stringify({
-                            username: username,
-                            passwordSecretId: rdsPasswordSecret.secretName,
-                            dbHost: pgvector_db.dbInstanceEndpointAddress,
-                            dbName: ragConfig.rdsConfig.dbName,
-                            dbPort: ragConfig.rdsConfig.dbPort,
-                        }),
-                        description: 'Connection info for LISA Serve PGVector database',
-                    });
+                    rdsConnectionInfoPs = new StringParameter(
+                        this,
+                        createCdkId([connectionParamName, 'StringParameter']),
+                        {
+                            parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
+                            stringValue: JSON.stringify({
+                                username: username,
+                                passwordSecretId: rdsPasswordSecret.secretName,
+                                dbHost: pgvector_db.dbInstanceEndpointAddress,
+                                dbName: ragConfig.rdsConfig.dbName,
+                                dbPort: ragConfig.rdsConfig.dbPort
+                            }),
+                            description: 'Connection info for LISA Serve PGVector database'
+                        }
+                    );
                 }
                 rdsPasswordSecret.grantRead(lambdaRole);
                 rdsConnectionInfoPs.grantRead(lambdaRole);
@@ -302,7 +320,7 @@ export class LisaRagStack extends Stack {
         const ragRepositoriesParam = new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
             parameterName: `${config.deploymentPrefix}/registeredRepositories`,
             stringValue: JSON.stringify(registeredRepositories),
-            description: 'Serialized JSON of registered RAG repositories',
+            description: 'Serialized JSON of registered RAG repositories'
         });
 
         baseEnvironment['REGISTERED_REPOSITORIES_PS_NAME'] = ragRepositoriesParam.parameterName;
@@ -314,7 +332,7 @@ export class LisaRagStack extends Stack {
             description: 'Lambad dependencies for RAG API',
             architecture: ARCHITECTURE,
             autoUpgrade: true,
-            assetPath: config.lambdaLayerAssets?.ragLayerPath,
+            assetPath: config.lambdaLayerAssets?.ragLayerPath
         });
 
         // Build SDK Layer
@@ -324,14 +342,14 @@ export class LisaRagStack extends Stack {
                 code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
                 compatibleRuntimes: [Runtime.PYTHON_3_10],
                 removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
+                description: 'LISA SDK common layer'
             });
         } else {
             sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
                 entry: SDK_PATH,
                 compatibleRuntimes: [Runtime.PYTHON_3_10],
                 removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
+                description: 'LISA SDK common layer'
             });
         }
 
@@ -345,7 +363,7 @@ export class LisaRagStack extends Stack {
             restApiId,
             rootResourceId,
             securityGroups,
-            lambdaExecutionRole: lambdaRole,
+            lambdaExecutionRole: lambdaRole
         });
 
         ragRepositoriesParam.grantRead(lambdaRole);

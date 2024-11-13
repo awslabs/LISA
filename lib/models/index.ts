@@ -26,25 +26,25 @@ import { BaseProps } from '../schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type LisaModelsApiStackProps = BaseProps &
-  StackProps & {
-      authorizer: IAuthorizer;
-      lisaServeEndpointUrlPs: StringParameter;
-      restApiId: string;
-      rootResourceId: string;
-      securityGroups?: ISecurityGroup[];
-      vpc: Vpc;
-  };
+    StackProps & {
+        authorizer: IAuthorizer;
+        lisaServeEndpointUrlPs: StringParameter;
+        restApiId: string;
+        rootResourceId: string;
+        securityGroups?: ISecurityGroup[];
+        vpc: Vpc;
+    };
 
 /**
  * Lisa Models API Stack.
  */
 export class LisaModelsApiStack extends Stack {
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaModelsApiStackProps} props - Properties for the Stack.
-   */
-    constructor (scope: Construct, id: string, props: LisaModelsApiStackProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaModelsApiStackProps} props - Properties for the Stack.
+     */
+    constructor(scope: Construct, id: string, props: LisaModelsApiStackProps) {
         super(scope, id, props);
 
         const { authorizer, lisaServeEndpointUrlPs, config, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -57,7 +57,7 @@ export class LisaModelsApiStack extends Stack {
             restApiId,
             rootResourceId,
             securityGroups,
-            vpc,
+            vpc
         });
     }
 }

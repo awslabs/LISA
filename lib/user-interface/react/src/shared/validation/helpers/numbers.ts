@@ -33,10 +33,7 @@ type rangeValidatorProps = {
  * @param inputProps Properties that ensure the validity of the field
  * @returns A validator for the field that ensures the desired requirements
  */
-export const numberValidator = (
-    fieldName: string,
-    inputProps?: rangeValidatorProps
-) => {
+export const numberValidator = (fieldName: string, inputProps?: rangeValidatorProps) => {
     // Create properties by merging the defaults with the provided input properties
     const props = {
         min: Number.NEGATIVE_INFINITY, // Specifies the smallest number allowed (default is infinitely negative to allow for any number)
@@ -50,7 +47,7 @@ export const numberValidator = (
 
     // Create range message
     let rangeMessage = '';
-    if (props.min !== Number.NEGATIVE_INFINITY && props.max !== Number.POSITIVE_INFINITY){
+    if (props.min !== Number.NEGATIVE_INFINITY && props.max !== Number.POSITIVE_INFINITY) {
         // Create range message
         rangeMessage = ` value in the range ${props.includeMin ? '[' : '('}${props.min},${props.max}${props.includeMax ? ']' : ')'}`;
     } else if (props.max === Number.POSITIVE_INFINITY) {
@@ -62,19 +59,26 @@ export const numberValidator = (
     }
 
     // Create validation message for errors
-    const validationMessage = `${fieldName}${props.required ? ' is required and' : '' } must be ${
-        props.isFloat ? 'a float' : 'an integer'}${rangeMessage}${
-        props.alternateValues ? ' or be one of the following values: ' + props.alternateValues.map((value) => `'${value}'`).join(', ') : ''}`;
-
+    const validationMessage = `${fieldName}${props.required ? ' is required and' : ''} must be ${
+        props.isFloat ? 'a float' : 'an integer'
+    }${rangeMessage}${
+        props.alternateValues
+            ? ' or be one of the following values: ' + props.alternateValues.map((value) => `'${value}'`).join(', ')
+            : ''
+    }`;
 
     // Create base number validator
     let numberContext = z.coerce.number({
-        invalid_type_error: validationMessage,
+        invalid_type_error: validationMessage
     });
 
     // Add min/max check based on min and max inclusions
-    numberContext = props.includeMin ? numberContext.gte(props.min, { message: validationMessage }) : numberContext.gt(props.min, { message: validationMessage });
-    numberContext = props.includeMax ? numberContext.lte(props.max, { message: validationMessage }) : numberContext.lt(props.max, { message: validationMessage });
+    numberContext = props.includeMin
+        ? numberContext.gte(props.min, { message: validationMessage })
+        : numberContext.gt(props.min, { message: validationMessage });
+    numberContext = props.includeMax
+        ? numberContext.lte(props.max, { message: validationMessage })
+        : numberContext.lt(props.max, { message: validationMessage });
 
     // Create a wrapper validator that allows for possible text values
     let wrapperContext: any = numberContext;
@@ -82,7 +86,9 @@ export const numberValidator = (
     // Appends alternative non-number allowed values
     if (props.alternateValues) {
         props.alternateValues.forEach((value) => {
-            wrapperContext = z.union([wrapperContext, z.literal(value)], {errorMap: () => ({ message: validationMessage})});
+            wrapperContext = z.union([wrapperContext, z.literal(value)], {
+                errorMap: () => ({ message: validationMessage })
+            });
         });
     }
 
@@ -105,10 +111,9 @@ export const floatValidator = (fieldName: string, required = false, positive = f
     });
 };
 
-export const positiveIntValidator = (fieldName: string, inputProps : rangeValidatorProps = { }) => {
-    return numberValidator(fieldName,
-        {
-            min: 1,
-            ...inputProps
-        });
+export const positiveIntValidator = (fieldName: string, inputProps: rangeValidatorProps = {}) => {
+    return numberValidator(fieldName, {
+        min: 1,
+        ...inputProps
+    });
 };

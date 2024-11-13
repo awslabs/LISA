@@ -27,7 +27,7 @@ const rootReducer: ReducersMapObject = {
     notification: notificationReducer,
     modal: modalReducer,
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
-    [configurationApi.reducerPath]: configurationApi.reducer,
+    [configurationApi.reducerPath]: configurationApi.reducer
 };
 
 export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware];

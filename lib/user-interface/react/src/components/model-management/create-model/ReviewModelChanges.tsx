@@ -21,27 +21,34 @@ import Container from '@cloudscape-design/components/container';
 import { SerializedError } from '@reduxjs/toolkit';
 
 export type ReviewModelChangesProps = {
-    jsonDiff: object,
-    error?: SerializedError
+    jsonDiff: object;
+    error?: SerializedError;
 };
 
-export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactElement {
+export function ReviewModelChanges(props: ReviewModelChangesProps): ReactElement {
     /**
      * Converts a JSON object into an outline structure represented as React nodes.
      *
      * @param {object} [json={}] - The JSON object to be converted.
      * @returns {React.ReactNode[]} - An array of React nodes representing the outline structure.
      */
-    function jsonToOutline (json = {}) {
+    function jsonToOutline(json = {}) {
         const output: React.ReactNode[] = [];
 
         for (const key in json) {
             const value = json[key];
-            output.push((<li><p><strong>{_.startCase(key)}</strong>{_.isPlainObject(value) ? '' : `: ${value}`}</p></li>));
+            output.push(
+                <li>
+                    <p>
+                        <strong>{_.startCase(key)}</strong>
+                        {_.isPlainObject(value) ? '' : `: ${value}`}
+                    </p>
+                </li>
+            );
 
             if (_.isPlainObject(value)) {
                 const recursiveJson = jsonToOutline(value); // recursively call
-                output.push((recursiveJson));
+                output.push(recursiveJson);
             }
         }
         return <ul>{output}</ul>;
@@ -55,13 +62,11 @@ export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactEleme
                 </TextContent>
             </Container>
 
-            { props?.error && <Alert
-                type='error'
-                statusIconAriaLabel='Error'
-                header={props?.error?.name || 'Model Error'}
-            >
-                { props?.error?.message }
-            </Alert>}
+            {props?.error && (
+                <Alert type="error" statusIconAriaLabel="Error" header={props?.error?.name || 'Model Error'}>
+                    {props?.error?.message}
+                </Alert>
+            )}
         </SpaceBetween>
     );
 }

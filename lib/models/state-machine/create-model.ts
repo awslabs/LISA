@@ -14,15 +14,7 @@
  limitations under the License.
  */
 
-import {
-    Choice,
-    Condition,
-    DefinitionBody,
-    Fail,
-    StateMachine,
-    Succeed,
-    Wait,
-} from 'aws-cdk-lib/aws-stepfunctions';
+import { Choice, Condition, DefinitionBody, Fail, StateMachine, Succeed, Wait } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
@@ -38,16 +30,16 @@ import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 type CreateModelStateMachineProps = BaseProps & {
-    modelTable: ITable,
+    modelTable: ITable;
     lambdaLayers: ILayerVersion[];
     dockerImageBuilderFnArn: string;
     ecsModelDeployerFnArn: string;
     ecsModelImageRepository: Repository;
-    role?: IRole,
-    vpc?: Vpc,
+    role?: IRole;
+    vpc?: Vpc;
     securityGroups?: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
-    managementKeyName: string
+    managementKeyName: string;
 };
 
 /**
@@ -56,10 +48,22 @@ type CreateModelStateMachineProps = BaseProps & {
 export class CreateModelStateMachine extends Construct {
     readonly stateMachineArn: string;
 
-    constructor (scope: Construct, id: string, props: CreateModelStateMachineProps) {
+    constructor(scope: Construct, id: string, props: CreateModelStateMachineProps) {
         super(scope, id);
 
-        const {config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName} = props;
+        const {
+            config,
+            modelTable,
+            lambdaLayers,
+            dockerImageBuilderFnArn,
+            ecsModelDeployerFnArn,
+            ecsModelImageRepository,
+            role,
+            vpc,
+            securityGroups,
+            restApiContainerEndpointPs,
+            managementKeyName
+        } = props;
 
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
@@ -70,7 +74,7 @@ export class CreateModelStateMachine extends Construct {
             MODEL_TABLE_NAME: modelTable.tableName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? ''
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
@@ -78,7 +82,7 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'SetModelToCreatingDLQ', {
                     queueName: 'SetModelToCreatingDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
@@ -91,9 +95,9 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const createModelInfraChoice = new Choice(this, 'CreateModelInfraChoice');
@@ -103,9 +107,9 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'StartCopyDockerImageDLQ', {
                     queueName: 'StartCopyDockerImageDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
-                runtime:  Runtime.PYTHON_3_10,
+                runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -116,9 +120,9 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const pollDockerImageAvailable = new LambdaInvoke(this, 'PollDockerImageAvailable', {
@@ -126,7 +130,7 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'PollDockerImageAvailableDLQ', {
                     queueName: 'PollDockerImageAvailableDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
@@ -139,9 +143,9 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
@@ -149,7 +153,7 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleFailureDLQ', {
                     queueName: 'HandleFailureDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_failure',
@@ -162,15 +166,15 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const pollDockerImageChoice = new Choice(this, 'PollDockerImageChoice');
 
         const waitBeforePollingDockerImage = new Wait(this, 'WaitBeforePollingDockerImage', {
-            time: POLLING_TIMEOUT,
+            time: POLLING_TIMEOUT
         });
 
         const startCreateStack = new LambdaInvoke(this, 'StartCreateStack', {
@@ -178,7 +182,7 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'StartCreateStackDLQ', {
                     queueName: 'StartCreateStackDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
@@ -191,9 +195,9 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const pollCreateStack = new LambdaInvoke(this, 'PollCreateStack', {
@@ -201,7 +205,7 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'PollCreateStackDLQ', {
                     queueName: 'PollCreateStackDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
@@ -214,15 +218,15 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const pollCreateStackChoice = new Choice(this, 'PollCreateStackChoice');
 
         const waitBeforePollingCreateStack = new Wait(this, 'WaitBeforePollingCreateStack', {
-            time: POLLING_TIMEOUT,
+            time: POLLING_TIMEOUT
         });
 
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
@@ -230,7 +234,7 @@ export class CreateModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'AddModelToLitellmDLQ', {
                     queueName: 'AddModelToLitellmDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
@@ -243,9 +247,9 @@ export class CreateModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const successState = new Succeed(this, 'CreateSuccess');
@@ -260,8 +264,9 @@ export class CreateModelStateMachine extends Construct {
         // poll ECR image copy status loop
         startCopyDockerImage.next(pollDockerImageAvailable);
         pollDockerImageAvailable.next(pollDockerImageChoice);
-        pollDockerImageAvailable.addCatch(handleFailureState, {  // fail if exception thrown from code
-            errors: ['MaxPollsExceededException'],
+        pollDockerImageAvailable.addCatch(handleFailureState, {
+            // fail if exception thrown from code
+            errors: ['MaxPollsExceededException']
         });
         pollDockerImageChoice
             .when(Condition.booleanEquals('$.continue_polling_docker', true), waitBeforePollingDockerImage)
@@ -270,15 +275,14 @@ export class CreateModelStateMachine extends Construct {
 
         // poll CloudFormation stack status loop
         startCreateStack.next(pollCreateStack);
-        startCreateStack.addCatch(handleFailureState, {  // fail if CDK failed to create model stack
+        startCreateStack.addCatch(handleFailureState, {
+            // fail if CDK failed to create model stack
             errors: ['StackFailedToCreateException']
         });
         pollCreateStack.next(pollCreateStackChoice);
-        pollCreateStack.addCatch(handleFailureState, {  // fail if model failed or failed to create in time
-            errors: [
-                'MaxPollsExceededException',
-                'UnexpectedCloudFormationStateException',
-            ],
+        pollCreateStack.addCatch(handleFailureState, {
+            // fail if model failed or failed to create in time
+            errors: ['MaxPollsExceededException', 'UnexpectedCloudFormationStateException']
         });
         pollCreateStackChoice
             .when(Condition.booleanEquals('$.continue_polling_stack', true), waitBeforePollingCreateStack)
@@ -290,7 +294,7 @@ export class CreateModelStateMachine extends Construct {
         addModelToLitellm.next(successState);
 
         const stateMachine = new StateMachine(this, 'CreateModelSM', {
-            definitionBody: DefinitionBody.fromChainable(setModelToCreating),
+            definitionBody: DefinitionBody.fromChainable(setModelToCreating)
         });
 
         this.stateMachineArn = stateMachine.stateMachineArn;

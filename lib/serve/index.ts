@@ -49,11 +49,11 @@ export class LisaServeApplicationStack extends Stack {
     public readonly endpointUrl: StringParameter;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaStackProps} props - Properties for the Stack.
-   */
-    constructor (scope: Construct, id: string, props: LisaStackProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaStackProps} props - Properties for the Stack.
+     */
+    constructor(scope: Construct, id: string, props: LisaStackProps) {
         super(scope, id, props);
 
         const { config, vpc } = props;
@@ -65,11 +65,11 @@ export class LisaServeApplicationStack extends Stack {
                 tableName: `${config.deploymentName}-LISAApiTokenTable`,
                 partitionKey: {
                     name: 'token',
-                    type: AttributeType.STRING,
+                    type: AttributeType.STRING
                 },
                 billingMode: BillingMode.PAY_PER_REQUEST,
                 encryption: TableEncryption.AWS_MANAGED,
-                removalPolicy: config.removalPolicy,
+                removalPolicy: config.removalPolicy
             });
         }
 
@@ -80,7 +80,7 @@ export class LisaServeApplicationStack extends Stack {
             resourcePath: path.join(HERE, 'rest-api'),
             securityGroup: vpc.securityGroups.restApiAlbSg,
             tokenTable: tokenTable,
-            vpc: vpc,
+            vpc: vpc
         });
 
         const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
@@ -89,7 +89,7 @@ export class LisaServeApplicationStack extends Stack {
             generateSecretString: {
                 excludePunctuation: true,
                 passwordLength: 16
-            },
+            }
         });
 
         // const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -134,10 +134,14 @@ export class LisaServeApplicationStack extends Stack {
         //     description: 'The ARN of the secret',
         // });
 
-        const managementKeySecretNameStringParameter = new StringParameter(this, createCdkId(['ManagementKeySecretName']), {
-            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
-            stringValue: managementKeySecret.secretName,
-        });
+        const managementKeySecretNameStringParameter = new StringParameter(
+            this,
+            createCdkId(['ManagementKeySecretName']),
+            {
+                parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
+                stringValue: managementKeySecret.secretName
+            }
+        );
         restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
@@ -145,21 +149,26 @@ export class LisaServeApplicationStack extends Stack {
 
         const litellmDbSg = new SecurityGroup(this, 'LISA-LiteLLMScalingSg', {
             vpc: vpc.vpc,
-            description: 'Security group for LiteLLM dynamic model management database.',
+            description: 'Security group for LiteLLM dynamic model management database.'
         });
 
-        const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-        subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
-            getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
-                if (cidrRange){
-                    litellmDbSg.connections.allowFrom(
-                        Peer.ipv4(cidrRange),
-                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                        'Allow REST API private subnets to communicate with LiteLLM database',
-                    );
-                }
+        const subNets =
+            config.subnetIds && config.vpcId
+                ? vpc.subnetSelection?.subnets
+                : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+        subNets
+            ?.filter((subnet) => !isSubnetPublic(subnet))
+            .forEach((subnet) => {
+                getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
+                    if (cidrRange) {
+                        litellmDbSg.connections.allowFrom(
+                            Peer.ipv4(cidrRange),
+                            Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                            'Allow REST API private subnets to communicate with LiteLLM database'
+                        );
+                    }
+                });
             });
-        });
 
         const username = config.restApiConfig.rdsConfig.username;
         const dbCreds = Credentials.fromGeneratedSecret(username);
@@ -173,20 +182,24 @@ export class LisaServeApplicationStack extends Stack {
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
             securityGroups: [litellmDbSg!],
-            removalPolicy: config.removalPolicy,
+            removalPolicy: config.removalPolicy
         });
 
         const litellmDbPasswordSecret = litellmDb.secret!;
-        const litellmDbConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, 'StringParameter']), {
-            parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
-            stringValue: JSON.stringify({
-                username: username,
-                passwordSecretId: litellmDbPasswordSecret.secretName,
-                dbHost: litellmDb.dbInstanceEndpointAddress,
-                dbName: config.restApiConfig.rdsConfig.dbName,
-                dbPort: config.restApiConfig.rdsConfig.dbPort,
-            }),
-        });
+        const litellmDbConnectionInfoPs = new StringParameter(
+            this,
+            createCdkId([connectionParamName, 'StringParameter']),
+            {
+                parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
+                stringValue: JSON.stringify({
+                    username: username,
+                    passwordSecretId: litellmDbPasswordSecret.secretName,
+                    dbHost: litellmDb.dbInstanceEndpointAddress,
+                    dbName: config.restApiConfig.rdsConfig.dbName,
+                    dbPort: config.restApiConfig.rdsConfig.dbPort
+                })
+            }
+        );
         litellmDbPasswordSecret.grantRead(restApi.taskRole);
         litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
         restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
@@ -195,14 +208,14 @@ export class LisaServeApplicationStack extends Stack {
         this.endpointUrl = new StringParameter(this, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/lisaServeRestApiUri`,
             stringValue: restApi.endpoint,
-            description: 'URI for LISA Serve API',
+            description: 'URI for LISA Serve API'
         });
 
         // Create Parameter Store entry with registeredModels
         this.modelsPs = new StringParameter(this, createCdkId(['RegisteredModels', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/registeredModels`,
             stringValue: JSON.stringify([]),
-            description: 'Serialized JSON of registered models data',
+            description: 'Serialized JSON of registered models data'
         });
 
         this.modelsPs.grantRead(restApi.taskRole);
@@ -215,24 +228,14 @@ export class LisaServeApplicationStack extends Stack {
             statements: [
                 new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: [
-                        'bedrock:InvokeModel',
-                        'bedrock:InvokeModelWithResponseStream',
-                    ],
-                    resources: [
-                        'arn:*:bedrock:*::foundation-model/*'
-                    ]
+                    actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+                    resources: ['arn:*:bedrock:*::foundation-model/*']
                 }),
                 new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: [
-                        'sagemaker:InvokeEndpoint',
-                        'sagemaker:InvokeEndpointWithResponseStream',
-                    ],
-                    resources: [
-                        'arn:*:sagemaker:*:*:endpoint/*'
-                    ],
-                }),
+                    actions: ['sagemaker:InvokeEndpoint', 'sagemaker:InvokeEndpointWithResponseStream'],
+                    resources: ['arn:*:sagemaker:*:*:endpoint/*']
+                })
             ]
         });
         restApi.taskRole.attachInlinePolicy(invocation_permissions);

@@ -35,11 +35,11 @@ export class RestApiGateway extends Construct {
     public readonly restApi: RestApi;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {RestApiGatewayProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: RestApiGatewayProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {RestApiGatewayProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: RestApiGatewayProps) {
         super(scope, id);
 
         const { config } = props;
@@ -47,7 +47,7 @@ export class RestApiGateway extends Construct {
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
             throttlingRateLimit: 100,
-            throttlingBurstLimit: 100,
+            throttlingBurstLimit: 100
         };
 
         this.restApi = new RestApi(this, `${id}-RestApi`, {
@@ -56,10 +56,10 @@ export class RestApiGateway extends Construct {
             deployOptions,
             defaultCorsPreflightOptions: {
                 allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: [...Cors.DEFAULT_HEADERS],
+                allowHeaders: [...Cors.DEFAULT_HEADERS]
             },
             // Support binary media types used for documentation images and fonts
-            binaryMediaTypes: ['font/*', 'image/*'],
+            binaryMediaTypes: ['font/*', 'image/*']
         });
 
         // Update

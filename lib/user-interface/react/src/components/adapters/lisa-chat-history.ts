@@ -25,31 +25,31 @@ export class LisaChatMessageHistory extends BaseChatMessageHistory {
 
     private session: LisaChatSession;
 
-    constructor (session: LisaChatSession) {
-    // eslint-disable-next-line prefer-rest-params
+    constructor(session: LisaChatSession) {
+        // eslint-disable-next-line prefer-rest-params
         super(...arguments);
         this.session = session;
     }
 
-    async getMessages (): Promise<LisaChatMessage[]> {
+    async getMessages(): Promise<LisaChatMessage[]> {
         return this.session.history;
     }
 
-    async addMessage (message: LisaChatMessage) {
+    async addMessage(message: LisaChatMessage) {
         void message;
-    // noop since messages are managed at the session level
+        // noop since messages are managed at the session level
     }
 
-    async addUserMessage (message: string): Promise<void> {
+    async addUserMessage(message: string): Promise<void> {
         void message;
-    // noop since messages are managed at the session level
+        // noop since messages are managed at the session level
     }
-    async addAIChatMessage (message: string): Promise<void> {
+    async addAIChatMessage(message: string): Promise<void> {
         void message;
-    // noop since messages are managed at the session level
+        // noop since messages are managed at the session level
     }
 
-    async clear () {
-    // noop since messages are managed at the session level
+    async clear() {
+        // noop since messages are managed at the session level
     }
 }

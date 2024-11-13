@@ -63,17 +63,17 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     type: MessageType;
     metadata?: LisaChatMessageMetadata;
 
-    constructor (fields: LisaChatMessageFields) {
+    constructor(fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
     }
 
-    static lc_name () {
+    static lc_name() {
         return 'LisaChatMessage';
     }
 
-    _getType (): MessageType {
+    _getType(): MessageType {
         return this.type;
     }
 }
@@ -145,7 +145,7 @@ export type PutSessionRequestBody = {
 export enum FileTypes {
     TEXT = 'text/plain',
     DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    PDF = 'application/pdf',
+    PDF = 'application/pdf'
 }
 
 /**
@@ -154,5 +154,5 @@ export enum FileTypes {
 export enum StatusTypes {
     LOADING = 'loading',
     SUCCESS = 'success',
-    ERROR = 'error',
+    ERROR = 'error'
 }

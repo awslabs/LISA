@@ -50,7 +50,7 @@ type SessionApiProps = {
  * API which Maintains sessions state in DynamoDB
  */
 export class SessionApi extends Construct {
-    constructor (scope: Construct, id: string, props: SessionApiProps) {
+    constructor(scope: Construct, id: string, props: SessionApiProps) {
         super(scope, id);
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -59,32 +59,32 @@ export class SessionApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'session-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`)
         );
 
         // Create DynamoDB table to handle chat sessions
         const sessionTable = new dynamodb.Table(this, 'SessionsTable', {
             partitionKey: {
                 name: 'sessionId',
-                type: dynamodb.AttributeType.STRING,
+                type: dynamodb.AttributeType.STRING
             },
             sortKey: {
                 name: 'userId',
-                type: dynamodb.AttributeType.STRING,
+                type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
-            removalPolicy: config.removalPolicy,
+            removalPolicy: config.removalPolicy
         });
         const byUserIdIndex = 'byUserId';
         sessionTable.addGlobalSecondaryIndex({
             indexName: byUserIdIndex,
-            partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+            partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING }
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
-            rootResourceId: rootResourceId,
+            rootResourceId: rootResourceId
         });
 
         // Create API Lambda functions
@@ -97,8 +97,8 @@ export class SessionApi extends Construct {
                 method: 'GET',
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex
+                }
             },
             {
                 name: 'get_session',
@@ -108,8 +108,8 @@ export class SessionApi extends Construct {
                 method: 'GET',
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex
+                }
             },
             {
                 name: 'delete_session',
@@ -119,8 +119,8 @@ export class SessionApi extends Construct {
                 method: 'DELETE',
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex
+                }
             },
             {
                 name: 'delete_user_sessions',
@@ -130,8 +130,8 @@ export class SessionApi extends Construct {
                 method: 'DELETE',
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex
+                }
             },
             {
                 name: 'put_session',
@@ -141,9 +141,9 @@ export class SessionApi extends Construct {
                 method: 'PUT',
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
-            },
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex
+                }
+            }
         ];
 
         const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'SessionApi', sessionTable.tableArn);
@@ -159,7 +159,7 @@ export class SessionApi extends Construct {
                 Runtime.PYTHON_3_10,
                 lambdaRole,
                 vpc,
-                securityGroups,
+                securityGroups
             );
             if (f.method === 'POST' || f.method === 'PUT') {
                 sessionTable.grantWriteData(lambdaFunction);

@@ -42,10 +42,10 @@ type CoreStackProps = CustomCoreStackProps & cdk.StackProps;
  */
 export class CoreStack extends cdk.Stack {
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   */
-    constructor (scope: Construct, id: string, props: CoreStackProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     */
+    constructor(scope: Construct, id: string, props: CoreStackProps) {
         super(scope, id, props);
         const { config } = props;
 
@@ -57,7 +57,7 @@ export class CoreStack extends cdk.Stack {
             description: 'Common requirements for REST API Lambdas',
             architecture: ARCHITECTURE,
             autoUpgrade: true,
-            assetPath: config.lambdaLayerAssets?.commonLayerPath,
+            assetPath: config.lambdaLayerAssets?.commonLayerPath
         });
 
         // Build fastapi Lambda layer
@@ -67,7 +67,7 @@ export class CoreStack extends cdk.Stack {
             description: 'FastAPI requirements for REST API Lambdas',
             architecture: ARCHITECTURE,
             autoUpgrade: true,
-            assetPath: config.lambdaLayerAssets?.fastapiLayerPath,
+            assetPath: config.lambdaLayerAssets?.fastapiLayerPath
         });
 
         // Build authorizer Lambda layer
@@ -77,25 +77,25 @@ export class CoreStack extends cdk.Stack {
             description: 'API authorization dependencies for REST API',
             architecture: ARCHITECTURE,
             autoUpgrade: true,
-            assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
+            assetPath: config.lambdaLayerAssets?.authorizerLayerPath
         });
 
         new StringParameter(this, 'LisaCommonLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/common`,
             stringValue: commonLambdaLayer.layer.layerVersionArn,
-            description: 'Layer Version ARN for LISA Common Lambda Layer',
+            description: 'Layer Version ARN for LISA Common Lambda Layer'
         });
 
         new StringParameter(this, 'LisaFastapiLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/fastapi`,
             stringValue: fastapiLambdaLayer.layer.layerVersionArn,
-            description: 'Layer Version ARN for LISA FastAPI Lambda Layer',
+            description: 'Layer Version ARN for LISA FastAPI Lambda Layer'
         });
 
         new StringParameter(this, 'LisaAuthorizerLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
             stringValue: authorizerLambdaLayer.layer.layerVersionArn,
-            description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
+            description: 'Layer Version ARN for LISA Authorizer Lambda Layer'
         });
     }
 }

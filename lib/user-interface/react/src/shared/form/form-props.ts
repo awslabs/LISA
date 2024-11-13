@@ -18,7 +18,7 @@ export enum ModifyMethod {
     Default,
     Unset,
     Set,
-    Merge,
+    Merge
 }
 
 export type FormProps<R> = {

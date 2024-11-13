@@ -14,16 +14,9 @@
  limitations under the License.
  */
 
-import {
-    Container,
-    Grid,
-    Header,
-    SpaceBetween,
-    Toggle,
-    Box
-} from '@cloudscape-design/components';
+import { Container, Grid, Header, SpaceBetween, Toggle, Box } from '@cloudscape-design/components';
 import React from 'react';
-import {SetFieldsFunction} from '../../shared/validation';
+import { SetFieldsFunction } from '../../shared/validation';
 
 const configurableOperations = {
     deleteSessionHistory: 'Delete Session History',
@@ -33,38 +26,32 @@ const configurableOperations = {
     editNumOfRagDocument: 'Edit Number of RAG documents',
     editChatHistoryBuffer: 'Edit Chat History Buffer',
     uploadRagDocs: 'Upload documents to RAG',
-    uploadContextDocs: 'Upload documents to context',
+    uploadContextDocs: 'Upload documents to context'
 };
 
 export type ActivatedComponentConfigurationProps = {
     setFields: SetFieldsFunction;
-    enabledComponents: {[key: string]: boolean};
+    enabledComponents: { [key: string]: boolean };
 };
 
-export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
+export function ActivatedUserComponents(props: ActivatedComponentConfigurationProps) {
     return (
-        <Container
-            header={
-                <Header variant='h2'>
-                    Activated Chat UI Components
-                </Header>
-            }>
-            <SpaceBetween direction='vertical' size='m'>
-                <Grid gridDefinition={Object.keys(configurableOperations).map(() => ({colspan: 3}))}>
+        <Container header={<Header variant="h2">Activated Chat UI Components</Header>}>
+            <SpaceBetween direction="vertical" size="m">
+                <Grid gridDefinition={Object.keys(configurableOperations).map(() => ({ colspan: 3 }))}>
                     {Object.keys(configurableOperations).map((operation) => {
                         return (
-                            <Box textAlign='center'>
-                                <SpaceBetween alignItems='center' size='xs'>
+                            <Box textAlign="center">
+                                <SpaceBetween alignItems="center" size="xs">
                                     <Toggle
-                                        onChange={({detail}) => {
+                                        onChange={({ detail }) => {
                                             const updatedField = {};
                                             updatedField[`enabledComponents.${operation}`] = detail.checked;
                                             props.setFields(updatedField);
                                         }}
                                         checked={props.enabledComponents[operation]}
                                         data-cy={`Toggle-${operation}`}
-                                    >
-                                    </Toggle>
+                                    ></Toggle>
                                 </SpaceBetween>
                                 <p>{configurableOperations[operation]}</p>
                             </Box>

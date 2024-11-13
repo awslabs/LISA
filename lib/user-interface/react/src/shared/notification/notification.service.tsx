@@ -21,28 +21,28 @@ import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { NotificationProp } from './notifications.props';
 import React from 'react';
 
-function NotificationService (dispatch: ThunkDispatch<any, any, Action>): any {
-    function generateNotification (
+function NotificationService(dispatch: ThunkDispatch<any, any, Action>): any {
+    function generateNotification(
         header: string,
         type: FlashbarProps.Type,
         id: string = v4(),
         content: React.ReactNode = null,
-        dismissible = true,
+        dismissible = true
     ): string {
         dispatch(clearNotification(id));
         dispatch(addNotification({ header: header, type: type, id: id, content: content, dismissible: dismissible }));
         return id;
     }
 
-    function createNotification (props: NotificationProp): FlashbarProps.MessageDefinition {
+    function createNotification(props: NotificationProp): FlashbarProps.MessageDefinition {
         return {
             ...props,
             onDismiss: () => dispatch(clearNotification(props.id)),
-            dismissLabel: 'Dismiss notification',
+            dismissLabel: 'Dismiss notification'
         } as FlashbarProps.MessageDefinition;
     }
 
-    function showActionNotification (action: string, successMessage: string, actionResult: any): void {
+    function showActionNotification(action: string, successMessage: string, actionResult: any): void {
         if (actionResult.type.endsWith('/fulfilled')) {
             generateNotification(successMessage || `Successfully ${action}.`, 'success');
         } else {
@@ -53,7 +53,7 @@ function NotificationService (dispatch: ThunkDispatch<any, any, Action>): any {
     return {
         generateNotification: generateNotification,
         createNotification: createNotification,
-        showActionNotification: showActionNotification,
+        showActionNotification: showActionNotification
     };
 }
 

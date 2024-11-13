@@ -31,7 +31,7 @@ export type ECSModelDeployerProps = {
 
 export class ECSModelDeployer extends Construct {
     readonly ecsModelDeployerFn: IFunction;
-    constructor (scope: Construct, id: string, props: ECSModelDeployerProps) {
+    constructor(scope: Construct, id: string, props: ECSModelDeployerProps) {
         super(scope, id);
         const stackName = Stack.of(scope).stackName;
         const role = new Role(this, createCdkId([stackName, 'ecs-model-deployer-role']), {
@@ -51,15 +51,15 @@ export class ECSModelDeployer extends Construct {
         role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
 
         const stripped_config = {
-            'appName': props.config.appName,
-            'deploymentName': props.config.deploymentName,
-            'region': props.config.region,
-            'deploymentStage': props.config.deploymentStage,
-            'removalPolicy': props.config.removalPolicy,
-            's3BucketModels': props.config.s3BucketModels,
-            'mountS3DebUrl': props.config.mountS3DebUrl,
-            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
-            'subnetIds': props.config.subnetIds
+            appName: props.config.appName,
+            deploymentName: props.config.deploymentName,
+            region: props.config.region,
+            deploymentStage: props.config.deploymentStage,
+            removalPolicy: props.config.removalPolicy,
+            s3BucketModels: props.config.s3BucketModels,
+            mountS3DebUrl: props.config.mountS3DebUrl,
+            permissionsBoundaryAspect: props.config.permissionsBoundaryAspect,
+            subnetIds: props.config.subnetIds
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
@@ -71,12 +71,12 @@ export class ECSModelDeployer extends Construct {
             memorySize: 1024,
             role: role,
             environment: {
-                'LISA_VPC_ID': props.vpc?.vpc.vpcId,
-                'LISA_SECURITY_GROUP_ID': props.securityGroupId,
-                'LISA_CONFIG': JSON.stringify(stripped_config)
+                LISA_VPC_ID: props.vpc?.vpc.vpcId,
+                LISA_SECURITY_GROUP_ID: props.securityGroupId,
+                LISA_CONFIG: JSON.stringify(stripped_config)
             },
             vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
-            vpcSubnets: props.vpc?.subnetSelection,
+            vpcSubnets: props.vpc?.subnetSelection
         });
     }
 }

@@ -14,17 +14,9 @@
  limitations under the License.
  */
 
-
 import { Construct } from 'constructs';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import {
-    Choice,
-    Condition,
-    DefinitionBody,
-    StateMachine,
-    Succeed,
-    Wait,
-} from 'aws-cdk-lib/aws-stepfunctions';
+import { Choice, Condition, DefinitionBody, StateMachine, Succeed, Wait } from 'aws-cdk-lib/aws-stepfunctions';
 import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { BaseProps } from '../../schema';
 import { IRole } from 'aws-cdk-lib/aws-iam';
@@ -36,15 +28,14 @@ import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 type DeleteModelStateMachineProps = BaseProps & {
-    modelTable: ITable,
-    lambdaLayers: ILayerVersion[],
-    role?: IRole,
-    vpc?: Vpc,
+    modelTable: ITable;
+    lambdaLayers: ILayerVersion[];
+    role?: IRole;
+    vpc?: Vpc;
     securityGroups?: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
 };
-
 
 /**
  * State Machine for deleting models.
@@ -52,17 +43,27 @@ type DeleteModelStateMachineProps = BaseProps & {
 export class DeleteModelStateMachine extends Construct {
     readonly stateMachineArn: string;
 
-    constructor (scope: Construct, id: string, props: DeleteModelStateMachineProps) {
+    constructor(scope: Construct, id: string, props: DeleteModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName } = props;
+        const {
+            config,
+            modelTable,
+            lambdaLayers,
+            role,
+            vpc,
+            securityGroups,
+            restApiContainerEndpointPs,
+            managementKeyName
+        } = props;
 
-        const environment = {  // Environment variables to set in all Lambda functions
+        const environment = {
+            // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? ''
         };
 
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.
@@ -72,7 +73,7 @@ export class DeleteModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'SetModelToDeletingDLQ', {
                     queueName: 'SetModelToDeletingDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
@@ -85,9 +86,9 @@ export class DeleteModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const deleteFromLitellm = new LambdaInvoke(this, 'DeleteFromLitellm', {
@@ -95,7 +96,7 @@ export class DeleteModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'DeleteFromLitellmDLQ', {
                     queueName: 'DeleteFromLitellmDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
@@ -108,9 +109,9 @@ export class DeleteModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const deleteStack = new LambdaInvoke(this, 'DeleteStack', {
@@ -118,7 +119,7 @@ export class DeleteModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'DeleteStackDLQ', {
                     queueName: 'DeleteStackDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
@@ -131,9 +132,9 @@ export class DeleteModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const monitorDeleteStack = new LambdaInvoke(this, 'MonitorDeleteStack', {
@@ -141,7 +142,7 @@ export class DeleteModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'MonitorDeleteStackDLQ', {
                     queueName: 'MonitorDeleteStackDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
@@ -154,9 +155,9 @@ export class DeleteModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const deleteFromDdb = new LambdaInvoke(this, 'DeleteFromDdb', {
@@ -164,7 +165,7 @@ export class DeleteModelStateMachine extends Construct {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'DeleteFromDdbDLQ', {
                     queueName: 'DeleteFromDdbDLQ',
-                    enforceSSL: true,
+                    enforceSSL: true
                 }),
                 runtime: Runtime.PYTHON_3_10,
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
@@ -177,9 +178,9 @@ export class DeleteModelStateMachine extends Construct {
                 vpcSubnets: vpc?.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
+                environment: environment
             }),
-            outputPath: OUTPUT_PATH,
+            outputPath: OUTPUT_PATH
         });
 
         const successState = new Succeed(this, 'DeleteSuccess');
@@ -187,16 +188,14 @@ export class DeleteModelStateMachine extends Construct {
         const deleteStackChoice = new Choice(this, 'DeleteStackChoice');
         const pollDeleteStackChoice = new Choice(this, 'PollDeleteStackChoice');
         const waitBeforePollingStackStatus = new Wait(this, 'WaitBeforePollDeleteStack', {
-            time: POLLING_TIMEOUT,
+            time: POLLING_TIMEOUT
         });
 
         // State Machine definition
         setModelToDeleting.next(deleteFromLitellm);
         deleteFromLitellm.next(deleteStackChoice);
 
-        deleteStackChoice
-            .when(Condition.isNotNull('$.cloudformation_stack_arn'), deleteStack)
-            .otherwise(deleteFromDdb);
+        deleteStackChoice.when(Condition.isNotNull('$.cloudformation_stack_arn'), deleteStack).otherwise(deleteFromDdb);
 
         deleteStack.next(monitorDeleteStack);
         monitorDeleteStack.next(pollDeleteStackChoice);
@@ -207,11 +206,10 @@ export class DeleteModelStateMachine extends Construct {
             .when(Condition.booleanEquals('$.continue_polling', true), waitBeforePollingStackStatus)
             .otherwise(deleteFromDdb);
 
-
         deleteFromDdb.next(successState);
 
         const stateMachine = new StateMachine(this, 'DeleteModelSM', {
-            definitionBody: DefinitionBody.fromChainable(setModelToDeleting),
+            definitionBody: DefinitionBody.fromChainable(setModelToDeleting)
         });
 
         this.stateMachineArn = stateMachine.stateMachineArn;

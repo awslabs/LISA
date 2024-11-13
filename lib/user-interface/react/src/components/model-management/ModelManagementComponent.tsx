@@ -23,13 +23,15 @@ import {
     CARD_DEFINITIONS,
     DEFAULT_PREFERENCES,
     PAGE_SIZE_OPTIONS,
-    VISIBLE_CONTENT_OPTIONS,
+    VISIBLE_CONTENT_OPTIONS
 } from './ModelManagementUtils';
 import { ModelActions } from './ModelManagementActions';
 import { IModel } from '../../shared/model/model-management.model';
 
-export function ModelManagementComponent () : ReactElement {
-    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: true});
+export function ModelManagementComponent(): ReactElement {
+    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {
+        refetchOnMountOrArgChange: true
+    });
     const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);
@@ -43,18 +45,32 @@ export function ModelManagementComponent () : ReactElement {
 
     useEffect(() => {
         let newPageCount = 0;
-        if (searchText){
-            const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
-            setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
+        if (searchText) {
+            const filteredModels = allModels.filter((model) =>
+                JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase())
+            );
+            setMatchedModels(
+                filteredModels.slice(
+                    preferences.pageSize * (currentPageIndex - 1),
+                    preferences.pageSize * currentPageIndex
+                )
+            );
             newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
             setCount(filteredModels.length.toString());
         } else {
-            setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
-            newPageCount = Math.ceil(allModels ? (allModels.length / preferences.pageSize) : 1);
+            setMatchedModels(
+                allModels
+                    ? allModels.slice(
+                          preferences.pageSize * (currentPageIndex - 1),
+                          preferences.pageSize * currentPageIndex
+                      )
+                    : []
+            );
+            newPageCount = Math.ceil(allModels ? allModels.length / preferences.pageSize : 1);
             setCount(allModels ? allModels.length.toString() : '0');
         }
 
-        if (newPageCount < numberOfPages){
+        if (newPageCount < numberOfPages) {
             setCurrentPageIndex(1);
         }
         setNumberOfPages(newPageCount);
@@ -62,26 +78,33 @@ export function ModelManagementComponent () : ReactElement {
 
     return (
         <>
-            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems}/>
+            <CreateModelModal
+                visible={newModelModalVisible}
+                setVisible={setNewModelModelVisible}
+                isEdit={isEdit}
+                setIsEdit={setEdit}
+                selectedItems={selectedItems}
+                setSelectedItems={setSelectedItems}
+            />
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
                 ariaLabels={{
                     itemSelectionLabel: (e, t) => `select ${t.modelName}`,
-                    selectionGroupLabel: 'Model selection',
+                    selectionGroupLabel: 'Model selection'
                 }}
                 cardDefinition={CARD_DEFINITIONS}
                 visibleSections={preferences.visibleContent}
-                loadingText='Loading models'
+                loadingText="Loading models"
                 items={matchedModels}
-                selectionType='single' // single | multi
-                trackBy='modelId'
-                variant='full-page'
+                selectionType="single" // single | multi
+                trackBy="modelId"
+                variant="full-page"
                 loading={fetchingModels}
                 cardsPerRow={[{ cards: 3 }]}
                 header={
                     <Header
-                        counter={`(${count})` ?? ''}
+                        counter={`(${count})`}
                         actions={
                             <ModelActions
                                 selectedItems={selectedItems}
@@ -94,33 +117,43 @@ export function ModelManagementComponent () : ReactElement {
                         Models
                     </Header>
                 }
-                filter={<TextFilter filteringText={searchText}
-                    filteringPlaceholder='Find models'
-                    filteringAriaLabel='Find models'
-                    onChange={({ detail }) => {
-                        setSearchText(detail.filteringText);
-                    }} />}
-                pagination={<Pagination currentPageIndex={currentPageIndex} onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)} pagesCount={numberOfPages} />}
+                filter={
+                    <TextFilter
+                        filteringText={searchText}
+                        filteringPlaceholder="Find models"
+                        filteringAriaLabel="Find models"
+                        onChange={({ detail }) => {
+                            setSearchText(detail.filteringText);
+                        }}
+                    />
+                }
+                pagination={
+                    <Pagination
+                        currentPageIndex={currentPageIndex}
+                        onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
+                        pagesCount={numberOfPages}
+                    />
+                }
                 preferences={
                     <CollectionPreferences
-                        title='Preferences'
-                        confirmLabel='Confirm'
-                        cancelLabel='Cancel'
+                        title="Preferences"
+                        confirmLabel="Confirm"
+                        cancelLabel="Cancel"
                         preferences={preferences}
                         onConfirm={({ detail }) => setPreferences(detail)}
                         pageSizePreference={{
                             title: 'Page size',
-                            options: PAGE_SIZE_OPTIONS,
+                            options: PAGE_SIZE_OPTIONS
                         }}
                         visibleContentPreference={{
                             title: 'Select visible columns',
-                            options: VISIBLE_CONTENT_OPTIONS,
+                            options: VISIBLE_CONTENT_OPTIONS
                         }}
                     />
                 }
                 empty={
-                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-                        <SpaceBetween size='m'>
+                    <Box margin={{ vertical: 'xs' }} textAlign="center" color="inherit">
+                        <SpaceBetween size="m">
                             <b>No models</b>
                         </SpaceBetween>
                     </Box>

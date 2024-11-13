@@ -14,16 +14,7 @@
  limitations under the License.
  */
 
-import {
-    Box,
-    Container,
-    FormField,
-    Grid,
-    Header,
-    Input,
-    SpaceBetween,
-    Toggle
-} from '@cloudscape-design/components';
+import { Box, Container, FormField, Grid, Header, Input, SpaceBetween, Toggle } from '@cloudscape-design/components';
 import React from 'react';
 import { SetFieldsFunction, TouchFieldsFunction } from '../../shared/validation';
 
@@ -37,35 +28,29 @@ export type SystemBannerConfigurationProps = {
     errors: any;
 };
 
-export function SystemBannerConfiguration (props: SystemBannerConfigurationProps) {
+export function SystemBannerConfiguration(props: SystemBannerConfigurationProps) {
     return (
-        <Container
-            header={
-                <Header variant='h2'>
-                    System Banner
-                </Header>
-            }>
-            <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{colspan: 4}, {colspan: 4}, {colspan: 4}]}>
-                    <Box textAlign='center'>
-                        <SpaceBetween alignItems='center' size='xs'>
+        <Container header={<Header variant="h2">System Banner</Header>}>
+            <SpaceBetween direction="vertical" size="l">
+                <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
+                    <Box textAlign="center">
+                        <SpaceBetween alignItems="center" size="xs">
                             <Toggle
-                                onChange={({detail}) => {
-                                    props.setFields({'systemBanner.isEnabled': detail.checked});
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'systemBanner.isEnabled': detail.checked });
                                 }}
                                 checked={props.isEnabled!}
-                            >
-                            </Toggle>
+                            ></Toggle>
                         </SpaceBetween>
                         <p>Activate System Banner</p>
                     </Box>
                     <FormField>
-                        <Box textAlign='center'>
-                            <SpaceBetween alignItems='center' size='xs'>
+                        <Box textAlign="center">
+                            <SpaceBetween alignItems="center" size="xs">
                                 <input
-                                    type='color'
+                                    type="color"
                                     onInput={(event) =>
-                                        props.setFields({'systemBanner.textColor': event.target.value})
+                                        props.setFields({ 'systemBanner.textColor': event.target.value })
                                     }
                                     value={props.textColor}
                                     disabled={!props.isEnabled}
@@ -80,12 +65,12 @@ export function SystemBannerConfiguration (props: SystemBannerConfigurationProps
                         </Box>
                     </FormField>
                     <FormField>
-                        <Box textAlign='center'>
-                            <SpaceBetween alignItems='center' size='xs'>
+                        <Box textAlign="center">
+                            <SpaceBetween alignItems="center" size="xs">
                                 <input
-                                    type='color'
+                                    type="color"
                                     onInput={(event) =>
-                                        props.setFields({'systemBanner.backgroundColor': event.target.value})
+                                        props.setFields({ 'systemBanner.backgroundColor': event.target.value })
                                     }
                                     value={props.backgroundColor}
                                     disabled={!props.isEnabled}
@@ -101,17 +86,17 @@ export function SystemBannerConfiguration (props: SystemBannerConfigurationProps
                     </FormField>
                 </Grid>
                 <FormField
-                    label='Banner Text'
+                    label="Banner Text"
                     errorText={props.errors?.systemBanner?.text}
-                    constraintText='Must have at least one character.'
+                    constraintText="Must have at least one character."
                 >
                     <Input
-                        onChange={({detail}) => {
-                            props.setFields({'systemBanner.text': detail.value});
+                        onChange={({ detail }) => {
+                            props.setFields({ 'systemBanner.text': detail.value });
                         }}
                         onBlur={() => props.touchFields(['systemBanner.text'])}
                         value={props.text}
-                        placeholder='Enter system banner text'
+                        placeholder="Enter system banner text"
                         disabled={!props.isEnabled}
                     />
                 </FormField>

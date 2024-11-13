@@ -26,7 +26,8 @@ import {
     Port,
     SecurityGroup,
     SubnetType,
-    Subnet, SubnetSelection
+    Subnet,
+    SubnetSelection
 } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
@@ -53,10 +54,10 @@ export class Vpc extends Construct {
     public readonly subnetSelection?: SubnetSelection;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   */
-    constructor (scope: Construct, id: string, props: VpcProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     */
+    constructor(scope: Construct, id: string, props: VpcProps) {
         super(scope, id);
         const { config } = props;
 
@@ -64,25 +65,23 @@ export class Vpc extends Construct {
         if (config.vpcId) {
             // Imports VPC for use by application if supplied, else creates a VPC.
             vpc = ec2Vpc.fromLookup(this, 'imported-vpc', {
-                vpcId: config.vpcId,
+                vpcId: config.vpcId
             });
 
             // Checks if SubnetIds are provided in the config, if so we import them for use.
             // A VPC must be supplied if Subnets are being used.
             if (config.subnetIds && config.subnetIds.length > 0) {
                 this.subnetSelection = {
-                    subnets: props.config.subnetIds?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet))
+                    subnets: props.config.subnetIds?.map((subnet, index) =>
+                        Subnet.fromSubnetId(this, index.toString(), subnet)
+                    )
                 };
 
-                this.subnetGroup = new SubnetGroup(
-                    this,
-                    createCdkId([config.deploymentName, 'Imported-Subnets']),
-                    {
-                        vpc: vpc,
-                        description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
-                        vpcSubnets: this.subnetSelection,
-                    }
-                );
+                this.subnetGroup = new SubnetGroup(this, createCdkId([config.deploymentName, 'Imported-Subnets']), {
+                    vpc: vpc,
+                    description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
+                    vpcSubnets: this.subnetSelection
+                });
             }
         } else {
             // Create VPC
@@ -96,30 +95,30 @@ export class Vpc extends Construct {
                     {
                         subnetType: SubnetType.PUBLIC,
                         name: 'public',
-                        cidrMask: 26,
+                        cidrMask: 26
                     },
                     {
                         subnetType: SubnetType.PRIVATE_ISOLATED,
                         name: 'privateIsolated',
-                        cidrMask: 26,
+                        cidrMask: 26
                     },
                     {
                         subnetType: SubnetType.PRIVATE_WITH_EGRESS,
                         name: 'private',
-                        cidrMask: 26,
-                    },
-                ],
+                        cidrMask: 26
+                    }
+                ]
             });
 
             // VPC endpoint for S3
             vpc.addGatewayEndpoint('S3GatewayEndpoint', {
-                service: GatewayVpcEndpointAwsService.S3,
+                service: GatewayVpcEndpointAwsService.S3
             });
 
             // VPC endpoint for DynamoDB
             if (!config.region.includes('iso')) {
                 vpc.addGatewayEndpoint('DynamoDBEndpoint', {
-                    service: GatewayVpcEndpointAwsService.DYNAMODB,
+                    service: GatewayVpcEndpointAwsService.DYNAMODB
                 });
             }
         }
@@ -128,17 +127,17 @@ export class Vpc extends Construct {
         const ecsModelAlbSg = new SecurityGroup(this, 'EcsModelAlbSg', {
             securityGroupName: createCdkId([config.deploymentName, 'ECS-ALB-SG']),
             vpc: vpc,
-            description: 'Security group for ECS model application load balancer',
+            description: 'Security group for ECS model application load balancer'
         });
         const restApiAlbSg = new SecurityGroup(this, 'RestApiAlbSg', {
             securityGroupName: createCdkId([config.deploymentName, 'RestAPI-ALB-SG']),
             vpc: vpc,
-            description: 'Security group for REST API application load balancer',
+            description: 'Security group for REST API application load balancer'
         });
         const lambdaSecurityGroup = new SecurityGroup(this, 'LambdaSecurityGroup', {
             securityGroupName: createCdkId([config.deploymentName, 'Lambda-SG']),
             vpc: vpc,
-            description: 'Security group for authorizer and API Lambdas',
+            description: 'Security group for authorizer and API Lambdas'
         });
 
         // Configure security group rules
@@ -158,7 +157,7 @@ export class Vpc extends Construct {
         this.securityGroups = {
             ecsModelAlbSg: ecsModelAlbSg,
             restApiAlbSg: restApiAlbSg,
-            lambdaSecurityGroup: lambdaSecurityGroup,
+            lambdaSecurityGroup: lambdaSecurityGroup
         };
 
         new CfnOutput(this, 'vpcArn', { value: vpc.vpcArn });

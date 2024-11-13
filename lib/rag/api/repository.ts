@@ -52,7 +52,7 @@ type RepositoryApiProps = {
  * API for RAG repository operations
  */
 export class RepositoryApi extends Construct {
-    constructor (scope: Construct, id: string, props: RepositoryApiProps) {
+    constructor(scope: Construct, id: string, props: RepositoryApiProps) {
         super(scope, id);
 
         const {
@@ -63,12 +63,12 @@ export class RepositoryApi extends Construct {
             restApiId,
             rootResourceId,
             securityGroups,
-            vpc,
+            vpc
         } = props;
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
-            rootResourceId: rootResourceId,
+            rootResourceId: rootResourceId
         });
 
         // Create API Lambda functions
@@ -80,8 +80,8 @@ export class RepositoryApi extends Construct {
                 path: 'repository',
                 method: 'GET',
                 environment: {
-                    ...baseEnvironment,
-                },
+                    ...baseEnvironment
+                }
             },
             {
                 name: 'purge_document',
@@ -90,8 +90,8 @@ export class RepositoryApi extends Construct {
                 path: 'repository/{repositoryId}/{documentId}',
                 method: 'DELETE',
                 environment: {
-                    ...baseEnvironment,
-                },
+                    ...baseEnvironment
+                }
             },
             {
                 name: 'ingest_documents',
@@ -101,8 +101,8 @@ export class RepositoryApi extends Construct {
                 method: 'POST',
                 timeout: Duration.minutes(15),
                 environment: {
-                    ...baseEnvironment,
-                },
+                    ...baseEnvironment
+                }
             },
             {
                 name: 'presigned_url',
@@ -111,8 +111,8 @@ export class RepositoryApi extends Construct {
                 path: 'repository/presigned-url',
                 method: 'POST',
                 environment: {
-                    ...baseEnvironment,
-                },
+                    ...baseEnvironment
+                }
             },
             {
                 name: 'similarity_search',
@@ -121,9 +121,9 @@ export class RepositoryApi extends Construct {
                 path: 'repository/{repositoryId}/similaritySearch',
                 method: 'GET',
                 environment: {
-                    ...baseEnvironment,
-                },
-            },
+                    ...baseEnvironment
+                }
+            }
         ];
         apis.forEach((f) => {
             registerAPIEndpoint(
@@ -136,7 +136,7 @@ export class RepositoryApi extends Construct {
                 Runtime.PYTHON_3_10,
                 lambdaExecutionRole,
                 vpc,
-                securityGroups,
+                securityGroups
             );
         });
     }

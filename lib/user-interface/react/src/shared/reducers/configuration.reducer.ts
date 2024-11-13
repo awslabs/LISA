@@ -26,7 +26,7 @@ export const configurationApi = createApi({
             query: (configScope) => ({
                 url: `/configuration?configScope=${configScope}`
             }),
-            providesTags:['configuration'],
+            providesTags: ['configuration']
         }),
         updateConfiguration: builder.mutation<IConfiguration, IConfiguration>({
             query: (updatedConfig) => ({
@@ -38,15 +38,15 @@ export const configurationApi = createApi({
                 // transform into SerializedError
                 return {
                     name: 'Update Configuration Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                    message:
+                        baseQueryReturnValue.data?.type === 'RequestValidationError'
+                            ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                            : baseQueryReturnValue.data.message
                 };
             },
-            invalidatesTags: ['configuration'],
-        }),
-    }),
+            invalidatesTags: ['configuration']
+        })
+    })
 });
 
-export const {
-    useGetConfigurationQuery,
-    useUpdateConfigurationMutation
-} = configurationApi;
+export const { useGetConfigurationQuery, useUpdateConfigurationMutation } = configurationApi;

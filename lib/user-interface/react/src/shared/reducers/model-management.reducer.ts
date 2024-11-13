@@ -24,17 +24,17 @@ export const modelManagementApi = createApi({
     endpoints: (builder) => ({
         getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({
-                url: '/models',
+                url: '/models'
             }),
             transformResponse: (response) => response.models,
-            providesTags:['models'],
+            providesTags: ['models']
         }),
         deleteModel: builder.mutation<IModel, string>({
             query: (modelId) => ({
                 url: `/models/${modelId}`,
-                method: 'DELETE',
+                method: 'DELETE'
             }),
-            invalidatesTags: ['models'],
+            invalidatesTags: ['models']
         }),
         createModel: builder.mutation<IModel, IModelRequest>({
             query: (modelRequest) => ({
@@ -46,10 +46,13 @@ export const modelManagementApi = createApi({
                 // transform into SerializedError
                 return {
                     name: 'Create Model Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                    message:
+                        baseQueryReturnValue.data?.type === 'RequestValidationError'
+                            ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                            : baseQueryReturnValue.data.message
                 };
             },
-            invalidatesTags: ['models'],
+            invalidatesTags: ['models']
         }),
         updateModel: builder.mutation<IModel, IModelUpdateRequest>({
             query: (modelRequest) => ({
@@ -61,17 +64,20 @@ export const modelManagementApi = createApi({
                 // transform into SerializedError
                 return {
                     name: 'Update Model Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                    message:
+                        baseQueryReturnValue.data?.type === 'RequestValidationError'
+                            ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                            : baseQueryReturnValue.data.message
                 };
             },
-            invalidatesTags: ['models'],
+            invalidatesTags: ['models']
         }),
         getInstances: builder.query<string[], void>({
             query: () => ({
                 url: '/models/metadata/instances'
             })
         })
-    }),
+    })
 });
 
 export const {

@@ -32,7 +32,7 @@ import {
     IResource,
     LambdaIntegration,
     IRestApi,
-    Cors,
+    Cors
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, ISubnet } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
@@ -75,7 +75,7 @@ export type PythonLambdaFunction = {
  * @param securityGroups security groups for Lambdas
  * @returns
  */
-export function registerAPIEndpoint (
+export function registerAPIEndpoint(
     scope: Construct,
     api: IRestApi,
     authorizer: IAuthorizer,
@@ -85,11 +85,11 @@ export function registerAPIEndpoint (
     pythonRuntime: Runtime,
     role?: IRole,
     vpc?: Vpc,
-    securityGroups?: ISecurityGroup[],
+    securityGroups?: ISecurityGroup[]
 ): IFunction {
     const functionId = `${
         funcDef.id ||
-    [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
+        [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
     }`;
     const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
     let handler;
@@ -103,14 +103,14 @@ export function registerAPIEndpoint (
             action: 'lambda:InvokeFunction',
             sourceArn: api.arnForExecuteApi(funcDef.method, `/${funcDef.path}`),
             functionName: handler.functionName,
-            principal: 'apigateway.amazonaws.com',
+            principal: 'apigateway.amazonaws.com'
         });
     } else {
         handler = new Function(scope, functionId, {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(scope, `${functionId}DLQ`, {
                 queueName: `${functionId}DLQ`,
-                enforceSSL: true,
+                enforceSSL: true
             }),
             functionName: functionId,
             runtime: pythonRuntime,
@@ -118,7 +118,7 @@ export function registerAPIEndpoint (
             code: Code.fromAsset(lambdaSourcePath),
             description: funcDef.description,
             environment: {
-                ...funcDef.environment,
+                ...funcDef.environment
             },
             timeout: funcDef.timeout || Duration.seconds(180),
             memorySize: 512,
@@ -127,7 +127,7 @@ export function registerAPIEndpoint (
             role,
             vpc: vpc?.vpc,
             securityGroups,
-            vpcSubnets: vpc?.subnetSelection,
+            vpcSubnets: vpc?.subnetSelection
         });
     }
 
@@ -136,20 +136,20 @@ export function registerAPIEndpoint (
     } else {
         functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {
             authorizer,
-            authorizationType: AuthorizationType.CUSTOM,
+            authorizationType: AuthorizationType.CUSTOM
         });
     }
 
     return handler;
 }
 
-function getOrCreateResource (scope: Construct, parentResource: IResource, path: string[]): IResource {
+function getOrCreateResource(scope: Construct, parentResource: IResource, path: string[]): IResource {
     let resource = parentResource.getResource(path[0]);
     if (!resource) {
         resource = parentResource.addResource(path[0]);
         resource.addCorsPreflight({
             allowOrigins: Cors.ALL_ORIGINS,
-            allowHeaders: Cors.DEFAULT_HEADERS,
+            allowHeaders: Cors.DEFAULT_HEADERS
         });
     }
     if (path.length > 1) {
@@ -158,12 +158,14 @@ function getOrCreateResource (scope: Construct, parentResource: IResource, path:
     return resource;
 }
 
-export async function getSubnetCidrRange (subnet: string): Promise<string | undefined> {
+export async function getSubnetCidrRange(subnet: string): Promise<string | undefined> {
     const ec2 = new AWS.EC2();
     try {
-        const describeSubnetsResponse = await ec2.describeSubnets({
-            SubnetIds: [subnet],
-        }).promise();
+        const describeSubnetsResponse = await ec2
+            .describeSubnets({
+                SubnetIds: [subnet]
+            })
+            .promise();
 
         const retrievedSubnet = describeSubnetsResponse.Subnets?.[0];
 
@@ -177,12 +179,14 @@ export async function getSubnetCidrRange (subnet: string): Promise<string | unde
     return undefined;
 }
 
-export async function isSubnetPublic (subnet: ISubnet): Promise<boolean> {
+export async function isSubnetPublic(subnet: ISubnet): Promise<boolean> {
     const ec2 = new AWS.EC2();
     try {
-        const describeSubnetsResponse = await ec2.describeSubnets({
-            SubnetIds: [subnet.subnetId],
-        }).promise();
+        const describeSubnetsResponse = await ec2
+            .describeSubnets({
+                SubnetIds: [subnet.subnetId]
+            })
+            .promise();
 
         const retrievedSubnet = describeSubnetsResponse.Subnets?.[0];
 

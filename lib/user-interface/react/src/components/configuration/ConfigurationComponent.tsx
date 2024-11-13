@@ -36,24 +36,35 @@ export type ConfigState = {
     formSubmitting: boolean;
 };
 
-export function ConfigurationComponent () : ReactElement {
+export function ConfigurationComponent(): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
+    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery('global', {
+        refetchOnMountOrArgChange: true
+    });
     const [
         updateConfigMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
+        {
+            isSuccess: isUpdateSuccess,
+            isError: isUpdateError,
+            error: updateError,
+            isLoading: isUpdating,
+            reset: resetUpdate
+        }
     ] = useUpdateConfigurationMutation();
     const initialForm = SystemConfigurationSchema.parse({});
     const currentUsername = useAppSelector(selectCurrentUsername);
-    const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(SystemConfigurationSchema, {
-        validateAll: false as boolean,
-        touched: {},
-        formSubmitting: false as boolean,
-        form: {
-            ...initialForm
-        },
-    } as ConfigState);
+    const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(
+        SystemConfigurationSchema,
+        {
+            validateAll: false as boolean,
+            touched: {},
+            formSubmitting: false as boolean,
+            form: {
+                ...initialForm
+            }
+        } as ConfigState
+    );
 
     /**
      * Converts a JSON object into an outline structure represented as React nodes.
@@ -61,16 +72,23 @@ export function ConfigurationComponent () : ReactElement {
      * @param {object} [json={}] - The JSON object to be converted.
      * @returns {React.ReactNode[]} - An array of React nodes representing the outline structure.
      */
-    function jsonToOutline (json = {}) {
+    function jsonToOutline(json = {}) {
         const output: React.ReactNode[] = [];
 
         for (const key in json) {
             const value = json[key];
-            output.push((<li><p><strong>{_.startCase(key)}</strong>{_.isPlainObject(value) ? '' : `: ${value}`}</p></li>));
+            output.push(
+                <li>
+                    <p>
+                        <strong>{_.startCase(key)}</strong>
+                        {_.isPlainObject(value) ? '' : `: ${value}`}
+                    </p>
+                </li>
+            );
 
             if (_.isPlainObject(value)) {
                 const recursiveJson = jsonToOutline(value); // recursively call
-                output.push((recursiveJson));
+                output.push(recursiveJson);
             }
         }
         return <ul>{output}</ul>;
@@ -90,7 +108,7 @@ export function ConfigurationComponent () : ReactElement {
                 }
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, isFetchingConfig]);
 
     useEffect(() => {
@@ -98,13 +116,16 @@ export function ConfigurationComponent () : ReactElement {
             notificationService.generateNotification('Successfully updated configuration', 'success');
             resetUpdate();
         } else if (!isUpdating && isUpdateError) {
-            notificationService.generateNotification(`Error updating config: ${updateError.data?.message ?? updateError.data}`, 'error');
+            notificationService.generateNotification(
+                `Error updating config: ${updateError.data?.message ?? updateError.data}`,
+                'error'
+            );
             resetUpdate();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSuccess, isUpdating, isUpdateError, updateError]);
 
-    function handleSubmit () {
+    function handleSubmit() {
         if (isValid && !_.isEmpty(changesDiff)) {
             const toSubmit: IConfiguration = {
                 configuration: state.form,
@@ -118,31 +139,31 @@ export function ConfigurationComponent () : ReactElement {
                     action: 'Update',
                     resourceName: 'Configuration',
                     onConfirm: () => updateConfigMutation(toSubmit),
-                    description: _.isEmpty(changesDiff) ? <p>No changes detected</p> : jsonToOutline(changesDiff),
-                }));
+                    description: _.isEmpty(changesDiff) ? <p>No changes detected</p> : jsonToOutline(changesDiff)
+                })
+            );
         }
     }
 
     return (
         <SpaceBetween size={'m'}>
-            <Header
-                variant='h1'
-                description={'The current configuration of LISA'}
-            >
+            <Header variant="h1" description={'The current configuration of LISA'}>
                 LISA App Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
-            <SystemBannerConfiguration setFields={setFields}
+            <SystemBannerConfiguration
+                setFields={setFields}
                 textColor={state.form.systemBanner.textColor}
                 backgroundColor={state.form.systemBanner.backgroundColor}
                 text={state.form.systemBanner.text}
                 isEnabled={state.form.systemBanner.isEnabled}
                 touchFields={touchFields}
-                errors={errors}/>
-            <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
+                errors={errors}
+            />
+            <SpaceBetween alignItems="end" direction="vertical" size={'s'}>
                 <Button
-                    iconAlt='Update configuration'
-                    variant='primary'
+                    iconAlt="Update configuration"
+                    variant="primary"
                     onClick={() => {
                         if (!isValid) {
                             setState({ validateAll: true, formSubmitting: false });
@@ -152,7 +173,7 @@ export function ConfigurationComponent () : ReactElement {
                         }
                     }}
                     loading={isUpdating}
-                    data-cy='configuration-submit'
+                    data-cy="configuration-submit"
                     disabled={isUpdating || _.isEmpty(changesDiff)}
                 >
                     Save Changes

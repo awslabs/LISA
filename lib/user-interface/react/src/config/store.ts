@@ -23,7 +23,7 @@ import sharedReducers, { rootMiddleware } from '../shared/reducers';
 
 const persistConfig = {
     key: 'lisa',
-    storage,
+    storage
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(sharedReducers));
@@ -32,11 +32,11 @@ const store = configureStore({
     reducer: persistedReducer,
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
-            serializableCheck: false,
-        }).concat(...rootMiddleware),
+            serializableCheck: false
+        }).concat(...rootMiddleware)
 });
 
-export async function signOut () {
+export async function signOut() {
     await storage.removeItem('persist:lisa');
     persistor.purge().then(() => {
         persistor.flush().then(() => {

@@ -64,9 +64,9 @@ xdescribe.each(regions)('Core Nag Pack Tests | Region Test: %s', (awsRegion) => 
         baseStackProps = {
             env: {
                 account: '012345678901',
-                region: awsRegion,
+                region: awsRegion
             },
-            config,
+            config
         };
     });
 
@@ -74,13 +74,13 @@ xdescribe.each(regions)('Core Nag Pack Tests | Region Test: %s', (awsRegion) => 
         const networkingStack = new LisaNetworkingStack(app, `TestNetworking${awsRegion}`, {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
-            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
+            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`
         });
         stack = new CoreStack(app, 'LisaCore', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'core', config.deploymentStage]),
             description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         // WHEN
         Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));

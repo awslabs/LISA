@@ -51,11 +51,11 @@ export class CustomAuthorizer extends Construct {
     public readonly authorizer: RequestAuthorizer;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {AuthorizerProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: AuthorizerProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {AuthorizerProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: AuthorizerProps) {
         super(scope, id);
 
         const { config, role, vpc, securityGroups } = props;
@@ -63,23 +63,27 @@ export class CustomAuthorizer extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'base-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`)
         );
 
         const authorizerLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'base-authorizer-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`)
         );
 
-        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
+        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(
+            this,
+            createCdkId([id, 'managementKeyStringParameter']),
+            `${config.deploymentPrefix}/managementKeySecretName`
+        );
 
         // Create Lambda authorizer
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
                 queueName: 'AuthorizerLambdaDLQ',
-                enforceSSL: true,
+                enforceSSL: true
             }),
             runtime: Runtime.PYTHON_3_10,
             handler: 'authorizer.lambda_functions.lambda_handler',
@@ -103,14 +107,18 @@ export class CustomAuthorizer extends Construct {
             vpcSubnets: vpc?.subnetSelection
         });
 
-        const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);
+        const managementKeySecret = Secret.fromSecretNameV2(
+            this,
+            createCdkId([id, 'managementKey']),
+            managementKeySecretNameStringParameter.stringValue
+        );
         managementKeySecret.grantRead(authorizerLambda);
 
         // Update
         this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {
             handler: authorizerLambda,
             resultsCacheTtl: cdk.Duration.seconds(0),
-            identitySources: [IdentitySource.header('Authorization')],
+            identitySources: [IdentitySource.header('Authorization')]
         });
     }
 }

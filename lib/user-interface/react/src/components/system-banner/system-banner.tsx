@@ -23,7 +23,7 @@ type BannerOptions = {
 };
 
 export const SystemBanner = ({ position }: BannerOptions) => {
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
+    const { data: config } = useGetConfigurationQuery('global', { refetchOnMountOrArgChange: 5 });
     const bannerStyle: React.CSSProperties = {
         width: '100%',
         position: 'fixed',
@@ -31,7 +31,7 @@ export const SystemBanner = ({ position }: BannerOptions) => {
         textAlign: 'center',
         padding: '2px 0px',
         backgroundColor: config[0]?.configuration.systemBanner.backgroundColor,
-        color: config[0]?.configuration.systemBanner.textColor,
+        color: config[0]?.configuration.systemBanner.textColor
     };
 
     if (position === 'TOP') {
@@ -43,7 +43,9 @@ export const SystemBanner = ({ position }: BannerOptions) => {
     return (
         <TextContent>
             <div style={bannerStyle} id={position === 'TOP' ? 'topBanner' : 'bottomBanner'}>
-                <span><b>{config[0]?.configuration.systemBanner.text}</b></span>
+                <span>
+                    <b>{config[0]?.configuration.systemBanner.text}</b>
+                </span>
             </div>
         </TextContent>
     );

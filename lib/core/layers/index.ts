@@ -48,14 +48,15 @@ export class Layer extends Construct {
     public layer: LayerVersion;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LayerProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: LayerProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LayerProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: LayerProps) {
         super(scope, id);
 
-        const { assetPath, config, path, description, architecture, autoUpgrade, slimDeployment, removePackages } = props;
+        const { assetPath, config, path, description, architecture, autoUpgrade, slimDeployment, removePackages } =
+            props;
 
         let layerCode: Code;
         if (assetPath) {
@@ -89,8 +90,8 @@ export class Layer extends Construct {
                     command: ['bash', '-c', `set -e ${args.join(' ')}`],
                     outputType: BundlingOutput.AUTO_DISCOVER,
                     securityOpt: 'no-new-privileges:true',
-                    network: 'host',
-                },
+                    network: 'host'
+                }
             });
             layerCode = Code.fromBucket(layerAsset.bucket, layerAsset.s3ObjectKey);
         }
@@ -99,7 +100,7 @@ export class Layer extends Construct {
             code: layerCode,
             compatibleRuntimes: [Runtime.PYTHON_3_10],
             removalPolicy: config.removalPolicy,
-            description: description,
+            description: description
         });
 
         this.layer = layer;

@@ -51,7 +51,7 @@ type ConfigurationApiProps = {
  * API which Maintains config state in DynamoDB
  */
 export class ConfigurationApi extends Construct {
-    constructor (scope: Construct, id: string, props: ConfigurationApiProps) {
+    constructor(scope: Construct, id: string, props: ConfigurationApiProps) {
         super(scope, id);
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -60,25 +60,30 @@ export class ConfigurationApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'configuration-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`)
         );
 
         // Create DynamoDB table to handle config data
         const configTable = new dynamodb.Table(this, 'ConfigurationTable', {
             partitionKey: {
                 name: 'configScope',
-                type: dynamodb.AttributeType.STRING,
+                type: dynamodb.AttributeType.STRING
             },
             sortKey: {
                 name: 'versionId',
-                type: dynamodb.AttributeType.NUMBER,
+                type: dynamodb.AttributeType.NUMBER
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
-            removalPolicy: config.removalPolicy,
+            removalPolicy: config.removalPolicy
         });
 
-        const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', configTable.tableArn);
+        const lambdaRole: Role = createLambdaRole(
+            this,
+            config.deploymentName,
+            'ConfigurationApi',
+            configTable.tableArn
+        );
 
         // Populate the App Config table with default config
         const date = new Date();
@@ -90,38 +95,44 @@ export class ConfigurationApi extends Construct {
                 parameters: {
                     TableName: configTable.tableName,
                     Item: {
-                        'versionId': {'N': '0'},
-                        'changedBy': {'S': 'System'},
-                        'configScope': {'S': 'global'},
-                        'changeReason': {'S': 'Initial deployment default config'},
-                        'createdAt': {'S': Math.round(date.getTime() / 1000).toString()},
-                        'configuration': {'M': {
-                            'enabledComponents': {'M': {
-                                'deleteSessionHistory': {'BOOL': 'True'},
-                                'viewMetaData': {'BOOL': 'True'},
-                                'editKwargs': {'BOOL': 'True'},
-                                'editPromptTemplate': {'BOOL': 'True'},
-                                'editChatHistoryBuffer': {'BOOL': 'True'},
-                                'editNumOfRagDocument': {'BOOL': 'True'},
-                                'uploadRagDocs': {'BOOL': 'True'},
-                                'uploadContextDocs': {'BOOL': 'True'}
-                            }},
-                            'systemBanner': {'M': {
-                                'isEnabled': {'BOOL': 'False'},
-                                'text': {'S': ''},
-                                'textColor': {'S': ''},
-                                'backgroundColor': {'S': ''}
-                            }}
-                        }}
-                    },
-                },
+                        versionId: { N: '0' },
+                        changedBy: { S: 'System' },
+                        configScope: { S: 'global' },
+                        changeReason: { S: 'Initial deployment default config' },
+                        createdAt: { S: Math.round(date.getTime() / 1000).toString() },
+                        configuration: {
+                            M: {
+                                enabledComponents: {
+                                    M: {
+                                        deleteSessionHistory: { BOOL: 'True' },
+                                        viewMetaData: { BOOL: 'True' },
+                                        editKwargs: { BOOL: 'True' },
+                                        editPromptTemplate: { BOOL: 'True' },
+                                        editChatHistoryBuffer: { BOOL: 'True' },
+                                        editNumOfRagDocument: { BOOL: 'True' },
+                                        uploadRagDocs: { BOOL: 'True' },
+                                        uploadContextDocs: { BOOL: 'True' }
+                                    }
+                                },
+                                systemBanner: {
+                                    M: {
+                                        isEnabled: { BOOL: 'False' },
+                                        text: { S: '' },
+                                        textColor: { S: '' },
+                                        backgroundColor: { S: '' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             },
             role: lambdaRole
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
-            rootResourceId: rootResourceId,
+            rootResourceId: rootResourceId
         });
 
         // Create API Lambda functions
@@ -134,7 +145,7 @@ export class ConfigurationApi extends Construct {
                 method: 'GET',
                 environment: {
                     CONFIG_TABLE_NAME: configTable.tableName
-                },
+                }
             },
             {
                 name: 'update_configuration',
@@ -143,9 +154,9 @@ export class ConfigurationApi extends Construct {
                 path: 'configuration/{configScope}',
                 method: 'PUT',
                 environment: {
-                    CONFIG_TABLE_NAME: configTable.tableName,
-                },
-            },
+                    CONFIG_TABLE_NAME: configTable.tableName
+                }
+            }
         ];
 
         apis.forEach((f) => {
@@ -159,7 +170,7 @@ export class ConfigurationApi extends Construct {
                 Runtime.PYTHON_3_10,
                 lambdaRole,
                 vpc,
-                securityGroups,
+                securityGroups
             );
             if (f.method === 'POST' || f.method === 'PUT') {
                 configTable.grantWriteData(lambdaFunction);

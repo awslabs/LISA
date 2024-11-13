@@ -40,7 +40,7 @@ const mappings: EnvMapping[] = [
     ['PROFILE', 'profile'],
     ['DEPLOYMENT_NAME', 'deploymentName'],
     ['ACCOUNT_NUMBER', 'accountNumber'],
-    ['REGION', 'region'],
+    ['REGION', 'region']
 ];
 mappings.forEach(([envVar, configVar]) => {
     const envValue = process.env[envVar];
@@ -66,7 +66,7 @@ try {
 // Define environment
 const env: cdk.Environment = {
     account: config.accountNumber,
-    region: config.region,
+    region: config.region
 };
 
 // Application
@@ -74,7 +74,7 @@ const app = new cdk.App();
 
 new LisaServeApplicationStage(app, config.deploymentStage, {
     env: env,
-    config: config,
+    config: config
 });
 
 app.synth();

@@ -60,16 +60,16 @@ describe.each(regions)('IAM Stack CDK Nag Tests | Region Test: %s', (awsRegion: 
         baseStackProps = {
             env: {
                 account: '012345678901',
-                region: awsRegion,
+                region: awsRegion
             },
-            config,
+            config
         };
     });
 
     beforeEach(() => {
         stack = new LisaServeIAMStack(app, 'TestStack', {
             ...baseStackProps,
-            config: config,
+            config: config
         });
         // WHEN
         Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));

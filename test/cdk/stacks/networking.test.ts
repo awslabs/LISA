@@ -34,7 +34,7 @@ const regions: TestConfig[] = [
     ['us-gov-east-1', 1, 2, 3, 5],
     ['us-isob-east-1', 1, 2, 3, 5],
     ['us-iso-east-1', 1, 2, 3, 5],
-    ['us-iso-west-1', 1, 2, 3, 5],
+    ['us-iso-west-1', 1, 2, 3, 5]
 ];
 
 describe.each<TestConfig>(regions)(
@@ -71,9 +71,9 @@ describe.each<TestConfig>(regions)(
             baseStackProps = {
                 env: {
                     account: '012345678901',
-                    region: awsRegion,
+                    region: awsRegion
                 },
-                config,
+                config
             };
         });
 
@@ -82,7 +82,7 @@ describe.each<TestConfig>(regions)(
                 ...baseStackProps,
                 config: config,
                 stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
-                description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
+                description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`
             });
             // WHEN
             Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
@@ -114,5 +114,5 @@ describe.each<TestConfig>(regions)(
             const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
             expect(errors.length).toBe(nistErr);
         });
-    },
+    }
 );

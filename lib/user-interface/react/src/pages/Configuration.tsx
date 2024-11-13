@@ -17,7 +17,7 @@
 import { ReactElement, useEffect } from 'react';
 import ConfigurationComponent from '../components/configuration/ConfigurationComponent';
 
-export function Configuration ({ setTools }): ReactElement {
+export function Configuration({ setTools }): ReactElement {
     useEffect(() => {
         setTools(null);
     }, [setTools]);

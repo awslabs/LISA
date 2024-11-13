@@ -26,7 +26,7 @@ import {
     PolicyDocument,
     PolicyStatement,
     Role,
-    ServicePrincipal,
+    ServicePrincipal
 } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -68,7 +68,7 @@ type ModelsApiProps = BaseProps & {
  * API for managing Models
  */
 export class ModelsApi extends Construct {
-    constructor (scope: Construct, id: string, props: ModelsApiProps) {
+    constructor(scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
         const { authorizer, config, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -77,25 +77,25 @@ export class ModelsApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'models-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`)
         );
 
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'models-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`)
         );
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
-            rootResourceId: rootResourceId,
+            rootResourceId: rootResourceId
         });
 
         // generates a random hexadecimal string of a specific length
         const generateDisambiguator = (size: number): string =>
             Buffer.from(
                 // one byte is 2 hex characters so only generate ceil(size/2) bytes of randomness
-                crypto.getRandomValues(new Uint8Array(Math.ceil(size / 2))),
+                crypto.getRandomValues(new Uint8Array(Math.ceil(size / 2)))
             )
                 .toString('hex')
                 .slice(0, size);
@@ -107,7 +107,7 @@ export class ModelsApi extends Construct {
             },
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
-            removalPolicy: config.removalPolicy,
+            removalPolicy: config.removalPolicy
         });
 
         const ecsModelBuildRepo = new Repository(this, 'ecs-model-build-repo');
@@ -125,13 +125,14 @@ export class ModelsApi extends Construct {
             vpc
         });
 
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
+        const managementKeyName = StringParameter.valueForStringParameter(
+            this,
+            `${config.deploymentPrefix}/managementKeySecretName`
+        );
 
         const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            managedPolicies: [
-                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
-            ],
+            managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole')],
             inlinePolicies: {
                 lambdaPermissions: new PolicyDocument({
                     statements: [
@@ -141,29 +142,22 @@ export class ModelsApi extends Construct {
                                 'dynamodb:DeleteItem',
                                 'dynamodb:GetItem',
                                 'dynamodb:PutItem',
-                                'dynamodb:UpdateItem',
+                                'dynamodb:UpdateItem'
                             ],
-                            resources: [
-                                modelTable.tableArn,
-                                `${modelTable.tableArn}/*`,
-                            ]
+                            resources: [modelTable.tableArn, `${modelTable.tableArn}/*`]
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
                                 'cloudformation:CreateStack',
                                 'cloudformation:DeleteStack',
-                                'cloudformation:DescribeStacks',
+                                'cloudformation:DescribeStacks'
                             ],
-                            resources: [
-                                'arn:*:cloudformation:*:*:stack/*',
-                            ],
+                            resources: ['arn:*:cloudformation:*:*:stack/*']
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
-                            actions: [
-                                'lambda:InvokeFunction'
-                            ],
+                            actions: ['lambda:InvokeFunction'],
                             resources: [
                                 dockerImageBuilder.dockerImageBuilderFn.functionArn,
                                 ecsModelDeployer.ecsModelDeployerFn.functionArn
@@ -171,9 +165,7 @@ export class ModelsApi extends Construct {
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
-                            actions: [
-                                'ecr:DescribeImages'
-                            ],
+                            actions: ['ecr:DescribeImages'],
                             resources: ['*']
                         }),
                         new PolicyStatement({
@@ -189,35 +181,28 @@ export class ModelsApi extends Construct {
                             ],
                             resources: ['*'],
                             conditions: {
-                                'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
+                                StringEquals: { 'aws:ResourceTag/lisa_temporary_instance': 'true' }
                             }
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
-                            actions: [
-                                'ssm:GetParameter'
-                            ],
+                            actions: ['ssm:GetParameter'],
+                            resources: [lisaServeEndpointUrlPs.parameterArn]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['secretsmanager:GetSecretValue'],
                             resources: [
-                                lisaServeEndpointUrlPs.parameterArn
-                            ],
+                                `${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`
+                            ] // question marks required to resolve the ARN correctly
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
-                            actions: [
-                                'secretsmanager:GetSecretValue'
-                            ],
-                            resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'autoscaling:DescribeAutoScalingGroups',
-                                'autoscaling:UpdateAutoScalingGroup',
-                            ],
-                            resources: ['*'],  // We do not know the ASG names in advance
-                        }),
+                            actions: ['autoscaling:DescribeAutoScalingGroups', 'autoscaling:UpdateAutoScalingGroup'],
+                            resources: ['*'] // We do not know the ASG names in advance
+                        })
                     ]
-                }),
+                })
             }
         });
 
@@ -232,7 +217,7 @@ export class ModelsApi extends Construct {
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
             ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
-            managementKeyName: managementKeyName,
+            managementKeyName: managementKeyName
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
@@ -243,7 +228,7 @@ export class ModelsApi extends Construct {
             vpc: vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
-            managementKeyName: managementKeyName,
+            managementKeyName: managementKeyName
         });
 
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
@@ -254,7 +239,7 @@ export class ModelsApi extends Construct {
             vpc: vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
-            managementKeyName: managementKeyName,
+            managementKeyName: managementKeyName
         });
 
         const environment = {
@@ -264,7 +249,7 @@ export class ModelsApi extends Construct {
             CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
-            MODEL_TABLE_NAME: modelTable.tableName,
+            MODEL_TABLE_NAME: modelTable.tableName
         };
 
         const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn);
@@ -286,7 +271,7 @@ export class ModelsApi extends Construct {
             Runtime.PYTHON_3_10,
             lambdaRole,
             vpc,
-            securityGroups,
+            securityGroups
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
@@ -296,7 +281,7 @@ export class ModelsApi extends Construct {
                     new PolicyStatement({
                         actions: ['iam:GetServerCertificate'],
                         resources: [config.restApiConfig?.sslCertIamArn],
-                        effect: Effect.ALLOW,
+                        effect: Effect.ALLOW
                     })
                 ]
             });
@@ -314,7 +299,7 @@ export class ModelsApi extends Construct {
                 path: 'models',
                 method: 'GET',
                 disambiguator: generateDisambiguator(4),
-                existingFunction: lambdaFunction.functionArn,
+                existingFunction: lambdaFunction.functionArn
             },
             {
                 name: 'handler',
@@ -323,7 +308,7 @@ export class ModelsApi extends Construct {
                 path: 'models',
                 method: 'POST',
                 disambiguator: generateDisambiguator(4),
-                existingFunction: lambdaFunction.functionArn,
+                existingFunction: lambdaFunction.functionArn
             },
             // create an endpoints for the docs
             {
@@ -343,8 +328,8 @@ export class ModelsApi extends Construct {
                 method: 'GET',
                 disambiguator: generateDisambiguator(4),
                 existingFunction: lambdaFunction.functionArn,
-                disableAuthorizer: true,
-            },
+                disableAuthorizer: true
+            }
         ];
 
         apis.forEach((f) => {
@@ -358,7 +343,7 @@ export class ModelsApi extends Construct {
                 Runtime.PYTHON_3_10,
                 lambdaRole,
                 vpc,
-                securityGroups,
+                securityGroups
             );
         });
 
@@ -366,33 +351,23 @@ export class ModelsApi extends Construct {
             statements: [
                 new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: [
-                        'states:StartExecution',
-                    ],
+                    actions: ['states:StartExecution'],
                     resources: [
                         createModelStateMachine.stateMachineArn,
                         deleteModelStateMachine.stateMachineArn,
-                        updateModelStateMachine.stateMachineArn,
-                    ],
+                        updateModelStateMachine.stateMachineArn
+                    ]
                 }),
                 new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: [
-                        'dynamodb:GetItem',
-                        'dynamodb:Scan',
-                    ],
-                    resources: [
-                        modelTable.tableArn,
-                        `${modelTable.tableArn}/*`
-                    ],
+                    actions: ['dynamodb:GetItem', 'dynamodb:Scan'],
+                    resources: [modelTable.tableArn, `${modelTable.tableArn}/*`]
                 }),
                 new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: [
-                        'autoscaling:DescribeAutoScalingGroups',
-                    ],
-                    resources: ['*'],  // we do not know ASG names in advance
-                }),
+                    actions: ['autoscaling:DescribeAutoScalingGroups'],
+                    resources: ['*'] // we do not know ASG names in advance
+                })
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);

@@ -35,7 +35,7 @@ import {
     LogDriver,
     MountPoint,
     Protocol,
-    Volume,
+    Volume
 } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
@@ -74,11 +74,11 @@ export class ECSCluster extends Construct {
     public readonly endpointUrl: string;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {ECSClusterProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: ECSClusterProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {ECSClusterProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, vpc, securityGroup, ecsConfig } = props;
 
@@ -86,7 +86,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId(['Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             vpc: vpc.vpc,
-            containerInsights: !config.region.includes('iso'),
+            containerInsights: !config.region.includes('iso')
         });
 
         // Create auto scaling group
@@ -105,10 +105,10 @@ export class ECSCluster extends Construct {
                 {
                     deviceName: '/dev/xvda',
                     volume: BlockDeviceVolume.ebs(ecsConfig.autoScalingConfig.blockDeviceVolumeSize, {
-                        encrypted: true,
-                    }),
-                },
-            ],
+                        encrypted: true
+                    })
+                }
+            ]
         });
 
         const environment = ecsConfig.environment;
@@ -151,7 +151,7 @@ export class ECSCluster extends Construct {
             const nvmeMountPoint: MountPoint = {
                 sourceVolume: sourceVolume,
                 containerPath: config.nvmeContainerMountPath,
-                readOnly: false,
+                readOnly: false
             };
             volumes.push(nvmeVolume);
             mountPoints.push(nvmeMountPoint);
@@ -169,7 +169,7 @@ export class ECSCluster extends Construct {
             const pkiMountPoint: MountPoint = {
                 sourceVolume: pkiSourceVolume,
                 containerPath: '/etc/pki',
-                readOnly: false,
+                readOnly: false
             };
             volumes.push(pkiVolume);
             mountPoints.push(pkiMountPoint);
@@ -182,12 +182,12 @@ export class ECSCluster extends Construct {
         const taskRole = Role.fromRoleArn(
             this,
             createCdkId([ecsConfig.identifier, 'TR']),
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`)
         );
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskRole: taskRole,
-            volumes: volumes,
+            volumes: volumes
         });
 
         // Add container to task definition
@@ -197,15 +197,15 @@ export class ECSCluster extends Construct {
             interval: Duration.seconds(containerHealthCheckConfig.interval),
             startPeriod: Duration.seconds(containerHealthCheckConfig.startPeriod),
             timeout: Duration.seconds(containerHealthCheckConfig.timeout),
-            retries: containerHealthCheckConfig.retries,
+            retries: containerHealthCheckConfig.retries
         };
 
         const linuxParameters =
-      ecsConfig.containerConfig.sharedMemorySize > 0
-          ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
-              sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
-          })
-          : undefined;
+            ecsConfig.containerConfig.sharedMemorySize > 0
+                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
+                      sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize
+                  })
+                : undefined;
 
         let image: ContainerImage;
         switch (ecsConfig.containerConfig.image.type) {
@@ -213,7 +213,7 @@ export class ECSCluster extends Construct {
                 const repository = Repository.fromRepositoryArn(
                     this,
                     createCdkId([ecsConfig.identifier, 'Repo']),
-                    ecsConfig.containerConfig.image.repositoryArn,
+                    ecsConfig.containerConfig.image.repositoryArn
                 );
                 image = ContainerImage.fromEcrRepository(repository, ecsConfig.containerConfig.image.tag);
                 break;
@@ -227,7 +227,9 @@ export class ECSCluster extends Construct {
                 break;
             }
             default: {
-                image = ContainerImage.fromAsset(ecsConfig.containerConfig.image.path, { buildArgs: ecsConfig.buildArgs });
+                image = ContainerImage.fromAsset(ecsConfig.containerConfig.image.path, {
+                    buildArgs: ecsConfig.buildArgs
+                });
                 break;
             }
         }
@@ -243,7 +245,7 @@ export class ECSCluster extends Construct {
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
-            ...(linuxParameters && { linuxParameters }),
+            ...(linuxParameters && { linuxParameters })
         });
         container.addMountPoints(...mountPoints);
 
@@ -253,7 +255,7 @@ export class ECSCluster extends Construct {
             daemon: true,
             serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskDefinition: taskDefinition,
-            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
+            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined
         };
 
         const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
@@ -278,12 +280,12 @@ export class ECSCluster extends Construct {
             open: ecsConfig.internetFacing,
             certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
                 ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
-                : undefined,
+                : undefined
         };
 
         const listener = loadBalancer.addListener(
             createCdkId([ecsConfig.identifier, 'ApplicationListener']),
-            listenerProps,
+            listenerProps
         );
         const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
@@ -296,10 +298,10 @@ export class ECSCluster extends Construct {
                 interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
                 timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
                 healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
-                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
+                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount
             },
             port: 80,
-            targets: [service],
+            targets: [service]
         });
 
         // ALB metric for ASG to use for auto scaling EC2 instances
@@ -309,23 +311,23 @@ export class ECSCluster extends Construct {
             namespace: 'AWS/ApplicationELB',
             dimensionsMap: {
                 TargetGroup: targetGroup.targetGroupFullName,
-                LoadBalancer: loadBalancer.loadBalancerFullName,
+                LoadBalancer: loadBalancer.loadBalancerFullName
             },
             statistic: Stats.SAMPLE_COUNT,
-            period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+            period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration)
         });
 
         // Create hook to scale on ALB metric count exceeding thresholds
         autoScalingGroup.scaleToTrackMetric(createCdkId([ecsConfig.identifier, 'ScalingPolicy']), {
             metric: requestCountPerTargetMetric,
             targetValue: ecsConfig.autoScalingConfig.metricConfig.targetValue,
-            estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+            estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration)
         });
 
         const domain =
-      ecsConfig.loadBalancerConfig.domainName !== null
-          ? ecsConfig.loadBalancerConfig.domainName
-          : loadBalancer.loadBalancerDnsName;
+            ecsConfig.loadBalancerConfig.domainName !== null
+                ? ecsConfig.loadBalancerConfig.domainName
+                : loadBalancer.loadBalancerDnsName;
         const endpoint = `${protocol}://${domain}`;
         this.endpointUrl = endpoint;
 

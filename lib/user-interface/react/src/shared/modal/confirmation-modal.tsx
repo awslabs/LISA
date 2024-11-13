@@ -25,20 +25,20 @@ export type CallbackFunction<T = any, R = void> = (props?: T) => R;
 export type ConfirmationModalProps = {
     action: string;
     resourceName: string;
-    onConfirm: () =>  MutationActionCreatorResult<any>;
+    onConfirm: () => MutationActionCreatorResult<any>;
     postConfirm?: CallbackFunction;
     description?: string | ReactElement;
     disabled?: boolean;
 };
 
-function ConfirmationModal ({
+function ConfirmationModal({
     action,
     resourceName,
     onConfirm,
     postConfirm,
     description,
-    disabled,
-}: ConfirmationModalProps) : ReactElement{
+    disabled
+}: ConfirmationModalProps): ReactElement {
     const [processing, setProcessing] = useState(false);
     const dispatch = useAppDispatch();
 
@@ -46,16 +46,14 @@ function ConfirmationModal ({
         <CloudscapeModal
             onDismiss={() => [dispatch(dismissModal())]}
             visible={true}
-            closeAriaLabel='Close modal'
+            closeAriaLabel="Close modal"
             footer={
-                <Box float='right'>
-                    <SpaceBetween direction='horizontal' size='xs'>
-                        <Button onClick={() => [dispatch(dismissModal())]}>
-                            Cancel
-                        </Button>
+                <Box float="right">
+                    <SpaceBetween direction="horizontal" size="xs">
+                        <Button onClick={() => [dispatch(dismissModal())]}>Cancel</Button>
                         <Button
-                            data-cy='modal-confirm'
-                            variant='primary'
+                            data-cy="modal-confirm"
+                            variant="primary"
                             onClick={async () => {
                                 setProcessing(true);
                                 await onConfirm();

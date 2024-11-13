@@ -36,14 +36,14 @@ export type LisaModelStackProps = {
  */
 class UpdateLaunchTemplateMetadataOptions implements IAspect {
     /**
-   * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::LaunchTemplate resource.
-   * If both conditions are true, it applies a direct override to the CloudFormation resource's properties, setting
-   * the HttpPutResponseHopLimit to 2 and HttpTokens to 'required'.
-   *
-   * @param {Construct} node - The CDK construct being visited.
-   */
-    public visit (node: Construct): void {
-    // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
+     * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::LaunchTemplate resource.
+     * If both conditions are true, it applies a direct override to the CloudFormation resource's properties, setting
+     * the HttpPutResponseHopLimit to 2 and HttpTokens to 'required'.
+     *
+     * @param {Construct} node - The CDK construct being visited.
+     */
+    public visit(node: Construct): void {
+        // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
         if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::LaunchTemplate') {
             // Directly modify the CloudFormation properties to include the desired settings
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpPutResponseHopLimit', 2);
@@ -53,7 +53,7 @@ class UpdateLaunchTemplateMetadataOptions implements IAspect {
 }
 
 export class LisaModelStack extends Stack {
-    constructor (scope: Construct, id: string, props: LisaModelStackProps) {
+    constructor(scope: Construct, id: string, props: LisaModelStackProps) {
         super(scope, id, props);
 
         const vpc = Vpc.fromLookup(this, `${id}-vpc`, {
@@ -64,7 +64,9 @@ export class LisaModelStack extends Stack {
 
         if (props.config.subnetIds && props.config.subnetIds.length > 0) {
             subnetSelection = {
-                subnets: props.config.subnetIds?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet))
+                subnets: props.config.subnetIds?.map((subnet, index) =>
+                    Subnet.fromSubnetId(this, index.toString(), subnet)
+                )
             };
         }
 

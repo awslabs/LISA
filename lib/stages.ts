@@ -25,7 +25,7 @@ import {
     IStackSynthesizer,
     Stage,
     StageProps,
-    Tags,
+    Tags
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
@@ -53,14 +53,14 @@ type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & Sta
  */
 class UpdateLaunchTemplateMetadataOptions implements IAspect {
     /**
-   * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::LaunchTemplate resource.
-   * If both conditions are true, it applies a direct override to the CloudFormation resource's properties, setting
-   * the HttpPutResponseHopLimit to 2 and HttpTokens to 'required'.
-   *
-   * @param {Construct} node - The CDK construct being visited.
-   */
-    public visit (node: Construct): void {
-    // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
+     * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::LaunchTemplate resource.
+     * If both conditions are true, it applies a direct override to the CloudFormation resource's properties, setting
+     * the HttpPutResponseHopLimit to 2 and HttpTokens to 'required'.
+     *
+     * @param {Construct} node - The CDK construct being visited.
+     */
+    public visit(node: Construct): void {
+        // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
         if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::LaunchTemplate') {
             // Directly modify the CloudFormation properties to include the desired settings
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpPutResponseHopLimit', 2);
@@ -78,16 +78,16 @@ type CommonStackProps = {
  */
 export class LisaServeApplicationStage extends Stage {
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaServeApplicationStageProps} props - Properties for the stage.
-   */
-    constructor (scope: Construct, id: string, props: LisaServeApplicationStageProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaServeApplicationStageProps} props - Properties for the stage.
+     */
+    constructor(scope: Construct, id: string, props: LisaServeApplicationStageProps) {
         super(scope, id, props);
 
         const { config } = props;
         const baseStackProps: CommonStackProps = {
-            config,
+            config
         };
 
         if (config.stackSynthesizer) {
@@ -111,14 +111,14 @@ export class LisaServeApplicationStage extends Stage {
         const iamStack = new LisaServeIAMStack(this, 'LisaServeIAMStack', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'IAM', config.deploymentStage]),
-            description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage} IAM`,
+            description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage} IAM`
         });
         stacks.push(iamStack);
 
         const networkingStack = new LisaNetworkingStack(this, 'LisaNetworking', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
-            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
+            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`
         });
         stacks.push(networkingStack);
 
@@ -126,7 +126,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'core', config.deploymentStage]),
             description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         stacks.push(coreStack);
 
@@ -134,7 +134,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
             stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         stacks.push(serveStack);
 
@@ -144,7 +144,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         apiBaseStack.addDependency(coreStack);
         apiBaseStack.addDependency(serveStack);
@@ -154,7 +154,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             description: `LISA-api-deployment: ${config.deploymentName}-${config.deploymentStage}`,
             stackName: createCdkId([config.deploymentName, config.appName, 'api-deployment', config.deploymentStage]),
-            restApiId: apiBaseStack.restApiId,
+            restApiId: apiBaseStack.restApiId
         });
         apiDeploymentStack.addDependency(apiBaseStack);
 
@@ -166,7 +166,7 @@ export class LisaServeApplicationStage extends Stage {
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         modelsApiDeploymentStack.addDependency(serveStack);
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
@@ -180,7 +180,7 @@ export class LisaServeApplicationStage extends Stage {
                 description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
-                vpc: networkingStack.vpc,
+                vpc: networkingStack.vpc
             });
             chatStack.addDependency(apiBaseStack);
             chatStack.addDependency(coreStack);
@@ -194,7 +194,7 @@ export class LisaServeApplicationStage extends Stage {
                     stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
                     description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
                     restApiId: apiBaseStack.restApiId,
-                    rootResourceId: apiBaseStack.rootResourceId,
+                    rootResourceId: apiBaseStack.rootResourceId
                 });
                 uiStack.addDependency(chatStack);
                 uiStack.addDependency(serveStack);
@@ -212,7 +212,7 @@ export class LisaServeApplicationStage extends Stage {
                         restApiId: apiBaseStack.restApiId,
                         rootResourceId: apiBaseStack.rootResourceId,
                         stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
-                        vpc: networkingStack.vpc,
+                        vpc: networkingStack.vpc
                     });
                     ragStack.addDependency(coreStack);
                     ragStack.addDependency(iamStack);

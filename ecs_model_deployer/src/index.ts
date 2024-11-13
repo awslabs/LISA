@@ -23,14 +23,14 @@ import { readdirSync, symlinkSync, rmSync } from 'fs';
   should give us a writable ./ without wasting tons of compute time to copy
 */
 const createWritableEnv = () => {
-    rmSync('/tmp/cdk.out', {recursive: true, force: true});
+    rmSync('/tmp/cdk.out', { recursive: true, force: true });
     const files = readdirSync('.');
-    for ( const f of files ) {
+    for (const f of files) {
         /*
           We want this file to be empty or absent so that any info needed is
           pulled from the account instead of the cache
         */
-        if ( f === 'cdk.context.json' ) {
+        if (f === 'cdk.context.json') {
             continue;
         }
         const source = `/tmp/${f}`;
@@ -38,8 +38,8 @@ const createWritableEnv = () => {
 
         try {
             symlinkSync(target, source, 'file');
-        } catch ( err ) {
-            if ( err instanceof Error && err.message.match(/EEXIST/) ) {
+        } catch (err) {
+            if (err instanceof Error && err.message.match(/EEXIST/)) {
                 // Writable env already established from previous call.
             } else {
                 throw err;
@@ -70,14 +70,13 @@ export const handler = async (event: any) => {
     const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out']);
 
     const stderr = String(ret.output[2]);
-    if ( ret.status !== 0 ) {
+    if (ret.status !== 0) {
         console.log(`cdk synth failed with stderr: ${stderr}`);
         throw new Error('Stack failed to synthesize');
     }
 
-
     const stackName = `${config.deploymentName}-${modelConfig.modelId}`;
-    const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
+    const deploy_promise: Promise<ChildProcess | undefined> = new Promise((resolve) => {
         const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
 
         cp.on('close', (code) => {
@@ -100,11 +99,11 @@ export const handler = async (event: any) => {
     });
 
     const cp = await deploy_promise;
-    if ( cp ) {
-        if ( cp.exitCode !== 0 ) {
+    if (cp) {
+        if (cp.exitCode !== 0) {
             throw new Error('Stack failed to deploy');
         }
     }
 
-    return {stackName: stackName};
+    return { stackName: stackName };
 };

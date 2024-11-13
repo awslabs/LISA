@@ -31,22 +31,22 @@ type MessageProps = {
     showMetadata?: boolean;
 };
 
-export default function Message ({ message, isRunning, showMetadata }: MessageProps) {
+export default function Message({ message, isRunning, showMetadata }: MessageProps) {
     return (
-        <div className='mt-2'>
+        <div className="mt-2">
             {isRunning && (
                 <Container>
-                    <Box float='left'>
+                    <Box float="left">
                         <Spinner />
                     </Box>
                 </Container>
             )}
             {message?.type !== 'human' && !isRunning && (
                 <Container>
-                    <SpaceBetween size='s' direction='vertical'>
+                    <SpaceBetween size="s" direction="vertical">
                         <ReactMarkdown children={message.content} />
                         {message.metadata && showMetadata && (
-                            <ExpandableSection variant='footer' headerText='Metadata'>
+                            <ExpandableSection variant="footer" headerText="Metadata">
                                 <JsonView data={message.metadata} style={darkStyles} />
                             </ExpandableSection>
                         )}

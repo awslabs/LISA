@@ -58,11 +58,11 @@ export class FastApiContainer extends Construct {
     public readonly endpoint: string;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {RestApiProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: FastApiContainerProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {RestApiProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
@@ -71,14 +71,14 @@ export class FastApiContainer extends Construct {
             BASE_IMAGE: 'python:3.10',
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
             PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
-            LITELLM_CONFIG: yamlDump(config.litellmConfig),
+            LITELLM_CONFIG: yamlDump(config.litellmConfig)
         };
         const environment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
-            LITELLM_KEY: config.litellmConfig.db_key,
+            LITELLM_KEY: config.litellmConfig.db_key
         };
 
         if (config.restApiConfig.internetFacing) {
@@ -143,8 +143,8 @@ export class FastApiContainer extends Construct {
                         unhealthyThresholdCount: 10
                     },
                     domainName: config.restApiConfig.domainName,
-                    sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,
-                },
+                    sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null
+                }
             },
             securityGroup,
             vpc
@@ -162,7 +162,7 @@ export class FastApiContainer extends Construct {
 
         // CFN output
         new CfnOutput(this, `${props.apiName}Url`, {
-            value: apiCluster.endpointUrl,
+            value: apiCluster.endpointUrl
         });
     }
 }

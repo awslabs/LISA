@@ -59,16 +59,15 @@ describe.each(regions)('Docs Nag Pack Tests | Region Test: %s', (awsRegion) => {
         baseStackProps = {
             env: {
                 account: '012345678901',
-                region: awsRegion,
+                region: awsRegion
             },
-            config,
+            config
         };
     });
 
     beforeEach(() => {
-
         stack = new LisaDocsStack(app, 'LisaDocs', {
-            ...baseStackProps,
+            ...baseStackProps
         });
 
         // WHEN

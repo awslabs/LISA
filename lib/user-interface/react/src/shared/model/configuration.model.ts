@@ -16,8 +16,8 @@
 import { z } from 'zod';
 
 export type SystemConfiguration = {
-    systemBanner: ISystemBannerConfiguration,
-    enabledComponents: IEnabledComponents
+    systemBanner: ISystemBannerConfiguration;
+    enabledComponents: IEnabledComponents;
 };
 
 export type IEnabledComponents = {
@@ -50,15 +50,17 @@ export type IConfiguration = BaseConfiguration & {
     configuration: SystemConfiguration;
 };
 
-export const systemBannerConfigSchema = z.object({
-    isEnabled: z.boolean().default(false),
-    text: z.string().default(''),
-    textColor: z.string().default(''),
-    backgroundColor: z.string().default(''),
-}).refine((data) => !data.isEnabled || (data.isEnabled && data.text.length >= 1), {
-    message: 'Text is required when banner is activated.',
-    path: ['text']
-});
+export const systemBannerConfigSchema = z
+    .object({
+        isEnabled: z.boolean().default(false),
+        text: z.string().default(''),
+        textColor: z.string().default(''),
+        backgroundColor: z.string().default('')
+    })
+    .refine((data) => !data.isEnabled || (data.isEnabled && data.text.length >= 1), {
+        message: 'Text is required when banner is activated.',
+        path: ['text']
+    });
 
 export const enabledComponentsSchema = z.object({
     deleteSessionHistory: z.boolean().default(true),
@@ -68,10 +70,10 @@ export const enabledComponentsSchema = z.object({
     editChatHistoryBuffer: z.boolean().default(true),
     editNumOfRagDocument: z.boolean().default(true),
     uploadRagDocs: z.boolean().default(true),
-    uploadContextDocs: z.boolean().default(true),
+    uploadContextDocs: z.boolean().default(true)
 });
 
 export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
-    enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
+    enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({}))
 });

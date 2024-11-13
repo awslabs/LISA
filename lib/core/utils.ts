@@ -69,37 +69,40 @@ export const getIamPolicyStatements = (config: Config, serviceName: string): Pol
     return extractPolicyStatementsFromJson(config, serviceName);
 };
 
-export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '') => {
+export const createLambdaRole = (
+    construct: Construct,
+    deploymentName: string,
+    lambdaName: string,
+    tableArn: string = ''
+) => {
     return new Role(construct, `Lisa${lambdaName}LambdaExecutionRole`, {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         roleName: createCdkId([deploymentName, `Lisa${lambdaName}LambdaExecutionRole`]),
         description: `Role used by LISA ${lambdaName} lambdas to access AWS resources`,
-        managedPolicies: [
-            ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
-        ],
+        managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole')],
         inlinePolicies: {
             lambdaPermissions: new PolicyDocument({
-                statements: [...(tableArn ? [
-                    new PolicyStatement({
-                        effect: Effect.ALLOW,
-                        actions: [
-                            'dynamodb:BatchGetItem',
-                            'dynamodb:ConditionCheckItem',
-                            'dynamodb:DescribeTable',
-                            'dynamodb:GetItem',
-                            'dynamodb:GetRecords',
-                            'dynamodb:GetShardIterator',
-                            'dynamodb:Query',
-                            'dynamodb:Scan'
-                        ],
-                        resources: [
-                            tableArn,
-                            `${tableArn}/*`,
-                        ]
-                    })
-                ] : []),
+                statements: [
+                    ...(tableArn
+                        ? [
+                              new PolicyStatement({
+                                  effect: Effect.ALLOW,
+                                  actions: [
+                                      'dynamodb:BatchGetItem',
+                                      'dynamodb:ConditionCheckItem',
+                                      'dynamodb:DescribeTable',
+                                      'dynamodb:GetItem',
+                                      'dynamodb:GetRecords',
+                                      'dynamodb:GetShardIterator',
+                                      'dynamodb:Query',
+                                      'dynamodb:Scan'
+                                  ],
+                                  resources: [tableArn, `${tableArn}/*`]
+                              })
+                          ]
+                        : [])
                 ]
-            }),
+            })
         }
     });
 };
@@ -113,7 +116,7 @@ export const createLambdaRole = (construct: Construct, deploymentName: string, l
  * @throws {Error} Throws an error if the generated CDK ID is longer than 64 characters.
  * @returns {string} The generated CDK ID for the model resource.
  */
-export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
+export function createCdkId(idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
     let cdkId = idParts.join('-');
     const length = cdkId.length;
 

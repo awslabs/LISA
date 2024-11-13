@@ -22,7 +22,7 @@ import { NotificationProp } from './notifications.props';
 import { useNotificationService } from '../util/hooks';
 import { useAppSelector } from '../../config/store';
 
-function NotificationBanner (): ReactElement {
+function NotificationBanner(): ReactElement {
     const notifications: NotificationProp[] = useAppSelector(selectNotifications);
     const notificationDisplayMaxSize = 5;
 
@@ -34,12 +34,14 @@ function NotificationBanner (): ReactElement {
     }, [dispatch]);
 
     return (
-        <div role='status' aria-live='polite'>
+        <div role="status" aria-live="polite">
             <Flashbar
                 items={notifications
                     .slice(
                         0,
-                        notifications.length > notificationDisplayMaxSize ? notificationDisplayMaxSize : notifications.length,
+                        notifications.length > notificationDisplayMaxSize
+                            ? notificationDisplayMaxSize
+                            : notifications.length
                     )
                     .map((props) => notificationService.createNotification(props))}
             />

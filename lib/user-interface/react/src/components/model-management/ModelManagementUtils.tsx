@@ -29,7 +29,7 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
     [ModelStatus.Stopped]: 'stopped',
     [ModelStatus.Updating]: 'in-progress',
     [ModelStatus.Deleting]: 'in-progress',
-    [ModelStatus.Failed]: 'error',
+    [ModelStatus.Failed]: 'error'
 };
 
 export const CARD_DEFINITIONS = {
@@ -38,53 +38,58 @@ export const CARD_DEFINITIONS = {
         {
             id: 'modelName',
             header: 'Name',
-            content: (model: IModel) => model.modelName,
+            content: (model: IModel) => model.modelName
         },
         {
             id: 'modelType',
             header: 'Type',
-            content: (model: IModel) => model.modelType,
+            content: (model: IModel) => model.modelType
         },
         {
             id: 'modelUrl',
             header: 'URL',
-            content: (model: IModel) => model.modelUrl ? model.modelUrl : 'Model URL not defined',
+            content: (model: IModel) => (model.modelUrl ? model.modelUrl : 'Model URL not defined')
         },
         {
             id: 'streaming',
             header: 'Streaming',
-            content: (model: IModel) => String(model.streaming),
+            content: (model: IModel) => String(model.streaming)
         },
         {
             id: 'hosting',
             header: 'Hosted in LISA',
-            content: (model: IModel) => String(model.containerConfig !== null && model.autoScalingConfig !== null && model.loadBalancerConfig !== null),
+            content: (model: IModel) =>
+                String(
+                    model.containerConfig !== null &&
+                        model.autoScalingConfig !== null &&
+                        model.loadBalancerConfig !== null
+                )
         },
         {
             id: 'instanceType',
             header: 'Instance Type',
-            content: (model: IModel) => model.instanceType ?  model.instanceType : 'Instance Type not defined',
+            content: (model: IModel) => (model.instanceType ? model.instanceType : 'Instance Type not defined')
         },
         {
             id: 'modelStatus',
             header: 'Status',
             content: (model: IModel) => (
                 <StatusIndicator type={MODEL_STATUS_LOOKUP[model.status]}>{model.status}</StatusIndicator>
-            ),
-        },
-    ],
+            )
+        }
+    ]
 };
 
 export const PAGE_SIZE_OPTIONS = [
     { value: 6, label: '6 Models' },
     { value: 12, label: '12 Models' },
     { value: 24, label: '24 Models' },
-    { value: 48, label: '48 Models' },
+    { value: 48, label: '48 Models' }
 ];
 
 export const DEFAULT_PREFERENCES = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
+    visibleContent: ['modelName', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus']
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -97,7 +102,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'streaming', label: 'Streaming' },
             { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
             { id: 'instanceType', label: 'Instance Type' },
-            { id: 'modelStatus', label: 'Status' },
-        ],
-    },
+            { id: 'modelStatus', label: 'Status' }
+        ]
+    }
 ];

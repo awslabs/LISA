@@ -23,10 +23,10 @@ import { BaseProps } from '../schema';
 type LisaApiDeploymentStackProps = {
     restApiId: string;
 } & BaseProps &
-  StackProps;
+    StackProps;
 
 export class LisaApiDeploymentStack extends Stack {
-    constructor (scope: Construct, id: string, props: LisaApiDeploymentStackProps) {
+    constructor(scope: Construct, id: string, props: LisaApiDeploymentStackProps) {
         super(scope, id, props);
 
         const { restApiId, config } = props;
@@ -36,7 +36,7 @@ export class LisaApiDeploymentStack extends Stack {
         // https://github.com/aws/aws-cdk/issues/12417
         // https://github.com/aws/aws-cdk/issues/13383
         const deployment = new Deployment(this, `Deployment-${new Date().getTime()}`, {
-            api: RestApi.fromRestApiId(this, 'restApiRef', restApiId),
+            api: RestApi.fromRestApiId(this, 'restApiRef', restApiId)
         });
 
         // Hack to allow deploying to an existing stage

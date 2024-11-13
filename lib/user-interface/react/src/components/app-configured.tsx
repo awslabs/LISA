@@ -24,7 +24,7 @@ import { useAppDispatch } from '../config/store';
 import { updateUserState } from '../shared/reducers/user.reducer';
 import { useEffect, useState } from 'react';
 
-function AppConfigured () {
+function AppConfigured() {
     const dispatch = useAppDispatch();
     const [oidcUser, setOidcUser] = useState<User | void>();
 
@@ -37,8 +37,8 @@ function AppConfigured () {
                     preferred_username: oidcUser.profile.preferred_username,
                     email: oidcUser.profile.email,
                     groups: userGroups,
-                    isAdmin: userGroups ? isAdmin(userGroups) : false,
-                }),
+                    isAdmin: userGroups ? isAdmin(userGroups) : false
+                })
             );
         }
     }, [dispatch, oidcUser]);

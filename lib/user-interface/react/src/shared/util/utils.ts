@@ -26,7 +26,7 @@ import _ from 'lodash';
  * @param {object} [obj2={}] - The second JSON object to compare.
  * @returns {object} - A new object containing the differences between the two input objects.
  */
-export function getJsonDifference (obj1 = {}, obj2 = {}) {
+export function getJsonDifference(obj1 = {}, obj2 = {}) {
     const output = {},
         merged = { ...obj1, ...obj2 }; // has properties of both
 
@@ -39,7 +39,6 @@ export function getJsonDifference (obj1 = {}, obj2 = {}) {
             if (Object.keys(value).length !== 0) {
                 output[key] = value;
             }
-
         } else {
             if (!_.isEqual(value1, value2) && (value1 || value2)) {
                 output[key] = value2;

@@ -14,13 +14,7 @@
  limitations under the License.
  */
 
-import {
-    AttributeEditor,
-    ExpandableSection,
-    FormField,
-    Input,
-    SpaceBetween,
-} from '@cloudscape-design/components';
+import { AttributeEditor, ExpandableSection, FormField, Input, SpaceBetween } from '@cloudscape-design/components';
 import { Fragment, ReactElement } from 'react';
 import { FormProps } from './form-props';
 import { duplicateAttributeRefinement } from '../validation';
@@ -31,26 +25,25 @@ export const AttributeEditorSchema = z
     .array(
         z.object({
             key: z.string().min(1, { message: 'Empty key not permitted.' }),
-            value: z.string().min(1, { message: 'Empty value not permitted.' }),
+            value: z.string().min(1, { message: 'Empty value not permitted.' })
         })
     )
     .superRefine(duplicateAttributeRefinement('key'))
     .optional();
 
 export type EnvironmentVariablesProps = {
-    propertyPath?: string[]
+    propertyPath?: string[];
 };
 
-
-export function EnvironmentVariables (props: FormProps<Readonly<any>> & EnvironmentVariablesProps): ReactElement {
+export function EnvironmentVariables(props: FormProps<Readonly<any>> & EnvironmentVariablesProps): ReactElement {
     const { item, setFields, touchFields, formErrors, propertyPath } = props;
     const property = props.propertyPath ? propertyPath?.join('.') : 'environment';
 
-    function findProperty (obj, path) {
+    function findProperty(obj, path) {
         const parts = path.split('.');
-        if (parts.length === 1 && obj){
+        if (parts.length === 1 && obj) {
             return obj[parts[0]];
-        } else if (!obj){
+        } else if (!obj) {
             return undefined;
         }
         return findProperty(obj[parts[0]], parts.slice(1).join('.'));
@@ -63,17 +56,19 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
                     Environment variables <i>- optional</i>
                 </Fragment>
             }
-            headingTagOverride='h3'
+            headingTagOverride="h3"
             defaultExpanded={true}
         >
-            <SpaceBetween direction='vertical' size='xxl'>
-                <FormField label='' description=''>
+            <SpaceBetween direction="vertical" size="xxl">
+                <FormField label="" description="">
                     <AttributeEditor
                         onAddButtonClick={() => {
-                            setFields({ [property]: (item.environment || []).concat({
-                                key: '',
-                                value: '',
-                            })});
+                            setFields({
+                                [property]: (item.environment || []).concat({
+                                    key: '',
+                                    value: ''
+                                })
+                            });
                         }}
                         onRemoveButtonClick={({ detail: { itemIndex } }) => {
                             const toRemove = {} as any;
@@ -81,58 +76,50 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
                             setFields(toRemove, ModifyMethod.Unset);
                         }}
                         items={item.environment}
-                        addButtonText='Add environment variable'
+                        addButtonText="Add environment variable"
                         definition={[
                             {
                                 label: 'Key',
                                 control: (attribute: any, itemIndex) => (
-                                    <FormField
-                                        errorText={findProperty(formErrors, property)?.[itemIndex]?.key}
-                                    >
+                                    <FormField errorText={findProperty(formErrors, property)?.[itemIndex]?.key}>
                                         <Input
                                             autoFocus
-                                            placeholder='Enter key'
+                                            placeholder="Enter key"
                                             value={attribute.key}
                                             onChange={({ detail }) => {
                                                 const toChange = {} as any;
                                                 toChange[`${property}[${itemIndex}]`] = {
-                                                    key: detail.value,
+                                                    key: detail.value
                                                 };
                                                 setFields(toChange, ModifyMethod.Merge);
                                             }}
-                                            onBlur={() =>
-                                                touchFields([`${property}[${itemIndex}].key`])
-                                            }
+                                            onBlur={() => touchFields([`${property}[${itemIndex}].key`])}
                                         />
                                     </FormField>
-                                ),
+                                )
                             },
                             {
                                 label: 'Value',
                                 control: (attribute: any, itemIndex) => (
-                                    <FormField
-                                        errorText={findProperty(formErrors, property)?.[itemIndex]?.value}
-                                    >
+                                    <FormField errorText={findProperty(formErrors, property)?.[itemIndex]?.value}>
                                         <Input
-                                            placeholder='Enter value'
+                                            placeholder="Enter value"
                                             value={attribute.value}
                                             onChange={({ detail }) => {
                                                 const toChange = {} as any;
                                                 toChange[`${property}[${itemIndex}]`] = {
-                                                    value: detail.value,
+                                                    value: detail.value
                                                 };
                                                 setFields(toChange, ModifyMethod.Merge);
                                             }}
-                                            onBlur={() =>
-                                                touchFields([`${property}[${itemIndex}].value`])
-                                            }
+                                            onBlur={() => touchFields([`${property}[${itemIndex}].value`])}
                                         />
                                     </FormField>
-                                ),
-                            },
+                                )
+                            }
                         ]}
-                        removeButtonText='Remove'
-                        empty='No items associated with the resource.'
+                        removeButtonText="Remove"
+                        empty="No items associated with the resource."
                     />
                 </FormField>
             </SpaceBetween>

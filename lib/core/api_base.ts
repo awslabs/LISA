@@ -25,7 +25,7 @@ import { Vpc } from '../networking/vpc';
 type LisaApiBaseStackProps = {
     vpc: Vpc;
 } & BaseProps &
-  StackProps;
+    StackProps;
 
 export class LisaApiBaseStack extends Stack {
     public readonly restApi: RestApi;
@@ -34,7 +34,7 @@ export class LisaApiBaseStack extends Stack {
     public readonly rootResourceId: string;
     public readonly restApiUrl: string;
 
-    constructor (scope: Construct, id: string, props: LisaApiBaseStackProps) {
+    constructor(scope: Construct, id: string, props: LisaApiBaseStackProps) {
         super(scope, id, props);
 
         const { config, vpc } = props;
@@ -42,7 +42,7 @@ export class LisaApiBaseStack extends Stack {
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
             throttlingRateLimit: 100,
-            throttlingBurstLimit: 100,
+            throttlingBurstLimit: 100
         };
 
         const restApi = new RestApi(this, `${id}-RestApi`, {
@@ -52,16 +52,16 @@ export class LisaApiBaseStack extends Stack {
             deployOptions,
             defaultCorsPreflightOptions: {
                 allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: [...Cors.DEFAULT_HEADERS],
+                allowHeaders: [...Cors.DEFAULT_HEADERS]
             },
             // Support binary media types used for documentation images and fonts
-            binaryMediaTypes: ['font/*', 'image/*'],
+            binaryMediaTypes: ['font/*', 'image/*']
         });
 
         // Create the authorizer Lambda for APIGW
         const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
             config: config,
-            vpc,
+            vpc
         });
 
         this.restApi = restApi;

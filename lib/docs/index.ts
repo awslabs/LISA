@@ -34,13 +34,12 @@ type DocsProps = {} & BaseProps & StackProps;
  * User Interface Construct.
  */
 export class LisaDocsStack extends Stack {
-
     /**
      * @param {Construct} scope - The parent or owner of the construct.
      * @param {string} id - The unique identifier for the construct within its scope.
      * @param {DocsProps} props - The properties of the construct.
      */
-    constructor (scope: Construct, id: string, props: DocsProps) {
+    constructor(scope: Construct, id: string, props: DocsProps) {
         super(scope, id, props);
         const { config } = props;
 
@@ -52,7 +51,7 @@ export class LisaDocsStack extends Stack {
             enforceSSL: true,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             websiteIndexDocument: 'index.html',
-            websiteErrorDocument: '404.html',
+            websiteErrorDocument: '404.html'
         });
 
         // Ensure dist folder is created (for tests)
@@ -63,13 +62,13 @@ export class LisaDocsStack extends Stack {
         // Deploy local folder to S3
         new BucketDeployment(this, 'DeployDocsWebsite', {
             sources: [Source.asset(docsPath)],
-            destinationBucket: docsBucket,
+            destinationBucket: docsBucket
         });
 
         // REST API GW S3 role
         const apiGatewayRole = new Role(this, `${Stack.of(this).stackName}-s3-reader-role`, {
             assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
-            description: 'Allows API gateway to proxy static website assets',
+            description: 'Allows API gateway to proxy static website assets'
         });
         docsBucket.grantRead(apiGatewayRole);
 
@@ -78,9 +77,9 @@ export class LisaDocsStack extends Stack {
             description: 'API Gateway for S3 hosted website',
             endpointConfiguration: { types: [EndpointType.REGIONAL] },
             deployOptions: {
-                stageName: 'LISA',
+                stageName: 'LISA'
             },
-            binaryMediaTypes: ['*/*'],
+            binaryMediaTypes: ['*/*']
         });
 
         const defaultIntegration = new AwsIntegration({
@@ -90,13 +89,15 @@ export class LisaDocsStack extends Stack {
             path: `${docsBucket.bucketName}/index.html`,
             options: {
                 credentialsRole: apiGatewayRole,
-                integrationResponses: [{
-                    statusCode: '200',
-                    responseParameters: {
-                        'method.response.header.Content-Type': '\'text/html\'',
-                    },
-                }],
-            },
+                integrationResponses: [
+                    {
+                        statusCode: '200',
+                        responseParameters: {
+                            'method.response.header.Content-Type': 'text/html'
+                        }
+                    }
+                ]
+            }
         });
 
         // Create API Gateway integration with S3
@@ -108,31 +109,32 @@ export class LisaDocsStack extends Stack {
             options: {
                 credentialsRole: apiGatewayRole,
                 requestParameters: {
-                    'integration.request.path.key': 'method.request.path.key',
+                    'integration.request.path.key': 'method.request.path.key'
                 },
                 integrationResponses: [
                     {
                         statusCode: '200',
                         responseParameters: {
                             'method.response.header.Content-Type': 'integration.response.header.Content-Type',
-                            'method.response.header.Content-Disposition': 'integration.response.header.Content-Disposition',
-                            'method.response.header.Content-Length': 'integration.response.header.Content-Length',
-                        },
+                            'method.response.header.Content-Disposition':
+                                'integration.response.header.Content-Disposition',
+                            'method.response.header.Content-Length': 'integration.response.header.Content-Length'
+                        }
                     },
                     {
                         selectionPattern: '403',
                         statusCode: '404',
                         responseParameters: {
-                            'method.response.header.Content-Type': '\'text/html\'',
+                            'method.response.header.Content-Type': 'text/html'
                         },
                         responseTemplates: {
                             'text/html': `#set($context.responseOverride.header.Content-Type = 'text/html')
                              #set($context.responseOverride.status = 404)
-                             #set($context.responseOverride.header.Location = "$context.domainName/404.html")`,
-                        },
-                    },
-                ],
-            },
+                             #set($context.responseOverride.header.Location = "$context.domainName/404.html")`
+                        }
+                    }
+                ]
+            }
         });
 
         // Add GET method to API Gateway
@@ -141,15 +143,15 @@ export class LisaDocsStack extends Stack {
                 {
                     statusCode: '200',
                     responseParameters: {
-                        'method.response.header.Content-Type': true,
-                    },
-                },
-            ],
+                        'method.response.header.Content-Type': true
+                    }
+                }
+            ]
         });
 
         api.root.addResource('{key+}').addMethod('GET', s3Integration, {
             requestParameters: {
-                'method.request.path.key': true,
+                'method.request.path.key': true
             },
             methodResponses: [
                 {
@@ -157,22 +159,22 @@ export class LisaDocsStack extends Stack {
                     responseParameters: {
                         'method.response.header.Content-Type': true,
                         'method.response.header.Content-Disposition': true,
-                        'method.response.header.Content-Length': true,
-                    },
+                        'method.response.header.Content-Length': true
+                    }
                 },
                 {
                     statusCode: '404',
                     responseParameters: {
-                        'method.response.header.Content-Type': true,
-                    },
-                },
-            ],
+                        'method.response.header.Content-Type': true
+                    }
+                }
+            ]
         });
 
         // Output the API Gateway URL
         new CfnOutput(this, 'DocsApiGatewayUrl', {
             value: api.url,
-            description: 'API Gateway URL',
+            description: 'API Gateway URL'
         });
     }
 }

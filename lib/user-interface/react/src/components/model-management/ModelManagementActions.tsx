@@ -22,7 +22,8 @@ import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
 import {
     modelManagementApi,
-    useDeleteModelMutation, useUpdateModelMutation,
+    useDeleteModelMutation,
+    useUpdateModelMutation
 } from '../../shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
@@ -35,17 +36,21 @@ export type ModelActionProps = {
     setEdit: (boolean) => void;
 };
 
-function ModelActions (props: ModelActionProps): ReactElement {
+function ModelActions(props: ModelActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
     return (
-        <SpaceBetween direction='horizontal' size='xs'>
+        <SpaceBetween direction="horizontal" size="xs">
             {ModelActionButton(dispatch, notificationService, props)}
-            <Button iconName='add-plus' variant='primary' onClick={() => {
-                props.setEdit(false);
-                props.setNewModelModelVisible(true);
-            }}>
+            <Button
+                iconName="add-plus"
+                variant="primary"
+                onClick={() => {
+                    props.setEdit(false);
+                    props.setNewModelModelVisible(true);
+                }}
+            >
                 New Model
             </Button>
             <Button
@@ -55,22 +60,26 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 }}
                 ariaLabel={'Refresh models cards'}
             >
-                <Icon name='refresh' />
+                <Icon name="refresh" />
             </Button>
         </SpaceBetween>
     );
 }
 
-function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
+function ModelActionButton(
+    dispatch: ThunkDispatch<any, any, Action>,
+    notificationService: INotificationService,
+    props?: any
+): ReactElement {
     const selectedModel: IModel = props?.selectedItems[0];
     const [
         deleteMutation,
-        { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
+        { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading }
     ] = useDeleteModelMutation();
 
     const [
         updateModelMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
+        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating }
     ] = useUpdateModelMutation();
 
     useEffect(() => {
@@ -78,10 +87,13 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully deleted model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedModel) {
-            notificationService.generateNotification(`Error deleting model: ${deleteError.data?.message ?? deleteError.data}`, 'error');
+            notificationService.generateNotification(
+                `Error deleting model: ${deleteError.data?.message ?? deleteError.data}`,
+                'error'
+            );
             props.setSelectedItems([]);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
 
     useEffect(() => {
@@ -89,7 +101,10 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully updated model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isUpdating && isUpdateError && selectedModel) {
-            notificationService.generateNotification(`Error updating model: ${updateError.data?.message ?? updateError.data}`, 'error');
+            notificationService.generateNotification(
+                `Error updating model: ${updateError.data?.message ?? updateError.data}`,
+                'error'
+            );
             props.setSelectedItems([]);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,36 +116,72 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             text: 'Delete',
             id: 'deleteModel',
             disabled: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status),
-            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending state' : '',
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped, ModelStatus.Failed].includes(
+                selectedModel.status
+            )
+                ? 'Unable to delete a model that is in a pending state'
+                : ''
         });
         items.push({
             text: 'Start',
             id: 'startModel',
-            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || selectedModel.status !== ModelStatus.Stopped,
-            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to start a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.Stopped ? 'Unable to start a model that is not in Stopped state' : '',
+            disabled:
+                (selectedModel.containerConfig === null &&
+                    selectedModel.autoScalingConfig === null &&
+                    selectedModel.loadBalancerConfig === null) ||
+                selectedModel.status !== ModelStatus.Stopped,
+            disabledReason:
+                selectedModel.containerConfig === null &&
+                selectedModel.autoScalingConfig === null &&
+                selectedModel.loadBalancerConfig === null
+                    ? 'Unable to start a model that is not hosted in LISA'
+                    : selectedModel.status !== ModelStatus.Stopped
+                      ? 'Unable to start a model that is not in Stopped state'
+                      : ''
         });
         items.push({
             text: 'Stop',
             id: 'stopModel',
-            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || selectedModel.status !== ModelStatus.InService,
-            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to stop a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.InService ? 'Unable to stop a model that is not in InService state' : '',
+            disabled:
+                (selectedModel.containerConfig === null &&
+                    selectedModel.autoScalingConfig === null &&
+                    selectedModel.loadBalancerConfig === null) ||
+                selectedModel.status !== ModelStatus.InService,
+            disabledReason:
+                selectedModel.containerConfig === null &&
+                selectedModel.autoScalingConfig === null &&
+                selectedModel.loadBalancerConfig === null
+                    ? 'Unable to stop a model that is not hosted in LISA'
+                    : selectedModel.status !== ModelStatus.InService
+                      ? 'Unable to stop a model that is not in InService state'
+                      : ''
         });
         items.push({
             text: 'Update',
             id: 'editModel',
             disabled: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
-            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending or failed state' : '',
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status)
+                ? 'Unable to delete a model that is in a pending or failed state'
+                : ''
         });
     }
 
     return (
         <ButtonDropdown
             items={items}
-            variant='primary'
+            variant="primary"
             disabled={!selectedModel}
             loading={isDeleteLoading || isUpdating}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedModel, dispatch, deleteMutation, updateModelMutation, props.setNewModelModelVisible, props.setEdit)
+                ModelActionHandler(
+                    e,
+                    selectedModel,
+                    dispatch,
+                    deleteMutation,
+                    updateModelMutation,
+                    props.setNewModelModelVisible,
+                    props.setEdit
+                )
             }
         >
             Actions
@@ -153,10 +204,11 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Start',
                     resourceName: 'Model',
-                    onConfirm: () => updateMutation({
-                        modelId: selectedModel.modelId,
-                        enabled: true
-                    }),
+                    onConfirm: () =>
+                        updateMutation({
+                            modelId: selectedModel.modelId,
+                            enabled: true
+                        }),
                     description: `This will start the following model: ${selectedModel.modelId}.`
                 })
             );
@@ -166,10 +218,11 @@ const ModelActionHandler = async (
                 setConfirmationModal({
                     action: 'Stop',
                     resourceName: 'Model',
-                    onConfirm: () => updateMutation({
-                        modelId: selectedModel.modelId,
-                        enabled: false
-                    }),
+                    onConfirm: () =>
+                        updateMutation({
+                            modelId: selectedModel.modelId,
+                            enabled: false
+                        }),
                     description: `This will stop the following model: ${selectedModel.modelId}.`
                 })
             );

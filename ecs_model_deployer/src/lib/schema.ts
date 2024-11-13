@@ -24,7 +24,7 @@ const VERSION: string = '2.0.1';
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,
-    retain: cdk.RemovalPolicy.RETAIN,
+    retain: cdk.RemovalPolicy.RETAIN
 };
 
 /**
@@ -32,7 +32,7 @@ const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
  */
 export enum ModelType {
     TEXTGEN = 'textgen',
-    EMBEDDING = 'embedding',
+    EMBEDDING = 'embedding'
 }
 
 /**
@@ -42,7 +42,7 @@ export enum EcsSourceType {
     ASSET = 'asset',
     ECR = 'ecr',
     REGISTRY = 'registry',
-    TARBALL = 'tarball',
+    TARBALL = 'tarball'
 }
 
 /**
@@ -91,7 +91,7 @@ const Ec2TypeSchema = z.object({
     gpuCount: z.number().min(0),
     nvmePath: z.string().optional().default(''),
     maxThroughput: z.number(),
-    vCpus: z.number(),
+    vCpus: z.number()
 });
 
 type Ec2Type = z.infer<typeof Ec2TypeSchema>;
@@ -108,158 +108,158 @@ export class Ec2Metadata {
             gpuCount: 0,
             nvmePath: '',
             maxThroughput: 10,
-            vCpus: 2,
+            vCpus: 2
         },
         'm5.xlarge': {
             memory: 16 * 1000,
             gpuCount: 0,
             nvmePath: '',
             maxThroughput: 10,
-            vCpus: 4,
+            vCpus: 4
         },
         'm5.2xlarge': {
             memory: 32 * 1000,
             gpuCount: 0,
             nvmePath: '',
             maxThroughput: 10,
-            vCpus: 8,
+            vCpus: 8
         },
         'm5d.xlarge': {
             memory: 16 * 1000,
             gpuCount: 0,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 10,
-            vCpus: 4,
+            vCpus: 4
         },
         'm5d.2xlarge': {
             memory: 32 * 1000,
             gpuCount: 0,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 10,
-            vCpus: 8,
+            vCpus: 8
         },
         'g4dn.xlarge': {
             memory: 16 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 25,
-            vCpus: 4,
+            vCpus: 4
         },
         'g4dn.2xlarge': {
             memory: 32 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 25,
-            vCpus: 8,
+            vCpus: 8
         },
         'g4dn.4xlarge': {
             memory: 64 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 25,
-            vCpus: 16,
+            vCpus: 16
         },
         'g4dn.8xlarge': {
             memory: 128 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 50,
-            vCpus: 32,
+            vCpus: 32
         },
         'g4dn.16xlarge': {
             memory: 256 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 50,
-            vCpus: 64,
+            vCpus: 64
         },
         'g4dn.12xlarge': {
             memory: 192 * 1000,
             gpuCount: 4,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 50,
-            vCpus: 48,
+            vCpus: 48
         },
         'g4dn.metal': {
             memory: 384 * 1000,
             gpuCount: 8,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 100,
-            vCpus: 96,
+            vCpus: 96
         },
         'g5.xlarge': {
             memory: 16 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 10,
-            vCpus: 4,
+            vCpus: 4
         },
         'g5.2xlarge': {
             memory: 32 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 10,
-            vCpus: 8,
+            vCpus: 8
         },
         'g5.4xlarge': {
             memory: 64 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 25,
-            vCpus: 16,
+            vCpus: 16
         },
         'g5.8xlarge': {
             memory: 128 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 25,
-            vCpus: 32,
+            vCpus: 32
         },
         'g5.16xlarge': {
             memory: 256 * 1000,
             gpuCount: 1,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 25,
-            vCpus: 64,
+            vCpus: 64
         },
         'g5.12xlarge': {
             memory: 192 * 1000,
             gpuCount: 4,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 40,
-            vCpus: 48,
+            vCpus: 48
         },
         'g5.24xlarge': {
             memory: 384 * 1000,
             gpuCount: 4,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 50,
-            vCpus: 96,
+            vCpus: 96
         },
         'g5.48xlarge': {
             memory: 768 * 1000,
             gpuCount: 8,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 100,
-            vCpus: 192,
+            vCpus: 192
         },
         'p4d.24xlarge': {
             memory: 1152 * 1000,
             gpuCount: 8,
             nvmePath: '/dev/nvme1n1',
             maxThroughput: 400,
-            vCpus: 96,
-        },
+            vCpus: 96
+        }
     };
 
     /**
-   * Getter method to access EC2 metadata. Retrieves the metadata for a specific EC2 instance type.
-   *
-   * @param {string} key - The key representing the EC2 instance type (e.g., 'g4dn.xlarge').
-   * @throws {Error} Throws an error if no metadata is found for the specified EC2 instance type.
-   * @returns {Ec2Type} The metadata for the specified EC2 instance type.
-   */
-    static get (key: string): Ec2Type {
+     * Getter method to access EC2 metadata. Retrieves the metadata for a specific EC2 instance type.
+     *
+     * @param {string} key - The key representing the EC2 instance type (e.g., 'g4dn.xlarge').
+     * @throws {Error} Throws an error if no metadata is found for the specified EC2 instance type.
+     * @returns {Ec2Type} The metadata for the specified EC2 instance type.
+     */
+    static get(key: string): Ec2Type {
         const instance = this.instances[key];
         if (!instance) {
             throw new Error(`No EC2 type found for key: ${key}`);
@@ -268,11 +268,11 @@ export class Ec2Metadata {
     }
 
     /**
-   * Get EC2 instances defined with metadata.
-   *
-   * @returns {string[]} Array of EC2 instances.
-   */
-    static getValidInstanceKeys (): string[] {
+     * Get EC2 instances defined with metadata.
+     *
+     * @returns {string[]} Array of EC2 instances.
+     */
+    static getValidInstanceKeys(): string[] {
         return Object.keys(this.instances);
     }
 }
@@ -294,7 +294,7 @@ const ContainerHealthCheckConfigSchema = z.object({
     interval: z.number().default(10),
     startPeriod: z.number().default(30),
     timeout: z.number().default(5),
-    retries: z.number().default(2),
+    retries: z.number().default(2)
 });
 
 /**
@@ -302,7 +302,7 @@ const ContainerHealthCheckConfigSchema = z.object({
  */
 const ImageTarballAsset = z.object({
     path: z.string(),
-    type: z.literal(EcsSourceType.TARBALL),
+    type: z.literal(EcsSourceType.TARBALL)
 });
 
 /**
@@ -311,7 +311,7 @@ const ImageTarballAsset = z.object({
 const ImageSourceAsset = z.object({
     baseImage: z.string(),
     path: z.string(),
-    type: z.literal(EcsSourceType.ASSET),
+    type: z.literal(EcsSourceType.ASSET)
 });
 
 /**
@@ -320,7 +320,7 @@ const ImageSourceAsset = z.object({
 const ImageECRAsset = z.object({
     repositoryArn: z.string(),
     tag: z.string().optional(),
-    type: z.literal(EcsSourceType.ECR),
+    type: z.literal(EcsSourceType.ECR)
 });
 
 /**
@@ -328,7 +328,7 @@ const ImageECRAsset = z.object({
  */
 const ImageRegistryAsset = z.object({
     registry: z.string(),
-    type: z.literal(EcsSourceType.REGISTRY),
+    type: z.literal(EcsSourceType.REGISTRY)
 });
 
 /**
@@ -349,12 +349,12 @@ const ContainerConfigSchema = z.object({
                     acc[key] = String(value);
                     return acc;
                 },
-                {} as Record<string, string>,
+                {} as Record<string, string>
             );
         })
         .default({}),
     sharedMemorySize: z.number().min(0).optional().default(0),
-    healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
+    healthCheckConfig: ContainerHealthCheckConfigSchema.default({})
 });
 
 /**
@@ -373,7 +373,7 @@ const HealthCheckConfigSchema = z.object({
     interval: z.number().default(30),
     timeout: z.number().default(10),
     healthyThresholdCount: z.number().default(2),
-    unhealthyThresholdCount: z.number().default(2),
+    unhealthyThresholdCount: z.number().default(2)
 });
 
 /**
@@ -386,7 +386,7 @@ const HealthCheckConfigSchema = z.object({
 const LoadBalancerConfigSchema = z.object({
     sslCertIamArn: z.string().optional().nullable().default(null),
     healthCheckConfig: HealthCheckConfigSchema,
-    domainName: z.string().optional().nullable().default(null),
+    domainName: z.string().optional().nullable().default(null)
 });
 
 /**
@@ -403,7 +403,7 @@ const MetricConfigSchema = z.object({
     albMetricName: z.string(),
     targetValue: z.number(),
     duration: z.number().default(60),
-    estimatedInstanceWarmup: z.number().min(0).default(180),
+    estimatedInstanceWarmup: z.number().min(0).default(180)
 });
 
 /**
@@ -422,7 +422,7 @@ const AutoScalingConfigSchema = z.object({
     maxCapacity: z.number().min(1).default(2),
     defaultInstanceWarmup: z.number().default(180),
     cooldown: z.number().min(1).default(420),
-    metricConfig: MetricConfigSchema,
+    metricConfig: MetricConfigSchema
 });
 
 /**
@@ -453,7 +453,7 @@ const EcsBaseConfigSchema = z.object({
     identifier: z.string(),
     instanceType: z.enum(VALID_INSTANCE_KEYS),
     internetFacing: z.boolean().default(false),
-    loadBalancerConfig: LoadBalancerConfigSchema,
+    loadBalancerConfig: LoadBalancerConfigSchema
 });
 
 /**
@@ -505,7 +505,7 @@ export const EcsModelConfigSchema = z
             .default('ecs')
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
-            }),
+            })
     })
     .refine(
         (data) => {
@@ -518,8 +518,8 @@ export const EcsModelConfigSchema = z
         {
             message: `For 'textgen' models, 'streaming' must be true or false.
             For 'embedding' models, 'streaming' must not be set.`,
-            path: ['streaming'],
-        },
+            path: ['streaming']
+        }
     );
 
 /**
@@ -537,7 +537,7 @@ export type ModelConfig = EcsModelConfig;
  */
 export enum RagRepositoryType {
     OPENSEARCH = 'opensearch',
-    PGVECTOR = 'pgvector',
+    PGVECTOR = 'pgvector'
 }
 
 /**
@@ -548,7 +548,7 @@ export enum RagRepositoryType {
  */
 const PypiConfigSchema = z.object({
     indexUrl: z.string().optional().default(''),
-    trustedHost: z.string().optional().default(''),
+    trustedHost: z.string().optional().default('')
 });
 
 /**
@@ -590,12 +590,14 @@ const RawConfigSchema = z
         region: z.string(),
         vpcId: z.string().optional(),
         deploymentStage: z.string(),
-        removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
+        removalPolicy: z
+            .union([z.literal('destroy'), z.literal('retain')])
+            .transform((value) => REMOVAL_POLICIES[value]),
         s3BucketModels: z.string(),
         mountS3DebUrl: z.string().optional(),
         pypiConfig: PypiConfigSchema.optional().default({
             indexUrl: '',
-            trustedHost: '',
+            trustedHost: ''
         }),
         condaUrl: z.string().optional().default(''),
         certificateAuthorityBundle: z.string().optional().default(''),
@@ -605,8 +607,8 @@ const RawConfigSchema = z
             .array(
                 z.object({
                     Key: z.string(),
-                    Value: z.string(),
-                }),
+                    Value: z.string()
+                })
             )
             .optional(),
         deploymentPrefix: z.string().optional(),
@@ -615,14 +617,17 @@ const RawConfigSchema = z
                 permissionsBoundaryPolicyName: z.string(),
                 rolePrefix: z.string().max(20).optional(),
                 policyPrefix: z.string().max(20).optional(),
-                instanceProfilePrefix: z.string().optional(),
+                instanceProfilePrefix: z.string().optional()
             })
             .optional(),
-        subnetIds: z.array(z.string()).optional(),
+        subnetIds: z.array(z.string()).optional()
     })
-    .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
-        message: 'Must set PypiConfig if in an iso region',
-    });
+    .refine(
+        (config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'),
+        {
+            message: 'Must set PypiConfig if in an iso region'
+        }
+    );
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -645,7 +650,7 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
             { Key: 'deploymentName', Value: rawConfig.deploymentName },
             { Key: 'deploymentStage', Value: rawConfig.deploymentStage },
             { Key: 'region', Value: rawConfig.region },
-            { Key: 'version', Value: VERSION },
+            { Key: 'version', Value: VERSION }
         ];
     }
 
@@ -664,7 +669,7 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
         ...rawConfig,
         deploymentPrefix: deploymentPrefix,
         tags: tags,
-        awsRegionArn,
+        awsRegionArn
     };
 });
 
@@ -672,7 +677,6 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
  * Application configuration type.
  */
 export type Config = z.infer<typeof ConfigSchema>;
-
 
 /**
  * Basic properties required for a stack definition in CDK.

@@ -63,9 +63,9 @@ describe.each(regions)('UI Nag Pack Tests | Region Test: %s', (awsRegion) => {
         baseStackProps = {
             env: {
                 account: '012345678901',
-                region: awsRegion,
+                region: awsRegion
             },
-            config,
+            config
         };
     });
 
@@ -73,14 +73,14 @@ describe.each(regions)('UI Nag Pack Tests | Region Test: %s', (awsRegion) => {
         const networkingStack = new LisaNetworkingStack(app, `TestNetworking${awsRegion}`, {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
-            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
+            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`
         });
 
         const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
 
         stack = new UserInterfaceStack(app, 'LisaUserInterface', {
@@ -89,7 +89,7 @@ describe.each(regions)('UI Nag Pack Tests | Region Test: %s', (awsRegion) => {
             stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
             description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
             restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
+            rootResourceId: apiBaseStack.rootResourceId
         });
 
         apiBaseStack.authorizer._attachToApi(apiBaseStack.restApi);

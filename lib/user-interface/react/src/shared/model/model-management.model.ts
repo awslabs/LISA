@@ -24,19 +24,19 @@ export enum ModelStatus {
     Stopped = 'Stopped',
     Updating = 'Updating',
     Deleting = 'Deleting',
-    Failed = 'Failed',
+    Failed = 'Failed'
 }
 
 export enum ModelType {
     textgen = 'textgen',
-    embedding = 'embedding',
+    embedding = 'embedding'
 }
 
 export enum InferenceContainer {
     TGI = 'tgi',
     TEI = 'tei',
     VLLM = 'vllm',
-    INSTRUCTOR = 'instructor',
+    INSTRUCTOR = 'instructor'
 }
 
 export type IContainerHealthCheckConfig = {
@@ -68,7 +68,7 @@ export type ILoadBalancerHealthCheckConfig = {
 };
 
 export type ILoadBalancerConfig = {
-    healthCheckConfig: ILoadBalancerHealthCheckConfig
+    healthCheckConfig: ILoadBalancerHealthCheckConfig;
 };
 
 export type IAutoScalingConfig = {
@@ -133,20 +133,19 @@ const containerHealthCheckConfigSchema = z.object({
     interval: z.number().default(10),
     startPeriod: z.number().default(30),
     timeout: z.number().default(5),
-    retries: z.number().default(3),
+    retries: z.number().default(3)
 });
-
 
 const containerConfigImageSchema = z.object({
     baseImage: z.string().default(''),
-    type: z.string().default('asset'),
+    type: z.string().default('asset')
 });
 
 export const metricConfigSchema = z.object({
     albMetricName: z.string().default('RequestCountPerTarget'),
     targetValue: z.number().default(30),
     duration: z.number().default(60),
-    estimatedInstanceWarmup: z.number().default(330),
+    estimatedInstanceWarmup: z.number().default(330)
 });
 
 export const loadBalancerHealthCheckConfigSchema = z.object({
@@ -154,81 +153,88 @@ export const loadBalancerHealthCheckConfigSchema = z.object({
     interval: z.number().default(60),
     timeout: z.number().default(30),
     healthyThresholdCount: z.number().default(2),
-    unhealthyThresholdCount: z.number().default(10),
+    unhealthyThresholdCount: z.number().default(10)
 });
 
 export const loadBalancerConfigSchema = z.object({
-    healthCheckConfig: loadBalancerHealthCheckConfigSchema.default(loadBalancerHealthCheckConfigSchema.parse({})),
+    healthCheckConfig: loadBalancerHealthCheckConfigSchema.default(loadBalancerHealthCheckConfigSchema.parse({}))
 });
 
-export const autoScalingConfigSchema = z.object({
-    blockDeviceVolumeSize: z.number().min(30).default(30),
-    minCapacity: z.number().min(1).default(1),
-    maxCapacity: z.number().min(1).default(1),
-    desiredCapacity: z.number().optional(),
-    cooldown: z.number().min(1).default(420),
-    defaultInstanceWarmup: z.number().default(180),
-    metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
-}).superRefine((value, context) => {
-    // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
-    if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {
-        const validator = z.number().min(Number(value.minCapacity)).max(Number(value.maxCapacity));
-        const result = validator.safeParse(value.desiredCapacity);
-        if (result.success === false) {
-            for (const error of result.error.errors) {
-                context.addIssue({
-                    ...error,
-                    path: ['desiredCapacity']
-                });
+export const autoScalingConfigSchema = z
+    .object({
+        blockDeviceVolumeSize: z.number().min(30).default(30),
+        minCapacity: z.number().min(1).default(1),
+        maxCapacity: z.number().min(1).default(1),
+        desiredCapacity: z.number().optional(),
+        cooldown: z.number().min(1).default(420),
+        defaultInstanceWarmup: z.number().default(180),
+        metricConfig: metricConfigSchema.default(metricConfigSchema.parse({}))
+    })
+    .superRefine((value, context) => {
+        // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
+        if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {
+            const validator = z.number().min(Number(value.minCapacity)).max(Number(value.maxCapacity));
+            const result = validator.safeParse(value.desiredCapacity);
+            if (result.success === false) {
+                for (const error of result.error.errors) {
+                    context.addIssue({
+                        ...error,
+                        path: ['desiredCapacity']
+                    });
+                }
             }
         }
-    }
-});
+    });
 
 export const containerConfigSchema = z.object({
     image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
     sharedMemorySize: z.number().min(0).default(2048),
     healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
-    environment: AttributeEditorSchema,
+    environment: AttributeEditorSchema
 });
 
-export const ModelRequestSchema = z.object({
-    modelId: z.string()
-        .regex(/^[a-z\d-]+$/i, {message: 'Only alphanumeric characters and hyphens allowed'})
-        .regex(/^[a-z0-9].*[a-z0-9]$/i, {message: 'Must start and end with an alphanumeric character.'})
-        .default(''),
-    modelName: z.string().min(1).default(''),
-    modelUrl: z.string().default(''),
-    streaming: z.boolean().default(false),
-    lisaHostedModel: z.boolean().default(false),
-    modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
-    instanceType: z.string().default(''),
-    inferenceContainer: z.nativeEnum(InferenceContainer).optional(),
-    containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
-    autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
-    loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
-}).superRefine((value, context) => {
-    if (value.lisaHostedModel) {
-        const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
-        const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
-        if (instanceTypeResult.success === false) {
-            for (const error of instanceTypeResult.error.errors) {
-                context.addIssue({
-                    ...error,
-                    path: ['instanceType']
-                });
+export const ModelRequestSchema = z
+    .object({
+        modelId: z
+            .string()
+            .regex(/^[a-z\d-]+$/i, { message: 'Only alphanumeric characters and hyphens allowed' })
+            .regex(/^[a-z0-9].*[a-z0-9]$/i, { message: 'Must start and end with an alphanumeric character.' })
+            .default(''),
+        modelName: z.string().min(1).default(''),
+        modelUrl: z.string().default(''),
+        streaming: z.boolean().default(false),
+        lisaHostedModel: z.boolean().default(false),
+        modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
+        instanceType: z.string().default(''),
+        inferenceContainer: z.nativeEnum(InferenceContainer).optional(),
+        containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
+        autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
+        loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({}))
+    })
+    .superRefine((value, context) => {
+        if (value.lisaHostedModel) {
+            const instanceTypeValidator = z.string().min(1, { message: 'Required for LISA hosted models.' });
+            const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
+            if (instanceTypeResult.success === false) {
+                for (const error of instanceTypeResult.error.errors) {
+                    context.addIssue({
+                        ...error,
+                        path: ['instanceType']
+                    });
+                }
             }
-        }
 
-        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {required_error: 'Required for LISA hosted models.'});
-        const inferenceContainerResult = inferenceContainerValidator.safeParse(value.inferenceContainer);
-        if (inferenceContainerResult.success === false) {
-            for (const error of inferenceContainerResult.error.errors) {
-                context.addIssue({
-                    ...error,
-                    path: ['inferenceContainer']
-                });
+            const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {
+                required_error: 'Required for LISA hosted models.'
+            });
+            const inferenceContainerResult = inferenceContainerValidator.safeParse(value.inferenceContainer);
+            if (inferenceContainerResult.success === false) {
+                for (const error of inferenceContainerResult.error.errors) {
+                    context.addIssue({
+                        ...error,
+                        path: ['inferenceContainer']
+                    });
+                }
             }
         }
-    }
-});
+    });

@@ -16,11 +16,7 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import {
-    IModel,
-    IModelRequest,
-    ModelRequestSchema
-} from '../../../shared/model/model-management.model';
+import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -55,8 +51,7 @@ export type ModelCreateState = {
 
 // Builds an object consisting of the default values for all validators.
 // https://github.com/colinhacks/zod/discussions/1953#discussioncomment-5695528
-function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEffects<any> ): z.infer<T> {
-
+function getDefaults<T extends z.ZodTypeAny>(schema: z.AnyZodObject | z.ZodEffects<any>): z.infer<T> {
     // Check if it's a ZodEffect
     if (schema instanceof z.ZodEffects) {
         // Check if it's a recursive ZodEffect
@@ -65,7 +60,7 @@ function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEff
         return getDefaults(z.ZodObject.create(schema.innerType().shape));
     }
 
-    function getDefaultValue (schema: z.ZodTypeAny): unknown {
+    function getDefaultValue(schema: z.ZodTypeAny): unknown {
         if (schema instanceof z.ZodDefault) return schema._def.defaultValue();
         // return an empty array if it is
         if (schema instanceof z.ZodArray) return [];
@@ -79,23 +74,35 @@ function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEff
     }
 
     return Object.fromEntries(
-        Object.entries( schema.shape ).map( ( [ key, value ] ) => {
+        Object.entries(schema.shape).map(([key, value]) => {
             return [key, getDefaultValue(value)];
-        } )
+        })
     );
 }
 
-export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
+export function CreateModelModal(props: CreateModelModalProps): ReactElement {
     const [
         createModelMutation,
-        { isSuccess: isCreateSuccess, isError: isCreateError, error: createError, isLoading: isCreating, reset: resetCreate },
+        {
+            isSuccess: isCreateSuccess,
+            isError: isCreateError,
+            error: createError,
+            isLoading: isCreating,
+            reset: resetCreate
+        }
     ] = useCreateModelMutation();
     const [
         updateModelMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
+        {
+            isSuccess: isUpdateSuccess,
+            isError: isUpdateError,
+            error: updateError,
+            isLoading: isUpdating,
+            reset: resetUpdate
+        }
     ] = useUpdateModelMutation();
     const initialForm = {
-        ...getDefaults(ModelRequestSchema),
+        ...getDefaults(ModelRequestSchema)
     };
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
@@ -107,46 +114,62 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         form: {
             ...initialForm
         },
-        activeStepIndex: 0,
+        activeStepIndex: 0
     } as ModelCreateState);
 
     const toSubmit: IModelRequest = {
         ...state.form,
-        containerConfig: (state.form.lisaHostedModel ? ({
-            ...state.form.containerConfig,
-            environment: state.form.containerConfig.environment?.reduce((r,{key,value}) => (r[key] = value,r), {})
-        }) : null),
-        loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
-        autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
+        containerConfig: state.form.lisaHostedModel
+            ? {
+                  ...state.form.containerConfig,
+                  environment: state.form.containerConfig.environment?.reduce(
+                      (r, { key, value }) => ((r[key] = value), r),
+                      {}
+                  )
+              }
+            : null,
+        loadBalancerConfig: state.form.lisaHostedModel ? state.form.loadBalancerConfig : null,
+        autoScalingConfig: state.form.lisaHostedModel ? state.form.autoScalingConfig : null,
         inferenceContainer: state.form.inferenceContainer ?? null,
         instanceType: state.form.instanceType ? state.form.instanceType : null,
         modelUrl: state.form.modelUrl ? state.form.modelUrl : null
     };
 
-    function resetState () {
-        setState({
-            validateAll: false as boolean,
-            touched: {},
-            formSubmitting: false as boolean,
-            form: {
-                ...initialForm
+    function resetState() {
+        setState(
+            {
+                validateAll: false as boolean,
+                touched: {},
+                formSubmitting: false as boolean,
+                form: {
+                    ...initialForm
+                },
+                activeStepIndex: 0
             },
-            activeStepIndex: 0,
-        }, ModifyMethod.Set);
+            ModifyMethod.Set
+        );
         resetCreate();
         resetUpdate();
     }
 
     const changesDiff = useMemo(() => {
-        return props.isEdit ? getJsonDifference({
-            ...props.selectedItems[0],
-            lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
-        }, toSubmit) :
-            getJsonDifference({}, toSubmit);
+        return props.isEdit
+            ? getJsonDifference(
+                  {
+                      ...props.selectedItems[0],
+                      lisaHostedModel: Boolean(
+                          props.selectedItems[0].containerConfig ||
+                              props.selectedItems[0].autoScalingConfig ||
+                              props.selectedItems[0].loadBalancerConfig
+                      )
+                  },
+                  toSubmit
+              )
+            : getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, props.isEdit]);
 
-    function handleSubmit () {
+    function handleSubmit() {
         delete toSubmit.lisaHostedModel;
         if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
             resetCreate();
@@ -154,26 +177,36 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
             // pick only the values we care about
             resetUpdate();
-            updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
-                'modelId',
-                'streaming',
-                'enabled',
-                'modelType',
-                'autoScalingConfig.minCapacity',
-                'autoScalingConfig.maxCapacity',
-                'autoScalingConfig.desiredCapacity'
-            ]), (value: any, key: string) => {
-                if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
-                return key;
-            }));
+            updateModelMutation(
+                _.mapKeys(
+                    _.pick({ ...changesDiff, modelId: props.selectedItems[0].modelId }, [
+                        'modelId',
+                        'streaming',
+                        'enabled',
+                        'modelType',
+                        'autoScalingConfig.minCapacity',
+                        'autoScalingConfig.maxCapacity',
+                        'autoScalingConfig.desiredCapacity'
+                    ]),
+                    (value: any, key: string) => {
+                        if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
+                        return key;
+                    }
+                )
+            );
         }
     }
 
     const requiredFields = [['modelId', 'modelName'], [], [], [], []];
 
     useEffect(() => {
-        const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
-        if (parsedValue.inferenceContainer === null){
+        const parsedValue = _.mergeWith(
+            {},
+            initialForm,
+            props.selectedItems[0],
+            (a: IModelRequest, b: IModelRequest) => (b === null ? a : undefined)
+        );
+        if (parsedValue.inferenceContainer === null) {
             delete parsedValue.inferenceContainer;
         }
         if (props.isEdit) {
@@ -183,9 +216,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     ...parsedValue,
                     containerConfig: {
                         ...parsedValue.containerConfig,
-                        environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
+                        environment: props.selectedItems[0].containerConfig?.environment
+                            ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(
+                                  ([key, value]) => ({ key, value })
+                              )
+                            : []
                     },
-                    lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
+                    lisaHostedModel: Boolean(
+                        props.selectedItems[0].containerConfig ||
+                            props.selectedItems[0].autoScalingConfig ||
+                            props.selectedItems[0].loadBalancerConfig
+                    )
                 }
             });
         }
@@ -213,9 +254,11 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdating, isUpdateSuccess]);
 
-    const normalizeError = (error: SerializedError | {status: string, data: any}): SerializedError | undefined => {
+    const normalizeError = (error: SerializedError | { status: string; data: any }): SerializedError | undefined => {
         // type predicate to help discriminate between types
-        function isResponseError<T extends {status: string, data: any}> (responseError: SerializedError | T): responseError is T {
+        function isResponseError<T extends { status: string; data: any }>(
+            responseError: SerializedError | T
+        ): responseError is T {
             return (responseError as T)?.status !== undefined;
         }
 
@@ -240,49 +283,75 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const steps = [
         {
             title: 'Base Model Configuration',
-            description: 'Define your model\'s configuration settings using these forms.',
+            description: "Define your model's configuration settings using these forms.",
             content: (
-                <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+                <BaseModelConfig
+                    item={state.form}
+                    setFields={setFields}
+                    touchFields={touchFields}
+                    formErrors={errors}
+                    isEdit={props.isEdit}
+                />
             ),
             onEdit: true
         },
         {
             title: 'Container Configuration',
             content: (
-                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                <ContainerConfig
+                    item={state.form.containerConfig}
+                    setFields={setFields}
+                    touchFields={touchFields}
+                    formErrors={errors}
+                />
             ),
             isOptional: true
         },
         {
             title: 'Auto Scaling Configuration',
             content: (
-                <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+                <AutoScalingConfig
+                    item={state.form.autoScalingConfig}
+                    setFields={setFields}
+                    touchFields={touchFields}
+                    formErrors={errors}
+                    isEdit={props.isEdit}
+                />
             ),
             isOptional: true,
-            onEdit: true && state.form.lisaHostedModel
+            onEdit: state.form.lisaHostedModel
         },
         {
             title: 'Load Balancer Configuration',
             content: (
-                <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                <LoadBalancerConfig
+                    item={state.form.loadBalancerConfig}
+                    setFields={setFields}
+                    touchFields={touchFields}
+                    formErrors={errors}
+                />
             ),
             isOptional: true
         },
         {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
-            content: (
-                <ReviewModelChanges jsonDiff={changesDiff} error={reviewError} />
-            ),
+            content: <ReviewModelChanges jsonDiff={changesDiff} error={reviewError} />,
             onEdit: state.form.lisaHostedModel
         }
-    ].filter((step) => props.isEdit ? step.onEdit : true);
-
+    ].filter((step) => (props.isEdit ? step.onEdit : true));
 
     return (
-        <Modal size={'large'} onDismiss={() => {
-            props.setVisible(false); props.setIsEdit(false); resetState();
-        }} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
+        <Modal
+            size={'large'}
+            onDismiss={() => {
+                props.setVisible(false);
+                props.setIsEdit(false);
+                resetState();
+            }}
+            visible={props.visible}
+            header={`${props.isEdit ? 'Update' : 'Create'} Model`}
+        >
             <Wizard
                 i18nStrings={{
                     stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
@@ -301,7 +370,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         case 'previous':
                             setState({
                                 ...state,
-                                activeStepIndex: event.detail.requestedStepIndex,
+                                activeStepIndex: event.detail.requestedStepIndex
                             });
                             break;
                         case 'next':
@@ -311,7 +380,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                                 if (isValid) {
                                     setState({
                                         ...state,
-                                        activeStepIndex: event.detail.requestedStepIndex,
+                                        activeStepIndex: event.detail.requestedStepIndex
                                     });
                                     break;
                                 }

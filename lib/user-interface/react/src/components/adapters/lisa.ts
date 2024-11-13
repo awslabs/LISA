@@ -20,33 +20,33 @@ import { BaseRetriever, BaseRetrieverInput } from '@langchain/core/retrievers';
 
 export type LisaRAGRetrieverInput = {
     /**
-   * The URI of the LISA RAG API
-   */
+     * The URI of the LISA RAG API
+     */
     uri: string;
 
     /**
-   * Name of model to use for embeddings
-   */
+     * Name of model to use for embeddings
+     */
     modelName: string;
 
     /**
-   * Authentication token to use when communicating with RAG API
-   */
+     * Authentication token to use when communicating with RAG API
+     */
     idToken: string;
 
     /**
-   * Id of the RAG repository to query
-   */
+     * Id of the RAG repository to query
+     */
     repositoryId: string;
 
     /**
-   * Type of the RAG repository to query
-   */
+     * Type of the RAG repository to query
+     */
     repositoryType: string;
 
     /**
-   * The number of relevant documents to retrieve
-   */
+     * The number of relevant documents to retrieve
+     */
     topK?: number;
 } & BaseRetrieverInput;
 
@@ -60,7 +60,7 @@ export class LisaRAGRetriever extends BaseRetriever {
     public repositoryType: string;
     public topK: number;
 
-    constructor (fields?: LisaRAGRetrieverInput) {
+    constructor(fields?: LisaRAGRetrieverInput) {
         super(fields);
 
         this.uri = fields.uri;
@@ -71,11 +71,11 @@ export class LisaRAGRetriever extends BaseRetriever {
         this.topK = fields.topK || 3;
     }
 
-    async _getRelevantDocuments (query: string): Promise<Document[]> {
+    async _getRelevantDocuments(query: string): Promise<Document[]> {
         const resp = await sendAuthenticatedRequest(
             `repository/${this.repositoryId}/similaritySearch?query=${query}&modelName=${this.modelName}&repositoryType=${this.repositoryType}&topK=${this.topK}`,
             'GET',
-            this.idToken,
+            this.idToken
         );
         const searchResults = await resp.json();
         return searchResults.docs;

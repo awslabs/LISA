@@ -25,7 +25,7 @@ import { ModelConfig } from './schema';
  * @throws {Error} Throws an error if the generated CDK ID is longer than 64 characters.
  * @returns {string} The generated CDK ID for the model resource.
  */
-export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
+export function createCdkId(idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
     let cdkId = idParts.join('-');
     const length = cdkId.length;
 
@@ -45,6 +45,6 @@ export function createCdkId (idParts: string[], maxLength: number = 64, truncati
  * @param {string} modelConfig model config
  * @returns {string} normalized model name for use in CDK identifiers/resource names
  */
-export function getModelIdentifier (modelConfig: ModelConfig): string {
+export function getModelIdentifier(modelConfig: ModelConfig): string {
     return (modelConfig.modelId || modelConfig.modelName).replace(/[^a-zA-Z0-9]/g, '');
 }

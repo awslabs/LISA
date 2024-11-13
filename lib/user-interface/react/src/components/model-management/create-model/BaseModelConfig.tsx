@@ -15,7 +15,7 @@
  */
 
 import { ReactElement } from 'react';
-import { FormProps} from '../../../shared/form/form-props';
+import { FormProps } from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Toggle from '@cloudscape-design/components/toggle';
@@ -25,35 +25,62 @@ import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 
 export type BaseModelConfigCustomProps = {
-    isEdit: boolean
+    isEdit: boolean;
 };
 
-export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConfigCustomProps) : ReactElement {
-    const {data: instances, isLoading: isLoadingInstances} = useGetInstancesQuery();
+export function BaseModelConfig(props: FormProps<IModelRequest> & BaseModelConfigCustomProps): ReactElement {
+    const { data: instances, isLoading: isLoadingInstances } = useGetInstancesQuery();
 
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Model ID' errorText={props.formErrors?.modelId}>
-                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelId': detail.value });
-                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
+            <FormField label="Model ID" errorText={props.formErrors?.modelId}>
+                <Input
+                    value={props.item.modelId}
+                    inputMode="text"
+                    onBlur={() => props.touchFields(['modelId'])}
+                    onChange={({ detail }) => {
+                        props.setFields({ modelId: detail.value });
+                    }}
+                    disabled={props.isEdit}
+                    placeholder="mistral-vllm"
+                />
             </FormField>
-            <FormField label='Model Name' errorText={props.formErrors?.modelName}>
-                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelName': detail.value });
-                }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
+            <FormField label="Model Name" errorText={props.formErrors?.modelName}>
+                <Input
+                    value={props.item.modelName}
+                    inputMode="text"
+                    onBlur={() => props.touchFields(['modelName'])}
+                    onChange={({ detail }) => {
+                        props.setFields({ modelName: detail.value });
+                    }}
+                    disabled={props.isEdit}
+                    placeholder="mistralai/Mistral-7B-Instruct-v0.2"
+                />
             </FormField>
-            <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
-                <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelUrl': detail.value });
-                }} disabled={props.isEdit}/>
+            <FormField
+                label={
+                    <span>
+                        Model URL <em>(optional)</em>
+                    </span>
+                }
+                errorText={props.formErrors?.modelUrl}
+            >
+                <Input
+                    value={props.item.modelUrl}
+                    inputMode="text"
+                    onBlur={() => props.touchFields(['modelUrl'])}
+                    onChange={({ detail }) => {
+                        props.setFields({ modelUrl: detail.value });
+                    }}
+                    disabled={props.isEdit}
+                />
             </FormField>
-            <FormField label='Model Type' errorText={props.formErrors?.modelType}>
+            <FormField label="Model Type" errorText={props.formErrors?.modelType}>
                 <Select
-                    selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
+                    selectedOption={{ label: props.item.modelType.toUpperCase(), value: props.item.modelType }}
                     onChange={({ detail }) => {
                         const fields = {
-                            'modelType': detail.selectedOption.value,
+                            modelType: detail.selectedOption.value
                         };
 
                         // turn off streaming for embedded models
@@ -66,58 +93,57 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     onBlur={() => props.touchFields(['modelType'])}
                     options={[
                         { label: 'TEXTGEN', value: ModelType.textgen },
-                        { label: 'EMBEDDING', value: ModelType.embedding },
+                        { label: 'EMBEDDING', value: ModelType.embedding }
                     ]}
                 />
             </FormField>
-            <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
+            <FormField label="Instance Type" errorText={props.formErrors?.instanceType}>
                 <Select
-                    options={(instances || []).map((instance) => ({value: instance}))}
-                    selectedOption={{value: props.item.instanceType}}
-                    loadingText='Loading instances'
+                    options={(instances || []).map((instance) => ({ value: instance }))}
+                    selectedOption={{ value: props.item.instanceType }}
+                    loadingText="Loading instances"
                     disabled={props.isEdit}
                     onBlur={() => props.touchFields(['instanceType'])}
                     onChange={({ detail }) => {
-                        props.setFields({ 'instanceType': detail.selectedOption.value });
+                        props.setFields({ instanceType: detail.selectedOption.value });
                     }}
-                    filteringType='auto'
-                    statusType={ isLoadingInstances ? 'loading' : 'finished'}
+                    filteringType="auto"
+                    statusType={isLoadingInstances ? 'loading' : 'finished'}
                     virtualScroll
                 />
             </FormField>
-            <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
+            <FormField label="Inference Container" errorText={props.formErrors?.inferenceContainer}>
                 <Select
-                    selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
+                    selectedOption={{
+                        label: props.item.inferenceContainer?.toUpperCase(),
+                        value: props.item.inferenceContainer
+                    }}
                     onBlur={() => props.touchFields(['inferenceContainer'])}
                     onChange={({ detail }) =>
                         props.setFields({
-                            'inferenceContainer': detail.selectedOption.value,
+                            inferenceContainer: detail.selectedOption.value
                         })
                     }
                     options={[
                         { label: 'TGI', value: InferenceContainer.TGI },
                         { label: 'TEI', value: InferenceContainer.TEI },
-                        { label: 'VLLM', value: InferenceContainer.VLLM },
+                        { label: 'VLLM', value: InferenceContainer.VLLM }
                     ]}
                     disabled={props.isEdit}
                 />
             </FormField>
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
-                <FormField label='LISA Hosted Model' errorText={props.formErrors?.lisaHostedModel}>
+                <FormField label="LISA Hosted Model" errorText={props.formErrors?.lisaHostedModel}>
                     <Toggle
-                        onChange={({ detail }) =>
-                            props.setFields({'lisaHostedModel': detail.checked})
-                        }
+                        onChange={({ detail }) => props.setFields({ lisaHostedModel: detail.checked })}
                         onBlur={() => props.touchFields(['lisaHostedModel', 'instanceType', 'inferenceContainer'])}
                         checked={props.item.lisaHostedModel}
                         disabled={props.isEdit}
                     />
                 </FormField>
-                <FormField label='Streaming' errorText={props.formErrors?.streaming}>
+                <FormField label="Streaming" errorText={props.formErrors?.streaming}>
                     <Toggle
-                        onChange={({ detail }) =>
-                            props.setFields({'streaming': detail.checked})
-                        }
+                        onChange={({ detail }) => props.setFields({ streaming: detail.checked })}
                         onBlur={() => props.touchFields(['streaming'])}
                         disabled={props.item.modelType === ModelType.embedding}
                         checked={props.item.streaming}

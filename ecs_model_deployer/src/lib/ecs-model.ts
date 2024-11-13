@@ -51,11 +51,11 @@ export class EcsModel extends Construct {
     public readonly endpointUrl: string;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {ECSModelProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: ECSModelProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {ECSModelProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: ECSModelProps) {
         super(scope, id);
         const { config, modelConfig, securityGroup, vpc, subnetSelection } = props;
 
@@ -71,7 +71,7 @@ export class EcsModel extends Construct {
                 identifier: getModelIdentifier(modelConfig),
                 instanceType: modelConfig.instanceType,
                 internetFacing: false,
-                loadBalancerConfig: modelConfig.loadBalancerConfig,
+                loadBalancerConfig: modelConfig.loadBalancerConfig
             },
             securityGroup,
             vpc,
@@ -87,22 +87,25 @@ export class EcsModel extends Construct {
     }
 
     /**
-   * Generates environment variables for Docker at runtime based on the configuration. The environment variables
-   * include the local model path, S3 bucket for models, model name, and other variables depending on the model type.
-   *
-   * @param {Config} config - The application configuration.
-   * @param {ModelConfig} modelConfig - Configuration for the specific model.
-   * @returns {Object} An object containing the environment variables. The object has string keys and values, which
-   *                   represent the environment variables for Docker at runtime.
-   */
-    private getEnvironmentVariables (config: Config, modelConfig: ModelConfig): { [key: string]: string } {
+     * Generates environment variables for Docker at runtime based on the configuration. The environment variables
+     * include the local model path, S3 bucket for models, model name, and other variables depending on the model type.
+     *
+     * @param {Config} config - The application configuration.
+     * @param {ModelConfig} modelConfig - Configuration for the specific model.
+     * @returns {Object} An object containing the environment variables. The object has string keys and values, which
+     *                   represent the environment variables for Docker at runtime.
+     */
+    private getEnvironmentVariables(config: Config, modelConfig: ModelConfig): { [key: string]: string } {
         const environment: { [key: string]: string } = {
             LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath}/model`,
             S3_BUCKET_MODELS: config.s3BucketModels,
             MODEL_NAME: modelConfig.modelName,
             LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
             AWS_REGION: config.region, // needed for s5cmd
-            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`)
+            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/managementKeySecretName`
+            )
         };
 
         if (modelConfig.modelType === 'embedding') {
@@ -127,21 +130,21 @@ export class EcsModel extends Construct {
     }
 
     /**
-   * Generates build arguments for the Docker build based on the configuration. The build arguments include the base
-   * image, and depending on the model type, either the local code path or the S3 deb URL.
-   *
-   * @param {Config} config - The application configuration.
-   * @param {ModelConfig} modelConfig - Configuration for the specific model.
-   * @returns {Object} An object containing the build arguments. The object has string keys and values, which represent
-   *                   the arguments for the Docker build.
-   */
-    private getBuildArguments (config: Config, modelConfig: ModelConfig): { [key: string]: string } | undefined {
+     * Generates build arguments for the Docker build based on the configuration. The build arguments include the base
+     * image, and depending on the model type, either the local code path or the S3 deb URL.
+     *
+     * @param {Config} config - The application configuration.
+     * @param {ModelConfig} modelConfig - Configuration for the specific model.
+     * @returns {Object} An object containing the build arguments. The object has string keys and values, which represent
+     *                   the arguments for the Docker build.
+     */
+    private getBuildArguments(config: Config, modelConfig: ModelConfig): { [key: string]: string } | undefined {
         if (modelConfig.containerConfig.image.type !== EcsSourceType.ASSET) {
             return undefined;
         }
 
         const buildArgs: { [key: string]: string } = {
-            BASE_IMAGE: modelConfig.containerConfig.image.baseImage,
+            BASE_IMAGE: modelConfig.containerConfig.image.baseImage
         };
 
         if (modelConfig.modelType === 'embedding') {

@@ -48,11 +48,11 @@ type UserInterfaceProps = CustomUserInterfaceProps & StackProps;
  */
 export class UserInterfaceStack extends Stack {
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {UserInterfaceProps} props - The properties of the construct.
-   */
-    constructor (scope: Construct, id: string, props: UserInterfaceProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {UserInterfaceProps} props - The properties of the construct.
+     */
+    constructor(scope: Construct, id: string, props: UserInterfaceProps) {
         super(scope, id, props);
 
         const { architecture, config, restApiId, rootResourceId } = props;
@@ -68,7 +68,7 @@ export class UserInterfaceStack extends Stack {
             publicReadAccess: false,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED,
-            enforceSSL: true,
+            enforceSSL: true
         });
 
         // REST APIGW config
@@ -77,7 +77,7 @@ export class UserInterfaceStack extends Stack {
             assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
             roleName: `${Stack.of(this).stackName}-s3-reader-role`,
             managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AmazonS3ReadOnlyAccess')],
-            description: 'Allows API gateway to proxy static website assets',
+            description: 'Allows API gateway to proxy static website assets'
         });
 
         // Configure static site resources
@@ -87,14 +87,14 @@ export class UserInterfaceStack extends Stack {
                 responseParameters: {
                     'method.response.header.Content-Length': true,
                     'method.response.header.Content-Type': true,
-                    'method.response.header.Content-Disposition': true,
-                },
-            },
+                    'method.response.header.Content-Disposition': true
+                }
+            }
         ];
         const proxyRequestParameters = {
             'method.request.header.Accept': true,
             'method.request.header.Content-Type': true,
-            'method.request.header.Content-Disposition': true,
+            'method.request.header.Content-Disposition': true
         };
         const proxyIntegrationResponse = [
             {
@@ -102,19 +102,19 @@ export class UserInterfaceStack extends Stack {
                 responseParameters: {
                     'method.response.header.Content-Length': 'integration.response.header.Content-Length',
                     'method.response.header.Content-Type': 'integration.response.header.Content-Type',
-                    'method.response.header.Content-Disposition': 'integration.response.header.Content-Disposition',
-                },
-            },
+                    'method.response.header.Content-Disposition': 'integration.response.header.Content-Disposition'
+                }
+            }
         ];
         const proxyIntegrationRequestParameters = {
             'integration.request.header.Accept': 'method.request.header.Accept',
             'integration.request.header.Content-Disposition': 'method.request.header.Content-Disposition',
-            'integration.request.header.Content-Type': 'method.request.header.Content-Type',
+            'integration.request.header.Content-Type': 'method.request.header.Content-Type'
         };
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
-            rootResourceId: rootResourceId,
+            rootResourceId: rootResourceId
         });
         // API methods
         restApi.root.addMethod(
@@ -127,13 +127,13 @@ export class UserInterfaceStack extends Stack {
                 options: {
                     credentialsRole: s3ReaderRole,
                     integrationResponses: proxyIntegrationResponse,
-                    requestParameters: proxyIntegrationRequestParameters,
-                },
+                    requestParameters: proxyIntegrationRequestParameters
+                }
             }),
             {
                 methodResponses: proxyMethodResponse,
-                requestParameters: proxyRequestParameters,
-            },
+                requestParameters: proxyRequestParameters
+            }
         );
 
         restApi.root.addResource('{proxy+}').addMethod(
@@ -148,19 +148,18 @@ export class UserInterfaceStack extends Stack {
                     integrationResponses: proxyIntegrationResponse,
                     requestParameters: {
                         ...proxyIntegrationRequestParameters,
-                        'integration.request.path.proxy': 'method.request.path.proxy',
-                    },
-                },
+                        'integration.request.path.proxy': 'method.request.path.proxy'
+                    }
+                }
             }),
             {
                 requestParameters: {
                     ...proxyRequestParameters,
-                    'method.request.path.proxy': true,
+                    'method.request.path.proxy': true
                 },
-                methodResponses: proxyMethodResponse,
-            },
+                methodResponses: proxyMethodResponse
+            }
         );
-
 
         // Website bucket deployment
         // Copy auth and LISA-Serve info to UI deployment bucket
@@ -173,11 +172,11 @@ export class UserInterfaceStack extends Stack {
             RESTAPI_URI: StringParameter.fromStringParameterName(
                 this,
                 createCdkId(['LisaRestApiUri', 'StringParameter']),
-                `${config.deploymentPrefix}/lisaServeRestApiUri`,
+                `${config.deploymentPrefix}/lisaServeRestApiUri`
             ).stringValue,
             RESTAPI_VERSION: 'v2',
             RAG_ENABLED: config.deployRag,
-            API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
+            API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);
@@ -195,29 +194,32 @@ export class UserInterfaceStack extends Stack {
                             'set -x',
                             'npm --cache /tmp/.npm install',
                             `npm --cache /tmp/.npm run build -- --base="/${uriSuffix}"`,
-                            'cp -aur /asset-input/dist/* /asset-output/',
-                        ].join(' && '),
+                            'cp -aur /asset-input/dist/* /asset-output/'
+                        ].join(' && ')
                     ],
                     local: {
-                        tryBundle (outputDir: string) {
+                        tryBundle(outputDir: string) {
                             try {
                                 const options: ExecSyncOptionsWithBufferEncoding = {
                                     stdio: 'inherit',
                                     env: {
-                                        ...process.env,
-                                    },
+                                        ...process.env
+                                    }
                                 };
 
                                 execSync(`npm --silent --prefix "${appPath}" ci`, options);
-                                execSync(`npm --silent --prefix "${appPath}" run build -- --base="/${uriSuffix}"`, options);
+                                execSync(
+                                    `npm --silent --prefix "${appPath}" run build -- --base="/${uriSuffix}"`,
+                                    options
+                                );
                                 copyDirRecursive(distPath, outputDir);
                             } catch (e) {
                                 return false;
                             }
                             return true;
-                        },
-                    },
-                },
+                        }
+                    }
+                }
             });
         } else {
             webappAssets = Source.asset(config.webAppAssetsPath);
@@ -225,7 +227,7 @@ export class UserInterfaceStack extends Stack {
         new BucketDeployment(this, 'AwsExportsDepolyment', {
             sources: [webappAssets, appEnvSource],
             retainOnDelete: false,
-            destinationBucket: websiteBucket,
+            destinationBucket: websiteBucket
         });
     }
 }
@@ -235,7 +237,7 @@ export class UserInterfaceStack extends Stack {
  * @param {string} sourceDir - Source directory to copy from.
  * @param {string} targetDir - Target directory to copy to.
  */
-function copyDirRecursive (sourceDir: string, targetDir: string): void {
+function copyDirRecursive(sourceDir: string, targetDir: string): void {
     if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir);
     }

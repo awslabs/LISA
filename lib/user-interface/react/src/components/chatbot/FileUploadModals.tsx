@@ -25,7 +25,7 @@ import {
     Grid,
     Input,
     ProgressBar,
-    StatusIndicator,
+    StatusIndicator
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '../types';
 import { useState } from 'react';
@@ -40,7 +40,7 @@ const handleUpload = async (
     handleError: (error: string) => void,
     processFile: (file: File, fileIndex: number) => Promise<boolean>,
     allowedFileTypes: FileTypes[],
-    fileSizeLimit: number,
+    fileSizeLimit: number
 ) => {
     if (selectedFiles.length > 0) {
         const successfulUploads: string[] = [];
@@ -74,22 +74,22 @@ export type ContextUploadProps = {
     setFileContext: React.Dispatch<React.SetStateAction<string>>;
 };
 
-export function ContextUploadModal ({
+export function ContextUploadModal({
     showContextUploadModal,
     setShowContextUploadModal,
     fileContext,
-    setFileContext,
+    setFileContext
 }: ContextUploadProps) {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
-    function handleError (error: string) {
+    function handleError(error: string) {
         notificationService.generateNotification(error, 'error');
     }
 
-    async function processFile (file: File): Promise<boolean> {
-    //File context currently only supports single files
+    async function processFile(file: File): Promise<boolean> {
+        //File context currently only supports single files
         const fileContents = await file.text();
         setFileContext(`File context: ${fileContents}`);
         setSelectedFiles([file]);
@@ -103,11 +103,11 @@ export function ContextUploadModal ({
                 setSelectedFiles([]);
             }}
             visible={showContextUploadModal}
-            header='Manage File Context'
-            size='large'
+            header="Manage File Context"
+            size="large"
             footer={
-                <Box float='right'>
-                    <SpaceBetween direction='horizontal' size='xs'>
+                <Box float="right">
+                    <SpaceBetween direction="horizontal" size="xs">
                         <Button
                             onClick={async () => {
                                 await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 10240);
@@ -130,13 +130,13 @@ export function ContextUploadModal ({
                 </Box>
             }
         >
-            <SpaceBetween direction='vertical' size='s'>
+            <SpaceBetween direction="vertical" size="s">
                 <TextContent>
                     <h4>File Context</h4>
                     <p>
                         <small>
-                            Upload files for LISA to use as context in this session. This additional context will be referenced to
-                            answer your questions.
+                            Upload files for LISA to use as context in this session. This additional context will be
+                            referenced to answer your questions.
                         </small>
                     </p>
                 </TextContent>
@@ -149,11 +149,11 @@ export function ContextUploadModal ({
                         removeFileAriaLabel: (e) => `Remove file ${e + 1}`,
                         limitShowFewer: 'Show fewer files',
                         limitShowMore: 'Show more files',
-                        errorIconAriaLabel: 'Error',
+                        errorIconAriaLabel: 'Error'
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file type is plain text. File size limit is 10 KB'
+                    constraintText="Allowed file type is plain text. File size limit is 10 KB"
                 />
             </SpaceBetween>
         </Modal>
@@ -162,19 +162,19 @@ export function ContextUploadModal ({
 
 export type RagUploadProps = {
     auth: AuthContextProps;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     setFlashbarItems: React.Dispatch<React.SetStateAction<any[]>>;
     showRagUploadModal: boolean;
     setShowRagUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     ragConfig: RagConfig;
 };
 
-export function RagUploadModal ({
+export function RagUploadModal({
     auth,
     setFlashbarItems,
     showRagUploadModal,
     setShowRagUploadModal,
-    ragConfig,
+    ragConfig
 }: RagUploadProps) {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const [displayProgressBar, setDisplayProgressBar] = useState(false);
@@ -189,11 +189,11 @@ export function RagUploadModal ({
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
-    function handleError (error: string): void {
+    function handleError(error: string): void {
         notificationService.generateNotification(error, 'error');
     }
 
-    async function processFile (file: File, fileIndex: number): Promise<boolean> {
+    async function processFile(file: File, fileIndex: number): Promise<boolean> {
         setProgressBarDescription(`Uploading ${file.name}`);
         try {
             const urlResponse = await getPresignedUrl(auth.user?.id_token, file.name);
@@ -211,7 +211,7 @@ export function RagUploadModal ({
         }
     }
 
-    async function indexFiles (fileKeys: string[]): Promise<void> {
+    async function indexFiles(fileKeys: string[]): Promise<void> {
         setIngestingFiles(true);
         setIngestionType(StatusTypes.LOADING);
         setIngestionStatus('Ingesting documents into the selected repository...');
@@ -222,10 +222,14 @@ export function RagUploadModal ({
                 auth.user?.id_token,
                 fileKeys,
                 ragConfig.repositoryId,
-                { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
+                {
+                    id: ragConfig.embeddingModel.modelId,
+                    modelType: ragConfig.embeddingModel.modelType,
+                    streaming: ragConfig.embeddingModel.streaming
+                },
                 ragConfig.repositoryType,
                 chunkSize,
-                chunkOverlap,
+                chunkOverlap
             );
             if (ingestResponseStatusCode === 200) {
                 setIngestionType(StatusTypes.SUCCESS);
@@ -241,8 +245,8 @@ export function RagUploadModal ({
                         onDismiss: () => {
                             setFlashbarItems([]);
                         },
-                        id: 'rag_success',
-                    },
+                        id: 'rag_success'
+                    }
                 ]);
                 setShowRagUploadModal(false);
             } else {
@@ -264,11 +268,11 @@ export function RagUploadModal ({
                 setIngestingFiles(false);
             }}
             visible={showRagUploadModal}
-            header='Upload to RAG'
-            size='large'
+            header="Upload to RAG"
+            size="large"
             footer={
-                <Box float='right'>
-                    <SpaceBetween direction='horizontal' size='xs'>
+                <Box float="right">
+                    <SpaceBetween direction="horizontal" size="xs">
                         <Button
                             onClick={async () => {
                                 //Initialize the progress bar values
@@ -282,7 +286,7 @@ export function RagUploadModal ({
                                     handleError,
                                     processFile,
                                     [FileTypes.TEXT, FileTypes.DOCX, FileTypes.PDF],
-                                    52428800,
+                                    52428800
                                 );
                                 setDisplayProgressBar(false);
                                 if (successfulUploads.length > 0) {
@@ -297,23 +301,26 @@ export function RagUploadModal ({
                 </Box>
             }
         >
-            <SpaceBetween direction='vertical' size='s'>
+            <SpaceBetween direction="vertical" size="s">
                 <TextContent>
                     <h4>Upload to RAG</h4>
                     <p>
                         <small>
-                            Upload files to the RAG repository leveraged by LISA. This will provide LISA with trusted information for
-                            answering prompts.
+                            Upload files to the RAG repository leveraged by LISA. This will provide LISA with trusted
+                            information for answering prompts.
                         </small>
                     </p>
                 </TextContent>
                 <Grid gridDefinition={[{ colspan: { default: 12, xxs: 6 } }, { colspan: { default: 12, xxs: 6 } }]}>
-                    <FormField label='Chunk Size' description='Size of chunks that will be persisted in the RAG repository'>
+                    <FormField
+                        label="Chunk Size"
+                        description="Size of chunks that will be persisted in the RAG repository"
+                    >
                         <Input
                             value={chunkSize.toString()}
-                            type='number'
+                            type="number"
                             step={1}
-                            inputMode='numeric'
+                            inputMode="numeric"
                             disableBrowserAutocorrect={true}
                             onChange={(event) => {
                                 const intVal = parseInt(event.detail.value);
@@ -323,12 +330,15 @@ export function RagUploadModal ({
                             }}
                         />
                     </FormField>
-                    <FormField label='Chunk Overlap' description='Size of the overlap used when generating content chunks'>
+                    <FormField
+                        label="Chunk Overlap"
+                        description="Size of the overlap used when generating content chunks"
+                    >
                         <Input
                             value={chunkOverlap.toString()}
-                            type='number'
+                            type="number"
                             step={1}
-                            inputMode='numeric'
+                            inputMode="numeric"
                             disableBrowserAutocorrect={true}
                             onChange={(event) => {
                                 const intVal = parseInt(event.detail.value);
@@ -349,15 +359,15 @@ export function RagUploadModal ({
                         removeFileAriaLabel: (e) => `Remove file ${e + 1}`,
                         limitShowFewer: 'Show fewer files',
                         limitShowMore: 'Show more files',
-                        errorIconAriaLabel: 'Error',
+                        errorIconAriaLabel: 'Error'
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file types are plain text, PDF, and docx. File size limit is 50 MB'
+                    constraintText="Allowed file types are plain text, PDF, and docx. File size limit is 50 MB"
                 />
                 {displayProgressBar && (
                     <ProgressBar
-                        status='in-progress'
+                        status="in-progress"
                         value={progressBarValue}
                         description={progressBarDescription}
                         label={progressBarLabel}

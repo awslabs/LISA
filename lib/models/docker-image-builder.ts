@@ -35,7 +35,7 @@ export type DockerImageBuilderProps = BaseProps & {
 export class DockerImageBuilder extends Construct {
     readonly dockerImageBuilderFn: Function;
 
-    constructor (scope: Construct, id: string, props: DockerImageBuilderProps) {
+    constructor(scope: Construct, id: string, props: DockerImageBuilderProps) {
         super(scope, id);
 
         const stackName = Stack.of(scope).stackName;
@@ -54,15 +54,11 @@ export class DockerImageBuilder extends Construct {
         const ec2InstanceProfilePolicy = new Policy(this, createCdkId([stackName, 'docker-image-builder-ec2-policy']), {
             statements: [
                 new PolicyStatement({
-                    actions: [
-                        's3:GetObject',
-                    ],
+                    actions: ['s3:GetObject'],
                     resources: [`${ec2DockerBucket.bucketArn}/*`]
                 }),
                 new PolicyStatement({
-                    actions: [
-                        's3:ListBucket',
-                    ],
+                    actions: ['s3:ListBucket'],
                     resources: [ec2DockerBucket.bucketArn]
                 }),
                 new PolicyStatement({
@@ -89,10 +85,7 @@ export class DockerImageBuilder extends Construct {
         const assumeCdkPolicy = new Policy(this, createCdkId([stackName, 'docker-image-builder-policy']), {
             statements: [
                 new PolicyStatement({
-                    actions: [
-                        'ec2:RunInstances',
-                        'ec2:CreateTags'
-                    ],
+                    actions: ['ec2:RunInstances', 'ec2:CreateTags'],
                     resources: ['*']
                 }),
                 new PolicyStatement({
@@ -120,7 +113,7 @@ export class DockerImageBuilder extends Construct {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
                 queueName: 'docker-image-builderDLQ',
-                enforceSSL: true,
+                enforceSSL: true
             }),
             functionName: functionId,
             runtime: Runtime.PYTHON_3_10,
@@ -131,14 +124,13 @@ export class DockerImageBuilder extends Construct {
             reservedConcurrentExecutions: 10,
             role: role,
             environment: {
-                'LISA_DOCKER_BUCKET': ec2DockerBucket.bucketName,
-                'LISA_ECR_URI': props.ecrUri,
-                'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn,
-                'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl
+                LISA_DOCKER_BUCKET: ec2DockerBucket.bucketName,
+                LISA_ECR_URI: props.ecrUri,
+                LISA_INSTANCE_PROFILE: ec2InstanceProfile.instanceProfileArn,
+                LISA_MOUNTS3_DEB_URL: props.mountS3DebUrl
             },
             vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
-            vpcSubnets: props.vpc?.subnetSelection,
+            vpcSubnets: props.vpc?.subnetSelection
         });
-
     }
 }

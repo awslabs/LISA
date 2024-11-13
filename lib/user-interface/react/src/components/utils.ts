@@ -20,7 +20,7 @@ import {
     PutSessionRequestBody,
     LisaChatMessage,
     Repository,
-    Model,
+    Model
 } from './types';
 
 const stripTrailingSlash = (str) => {
@@ -38,7 +38,6 @@ export const getBaseURI = (): string => {
     return window.env.API_BASE_URL;
 };
 
-
 /**
  * Send an authenticated request to the backend. Handles adding the proper authorization header
  * @param url the URL to make a fetch request to
@@ -53,11 +52,11 @@ export const sendAuthenticatedRequest = async (
     method: string,
     idToken: string,
     body?: BodyInit,
-    headers?: Record<string, string>,
+    headers?: Record<string, string>
 ): Promise<Response> => {
     headers = {
         ...headers,
-        Authorization: `Bearer ${idToken}`,
+        Authorization: `Bearer ${idToken}`
     };
     let fetchUrl = url;
     if (!url.includes(RESTAPI_URI)) {
@@ -69,13 +68,13 @@ export const sendAuthenticatedRequest = async (
             method: method,
             mode: 'cors',
             headers: headers,
-            body: body,
+            body: body
         });
     } else {
         resp = await fetch(fetchUrl, {
             method: method,
             mode: 'cors',
-            headers: headers,
+            headers: headers
         });
     }
     return resp;
@@ -92,10 +91,10 @@ export const putSession = async (session: LisaChatSession, idToken: string): Pro
             const message: LisaChatMessageFields = {
                 content: elem.content,
                 type: elem.type,
-                metadata: elem.metadata,
+                metadata: elem.metadata
             };
             return message;
-        }),
+        })
     };
 
     await sendAuthenticatedRequest(`session/${session.sessionId}`, 'PUT', idToken, JSON.stringify(body));
@@ -116,8 +115,8 @@ export const getSession = async (sessionId: string, idToken: string): Promise<Li
                 new LisaChatMessage({
                     type: elem.type,
                     content: elem.content,
-                    metadata: elem.metadata,
-                }),
+                    metadata: elem.metadata
+                })
         );
     }
     return sess;
@@ -137,8 +136,8 @@ export const listSessions = async (idToken: string): Promise<LisaChatSession[]> 
                 new LisaChatMessage({
                     type: elem.type,
                     content: elem.content,
-                    metadata: elem.metadata,
-                }),
+                    metadata: elem.metadata
+                })
         );
     }
     return sessArray;
@@ -208,7 +207,7 @@ export const uploadToS3 = async (presignedUrlResponse: Response, file: File): Pr
 
     const response = await fetch(url, {
         method: 'POST',
-        body: formData,
+        body: formData
     });
 
     return response.status;
@@ -221,7 +220,7 @@ export const ingestDocuments = async (
     embeddingModel: Model,
     repostiroyType: string,
     chunkSize: number,
-    chunkOverlap: number,
+    chunkOverlap: number
 ): Promise<number> => {
     const resp = await sendAuthenticatedRequest(
         `repository/${repositoryId}/bulk?repositoryType=${repostiroyType}&chunkSize=${chunkSize}&chunkOverlap=${chunkOverlap}`,
@@ -229,15 +228,14 @@ export const ingestDocuments = async (
         idToken,
         JSON.stringify({
             embeddingModel: {
-                modelName: embeddingModel.id,
+                modelName: embeddingModel.id
             },
-            keys: documents,
-        }),
+            keys: documents
+        })
     );
     return resp.status;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const formatDocumentsAsString = (docs: any, forMetadata = false): string => {
     let contents = '';
     (docs || []).forEach((doc, index) => {

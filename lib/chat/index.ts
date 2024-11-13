@@ -39,11 +39,11 @@ type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
  */
 export class LisaChatApplicationStack extends Stack {
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaChatStackProps} props - Properties for the Stack.
-   */
-    constructor (scope: Construct, id: string, props: LisaChatStackProps) {
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaChatStackProps} props - Properties for the Stack.
+     */
+    constructor(scope: Construct, id: string, props: LisaChatStackProps) {
         super(scope, id, props);
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -55,7 +55,7 @@ export class LisaChatApplicationStack extends Stack {
             restApiId,
             rootResourceId,
             securityGroups,
-            vpc,
+            vpc
         });
 
         new ConfigurationApi(this, 'ConfigurationApi', {
@@ -64,7 +64,7 @@ export class LisaChatApplicationStack extends Stack {
             restApiId,
             rootResourceId,
             securityGroups,
-            vpc,
+            vpc
         });
     }
 }

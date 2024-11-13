@@ -21,7 +21,7 @@ import React from 'react';
 /**
  * Scrolls to the first element with `[aria-invalid=true]` attribute
  */
-export function scrollToInvalid () {
+export function scrollToInvalid() {
     setTimeout(() => {
         window.requestAnimationFrame(() => {
             document.querySelector('[aria-invalid=true]:not([disabled]')?.scrollIntoView();
@@ -56,7 +56,7 @@ export function scrollToInvalid () {
  * @param touched (optional) an object tree for what keypaths to include in the output
  * @returns an object tree with error messages at keypaths corresponding to {@link z.ZodIssue} path components
  */
-export function issuesToErrors (issues: z.ZodIssue[], touched?: any): any {
+export function issuesToErrors(issues: z.ZodIssue[], touched?: any): any {
     const formErrors = {} as any;
     issues.forEach((issue) => {
         const key = issue.path.reduce((previous, current) => {
@@ -88,7 +88,7 @@ export function issuesToErrors (issues: z.ZodIssue[], touched?: any): any {
  * @param target the top level object to traverse to find the property/element to remove
  * @param prefix an optional prefix that should be applied to the {@link path}
  */
-function unsetItem<T> (path: string, target: T, prefix?: string) {
+function unsetItem<T>(path: string, target: T, prefix?: string) {
     const prefixer = (path: string, prefix?: string) => {
         return (prefix ? [prefix, path] : [path]).join('.');
     };
@@ -106,22 +106,14 @@ function unsetItem<T> (path: string, target: T, prefix?: string) {
     }
 }
 
-export type SetFieldsFunction = (
-    values: { [key: string]: any },
-    method?: ValidationFormActionMethod
-) => void;
-
+export type SetFieldsFunction = (values: { [key: string]: any }, method?: ValidationFormActionMethod) => void;
 
 export type TouchFieldsFunction = (fields: string[], method?: ValidationTouchActionMethod) => void;
-
 
 /**
  * Union of acceptable {@link ModifyMethod}s for ValidationTouchAction
  */
-export type ValidationTouchActionMethod =
-    | ModifyMethod.Unset
-    | ModifyMethod.Set
-    | ModifyMethod.Default;
+export type ValidationTouchActionMethod = ModifyMethod.Unset | ModifyMethod.Set | ModifyMethod.Default;
 
 /**
  * Action for modifying touched fields
@@ -149,10 +141,7 @@ export type ValidationFormAction = {
 /**
  * Union of acceptable {@link ModifyMethod}s for ValidationStateAction
  */
-export type ValidationStateActionMethod =
-    | ModifyMethod.Set
-    | ModifyMethod.Merge
-    | ModifyMethod.Default;
+export type ValidationStateActionMethod = ModifyMethod.Set | ModifyMethod.Merge | ModifyMethod.Default;
 
 /**
  * Action for modifying state fields
@@ -169,16 +158,13 @@ export type ValidationStateAction = {
 export enum ValidationReducerActionTypes {
     TOUCH = 'touchAction',
     FORM = 'formAction',
-    STATE = 'stateAction',
+    STATE = 'stateAction'
 }
 
 /**
  * Actions accepted by the reducer created by {@link validationReducer}
  */
-export type ValidationReducerAction =
-    | ValidationTouchAction
-    | ValidationFormAction
-    | ValidationStateAction;
+export type ValidationReducerAction = ValidationTouchAction | ValidationFormAction | ValidationStateAction;
 
 export type ValidationReducerBaseState<F> = {
     validateAll: boolean;
@@ -194,7 +180,7 @@ export type ValidationReducerResponse<S> = {
     state: S;
     setState(newState: Partial<S>, method?: ModifyMethod): void;
     errors: any;
-    isValid: boolean,
+    isValid: boolean;
     setFields: SetFieldsFunction;
     touchFields: TouchFieldsFunction;
 };
@@ -259,10 +245,7 @@ export const useValidationReducer = <F, S extends ValidationReducerBaseState<F>>
     let errors = {} as any;
     const parseResult = formSchema.safeParse(state.form);
     if (!parseResult.success) {
-        errors = issuesToErrors(
-            parseResult.error.issues,
-            state.validateAll === true ? undefined : state.touched
-        );
+        errors = issuesToErrors(parseResult.error.issues, state.validateAll === true ? undefined : state.touched);
     }
 
     return {
@@ -273,29 +256,23 @@ export const useValidationReducer = <F, S extends ValidationReducerBaseState<F>>
             setState({
                 type: ValidationReducerActionTypes.STATE,
                 method,
-                newState,
+                newState
             } as ValidationStateAction);
         },
-        setFields: (
-            fields: { [key: string]: any },
-            method: ValidationFormActionMethod = ModifyMethod.Default
-        ) => {
+        setFields: (fields: { [key: string]: any }, method: ValidationFormActionMethod = ModifyMethod.Default) => {
             setState({
                 type: ValidationReducerActionTypes.FORM,
                 method,
-                fields,
+                fields
             } as ValidationFormAction);
         },
-        touchFields: (
-            fields: string[],
-            method: ValidationTouchActionMethod = ModifyMethod.Default
-        ) => {
+        touchFields: (fields: string[], method: ValidationTouchActionMethod = ModifyMethod.Default) => {
             setState({
                 type: ValidationReducerActionTypes.TOUCH,
                 method,
-                fields,
+                fields
             } as ValidationTouchAction);
-        },
+        }
     };
 };
 
@@ -307,7 +284,7 @@ export const duplicateAttributeRefinement = (keyField: string) => {
                     ctx.addIssue({
                         code: 'custom',
                         message: `Duplicate ${keyField}`,
-                        path: [originalIndex + 1 + index, keyField],
+                        path: [originalIndex + 1 + index, keyField]
                     });
                 }
             });

@@ -17,7 +17,7 @@
 import { ReactElement, useEffect } from 'react';
 import ModelManagementComponent from '../components/model-management/ModelManagementComponent';
 
-export function ModelManagement ({ setTools }): ReactElement {
+export function ModelManagement({ setTools }): ReactElement {
     useEffect(() => {
         setTools(null);
     }, [setTools]);

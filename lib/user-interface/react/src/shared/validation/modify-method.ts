@@ -18,5 +18,5 @@ export enum ModifyMethod {
     Default,
     Unset,
     Set,
-    Merge,
+    Merge
 }

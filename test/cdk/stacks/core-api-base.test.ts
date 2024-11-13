@@ -61,9 +61,9 @@ describe.each(regions)('API Core Nag Pack Tests | Region Test: %s', (awsRegion) 
         baseStackProps = {
             env: {
                 account: '012345678901',
-                region: awsRegion,
+                region: awsRegion
             },
-            config,
+            config
         };
     });
 
@@ -71,14 +71,14 @@ describe.each(regions)('API Core Nag Pack Tests | Region Test: %s', (awsRegion) 
         const networkingStack = new LisaNetworkingStack(app, `TestNetworking${awsRegion}`, {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
-            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
+            description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`
         });
 
         const tempStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
 
         tempStack.authorizer._attachToApi(tempStack.restApi);

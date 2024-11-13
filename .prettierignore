@@ -1,0 +1,9 @@
+build
+coverage
+dist
+package-lock.json
+
+.idea
+.venv
+.github
+.venv

@@ -100,7 +100,7 @@ repos:
       exclude: ^test
 
 - repo: https://github.com/pre-commit/mirrors-eslint
-  rev: 'v8.53.0'
+  rev: 'v9.14.0'
   hooks:
     - id: eslint
       files: \.[jt]sx?$

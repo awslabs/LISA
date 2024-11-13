@@ -1,11 +1,17 @@
 {
+  "ignorePatterns": ["/**/dist", "**/node_modules"],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 12,
     "sourceType": "module"
   },
   "plugins": ["@stylistic", "@typescript-eslint"],
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:react-hooks/recommended"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react-hooks/recommended",
+    "prettier"
+  ],
   "rules": {
     "eqeqeq": ["error", "smart"],
     "@stylistic/indent": "error",
@@ -22,7 +28,6 @@
       }
     ],
     "@stylistic/semi": "error",
-    "@stylistic/space-before-function-paren": "error",
     "@stylistic/space-infix-ops": "error",
     "@stylistic/space-unary-ops": "error",
     "@typescript-eslint/no-unused-vars": "error",

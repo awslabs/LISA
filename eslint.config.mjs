@@ -49,8 +49,8 @@ export default [
 
         rules: {
             eqeqeq: ['error', 'smart'],
-            // '@stylistic/indent': 'error',
-            '@stylistic/quotes': ['error', 'single'],
+            '@stylistic/indent': 'off', // Defer to prettier
+            '@stylistic/quotes': 'off', // Defer to prettier
             '@stylistic/arrow-parens': 'error',
             '@stylistic/arrow-spacing': 'error',
             '@stylistic/brace-style': 'error',

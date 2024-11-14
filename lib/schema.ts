@@ -714,7 +714,10 @@ const RawConfigSchema = z
         region: z.string(),
         restApiConfig: FastApiContainerConfigSchema,
         vpcId: z.string().optional(),
-        subnetIds: z.array(z.string().startsWith('subnet-')).optional(),
+        subnets: z.array(z.object({
+            subnetId: z.string().startsWith('subnet-'),
+            ipv4CidrBlock: z.string()
+        })).optional(),
         deploymentStage: z.string().default('prod'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]).default('destroy'),
         runCdkNag: z.boolean().default(false),

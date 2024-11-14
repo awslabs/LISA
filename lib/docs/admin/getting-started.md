@@ -117,7 +117,10 @@ make modelCheck
 This command verifies if the model's weights are already present in your S3 bucket. If not, it downloads the weights, converts them to the required format, and uploads them to your S3 bucket. Ensure adequate disk space is available for this process.
 
 > **WARNING**
-> As of LISA 3.0, the `ecsModels` parameter in `config.yaml` is solely for staging model weights in your S3 bucket. Previously, before models could be managed through the [API](https://github.com/awslabs/LISA/blob/develop/README.md#creating-a-model-admin-api) or via the Model Management section of the [Chatbot](https://github.com/awslabs/LISA/blob/develop/README.md#chatbot-example), this parameter also dictated which models were deployed.
+> As of LISA 3.0, the `ecsModels` parameter in `config.yaml` is solely for staging model weights in your S3 bucket.
+> Previously, before models could be managed through the [API](/admin/model-management) or via the Model Management
+> section of the [Chatbot](/user/chat), this parameter also
+> dictated which models were deployed.
 
 > **NOTE**
 > For air-gapped systems, before running `make modelCheck` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.

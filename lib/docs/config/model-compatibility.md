@@ -16,7 +16,10 @@ AutoModelForSeq2SeqLM.from_pretrained(<model>, device_map="auto")
 
 ### HuggingFace Embedding Models
 
-Embedding models often utilize custom codebases and are not as uniform as generation models. For this reason you will likely need to create a new `inferenceContainer`. Follow the [example](https://github.com/awslabs/LISA/tree/develop/lib/serve/ecs-model/embedding/instructor) provided for the `instructor` model.
+Embedding models often utilize custom codebases and are not as uniform as generation models. For this reason you will
+likely need to create a new `inferenceContainer`. Follow
+the [example](https://github.com/awslabs/LISA/blob/develop/lib/serve/ecs-model/embedding/instructor) provided for the
+`instructor` model.
 
 ### vLLM Models
 

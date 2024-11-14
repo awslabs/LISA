@@ -11,5 +11,3 @@ systemBanner:
 ```
 
 These values are shared across all users.
-
-

@@ -20,29 +20,23 @@ const navLinks = [
   {
     text: 'System Administrator Guide',
     items: [
+      { text: 'What is Lisa?', link: '/admin/overview' },
       { text: 'Architecture Overview', link: '/admin/architecture' },
-      { text: 'LISA Components', link: '/admin/components' },
       { text: 'Getting Started', link: '/admin/getting-started' },
-      { text: 'Configure IdP: Cognito & Keycloak Examples', link: '/admin/idp' },
       { text: 'Deployment', link: '/admin/deploy' },
-      { text: 'Setting Model Management Admin Group', link: '/admin/model-management' },
-      { text: 'LiteLLM', link: '/admin/lite-llm' },
-      { text: 'API Overview', link: '/admin/api' },
+      { text: 'Model Management API Usage', link: '/admin/model-management' },
       { text: 'API Request Error Handling', link: '/admin/error' },
-      { text: 'Security', link: '/admin/security' },
     ],
   },
   {
     text: 'Advanced Configuration',
     items: [
-      { text: 'Programmatic API Tokens', link: '/config/api-tokens' },
+      { text: 'Configuration Schema', link: '/config/configuration' },
       { text: 'Model Compatibility', link: '/config/model-compatibility' },
-      { text: 'Model Management API', link: '/config/model-management-api' },
-      { text: 'Model Management UI', link: '/config/model-management-ui' },
       { text: 'Rag Vector Stores', link: '/config/vector-stores' },
-      { text: 'Usage & Features', link: '/config/features' },
       { text: 'Branding', link: '/config/branding' },
-      { text: 'Hiding Advanced Chat UI Components', link: '/config/hiding-chat-components' },
+      { text: 'Configure IdP: Cognito & Keycloak Examples', link: '/config/idp' },
+      { text: 'LiteLLM', link: '/config/lite-llm' },
     ],
   },
   {
@@ -52,9 +46,13 @@ const navLinks = [
       { text: 'RAG', link: '/user/rag' },
       { text: 'Context Windows', link: '/user/context-windows' },
       { text: 'Model KWARGS', link: '/user/model-kwargs' },
+      { text: 'Model Management UI', link: '/user/model-management-ui' },
+      { text: 'Hiding Advanced Chat UI Components', link: '/user/hiding-chat-components' },
       { text: 'Non-RAG in Context File Management', link: '/user/nonrag-management' },
       { text: 'Prompt Engineering', link: '/user/prompt-engineering' },
       { text: 'Session History', link: '/user/history' },
+      { text: 'Breaking Changes', link: '/user/breaking-changes' },
+      { text: 'Change Log', link: 'https://github.com/awslabs/LISA/releases' },
     ],
   }];
 

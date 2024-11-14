@@ -1,6 +1,4 @@
-# LLM Inference Solution for Amazon Dedicated Cloud (LISA)
-
-## What is LISA?
+# What is LISA?
 
 LISA is an infrastructure-as-code solution providing scalable, low latency access to customers’ generative LLMs and
 embedding language models. LISA accelerates and supports customers’ GenAI experimentation and adoption, particularly in
@@ -36,8 +34,8 @@ API integrations with each provider.
   model provider for the Continue plugin, an open-source AI code assistance for JetBrains and Visual Studio Code
   integrated development environments (IDEs). This allows users to select from any LISA-configured model to support LLM
   prompting directly in their IDE.
-* Libraries: If your workflow includes libraries such as [LangChain](https://python.langchain.com/)
-  or [OpenAI](https://github.com/openai/openai-python), then you can place LISA in your
+* Libraries: If your workflow includes libraries such as [LangChain](https://python.langchain.com/) or [OpenAI](https://github.com/openai/openai-python), then you
+  can place LISA in your
   application by changing only the endpoint and headers for the client objects.
 * FedRAMP: The AWS services that LISA leverages are FedRAMP High compliant.
 * Ongoing Releases: We offer on-going release with new functionality. LISA’s roadmap is customer driven.
@@ -63,18 +61,3 @@ API integrations with each provider.
 * Node.js 14 or later
 * Docker installed and running
 * Sufficient disk space for model downloads and conversions
-
-
-## Getting Started
-
-For detailed instructions on setting up, configuring, and deploying LISA, please refer to our separate documentation on
-installation and usage.
-
-[![LISA Documentation](https://img.shields.io/badge/LISA%20Documentation-blue?style=for-the-badge&logo=Vite&logoColor=white)](https://awslabs.github.io/LISA/)
-
-## License
-
-Although this repository is released under the Apache 2.0 license, when configured to use PGVector as a RAG store it
-uses
-the third party `psycopg2-binary` library. The `psycopg2-binary` project's licensing includes
-the [LGPL with exceptions](https://github.com/psycopg/psycopg2/blob/master/LICENSE) license.

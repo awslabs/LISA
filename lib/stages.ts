@@ -102,7 +102,7 @@ export class LisaServeApplicationStage extends Stage {
                     baseStackProps.synthesizer = new DefaultStackSynthesizer();
                     break;
                 default:
-                    throw Error('Unrecognized config value: "stackSyntehsizer"');
+                    throw Error('Unrecognized config value: "stackSynthesizer"');
             }
         }
 

@@ -71,7 +71,7 @@ export class ECSModelDeployer extends Construct {
             's3BucketModels': props.config.s3BucketModels,
             'mountS3DebUrl': props.config.mountS3DebUrl,
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
-            'subnetIds': props.config.subnetIds
+            'subnets': props.config.subnets
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);

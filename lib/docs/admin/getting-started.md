@@ -135,38 +135,14 @@ In the `config.yaml` file, configure the `authConfig` block for authentication. 
 - `jwtGroupsProperty`: Path to the groups field in the JWT token
 - `additionalScopes` (optional): Extra scopes for group membership information
 
-#### Cognito Configuration Example:
-In Cognito, the `authority` will be the URL to your User Pool. As an example, if your User Pool ID, not the name, is `us-east-1_example`, and if it is
-running in `us-east-1`, then the URL to put in the `authority` field would be `https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example`. The `clientId`
-can be found in your User Pool's "App integration" tab from within the AWS Management Console, and at the bottom of the page, you will see the list of clients
-and their associated Client IDs. The ID here is what we will need for the `clientId` field.
+IDP Configuration examples using AWS Cognito and Keycloak can be found: [IDP Configuration Examples](/config/idp)
 
-
-```yaml
-authConfig:
-  authority: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example
-  clientId: your-client-id
-  adminGroup: AdminGroup
-  jwtGroupsProperty: cognito:groups
-```
-
-#### Keycloak Configuration Example:
-In Keycloak, the `authority` will be the URL to your Keycloak server. The `clientId` is likely not a random string like in the Cognito clients, and instead
-will be a string configured by your Keycloak administrator. Your administrator will be able to give you a client name or create a client for you to use for
-this application. Once you have this string, use that as the `clientId` within the `authConfig` block.
-
-```yaml
-authConfig:
-  authority: https://your-keycloak-server.com
-  clientId: your-client-name
-  adminGroup: AdminGroup
-  jwtGroupsProperty: realm_access.roles
-```
 
 ## Step 7: Configure LiteLLM
 We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
 For LiteLLM configuration, a key must be set up so that the system may communicate with a database for tracking all the models that are added or removed
-using the [Model Management API](#admin-level-model-management-api). The key must start with `sk-` and then can be any arbitrary string. We recommend generating a new UUID and then using that as
+using the [Model Management API](/admin/model-management). The key must start with `sk-` and then can be any arbitrary
+string. We recommend generating a new UUID and then using that as
 the key. Configuration example is below.
 
 
@@ -178,7 +154,8 @@ litellmConfig:
 ```
 
 **Note**: It is possible to add LiteLLM-only models to this configuration, but it is not recommended as the models in this configuration will not show in the
-Chat or Model Management UIs. Instead, use the [Model Management UI](#admin-level-model-management-api) to add or remove LiteLLM-only model configurations.
+Chat or Model Management UIs. Instead, use the [Model Management UI](/user/models) to add or remove LiteLLM-only model
+configurations.
 
 ## Step 8: Set Up SSL Certificates (Development Only)
 
@@ -204,7 +181,8 @@ restApiConfig:
 In the `ecsModels` section of `config.yaml`, allow our deployment process to pull the model weights for you.
 
 During the deployment process, LISA will optionally attempt to download your model weights if you specify an optional `ecsModels`
-array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of the [example_config.yaml](./example_config.yaml) file.
+array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of
+the [example_config.yaml](https://github.com/awslabs/LISA/blob/develop/example_config.yaml) file.
 Here we define the model name, inference container, and baseImage:
 
 ```yaml
@@ -253,7 +231,8 @@ services are in the same region as the LISA installation, LISA can use them alon
 
 **Important:** Endpoints or Models statically defined during LISA deployment cannot be removed or updated using the
 LISA Model Management API, and they will not show in the Chat UI. These will only show as part of the OpenAI `/models` API.
-Although there is support for it, we recommend using the [Model Management API](#admin-level-model-management-api) instead of the following static configuration.
+Although there is support for it, we recommend using the [Model Management API](/admin/model-management) instead of the
+following static configuration.
 
 ### Example Configuration
 

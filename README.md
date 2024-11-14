@@ -36,7 +36,8 @@ API integrations with each provider.
   model provider for the Continue plugin, an open-source AI code assistance for JetBrains and Visual Studio Code
   integrated development environments (IDEs). This allows users to select from any LISA-configured model to support LLM
   prompting directly in their IDE.
-* Libraries: If your workflow includes libraries such as LangChain or OpenAI, then you can place LISA in your
+* Libraries: If your workflow includes libraries such as [LangChain](https://python.langchain.com/)
+  or [OpenAI](https://github.com/openai/openai-python), then you can place LISA in your
   application by changing only the endpoint and headers for the client objects.
 * FedRAMP: The AWS services that LISA leverages are FedRAMP High compliant.
 * Ongoing Releases: We offer on-going release with new functionality. LISA’s roadmap is customer driven.

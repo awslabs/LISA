@@ -16,7 +16,7 @@
 
 import { Construct } from 'constructs';
 import { DockerImageCode, DockerImageFunction, IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration, Size } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
@@ -43,6 +43,18 @@ export class ECSModelDeployer extends Construct {
                 new PolicyStatement({
                     actions: ['sts:AssumeRole'],
                     resources: ['arn:*:iam::*:role/cdk-*']
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'ec2:CreateNetworkInterface',
+                        'ec2:DescribeNetworkInterfaces',
+                        'ec2:DescribeSubnets',
+                        'ec2:DeleteNetworkInterface',
+                        'ec2:AssignPrivateIpAddresses',
+                        'ec2:UnassignPrivateIpAddresses'
+                    ],
+                    resources: ['*'],
                 })
             ]
         });
@@ -59,7 +71,7 @@ export class ECSModelDeployer extends Construct {
             's3BucketModels': props.config.s3BucketModels,
             'mountS3DebUrl': props.config.mountS3DebUrl,
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
-            'subnetIds': props.config.subnetIds
+            'subnets': props.config.subnets
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);

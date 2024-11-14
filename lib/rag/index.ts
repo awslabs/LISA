@@ -128,11 +128,12 @@ export class LisaRagStack extends Stack {
                     description: 'Security group for RAG OpenSearch domain',
                 });
                 // Allow communication from private subnets to ECS cluster
-                vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+                const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                subNets?.forEach((subnet) => {
                     openSearchSg.connections.allowFrom(
-                        Peer.ipv4(subnet.ipv4CidrBlock),
-                        Port.tcp(443),
-                        'Allow private subnets to communicate with OpenSearch cluster',
+                        Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                        'Allow REST API private subnets to communicate with LiteLLM database',
                     );
                 });
                 new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
@@ -250,12 +251,12 @@ export class LisaRagStack extends Stack {
                         description: 'Security group for RAG PGVector database',
                     });
 
-                    const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                    const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                     subNets?.forEach((subnet) => {
                         pgvectorSg.connections.allowFrom(
-                            Peer.ipv4(subnet.ipv4CidrBlock),
-                            Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
-                            'Allow private subnets to communicate with PGVector database',
+                            Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                            Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                            'Allow REST API private subnets to communicate with LiteLLM database',
                         );
                     });
 

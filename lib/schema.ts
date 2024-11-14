@@ -523,7 +523,10 @@ const RawConfigSchema = z
         region: z.string().describe('AWS region for deployment.'),
         restApiConfig: FastApiContainerConfigSchema,
         vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
-        subnetIds: z.array(z.string().startsWith('subnet-')).optional().describe('Array of subnet ID for the application. (e.g. [subnet-fedcba9876543210]'),
+        subnets: z.array(z.object({
+            subnetId: z.string().startsWith('subnet-'),
+            ipv4CidrBlock: z.string()
+        })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
             .transform((value) => REMOVAL_POLICIES[value])

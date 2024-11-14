@@ -16,7 +16,14 @@
 
 import { Construct } from 'constructs';
 import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { Role, InstanceProfile, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import {
+    Role,
+    InstanceProfile,
+    ServicePrincipal,
+    ManagedPolicy,
+    Policy,
+    PolicyStatement
+} from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -91,7 +98,13 @@ export class DockerImageBuilder extends Construct {
                 new PolicyStatement({
                     actions: [
                         'ec2:RunInstances',
-                        'ec2:CreateTags'
+                        'ec2:CreateTags',
+                        'ec2:CreateNetworkInterface',
+                        'ec2:DescribeNetworkInterfaces',
+                        'ec2:DescribeSubnets',
+                        'ec2:DeleteNetworkInterface',
+                        'ec2:AssignPrivateIpAddresses',
+                        'ec2:UnassignPrivateIpAddresses'
                     ],
                     resources: ['*']
                 }),

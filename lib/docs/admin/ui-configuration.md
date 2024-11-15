@@ -17,7 +17,7 @@ The following features can be managed:
     - Adjust chat history buffer settings
 
 4. Retrieval-Augmented Generation (RAG) Settings
-    - Modify the number of RAG documents
+    - Modify the number of RAG documents to be included in the retrieval process (TopK)
     - Activate or inactivate RAG document uploads
 
 5. Contextual Document Management

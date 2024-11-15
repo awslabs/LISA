@@ -24,7 +24,7 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
@@ -79,9 +79,9 @@ export class LisaRagStack extends Stack {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        const bucketName = `${config.deploymentName}-lisaragdocs-${config.accountNumber}`.toLowerCase();
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
-            bucketName,
+            removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             cors: [
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
@@ -94,16 +94,16 @@ export class LisaRagStack extends Stack {
 
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
-            BUCKET_NAME: bucketName,
+            BUCKET_NAME: bucket.bucketName,
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
+            REST_API_VERSION: 'v2',
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
-            baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig.loadBalancerConfig.sslCertIamArn;
+        if (config.restApiConfig?.sslCertIamArn) {
+            baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig?.sslCertIamArn;
         }
 
         const lambdaRole = Role.fromRoleArn(
@@ -128,11 +128,12 @@ export class LisaRagStack extends Stack {
                     description: 'Security group for RAG OpenSearch domain',
                 });
                 // Allow communication from private subnets to ECS cluster
-                vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+                const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                subNets?.forEach((subnet) => {
                     openSearchSg.connections.allowFrom(
-                        Peer.ipv4(subnet.ipv4CidrBlock),
-                        Port.tcp(443),
-                        'Allow private subnets to communicate with OpenSearch cluster',
+                        Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                        'Allow REST API private subnets to communicate with LiteLLM database',
                     );
                 });
                 new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
@@ -172,6 +173,7 @@ export class LisaRagStack extends Stack {
                         version: EngineVersion.OPENSEARCH_2_9,
                         enableVersionUpgrade: true,
                         vpc: vpc.vpc,
+                        vpcSubnets: vpc.subnetSelection ? [vpc.subnetSelection] : [],
                         ebs: {
                             enabled: true,
                             volumeSize: ragConfig.opensearchConfig.volumeSize,
@@ -249,11 +251,12 @@ export class LisaRagStack extends Stack {
                         description: 'Security group for RAG PGVector database',
                     });
 
-                    vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+                    const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                    subNets?.forEach((subnet) => {
                         pgvectorSg.connections.allowFrom(
-                            Peer.ipv4(subnet.ipv4CidrBlock),
-                            Port.tcp(ragConfig.rdsConfig?.dbPort || 5432),
-                            'Allow private subnets to communicate with PGVector database',
+                            Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                            Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                            'Allow REST API private subnets to communicate with LiteLLM database',
                         );
                     });
 
@@ -262,6 +265,7 @@ export class LisaRagStack extends Stack {
                     const pgvector_db = new DatabaseInstance(this, 'PGVectorDB', {
                         engine: DatabaseInstanceEngine.POSTGRES,
                         vpc: vpc.vpc,
+                        subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
                         securityGroups: [pgvectorSg!],
                         removalPolicy: RemovalPolicy.DESTROY,
@@ -309,14 +313,14 @@ export class LisaRagStack extends Stack {
         if (config.lambdaLayerAssets?.sdkLayerPath) {
             sdkLayer = new LayerVersion(this, 'SdkLayer', {
                 code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
+                compatibleRuntimes: [Runtime.PYTHON_3_10],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });
         } else {
             sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
                 entry: SDK_PATH,
-                compatibleRuntimes: [config.lambdaConfig.pythonRuntime],
+                compatibleRuntimes: [Runtime.PYTHON_3_10],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });
@@ -327,7 +331,7 @@ export class LisaRagStack extends Stack {
             authorizer,
             baseEnvironment,
             config,
-            vpc: vpc.vpc,
+            vpc: vpc,
             commonLayers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
             restApiId,
             rootResourceId,

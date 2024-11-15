@@ -16,13 +16,14 @@
 
 import { Duration } from 'aws-cdk-lib';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 import { PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
+import { Vpc } from '../../networking/vpc';
 
 /**
  * Properties for RepositoryAPI Construct.
@@ -44,7 +45,7 @@ type RepositoryApiProps = {
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
-    vpc?: IVpc;
+    vpc?: Vpc;
 } & BaseProps;
 
 /**
@@ -57,7 +58,6 @@ export class RepositoryApi extends Construct {
         const {
             authorizer,
             baseEnvironment,
-            config,
             commonLayers,
             lambdaExecutionRole,
             restApiId,
@@ -130,10 +130,10 @@ export class RepositoryApi extends Construct {
                 this,
                 restApi,
                 authorizer,
-                config.lambdaSourcePath,
+                './lambda',
                 commonLayers,
                 f,
-                config.lambdaConfig.pythonRuntime,
+                Runtime.PYTHON_3_10,
                 lambdaExecutionRole,
                 vpc,
                 securityGroups,

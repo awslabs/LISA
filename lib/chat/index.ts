@@ -17,18 +17,20 @@
 // LisaChat Stack.
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { SessionApi } from './api/session';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
+import { ConfigurationApi } from './api/configuration';
 
 type CustomLisaChatStackProps = {
     authorizer: IAuthorizer;
     restApiId: string;
     rootResourceId: string;
     securityGroups?: ISecurityGroup[];
-    vpc?: IVpc;
+    vpc?: Vpc;
 } & BaseProps;
 type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
 
@@ -48,6 +50,15 @@ export class LisaChatApplicationStack extends Stack {
 
         // Add REST API Lambdas to APIGW
         new SessionApi(this, 'SessionApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
+        new ConfigurationApi(this, 'ConfigurationApi', {
             authorizer,
             config,
             restApiId,

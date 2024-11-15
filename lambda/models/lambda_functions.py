@@ -17,7 +17,10 @@ import os
 from typing import Annotated, Union
 
 import boto3
+import botocore.session
 from fastapi import FastAPI, Path, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
@@ -36,6 +39,7 @@ from .domain_objects import (
 from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
 from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler
 
+sess = botocore.session.Session()
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
 app.add_middleware(AWSAPIGatewayMiddleware)
 
@@ -59,6 +63,14 @@ stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
     return JSONResponse(status_code=404, content={"message": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)  # type: ignore
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle exception when request fails validation and and translate to a 422 error."""
+    return JSONResponse(
+        status_code=422, content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"}
+    )
 
 
 @app.exception_handler(InvalidStateTransitionError)  # type: ignore
@@ -133,6 +145,12 @@ async def delete_model(
         model_table_resource=model_table,
     )
     return delete_handler(model_id=model_id)
+
+
+@app.get(path="/metadata/instances")  # type: ignore
+async def get_instances() -> list[str]:
+    """Endpoint to list available instances in this region."""
+    return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")

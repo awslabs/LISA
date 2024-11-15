@@ -21,7 +21,6 @@ import './index.css';
 import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
-import { ModelTypes } from './components/types';
 import getStore from './config/store';
 
 declare global {
@@ -37,18 +36,6 @@ declare global {
             RESTAPI_VERSION: string;
             RAG_ENABLED: boolean;
             API_BASE_URL: string;
-            SYSTEM_BANNER?: {
-                text: string;
-                backgroundColor: string;
-                fontColor: string;
-            };
-            MODELS: [
-                {
-                    model: string;
-                    streaming: boolean | null;
-                    modelType: ModelTypes;
-                },
-            ];
         };
         gitInfo?: {
             revisionTag?: string;

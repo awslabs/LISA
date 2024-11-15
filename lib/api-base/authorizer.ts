@@ -16,15 +16,17 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { RequestAuthorizer, IdentitySource } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { BaseProps } from '../schema';
 import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { Vpc } from '../networking/vpc';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -33,10 +35,11 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
  * @property {Layer} authorizerLayer - Lambda layer for authorizer lambda.
  * @property {IRole} role - Execution role for lambdas
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
+ * @property {Map<number, ISubnet>} importedSubnets for Lambdas
  */
 type AuthorizerProps = {
     role?: IRole;
-    vpc?: IVpc;
+    vpc?: Vpc;
     securityGroups?: ISecurityGroup[];
 } & BaseProps;
 
@@ -73,10 +76,15 @@ export class CustomAuthorizer extends Construct {
 
         // Create Lambda authorizer
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-            runtime: config.lambdaConfig.pythonRuntime,
+            deadLetterQueueEnabled: true,
+            deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
+                queueName: 'AuthorizerLambdaDLQ',
+                enforceSSL: true,
+            }),
+            runtime: Runtime.PYTHON_3_10,
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
-            code: Code.fromAsset(config.lambdaSourcePath),
+            code: Code.fromAsset('./lambda'),
             description: 'REST API and UI Authorization Lambda',
             timeout: cdk.Duration.seconds(30),
             memorySize: 128,
@@ -88,9 +96,11 @@ export class CustomAuthorizer extends Construct {
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
             },
+            reservedConcurrentExecutions: 20,
             role: role,
-            vpc: vpc,
+            vpc: vpc?.vpc,
             securityGroups: securityGroups,
+            vpcSubnets: vpc?.subnetSelection
         });
 
         const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);

@@ -1,0 +1,3 @@
+dist/
+.vitepress/cache/
+/config/schema.md

@@ -15,18 +15,28 @@
 */
 
 import { Construct } from 'constructs';
-import { Code, Function } from 'aws-cdk-lib/aws-lambda';
-import { Role, InstanceProfile, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import {
+    Role,
+    InstanceProfile,
+    ServicePrincipal,
+    ManagedPolicy,
+    Policy,
+    PolicyStatement
+} from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
     mountS3DebUrl: string;
+    vpc?: Vpc;
 };
 
 export class DockerImageBuilder extends Construct {
@@ -88,7 +98,13 @@ export class DockerImageBuilder extends Construct {
                 new PolicyStatement({
                     actions: [
                         'ec2:RunInstances',
-                        'ec2:CreateTags'
+                        'ec2:CreateTags',
+                        'ec2:CreateNetworkInterface',
+                        'ec2:DescribeNetworkInterfaces',
+                        'ec2:DescribeSubnets',
+                        'ec2:DeleteNetworkInterface',
+                        'ec2:AssignPrivateIpAddresses',
+                        'ec2:UnassignPrivateIpAddresses'
                     ],
                     resources: ['*']
                 }),
@@ -114,19 +130,27 @@ export class DockerImageBuilder extends Construct {
 
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
+            deadLetterQueueEnabled: true,
+            deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
+                queueName: 'docker-image-builderDLQ',
+                enforceSSL: true,
+            }),
             functionName: functionId,
-            runtime: props.config.lambdaConfig.pythonRuntime,
+            runtime: Runtime.PYTHON_3_10,
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),
             memorySize: 1024,
+            reservedConcurrentExecutions: 10,
             role: role,
             environment: {
                 'LISA_DOCKER_BUCKET': ec2DockerBucket.bucketName,
                 'LISA_ECR_URI': props.ecrUri,
                 'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn,
                 'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl
-            }
+            },
+            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
+            vpcSubnets: props.vpc?.subnetSelection,
         });
 
     }

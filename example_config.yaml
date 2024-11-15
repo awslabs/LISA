@@ -1,152 +1,83 @@
-env: dev
-
-dev:
-  appName: lisa
-  profile:
-  deploymentName:
-  accountNumber: 012345678901
-  region: us-east-1
-  deploymentStage: dev
-  removalPolicy: destroy
-  runCdkNag: false
-  # lambdaLayerAssets:
-  #   authorizerLayerPath: /path/to/authorizer_layer.zip
-  #   commonLayerPath: /path/to/common_layer.zip
-  #   fastapiLayerPath: /path/to/fastapi_layer.zip
-  #   ragLayerPath: /path/to/rag_layer.zip
-  #   sdkLayerPath: /path/to/sdk_layer.zip
-  # stackSynthesizer: CliCredentialsStackSynthesizer
-  # permissionsBoundaryAspect:
-  #   permissionsBoundaryPolicyName: CustomPermissionBoundary
-  #   rolePrefix: CustomPrefix
-  #   policyPrefix: CustomPrefix
-  #   instanceProfilePrefix: CustomPrefix
-  # systemBanner:
-  #   text: 'LISA System'
-  #   backgroundColor: orange
-  #   fontColor: black
-  s3BucketModels: hf-models-gaiic
-  # aws partition mountS3 package location
-  mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
-  # aws-iso partition mountS3 package location
-  # mountS3DebUrl: https://mountpoint-s3-release-us-iso-east-1.s3.us-iso-east-1.c2s.ic.gov/latest/x86_64/mount-s3.deb
-  # aws-iso-b partition mountS3 package location
-  # mountS3DebUrl: https://mountpoint-s3-release-us-isob-east-1.s3.us-isob-east-1.sc2s.sgov.gov/latest/x86_64/mount-s3.deb
-  accountNumbersEcr:
-    - 012345678901
-  deployRag: true
-  deployChat: true
-  deployUi: true
-  lambdaConfig:
-    pythonRuntime: PYTHON_3_10
-    logLevel: DEBUG
-    vpcAutoscalingConfig:
-      provisionedConcurrentExecutions: 5
-      minCapacity: 1
-      maxCapacity: 50
-      targetValue: 0.80
-      cooldown: 30
-  authConfig:
-    authority:
-    clientId:
-    adminGroup:
-    jwtGroupsProperty:
-  logLevel: DEBUG
-  # NOTE: The following configuration will allow for using a custom domain for the chat user interface.
-  # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
-  # Users must use the custom domain for the user interface to work if this option is populated.
-  apiGatewayConfig:
-    domainName:
-  restApiConfig:
-    apiVersion: v2
-    instanceType: m5.large
-    containerConfig:
-      image:
-        baseImage: python:3.9
-        path: lib/serve/rest-api
-        type: asset
-      healthCheckConfig:
-        command: ["CMD-SHELL", "exit 0"]
-        interval: 10
-        startPeriod: 30
-        timeout: 5
-        retries: 3
-    autoScalingConfig:
-      minCapacity: 1
-      maxCapacity: 1
-      cooldown: 60
-      defaultInstanceWarmup: 60
-      metricConfig:
-        AlbMetricName: RequestCountPerTarget
-        targetValue: 1000
-        duration: 60
-        estimatedInstanceWarmup: 30
-    internetFacing: true
-    loadBalancerConfig:
-      sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
-      healthCheckConfig:
-        path: /health
-        interval: 60
-        timeout: 30
-        healthyThresholdCount: 2
-        unhealthyThresholdCount: 10
-      domainName:
-  ragRepositories:
-    - repositoryId: pgvector-rag
-      type: pgvector
-      rdsConfig:
-        username: postgres
-    # - repositoryId: default
-    #   type: opensearch
-    #   opensearchConfig:
-    #     dataNodes: 2
-    #     dataNodeInstanceType: r6g.large.search
-    #     masterNodes: 0
-    #     masterNodeInstanceType: r6g.large.search
-    #     volumeSize: 300
-    # If adding an existing PGVector database, this configurations assumes:
-    # 1. The database has been configured to have pgvector installed and enabled: https://aws.amazon.com/about-aws/whats-new/2023/05/amazon-rds-postgresql-pgvector-ml-model-integration/
-    # 2. The database is accessible by RAG-related lambda functions (add inbound PostgreSQL access on the database's security group for all Lambda RAG security groups)
-    # 3. A secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'. This is the same format that RDS natively provides a password in SecretsManager.
-    # If the passwordSecretId or dbHost are not provided, then a sample database will be created for you. Only the username is required.
-    # - repositoryId: pgvector-rag
-    #  type: pgvector
-    #  rdsConfig:
-    #    username: postgres
-    #    passwordSecretId: # password ID as stored in SecretsManager. Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
-    #    dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
-    #    dbName: postgres
-  ragFileProcessingConfig:
-    chunkSize: 512
-    chunkOverlap: 51
-  ecsModels:
-    - modelName: mistralai/Mistral-7B-Instruct-v0.2
-      inferenceContainer: tgi
-      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
-    - modelName: intfloat/e5-large-v2
-      inferenceContainer: tei
-      baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
-    # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
-    #   inferenceContainer: tgi
-    #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
-  # LiteLLM Config options found here: https://litellm.vercel.app/docs/proxy/configs#all-settings
-  # Anything within this config is copied to a configuration for starting LiteLLM in the REST API container.
-  # It is suggested to put an "ignored" API key so that calls to locally hosted models don't fail on OpenAI calls
-  # from LiteLLM.
-  # We added `lisa_params` to add additional metadata for interaction with the Chat UI. Specify if the model is a
-  # textgen or embedding model, and if it is textgen, specify whether it supports streaming. If embedding, then
-  # omit the `streaming` parameter. When defining the model list, the `lisa_params` will be an object in the model
-  # definition that will have the `model_type` and `streaming` fields in it. A commented example is provided below.
-  litellmConfig:
-    litellm_settings:
-      telemetry: false  # Don't try to send telemetry to LiteLLM servers.
-    general_settings:
-      master_key: sk-d7a77bcb-3e23-483c-beec-2700f2baeeb1  # A key is required for model management purposes
-    model_list: # Add any of your existing (not LISA-hosted) models here.
-#      - model_name: mymodel
-#        litellm_params:
-#          model: openai/myprovider/mymodel
-#          api_key: ignored
-#        lisa_params:
-#          model_type: textgen
-#          streaming: true
+accountNumber: "012345678901"
+region: us-east-1
+authConfig:
+  authority:
+  clientId:
+  adminGroup:
+  jwtGroupsProperty:
+s3BucketModels: hf-models-gaiic
+########################### OPTIONAL BELOW #######################################
+# profile: AWS CLI profile for deployment.
+# vpcId: VPC ID for the application. (e.g. vpc-0123456789abcdef)
+# The following is an array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock
+# subnets:
+#  - subnetId:
+#    ipv4CidrBlock:
+# The following configuration will allow for using a custom domain for the chat user interface.
+# If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
+# Users must use the custom domain for the user interface to work if this option is populated.
+# apiGatewayConfig:
+#  domainName:
+# restApiConfig:
+#  sslCertIamArn: ARN of the self-signed cert to be used throughout the system
+# Some customers will want to download required libs prior to deployment, provide a path to the zipped resources
+# lambdaLayerAssets:
+#   authorizerLayerPath: /path/to/authorizer_layer.zip
+#   commonLayerPath: /path/to/common_layer.zip
+#   fastapiLayerPath: /path/to/fastapi_layer.zip
+#   ragLayerPath: /path/to/rag_layer.zip
+#   sdkLayerPath: /path/to/sdk_layer.zip
+# stackSynthesizer: CliCredentialsStackSynthesizer
+# deploymentPrefix: Prefix for deployment resources.
+# webAppAssetsPath: Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.
+# permissionsBoundaryAspect:
+#   permissionsBoundaryPolicyName: CustomPermissionBoundary
+#   rolePrefix: CustomPrefix
+#   policyPrefix: CustomPrefix
+#   instanceProfilePrefix: CustomPrefix
+# vpcId: vpc-0123456789abcdef,
+# aws-iso partition mountS3 package location
+# mountS3DebUrl: https://mountpoint-s3-release-us-iso-east-1.s3.us-iso-east-1.c2s.ic.gov/latest/x86_64/mount-s3.deb
+# aws-iso-b partition mountS3 package location
+# mountS3DebUrl: https://mountpoint-s3-release-us-isob-east-1.s3.us-isob-east-1.sc2s.sgov.gov/latest/x86_64/mount-s3.deb
+# List of AWS account numbers for ECR repositories.
+# accountNumbersEcr:
+#  - 012345678901
+# ragRepositories:
+#  - repositoryId: pgvector-rag
+#    type: pgvector
+#    rdsConfig:
+#      username: postgres
+#    - repositoryId: default
+#      type: opensearch
+#      opensearchConfig:
+#        dataNodes: 2
+#        dataNodeInstanceType: r6g.large.search
+#        masterNodes: 0
+#        masterNodeInstanceType: r6g.large.search
+#        volumeSize: 300
+#    If adding an existing PGVector database, this configurations assumes:
+#    1. The database has been configured to have pgvector installed and enabled: https://aws.amazon.com/about-aws/whats-new/2023/05/amazon-rds-postgresql-pgvector-ml-model-integration/
+#    2. The database is accessible by RAG-related lambda functions (add inbound PostgreSQL access on the database's security group for all Lambda RAG security groups)
+#    3. A secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'. This is the same format that RDS natively provides a password in SecretsManager.
+#    If the passwordSecretId or dbHost are not provided, then a sample database will be created for you. Only the username is required.
+#    - repositoryId: pgvector-rag
+#     type: pgvector
+#     rdsConfig:
+#       username: postgres
+#       passwordSecretId: # password ID as stored in SecretsManager. Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
+#       dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
+#       dbName: postgres
+# You can optionally provide a list of models and the deployment process will ensure they exist in your model bucket and try to download them if they don't exist
+# ecsModels:
+#  - modelName: mistralai/Mistral-7B-Instruct-v0.2
+#    inferenceContainer: tgi
+#    baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+#  - modelName: intfloat/e5-large-v2
+#    inferenceContainer: tei
+#    baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
+#    - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
+#      inferenceContainer: tgi
+#      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+# litellmConfig:
+#  db_key: sk-d7a77bcb-3e23-483c-beec-2700f2baeeb1  # A key is required for model management purposes - must start with sk-

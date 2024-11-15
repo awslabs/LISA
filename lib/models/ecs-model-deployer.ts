@@ -16,16 +16,17 @@
 
 import { Construct } from 'constructs';
 import { DockerImageCode, DockerImageFunction, IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration, Size } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 export type ECSModelDeployerProps = {
-    vpcId: string;
     securityGroupId: string;
     config: Config;
+    vpc: Vpc;
 } & BaseProps;
 
 export class ECSModelDeployer extends Construct {
@@ -42,6 +43,18 @@ export class ECSModelDeployer extends Construct {
                 new PolicyStatement({
                     actions: ['sts:AssumeRole'],
                     resources: ['arn:*:iam::*:role/cdk-*']
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'ec2:CreateNetworkInterface',
+                        'ec2:DescribeNetworkInterfaces',
+                        'ec2:DescribeSubnets',
+                        'ec2:DeleteNetworkInterface',
+                        'ec2:AssignPrivateIpAddresses',
+                        'ec2:UnassignPrivateIpAddresses'
+                    ],
+                    resources: ['*'],
                 })
             ]
         });
@@ -57,7 +70,8 @@ export class ECSModelDeployer extends Construct {
             'removalPolicy': props.config.removalPolicy,
             's3BucketModels': props.config.s3BucketModels,
             'mountS3DebUrl': props.config.mountS3DebUrl,
-            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect
+            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
+            'subnets': props.config.subnets
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
@@ -69,10 +83,12 @@ export class ECSModelDeployer extends Construct {
             memorySize: 1024,
             role: role,
             environment: {
-                'LISA_VPC_ID': props.vpcId,
+                'LISA_VPC_ID': props.vpc?.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,
                 'LISA_CONFIG': JSON.stringify(stripped_config)
-            }
+            },
+            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
+            vpcSubnets: props.vpc?.subnetSelection,
         });
     }
 }

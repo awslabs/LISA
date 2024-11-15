@@ -91,6 +91,7 @@ class LoadBalancerConfig(BaseModel):
 class AutoScalingConfig(BaseModel):
     """Autoscaling configuration upon model creation."""
 
+    blockDeviceVolumeSize: Optional[NonNegativeInt] = 30
     minCapacity: NonNegativeInt
     maxCapacity: NonNegativeInt
     cooldown: PositiveInt
@@ -102,6 +103,8 @@ class AutoScalingConfig(BaseModel):
         """Validate autoScalingConfig values."""
         if self.minCapacity > self.maxCapacity:
             raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
+        if self.blockDeviceVolumeSize is not None and self.blockDeviceVolumeSize < 30:
+            raise ValueError("blockDeviceVolumeSize must be greater than or equal to 30.")
         return self
 
 

@@ -56,7 +56,6 @@ export class LisaServeApplicationStack extends Stack {
         super(scope, id, props);
 
         const { config, vpc } = props;
-        const rdsConfig = config.restApiConfig.rdsConfig;
 
         let tokenTable;
         if (config.restApiConfig.internetFacing) {
@@ -79,9 +78,8 @@ export class LisaServeApplicationStack extends Stack {
             config: config,
             resourcePath: path.join(HERE, 'rest-api'),
             securityGroup: vpc.securityGroups.restApiAlbSg,
-            taskConfig: config.restApiConfig,
             tokenTable: tokenTable,
-            vpc: vpc.vpc,
+            vpc: vpc,
         });
 
         const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
@@ -101,6 +99,11 @@ export class LisaServeApplicationStack extends Stack {
 
         // const rotateManagementKeyLambdaId = createCdkId([id, 'RotateManagementKeyLambda'])
         // const rotateManagementKeyLambda = new Function(this, rotateManagementKeyLambdaId, {
+        //     deadLetterQueueEnabled: true,
+        //     deadLetterQueue: new Queue(this, 'RotateManagementKeyLambdaDLQ', {
+        //         queueName: 'RotateManagementKeyLambdaDLQ',
+        //         enforceSSL: true,
+        //     }),
         //     functionName: rotateManagementKeyLambdaId,
         //     runtime: config.lambdaConfig.pythonRuntime,
         //     handler: 'management_key.rotate_management_key',
@@ -112,6 +115,7 @@ export class LisaServeApplicationStack extends Stack {
         //     },
         //     layers: [commonLambdaLayer],
         //     vpc: props.vpc.vpc,
+        //     reservedConcurrentExecutions: 5,
         // });
 
         // managementKeySecret.grantRead(rotateManagementKeyLambda);
@@ -142,15 +146,17 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc.vpc,
             description: 'Security group for LiteLLM dynamic model management database.',
         });
-        vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets).forEach((subnet) => {
+
+        const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+        subNets?.forEach((subnet) => {
             litellmDbSg.connections.allowFrom(
-                Peer.ipv4(subnet.ipv4CidrBlock),
-                Port.tcp(rdsConfig.dbPort),
+                Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
                 'Allow REST API private subnets to communicate with LiteLLM database',
             );
         });
 
-        const username = rdsConfig.username;
+        const username = config.restApiConfig.rdsConfig.username;
         const dbCreds = Credentials.fromGeneratedSecret(username);
 
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
@@ -159,6 +165,7 @@ export class LisaServeApplicationStack extends Stack {
         const litellmDb = new DatabaseInstance(this, 'LiteLLMScalingDB', {
             engine: DatabaseInstanceEngine.POSTGRES,
             vpc: vpc.vpc,
+            subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
             securityGroups: [litellmDbSg!],
             removalPolicy: config.removalPolicy,
@@ -171,8 +178,8 @@ export class LisaServeApplicationStack extends Stack {
                 username: username,
                 passwordSecretId: litellmDbPasswordSecret.secretName,
                 dbHost: litellmDb.dbInstanceEndpointAddress,
-                dbName: rdsConfig.dbName,
-                dbPort: rdsConfig.dbPort,
+                dbName: config.restApiConfig.rdsConfig.dbName,
+                dbPort: config.restApiConfig.rdsConfig.dbPort,
             }),
         });
         litellmDbPasswordSecret.grantRead(restApi.taskRole);

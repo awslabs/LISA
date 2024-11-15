@@ -10,53 +10,50 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+HEADLESS = false
+DOCKER_CMD ?= $(or $(CDK_DOCKER),docker)
 
 # Arguments defined through command line or config.yaml
 
-# ENV
-ifeq (${ENV},)
-ENV := $(shell cat $(PROJECT_DIR)/config.yaml | yq '.env')
-endif
-
-ifeq (${ENV},)
-$(error env must be set in command line using ENV variable or config.yaml)
-endif
-
 # PROFILE (optional argument)
 ifeq (${PROFILE},)
-TEMP_PROFILE := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).profile)
+TEMP_PROFILE := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .profile)
 ifneq ($(TEMP_PROFILE), null)
 PROFILE := ${TEMP_PROFILE}
 else
-$(warning profile is not set in the command line using PROFILE variable or config.yaml, attempting deployment without this variable)
+$(warning profile is not set in the command line using PROFILE variable or config files, attempting deployment without this variable)
 endif
 endif
 
 # DEPLOYMENT_NAME
 ifeq (${DEPLOYMENT_NAME},)
-DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).deploymentName)
+DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .deploymentName)
 endif
 
-ifeq (${DEPLOYMENT_NAME},)
-$(error deploymentName must be set in command line using DEPLOYMENT_NAME variable or config.yaml)
+ifeq (${DEPLOYMENT_NAME}, null)
+DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentName)
+endif
+
+ifeq (${DEPLOYMENT_NAME}, null)
+DEPLOYMENT_NAME := prod
 endif
 
 # ACCOUNT_NUMBER
 ifeq (${ACCOUNT_NUMBER},)
-ACCOUNT_NUMBER := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).accountNumber)
+ACCOUNT_NUMBER := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumber)
 endif
 
 ifeq (${ACCOUNT_NUMBER},)
-$(error accountNumber must be set in command line using ACCOUNT_NUMBER variable or config.yaml)
+$(error accountNumber must be set in command line using ACCOUNT_NUMBER variable or config files)
 endif
 
 # REGION
 ifeq (${REGION},)
-REGION := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).region)
+REGION := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .region)
 endif
 
 ifeq (${REGION},)
-$(error region must be set in command line using REGION variable or config.yaml)
+$(error region must be set in command line using REGION variable or config files)
 endif
 
 # URL_SUFFIX - used for the docker login
@@ -66,22 +63,30 @@ else
 URL_SUFFIX := c2s.ic.gov
 endif
 
-# Arguments defined through config.yaml
+# Arguments defined through config files
 
 # APP_NAME
-APP_NAME := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).appName)
-ifeq (${APP_NAME},)
-$(error appName must be set in config.yaml)
+APP_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .appName)
+ifeq (${APP_NAME}, null)
+APP_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .appName)
+endif
+
+ifeq (${APP_NAME}, null)
+APP_NAME := lisa
 endif
 
 # DEPLOYMENT_STAGE
-DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).deploymentStage)
-ifeq (${DEPLOYMENT_STAGE},)
-$(error deploymentStage must be set in config.yaml)
+DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .deploymentStage)
+ifeq (${DEPLOYMENT_STAGE}, null)
+DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentStage)
+endif
+
+ifeq (${DEPLOYMENT_STAGE}, null)
+DEPLOYMENT_STAGE := prod
 endif
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR
-ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config.yaml | yq .$(ENV).accountNumbersEcr[])
+ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumbersEcr[])
 
 # Append deployed account number to array for dockerLogin rule
 ACCOUNT_NUMBERS_ECR := $(ACCOUNT_NUMBERS_ECR) $(ACCOUNT_NUMBER)
@@ -96,10 +101,10 @@ ifneq ($(findstring $(DEPLOYMENT_STAGE),$(STACK)),$(DEPLOYMENT_STAGE))
 endif
 
 # MODEL_IDS - IDs of models to deploy
-MODEL_IDS := $(shell cat $(PROJECT_DIR)/config.yaml | yq '.$(ENV).ecsModels[].modelName')
+MODEL_IDS := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels[].modelName')
 
 # MODEL_BUCKET - S3 bucket containing model artifacts
-MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config.yaml | yq '.$(ENV).s3BucketModels')
+MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketModels')
 
 
 #################################################################################
@@ -146,13 +151,12 @@ installTypeScriptRequirements:
 
 ## Make sure Docker is running
 dockerCheck:
-	@cmd_output=$$(docker ps); \
-	if \
-		[ $$? != 0 ]; \
-		then \
-			echo $$cmd_output; \
-			exit 1; \
+	@cmd_output=$$($(DOCKER_CMD) ps); \
+	if [ $$? != 0 ]; then \
+		echo "Process $(DOCKER_CMD) is not running. Exiting..."; \
+		exit 1; \
 	fi; \
+
 
 ## Check if models are uploaded
 modelCheck:
@@ -180,7 +184,7 @@ modelCheck:
 						echo "What is your huggingface access token? "; \
 						read -s access_token; \
 						echo "Converting and uploading safetensors for model: $(MODEL_ID)"; \
-						tgiImage=$$(yq -r '[.$(ENV).ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config.yaml); \
+						tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
 						echo $$tgiImage; \
 						$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $(MODEL_ID) -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
 				fi; \
@@ -225,13 +229,14 @@ cleanMisc:
 dockerLogin: dockerCheck
 ifdef PROFILE
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | docker login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | $(DOCKER_CMD) login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
 	)
 else
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin $(ACCOUNT).dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} | $(DOCKER_CMD) login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
 	)
 endif
+
 
 listStacks:
 	@npx cdk list
@@ -239,90 +244,43 @@ listStacks:
 buildEcsDeployer:
 	@cd ./ecs_model_deployer && npm install && npm run build
 
+define print_config
+    @printf "\n \
+    DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
+    -----------------------------------\n \
+    Account Number         $(ACCOUNT_NUMBER)\n \
+    Region                 $(REGION)\n \
+    App Name               $(APP_NAME)\n \
+    Deployment Stage       $(DEPLOYMENT_STAGE)\n \
+    Deployment Name        $(DEPLOYMENT_NAME)"
+    @if [ -n "$(PROFILE)" ]; then \
+        printf "\n Deployment Profile     $(PROFILE)"; \
+    fi
+    @printf "\n-----------------------------------\n"
+endef
+
 ## Deploy all infrastructure
 deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
-ifdef PROFILE
-	@printf "\n \
-	DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Deployment Profile     ${PROFILE}\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
-	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk deploy ${STACK} \
-				--profile ${PROFILE} \
-				-c ${ENV}='$(shell echo '${${ENV}}')'; \
-	fi;
+	$(call print_config)
+ifneq (,$(findstring true, $(HEADLESS)))
+	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';
 else
-	@printf "\n \
-	DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
+	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk deploy ${STACK} \
-				-c ${ENV}='$(shell echo '${${ENV}}')'; \
+	if [ $${confirm_config:-'N'} = 'y' ]; then \
+		npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE})  -c ${ENV}='$(shell echo '${${ENV}}')'; \
 	fi;
 endif
 
 
 ## Tear down all infrastructure
 destroy: cleanMisc
-ifdef PROFILE
-	@printf "\n \
-	DESTROYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Deployment Profile     ${PROFILE}\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
+	$(call print_config)
+	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk destroy ${STACK} \
-				--force \
-				--profile ${PROFILE}; \
+	if [ $${confirm_config:-'N'} = 'y' ]; then \
+		npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE}); \
 	fi;
-else
-	@printf "\n \
-	DESTROYING $(STACK) STACK APP INFRASTRUCTURE \n \
-	-----------------------------------\n \
-	Account Number         ${ACCOUNT_NUMBER}\n \
-	Region                 ${REGION}\n \
-	App Name               ${APP_NAME}\n \
-	Deployment Stage       ${DEPLOYMENT_STAGE}\n \
-	Deployment Name        ${DEPLOYMENT_NAME}\n \
-	-----------------------------------\n \
-	Is the configuration correct? [y/N]  "\
-	&& read confirm_config &&\
-	if \
-		[ $${confirm_config:-'N'} = 'y' ]; \
-		then \
-			npx cdk destroy ${STACK} \
-				--force; \
-	fi;
-endif
 
 
 #################################################################################

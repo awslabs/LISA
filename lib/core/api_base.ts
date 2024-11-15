@@ -15,15 +15,15 @@
 */
 
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { Cors, EndpointType, Authorizer, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
+import { Vpc } from '../networking/vpc';
 
 type LisaApiBaseStackProps = {
-    vpc: IVpc;
+    vpc: Vpc;
 } & BaseProps &
   StackProps;
 
@@ -47,7 +47,7 @@ export class LisaApiBaseStack extends Stack {
 
         const restApi = new RestApi(this, `${id}-RestApi`, {
             description: 'Base API Gateway for LISA.',
-            endpointConfiguration: { types: [EndpointType.REGIONAL] },
+            endpointConfiguration: { types: [config.privateEndpoints ? EndpointType.PRIVATE : EndpointType.REGIONAL] },
             deploy: true,
             deployOptions,
             defaultCorsPreflightOptions: {

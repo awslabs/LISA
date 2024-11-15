@@ -26,11 +26,13 @@ import {
     Port,
     SecurityGroup,
     SubnetType,
+    Subnet, SubnetSelection
 } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
 import { SecurityGroups, BaseProps } from '../../schema';
+import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 
 type VpcProps = {} & BaseProps;
 
@@ -44,6 +46,12 @@ export class Vpc extends Construct {
     /** Security groups for application. */
     public readonly securityGroups: SecurityGroups;
 
+    /** Created from deployment configured Subnets for application. */
+    public readonly subnetGroup?: SubnetGroup;
+
+    /** Imported Subnets for application. */
+    public readonly subnetSelection?: SubnetSelection;
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -54,9 +62,28 @@ export class Vpc extends Construct {
 
         let vpc: IVpc;
         if (config.vpcId) {
+            // Imports VPC for use by application if supplied, else creates a VPC.
             vpc = ec2Vpc.fromLookup(this, 'imported-vpc', {
                 vpcId: config.vpcId,
             });
+
+            // Checks if SubnetIds are provided in the config, if so we import them for use.
+            // A VPC must be supplied if Subnets are being used.
+            if (config.subnets && config.subnets.length > 0) {
+                this.subnetSelection = {
+                    subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet.subnetId))
+                };
+
+                this.subnetGroup = new SubnetGroup(
+                    this,
+                    createCdkId([config.deploymentName, 'Imported-Subnets']),
+                    {
+                        vpc: vpc,
+                        description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
+                        vpcSubnets: this.subnetSelection,
+                    }
+                );
+            }
         } else {
             // Create VPC
             vpc = new ec2Vpc(this, 'VPC', {
@@ -118,7 +145,7 @@ export class Vpc extends Construct {
         // All HTTP VPC traffic -> ECS model ALB
         ecsModelAlbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(80), 'Allow VPC traffic on port 80');
 
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+        if (config.restApiConfig?.sslCertIamArn) {
             // All HTTPS IPV4 traffic -> REST API ALB
             restApiAlbSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), 'Allow any traffic on port 443');
         } else {

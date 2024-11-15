@@ -1,0 +1,65 @@
+name: Deploy Demo Environment
+on:
+  push:
+    branches: [ "main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  CheckPendingWorkflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ahmadnassri/action-workflow-queue@v1
+        with:
+          delay: 300000
+          timeout: 7200000
+  DeployLISA:
+    needs: CheckPendingWorkflow
+    environment: demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 14400
+      - name: Create config-custom.yaml
+        id: create-yaml
+        run: |
+          echo "${{vars.CONFIG_YAML}}" > config-custom.yaml
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Install CDK dependencies
+        run: |
+          npm install
+      - name: Deploy LISA
+        run: |
+          make deploy HEADLESS=true
+  SendSlackNotification:
+    name: Send Slack Notification
+    needs: [ DeployLISA ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Notification that Demo Deploy Finished
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
+          SLACK_TITLE: 'Demo Deploy Finished'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: 'actions url,commit'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> Demo Deploy FAILED on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'
+          SLACK_MESSAGE_ON_SUCCESS: 'Demo Deploy SUCCESS on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>.'
+          SLACK_MESSAGE: 'Demo Deploy Finished with status ${{ job.status }} on branch ${{ github.head_ref || github.ref_name }} for <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|commit>'

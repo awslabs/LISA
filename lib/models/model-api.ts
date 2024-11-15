@@ -28,7 +28,7 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -114,14 +114,15 @@ export class ModelsApi extends Construct {
 
         const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {
             securityGroupId: vpc.securityGroups.ecsModelAlbSg.securityGroupId,
-            vpcId: vpc.vpc.vpcId,
-            config: config
+            config: config,
+            vpc: vpc
         });
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
-            config: config
+            config: config,
+            vpc
         });
 
         const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
@@ -178,6 +179,18 @@ export class ModelsApi extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
+                                'ec2:CreateNetworkInterface',
+                                'ec2:DescribeNetworkInterfaces',
+                                'ec2:DescribeSubnets',
+                                'ec2:DeleteNetworkInterface',
+                                'ec2:AssignPrivateIpAddresses',
+                                'ec2:UnassignPrivateIpAddresses'
+                            ],
+                            resources: ['*'],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
                                 'ec2:TerminateInstances'
                             ],
                             resources: ['*'],
@@ -219,7 +232,7 @@ export class ModelsApi extends Construct {
             modelTable: modelTable,
             lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
+            vpc: vpc,
             securityGroups: securityGroups,
             dockerImageBuilderFnArn: dockerImageBuilder.dockerImageBuilderFn.functionArn,
             ecsModelDeployerFnArn: ecsModelDeployer.ecsModelDeployerFn.functionArn,
@@ -233,7 +246,7 @@ export class ModelsApi extends Construct {
             modelTable: modelTable,
             lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
+            vpc: vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
@@ -244,7 +257,7 @@ export class ModelsApi extends Construct {
             modelTable: modelTable,
             lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
+            vpc: vpc,
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
@@ -252,8 +265,8 @@ export class ModelsApi extends Construct {
 
         const environment = {
             LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
-            REST_API_VERSION: config.restApiConfig.apiVersion,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.loadBalancerConfig.sslCertIamArn ?? '',
+            REST_API_VERSION: 'v2',
+            RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             CREATE_SFN_ARN: createModelStateMachine.stateMachineArn,
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
@@ -266,7 +279,7 @@ export class ModelsApi extends Construct {
             this,
             restApi,
             authorizer,
-            config.lambdaSourcePath,
+            './lambda',
             [commonLambdaLayer, fastapiLambdaLayer],
             {
                 name: 'handler',
@@ -276,19 +289,19 @@ export class ModelsApi extends Construct {
                 method: 'ANY',
                 environment
             },
-            config.lambdaConfig.pythonRuntime,
+            Runtime.PYTHON_3_10,
             lambdaRole,
-            vpc.vpc,
+            vpc,
             securityGroups,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
-        if (config.restApiConfig.loadBalancerConfig.sslCertIamArn) {
+        if (config.restApiConfig?.sslCertIamArn) {
             const certPerms = new Policy(this, 'ModelsApiCertPerms', {
                 statements: [
                     new PolicyStatement({
                         actions: ['iam:GetServerCertificate'],
-                        resources: [config.restApiConfig.loadBalancerConfig.sslCertIamArn],
+                        resources: [config.restApiConfig?.sslCertIamArn],
                         effect: Effect.ALLOW,
                     })
                 ]
@@ -345,12 +358,12 @@ export class ModelsApi extends Construct {
                 this,
                 restApi,
                 authorizer,
-                config.lambdaSourcePath,
+                './lambda',
                 [commonLambdaLayer],
                 f,
-                config.lambdaConfig.pythonRuntime,
+                Runtime.PYTHON_3_10,
                 lambdaRole,
-                vpc.vpc,
+                vpc,
                 securityGroups,
             );
         });

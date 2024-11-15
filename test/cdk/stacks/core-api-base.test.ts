@@ -78,7 +78,7 @@ describe.each(regions)('API Core Nag Pack Tests | Region Test: %s', (awsRegion) 
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
 
         tempStack.authorizer._attachToApi(tempStack.restApi);
@@ -112,6 +112,6 @@ describe.each(regions)('API Core Nag Pack Tests | Region Test: %s', (awsRegion) 
 
     test('NIST800.53r5 CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('NIST.*'));
-        expect(errors.length).toBe(7);
+        expect(errors.length).toBe(5);
     });
 });

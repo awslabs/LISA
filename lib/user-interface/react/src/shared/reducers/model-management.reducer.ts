@@ -42,6 +42,13 @@ export const modelManagementApi = createApi({
                 method: 'POST',
                 data: modelRequest
             }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Create Model Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                };
+            },
             invalidatesTags: ['models'],
         }),
         updateModel: builder.mutation<IModel, IModelUpdateRequest>({
@@ -50,10 +57,27 @@ export const modelManagementApi = createApi({
                 method: 'PUT',
                 data: modelRequest
             }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Update Model Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                };
+            },
             invalidatesTags: ['models'],
         }),
+        getInstances: builder.query<string[], void>({
+            query: () => ({
+                url: '/models/metadata/instances'
+            })
+        })
     }),
 });
 
-export const { useGetAllModelsQuery, useDeleteModelMutation, useCreateModelMutation, useUpdateModelMutation } =
-  modelManagementApi;
+export const {
+    useGetAllModelsQuery,
+    useDeleteModelMutation,
+    useCreateModelMutation,
+    useUpdateModelMutation,
+    useGetInstancesQuery
+} = modelManagementApi;

@@ -22,12 +22,15 @@ import Toggle from '@cloudscape-design/components/toggle';
 import Select from '@cloudscape-design/components/select';
 import { IModelRequest, InferenceContainer, ModelType } from '../../../shared/model/model-management.model';
 import { Grid, SpaceBetween } from '@cloudscape-design/components';
+import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
 };
 
 export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConfigCustomProps) : ReactElement {
+    const {data: instances, isLoading: isLoadingInstances} = useGetInstancesQuery();
+
     return (
         <SpaceBetween size={'s'}>
             <FormField label='Model ID' errorText={props.formErrors?.modelId}>
@@ -68,9 +71,19 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 />
             </FormField>
             <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
-                <Input value={props.item.instanceType} inputMode='text' onBlur={() => props.touchFields(['instanceType'])} onChange={({ detail }) => {
-                    props.setFields({ 'instanceType': detail.value });
-                }} disabled={props.isEdit} placeholder='g5.xlarge'/>
+                <Select
+                    options={(instances || []).map((instance) => ({value: instance}))}
+                    selectedOption={{value: props.item.instanceType}}
+                    loadingText='Loading instances'
+                    disabled={props.isEdit}
+                    onBlur={() => props.touchFields(['instanceType'])}
+                    onChange={({ detail }) => {
+                        props.setFields({ 'instanceType': detail.selectedOption.value });
+                    }}
+                    filteringType='auto'
+                    statusType={ isLoadingInstances ? 'loading' : 'finished'}
+                    virtualScroll
+                />
             </FormField>
             <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
                 <Select

@@ -21,26 +21,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as cdk from 'aws-cdk-lib';
-import { Aspects } from 'aws-cdk-lib';
-import { AwsSolutionsChecks } from 'cdk-nag';
 import * as yaml from 'js-yaml';
+import _ from 'lodash';
 
 import { Config, ConfigFile, ConfigSchema } from '../lib/schema';
 import { LisaServeApplicationStage } from '../lib/stages';
 
-// Read configuration file
-const configFilePath = path.join(__dirname, '../config.yaml');
-const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
-let configEnv = configFile.env || 'dev';
-
-// Select configuration environment
-if (process.env.ENV) {
-    configEnv = process.env.ENV;
-}
-const configData = configFile[configEnv];
-if (!configData) {
-    throw new Error(`Configuration for environment "${configEnv}" not found.`);
-}
+// Read configuration files
+const baseConfigFilePath = path.join(__dirname, '../config-base.yaml');
+const customConfigFilePath = path.join(__dirname, '../config-custom.yaml');
+const baseConfigFile = yaml.load(fs.readFileSync(baseConfigFilePath, 'utf8')) as ConfigFile;
+const customConfigFile = yaml.load(fs.readFileSync(customConfigFilePath, 'utf8')) as ConfigFile;
+const configData = _.merge(baseConfigFile, customConfigFile);
 
 // Other command line argument overrides
 type EnvMapping = [string, keyof Config];
@@ -61,6 +53,7 @@ mappings.forEach(([envVar, configVar]) => {
 let config: Config;
 try {
     config = ConfigSchema.parse(configData);
+    console.log('MERGED CONFIG FILE:\n' + yaml.dump(config));
 } catch (error) {
     if (error instanceof Error) {
         console.error('Error parsing the configuration:', error.message);
@@ -78,10 +71,6 @@ const env: cdk.Environment = {
 
 // Application
 const app = new cdk.App();
-// Run CDK-nag on app if specified
-if (config.runCdkNag) {
-    Aspects.of(app).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
-}
 
 new LisaServeApplicationStage(app, config.deploymentStage, {
     env: env,

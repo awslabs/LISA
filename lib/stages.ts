@@ -28,6 +28,7 @@ import {
     Tags,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 
 import { LisaChatApplicationStack } from './chat';
 import { CoreStack, ARCHITECTURE } from './core';
@@ -41,6 +42,7 @@ import { LisaRagStack } from './rag';
 import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
+import { LisaDocsStack } from './docs';
 
 type CustomLisaServeApplicationStageProps = {} & BaseProps;
 type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & StageProps;
@@ -100,7 +102,7 @@ export class LisaServeApplicationStage extends Stage {
                     baseStackProps.synthesizer = new DefaultStackSynthesizer();
                     break;
                 default:
-                    throw Error('Unrecognized config value: "stackSyntehsizer"');
+                    throw Error('Unrecognized config value: "stackSynthesizer"');
             }
         }
 
@@ -142,7 +144,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc.vpc,
+            vpc: networkingStack.vpc,
         });
         apiBaseStack.addDependency(coreStack);
         apiBaseStack.addDependency(serveStack);
@@ -170,55 +172,66 @@ export class LisaServeApplicationStage extends Stage {
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
         stacks.push(modelsApiDeploymentStack);
 
-        const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
-            ...baseStackProps,
-            authorizer: apiBaseStack.authorizer,
-            stackName: createCdkId([config.deploymentName, config.appName, 'chat', config.deploymentStage]),
-            description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            vpc: networkingStack.vpc.vpc,
-        });
-        chatStack.addDependency(apiBaseStack);
-        chatStack.addDependency(coreStack);
-        apiDeploymentStack.addDependency(chatStack);
-        stacks.push(chatStack);
-
-        const uiStack = new UserInterfaceStack(this, 'LisaUserInterface', {
-            ...baseStackProps,
-            architecture: ARCHITECTURE,
-            stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
-            description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-        });
-        uiStack.addDependency(chatStack);
-        uiStack.addDependency(serveStack);
-        uiStack.addDependency(apiBaseStack);
-        apiDeploymentStack.addDependency(uiStack);
-        stacks.push(uiStack);
-
-        if (config.deployRag) {
-            const ragStack = new LisaRagStack(this, 'LisaRAG', {
+        if (config.deployChat) {
+            const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer,
-                description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
-                endpointUrl: serveStack.endpointUrl,
-                modelsPs: serveStack.modelsPs,
+                stackName: createCdkId([config.deploymentName, config.appName, 'chat', config.deploymentStage]),
+                description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
-                stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
                 vpc: networkingStack.vpc,
             });
-            ragStack.addDependency(coreStack);
-            ragStack.addDependency(iamStack);
-            ragStack.addDependency(apiBaseStack);
-            stacks.push(ragStack);
+            chatStack.addDependency(apiBaseStack);
+            chatStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(chatStack);
+            stacks.push(chatStack);
 
-            if (config.deployRag) {
-                uiStack.addDependency(ragStack);
-                apiDeploymentStack.addDependency(ragStack);
+            if (config.deployUi) {
+                const uiStack = new UserInterfaceStack(this, 'LisaUserInterface', {
+                    ...baseStackProps,
+                    architecture: ARCHITECTURE,
+                    stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
+                    description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
+                    restApiId: apiBaseStack.restApiId,
+                    rootResourceId: apiBaseStack.rootResourceId,
+                });
+                uiStack.addDependency(chatStack);
+                uiStack.addDependency(serveStack);
+                uiStack.addDependency(apiBaseStack);
+                apiDeploymentStack.addDependency(uiStack);
+                stacks.push(uiStack);
+
+                if (config.deployRag) {
+                    const ragStack = new LisaRagStack(this, 'LisaRAG', {
+                        ...baseStackProps,
+                        authorizer: apiBaseStack.authorizer,
+                        description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
+                        endpointUrl: serveStack.endpointUrl,
+                        modelsPs: serveStack.modelsPs,
+                        restApiId: apiBaseStack.restApiId,
+                        rootResourceId: apiBaseStack.rootResourceId,
+                        stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
+                        vpc: networkingStack.vpc,
+                    });
+                    ragStack.addDependency(coreStack);
+                    ragStack.addDependency(iamStack);
+                    ragStack.addDependency(apiBaseStack);
+                    stacks.push(ragStack);
+
+                    if (config.deployRag) {
+                        uiStack.addDependency(ragStack);
+                        apiDeploymentStack.addDependency(ragStack);
+                    }
+                }
             }
+        }
+
+        if (config.deployDocs) {
+            const docsStack = new LisaDocsStack(this, 'LisaDocs', {
+                ...baseStackProps
+            });
+            stacks.push(docsStack);
         }
 
         stacks.push(apiDeploymentStack);
@@ -235,6 +248,14 @@ export class LisaServeApplicationStage extends Stage {
         if (config.permissionsBoundaryAspect) {
             stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+            });
+        }
+
+        // Run CDK-nag on app if specified
+        if (config.runCdkNag) {
+            stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
+                Aspects.of(lisaStack).add(new NIST80053R5Checks({ reports: true, verbose: true }));
             });
         }
 

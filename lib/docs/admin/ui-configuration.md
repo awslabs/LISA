@@ -1,12 +1,12 @@
 
 # Chat UI Configuration
 
-The release of LISA 3.2.0 introduces enhanced administrative controls for the Chat UI, allowing for granular customization of user interfaces. System administrators now have the ability to enable, disable, or configure specific components for all users through the application's configuration panel.
+The release of LISA 3.2.0 introduces enhanced administrative controls for the Chat UI, allowing for granular customization of user interfaces. System administrators now have the ability to activate, inactivate, or configure specific components for all users through the application's configuration panel.
 
 The following features can be managed:
 
 1. Session History Management
-    - Enable or disable the option to delete session history
+    - Activate or inactivate the option to delete session history
 
 2. Message Information
     - Control visibility of message metadata
@@ -18,7 +18,7 @@ The following features can be managed:
 
 4. Retrieval-Augmented Generation (RAG) Settings
     - Modify the number of RAG documents
-    - Enable or disable RAG document uploads
+    - Activate or inactivate RAG document uploads
 
 5. Contextual Document Management
     - Control the ability to upload in-context documents

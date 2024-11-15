@@ -20,7 +20,7 @@ const navLinks = [
   {
     text: 'System Administrator Guide',
     items: [
-      { text: 'What is Lisa?', link: '/admin/overview' },
+      { text: 'What is LISA?', link: '/admin/overview' },
       { text: 'Architecture Overview', link: '/admin/architecture' },
       { text: 'Getting Started', link: '/admin/getting-started' },
       { text: 'Deployment', link: '/admin/deploy' },

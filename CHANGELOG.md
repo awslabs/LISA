@@ -1,3 +1,62 @@
+# v3.2.0
+## Key Features
+### Enhanced Deployment Configuration
+- LISA v3.2.0 introduces a significant update to the configuration file schema, optimizing the deployment process
+- The previous single config.yaml file has been replaced with a more flexible two-file system: config-base.yaml and config-custom.yaml
+- config-base.yaml now contains default properties, which can be selectively overridden using config-custom.yaml, allowing for greater customization while maintaining a standardized base configuration
+- The number of required properties in the config-custom.yaml file has been reduced to 8 items, simplifying the configuration process
+- This update enhances the overall flexibility and maintainability of LISA configurations, providing a more robust foundation for future developments and easier customization for end-users
+
+#### Important Note
+- The previous config.yaml file format is no longer compatible with this update
+- To facilitate migration, we have developed a utility. Users can execute `npm run migrate-properties` to automatically convert their existing config.yaml file to the new config-custom.yaml format
+
+### Admin UI Configuration Page
+- Administrative Control of Chat Components:
+  - Administrators now have granular control over the activation and deactivation of chat components for all users through the Configuration Page
+  - This feature allows for dynamic management of user interface elements, enhancing system flexibility and user experience customization
+  - Items that can be configured include:
+    - The option to delete session history
+    - Visibility of message metadata
+    - Configuration of chat Kwargs
+    - Customization of prompt templates
+    - Adjust chat history buffer settings
+    - Modify the number of RAG documents to be included in the retrieval process (TopK)
+    - Ability to upload RAG documents
+    - Ability to upload in-context documents
+- System Banner Management:
+  - The Configuration Page now includes functionality for administrators to manage the system banner
+  - Administrators can activate, deactivate, and update the content of the system banner
+
+### LISA Documentation Site
+- We are pleased to announce the launch of the official [LISA Documentation site](https://awslabs.github.io/LISA/)
+- This comprehensive resource provides customers with additional guides and extensive information on LISA
+- The documentation is also optionally deployable within your environment during LISA deployment
+- The team is continuously working to add and expand content available on this site
+
+## Enhancements
+- Implemented a selection-based interface for instance input, replacing free text entry
+- Improved CDK Nag integration across stacks
+- Added functionality for administrators to specify block volume size for models, enabling successful deployment of larger models
+- Introduced options for administrators to choose between Private or Regional API Gateway endpoints
+- Enabled subnet specification within the designated VPC for deployed resources
+- Implemented support for headless deployment execution
+
+## Bug Fixes
+- Resolved issues with Create and Update model alerts to ensure proper display in the modal
+- Enhanced error handling for model creation/update processes to cover all potential scenarios
+
+## Coming Soon
+- Version 3.3.0 will include a new RAG ingestion pipeline. This will allow users to configure an S3 bucket and an ingestion trigger. When triggered, these documents will be pre-processed and loaded into the selected vector store.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.1.0...v3.2.0
+
+
 # v3.1.0
 ## Enhancements
 ### Model Management Administration

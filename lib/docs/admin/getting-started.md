@@ -12,7 +12,7 @@ LISA is an infrastructure-as-code solution that leverages AWS services. Customer
 * Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
 * Optional: If using the chat UI, Have your Identity Provider (IdP) information and access
 * Optional: Have your VPC information available, if you are using an existing one for your deployment
-* Note: CDK briefly leverages SSM. Confirm it is approved for use by your organization before beginning.
+* Note: CDK and Model Management both leverage AWS Systems Manager Agent (SSM) parameter store. Confirm that SSM is approved for use by your organization before beginning.
 
 ### Software
 

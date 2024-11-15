@@ -1,15 +1,19 @@
 # Minimal Configuration
 
 Configurations for LISA are split into 2 configuration files, base and custom. The base configuration contains the
-minimal properties required to deploy LISA. The file is located at the root of your project (./config-base.yaml) and
-contains the following properties:
+recommended properties that can be overridden with the custom properties file. The custom configuration should contain
+the minimal properties required to deploy LISA, and any optional properties or overrides. This file should be created
+at the root of your project (./config-custom.yaml) and needs to contain the following properties:
 
 ```yaml
 accountNumber:
 region:
-restApiConfig:
 s3BucketModels:
-mountS3DebUrl:
+authConfig:
+  authority:
+  clientId:
+  adminGroup:
+  jwtGroupsProperty:
 ```
 
 <!--@include: ./schema.md -->

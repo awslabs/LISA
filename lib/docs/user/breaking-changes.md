@@ -1,5 +1,22 @@
 # Breaking Changes
 
+## Migrating to v3.2.0
+
+With the release of LISA v3.2.0, we have implemented a significant update to the configuration file schema to streamline
+the deployment process. The previous single config.yaml file has been deprecated in favor of a more flexible two-file
+system: config-base.yaml and config-custom.yaml.
+
+The config-base.yaml file now contains default properties, which can be selectively overridden using the
+config-custom.yaml file. This new structure allows for greater customization while maintaining a standardized base
+configuration.
+
+To facilitate the transition to this new configuration system, we have developed a migration utility. Users can execute
+the command `npm run migrate-properties` to automatically convert their existing config.yaml file into the new
+config-custom.yaml format.
+
+This update enhances the overall flexibility and maintainability of LISA configurations, providing a more robust
+foundation for future developments and easier customization for end-users.
+
 ## v2 to v3 Migration
 
 With the release of LISA v3.0.0, we have introduced several architectural changes that are incompatible with previous

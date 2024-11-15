@@ -1,5 +1,7 @@
 # LLM Inference Solution for Amazon Dedicated Cloud (LISA)
 
+[![Full Documentation](https://img.shields.io/badge/Full%20Documentation-blue?style=for-the-badge&logo=Vite&logoColor=white)](https://awslabs.github.io/LISA/)
+
 ## What is LISA?
 
 LISA is an infrastructure-as-code solution providing scalable, low latency access to customers’ generative LLMs and
@@ -19,28 +21,28 @@ API integrations with each provider.
 
 ## Key Features
 
-* Self Host Models: Bring your own text generation and embedding models to LISA for hosting and inference.
-* Model Orchestration: Centralize and standardize configuration with 100+ models from model providers via LiteLLM,
+* **Self Host Models:** Bring your own text generation and embedding models to LISA for hosting and inference.
+* **Model Orchestration:** Centralize and standardize configuration with 100+ models from model providers via LiteLLM,
   including Amazon Bedrock models.
-* Chatbot User Interface: Through the chatbot user interface, users can prompt LLMs, receive responses, modify prompt
+* **Chatbot User Interface:** Through the chatbot user interface, users can prompt LLMs, receive responses, modify prompt
   templates, change model arguments, and manage their session history. Administrators can control available features via
   the configuration page.
-* Retrieval-augmented generation (RAG): RAG reduces the need for fine-tuning, an expensive and time-consuming
+* **Retrieval-augmented generation (RAG):** RAG reduces the need for fine-tuning, an expensive and time-consuming
   undertaking, and delivers more contextually relevant outputs. LISA offers RAG through Amazon OpenSearch or
   PostgreSQL’s PGVector extension on Amazon RDS.
-* Non-RAG Model Context: Users can upload documents to their chat sessions to enhance responses or support use cases
+* **Non-RAG Model Context:** Users can upload documents to their chat sessions to enhance responses or support use cases
   like document summarization.
-* Model Management: Administrators can add, remove, and update models configured with LISA through the model management
+* **Model Management:** Administrators can add, remove, and update models configured with LISA through the model management
   configuration page or APIs.
-* OpenAI API spec: LISA can be configured with compatible tooling. For example, customers can configure LISA as the
-  model provider for the Continue plugin, an open-source AI code assistance for JetBrains and Visual Studio Code
+* **OpenAI API spec:** LISA can be configured with compatible tooling. For example, customers can configure LISA as the
+  model provider for the [Continue](https://www.continue.dev/) plugin, an open-source AI code assistance for JetBrains and Visual Studio Code
   integrated development environments (IDEs). This allows users to select from any LISA-configured model to support LLM
   prompting directly in their IDE.
-* Libraries: If your workflow includes libraries such as [LangChain](https://python.langchain.com/)
+* **Libraries:** If your workflow includes libraries such as [LangChain](https://python.langchain.com/)
   or [OpenAI](https://github.com/openai/openai-python), then you can place LISA in your
   application by changing only the endpoint and headers for the client objects.
-* FedRAMP: The AWS services that LISA leverages are FedRAMP High compliant.
-* Ongoing Releases: We offer on-going release with new functionality. LISA’s roadmap is customer driven.
+* **FedRAMP:** The AWS services that LISA leverages are FedRAMP High compliant.
+* **Ongoing Releases:** We offer on-going release with new functionality. LISA’s roadmap is customer driven.
 
 ## Deployment Prerequisites
 
@@ -70,7 +72,8 @@ API integrations with each provider.
 For detailed instructions on setting up, configuring, and deploying LISA, please refer to our separate documentation on
 installation and usage.
 
-[![LISA Documentation](https://img.shields.io/badge/LISA%20Documentation-blue?style=for-the-badge&logo=Vite&logoColor=white)](https://awslabs.github.io/LISA/)
+- [Deployment Guide](lib/docs/admin/getting-started.md)
+- [Configuration](lib/docs/config/configuration.md)
 
 ## License
 

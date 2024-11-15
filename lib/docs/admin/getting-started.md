@@ -1,24 +1,27 @@
 
 # Getting Started with LISA
 
-LISA (LLM Inference Solution for Amazon Dedicated Cloud) is an advanced infrastructure solution for deploying and
-managing Large Language Models (LLMs) on AWS. This guide will walk you through the setup process, from prerequisites
-to deployment.
+LISA is an infrastructure-as-code solution that leverages AWS services. Customers deploy LISA directly into an AWS account.
 
-## Prerequisites
+## Deployment Prerequisites
 
-Before beginning, ensure you have:
+### Pre-Deployment Steps
 
-1. An AWS account with appropriate permissions.
-    1. Because of all the resource creation that happens as part of CDK deployments, we expect Administrator or Administrator-like permissions with resource creation and mutation permissions.
-       Installation will not succeed if this profile does not have permissions to create and edit arbitrary resources for the system.
-       **Note**: This level of permissions is not required for the runtime of LISA, only its deployment and subsequent updates.
-2. AWS CLI installed and configured
-3. Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
-4. Python 3.9 or later
-5. Node.js 14 or later
-6. Docker/Finch installed and running
-7. Sufficient disk space for model downloads and conversions
+* Set up and have access to an AWS account with appropriate permissions
+    * All the resource creation that happens as part of CDK deployments expects Administrator or Administrator-like permissions with resource creation and mutation permissions. Installation will not succeed if this profile does not have permissions to create and edit arbitrary resources for the system. Note: This level of permissions is not required for the runtime of LISA. This is only necessary for deployment and subsequent updates.
+* Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
+* Optional: If using the chat UI, Have your Identity Provider (IdP) information and access
+* Optional: Have your VPC information available, if you are using an existing one for your deployment
+* Note: CDK briefly leverages SSM. Confirm it is approved for use by your organization before beginning.
+
+### Software
+
+* AWS CLI installed and configured
+* Python 3.9 or later
+* Node.js 14 or later
+* Docker installed and running
+* Sufficient disk space for model downloads and conversions
+
 
 If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and consult with your AWS support team.
 

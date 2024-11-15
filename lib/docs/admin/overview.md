@@ -39,25 +39,3 @@ API integrations with each provider.
   application by changing only the endpoint and headers for the client objects.
 * FedRAMP: The AWS services that LISA leverages are FedRAMP High compliant.
 * Ongoing Releases: We offer on-going release with new functionality. LISA’s roadmap is customer driven.
-
-## Deployment Prerequisites
-
-### Pre-Deployment Steps
-
-* Set up and have access to an AWS account with appropriate permissions
-    * All the resource creation that happens as part of CDK deployments expects Administrator or Administrator-like
-      permissions with resource creation and mutation permissions. Installation will not succeed if this profile does
-      not have permissions to create and edit arbitrary resources for the system. Note: This level of permissions is not
-      required for the runtime of LISA. This is only necessary for deployment and subsequent updates.
-* Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles
-* Optional: If using the chat UI, Have your Identity Provider (IdP) information and access
-* Optional: Have your VPC information available, if you are using an existing one for your deployment
-* Note: CDK briefly leverages SSM. Confirm it is approved for use by your organization before beginning.
-
-### Software
-
-* AWS CLI installed and configured
-* Python 3.9 or later
-* Node.js 14 or later
-* Docker installed and running
-* Sufficient disk space for model downloads and conversions

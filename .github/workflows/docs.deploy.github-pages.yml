@@ -29,6 +29,9 @@ jobs:
           cache: npm
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      - name: Install root dependencies
+        run: |
+          npm install
       - name: Install dependencies
         working-directory: ./lib/docs
         run: npm install

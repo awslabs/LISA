@@ -69,9 +69,9 @@ export class Vpc extends Construct {
 
             // Checks if SubnetIds are provided in the config, if so we import them for use.
             // A VPC must be supplied if Subnets are being used.
-            if (config.subnetIds && config.subnetIds.length > 0) {
+            if (config.subnets && config.subnets.length > 0) {
                 this.subnetSelection = {
-                    subnets: props.config.subnetIds?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet))
+                    subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet.subnetId))
                 };
 
                 this.subnetGroup = new SubnetGroup(

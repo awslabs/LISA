@@ -1,41 +1,68 @@
-# LLM Inference Solution for Amazon Dedicated Cloud (LISA)
+# Architecture Overview
+
+LISA’s major components include: LISA Serve, LISA Chat API, LISA Chatbot, LISA RAG, and LISA Model Management.
+
+**Key Solution Features:**
+
+* **Model Hosting**, LISA serve hosts your models in managed and scalable ECS Clusters.
+* **Model Management**, LISA has APIs around deploying, updating, and deleting third party and internally hosted models deployed in your account.
+* **Inference Requests**, interact with your models via exposed REST APIs or through the LISA Chatbot UI.
+* **Chatbot UI** allows users to seamlessly interact with Models, Model Management, RAG, and Configuration APIs.
+* **Retrieval-Augmented Generation (RAG) Operations**, leveraging either OpenSearch and/or PGVector for efficient retrieval of relevant external data to enhance model responses.
+* **Authentication and Authorization**, LISA supports customers bringing their own OpenID IDP and the use of DynamoDB stored Tokens to interact with the exposed APIs.
+
+### Solution Architecture
+
 ![LISA Architecture](../assets/LisaArchitecture.png)
-LISA is an infrastructure-as-code solution that supports model hosting and inference. Customers deploy LISA directly
-into an AWS account and provision their own infrastructure. Customers bring their own models to LISA for hosting and
-inference through Amazon ECS. LISA accelerates the use of Generative AI (GenAI) applications by providing scalable,
-low latency access to customers’ generative LLMs and embedding language models. Customers can then focus on
-experimenting with LLMs and developing GenAI applications.
+- **User Interaction with Chat UI or API:** Users can interact with LISA through the Chat UI or REST API. Each interaction is authenticated using AWS Cognito or OIDC, ensuring secure access.
+- **Request Routing:** The API Gateway securely routes user requests to the appropriate backend services, whether for fetching the chat UI, performing RAG operations, or managing models.
+- **Model Management:** Administrators can deploy, update, or delete models via the Model Management API, which triggers ECS deployment and scaling workflows.
+- **Model Inference:** Inference requests are routed to ECS-hosted models or external models via the LiteLLM proxy. Responses are served back to users through the ALB.
+- **RAG Integration:** When RAG is enabled, LISA retrieves relevant documents from OpenSearch or PGVector, augmenting the model's response with external knowledge.
+- **Session Continuity:** User session data is stored in DynamoDB, ensuring that users can retrieve and continue previous conversations across multiple interactions.
+- **Autoscaling:** ECS tasks automatically scale based on system load, with ALBs distributing traffic across available instances to ensure performance.
 
-LISA’s chatbot user interface can be used for experiment with features and for production use cases. LISA enhances model
-output by integrating retrieval-augmented generation (RAG) with Amazon OpenSearch or PostgreSQL’s PGVector extension,
-incorporating external knowledge sources into model responses. This helps reduce the need for fine-tuning and delivers
-more contextually relevant outputs.
+## LISA Components
 
-LISA supports OpenAI’s API Spec via the LiteLLM proxy. This means that LISA is compatible for customers to configure
-with models hosted externally by supported model providers. LiteLLM also allows customers to use LISA to standardize
-model orchestration and communication across model providers instead of managing each individually. With OpenAI API spec
-support, LISA can also be used as a stand-in replacement for any application that already utilizes OpenAI-centric
-tooling (ex: OpenAI’s Python library, LangChain).
+### LISA Model Management
+![LISA Model Management Architecture](../assets/LisaModelManagement.png)
+The Model Management component is responsible for managing the entire lifecycle of models in LISA. This includes creation, updating, deletion of models deployed on ECS or third party provided. The service integration automates and scales these operations, ensuring that the underlying infrastructure is managed efficiently.
 
-## Background
+* **Self-Hosted Models**: Models are containerized and deployed on AWS ECS, with each model hosted in its own isolated ECS task. This design allows models to be independently scaled based on demand. Traffic to the models is balanced using Application Load Balancers (ALBs), ensuring that the autoscaling mechanism reacts to load fluctuations in real time, optimizing both performance and availability.
+* **External Model Routing**: LISA utilizes the LiteLLM proxy to route traffic to different model providers, no matter their API and payload format. Users may add models from external providers, such as SageMaker or Bedrock, to LISA. LISA will simply add the configuration to LiteLLM without creating any additional supporting infrastructure. Customers do not have to independently manage the API integration with the use of LiteLLM.
+* **Model Lifecycle Management**: AWS Step Functions are used to orchestrate the lifecycle of models, handling the creation, update, and deletion workflows. Each workflow provisions the required resources using CloudFormation templates, which manage infrastructure components like EC2 instances, security groups, and ECS services. LISA ensures that the necessary security, networking, and infrastructure components are automatically deployed and configured.
+    * The CloudFormation stacks define essential resources using the LISA core VPC configuration, ensuring best practices for security and access across all resources in the environment.
+    * DynamoDB stores model metadata, while Amazon S3 securely manages model weights, enabling ECS instances to retrieve the weights dynamically during deployment.
 
-LISA is a robust, AWS-native platform designed to simplify the deployment and management of Large Language Models (LLMs) in scalable, secure, and highly available environments. Drawing inspiration from the AWS open-source project [aws-genai-llm-chatbot](https://github.com/aws-samples/aws-genai-llm-chatbot), LISA builds on this foundation by offering more specialized functionality, particularly in the areas of security, modularity, and flexibility.
+#### Technical Implementation
 
-One of the key differentiators of LISA is its ability to leverage the [text-generation-inference](https://github.com/huggingface/text-generation-inference/tree/main) text-generation-inference container from HuggingFace, allowing users to deploy cutting-edge LLMs. LISA also introduces several innovations that extend beyond its inspiration:
+* **Model Lifecycle**: Lifecycle operations such as creation, update, and deletion are executed by Step Functions and backed by AWS Lambda in ```lambda/models/lambda_functions.py```.
+* **CloudFormation**: Infrastructure components are provisioned using CloudFormation templates, as defined in ```ecs_model_deployer/src/lib/lisa_model_stack.ts```.
+* **ECS Cluster**: ECS cluster and task definitions are located in ```ecs_model_deployer/src/lib/ecsCluster.ts```, with model containers specified in ```ecs_model_deployer/src/lib/ecs-model.ts```.
 
-1. **Support for Amazon Dedicated Cloud (ADC):** LISA is designed to operate in highly controlled environments like Amazon Dedicated Cloud (ADC) partitions, making it ideal for industries with stringent regulatory and security requirements. This focus on secure, isolated deployments differentiates LISA from other open-source platforms.
-1. **Modular Design for Composability:** LISA's architecture is designed to be composable, splitting its components into distinct services. The core components, LISA Serve (for LLM serving and inference) and LISA Chat (for the chat interface), can be deployed as independent stacks. This modularity allows users to deploy only the parts they need, enhancing flexibility and scalability across different deployment environments.
-1. **OpenAI API Specification Support:** LISA is built to support the OpenAI API specification, allowing users to replace OpenAI’s API with LISA without needing to change existing application code. This makes LISA a drop-in replacement for any workflow or application that already leverages OpenAI’s tooling, such as the OpenAI Python library or LangChain.
 
-## System Overview
+### LISA Serve
+![LISA Serve Architecture](../assets/LisaServe.png)
+LISA Serve is responsible for processing inference requests and serving model predictions. This component manages user requests to interact with LLMs and ensures that the models deliver low-latency responses.
 
-LISA is designed using a modular, microservices-based architecture, where each service performs a distinct function. It is composed of three core components: LISA Model Management, LISA Serve, and LISA Chat. Each of these components is responsible for specific functionality and interacts via well-defined API endpoints to ensure scalability, security, and fault tolerance across the system.
+* **Inference Requests**: Requests are routed via ALB, which serves as the main entry point to LISA’s backend infrastructure. The ALB forwards requests to the appropriate ECS-hosted model or externally-hosted model based on the request parameters. For models hosted within LISA, traffic to the models is managed with model-specific ALBs, which enable autoscaling if the models are under heavy load. LISA supports both direct REST API-based interaction and interaction through the Chat UI, enabling programmatic access or a user-friendly chat experience.
+* **RAG (Retrieval-Augmented Generation)**: RAG operations enhance model responses by integrating external data sources. LISA leverages OpenSearch or PGVector (PostgreSQL) as vector stores, enabling vector-based search and retrieval of relevant knowledge to augment LLM outputs dynamically.
 
-**Key System Functionalities:**
+#### Technical Implementation
 
-* **Authentication and Authorization** via AWS Cognito or OpenID Connect (OIDC) providers, ensuring secure access to both the REST API and Chat UI through token-based authentication and role-based access control.
-* **Model Hosting** on AWS ECS with autoscaling and efficient traffic management using Application Load Balancers (ALBs), providing scalable and high-performance model inference.
-* **Model Management** using AWS Step Functions to orchestrate complex workflows for creating, updating, and deleting models, automatically managing underlying ECS infrastructure.
-* **Inference Requests** served via both the REST API and the Chat UI, dynamically routing user inputs to the appropriate ECS-hosted models for real-time inference.
-* **Chat Interface** enabling users to interact with LISA through a user-friendly web interface, offering seamless real-time model interaction and session continuity.
-* **Retrieval-Augmented Generation (RAG) Operations**, leveraging either OpenSearch or PGVector for efficient retrieval of relevant external data to enhance model responses.
+* RAG operations are managed through ```lambda/rag/lambda_functions.py```, which handles embedding generation and document retrieval via OpenSearch and PostgreSQL.
+* Direct requests to the LISA Serve ALB entrypoint must utilize the OpenAI API spec, which we support through the use of the LiteLLM proxy.
+
+
+### LISA Chat
+![LISA Chatbot Architecture](../assets/LisaChat.png)
+LISA Chat provides a customizable chat interface that enables users to interact with models in real-time. This component ensures that users have a seamless experience for submitting queries and maintaining session continuity.
+
+* **Chat Interface**: The Chat UI is hosted as a static website on Amazon S3 and is served via API Gateway. Users can interact with models directly through the web-based frontend, sending queries and viewing real-time responses from the models. The interface is integrated with LISA's backend services for model inference, retrieval augmented generation, and session management.
+* **Session History Management**: LISA maintains session histories using DynamoDB, allowing users to retrieve and continue previous conversations seamlessly. This feature is crucial for maintaining continuity in multi-turn conversations with the models.
+
+#### Technical Implementation
+
+* The Chat UI is implemented in the ```lib/user-interface/react/``` folder and is deployed using the scripts in the ```scripts/``` folder.
+* Session management logic is handled in ```lambda/session/lambda_functions.py```, where session data is stored and retrieved from DynamoDB.
+* RAG operations are defined in lambda/repository/lambda_functions.py

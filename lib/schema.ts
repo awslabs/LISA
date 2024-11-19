@@ -1,18 +1,18 @@
 /**
-  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-  Licensed under the Apache License, Version 2.0 (the "License").
-  You may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 
 // Models for schema validation.
 import * as fs from 'fs';
@@ -33,14 +33,6 @@ const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
 };
 
 /**
- * Enum for different types of models.
- */
-export enum ModelType {
-    TEXTGEN = 'textgen',
-    EMBEDDING = 'embedding',
-}
-
-/**
  * Enum for different types of ECS container image sources.
  */
 export enum EcsSourceType {
@@ -51,30 +43,11 @@ export enum EcsSourceType {
 }
 
 /**
- * Details and configurations of a registered model.
- *
- * @property {string} provider - Model provider, of the form <engine>.<type>.
- * @property {string} modelName - The unique name that identifies the model.
- * @property {string} modelId - The unique user-provided name for the model.
- * @property {ModelType} modelType - Specifies the type of model (e.g., 'textgen', 'embedding').
- * @property {string} endpointUrl - The URL endpoint where the model can be accessed or invoked.
- * @property {boolean} streaming - Indicates whether the model supports streaming capabilities.
- */
-export type RegisteredModel = {
-    provider: string;
-    modelId: string;
-    modelName: string;
-    modelType: ModelType;
-    endpointUrl: string;
-    streaming?: boolean;
-};
-
-/**
  * Custom security groups for application.
  *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
- * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
- * @property {ec2.SecurityGroup} lambdaSecurityGroup - Lambda security group.
+ * @property {ec2.SecurityGroup} ecsModelAlbSg - .describe('ECS model application load balancer security group.')
+ * @property {ec2.SecurityGroup} restApiAlbSg - .describe('REST API application load balancer security group.')
+ * @property {ec2.SecurityGroup} lambdaSecurityGroup - .describe('Lambda security group.')
  */
 export type SecurityGroups = {
     ecsModelAlbSg: ec2.SecurityGroup;
@@ -82,22 +55,13 @@ export type SecurityGroups = {
     lambdaSecurityGroup: ec2.SecurityGroup;
 };
 
-/**
- * Metadata for a specific EC2 instance type.
- *
- * @property {number} memory - Memory in megabytes (MB).
- * @property {number} gpuCount - Number of GPUs.
- * @property {string} nvmePath - Path to NVMe drive to mount.
- * @property {number} maxThroughput - Maximum network throughput in gigabits per second (Gbps).
- * @property {number} vCpus - Number of virtual CPUs (vCPUs).
- */
 const Ec2TypeSchema = z.object({
-    memory: z.number(),
-    gpuCount: z.number().min(0),
-    nvmePath: z.string().optional().default(''),
-    maxThroughput: z.number(),
-    vCpus: z.number(),
-});
+    memory: z.number().describe('Memory in megabytes (MB)'),
+    gpuCount: z.number().min(0).describe('Number of GPUs'),
+    nvmePath: z.string().default('').describe('Path to NVMe drive to mount'),
+    maxThroughput: z.number().describe('Maximum network throughput in gigabits per second (Gbps)'),
+    vCpus: z.number().describe('Number of virtual CPUs (vCPUs)'),
+}).describe('Metadata for a specific EC2 instance type.');
 
 type Ec2Type = z.infer<typeof Ec2TypeSchema>;
 
@@ -258,12 +222,12 @@ export class Ec2Metadata {
     };
 
     /**
-   * Getter method to access EC2 metadata. Retrieves the metadata for a specific EC2 instance type.
-   *
-   * @param {string} key - The key representing the EC2 instance type (e.g., 'g4dn.xlarge').
-   * @throws {Error} Throws an error if no metadata is found for the specified EC2 instance type.
-   * @returns {Ec2Type} The metadata for the specified EC2 instance type.
-   */
+     * Getter method to access EC2 metadata. Retrieves the metadata for a specific EC2 instance type.
+     *
+     * @param {string} key - .describe('The key representing the EC2 instance type (e.g., 'g4dn.xlarge').')
+     * @throws {Error} Throws an error if no metadata is found for the specified EC2 instance type.
+     * @returns {Ec2Type} The metadata for the specified EC2 instance type.
+     */
     static get (key: string): Ec2Type {
         const instance = this.instances[key];
         if (!instance) {
@@ -273,10 +237,10 @@ export class Ec2Metadata {
     }
 
     /**
-   * Get EC2 instances defined with metadata.
-   *
-   * @returns {string[]} Array of EC2 instances.
-   */
+     * Get EC2 instances defined with metadata.
+     *
+     * @returns {string[]} Array of EC2 instances.
+     */
     static getValidInstanceKeys (): string[] {
         return Object.keys(this.instances);
     }
@@ -284,68 +248,43 @@ export class Ec2Metadata {
 
 const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string, ...string[]];
 
-/**
- * Configuration for container health checks.
- *
- * @property {string[]} [command=['CMD-SHELL', 'exit 0']] - The command to run for health checks.
- * @property {number} [interval=10] - The time interval between health checks, in seconds.
- * @property {number} [startPeriod=30] - The time to wait before starting the first health check, in seconds.
- * @property {number} [timeout=5] - The maximum time allowed for each health check to complete, in seconds.
- * @property {number} [retries=2] - The number of times to retry a failed health check before considering the container
- *                                  as unhealthy.
- */
 const ContainerHealthCheckConfigSchema = z.object({
-    command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
-    interval: z.number().default(10),
-    startPeriod: z.number().default(30),
-    timeout: z.number().default(5),
-    retries: z.number().default(2),
-});
+    command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']).describe('The command to run for health checks'),
+    interval: z.number().default(10).describe('The time interval between health checks, in seconds.'),
+    startPeriod: z.number().default(30).describe('The time to wait before starting the first health check, in seconds.'),
+    timeout: z.number().default(5).describe('The maximum time allowed for each health check to complete, in seconds'),
+    retries: z.number().default(2).describe('The number of times to retry a failed health check before considering the container as unhealthy.'),
+})
+    .describe('Configuration for container health checks');
 
-/**
- * Container image that will use tarball on disk
- */
 const ImageTarballAsset = z.object({
     path: z.string(),
     type: z.literal(EcsSourceType.TARBALL),
-});
+})
+    .describe('Container image that will use tarball on disk');
 
-/**
- * Container image that will be built based on Dockerfile and assets at the supplied path
- */
 const ImageSourceAsset = z.object({
     baseImage: z.string(),
     path: z.string(),
     type: z.literal(EcsSourceType.ASSET),
-});
+})
+    .describe('Container image that will be built based on Dockerfile and assets at the supplied path');
 
-/**
- * Container image that will be pulled from the specified ECR repository
- */
 const ImageECRAsset = z.object({
     repositoryArn: z.string(),
     tag: z.string().optional(),
     type: z.literal(EcsSourceType.ECR),
-});
+})
+    .describe('Container image that will be pulled from the specified ECR repository');
 
-/**
- * Container image that will be pulled from the specified public registry
- */
 const ImageRegistryAsset = z.object({
     registry: z.string(),
     type: z.literal(EcsSourceType.REGISTRY),
-});
+})
+    .describe('Container image that will be pulled from the specified public registry');
 
-/**
- * Configuration for a container.
- *
- * @property {string} baseImage - Base image for the container.
- * @property {Record<string, string>} [environment={}] - Environment variables for the container.
- * @property {ContainerHealthCheckConfig} [healthCheckConfig={}] - Health check configuration for the container.
- * @property {number} [sharedMemorySize=0] - The value for the size of the /dev/shm volume.
- */
 const ContainerConfigSchema = z.object({
-    image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]),
+    image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]).describe('Base image for the container.'),
     environment: z
         .record(z.any())
         .transform((obj) => {
@@ -357,109 +296,62 @@ const ContainerConfigSchema = z.object({
                 {} as Record<string, string>,
             );
         })
-        .default({}),
-    sharedMemorySize: z.number().min(0).optional().default(0),
+        .default({})
+        .describe('Environment variables for the container.'),
+    sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
     healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
-});
+}).describe('Configuration for the container.');
 
-/**
- * Configuration schema for health checks in load balancer settings.
- *
- * @property {string} path - Path for the health check.
- * @property {number} [interval=30] - Interval in seconds between health checks.
- * @property {number} [timeout=10] - Timeout in seconds for each health check.
- * @property {number} [healthyThresholdCount=2] - Number of consecutive successful health checks required to consider
- *                                                the target healthy.
- * @property {number} [unhealthyThresholdCount=2] - Number of consecutive failed health checks required to consider the
- *                                                  target unhealthy.
- */
 const HealthCheckConfigSchema = z.object({
-    path: z.string(),
-    interval: z.number().default(30),
-    timeout: z.number().default(10),
-    healthyThresholdCount: z.number().default(2),
-    unhealthyThresholdCount: z.number().default(2),
-});
+    path: z.string().describe('Path for the health check.'),
+    interval: z.number().default(30).describe('Interval in seconds between health checks.'),
+    timeout: z.number().default(10).describe('Timeout in seconds for each health check.'),
+    healthyThresholdCount: z.number().default(2).describe('Number of consecutive successful health checks required to consider the target healthy.'),
+    unhealthyThresholdCount: z.number().default(2).describe('Number of consecutive failed health checks required to consider the target unhealthy.'),
+})
+    .describe('Health check configuration for the load balancer.');
 
-/**
- * Configuration schema for the load balancer.
- *
- * @property {string} [sslCertIamArn=null] - SSL certificate IAM ARN for load balancer.
- * @property {HealthCheckConfig} healthCheckConfig - Health check configuration for the load balancer.
- * @property {string} domainName - Domain name to use instead of the load balancer's default DNS name.
- */
 const LoadBalancerConfigSchema = z.object({
-    sslCertIamArn: z.string().optional().nullable().default(null),
+    sslCertIamArn: z.string().nullish().default(null).describe('SSL certificate IAM ARN for load balancer.'),
     healthCheckConfig: HealthCheckConfigSchema,
-    domainName: z.string().optional().nullable().default(null),
-});
+    domainName: z.string().nullish().default(null).describe('Domain name to use instead of the load balancer\'s default DNS name.'),
+})
+    .describe('Configuration for load balancer settings.');
 
-/**
- * Configuration schema for ECS auto scaling metrics.
- *
- * @property {string} AlbMetricName - Name of the ALB metric.
- * @property {number} targetValue - Target value for the metric.
- * @property {number} [duration=60] - Duration in seconds for metric evaluation.
- * @property {number} [estimatedInstanceWarmup=180] - Estimated warm-up time in seconds until a newly launched instance
- *                                                    can send metrics to CloudWatch.
- *
- */
 const MetricConfigSchema = z.object({
-    AlbMetricName: z.string(),
-    targetValue: z.number(),
-    duration: z.number().default(60),
-    estimatedInstanceWarmup: z.number().min(0).default(180),
-});
+    AlbMetricName: z.string().describe('Name of the ALB metric.'),
+    targetValue: z.number().describe('Target value for the metric.'),
+    duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
+    estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
+})
+    .describe('Metric configuration for ECS auto scaling.');
 
-/**
- * Configuration schema for ECS auto scaling settings.
-*
-* @property {number} [minCapacity=1] - Minimum capacity for auto scaling. Must be at least 1.
-* @property {number} [maxCapacity=2] - Maximum capacity for auto scaling. Must be at least 1.
-* @property {number} [cooldown=420] - Cool down period in seconds between scaling activities.
-* @property {number} [defaultInstanceWarmup=180] - Default warm-up time in seconds until a newly launched instance can
-                                                   send metrics to CloudWatch.
-* @property {MetricConfig} metricConfig - Metric configuration for auto scaling.
-*/
 const AutoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(30),
-    minCapacity: z.number().min(1).default(1),
-    maxCapacity: z.number().min(1).default(2),
-    defaultInstanceWarmup: z.number().default(180),
-    cooldown: z.number().min(1).default(420),
+    minCapacity: z.number().min(1).default(1).describe('Minimum capacity for auto scaling. Must be at least 1.'),
+    maxCapacity: z.number().min(1).default(2).describe('Maximum capacity for auto scaling. Must be at least 1.'),
+    defaultInstanceWarmup: z.number().default(180).describe('Default warm-up time in seconds until a newly launched instance can'),
+    cooldown: z.number().min(1).default(420).describe('Cool down period in seconds between scaling activities.'),
     metricConfig: MetricConfigSchema,
-});
+})
+    .describe('Configuration for auto scaling settings.');
 
-/**
- * Configuration schema for an ECS model.
- *
- * @property {AmiHardwareType} amiHardwareType - Name of the model.
- * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
- * @property {Record<string,string>} buildArgs - Optional build args to be applied when creating the
- *                                              task container if containerConfig.image.type is ASSET
- * @property {ContainerConfig} containerConfig - Configuration for the container.
- * @property {number} [containerMemoryBuffer=2048] - This is the amount of memory to buffer (or subtract off)
- *                                                from the total instance memory, if we don't include this,
- *                                                the container can have a hard time finding available RAM
- *                                                resources to start and the tasks will fail deployment
- * @property {Record<string,string>} environment - Environment variables set on the task container
- * @property {identifier} modelType - Unique identifier for the cluster which will be used when naming resources
- * @property {string} instanceType - EC2 instance type for running the model.
- * @property {boolean} [internetFacing=false] - Whether or not the cluster will be configured as internet facing
- * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
- */
 const EcsBaseConfigSchema = z.object({
-    amiHardwareType: z.nativeEnum(AmiHardwareType),
-    autoScalingConfig: AutoScalingConfigSchema,
-    buildArgs: z.record(z.string()).optional(),
+    amiHardwareType: z.nativeEnum(AmiHardwareType).describe('Name of the model.'),
+    autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
+    buildArgs: z.record(z.string()).optional()
+        .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),
     containerConfig: ContainerConfigSchema,
-    containerMemoryBuffer: z.number().default(1024 * 2),
-    environment: z.record(z.string()),
+    containerMemoryBuffer: z.number().default(1024 * 2)
+        .describe('This is the amount of memory to buffer (or subtract off)  from the total instance memory, ' +
+        'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
+    environment: z.record(z.string()).describe('Environment variables set on the task container'),
     identifier: z.string(),
-    instanceType: z.enum(VALID_INSTANCE_KEYS),
-    internetFacing: z.boolean().default(false),
+    instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),
+    internetFacing: z.boolean().default(false).describe('Whether or not the cluster will be configured as internet facing'),
     loadBalancerConfig: LoadBalancerConfigSchema,
-});
+})
+    .describe('Configuration schema for an ECS model');
 
 /**
  * Type representing configuration for an ECS model.
@@ -471,23 +363,18 @@ type EcsBaseConfig = z.infer<typeof EcsBaseConfigSchema>;
  */
 export type ECSConfig = EcsBaseConfig;
 
-/**
- * Configuration schema for an ECS model.
- *
- * @property {string} modelName - Name of the model.
- * @property {string} baseImage - Base image for the container.
- * @property {string} inferenceContainer - Prebuilt inference container for serving model.
- */
 const EcsModelConfigSchema = z
     .object({
-        modelName: z.string(),
-        baseImage: z.string(),
+        modelName: z.string().describe('Name of the model.'),
+        baseImage: z.string().describe('Base image for the container.'),
         inferenceContainer: z
             .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
             })
-    });
+            .describe('Prebuilt inference container for serving model.'),
+    })
+    .describe('Configuration schema for an ECS model.');
 
 /**
  * Type representing configuration for an ECS model.
@@ -499,15 +386,6 @@ type EcsModelConfig = z.infer<typeof EcsModelConfigSchema>;
  */
 export type ModelConfig = EcsModelConfig;
 
-/**
- * Configuration schema for authorization.
- *
- * @property {string} [authority=null] - URL of OIDC authority.
- * @property {string} [clientId=null] - Client ID for OIDC IDP .
- * @property {string} [adminGroup=null] - Name of the admin group.
- * @property {string} [jwtGroupsProperty=null] - Name of the JWT groups property.
- * @property {string[]} [additionalScopes=null] - Additional JWT scopes to request.
- */
 const AuthConfigSchema = z.object({
     authority: z.string().transform((value) => {
         if (value.endsWith('/')) {
@@ -515,48 +393,32 @@ const AuthConfigSchema = z.object({
         } else {
             return value;
         }
-    }),
-    clientId: z.string(),
-    adminGroup: z.string().optional().default(''),
-    jwtGroupsProperty: z.string().optional().default(''),
-    additionalScopes: z.array(z.string()).optional().default([]),
-});
+    })
+        .describe('URL of OIDC authority.'),
+    clientId: z.string().describe('Client ID for OIDC IDP .'),
+    adminGroup: z.string().default('').describe('Name of the admin group.'),
+    jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
+    additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
+}).describe('Configuration schema for authorization.');
 
-/**
- * Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
- *
- * The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use
- * an existing database instance.
- *
- * @property {string} username - Database username.
- * @property {string} passwordSecretId - SecretsManager Secret ID that stores an existing database password.
- * @property {string} dbHost - Database hostname for existing database instance.
- * @property {string} dbName - Database name for existing database instance.
- * @property {number} dbPort - Port to open on the database instance.
- */
 const RdsInstanceConfig = z.object({
-    username: z.string().optional().default('postgres'),
-    passwordSecretId: z.string().optional(),
-    dbHost: z.string().optional(),
-    dbName: z.string().optional().default('postgres'),
-    dbPort: z.number().optional().default(5432),
-});
+    username: z.string().default('postgres').describe('Database username.'),
+    passwordSecretId: z.string().optional().describe('SecretsManager Secret ID that stores an existing database password.'),
+    dbHost: z.string().optional().describe('Database hostname for existing database instance.'),
+    dbName: z.string().default('postgres').describe('Database name for existing database instance.'),
+    dbPort: z.number().default(5432).describe('Port to open on the database instance.'),
+}).describe('Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.\n \n ' +
+  'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
 
-/**
- * Configuration schema for REST API.
- *
- * @property {boolean} [internetFacing=true] - Whether the REST API ALB will be configured as internet facing.
- * @property {string} sslCertIamArn - ARN of the self-signed cert to be used throughout the system
- */
 const FastApiContainerConfigSchema = z.object({
-    internetFacing: z.boolean().default(true),
-    domainName: z.string().optional().nullable().default(null),
-    sslCertIamArn: z.string().optional().nullable().default(null),
-    rdsConfig: RdsInstanceConfig.optional()
+    internetFacing: z.boolean().default(true).describe('Whether the REST API ALB will be configured as internet facing.'),
+    domainName: z.string().nullish().default(null),
+    sslCertIamArn: z.string().nullish().default(null).describe('ARN of the self-signed cert to be used throughout the system'),
+    rdsConfig: RdsInstanceConfig
         .default({
             dbName: 'postgres',
             username: 'postgres',
-            dbPort: 5432
+            dbPort: 5432,
         })
         .refine(
             (config) => {
@@ -564,11 +426,11 @@ const FastApiContainerConfigSchema = z.object({
             },
             {
                 message:
-                    'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
-                    'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+              'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
+              'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
             },
         ),
-});
+}).describe('Configuration schema for REST API.');
 
 /**
  * Enum for different types of RAG repositories available
@@ -591,51 +453,39 @@ const OpenSearchExistingClusterConfig = z.object({
     endpoint: z.string(),
 });
 
-/**
- * Configuration schema for RAG repository. Defines settings for OpenSearch.
- */
-const RagRepositoryConfigSchema = z.object({
-    repositoryId: z.string(),
-    type: z.nativeEnum(RagRepositoryType),
-    opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-    rdsConfig: RdsInstanceConfig.optional(),
-    pipelines: z.array(z.object({
-        chunkOverlap: z.number(),
-        chunkSize: z.number(),
-        embeddingModel: z.string(),
-        s3Bucket: z.string(),
-        s3Prefix: z.string(),
-        trigger: z.union([z.literal('daily'), z.literal('event')]),
-        collectionName: z.string()
-    })).optional()
-}).refine((input) => {
-    if (
-        (input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-        (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined)
-    ) {
-        return false;
-    }
-    return true;
-});
+const RagRepositoryConfigSchema = z
+    .object({
+        repositoryId: z.string(),
+        type: z.nativeEnum(RagRepositoryType),
+        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
+        rdsConfig: RdsInstanceConfig.optional(),
+        pipelines: z.array(z.object({
+            chunkOverlap: z.number(),
+            chunkSize: z.number(),
+            embeddingModel: z.string(),
+            s3Bucket: z.string(),
+            s3Prefix: z.string(),
+            trigger: z.union([z.literal('daily'), z.literal('event')]),
+            collectionName: z.string()
+        })).optional(),
+    })
+    .refine((input) => {
+        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
+        (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+    })
+    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
-/**
- * Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.
- */
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
     chunkOverlap: z.number().min(0),
-});
+})
+    .describe('Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.');
 
-/**
- * Configuration schema for pypi.
- *
- * @property {string} [indexUrl=''] - URL for the pypi index.
- * @property {string} [trustedHost=''] - Trusted host for pypi.
- */
 const PypiConfigSchema = z.object({
-    indexUrl: z.string().optional().default(''),
-    trustedHost: z.string().optional().default(''),
-});
+    indexUrl: z.string().default('').describe('URL for the pypi index.'),
+    trustedHost: z.string().default('').describe('Trusted host for pypi.'),
+})
+    .describe('Configuration schema for pypi');
 
 /**
  * Enum for different types of stack synthesizers
@@ -646,113 +496,83 @@ export enum stackSynthesizerType {
     LegacyStackSynthesizer = 'LegacyStackSynthesizer',
 }
 
-/**
- * Configuration schema for API Gateway Endpoint
- *
- * @property {string} domainName - Custom domain name for API Gateway Endpoint
- */
 const ApiGatewayConfigSchema = z
     .object({
-        domainName: z.string().optional().nullable().default(null),
+        domainName: z.string().nullish().default(null).describe('Custom domain name for API Gateway Endpoint'),
     })
-    .optional();
+    .optional()
+    .describe('Configuration schema for API Gateway Endpoint');
 
-/**
- * Core LiteLLM configuration.
- * See https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.
- */
 const LiteLLMConfig = z.object({
     db_key: z.string().refine(
         (key) => key.startsWith('sk-'), // key needed for model management actions
         'Key string must be defined for model management operations, and it must start with "sk-".' +
-        'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
+      'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
     ),
-});
+})
+    .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
 
-/**
- * Raw application configuration schema.
- *
- * @property {string} [appName='lisa'] - Name of the application.
- * @property {string} [profile=null] - AWS CLI profile for deployment.
- * @property {string} deploymentName - Name of the deployment.
- * @property {string} accountNumber - AWS account number for deployment. Must be 12 digits.
- * @property {string} region - AWS region for deployment.
- * @property {string} deploymentStage - Deployment stage for the application.
- * @property {string} removalPolicy - Removal policy for resources (destroy or retain).
- * @property {boolean} [runCdkNag=false] - Whether to run CDK Nag checks.
- * @property {string} [lambdaSourcePath='./lambda'] - Path to Lambda source code dir.
- * @property {string} s3BucketModels - S3 bucket for models.
- * @property {string} mountS3DebUrl - URL for S3-mounted Debian package.
- * @property {string[]} [accountNumbersEcr=null] - List of AWS account numbers for ECR repositories.
- * @property {boolean} [deployRag=false] - Whether to deploy RAG stacks.
- * @property {boolean} [deployChat=true] - Whether to deploy chat stacks.
- * @property {boolean} [deployDocs=true] - Whether to deploy docs stacks.
- * @property {boolean} [deployUi=true] - Whether to deploy UI stacks.
- * @property {string} logLevel - Log level for application.
- * @property {AuthConfigSchema} authConfig - Authorization configuration.
- * @property {RagRepositoryConfigSchema} ragRepositoryConfig - Rag Repository configuration.
- * @property {RagFileProcessingConfigSchema} ragFileProcessingConfig - Rag file processing configuration.
- * @property {EcsModelConfigSchema[]} ecsModels - Array of ECS model configurations.
- * @property {ApiGatewayConfigSchema} apiGatewayConfig - API Gateway Endpoint configuration.
- * @property {string} [nvmeHostMountPath='/nvme'] - Host path for NVMe drives.
- * @property {string} [nvmeContainerMountPath='/nvme'] - Container path for NVMe drives.
- * @property {Array<{ Key: string, Value: string }>} [tags=null] - Array of key-value pairs for tagging.
- * @property {string} [deploymentPrefix=null] - Prefix for deployment resources.
- * @property {string} [webAppAssetsPath=null] - Optional path to precompiled webapp assets. If not
- *                                              specified the web application will be built at deploy
- *                                              time.
- */
 const RawConfigSchema = z
     .object({
-        appName: z.string().default('lisa'),
+        appName: z.string().default('lisa').describe('Name of the application.'),
         profile: z
             .string()
-            .optional()
-            .nullable()
-            .transform((value) => value ?? ''),
-        deploymentName: z.string().default('prod'),
+            .nullish()
+            .transform((value) => value ?? '')
+            .describe('AWS CLI profile for deployment.'),
+        deploymentName: z.string().default('prod').describe('Name of the deployment.'),
         accountNumber: z
             .number()
             .or(z.string())
             .transform((value) => value.toString())
             .refine((value) => value.length === 12, {
                 message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
-            }),
-        region: z.string(),
+            })
+            .describe('AWS account number for deployment. Must be 12 digits.'),
+        region: z.string().describe('AWS region for deployment.'),
         restApiConfig: FastApiContainerConfigSchema,
-        vpcId: z.string().optional(),
-        subnetIds: z.array(z.string().startsWith('subnet-')).optional(),
-        deploymentStage: z.string().default('prod'),
-        removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]).default('destroy'),
-        runCdkNag: z.boolean().default(false),
-        privateEndpoints: z.boolean().optional().default(false),
-        s3BucketModels: z.string(),
-        mountS3DebUrl: z.string().optional(),
+        vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
+        subnets: z.array(z.object({
+            subnetId: z.string().startsWith('subnet-'),
+            ipv4CidrBlock: z.string()
+        })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
+        deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
+        removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
+            .transform((value) => REMOVAL_POLICIES[value])
+            .default('destroy')
+            .describe('Removal policy for resources (destroy or retain).'),
+        runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
+        privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
+        s3BucketModels: z.string().describe('S3 bucket for models.'),
+        mountS3DebUrl: z.string().describe('URL for S3-mounted Debian package.'),
         accountNumbersEcr: z
             .array(z.union([z.number(), z.string()]))
             .transform((arr) => arr.map(String))
             .refine((value) => value.every((num) => num.length === 12), {
                 message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
             })
-            .optional(),
-        deployRag: z.boolean().optional().default(true),
-        deployChat: z.boolean().optional().default(true),
-        deployDocs: z.boolean().optional().default(true),
-        deployUi: z.boolean().optional().default(true),
-        logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')]).default('DEBUG'),
-        authConfig: AuthConfigSchema.optional(),
-        pypiConfig: PypiConfigSchema.optional().default({
+            .optional()
+            .describe('List of AWS account numbers for ECR repositories.'),
+        deployRag: z.boolean().default(true).describe('Whether to deploy RAG stacks.'),
+        deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
+        deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
+        deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+        logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
+            .default('DEBUG')
+            .describe('Log level for application.'),
+        authConfig: AuthConfigSchema.optional().describe('Authorization configuration.'),
+        pypiConfig: PypiConfigSchema.default({
             indexUrl: '',
             trustedHost: '',
-        }),
-        condaUrl: z.string().optional().default(''),
-        certificateAuthorityBundle: z.string().optional().default(''),
-        ragRepositories: z.array(RagRepositoryConfigSchema).default([]),
-        ragFileProcessingConfig: RagFileProcessingConfigSchema.optional(),
-        ecsModels: z.array(EcsModelConfigSchema).optional(),
-        apiGatewayConfig: ApiGatewayConfigSchema.optional(),
-        nvmeHostMountPath: z.string().default('/nvme'),
-        nvmeContainerMountPath: z.string().default('/nvme'),
+        }).describe('Pypi configuration.'),
+        condaUrl: z.string().default('').describe('Conda URL configuration'),
+        certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
+        ragRepositories: z.array(RagRepositoryConfigSchema).default([]).describe('Rag Repository configuration.'),
+        ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
+        ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
+        apiGatewayConfig: ApiGatewayConfigSchema,
+        nvmeHostMountPath: z.string().default('/nvme').describe('Host path for NVMe drives.'),
+        nvmeContainerMountPath: z.string().default('/nvme').describe('Container path for NVMe drives.'),
         tags: z
             .array(
                 z.object({
@@ -760,18 +580,20 @@ const RawConfigSchema = z
                     Value: z.string(),
                 }),
             )
-            .optional(),
-        deploymentPrefix: z.string().optional(),
-        webAppAssetsPath: z.string().optional(),
+            .optional()
+            .describe('Array of key-value pairs for tagging.'),
+        deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
+        webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
         lambdaLayerAssets: z
             .object({
-                authorizerLayerPath: z.string().optional(),
-                commonLayerPath: z.string().optional(),
-                fastapiLayerPath: z.string().optional(),
-                ragLayerPath: z.string().optional(),
-                sdkLayerPath: z.string().optional(),
+                authorizerLayerPath: z.string().optional().describe('Lambda Authorizer code path'),
+                commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
+                fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
+                ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
+                sdkLayerPath: z.string().optional().describe('Lambda SDK layer code path'),
             })
-            .optional(),
+            .optional()
+            .describe('Configuration for local Lambda layer code'),
         permissionsBoundaryAspect: z
             .object({
                 permissionsBoundaryPolicyName: z.string(),
@@ -779,8 +601,9 @@ const RawConfigSchema = z
                 policyPrefix: z.string().max(20).optional(),
                 instanceProfilePrefix: z.string().optional(),
             })
-            .optional(),
-        stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional(),
+            .optional()
+            .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
+        stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
         litellmConfig: LiteLLMConfig,
     })
     .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
@@ -806,21 +629,22 @@ const RawConfigSchema = z
         (config) => {
             return (
                 !(config.deployChat || config.deployRag || config.deployUi) ||
-        config.authConfig
+          config.authConfig
             );
         },
         {
             message:
-        'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
-        'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
-        'false or that an `authConfig` is provided.',
+          'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
+          'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
+          'false or that an `authConfig` is provided.',
         },
-    );
+    )
+    .describe('Raw application configuration schema.');
 
 /**
  * Apply transformations to the raw application configuration schema.
  *
- * @param {Object} rawConfig - The raw application configuration.
+ * @param {Object} rawConfig - .describe('The raw application configuration.')
  * @returns {Object} The transformed application configuration.
  */
 export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
@@ -866,12 +690,10 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
  */
 export type Config = z.infer<typeof ConfigSchema>;
 
-export type FastApiContainerConfig = z.infer<typeof FastApiContainerConfigSchema>;
-
 /**
  * Basic properties required for a stack definition in CDK.
  *
- * @property {Config} config - The application configuration.
+ * @property {Config} config - .describe('The application configuration.')
  */
 export type BaseProps = {
     config: Config;

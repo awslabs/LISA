@@ -73,7 +73,8 @@ npm run dev
 
 The LISA Serve endpoint can be used independently of the Chat UI, and the following shows a few examples of how to do that. The Serve endpoint
 will still validate user auth, so if you have a Bearer token from the IdP configured with LISA, we will honor it, or if you've set up an API
-token using the [DynamoDB instructions](#programmatic-api-tokens), we will also accept that. This diagram shows the LISA Serve components that
+token using the [DynamoDB instructions](/admin/api-tokens), we will also accept that. This diagram shows the LISA Serve
+components that
 would be utilized during direct REST API requests.
 
 ## OpenAI Specification Compatibility
@@ -89,7 +90,8 @@ routes as long as your underlying models can also respond to them.
 - /embeddings
 
 By supporting the OpenAI spec, we can more easily allow users to integrate their collection of models into their LLM applications and workflows. In LISA, users can authenticate
-using their OpenID Connect Identity Provider, or with an API token created through the DynamoDB token workflow as described [here](#programmatic-api-tokens). Once the token
+using their OpenID Connect Identity Provider, or with an API token created through the DynamoDB token workflow as
+described [here](/admin/api-tokens). Once the token
 is retrieved, users can use that in direct requests to the LISA Serve REST API. If using the IdP, users must set the 'Authorization' header, otherwise if using the API token,
 either the 'Api-Key' header or the 'Authorization' header. After that, requests to `https://${lisa_serve_alb}/v2/serve` will handle the OpenAI API calls. As an example, the following call can list all
 models that LISA is aware of, assuming usage of the API token. If you are using a self-signed cert, you must also provide the `--cacert $path` option to specify a CA bundle to trust for SSL verification.
@@ -112,7 +114,8 @@ automatically be added to the base URL, just as we appended `/models` to the `/v
 
 For developers that desire an LLM assistant to help with programming tasks, we support adding LISA as an LLM provider for the [Continue plugin](https://www.continue.dev).
 To add LISA as a provider, open up the Continue plugin's `config.json` file and locate the `models` list. In this list, add the following block, replacing the placeholder URL
-with your own REST API domain or ALB. The `/v2/serve` is required at the end of the `apiBase`. This configuration requires an API token as created through the [DynamoDB workflow](#programmatic-api-tokens).
+with your own REST API domain or ALB. The `/v2/serve` is required at the end of the `apiBase`. This configuration
+requires an API token as created through the [DynamoDB workflow](/admin/api-tokens).
 
 ```json
 {
@@ -147,7 +150,7 @@ client.models.list()
 To use the models being served by LISA, the client needs only a few changes:
 
 1. Specify the `base_url` as the LISA Serve ALB, using the /v2/serve route at the end, similar to the apiBase in the [Continue example](#continue-jetbrains-and-vs-code-plugin)
-2. Add the API key that you generated from the [token generation steps](#programmatic-api-tokens) as your `api_key` field.
+2. Add the API key that you generated from the [token generation steps](/admin/api-tokens) as your `api_key` field.
 3. If using a self-signed cert, you must provide a certificate path for validating SSL. If you're using an ACM or public cert, then this may be omitted.
 1. We provide a convenience function in the `lisa-sdk` for generating a cert path from an IAM certificate ARN if one is provided in the `RESTAPI_SSL_CERT_ARN` environment variable.
 

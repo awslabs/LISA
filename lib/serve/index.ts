@@ -30,7 +30,6 @@ import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { getSubnetCidrRange, isSubnetPublic } from '../api-base/utils';
 
 const HERE = path.resolve(__dirname);
 
@@ -149,17 +148,13 @@ export class LisaServeApplicationStack extends Stack {
             description: 'Security group for LiteLLM dynamic model management database.',
         });
 
-        const subNets = config.subnetIds && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-        subNets?.filter((subnet) => !isSubnetPublic(subnet)).forEach((subnet) => {
-            getSubnetCidrRange(subnet.subnetId).then((cidrRange) => {
-                if (cidrRange){
-                    litellmDbSg.connections.allowFrom(
-                        Peer.ipv4(cidrRange),
-                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                        'Allow REST API private subnets to communicate with LiteLLM database',
-                    );
-                }
-            });
+        const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+        subNets?.forEach((subnet) => {
+            litellmDbSg.connections.allowFrom(
+                Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                'Allow REST API private subnets to communicate with LiteLLM database',
+            );
         });
 
         const username = config.restApiConfig.rdsConfig.username;

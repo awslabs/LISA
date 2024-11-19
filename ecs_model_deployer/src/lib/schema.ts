@@ -618,7 +618,10 @@ const RawConfigSchema = z
                 instanceProfilePrefix: z.string().optional(),
             })
             .optional(),
-        subnetIds: z.array(z.string()).optional(),
+        subnets: z.array(z.object({
+            subnetId: z.string().startsWith('subnet-'),
+            ipv4CidrBlock: z.string()
+        })).optional(),
     })
     .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
         message: 'Must set PypiConfig if in an iso region',

@@ -16,7 +16,14 @@
 
 import { Construct } from 'constructs';
 import { DockerImageCode, DockerImageFunction, IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import {
+    Role,
+    ServicePrincipal,
+    ManagedPolicy,
+    PolicyStatement,
+    Effect,
+    PolicyDocument
+} from 'aws-cdk-lib/aws-iam';
 import { Stack, Duration, Size } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
@@ -35,20 +42,34 @@ export class ECSModelDeployer extends Construct {
         super(scope, id);
         const stackName = Stack.of(scope).stackName;
         const role = new Role(this, createCdkId([stackName, 'ecs-model-deployer-role']), {
-            assumedBy: new ServicePrincipal('lambda.amazonaws.com')
-        });
-
-        const assumeCdkPolicy = new Policy(this, createCdkId([stackName, 'ecs-model-deployer-policy']), {
-            statements: [
-                new PolicyStatement({
-                    actions: ['sts:AssumeRole'],
-                    resources: ['arn:*:iam::*:role/cdk-*']
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
+            inlinePolicies: {
+                lambdaPermissions: new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            actions: ['sts:AssumeRole'],
+                            resources: ['arn:*:iam::*:role/cdk-*']
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ec2:CreateNetworkInterface',
+                                'ec2:DescribeNetworkInterfaces',
+                                'ec2:DescribeSubnets',
+                                'ec2:DeleteNetworkInterface',
+                                'ec2:AssignPrivateIpAddresses',
+                                'ec2:UnassignPrivateIpAddresses'
+                            ],
+                            resources: ['*'],
+                        })
+                    ]
                 })
-            ]
-        });
 
-        role.attachInlinePolicy(assumeCdkPolicy);
-        role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
+            }
+        });
 
         const stripped_config = {
             'appName': props.config.appName,
@@ -59,7 +80,7 @@ export class ECSModelDeployer extends Construct {
             's3BucketModels': props.config.s3BucketModels,
             'mountS3DebUrl': props.config.mountS3DebUrl,
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
-            'subnetIds': props.config.subnetIds
+            'subnets': props.config.subnets
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);

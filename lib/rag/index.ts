@@ -39,6 +39,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, RagRepositoryType } from '../schema';
+import { SecurityGroups } from '../core/iam/SecurityGroups';
 
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 
@@ -152,11 +153,8 @@ export class LisaRagStack extends Stack {
         for (const ragConfig of config.ragRepositories) {
             // Create opensearch cluster for RAG
             if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
-                const openSearchSg = new SecurityGroup(this, 'LISA-OpenSearchSg', {
-                    securityGroupName: createCdkId([config.deploymentName, 'OpenSearch-SG']),
-                    vpc: vpc.vpc,
-                    description: 'Security group for RAG OpenSearch domain',
-                });
+                const openSearchSg = this.createSecurityGroup(config.securityGroups, SecurityGroups.OPEN_SEARCH_SG, config.deploymentName, vpc, 'Security group for RAG OpenSearch domain');
+
                 // Allow communication from private subnets to ECS cluster
                 const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                 subNets?.forEach((subnet) => {
@@ -275,11 +273,7 @@ export class LisaRagStack extends Stack {
                     );
                 } else {
                     // Create new DB and SG
-                    const pgvectorSg = new SecurityGroup(this, 'LISA-PGVectorSg', {
-                        securityGroupName: 'LISA-PGVector-SG',
-                        vpc: vpc.vpc,
-                        description: 'Security group for RAG PGVector database',
-                    });
+                    const pgvectorSg = this.createSecurityGroup(config.securityGroups, SecurityGroups.PG_VECTOR_SG, config.deploymentName, vpc, 'RAG PGVector database');
 
                     const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                     subNets?.forEach((subnet) => {
@@ -376,5 +370,33 @@ export class LisaRagStack extends Stack {
         ragRepositoriesParam.grantRead(lambdaRole);
         modelsPs.grantRead(lambdaRole);
         endpointUrl.grantRead(lambdaRole);
+    }
+
+    /**
+     * Creates a security group for the VPC.
+     *
+     * @param securityGroups - security group overrides map
+     * @param {string} securityGroupName - The name of the security group.
+     * @param {string} deploymentName - The deployment name.
+     * @param {Vpc} vpc - The virtual private cloud.
+     * @param {string} description - The description of the security group.
+     * @returns {ISecurityGroup} The security group.
+     */
+    createSecurityGroup (
+        securityGroups: Record<string, string> | undefined,
+        securityGroupName: string,
+        deploymentName: string,
+        vpc: Vpc,
+        description: string,
+    ): ISecurityGroup {
+        if (securityGroups?.[securityGroupName]) {
+            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroups[securityGroupName]);
+        } else {
+            return new SecurityGroup(this, securityGroupName, {
+                securityGroupName: createCdkId([deploymentName, securityGroupName]),
+                vpc: vpc.vpc,
+                description: `Security group for ${description}`,
+            });
+        }
     }
 }

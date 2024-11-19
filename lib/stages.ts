@@ -144,7 +144,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         apiBaseStack.addDependency(coreStack);
         apiBaseStack.addDependency(serveStack);

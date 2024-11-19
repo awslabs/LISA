@@ -12,14 +12,14 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // LISA-serve Stack.
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
-import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -30,6 +30,7 @@ import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { SecurityGroups } from '../core/iam/SecurityGroups';
 
 const HERE = path.resolve(__dirname);
 
@@ -143,10 +144,7 @@ export class LisaServeApplicationStack extends Stack {
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';
 
-        const litellmDbSg = new SecurityGroup(this, 'LISA-LiteLLMScalingSg', {
-            vpc: vpc.vpc,
-            description: 'Security group for LiteLLM dynamic model management database.',
-        });
+        const litellmDbSg = this.createSecurityGroup(config.securityGroups, vpc);
 
         const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach((subnet) => {
@@ -235,5 +233,26 @@ export class LisaServeApplicationStack extends Stack {
 
         // Update
         this.restApi = restApi;
+    }
+
+    /**
+     * Creates a security group for the LiteLLM.
+     *
+     * @param groupsConfig - security group overrides
+     * @param vpc
+     */
+    createSecurityGroup (
+        groupsConfig: Record<string, string> | undefined,
+        vpc: Vpc,
+    ): ISecurityGroup {
+        const securityGroupName = SecurityGroups.LITE_LLM_SG;
+        if (groupsConfig?.[SecurityGroups.LITE_LLM_SG]) {
+            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, groupsConfig[SecurityGroups.LITE_LLM_SG]);
+        } else {
+            return new SecurityGroup(this, securityGroupName, {
+                vpc: vpc.vpc,
+                description: 'Security group for LiteLLM dynamic model management database.',
+            });
+        }
     }
 }

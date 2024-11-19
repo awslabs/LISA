@@ -1,0 +1,8 @@
+dev:
+  securityGroups:
+    LiteLLMScalingSg: 'llmLiteSg'
+    EcsModelAlbSg: 'ECSModelSg'
+    RestApiAlbSg: 'RestAPISg'
+    LambdaSg: 'LambdaSg'
+    OpenSearchSg: 'OpenSearchSg'
+    PGVectorSg: 'PGVectorSg'

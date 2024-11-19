@@ -12,7 +12,8 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
- */
+*/
+
 
 // Models for schema validation.
 import * as fs from 'fs';
@@ -50,9 +51,9 @@ export enum EcsSourceType {
  * @property {ec2.SecurityGroup} lambdaSecurityGroup - .describe('Lambda security group.')
  */
 export type SecurityGroups = {
-    ecsModelAlbSg: ec2.SecurityGroup;
-    restApiAlbSg: ec2.SecurityGroup;
-    lambdaSecurityGroup: ec2.SecurityGroup;
+    ecsModelAlbSg: ec2.ISecurityGroup;
+    restApiAlbSg: ec2.ISecurityGroup;
+    lambdaSecurityGroup: ec2.ISecurityGroup;
 };
 
 const Ec2TypeSchema = z.object({
@@ -511,6 +512,9 @@ const LiteLLMConfig = z.object({
     ),
 })
     .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
+export const SecurityGroupOverrides = z.record(z.string().endsWith('Sg'), z.string().max(64))
+    .optional()
+    .describe('Map of security group overrides');
 
 const RawConfigSchema = z
     .object({
@@ -536,6 +540,7 @@ const RawConfigSchema = z
             subnetId: z.string().startsWith('subnet-'),
             ipv4CidrBlock: z.string()
         })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
+        securityGroups: SecurityGroupOverrides,
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
             .transform((value) => REMOVAL_POLICIES[value])

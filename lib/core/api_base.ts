@@ -25,7 +25,7 @@ import { Vpc } from '../networking/vpc';
 type LisaApiBaseStackProps = {
     vpc: Vpc;
 } & BaseProps &
-  StackProps;
+    StackProps;
 
 export class LisaApiBaseStack extends Stack {
     public readonly restApi: RestApi;

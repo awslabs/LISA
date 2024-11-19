@@ -31,6 +31,8 @@ dev:
   accountNumbersEcr:
     - '012345678901'
   deployRag: true
+  deployUI: true
+  deployDocs: true
   authConfig:
     authority: test
     clientId: test

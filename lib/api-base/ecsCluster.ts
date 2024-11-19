@@ -18,7 +18,7 @@
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
@@ -43,20 +43,19 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
-import { ECSConfig } from '../schema';
+import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
 
 /**
  * Properties for the ECSCluster Construct.
  *
- * @property {IVpc} vpc - The virtual private cloud (VPC).
- * @property {SecurityGroups} securityGroups - The security group that the ECS cluster should use.
  * @property {ECSConfig} ecsConfig - The configuration for the cluster.
+ * @property {ISecurityGroup} securityGroup - The security group that the ECS cluster should use.
+ * @property {Vpc} vpc - The virtual private cloud (VPC).
  */
 type ECSClusterProps = {
     ecsConfig: ECSConfig;
-    securityGroup: SecurityGroup;
+    securityGroup: ISecurityGroup;
     vpc: Vpc;
 } & BaseProps;
 
@@ -254,6 +253,7 @@ export class ECSCluster extends Construct {
             serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskDefinition: taskDefinition,
             circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
+            securityGroups: [securityGroup],
         };
 
         const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
@@ -326,8 +326,7 @@ export class ECSCluster extends Construct {
       ecsConfig.loadBalancerConfig.domainName !== null
           ? ecsConfig.loadBalancerConfig.domainName
           : loadBalancer.loadBalancerDnsName;
-        const endpoint = `${protocol}://${domain}`;
-        this.endpointUrl = endpoint;
+        this.endpointUrl = `${protocol}://${domain}`;
 
         // Update
         this.container = container;

@@ -12,7 +12,7 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
-*/
+ */
 
 
 // Models for schema validation.
@@ -46,15 +46,41 @@ export enum EcsSourceType {
 /**
  * Custom security groups for application.
  *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - .describe('ECS model application load balancer security group.')
- * @property {ec2.SecurityGroup} restApiAlbSg - .describe('REST API application load balancer security group.')
- * @property {ec2.SecurityGroup} lambdaSecurityGroup - .describe('Lambda security group.')
+ * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
+ * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
+ * @property {ec2.SecurityGroup} lambdaSecurityGroup - Lambda security group.
+ * @property {ec2.SecurityGroup} liteLlmSecurityGroup - litellm security group.
+ * @property {ec2.SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
+ * @property {ec2.SecurityGroup} pgVectorSg - PGVector security group used by RAG.
  */
 export type SecurityGroups = {
     ecsModelAlbSg: ec2.ISecurityGroup;
     restApiAlbSg: ec2.ISecurityGroup;
     lambdaSecurityGroup: ec2.ISecurityGroup;
+    liteLlmSecurityGroup?: ec2.ISecurityGroup;
+    openSearchSg?: ec2.ISecurityGroup;
+    pgVectorSg?: ec2.ISecurityGroup;
 };
+
+/**
+ * Configuration schema for Security Group imports.
+ * These values are none/small/all, meaning a user can import any number of these or none of these.
+ *
+ * @property {string} modelSgId - Security Group ID.
+ * @property {string} restAlbSgId - Security Group ID
+ * @property {string} lambdaSgId - Security Group ID
+ * @property {string} liteLlmDbSgId - Security Group ID.
+ * @property {string} openSearchSgId - Security Group ID.
+ * @property {string} pgVectorSgId - Security Group ID.
+ */
+export const SecurityGroupConfigSchema = z.object({
+    modelSgId: z.string().startsWith('sg-').optional(),
+    restAlbSgId: z.string().startsWith('sg-').optional(),
+    lambdaSgId: z.string().startsWith('sg-').optional(),
+    liteLlmDbSgId: z.string().startsWith('sg-').optional(),
+    openSearchSgId: z.string().startsWith('sg-').optional(),
+    pgVectorSgId: z.string().startsWith('sg-').optional(),
+});
 
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),
@@ -512,9 +538,6 @@ const LiteLLMConfig = z.object({
     ),
 })
     .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
-export const SecurityGroupOverrides = z.record(z.string().endsWith('Sg'), z.string().max(64))
-    .optional()
-    .describe('Map of security group overrides');
 
 const RawConfigSchema = z
     .object({
@@ -540,7 +563,7 @@ const RawConfigSchema = z
             subnetId: z.string().startsWith('subnet-'),
             ipv4CidrBlock: z.string()
         })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
-        securityGroups: SecurityGroupOverrides,
+        securityGroupConfig: SecurityGroupConfigSchema.optional(),
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
             .transform((value) => REMOVAL_POLICIES[value])

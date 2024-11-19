@@ -34,7 +34,7 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 2;
  * Properties for FastApiContainer Construct.
  *
  * @property {Vpc} vpc - The virtual private cloud (VPC).
- * @property {SecurityGroup} securityGroup - The security groups of the application.
+ * @property {ISecurityGroup} securityGroup - The security groups of the application.
  */
 type FastApiContainerProps = {
     apiName: string;
@@ -60,7 +60,7 @@ export class FastApiContainer extends Construct {
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
-     * @param {FastApiContainerProps} props - The properties of the construct.
+   * @param {FastApiContainerProps} props - The properties of the construct.
    */
     constructor (scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);

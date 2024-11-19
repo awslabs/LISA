@@ -23,18 +23,20 @@ import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 import * as yaml from 'js-yaml';
 
 import { createCdkId } from '../../../lib/core/utils';
-import { LisaNetworkingStack } from '../../../lib/networking/index';
+import { LisaNetworkingStack } from '../../../lib/networking';
 import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 
 type TestConfig = [string, number, number, number, number];
+type TestValues = [number, number, number, number];
 
+const defaultWarnings: TestValues = [2, 1, 5, 5];
 const regions: TestConfig[] = [
-    ['us-east-1', 1, 2, 3, 5],
-    ['us-gov-west-1', 1, 2, 3, 5],
-    ['us-gov-east-1', 1, 2, 3, 5],
-    ['us-isob-east-1', 1, 2, 3, 5],
-    ['us-iso-east-1', 1, 2, 3, 5],
-    ['us-iso-west-1', 1, 2, 3, 5],
+    ['us-east-1', ...defaultWarnings],
+    ['us-gov-west-1', ...defaultWarnings],
+    ['us-gov-east-1', ...defaultWarnings],
+    ['us-isob-east-1', ...defaultWarnings],
+    ['us-iso-east-1', ...defaultWarnings],
+    ['us-iso-west-1', ...defaultWarnings],
 ];
 
 describe.each<TestConfig>(regions)(

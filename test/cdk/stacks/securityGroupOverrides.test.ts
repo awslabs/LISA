@@ -19,27 +19,14 @@ import MockApp from '../mocks/MockApp'; // Import your actual stack
 import ConfigParser from '../mocks/ConfigParser';
 
 const stackGroupOverrides: Record<string, number> = {
-    LisaApiBase: 1,
     LisaServe: 2,
-    LisaUI: 0,
-    LisaNetworking: 3,
     LisaChat: 7,
-    LisaCore: 0,
-    LisaApiDeployment: 0,
-    LisaIAM: 0,
-    LisaDocs: 0,
 };
 
 const stackGroups: Record<string, number> = {
-    LisaApiBase: 1,
     LisaServe: 2,
-    LisaUI: 0,
     LisaNetworking: 3,
     LisaChat: 7,
-    LisaCore: 0,
-    LisaApiDeployment: 0,
-    LisaIAM: 0,
-    LisaDocs: 0,
 };
 const RESOURCE = 'AWS::EC2::SecurityGroup';
 

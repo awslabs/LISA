@@ -34,6 +34,7 @@ import {
     LinuxParameters,
     LogDriver,
     MountPoint,
+    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -88,7 +89,7 @@ export class ECSCluster extends Construct {
             containerInsights: !config.region.includes('iso'),
         });
 
-        // Create auto scaling group
+        // Create auto-scaling group
         const autoScalingGroup = cluster.addCapacity(createCdkId(['ASG']), {
             vpcSubnets: vpc.subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
@@ -187,6 +188,7 @@ export class ECSCluster extends Construct {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskRole: taskRole,
             volumes: volumes,
+            networkMode: NetworkMode.AWS_VPC,
         });
 
         // Add container to task definition
@@ -238,7 +240,7 @@ export class ECSCluster extends Construct {
             logging: LogDriver.awsLogs({ streamPrefix: ecsConfig.identifier }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
-            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
+            portMappings: [{ containerPort: 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
@@ -254,6 +256,7 @@ export class ECSCluster extends Construct {
             taskDefinition: taskDefinition,
             circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
             securityGroups: [securityGroup],
+            vpcSubnets: vpc.subnetSelection,
         };
 
         const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);

@@ -12,7 +12,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 /*
  * Your use of this service is governed by the terms of the AWS Customer Agreement
@@ -28,15 +28,15 @@ import * as cdk from 'aws-cdk-lib';
 import { Duration } from 'aws-cdk-lib';
 import {
     AuthorizationType,
+    Cors,
     IAuthorizer,
     IResource,
-    LambdaIntegration,
     IRestApi,
-    Cors,
+    LambdaIntegration,
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, Runtime, ILayerVersion, IFunction, CfnPermission } from 'aws-cdk-lib/aws-lambda';
+import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';

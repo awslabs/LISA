@@ -1,8 +1,7 @@
-dev:
-  securityGroups:
-    LiteLLMScalingSg: 'llmLiteSg'
-    EcsModelAlbSg: 'ECSModelSg'
-    RestApiAlbSg: 'RestAPISg'
-    LambdaSg: 'LambdaSg'
-    OpenSearchSg: 'OpenSearchSg'
-    PGVectorSg: 'PGVectorSg'
+securityGroupConfig:
+  modelSgId: sg-0123456789abcdef
+  restAlbSgId: sg-0123456789abcdef
+  lambdaSgId: sg-0123456789abcdef
+  litellmDbSgId: sg-0123456789abcdef
+  openSearchSgId: sg-0123456789abcdef
+  pgVectorSgId: sg-0123456789abcdef

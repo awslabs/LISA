@@ -33,7 +33,6 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { RepositoryApi } from './api/repository';
-import { FastApiContainer } from '../api-base/fastApiContainer';
 import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
@@ -63,8 +62,6 @@ type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
  * LisaChat RAG stack.
  */
 export class LisaRagStack extends Stack {
-    public readonly ragApi: FastApiContainer;
-
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -153,7 +150,7 @@ export class LisaRagStack extends Stack {
         for (const ragConfig of config.ragRepositories) {
             // Create opensearch cluster for RAG
             if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
-                const openSearchSg = this.createSecurityGroup(config.securityGroups, SecurityGroups.OPEN_SEARCH_SG, config.deploymentName, vpc, 'Security group for RAG OpenSearch domain');
+                const openSearchSg = this.createSecurityGroup(vpc.securityGroups?.openSearchSg, SecurityGroups.OPEN_SEARCH_SG, config.deploymentName, vpc, 'Security group for RAG OpenSearch domain');
 
                 // Allow communication from private subnets to ECS cluster
                 const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
@@ -273,7 +270,7 @@ export class LisaRagStack extends Stack {
                     );
                 } else {
                     // Create new DB and SG
-                    const pgvectorSg = this.createSecurityGroup(config.securityGroups, SecurityGroups.PG_VECTOR_SG, config.deploymentName, vpc, 'RAG PGVector database');
+                    const pgvectorSg = this.createSecurityGroup(vpc.securityGroups?.pgVectorSg, SecurityGroups.PG_VECTOR_SG, config.deploymentName, vpc, 'RAG PGVector database');
 
                     const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                     subNets?.forEach((subnet) => {
@@ -291,7 +288,7 @@ export class LisaRagStack extends Stack {
                         vpc: vpc.vpc,
                         subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
-                        securityGroups: [pgvectorSg!],
+                        securityGroups: [pgvectorSg],
                         removalPolicy: RemovalPolicy.DESTROY,
                     });
                     rdsPasswordSecret = pgvector_db.secret!;
@@ -375,7 +372,7 @@ export class LisaRagStack extends Stack {
     /**
      * Creates a security group for the VPC.
      *
-     * @param securityGroups - security group overrides map
+     * @param securityGroupOverride - security group override
      * @param {string} securityGroupName - The name of the security group.
      * @param {string} deploymentName - The deployment name.
      * @param {Vpc} vpc - The virtual private cloud.
@@ -383,14 +380,14 @@ export class LisaRagStack extends Stack {
      * @returns {ISecurityGroup} The security group.
      */
     createSecurityGroup (
-        securityGroups: Record<string, string> | undefined,
+        securityGroupOverride: ISecurityGroup | undefined,
         securityGroupName: string,
         deploymentName: string,
         vpc: Vpc,
         description: string,
     ): ISecurityGroup {
-        if (securityGroups?.[securityGroupName]) {
-            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroups[securityGroupName]);
+        if (securityGroupOverride) {
+            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroupOverride.securityGroupId);
         } else {
             return new SecurityGroup(this, securityGroupName, {
                 securityGroupName: createCdkId([deploymentName, securityGroupName]),

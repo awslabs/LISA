@@ -49,9 +49,7 @@ import { createLambdaRole } from '../core/utils';
  * Properties for ModelsApi Construct.
  *
  * @property {Vpc} vpc - Stack VPC
- * @property {Layer} commonLayer - Lambda layer for all Lambdas.
- * @property {IRestApi} restAPI - REST APIGW for UI and Lambdas
- * @property {IRole} lambdaExecutionRole - Execution role for lambdas
+ * @property {string} restApiId - REST APIGW for UI and Lambdas
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  */
@@ -122,6 +120,7 @@ export class ModelsApi extends Construct {
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
             config: config,
+            securityGroups: [vpc.securityGroups.lambdaSecurityGroup],
             vpc
         });
 

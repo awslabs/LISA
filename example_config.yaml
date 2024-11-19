@@ -13,6 +13,13 @@ s3BucketModels: hf-models-gaiic
 # subnets:
 #  - subnetId:
 #    ipv4CidrBlock:
+# securityGroupConfig: The below values are none/some/all
+#   modelSgId: sg-0123456789abcdef
+#   restAlbSgId: sg-0123456789abcdef
+#   lambdaSgId: sg-0123456789abcdef
+#   litellmDbSgId: sg-0123456789abcdef
+#   openSearchSgId: sg-0123456789abcdef
+#   pgVectorSgId: sg-0123456789abcdef
 # The following configuration will allow for using a custom domain for the chat user interface.
 # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
 # Users must use the custom domain for the user interface to work if this option is populated.

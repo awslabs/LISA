@@ -144,7 +144,7 @@ export class LisaServeApplicationStack extends Stack {
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';
 
-        const litellmDbSg = this.createSecurityGroup(config.securityGroups, vpc);
+        const litellmDbSg = this.createSecurityGroup(vpc.securityGroups?.liteLlmSecurityGroup, vpc);
 
         const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach((subnet) => {
@@ -238,16 +238,16 @@ export class LisaServeApplicationStack extends Stack {
     /**
      * Creates a security group for the LiteLLM.
      *
-     * @param groupsConfig - security group overrides
+     * @param securityGroupOverride - security group overrides
      * @param vpc
      */
     createSecurityGroup (
-        groupsConfig: Record<string, string> | undefined,
+        securityGroupOverride: ISecurityGroup | undefined,
         vpc: Vpc,
     ): ISecurityGroup {
         const securityGroupName = SecurityGroups.LITE_LLM_SG;
-        if (groupsConfig?.[SecurityGroups.LITE_LLM_SG]) {
-            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, groupsConfig[SecurityGroups.LITE_LLM_SG]);
+        if (securityGroupOverride) {
+            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroupOverride.securityGroupId);
         } else {
             return new SecurityGroup(this, securityGroupName, {
                 vpc: vpc.vpc,

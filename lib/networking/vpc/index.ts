@@ -124,40 +124,53 @@ export class Vpc extends Construct {
             }
         }
 
-        const sgOverrides = config.securityGroups;
+        const sgOverrides = config.securityGroupConfig;
+
         // Create security groups
         const ecsModelAlbSg = this.createSecurityGroup(
-            sgOverrides,
+            sgOverrides?.lambdaSgId,
             SecurityGroupsEnum.ECS_MODEL_ALB_SG,
-            config.deploymentName,
             vpc,
+            config.deploymentName,
             'ECS model application load balancer',
             true,
         );
         const restApiAlbSg = this.createSecurityGroup(
-            sgOverrides,
+            sgOverrides?.restAlbSgId,
             SecurityGroupsEnum.REST_API_ALB_SG,
-            config.deploymentName,
             vpc,
+            config.deploymentName,
             'REST API application load balancer',
             !!config.restApiConfig?.sslCertIamArn,
             !config.restApiConfig?.sslCertIamArn,
         );
         const lambdaSecurityGroup = this.createSecurityGroup(
-            sgOverrides,
+            sgOverrides?.lambdaSgId,
             SecurityGroupsEnum.LAMBDA_SG,
-            config.deploymentName,
             vpc,
+            config.deploymentName,
             'authorizer and API Lambdas',
         );
 
-        // Update
-        this.vpc = vpc;
         this.securityGroups = {
             ecsModelAlbSg: ecsModelAlbSg,
             restApiAlbSg: restApiAlbSg,
             lambdaSecurityGroup: lambdaSecurityGroup,
         };
+
+        if (sgOverrides?.liteLlmDbSgId) {
+            this.securityGroups.liteLlmSecurityGroup = this.createSecurityGroup(sgOverrides.liteLlmDbSgId, SecurityGroupsEnum.LITE_LLM_SG, vpc);
+        }
+
+        if (sgOverrides?.openSearchSgId) {
+            this.securityGroups.openSearchSg = this.createSecurityGroup(sgOverrides.openSearchSgId, SecurityGroupsEnum.OPEN_SEARCH_SG, vpc);
+        }
+
+        if (sgOverrides?.pgVectorSgId) {
+            this.securityGroups.pgVectorSg = this.createSecurityGroup(sgOverrides.pgVectorSgId, SecurityGroupsEnum.PG_VECTOR_SG, vpc);
+        }
+        // Update
+        this.vpc = vpc;
 
         new CfnOutput(this, 'vpcArn', { value: vpc.vpcArn });
         new CfnOutput(this, 'vpcCidrBlock', { value: vpc.vpcCidrBlock });
@@ -170,27 +183,26 @@ export class Vpc extends Construct {
     /**
      * Creates a security group for the VPC.
      *
-     * @param groupsConfig - security group overrides
-     * @param {string} securityGroupId - The unique identifier for the security group.
+     * @param securityGroupOverride - security group overrides
      * @param {string} securityGroupName - The name of the security group.
-     * @param {string} deploymentName - The deployment name.
      * @param {IVpc} vpc - The virtual private cloud.
+     * @param {string} deploymentName - The deployment name.
      * @param {string} description - The description of the security group.
      * @param {boolean} allowVpcTraffic - Whether to allow VPC traffic.
      * @param {boolean} allowHttpsTraffic - Whether to allow HTTPS traffic.
      * @returns {ISecurityGroup} The security group.
      */
     createSecurityGroup (
-        groupsConfig: Record<string, string> | undefined,
+        securityGroupOverride: string | undefined,
         securityGroupName: string,
-        deploymentName: string,
         vpc: IVpc,
-        description: string,
+        deploymentName: string = 'LISA',
+        description?: string,
         allowVpcTraffic: boolean = false,
         allowHttpsTraffic: boolean = false,
     ): ISecurityGroup {
-        if (groupsConfig?.[securityGroupName]) {
-            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, groupsConfig[securityGroupName]);
+        if (securityGroupOverride) {
+            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroupOverride);
         } else {
             const sg = new SecurityGroup(this, securityGroupName, {
                 securityGroupName: createCdkId([deploymentName, securityGroupName]),

@@ -82,9 +82,9 @@ export function registerAPIEndpoint (
     layers: ILayerVersion[],
     funcDef: PythonLambdaFunction,
     pythonRuntime: Runtime,
+    vpc: Vpc,
+    securityGroups: ISecurityGroup[],
     role?: IRole,
-    vpc?: Vpc,
-    securityGroups?: ISecurityGroup[],
 ): IFunction {
     const functionId = `${
         funcDef.id ||
@@ -124,9 +124,9 @@ export function registerAPIEndpoint (
             layers,
             reservedConcurrentExecutions: 20,
             role,
-            vpc: vpc?.vpc,
+            vpc: vpc.vpc,
             securityGroups,
-            vpcSubnets: vpc?.subnetSelection,
+            vpcSubnets: vpc.subnetSelection,
         });
     }
 

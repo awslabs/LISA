@@ -52,7 +52,7 @@ type CustomLisaRagStackProps = {
     modelsPs: StringParameter;
     restApiId: string;
     rootResourceId: string;
-    securityGroups?: ISecurityGroup[];
+    securityGroups: ISecurityGroup[];
     vpc: Vpc;
 } & BaseProps;
 
@@ -150,7 +150,7 @@ export class LisaRagStack extends Stack {
         for (const ragConfig of config.ragRepositories) {
             // Create opensearch cluster for RAG
             if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
-                const openSearchSg = this.createSecurityGroup(vpc.securityGroups?.openSearchSg, SecurityGroups.OPEN_SEARCH_SG, config.deploymentName, vpc, 'Security group for RAG OpenSearch domain');
+                const openSearchSg = this.createSecurityGroup(vpc.securityGroups.openSearchSg, SecurityGroups.OPEN_SEARCH_SG, config.deploymentName, vpc, 'Security group for RAG OpenSearch domain');
 
                 // Allow communication from private subnets to ECS cluster
                 const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
@@ -270,7 +270,7 @@ export class LisaRagStack extends Stack {
                     );
                 } else {
                     // Create new DB and SG
-                    const pgvectorSg = this.createSecurityGroup(vpc.securityGroups?.pgVectorSg, SecurityGroups.PG_VECTOR_SG, config.deploymentName, vpc, 'RAG PGVector database');
+                    const pgvectorSg = this.createSecurityGroup(vpc.securityGroups.pgVectorSg, SecurityGroups.PG_VECTOR_SG, config.deploymentName, vpc, 'RAG PGVector database');
 
                     const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                     subNets?.forEach((subnet) => {

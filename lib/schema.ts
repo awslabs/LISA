@@ -48,16 +48,16 @@ export enum EcsSourceType {
  *
  * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
  * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
- * @property {ec2.SecurityGroup} lambdaSecurityGroup - Lambda security group.
- * @property {ec2.SecurityGroup} liteLlmSecurityGroup - litellm security group.
+ * @property {ec2.SecurityGroup} lambdaSg - Lambda security group.
+ * @property {ec2.SecurityGroup} liteLlmSg - litellm security group.
  * @property {ec2.SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
  * @property {ec2.SecurityGroup} pgVectorSg - PGVector security group used by RAG.
  */
 export type SecurityGroups = {
     ecsModelAlbSg: ec2.ISecurityGroup;
     restApiAlbSg: ec2.ISecurityGroup;
-    lambdaSecurityGroup: ec2.ISecurityGroup;
-    liteLlmSecurityGroup?: ec2.ISecurityGroup;
+    lambdaSg: ec2.ISecurityGroup;
+    liteLlmSg?: ec2.ISecurityGroup;
     openSearchSg?: ec2.ISecurityGroup;
     pgVectorSg?: ec2.ISecurityGroup;
 };
@@ -80,7 +80,7 @@ export const SecurityGroupConfigSchema = z.object({
     liteLlmDbSgId: z.string().startsWith('sg-').optional(),
     openSearchSgId: z.string().startsWith('sg-').optional(),
     pgVectorSgId: z.string().startsWith('sg-').optional(),
-});
+}).describe('Security Group Overrides used across stacks.');
 
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),
@@ -667,6 +667,9 @@ const RawConfigSchema = z
           'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
           'false or that an `authConfig` is provided.',
         },
+    )
+    .refine((config) => !(config.securityGroupConfig && !config.vpcId),
+        { message: 'SecurityGroup overrides must be deployed with a preconfigured VPC' },
     )
     .describe('Raw application configuration schema.');
 

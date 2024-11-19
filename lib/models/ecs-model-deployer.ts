@@ -92,13 +92,13 @@ export class ECSModelDeployer extends Construct {
             memorySize: 1024,
             role: role,
             environment: {
-                'LISA_VPC_ID': props.vpc?.vpc.vpcId,
+                'LISA_VPC_ID': props.vpc.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,
                 'LISA_CONFIG': JSON.stringify(stripped_config)
             },
-            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
-            securityGroups: [props.vpc?.securityGroups.lambdaSecurityGroup],
-            vpcSubnets: props.vpc?.subnetSelection,
+            vpcSubnets: props.vpc.subnetSelection,
+            vpc: props.vpc.vpc,
+            securityGroups: [props.vpc.securityGroups.lambdaSg]
         });
     }
 }

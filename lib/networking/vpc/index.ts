@@ -144,7 +144,7 @@ export class Vpc extends Construct {
             !!config.restApiConfig?.sslCertIamArn,
             !config.restApiConfig?.sslCertIamArn,
         );
-        const lambdaSecurityGroup = this.createSecurityGroup(
+        const lambdaSg = this.createSecurityGroup(
             sgOverrides?.lambdaSgId,
             SecurityGroupsEnum.LAMBDA_SG,
             vpc,
@@ -155,11 +155,11 @@ export class Vpc extends Construct {
         this.securityGroups = {
             ecsModelAlbSg: ecsModelAlbSg,
             restApiAlbSg: restApiAlbSg,
-            lambdaSecurityGroup: lambdaSecurityGroup,
+            lambdaSg: lambdaSg,
         };
 
         if (sgOverrides?.liteLlmDbSgId) {
-            this.securityGroups.liteLlmSecurityGroup = this.createSecurityGroup(sgOverrides.liteLlmDbSgId, SecurityGroupsEnum.LITE_LLM_SG, vpc);
+            this.securityGroups.liteLlmSg = this.createSecurityGroup(sgOverrides.liteLlmDbSgId, SecurityGroupsEnum.LITE_LLM_SG, vpc);
         }
 
         if (sgOverrides?.openSearchSgId) {
@@ -177,7 +177,7 @@ export class Vpc extends Construct {
 
         new CfnOutput(this, 'ecsModelAlbSg', { value: ecsModelAlbSg.securityGroupId });
         new CfnOutput(this, 'restApiAlbSg', { value: restApiAlbSg.securityGroupId });
-        new CfnOutput(this, 'lambdaSecurityGroup', { value: lambdaSecurityGroup.securityGroupId });
+        new CfnOutput(this, 'lambdaSg', { value: lambdaSg.securityGroupId });
     }
 
     /**

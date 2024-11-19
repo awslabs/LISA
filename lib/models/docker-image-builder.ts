@@ -36,8 +36,8 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
     mountS3DebUrl: string;
-    securityGroups?: ISecurityGroup[];
-    vpc?: Vpc;
+    securityGroups: ISecurityGroup[];
+    vpc: Vpc;
 };
 
 export class DockerImageBuilder extends Construct {
@@ -151,9 +151,9 @@ export class DockerImageBuilder extends Construct {
                 'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl,
                 ...(props.config?.subnets && {'LISA_SUBNET_ID': props.config.subnets[0].subnetId})
             },
-            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
+            vpc: props.vpc.vpc,
+            vpcSubnets: props.vpc.subnetSelection,
             securityGroups: props.securityGroups,
-            vpcSubnets: props.vpc?.subnetSelection,
         });
 
     }

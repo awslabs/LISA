@@ -29,8 +29,8 @@ type CustomLisaChatStackProps = {
     authorizer: IAuthorizer;
     restApiId: string;
     rootResourceId: string;
-    securityGroups?: ISecurityGroup[];
-    vpc?: Vpc;
+    securityGroups: ISecurityGroup[];
+    vpc: Vpc;
 } & BaseProps;
 type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
 

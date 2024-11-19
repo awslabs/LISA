@@ -144,7 +144,7 @@ export class LisaServeApplicationStack extends Stack {
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';
 
-        const litellmDbSg = this.createSecurityGroup(vpc.securityGroups?.liteLlmSecurityGroup, vpc);
+        const litellmDbSg = this.createSecurityGroup(vpc.securityGroups?.liteLlmSg, vpc);
 
         const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach((subnet) => {

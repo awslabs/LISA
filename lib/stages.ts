@@ -169,7 +169,6 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'core', config.deploymentStage]),
             description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
         });
         stacks.push(coreStack);
 
@@ -224,7 +223,7 @@ export class LisaServeApplicationStage extends Stage {
                 description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
-                securityGroups: [networkingStack.vpc.securityGroups.lambdaSecurityGroup],
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                 vpc: networkingStack.vpc,
             });
             chatStack.addDependency(apiBaseStack);
@@ -257,7 +256,7 @@ export class LisaServeApplicationStage extends Stage {
                         restApiId: apiBaseStack.restApiId,
                         rootResourceId: apiBaseStack.rootResourceId,
                         stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
-                        securityGroups: [networkingStack.vpc.securityGroups.lambdaSecurityGroup],
+                        securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                         vpc: networkingStack.vpc,
                     });
                     ragStack.addDependency(coreStack);

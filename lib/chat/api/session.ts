@@ -42,8 +42,8 @@ type SessionApiProps = {
     authorizer: IAuthorizer;
     restApiId: string;
     rootResourceId: string;
-    securityGroups?: ISecurityGroup[];
-    vpc?: Vpc;
+    securityGroups: ISecurityGroup[];
+    vpc: Vpc;
 } & BaseProps;
 
 /**
@@ -157,9 +157,9 @@ export class SessionApi extends Construct {
                 [commonLambdaLayer],
                 f,
                 Runtime.PYTHON_3_10,
-                lambdaRole,
                 vpc,
                 securityGroups,
+                lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {
                 sessionTable.grantWriteData(lambdaFunction);

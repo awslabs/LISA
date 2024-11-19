@@ -39,8 +39,8 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
  */
 type AuthorizerProps = {
     role?: IRole;
-    vpc?: Vpc;
-    securityGroups?: ISecurityGroup[];
+    vpc: Vpc;
+    securityGroups: ISecurityGroup[];
 } & BaseProps;
 
 /**
@@ -98,9 +98,9 @@ export class CustomAuthorizer extends Construct {
             },
             reservedConcurrentExecutions: 20,
             role: role,
-            vpc: vpc?.vpc,
+            vpc: vpc.vpc,
             securityGroups: securityGroups,
-            vpcSubnets: vpc?.subnetSelection
+            vpcSubnets: vpc.subnetSelection
         });
 
         const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);

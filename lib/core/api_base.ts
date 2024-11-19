@@ -61,7 +61,7 @@ export class LisaApiBaseStack extends Stack {
         // Create the authorizer Lambda for APIGW
         const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
             config: config,
-            securityGroups: [vpc.securityGroups.lambdaSecurityGroup],
+            securityGroups: [vpc.securityGroups.lambdaSg],
             vpc,
         });
 

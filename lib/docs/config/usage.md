@@ -64,8 +64,7 @@ requires an API token as created through the [DynamoDB workflow](/config/api-tok
   "title": "LISA",
   "apiBase": "https://<lisa_serve_alb>/v2/serve",
   "provider": "openai",
-  "apiKey": "your-api-token"
-  // pragma: allowlist-secret
+   "apiKey": "your-api-token"
 }
 ```
 
@@ -89,7 +88,7 @@ normally be instantiated and invoked with the following block.
 from openai import OpenAI
 
 client = OpenAI(
-    api_key="my_key"  # pragma: allowlist-secret not a real key
+   api_key="my_key"
 )
 client.models.list()
 ```
@@ -117,7 +116,7 @@ iam_client = boto3.client("iam")
 cert_path = get_cert_path(iam_client)
 
 client = OpenAI(
-    api_key="my_key", # pragma: allowlist-secret not a real key
+    api_key="my_key",
     base_url="https://<lisa_serve_alb>/v2/serve",
     http_client=DefaultHttpxClient(verify=cert_path), # needed for self-signed certs on your ALB, can be omitted otherwise
 )

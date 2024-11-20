@@ -68,5 +68,3 @@ Launch the Chat UI:
 cd lib/user-interface/react/
 npm run dev
 ```
-
-

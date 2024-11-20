@@ -1,3 +1,18 @@
+# v3.2.1
+## Bug Fixes
+- Resolved issue where subnet wasn't being passed into ec2 instance creation
+- Resolved role creation issue when deploying with custom subnets
+- Updated docker image to grant permissions on copied in files
+
+## Coming Soon
+- Version 3.3.0 will include a new RAG ingestion pipeline. This will allow users to configure an S3 bucket and an ingestion trigger. When triggered, these documents will be pre-processed and loaded into the selected vector store.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.2.0...v3.2.1
+
 # v3.2.0
 ## Key Features
 ### Enhanced Deployment Configuration

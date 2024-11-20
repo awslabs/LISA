@@ -467,7 +467,7 @@ const RagRepositoryConfigSchema = z
             s3Prefix: z.string(),
             trigger: z.union([z.literal('daily'), z.literal('event')]),
             collectionName: z.string()
-        })).optional(),
+        })).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||

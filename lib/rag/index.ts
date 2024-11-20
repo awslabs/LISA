@@ -203,7 +203,7 @@ export class LisaRagStack extends Stack {
                         version: EngineVersion.OPENSEARCH_2_9,
                         enableVersionUpgrade: true,
                         vpc: vpc.vpc,
-                        ...vpc.subnetSelection ? {vpcSubnets: [vpc.subnetSelection]} : {},
+                        ...(vpc.subnetSelection && {vpcSubnets: [vpc.subnetSelection]}),
                         ebs: {
                             enabled: true,
                             volumeSize: ragConfig.opensearchConfig.volumeSize,

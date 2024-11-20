@@ -128,10 +128,10 @@ export class LisaRagStack extends Stack {
                     description: 'Security group for RAG OpenSearch domain',
                 });
                 // Allow communication from private subnets to ECS cluster
-                const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                 subNets?.forEach((subnet) => {
                     openSearchSg.connections.allowFrom(
-                        Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                        Peer.ipv4(subnet.ipv4CidrBlock),
                         Port.tcp(config.restApiConfig.rdsConfig.dbPort),
                         'Allow REST API private subnets to communicate with LiteLLM database',
                     );
@@ -251,10 +251,10 @@ export class LisaRagStack extends Stack {
                         description: 'Security group for RAG PGVector database',
                     });
 
-                    const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+                    const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
                     subNets?.forEach((subnet) => {
                         pgvectorSg.connections.allowFrom(
-                            Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet) => filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                            Peer.ipv4(subnet.ipv4CidrBlock),
                             Port.tcp(config.restApiConfig.rdsConfig.dbPort),
                             'Allow REST API private subnets to communicate with LiteLLM database',
                         );

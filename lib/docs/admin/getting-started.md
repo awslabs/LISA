@@ -120,7 +120,7 @@ This command verifies if the model's weights are already present in your S3 buck
 
 > **WARNING**
 > As of LISA 3.0, the `ecsModels` parameter in `config-custom.yaml` is solely for staging model weights in your S3 bucket.
-> Previously, before models could be managed through the [API](/admin/model-management) or via the Model Management
+> Previously, before models could be managed through the [API](/config/model-management-api) or via the Model Management
 > section of the [Chatbot](/user/chat), this parameter also
 > dictated which models were deployed.
 
@@ -140,13 +140,14 @@ In the `config-custom.yaml` file, configure the `authConfig` block for authentic
 - `jwtGroupsProperty`: Path to the groups field in the JWT token
 - `additionalScopes` (optional): Extra scopes for group membership information
 
-IDP Configuration examples using AWS Cognito and Keycloak can be found: [IDP Configuration Examples](/config/idp)
+IDP Configuration examples using AWS Cognito and Keycloak can be found: [IDP Configuration Examples](/admin/idp-config)
 
 
 ## Step 7: Configure LiteLLM
 We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
 For LiteLLM configuration, a key must be set up so that the system may communicate with a database for tracking all the models that are added or removed
-using the [Model Management API](/admin/model-management). The key must start with `sk-` and then can be any arbitrary
+using the [Model Management API](/config/model-management-api). The key must start with `sk-` and then can be any
+arbitrary
 string. We recommend generating a new UUID and then using that as
 the key. Configuration example is below.
 
@@ -229,5 +230,6 @@ services are in the same region as the LISA installation, LISA can use them alon
 
 **Important:** Endpoints or Models statically defined during LISA deployment cannot be removed or updated using the
 LISA Model Management API, and they will not show in the Chat UI. These will only show as part of the OpenAI `/models` API.
-Although there is support for it, we recommend using the [Model Management API](/admin/model-management) instead of the
+Although there is support for it, we recommend using the [Model Management API](/config/model-management-api) instead of
+the
 following static configuration.

@@ -70,6 +70,7 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     try:
         instances = ec2_resource.create_instances(
             ImageId=ami_id,
+            SubnetId=os.environ["LISA_SUBNET_ID"],
             MinCount=1,
             MaxCount=1,
             InstanceType="m5.large",

@@ -11,25 +11,3 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
-"""Embedding routes."""
-
-import logging
-
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-
-from ....handlers.embeddings import handle_embeddings
-from ....utils.resources import EmbeddingsRequest, RestApiResource
-
-logger = logging.getLogger(__name__)
-
-router = APIRouter()
-
-
-@router.post(f"/{RestApiResource.EMBEDDINGS.value}")
-async def embeddings(request: EmbeddingsRequest) -> JSONResponse:
-    """Text embeddings."""
-    response = await handle_embeddings(request.dict())
-
-    return JSONResponse(content=response, status_code=200)

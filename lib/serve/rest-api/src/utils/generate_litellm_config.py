@@ -25,10 +25,8 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
 
 
-@click.command()  # type: ignore
-@click.option(
-    "-f", "--filepath", type=click.Path(exists=True, file_okay=True, dir_okay=False, writable=True)
-)  # type: ignore
+@click.command()
+@click.option("-f", "--filepath", type=click.Path(exists=True, file_okay=True, dir_okay=False, writable=True))
 def generate_config(filepath: str) -> None:
     """Read LiteLLM configuration and rewrite it with LISA-deployed model information."""
     with open(filepath, "r") as fp:

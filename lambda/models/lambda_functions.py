@@ -59,23 +59,23 @@ model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-@app.exception_handler(ModelNotFoundError)  # type: ignore
+@app.exception_handler(ModelNotFoundError)
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
     return JSONResponse(status_code=404, content={"message": str(exc)})
 
 
-@app.exception_handler(RequestValidationError)  # type: ignore
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle exception when request fails validation and and translate to a 422 error."""
     return JSONResponse(
         status_code=422, content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"}
     )
 
 
-@app.exception_handler(InvalidStateTransitionError)  # type: ignore
-@app.exception_handler(ModelAlreadyExistsError)  # type: ignore
-@app.exception_handler(ValueError)  # type: ignore
+@app.exception_handler(InvalidStateTransitionError)
+@app.exception_handler(ModelAlreadyExistsError)
+@app.exception_handler(ValueError)
 async def user_error_handler(
     request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
 ) -> JSONResponse:
@@ -83,8 +83,8 @@ async def user_error_handler(
     return JSONResponse(status_code=400, content={"message": str(exc)})
 
 
-@app.post(path="", include_in_schema=False)  # type: ignore
-@app.post(path="/")  # type: ignore
+@app.post(path="", include_in_schema=False)
+@app.post(path="/")
 async def create_model(create_request: CreateModelRequest) -> CreateModelResponse:
     """Endpoint to create a model."""
     create_handler = CreateModelHandler(
@@ -95,8 +95,8 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
     return create_handler(create_request=create_request)
 
 
-@app.get(path="", include_in_schema=False)  # type: ignore
-@app.get(path="/")  # type: ignore
+@app.get(path="", include_in_schema=False)
+@app.get(path="/")
 async def list_models() -> ListModelsResponse:
     """Endpoint to list models."""
     list_handler = ListModelsHandler(
@@ -107,7 +107,7 @@ async def list_models() -> ListModelsResponse:
     return list_handler()
 
 
-@app.get(path="/{model_id}")  # type: ignore
+@app.get(path="/{model_id}")
 async def get_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to get")], request: Request
 ) -> GetModelResponse:
@@ -120,7 +120,7 @@ async def get_model(
     return get_handler(model_id=model_id)
 
 
-@app.put(path="/{model_id}")  # type: ignore
+@app.put(path="/{model_id}")
 async def update_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to update")],
     update_request: UpdateModelRequest,
@@ -134,7 +134,7 @@ async def update_model(
     return update_handler(model_id=model_id, update_request=update_request)
 
 
-@app.delete(path="/{model_id}")  # type: ignore
+@app.delete(path="/{model_id}")
 async def delete_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
@@ -147,7 +147,7 @@ async def delete_model(
     return delete_handler(model_id=model_id)
 
 
-@app.get(path="/metadata/instances")  # type: ignore
+@app.get(path="/metadata/instances")
 async def get_instances() -> list[str]:
     """Endpoint to list available instances in this region."""
     return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)

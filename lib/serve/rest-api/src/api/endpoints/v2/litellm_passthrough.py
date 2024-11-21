@@ -82,9 +82,7 @@ def generate_response(iterator: Iterator[Union[str, bytes]]) -> Iterator[str]:
             yield f"{line}\n\n"
 
 
-@router.api_route(
-    "/{api_path:path}", methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE", "HEAD"]
-)  # type: ignore
+@router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE", "HEAD"])
 async def litellm_passthrough(request: Request, api_path: str) -> Response:
     """
     Pass requests directly to LiteLLM. LiteLLM and deployed models will respond here directly.

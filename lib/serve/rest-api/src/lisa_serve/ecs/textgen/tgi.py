@@ -211,16 +211,18 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
                 object="text_completion" if is_text_completion else "chat.completion.chunk",
                 system_fingerprint=fingerprint,
                 choices=[
-                    OpenAICompletionsChoice(
-                        index=0,
-                        finish_reason=resp.details.finish_reason if resp.details else None,
-                        text=resp.token.text,
-                    )
-                    if is_text_completion
-                    else OpenAIChatCompletionsChoice(
-                        index=0,
-                        finish_reason=resp.details.finish_reason if resp.details else None,
-                        delta=OpenAIChatCompletionsDelta(content=resp.token.text, role="assistant"),
+                    (
+                        OpenAICompletionsChoice(
+                            index=0,
+                            finish_reason=resp.details.finish_reason if resp.details else None,
+                            text=resp.token.text,
+                        )
+                        if is_text_completion
+                        else OpenAIChatCompletionsChoice(
+                            index=0,
+                            finish_reason=resp.details.finish_reason if resp.details else None,
+                            delta=OpenAIChatCompletionsDelta(content=resp.token.text, role="assistant"),
+                        )
                     )
                 ],
             )

@@ -24,8 +24,9 @@ from functools import cache
 from typing import Any, Callable, Dict, TypeVar, Union
 
 import boto3
-import create_env_variables  # noqa type: ignore
 from botocore.config import Config
+
+from . import create_env_variables  # noqa type: ignore
 
 retry_config = Config(
     retries={
@@ -289,29 +290,52 @@ def get_id_token(event: dict) -> str:
     return str(auth_header).removeprefix("Bearer ").removeprefix("bearer ").strip()
 
 
+_cert_file = None
+
+
 @cache
 def get_cert_path(iam_client: Any) -> Union[str, bool]:
     """
     Get cert path for IAM certs for SSL validation against LISA Serve endpoint.
 
-    If no SSL Cert ARN is specified just default verify to true and the cert will need to be
-    signed by a known CA. Assume cert is signed with known CA if coming from ACM.
-
-    Note: this function is a copy of the same function in the lisa-sdk path. To avoid inflating the deployment size of
-    the Lambda functions, this function was copied here instead of including the entire lisa-sdk path.
+    Returns the path to the certificate file for SSL verification, or True to use
+    default verification if no certificate ARN is specified.
     """
-    cert_arn = os.environ.get("RESTAPI_SSL_CERT_ARN", "")
-    if not cert_arn or cert_arn.split(":")[2] == "acm":
+    global _cert_file
+
+    cert_arn = os.environ.get("RESTAPI_SSL_CERT_ARN")
+    if not cert_arn:
+        logger.info("No SSL certificate ARN specified, using default verification")
         return True
 
-    # We have the arn, but we need the name which is the last part of the arn
-    rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_arn.split("/")[1])
-    cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
-    cert_file = tempfile.NamedTemporaryFile(delete=False)
-    cert_file.write(cert_body.encode("utf-8"))
-    rest_api_cert_path = cert_file.name
+    try:
+        # Clean up previous cert file if it exists
+        if _cert_file and os.path.exists(_cert_file.name):
+            try:
+                os.unlink(_cert_file.name)
+            except Exception as e:
+                logger.warning(f"Failed to clean up previous cert file: {e}")
 
-    return rest_api_cert_path
+        # Get the certificate name from the ARN
+        cert_name = cert_arn.split("/")[1]
+        logger.info(f"Retrieving certificate '{cert_name}' from IAM")
+
+        # Get the certificate from IAM
+        rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
+        cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
+
+        # Create a new temporary file
+        _cert_file = tempfile.NamedTemporaryFile(delete=False)
+        _cert_file.write(cert_body.encode("utf-8"))
+        _cert_file.flush()
+
+        logger.info(f"Certificate saved to temporary file: {_cert_file.name}")
+        return _cert_file.name
+
+    except Exception as e:
+        logger.error(f"Failed to get certificate from IAM: {e}", exc_info=True)
+        # If we fail to get the cert, return True to fall back to default verification
+        return True
 
 
 @cache

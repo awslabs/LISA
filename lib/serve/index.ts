@@ -31,6 +31,7 @@ import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroups } from '../core/iam/SecurityGroups';
+import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
 const HERE = path.resolve(__dirname);
 
@@ -144,16 +145,17 @@ export class LisaServeApplicationStack extends Stack {
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';
 
-        const litellmDbSg = this.createSecurityGroup(vpc.securityGroups?.liteLlmSg, vpc);
-
-        const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-        subNets?.forEach((subnet) => {
-            litellmDbSg.connections.allowFrom(
-                Peer.ipv4(subnet.ipv4CidrBlock),
-                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                'Allow REST API private subnets to communicate with LiteLLM database',
-            );
-        });
+        const litellmDbSg = SecurityGroupFactory.createSecurityGroup(
+            this,
+            config.securityGroupConfig?.liteLlmDbSgId,
+            SecurityGroups.LITE_LLM_SG,
+            config.deploymentName,
+            vpc.vpc,
+            'LiteLLM dynamic model management database',
+        );
+        if (!config.securityGroupConfig?.liteLlmDbSgId) {
+            SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroups.LITE_LLM_SG, vpc, config);
+        }
 
         const username = config.restApiConfig.rdsConfig.username;
         const dbCreds = Credentials.fromGeneratedSecret(username);
@@ -166,7 +168,7 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc.vpc,
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
-            securityGroups: [litellmDbSg!],
+            securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
         });
 
@@ -234,25 +236,5 @@ export class LisaServeApplicationStack extends Stack {
         // Update
         this.restApi = restApi;
     }
-
-    /**
-     * Creates a security group for the LiteLLM.
-     *
-     * @param securityGroupOverride - security group overrides
-     * @param vpc
-     */
-    createSecurityGroup (
-        securityGroupOverride: ISecurityGroup | undefined,
-        vpc: Vpc,
-    ): ISecurityGroup {
-        const securityGroupName = SecurityGroups.LITE_LLM_SG;
-        if (securityGroupOverride) {
-            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroupOverride.securityGroupId);
-        } else {
-            return new SecurityGroup(this, securityGroupName, {
-                vpc: vpc.vpc,
-                description: 'Security group for LiteLLM dynamic model management database.',
-            });
-        }
-    }
 }
+

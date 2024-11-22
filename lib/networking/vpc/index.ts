@@ -19,12 +19,8 @@ import { CfnOutput } from 'aws-cdk-lib';
 import {
     GatewayVpcEndpointAwsService,
     IpAddresses,
-    ISecurityGroup,
     IVpc,
     NatProvider,
-    Peer,
-    Port,
-    SecurityGroup,
     Subnet,
     SubnetSelection,
     SubnetType,
@@ -36,6 +32,7 @@ import { createCdkId } from '../../core/utils';
 import { BaseProps, SecurityGroups } from '../../schema';
 import { SecurityGroups as SecurityGroupsEnum } from '../../core/iam/SecurityGroups';
 import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
+import { SecurityGroupFactory } from './security-group-factory';
 
 type VpcProps = {} & BaseProps;
 
@@ -127,95 +124,58 @@ export class Vpc extends Construct {
         const sgOverrides = config.securityGroupConfig;
 
         // Create security groups
-        const ecsModelAlbSg = this.createSecurityGroup(
-            sgOverrides?.lambdaSgId,
+        const ecsModelAlbSg =  SecurityGroupFactory.createSecurityGroup(
+            this,
+            sgOverrides?.modelSgId,
             SecurityGroupsEnum.ECS_MODEL_ALB_SG,
-            vpc,
             config.deploymentName,
+            vpc,
             'ECS model application load balancer',
-            true,
         );
-        const restApiAlbSg = this.createSecurityGroup(
+        if (!sgOverrides?.modelSgId) {
+            SecurityGroupFactory.addVpcTraffic(ecsModelAlbSg, vpc.vpcCidrBlock);
+        }
+
+        const restApiAlbSg = SecurityGroupFactory.createSecurityGroup(
+            this,
             sgOverrides?.restAlbSgId,
             SecurityGroupsEnum.REST_API_ALB_SG,
-            vpc,
             config.deploymentName,
+            vpc,
             'REST API application load balancer',
-            !!config.restApiConfig?.sslCertIamArn,
-            !config.restApiConfig?.sslCertIamArn,
         );
-        const lambdaSg = this.createSecurityGroup(
+        if (!sgOverrides?.restAlbSgId){
+            if (config.restApiConfig?.sslCertIamArn) {
+                SecurityGroupFactory.addHttpsTraffic(ecsModelAlbSg);
+            } else {
+                SecurityGroupFactory.addVpcTraffic(ecsModelAlbSg, vpc.vpcCidrBlock);
+            }
+        }
+
+        const lambdaSg = SecurityGroupFactory.createSecurityGroup(
+            this,
             sgOverrides?.lambdaSgId,
             SecurityGroupsEnum.LAMBDA_SG,
-            vpc,
             config.deploymentName,
+            vpc,
             'authorizer and API Lambdas',
         );
 
         this.securityGroups = {
-            ecsModelAlbSg: ecsModelAlbSg,
-            restApiAlbSg: restApiAlbSg,
-            lambdaSg: lambdaSg,
+            ecsModelAlbSg,
+            restApiAlbSg,
+            lambdaSg,
         };
 
-        if (sgOverrides?.liteLlmDbSgId) {
-            this.securityGroups.liteLlmSg = this.createSecurityGroup(sgOverrides.liteLlmDbSgId, SecurityGroupsEnum.LITE_LLM_SG, vpc);
-        }
+        // The following SGs will be created within their stack (if needed):
+        // [liteLlmSg, openSearchSg, pgVectorSg]
 
-        if (sgOverrides?.openSearchSgId) {
-            this.securityGroups.openSearchSg = this.createSecurityGroup(sgOverrides.openSearchSgId, SecurityGroupsEnum.OPEN_SEARCH_SG, vpc);
-        }
-
-        if (sgOverrides?.pgVectorSgId) {
-            this.securityGroups.pgVectorSg = this.createSecurityGroup(sgOverrides.pgVectorSgId, SecurityGroupsEnum.PG_VECTOR_SG, vpc);
-        }
-        // Update
         this.vpc = vpc;
 
         new CfnOutput(this, 'vpcArn', { value: vpc.vpcArn });
         new CfnOutput(this, 'vpcCidrBlock', { value: vpc.vpcCidrBlock });
-
         new CfnOutput(this, 'ecsModelAlbSg', { value: ecsModelAlbSg.securityGroupId });
         new CfnOutput(this, 'restApiAlbSg', { value: restApiAlbSg.securityGroupId });
         new CfnOutput(this, 'lambdaSg', { value: lambdaSg.securityGroupId });
-    }
-
-    /**
-     * Creates a security group for the VPC.
-     *
-     * @param securityGroupOverride - security group overrides
-     * @param {string} securityGroupName - The name of the security group.
-     * @param {IVpc} vpc - The virtual private cloud.
-     * @param {string} deploymentName - The deployment name.
-     * @param {string} description - The description of the security group.
-     * @param {boolean} allowVpcTraffic - Whether to allow VPC traffic.
-     * @param {boolean} allowHttpsTraffic - Whether to allow HTTPS traffic.
-     * @returns {ISecurityGroup} The security group.
-     */
-    createSecurityGroup (
-        securityGroupOverride: string | undefined,
-        securityGroupName: string,
-        vpc: IVpc,
-        deploymentName: string = 'LISA',
-        description?: string,
-        allowVpcTraffic: boolean = false,
-        allowHttpsTraffic: boolean = false,
-    ): ISecurityGroup {
-        if (securityGroupOverride) {
-            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroupOverride);
-        } else {
-            const sg = new SecurityGroup(this, securityGroupName, {
-                securityGroupName: createCdkId([deploymentName, securityGroupName]),
-                vpc: vpc,
-                description: `Security group for ${description}`,
-            });
-            if (allowVpcTraffic) {
-                sg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(80), 'Allow VPC traffic on port 80');
-            }
-            if (allowHttpsTraffic) {
-                sg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), 'Allow any traffic on port 443');
-            }
-            return sg;
-        }
     }
 }

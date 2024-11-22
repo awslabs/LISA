@@ -668,9 +668,6 @@ const RawConfigSchema = z
           'false or that an `authConfig` is provided.',
         },
     )
-    .refine((config) => !(config.securityGroupConfig && !config.vpcId),
-        { message: 'SecurityGroup overrides must be deployed with a preconfigured VPC' },
-    )
     .describe('Raw application configuration schema.');
 
 /**

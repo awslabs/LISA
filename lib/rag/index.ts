@@ -22,7 +22,7 @@ import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Code, LayerVersion, Runtime, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
@@ -37,8 +37,9 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, RagRepositoryType } from '../schema';
+import { BaseProps, Config, RagRepositoryType } from '../schema';
 import { SecurityGroups } from '../core/iam/SecurityGroups';
+import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 
@@ -150,18 +151,17 @@ export class LisaRagStack extends Stack {
         for (const ragConfig of config.ragRepositories) {
             // Create opensearch cluster for RAG
             if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
-                const openSearchSg = this.createSecurityGroup(vpc.securityGroups.openSearchSg, SecurityGroups.OPEN_SEARCH_SG, config.deploymentName, vpc, 'Security group for RAG OpenSearch domain');
-
-                // Allow communication from private subnets to ECS cluster
-                const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                subNets?.forEach((subnet) => {
-                    openSearchSg.connections.allowFrom(
-                        Peer.ipv4(subnet.ipv4CidrBlock),
-                        Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                        'Allow REST API private subnets to communicate with LiteLLM database',
-                    );
-                });
-                new CfnOutput(this, 'openSearchSg', { value: openSearchSg.securityGroupId });
+                const openSearchSg = SecurityGroupFactory.createSecurityGroup(
+                    this,
+                    config.securityGroupConfig?.openSearchSgId,
+                    SecurityGroups.OPEN_SEARCH_SG,
+                    config.deploymentName,
+                    vpc.vpc,
+                    'RAG OpenSearch domain',
+                );
+                if (!config.securityGroupConfig?.openSearchSgId) {
+                    SecurityGroupFactory.addIngress(openSearchSg, SecurityGroups.OPEN_SEARCH_SG, vpc, config);
+                }
 
                 registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
                 let openSearchDomain: IDomain;
@@ -223,7 +223,7 @@ export class LisaRagStack extends Stack {
                             }),
                         ],
                         removalPolicy: RemovalPolicy.DESTROY,
-                        securityGroups: [openSearchSg!],
+                        securityGroups: [openSearchSg],
                     });
                 }
 
@@ -270,16 +270,17 @@ export class LisaRagStack extends Stack {
                     );
                 } else {
                     // Create new DB and SG
-                    const pgvectorSg = this.createSecurityGroup(vpc.securityGroups.pgVectorSg, SecurityGroups.PG_VECTOR_SG, config.deploymentName, vpc, 'RAG PGVector database');
-
-                    const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-                    subNets?.forEach((subnet) => {
-                        pgvectorSg.connections.allowFrom(
-                            Peer.ipv4(subnet.ipv4CidrBlock),
-                            Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                            'Allow REST API private subnets to communicate with LiteLLM database',
-                        );
-                    });
+                    const pgvectorSg = SecurityGroupFactory.createSecurityGroup(
+                        this,
+                        config.securityGroupConfig?.pgVectorSgId,
+                        SecurityGroups.PG_VECTOR_SG,
+                        config.deploymentName,
+                        vpc.vpc,
+                        'RAG PGVector database',
+                    );
+                    if (!config.securityGroupConfig?.pgVectorSgId) {
+                        SecurityGroupFactory.addIngress(pgvectorSg, SecurityGroups.PG_VECTOR_SG, vpc, config);
+                    }
 
                     const username = ragConfig.rdsConfig.username;
                     const dbCreds = Credentials.fromGeneratedSecret(username);
@@ -367,33 +368,5 @@ export class LisaRagStack extends Stack {
         ragRepositoriesParam.grantRead(lambdaRole);
         modelsPs.grantRead(lambdaRole);
         endpointUrl.grantRead(lambdaRole);
-    }
-
-    /**
-     * Creates a security group for the VPC.
-     *
-     * @param securityGroupOverride - security group override
-     * @param {string} securityGroupName - The name of the security group.
-     * @param {string} deploymentName - The deployment name.
-     * @param {Vpc} vpc - The virtual private cloud.
-     * @param {string} description - The description of the security group.
-     * @returns {ISecurityGroup} The security group.
-     */
-    createSecurityGroup (
-        securityGroupOverride: ISecurityGroup | undefined,
-        securityGroupName: string,
-        deploymentName: string,
-        vpc: Vpc,
-        description: string,
-    ): ISecurityGroup {
-        if (securityGroupOverride) {
-            return SecurityGroup.fromSecurityGroupId(this, securityGroupName, securityGroupOverride.securityGroupId);
-        } else {
-            return new SecurityGroup(this, securityGroupName, {
-                securityGroupName: createCdkId([deploymentName, securityGroupName]),
-                vpc: vpc.vpc,
-                description: `Security group for ${description}`,
-            });
-        }
     }
 }

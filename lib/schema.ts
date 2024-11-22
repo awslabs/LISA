@@ -22,6 +22,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
+import { ConvertInlinePoliciesToManaged } from '@cdklabs/cdk-enterprise-iac';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
@@ -605,6 +606,7 @@ const RawConfigSchema = z
             .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
         stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
         litellmConfig: LiteLLMConfig,
+        convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
     })
     .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
         message: 'Must set PypiConfig if in an iso region',

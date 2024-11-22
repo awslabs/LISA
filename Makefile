@@ -101,7 +101,10 @@ ifneq ($(findstring $(DEPLOYMENT_STAGE),$(STACK)),$(DEPLOYMENT_STAGE))
 endif
 
 # MODEL_IDS - IDs of models to deploy
+$(warning EVAAANNNN $(yq '.ecsModels'))
+ifneq ($(yq '.ecsModels'), )
 MODEL_IDS := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels[].modelName')
+endif
 
 # MODEL_BUCKET - S3 bucket containing model artifacts
 MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketModels')

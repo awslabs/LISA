@@ -251,7 +251,7 @@ export class LisaServeApplicationStage extends Stage {
             });
         }
 
-        if(config.convertInlinePoliciesToManaged) {
+        if (config.convertInlinePoliciesToManaged) {
             stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new ConvertInlinePoliciesToManaged());
             });

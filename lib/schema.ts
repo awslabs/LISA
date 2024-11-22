@@ -22,7 +22,6 @@ import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
-import { ConvertInlinePoliciesToManaged } from '@cdklabs/cdk-enterprise-iac';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');

@@ -88,14 +88,14 @@ class PipelineEmbeddings:
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
 
-    def embed_documents(self, texts: List[str], model_name: str) -> List[List[float]]:
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
         if not texts:
             raise ValidationError("No texts provided for embedding")
 
         logger.info(f"Embedding {len(texts)} documents")
         try:
             url = f"{self.base_url}/embeddings"
-            request_data = {"input": texts, "model": model_name}
+            request_data = {"input": texts, "model": os.environ["EMBEDDING_MODEL"]}
 
             response = requests.post(
                 url,
@@ -154,12 +154,12 @@ class PipelineEmbeddings:
             logger.error(f"Failed to get embeddings: {str(e)}", exc_info=True)
             raise
 
-    def embed_query(self, text: str, model_name: str) -> List[float]:
+    def embed_query(self, text: str) -> List[float]:
         if not text or not isinstance(text, str):
             raise ValidationError("Invalid query text")
 
         logger.info("Embedding single query text")
-        return self.embed_documents([text], model_name)[0]
+        return self.embed_documents([text])[0]
 
 
 def _get_embeddings_pipeline(model_name: str) -> Any:

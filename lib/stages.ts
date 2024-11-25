@@ -15,7 +15,7 @@
 */
 
 // Deploy application to different stages.
-import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
+import { AddPermissionBoundary, ConvertInlinePoliciesToManaged } from '@cdklabs/cdk-enterprise-iac';
 import {
     Aspects,
     CfnResource,
@@ -248,6 +248,12 @@ export class LisaServeApplicationStage extends Stage {
         if (config.permissionsBoundaryAspect) {
             stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+            });
+        }
+
+        if (config.convertInlinePoliciesToManaged) {
+            stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new ConvertInlinePoliciesToManaged());
             });
         }
 

@@ -58,7 +58,7 @@ ragRepositories:
 - **s3Bucket**: The source S3 bucket where documents are stored
 - **s3Prefix**: The prefix within the S3 bucket (root directory in this example)
 - **trigger**: Specifies when the ingestion should occur (daily or on upload event)
-  - If using `event` trigger, Amazon EventBridge notifications need to be enabled in the bucket configuration 
+  - If using `event` trigger, Amazon EventBridge notifications need to be enabled in the bucket configuration
 - **collectionName**: The name of the collection in the vector store (project-mainline in this example)
 
 This configuration allows customers to:

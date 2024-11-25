@@ -37,7 +37,7 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config, RagRepositoryType } from '../schema';
+import { BaseProps, RagRepositoryType } from '../schema';
 import { SecurityGroups } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 

@@ -71,7 +71,7 @@ xdescribe.each(regions)('Core Nag Pack Tests | Region Test: %s', (awsRegion) => 
     });
 
     beforeEach(() => {
-        const networkingStack = new LisaNetworkingStack(app, `TestNetworking${awsRegion}`, {
+        new LisaNetworkingStack(app, `TestNetworking${awsRegion}`, {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
             description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,

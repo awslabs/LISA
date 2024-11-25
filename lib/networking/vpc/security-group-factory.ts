@@ -1,6 +1,21 @@
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
 import { ISecurityGroup, IVpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Config } from '../../schema';
-import { CfnOutput } from 'aws-cdk-lib';
 import { createCdkId } from '../../core/utils';
 import { Vpc } from '.';
 import { IConstruct } from 'constructs';
@@ -29,15 +44,19 @@ export class SecurityGroupFactory {
         description: string,
     ): ISecurityGroup {
         if (securityGroupOverride) {
-            return SecurityGroup.fromSecurityGroupId(construct, securityGroupName, securityGroupOverride);
+            console.log(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupName}`);
+            const sg = SecurityGroup.fromSecurityGroupId(construct, securityGroupName, securityGroupOverride);
+            // Validate the security group exists
+            if (!sg) {
+                throw new Error(`Security group ${sg} not found`);
+            }
+            return sg;
         } else {
             const sg = new SecurityGroup(construct, securityGroupName, {
                 securityGroupName: createCdkId([deploymentName, securityGroupName]),
                 vpc: vpc,
                 description: `Security group for ${description}`,
             });
-
-            // new CfnOutput(construct, securityGroupName, { value: sg.securityGroupId });
 
             return sg;
         }

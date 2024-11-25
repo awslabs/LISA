@@ -34,7 +34,6 @@ import {
     LinuxParameters,
     LogDriver,
     MountPoint,
-    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -188,7 +187,6 @@ export class ECSCluster extends Construct {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskRole: taskRole,
             volumes: volumes,
-            networkMode: NetworkMode.AWS_VPC,
         });
 
         // Add container to task definition
@@ -255,8 +253,6 @@ export class ECSCluster extends Construct {
             serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskDefinition: taskDefinition,
             circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
-            securityGroups: [securityGroup],
-            vpcSubnets: vpc.subnetSelection,
         };
 
         const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);

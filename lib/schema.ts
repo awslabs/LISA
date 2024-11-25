@@ -74,13 +74,14 @@ export type SecurityGroups = {
  * @property {string} pgVectorSgId - Security Group ID.
  */
 export const SecurityGroupConfigSchema = z.object({
-    modelSgId: z.string().startsWith('sg-').optional(),
-    restAlbSgId: z.string().startsWith('sg-').optional(),
-    lambdaSgId: z.string().startsWith('sg-').optional(),
-    liteLlmDbSgId: z.string().startsWith('sg-').optional(),
+    modelSgId: z.string().startsWith('sg-'),
+    restAlbSgId: z.string().startsWith('sg-'),
+    lambdaSgId: z.string().startsWith('sg-'),
+    liteLlmDbSgId: z.string().startsWith('sg-'),
     openSearchSgId: z.string().startsWith('sg-').optional(),
     pgVectorSgId: z.string().startsWith('sg-').optional(),
-}).describe('Security Group Overrides used across stacks.');
+})
+    .describe('Security Group Overrides used across stacks.');
 
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),

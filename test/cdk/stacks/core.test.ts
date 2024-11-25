@@ -79,8 +79,7 @@ xdescribe.each(regions)('Core Nag Pack Tests | Region Test: %s', (awsRegion) => 
         stack = new CoreStack(app, 'LisaCore', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'core', config.deploymentStage]),
-            description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`
         });
         // WHEN
         Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));

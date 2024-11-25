@@ -29,7 +29,7 @@ import { BaseProps, Config, ConfigFile, ConfigSchema } from '../../../lib/schema
 type TestConfig = [string, number, number, number, number];
 type TestValues = [number, number, number, number];
 
-const defaultWarnings: TestValues = [2, 1, 5, 5];
+const defaultWarnings: TestValues = [1, 1, 3, 5];
 const regions: TestConfig[] = [
     ['us-east-1', ...defaultWarnings],
     ['us-gov-west-1', ...defaultWarnings],

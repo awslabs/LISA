@@ -24,7 +24,7 @@ export type CallbackFunction<T = any, R = void> = (props?: T) => R;
 export type ConfirmationModalProps = {
     action: string;
     resourceName: string;
-    onConfirm: () =>  any;
+    onConfirm: () =>  void;
     postConfirm?: CallbackFunction;
     description?: string | ReactElement;
     disabled?: boolean;

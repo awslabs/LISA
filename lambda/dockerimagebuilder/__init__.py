@@ -68,16 +68,16 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     rendered_userdata = rendered_userdata.replace("{{IMAGE_ID}}", image_tag)
 
     try:
-        instances = ec2_resource.create_instances(
-            ImageId=ami_id,
-            SubnetId=os.environ.get("LISA_SUBNET_ID", None),
-            MinCount=1,
-            MaxCount=1,
-            InstanceType="m5.large",
-            UserData=rendered_userdata,
-            IamInstanceProfile={"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
-            BlockDeviceMappings=[{"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 32}}],
-            TagSpecifications=[
+        # Define common parameters
+        instance_params = {
+            "ImageId": ami_id,
+            "MinCount": 1,
+            "MaxCount": 1,
+            "InstanceType": "m5.large",
+            "UserData": rendered_userdata,
+            "IamInstanceProfile": {"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
+            "BlockDeviceMappings": [{"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 32}}],
+            "TagSpecifications": [
                 {
                     "ResourceType": "instance",
                     "Tags": [
@@ -86,7 +86,16 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
                     ],
                 }
             ],
-        )
+        }
+
+        # Add SubnetId if specified in environment
+        if "LISA_SUBNET_ID" in os.environ:
+            instance_params["SubnetId"] = os.environ["LISA_SUBNET_ID"]
+
+        # Create instance with parameters
+        instances = ec2_resource.create_instances(**instance_params)
+
         return {"instance_id": instances[0].instance_id, "image_tag": image_tag}
+
     except ClientError as e:
         raise e

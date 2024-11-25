@@ -18,14 +18,13 @@ import { Modal as CloudscapeModal, Box, SpaceBetween, Button } from '@cloudscape
 import React, { ReactElement, useState } from 'react';
 import { useAppDispatch } from '../../config/store';
 import { dismissModal } from '../reducers/modal.reducer';
-import { MutationActionCreatorResult } from '@reduxjs/toolkit/query';
 
 export type CallbackFunction<T = any, R = void> = (props?: T) => R;
 
 export type ConfirmationModalProps = {
     action: string;
     resourceName: string;
-    onConfirm: () =>  MutationActionCreatorResult<any>;
+    onConfirm: () =>  any;
     postConfirm?: CallbackFunction;
     description?: string | ReactElement;
     disabled?: boolean;

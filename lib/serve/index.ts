@@ -148,7 +148,7 @@ export class LisaServeApplicationStack extends Stack {
             this,
             config.securityGroupConfig?.liteLlmDbSecurityGroupId,
             SecurityGroups.LITE_LLM_SG,
-            config.deploymentName,
+            undefined,
             vpc.vpc,
             'LiteLLM dynamic model management database',
         );

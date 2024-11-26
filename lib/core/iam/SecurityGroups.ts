@@ -18,10 +18,10 @@
  * List of all security groups used for overrides
  */
 export enum SecurityGroups {
-    LITE_LLM_SG = 'LiteLLMScalingSg',
-    ECS_MODEL_ALB_SG = 'EcsModelAlbSg',
-    REST_API_ALB_SG = 'RestApiAlbSg',
-    LAMBDA_SG = 'LambdaSg',
-    OPEN_SEARCH_SG = 'OpenSearchSg',
-    PG_VECTOR_SG = 'PGVectorSg',
+    LITE_LLM_SG = 'LISA-LiteLLMScalingSg',
+    ECS_MODEL_ALB_SG = 'ECS-ALB-SG',
+    REST_API_ALB_SG = 'RestAPI-ALB-SG',
+    LAMBDA_SG = 'Lambda-SG',
+    OPEN_SEARCH_SG = 'OpenSearch-SG',
+    PG_VECTOR_SG = 'LISA-PGVector-SG',
 }

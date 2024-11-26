@@ -39,7 +39,7 @@ export class SecurityGroupFactory {
         construct: IConstruct,
         securityGroupOverride: string | undefined,
         securityGroupName: string,
-        deploymentName: string,
+        deploymentName: string | undefined,
         vpc: IVpc,
         description: string,
     ): ISecurityGroup {
@@ -53,9 +53,9 @@ export class SecurityGroupFactory {
             return sg;
         } else {
             const sg = new SecurityGroup(construct, securityGroupName, {
-                securityGroupName: createCdkId([deploymentName, securityGroupName]),
                 vpc: vpc,
                 description: `Security group for ${description}`,
+                ...(deploymentName && {securityGroupName: createCdkId([deploymentName, securityGroupName])}),
             });
 
             return sg;

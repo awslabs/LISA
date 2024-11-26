@@ -238,7 +238,7 @@ export class ECSCluster extends Construct {
             logging: LogDriver.awsLogs({ streamPrefix: ecsConfig.identifier }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
-            portMappings: [{ containerPort: 8080, protocol: Protocol.TCP }],
+            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,

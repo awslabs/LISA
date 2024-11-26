@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lisapy"
-version = "3.2.1"
+version = "3.3.0"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
 authors = ["Steve Goley <sgoley@amazon.com>"]
 readme = "README.md"

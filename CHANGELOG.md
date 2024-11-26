@@ -1,3 +1,26 @@
+# v3.3.0
+## Key Features
+### RAG ETL Pipeline
+- This feature introduces a second RAG ingestion capability for LISA customers. Today, customers can manually upload documents via the chatbot user interface directly into a vector store. With this new ingestion pipeline, customers have a flexible, scalable solution for automating the loading of documents into configured vector stores.
+
+## Enhancements
+- Implemented a confirmation modal prior to closing the create model wizard, enhancing user control and preventing accidental data loss
+- Added functionality allowing users to optionally override auto-generated security groups with custom security groups at deployment time
+
+## Acknowledgements
+* @bedanley
+* @djhorne-amazon
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.2.1...v3.3.0
+
+- Offers dual document loading methodologies:
+  1. Manual file upload via the chatbot user interface
+  2. Automated ingestion pipeline with configurable triggers:
+    - Scheduled daily executions
+    - Event-driven ingestion upon file upload
+
 # v3.2.1
 ## Bug Fixes
 - Resolved issue where subnet wasn't being passed into ec2 instance creation
@@ -12,6 +35,7 @@
 * @estohlmann
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v3.2.0...v3.2.1
+
 
 # v3.2.0
 ## Key Features

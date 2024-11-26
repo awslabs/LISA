@@ -44,8 +44,8 @@ type RepositoryApiProps = {
     lambdaExecutionRole: IRole;
     restApiId: string;
     rootResourceId: string;
-    securityGroups?: ISecurityGroup[];
-    vpc?: Vpc;
+    securityGroups: ISecurityGroup[];
+    vpc: Vpc;
 } & BaseProps;
 
 /**
@@ -134,9 +134,9 @@ export class RepositoryApi extends Construct {
                 commonLayers,
                 f,
                 Runtime.PYTHON_3_10,
-                lambdaExecutionRole,
                 vpc,
                 securityGroups,
+                lambdaExecutionRole,
             );
         });
     }

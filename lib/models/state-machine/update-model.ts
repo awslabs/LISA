@@ -33,8 +33,8 @@ type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[],
     role?: IRole,
-    vpc?: Vpc,
-    securityGroups?: ISecurityGroup[];
+    vpc: Vpc,
+    securityGroups: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
 };
@@ -82,8 +82,8 @@ export class UpdateModelStateMachine extends Construct {
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
                 role: role,
-                vpc: vpc?.vpc,
-                vpcSubnets: vpc?.subnetSelection,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -105,8 +105,8 @@ export class UpdateModelStateMachine extends Construct {
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
                 role: role,
-                vpc: vpc?.vpc,
-                vpcSubnets: vpc?.subnetSelection,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,
@@ -128,8 +128,8 @@ export class UpdateModelStateMachine extends Construct {
                 memorySize: LAMBDA_MEMORY,
                 reservedConcurrentExecutions: 5,
                 role: role,
-                vpc: vpc?.vpc,
-                vpcSubnets: vpc?.subnetSelection,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
                 securityGroups: securityGroups,
                 layers: lambdaLayers,
                 environment: environment,

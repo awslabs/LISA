@@ -22,7 +22,6 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { Layer } from './layers';
-import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 
 const HERE = path.resolve(__dirname);
@@ -33,12 +32,11 @@ export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
 
 type CustomCoreStackProps = {
-    vpc: Vpc;
 } & BaseProps;
 type CoreStackProps = CustomCoreStackProps & cdk.StackProps;
 
 /**
- * Creates a virtual private cloud (VPC) and other networking resources.
+ * Creates Lambda layers
  */
 export class CoreStack extends cdk.Stack {
     /**

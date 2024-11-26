@@ -89,6 +89,7 @@ describe.each(regions)('Chat Nag Pack Tests | Region Test: %s', (awsRegion) => {
             description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
             vpc: networkingStack.vpc,
         });
 

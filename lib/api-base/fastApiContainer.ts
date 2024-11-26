@@ -16,7 +16,7 @@
 
 import { CfnOutput } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
@@ -33,13 +33,13 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 2;
 /**
  * Properties for FastApiContainer Construct.
  *
- * @property {IVpc} vpc - The virtual private cloud (VPC).
- * @property {SecurityGroup} securityGroups - The security groups of the application.
+ * @property {Vpc} vpc - The virtual private cloud (VPC).
+ * @property {ISecurityGroup} securityGroup - The security groups of the application.
  */
 type FastApiContainerProps = {
     apiName: string;
     resourcePath: string;
-    securityGroup: SecurityGroup;
+    securityGroup: ISecurityGroup;
     tokenTable: ITable | undefined;
     vpc: Vpc;
 } & BaseProps;
@@ -60,7 +60,7 @@ export class FastApiContainer extends Construct {
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {RestApiProps} props - The properties of the construct.
+   * @param {FastApiContainerProps} props - The properties of the construct.
    */
     constructor (scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);

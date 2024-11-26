@@ -14,6 +14,7 @@
  limitations under the License.
  */
 
+
 // Models for schema validation.
 import * as fs from 'fs';
 import * as path from 'path';
@@ -45,15 +46,42 @@ export enum EcsSourceType {
 /**
  * Custom security groups for application.
  *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - .describe('ECS model application load balancer security group.')
- * @property {ec2.SecurityGroup} restApiAlbSg - .describe('REST API application load balancer security group.')
- * @property {ec2.SecurityGroup} lambdaSecurityGroup - .describe('Lambda security group.')
+ * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
+ * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
+ * @property {ec2.SecurityGroup} lambdaSg - Lambda security group.
+ * @property {ec2.SecurityGroup} liteLlmSg - litellm security group.
+ * @property {ec2.SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
+ * @property {ec2.SecurityGroup} pgVectorSg - PGVector security group used by RAG.
  */
 export type SecurityGroups = {
-    ecsModelAlbSg: ec2.SecurityGroup;
-    restApiAlbSg: ec2.SecurityGroup;
-    lambdaSecurityGroup: ec2.SecurityGroup;
+    ecsModelAlbSg: ec2.ISecurityGroup;
+    restApiAlbSg: ec2.ISecurityGroup;
+    lambdaSg: ec2.ISecurityGroup;
+    liteLlmSg?: ec2.ISecurityGroup;
+    openSearchSg?: ec2.ISecurityGroup;
+    pgVectorSg?: ec2.ISecurityGroup;
 };
+
+/**
+ * Configuration schema for Security Group imports.
+ * These values are none/small/all, meaning a user can import any number of these or none of these.
+ *
+ * @property {string} modelSecurityGroupId - Security Group ID.
+ * @property {string} restAlbSecurityGroupId - Security Group ID
+ * @property {string} lambdaSecurityGroupId - Security Group ID
+ * @property {string} liteLlmDbSecurityGroupId - Security Group ID.
+ * @property {string} openSearchSecurityGroupId - Security Group ID.
+ * @property {string} pgVectorSecurityGroupId - Security Group ID.
+ */
+export const SecurityGroupConfigSchema = z.object({
+    modelSecurityGroupId: z.string().startsWith('sg-'),
+    restAlbSecurityGroupId: z.string().startsWith('sg-'),
+    lambdaSecurityGroupId: z.string().startsWith('sg-'),
+    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
+    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
+    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
+})
+    .describe('Security Group Overrides used across stacks.');
 
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),
@@ -536,6 +564,7 @@ const RawConfigSchema = z
             subnetId: z.string().startsWith('subnet-'),
             ipv4CidrBlock: z.string()
         })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
+        securityGroupConfig: SecurityGroupConfigSchema.optional(),
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
             .transform((value) => REMOVAL_POLICIES[value])

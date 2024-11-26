@@ -49,9 +49,7 @@ import { createLambdaRole } from '../core/utils';
  * Properties for ModelsApi Construct.
  *
  * @property {Vpc} vpc - Stack VPC
- * @property {Layer} commonLayer - Lambda layer for all Lambdas.
- * @property {IRestApi} restAPI - REST APIGW for UI and Lambdas
- * @property {IRole} lambdaExecutionRole - Execution role for lambdas
+ * @property {string} restApiId - REST APIGW for UI and Lambdas
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  */
@@ -60,7 +58,7 @@ type ModelsApiProps = BaseProps & {
     lisaServeEndpointUrlPs: StringParameter;
     restApiId: string;
     rootResourceId: string;
-    securityGroups?: ISecurityGroup[];
+    securityGroups: ISecurityGroup[];
     vpc: Vpc;
 };
 
@@ -122,6 +120,7 @@ export class ModelsApi extends Construct {
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
             config: config,
+            securityGroups: [vpc.securityGroups.lambdaSg],
             vpc
         });
 
@@ -290,9 +289,9 @@ export class ModelsApi extends Construct {
                 environment
             },
             Runtime.PYTHON_3_10,
-            lambdaRole,
             vpc,
             securityGroups,
+            lambdaRole,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
@@ -362,9 +361,9 @@ export class ModelsApi extends Construct {
                 [commonLambdaLayer],
                 f,
                 Runtime.PYTHON_3_10,
-                lambdaRole,
                 vpc,
                 securityGroups,
+                lambdaRole,
             );
         });
 

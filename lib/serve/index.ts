@@ -29,7 +29,7 @@ import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { SecurityGroups } from '../core/iam/SecurityGroups';
+import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
 const HERE = path.resolve(__dirname);
@@ -147,13 +147,13 @@ export class LisaServeApplicationStack extends Stack {
         const litellmDbSg = SecurityGroupFactory.createSecurityGroup(
             this,
             config.securityGroupConfig?.liteLlmDbSecurityGroupId,
-            SecurityGroups.LITE_LLM_SG,
+            SecurityGroupEnum.LITE_LLM_SG,
             undefined,
             vpc.vpc,
             'LiteLLM dynamic model management database',
         );
         if (!config.securityGroupConfig?.liteLlmDbSecurityGroupId) {
-            SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroups.LITE_LLM_SG, vpc, config);
+            SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroupEnum.LITE_LLM_SG, vpc, config);
         }
 
         const username = config.restApiConfig.rdsConfig.username;

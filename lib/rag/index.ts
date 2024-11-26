@@ -38,7 +38,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, RagRepositoryType } from '../schema';
-import { SecurityGroups } from '../core/iam/SecurityGroups';
+import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
@@ -154,13 +154,13 @@ export class LisaRagStack extends Stack {
                 const openSearchSg = SecurityGroupFactory.createSecurityGroup(
                     this,
                     config.securityGroupConfig?.openSearchSecurityGroupId,
-                    SecurityGroups.OPEN_SEARCH_SG,
+                    SecurityGroupEnum.OPEN_SEARCH_SG,
                     config.deploymentName,
                     vpc.vpc,
                     'RAG OpenSearch domain',
                 );
                 if (!config.securityGroupConfig?.openSearchSecurityGroupId) {
-                    SecurityGroupFactory.addIngress(openSearchSg, SecurityGroups.OPEN_SEARCH_SG, vpc, config);
+                    SecurityGroupFactory.addIngress(openSearchSg, SecurityGroupEnum.OPEN_SEARCH_SG, vpc, config);
                 }
 
                 registeredRepositories.push({ repositoryId: ragConfig.repositoryId, type: ragConfig.type });
@@ -273,13 +273,13 @@ export class LisaRagStack extends Stack {
                     const pgvectorSg = SecurityGroupFactory.createSecurityGroup(
                         this,
                         config.securityGroupConfig?.pgVectorSecurityGroupId,
-                        SecurityGroups.PG_VECTOR_SG,
-                        config.deploymentName,
+                        SecurityGroupEnum.PG_VECTOR_SG,
+                        undefined,
                         vpc.vpc,
                         'RAG PGVector database',
                     );
                     if (!config.securityGroupConfig?.pgVectorSecurityGroupId) {
-                        SecurityGroupFactory.addIngress(pgvectorSg, SecurityGroups.PG_VECTOR_SG, vpc, config);
+                        SecurityGroupFactory.addIngress(pgvectorSg, SecurityGroupEnum.PG_VECTOR_SG, vpc, config);
                     }
 
                     const username = ragConfig.rdsConfig.username;

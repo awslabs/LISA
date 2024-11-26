@@ -17,6 +17,7 @@
 import { ISecurityGroup, IVpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Config } from '../../schema';
 import { createCdkId } from '../../core/utils';
+import { SecurityGroupNames } from '../../core/iam/SecurityGroups';
 import { Vpc } from '.';
 import { IConstruct } from 'constructs';
 
@@ -29,7 +30,7 @@ export class SecurityGroupFactory {
      * Creates a security group for the VPC.
      *
      * @param securityGroupOverride - security group override
-     * @param {string} securityGroupName - The name of the security group.
+     * @param {string} securityGroupId - The name of the security group.
      * @param {string} deploymentName - The deployment name.
      * @param {Vpc} vpc - The virtual private cloud.
      * @param {string} description - The description of the security group.
@@ -38,24 +39,25 @@ export class SecurityGroupFactory {
     static createSecurityGroup (
         construct: IConstruct,
         securityGroupOverride: string | undefined,
-        securityGroupName: string,
+        securityGroupId: string,
         deploymentName: string | undefined,
         vpc: IVpc,
         description: string,
     ): ISecurityGroup {
         if (securityGroupOverride) {
-            console.log(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupName}`);
-            const sg = SecurityGroup.fromSecurityGroupId(construct, securityGroupName, securityGroupOverride);
+            console.log(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupId}`);
+            const sg = SecurityGroup.fromSecurityGroupId(construct, securityGroupId, securityGroupOverride);
             // Validate the security group exists
             if (!sg) {
                 throw new Error(`Security group ${sg} not found`);
             }
             return sg;
         } else {
-            const sg = new SecurityGroup(construct, securityGroupName, {
+            const securityGroupName = SecurityGroupNames[securityGroupId];
+            const sg = new SecurityGroup(construct, securityGroupId, {
                 vpc: vpc,
                 description: `Security group for ${description}`,
-                ...(deploymentName && {securityGroupName: createCdkId([deploymentName, securityGroupName])}),
+                ...(securityGroupName && {securityGroupName: createCdkId(deploymentName ? [deploymentName, securityGroupName] : [securityGroupName])}),
             });
 
             return sg;

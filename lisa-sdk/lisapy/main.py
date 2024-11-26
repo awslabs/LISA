@@ -51,7 +51,7 @@ class Lisa(BaseModel):
 
     _session: Session
 
-    @field_validator("url")  # type: ignore
+    @field_validator("url")
     def validate_url(cls: "Lisa", v: str) -> str:
         """Validate URL is properly formatted."""
         url = v.rstrip("/")

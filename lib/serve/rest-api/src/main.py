@@ -147,7 +147,7 @@ app.add_middleware(
 ##############
 
 
-@app.middleware("http")  # type: ignore
+@app.middleware("http")
 async def process_request(request: Request, call_next: Any) -> Any:
     """Middleware for processing all HTTP requests."""
     event = "process_request"

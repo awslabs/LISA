@@ -86,7 +86,9 @@ DEPLOYMENT_STAGE := prod
 endif
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR
+ifneq ($(yq '.accountNumbersEcr'), )
 ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumbersEcr[])
+endif
 
 # Append deployed account number to array for dockerLogin rule
 ACCOUNT_NUMBERS_ECR := $(ACCOUNT_NUMBERS_ECR) $(ACCOUNT_NUMBER)
@@ -101,7 +103,9 @@ ifneq ($(findstring $(DEPLOYMENT_STAGE),$(STACK)),$(DEPLOYMENT_STAGE))
 endif
 
 # MODEL_IDS - IDs of models to deploy
+ifneq ($(yq '.ecsModels'), )
 MODEL_IDS := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels[].modelName')
+endif
 
 # MODEL_BUCKET - S3 bucket containing model artifacts
 MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketModels')

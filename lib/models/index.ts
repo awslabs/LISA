@@ -31,7 +31,7 @@ type LisaModelsApiStackProps = BaseProps &
       lisaServeEndpointUrlPs: StringParameter;
       restApiId: string;
       rootResourceId: string;
-      securityGroups?: ISecurityGroup[];
+      securityGroups: ISecurityGroup[];
       vpc: Vpc;
   };
 

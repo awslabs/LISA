@@ -35,6 +35,7 @@ import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { z } from 'zod';
 import { SerializedError } from '@reduxjs/toolkit';
 import { getJsonDifference } from '../../../shared/util/utils';
+import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -281,7 +282,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     return (
         <Modal size={'large'} onDismiss={() => {
-            props.setVisible(false); props.setIsEdit(false); resetState();
+            dispatch(
+                setConfirmationModal({
+                    action: 'Abandon',
+                    resourceName: 'Model Creation',
+                    onConfirm: () => {
+                        props.setVisible(false);
+                        props.setIsEdit(false);
+                        resetState();
+                    },
+                    description: 'Are you sure you want to abandon your changes?'
+                }));
         }} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
             <Wizard
                 i18nStrings={{
@@ -322,9 +333,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     scrollToInvalid();
                 }}
                 onCancel={() => {
-                    props.setVisible(false);
-                    props.setIsEdit(false);
-                    resetState();
+                    dispatch(
+                        setConfirmationModal({
+                            action: 'Abandon',
+                            resourceName: 'Model Creation',
+                            onConfirm: () => {
+                                props.setVisible(false);
+                                props.setIsEdit(false);
+                                resetState();
+                            },
+                            description: 'Are you sure you want to abandon your changes?'
+                        }));
                 }}
                 onSubmit={() => {
                     handleSubmit();

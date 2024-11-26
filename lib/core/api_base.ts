@@ -25,7 +25,7 @@ import { Vpc } from '../networking/vpc';
 type LisaApiBaseStackProps = {
     vpc: Vpc;
 } & BaseProps &
-  StackProps;
+    StackProps;
 
 export class LisaApiBaseStack extends Stack {
     public readonly restApi: RestApi;
@@ -61,6 +61,7 @@ export class LisaApiBaseStack extends Stack {
         // Create the authorizer Lambda for APIGW
         const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
             config: config,
+            securityGroups: [vpc.securityGroups.lambdaSg],
             vpc,
         });
 

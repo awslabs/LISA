@@ -12,13 +12,13 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // Models for schema validation.
 import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
+import { SecurityGroupConfigSchema } from '../../../lib/schema';
 
 const VERSION: string = '2.0.1';
 
@@ -62,19 +62,6 @@ export type RegisteredModel = {
     modelType: ModelType;
     endpointUrl: string;
     streaming?: boolean;
-};
-
-/**
- * Custom security groups for application.
- *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
- * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
- * @property {ec2.SecurityGroup} lambdaSecurityGroup - Lambda security group.
- */
-export type SecurityGroups = {
-    ecsModelAlbSg: ec2.SecurityGroup;
-    restApiAlbSg: ec2.SecurityGroup;
-    lambdaSecurityGroup: ec2.SecurityGroup;
 };
 
 /**
@@ -336,7 +323,7 @@ const ImageRegistryAsset = z.object({
  *
  * @property {string} baseImage - Base image for the container.
  * @property {Record<string, string>} [environment={}] - Environment variables for the container.
- * @property {ContainerHealthCheckConfig} [healthCheckConfig={}] - Health check configuration for the container.
+ * @property {ContainerHealthCheckConfigSchema} [healthCheckConfig={}] - Health check configuration for the container.
  * @property {number} [sharedMemorySize=0] - The value for the size of the /dev/shm volume.
  */
 const ContainerConfigSchema = z.object({
@@ -380,7 +367,7 @@ const HealthCheckConfigSchema = z.object({
  * Configuration schema for the load balancer.
  *
  * @property {string} [sslCertIamArn=null] - SSL certificate IAM ARN for load balancer.
- * @property {HealthCheckConfig} healthCheckConfig - Health check configuration for the load balancer.
+ * @property {HealthCheckConfigSchema} healthCheckConfig - Health check configuration for the load balancer.
  * @property {string} domainName - Domain name to use instead of the load balancer's default DNS name.
  */
 const LoadBalancerConfigSchema = z.object({
@@ -414,7 +401,7 @@ const MetricConfigSchema = z.object({
 * @property {number} [cooldown=420] - Cool down period in seconds between scaling activities.
 * @property {number} [defaultInstanceWarmup=180] - Default warm-up time in seconds until a newly launched instance can
                                                    send metrics to CloudWatch.
-* @property {MetricConfig} metricConfig - Metric configuration for auto scaling.
+ * @property {MetricConfigSchema} metricConfig - Metric configuration for auto scaling.
 */
 const AutoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(30),
@@ -432,7 +419,7 @@ const AutoScalingConfigSchema = z.object({
  * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
  * @property {Record<string,string>} buildArgs - Optional build args to be applied when creating the
  *                                              task container if containerConfig.image.type is ASSET
- * @property {ContainerConfig} containerConfig - Configuration for the container.
+ * @property {ContainerConfigSchema} containerConfig - Configuration for the container.
  * @property {number} [containerMemoryBuffer=2048] - This is the amount of memory to buffer (or subtract off)
  *                                                from the total instance memory, if we don't include this,
  *                                                the container can have a hard time finding available RAM
@@ -441,7 +428,7 @@ const AutoScalingConfigSchema = z.object({
  * @property {identifier} modelType - Unique identifier for the cluster which will be used when naming resources
  * @property {string} instanceType - EC2 instance type for running the model.
  * @property {boolean} [internetFacing=false] - Whether or not the cluster will be configured as internet facing
- * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
+ * @property {LoadBalancerConfigSchema} loadBalancerConfig - Configuration for load balancer settings.
  */
 const EcsBaseConfigSchema = z.object({
     amiHardwareType: z.nativeEnum(AmiHardwareType),
@@ -477,9 +464,9 @@ export type ECSConfig = EcsBaseConfig;
  * @property {string} modelType - Type of model.
  * @property {string} instanceType - EC2 instance type for running the model.
  * @property {string} inferenceContainer - Prebuilt inference container for serving model.
- * @property {ContainerConfig} containerConfig - Configuration for the container.
+ * @property {ContainerConfigSchema} containerConfig - Configuration for the container.
  * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
- * @property {LoadBalancerConfig} loadBalancerConfig - Configuration for load balancer settings.
+ * @property {LoadBalancerConfigSchema} loadBalancerConfig - Configuration for load balancer settings.
  * @property {string} [localModelCode='/opt/model-code'] - Path in container for local model code.
  * @property {string} [modelHosting='ecs'] - Model hosting.
  */
@@ -562,7 +549,6 @@ const PypiConfigSchema = z.object({
  * @property {string} deploymentStage - Deployment stage for the application.
  * @property {string} removalPolicy - Removal policy for resources (destroy or retain).
  * @property {boolean} [runCdkNag=false] - Whether to run CDK Nag checks.
- * @property {string} [lambdaSourcePath='./lambda'] - Path to Lambda source code dir.
  * @property {string} s3BucketModels - S3 bucket for models.
  * @property {string} mountS3DebUrl - URL for S3-mounted Debian package.
  * @property {string[]} [accountNumbersEcr=null] - List of AWS account numbers for ECR repositories.
@@ -570,11 +556,7 @@ const PypiConfigSchema = z.object({
  * @property {boolean} [deployChat=true] - Whether to deploy chat stacks.
  * @property {boolean} [deployUi=true] - Whether to deploy UI stacks.
  * @property {string} logLevel - Log level for application.
- * @property {AuthConfigSchema} authConfig - Authorization configuration.
- * @property {RagRepositoryConfigSchema} ragRepositoryConfig - Rag Repository configuration.
- * @property {RagFileProcessingConfigSchema} ragFileProcessingConfig - Rag file processing configuration.
  * @property {EcsModelConfigSchema[]} ecsModels - Array of ECS model configurations.
- * @property {ApiGatewayConfigSchema} apiGatewayConfig - API Gateway Endpoint configuration.
  * @property {string} [nvmeHostMountPath='/nvme'] - Host path for NVMe drives.
  * @property {string} [nvmeContainerMountPath='/nvme'] - Container path for NVMe drives.
  * @property {Array<{ Key: string, Value: string }>} [tags=null] - Array of key-value pairs for tagging.
@@ -591,6 +573,7 @@ const RawConfigSchema = z
         vpcId: z.string().optional(),
         deploymentStage: z.string(),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')]).transform((value) => REMOVAL_POLICIES[value]),
+        securityGroupConfig: SecurityGroupConfigSchema.optional(),
         s3BucketModels: z.string(),
         mountS3DebUrl: z.string().optional(),
         pypiConfig: PypiConfigSchema.optional().default({

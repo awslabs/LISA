@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post(f"/{RestApiResource.GENERATE.value}")  # type: ignore
+@router.post(f"/{RestApiResource.GENERATE.value}")
 async def generate(request: GenerateRequest) -> JSONResponse:
     """Text generation."""
     response = await handle_generate(request.dict())
@@ -41,7 +41,7 @@ async def generate(request: GenerateRequest) -> JSONResponse:
     return JSONResponse(content=response, status_code=200)
 
 
-@router.post(f"/{RestApiResource.GENERATE_STREAM.value}")  # type: ignore
+@router.post(f"/{RestApiResource.GENERATE_STREAM.value}")
 async def generate_stream(request: GenerateStreamRequest) -> StreamingResponse:
     """Text generation with streaming."""
     return StreamingResponse(
@@ -50,7 +50,7 @@ async def generate_stream(request: GenerateStreamRequest) -> StreamingResponse:
     )
 
 
-@router.post(f"/{RestApiResource.OPENAI_CHAT_COMPLETIONS.value}")  # type: ignore
+@router.post(f"/{RestApiResource.OPENAI_CHAT_COMPLETIONS.value}")
 async def openai_chat_completion_generate_stream(request: OpenAIChatCompletionsRequest) -> StreamingResponse:
     """Text generation with streaming."""
     return StreamingResponse(
@@ -59,7 +59,7 @@ async def openai_chat_completion_generate_stream(request: OpenAIChatCompletionsR
     )
 
 
-@router.post(f"/{RestApiResource.OPENAI_COMPLETIONS.value}")  # type: ignore
+@router.post(f"/{RestApiResource.OPENAI_COMPLETIONS.value}")
 async def openai_completion_generate_stream(request: OpenAICompletionsRequest) -> StreamingResponse:
     """Text generation with streaming."""
     return StreamingResponse(

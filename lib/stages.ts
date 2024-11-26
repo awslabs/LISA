@@ -12,10 +12,10 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // Deploy application to different stages.
-import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
+import { AddPermissionBoundary, ConvertInlinePoliciesToManaged } from '@cdklabs/cdk-enterprise-iac';
 import {
     Aspects,
     CfnResource,
@@ -31,7 +31,7 @@ import { Construct } from 'constructs';
 import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
 
 import { LisaChatApplicationStack } from './chat';
-import { CoreStack, ARCHITECTURE } from './core';
+import { ARCHITECTURE, CoreStack } from './core';
 import { LisaApiBaseStack } from './core/api_base';
 import { LisaApiDeploymentStack } from './core/api_deployment';
 import { createCdkId } from './core/utils';
@@ -65,6 +65,49 @@ class UpdateLaunchTemplateMetadataOptions implements IAspect {
             // Directly modify the CloudFormation properties to include the desired settings
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpPutResponseHopLimit', 2);
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpTokens', 'required');
+        }
+    }
+}
+
+/**
+ * Removes all AWS::EC2::SecurityGroup resources in a CDK application. It directly removes the synthesized
+ * CloudFormation template, removing the AWS::EC2::SecurityGroup resources.
+ */
+class RemoveSecurityGroupAspect implements IAspect {
+    private readonly sgId?: string;
+
+    /**
+     * Constructs the aspect with the given security group ID.
+     *
+     * @param {string} sgId - The SG ID you'd like to use instead of auto gen'd ones, in this case it's applied to ECS instances
+     */
+    constructor (sgId?: string) {
+        this.sgId = sgId;
+    }
+
+    /**
+     * Checks if the given node is an instance of CfnResource and specifically an AWS::EC2::SecurityGroup or SecurityGroupIngress resource.
+     * If true, we delete these objects because we're importing these resources
+     *
+     * @param {Construct} node - The CDK construct being visited.
+     */
+    public visit (node: Construct): void {
+        // Check if the node is a CloudFormation resource of type AWS::EC2::SecurityGroup
+        if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::SecurityGroup') {
+            // Remove SG resource
+            const parent = node.node.scope;
+            parent?.node.tryRemoveChild(node.node.id);
+        }
+        if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::SecurityGroupIngress') {
+            // Remove SGI resource
+            const parent = node.node.scope;
+            parent?.node.tryRemoveChild(node.node.id);
+        }
+        if (this.sgId) {
+            if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::LaunchTemplate') {
+                // Directly modify the CloudFormation properties to remove get attr pointing to removed sg(s)
+                node.addOverride('Properties.LaunchTemplateData.SecurityGroupIds', [this.sgId]);
+            }
         }
     }
 }
@@ -126,7 +169,6 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'core', config.deploymentStage]),
             description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
         });
         stacks.push(coreStack);
 
@@ -144,7 +186,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc,
+            vpc: networkingStack.vpc
         });
         apiBaseStack.addDependency(coreStack);
         apiBaseStack.addDependency(serveStack);
@@ -166,6 +208,7 @@ export class LisaServeApplicationStage extends Stage {
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
             vpc: networkingStack.vpc,
         });
         modelsApiDeploymentStack.addDependency(serveStack);
@@ -180,6 +223,7 @@ export class LisaServeApplicationStage extends Stage {
                 description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                 vpc: networkingStack.vpc,
             });
             chatStack.addDependency(apiBaseStack);
@@ -212,6 +256,7 @@ export class LisaServeApplicationStage extends Stage {
                         restApiId: apiBaseStack.restApiId,
                         rootResourceId: apiBaseStack.rootResourceId,
                         stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
+                        securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                         vpc: networkingStack.vpc,
                     });
                     ragStack.addDependency(coreStack);
@@ -251,11 +296,23 @@ export class LisaServeApplicationStage extends Stage {
             });
         }
 
+        if (config.convertInlinePoliciesToManaged) {
+            stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new ConvertInlinePoliciesToManaged());
+            });
+        }
+
         // Run CDK-nag on app if specified
         if (config.runCdkNag) {
             stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
                 Aspects.of(lisaStack).add(new NIST80053R5Checks({ reports: true, verbose: true }));
+            });
+        }
+
+        if (config.securityGroupConfig) {
+            stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
             });
         }
 

@@ -24,6 +24,7 @@ cdk.context.json
 .venv
 .DS_Store
 *.iml
+*.code-workspace
 
 # Coverage Statistic Folders
 coverage

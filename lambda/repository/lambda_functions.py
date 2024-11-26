@@ -19,17 +19,18 @@ import os
 from typing import Any, Dict, List
 
 import boto3
-import create_env_variables  # noqa: F401
+import requests
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
-from lisapy.utils import get_cert_path
-from utilities.common_functions import api_wrapper, get_id_token, retry_config
+from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, retry_config
 from utilities.file_processing import process_record
+from utilities.validation import validate_model_name, ValidationError
 from utilities.vector_store import get_vector_store_client
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
+secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 s3 = session.client(
     "s3",
@@ -54,11 +55,128 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
         lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
 
     base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
+    cert_path = get_cert_path(iam_client)
 
     embedding = LisaOpenAIEmbeddings(
-        lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=get_cert_path(iam_client)
+        lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=cert_path
     )
     return embedding
+
+    # Create embeddings client that matches LisaOpenAIEmbeddings interface
+
+
+class PipelineEmbeddings:
+    def __init__(self) -> None:
+        try:
+            # Get the management key secret name from SSM Parameter Store
+            secret_name_param = ssm_client.get_parameter(Name=os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"])
+            secret_name = secret_name_param["Parameter"]["Value"]
+
+            # Get the management token from Secrets Manager using the secret name
+            secret_response = secrets_client.get_secret_value(SecretId=secret_name)
+            self.token = secret_response["SecretString"]
+
+            # Get the API endpoint from SSM
+            lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
+            self.base_url = f"{lisa_api_param_response['Parameter']['Value']}/{os.environ['REST_API_VERSION']}/serve"
+
+            # Get certificate path for SSL verification
+            self.cert_path = get_cert_path(iam_client)
+
+            logger.info("Successfully initialized pipeline embeddings")
+        except Exception:
+            logger.error("Failed to initialize pipeline embeddings", exc_info=True)
+            raise
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        if not texts:
+            raise ValidationError("No texts provided for embedding")
+
+        logger.info(f"Embedding {len(texts)} documents")
+        try:
+            url = f"{self.base_url}/embeddings"
+            request_data = {"input": texts, "model": os.environ["EMBEDDING_MODEL"]}
+
+            response = requests.post(
+                url,
+                json=request_data,
+                headers={"Authorization": self.token, "Content-Type": "application/json"},
+                verify=self.cert_path,  # Use proper SSL verification
+                timeout=300,  # 5 minute timeout
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Embedding request failed with status {response.status_code}")
+                logger.error(f"Response content: {response.text}")
+                raise Exception(f"Embedding request failed with status {response.status_code}")
+
+            result = response.json()
+            logger.debug(f"API Response: {result}")  # Log the full response for debugging
+
+            # Handle different response formats
+            embeddings = []
+            if isinstance(result, dict):
+                if "data" in result:
+                    # OpenAI-style format
+                    for item in result["data"]:
+                        if isinstance(item, dict) and "embedding" in item:
+                            embeddings.append(item["embedding"])
+                        else:
+                            embeddings.append(item)  # Assume the item itself is the embedding
+                else:
+                    # Try to find embeddings in the response
+                    for key in ["embeddings", "embedding", "vectors", "vector"]:
+                        if key in result:
+                            embeddings = result[key]
+                            break
+            elif isinstance(result, list):
+                # Direct list format
+                embeddings = result
+
+            if not embeddings:
+                logger.error(f"Could not find embeddings in response: {result}")
+                raise Exception("No embeddings found in API response")
+
+            if len(embeddings) != len(texts):
+                logger.error(f"Mismatch between number of texts ({len(texts)}) and embeddings ({len(embeddings)})")
+                raise Exception("Number of embeddings does not match number of input texts")
+
+            logger.info(f"Successfully embedded {len(texts)} documents")
+            return embeddings
+
+        except requests.Timeout:
+            logger.error("Embedding request timed out")
+            raise Exception("Embedding request timed out after 5 minutes")
+        except requests.RequestException as e:
+            logger.error(f"Request failed: {str(e)}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get embeddings: {str(e)}", exc_info=True)
+            raise
+
+    def embed_query(self, text: str) -> List[float]:
+        if not text or not isinstance(text, str):
+            raise ValidationError("Invalid query text")
+
+        logger.info("Embedding single query text")
+        return self.embed_documents([text])[0]
+
+
+def _get_embeddings_pipeline(model_name: str) -> Any:
+    """
+    Get embeddings for pipeline requests using management token.
+
+    Args:
+        model_name: Name of the embedding model to use
+
+    Raises:
+        ValidationError: If model name is invalid
+        Exception: If API request fails
+    """
+    logger.info("Starting pipeline embeddings request")
+    validate_model_name(model_name)
+
+    return PipelineEmbeddings()
 
 
 @api_wrapper

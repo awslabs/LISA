@@ -1,6 +1,6 @@
 {
   "name": "lisa",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "bin": {
     "lisa": "bin/lisa.js"
   },
@@ -12,8 +12,7 @@
     "prepare": "husky install",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "postinstall": "(cd lib/user-interface/react && npm install) && (cd lib/docs && npm install)",
-    "postbuild": "(cd lib/user-interface/react && npm build) && (cd lib/docs && npm build)",
-    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts"
+    "postbuild": "(cd lib/user-interface/react && npm build) && (cd lib/docs && npm build)"
   },
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
@@ -47,7 +46,9 @@
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "source-map-support": "^0.5.21",
-    "zod": "^3.22.3"
+    "util": "^0.12.5",
+    "zod": "^3.22.3",
+    "aws-sdk": "^2.0.0"
   },
   "lint-staged": {
     "*.ts": [
@@ -67,5 +68,6 @@
     "test": "test"
   },
   "author": "",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "keywords": []
 }

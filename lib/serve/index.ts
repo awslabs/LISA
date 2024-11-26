@@ -12,14 +12,13 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // LISA-serve Stack.
 import path from 'path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
-import { Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -30,6 +29,8 @@ import { Vpc } from '../networking/vpc';
 import { BaseProps } from '../schema';
 import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
+import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
 const HERE = path.resolve(__dirname);
 
@@ -82,9 +83,10 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc,
         });
 
+        // Use a stable name for the management key secret
         const managementKeySecret = new Secret(this, createCdkId([id, 'managementKeySecret']), {
-            secretName: `lisa_management_key_secret-${Date.now()}`, // pragma: allowlist secret`
-            description: 'This is a secret created with AWS CDK',
+            secretName: `${config.deploymentName}-lisa-management-key`, // Use stable name based on deployment
+            description: 'LISA management key secret',
             generateSecretString: {
                 excludePunctuation: true,
                 passwordLength: 16
@@ -142,19 +144,17 @@ export class LisaServeApplicationStack extends Stack {
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';
 
-        const litellmDbSg = new SecurityGroup(this, 'LISA-LiteLLMScalingSg', {
-            vpc: vpc.vpc,
-            description: 'Security group for LiteLLM dynamic model management database.',
-        });
-
-        const subNets = config.subnets && config.vpcId ? config.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
-        subNets?.forEach((subnet) => {
-            litellmDbSg.connections.allowFrom(
-                Peer.ipv4(subnet.ipv4CidrBlock),
-                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
-                'Allow REST API private subnets to communicate with LiteLLM database',
-            );
-        });
+        const litellmDbSg = SecurityGroupFactory.createSecurityGroup(
+            this,
+            config.securityGroupConfig?.liteLlmDbSecurityGroupId,
+            SecurityGroupEnum.LITE_LLM_SG,
+            undefined,
+            vpc.vpc,
+            'LiteLLM dynamic model management database',
+        );
+        if (!config.securityGroupConfig?.liteLlmDbSecurityGroupId) {
+            SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroupEnum.LITE_LLM_SG, vpc, config);
+        }
 
         const username = config.restApiConfig.rdsConfig.username;
         const dbCreds = Credentials.fromGeneratedSecret(username);
@@ -167,7 +167,7 @@ export class LisaServeApplicationStack extends Stack {
             vpc: vpc.vpc,
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
-            securityGroups: [litellmDbSg!],
+            securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
         });
 

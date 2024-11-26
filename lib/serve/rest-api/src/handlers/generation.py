@@ -31,7 +31,7 @@ async def handle_generate(request_data: Dict[str, Any]) -> Dict[str, Any]:
     return response.dict()  # type: ignore
 
 
-@handle_stream_exceptions  # type: ignore
+@handle_stream_exceptions
 async def handle_generate_stream(request_data: Dict[str, Any]) -> AsyncGenerator[str, None]:
     """Handle for generate_stream endpoint."""
     model, model_kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE_STREAM)
@@ -57,7 +57,7 @@ def parse_model_provider_names(model_string: str) -> Tuple[str, str]:
     return model_name, provider
 
 
-@handle_stream_exceptions  # type: ignore
+@handle_stream_exceptions
 async def handle_openai_generate_stream(
     request_data: Dict[str, Any], is_text_completion: bool = False
 ) -> AsyncGenerator[str, None]:

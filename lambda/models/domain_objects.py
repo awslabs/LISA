@@ -98,7 +98,7 @@ class AutoScalingConfig(BaseModel):
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
 
-    @model_validator(mode="after")  # type: ignore
+    @model_validator(mode="after")
     def validate_auto_scaling_config(self) -> Self:
         """Validate autoScalingConfig values."""
         if self.minCapacity > self.maxCapacity:
@@ -115,7 +115,7 @@ class AutoScalingInstanceConfig(BaseModel):
     maxCapacity: Optional[PositiveInt] = None
     desiredCapacity: Optional[PositiveInt] = None
 
-    @model_validator(mode="after")  # type: ignore
+    @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
         """Validate autoScalingInstanceConfig values."""
         config_fields = [self.minCapacity, self.maxCapacity, self.desiredCapacity]
@@ -155,7 +155,7 @@ class ContainerConfig(BaseModel):
     healthCheckConfig: ContainerHealthCheckConfig
     environment: Optional[Dict[str, str]] = {}
 
-    @field_validator("environment")  # type: ignore
+    @field_validator("environment")
     @classmethod
     def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
         """Validate that all keys in Dict are not empty."""
@@ -201,7 +201,7 @@ class CreateModelRequest(BaseModel):
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
 
-    @model_validator(mode="after")  # type: ignore
+    @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
         """Validate whole request object."""
         # Validate that an embedding model cannot be set as streaming-enabled
@@ -252,7 +252,7 @@ class UpdateModelRequest(BaseModel):
     modelType: Optional[ModelType] = None
     streaming: Optional[bool] = None
 
-    @model_validator(mode="after")  # type: ignore
+    @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
         """Validate whole request object."""
         fields = [
@@ -273,7 +273,7 @@ class UpdateModelRequest(BaseModel):
             raise ValueError("Embedding model cannot be set with streaming enabled.")
         return self
 
-    @field_validator("autoScalingInstanceConfig")  # type: ignore
+    @field_validator("autoScalingInstanceConfig")
     @classmethod
     def validate_autoscaling_instance_config(cls, config: AutoScalingInstanceConfig) -> AutoScalingInstanceConfig:
         """Validate that the AutoScaling instance config has at least one positive value."""

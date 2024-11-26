@@ -27,7 +27,7 @@ import {
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
-
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
@@ -36,7 +36,8 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
     mountS3DebUrl: string;
-    vpc?: Vpc;
+    securityGroups: ISecurityGroup[];
+    vpc: Vpc;
 };
 
 export class DockerImageBuilder extends Construct {
@@ -121,7 +122,7 @@ export class DockerImageBuilder extends Construct {
 
         role.attachInlinePolicy(assumeCdkPolicy);
         role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
-
+        role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'));
         const ec2InstanceProfileId = createCdkId([stackName, 'docker-image-builder-profile']);
         const ec2InstanceProfile = new InstanceProfile(this, ec2InstanceProfileId, {
             instanceProfileName: ec2InstanceProfileId,
@@ -150,8 +151,9 @@ export class DockerImageBuilder extends Construct {
                 'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl,
                 ...(props.config?.subnets && {'LISA_SUBNET_ID': props.config.subnets[0].subnetId})
             },
-            vpc: props.vpc?.subnetSelection ? props.vpc?.vpc : undefined,
-            vpcSubnets: props.vpc?.subnetSelection,
+            vpc: props.vpc.vpc,
+            vpcSubnets: props.vpc.subnetSelection,
+            securityGroups: props.securityGroups,
         });
 
     }

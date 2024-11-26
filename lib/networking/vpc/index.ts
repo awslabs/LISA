@@ -1,38 +1,38 @@
 /**
-  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-  Licensed under the Apache License, Version 2.0 (the "License").
-  You may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 
 // VPC Construct.
 import { CfnOutput } from 'aws-cdk-lib';
 import {
-    Vpc as ec2Vpc,
     GatewayVpcEndpointAwsService,
     IpAddresses,
     IVpc,
     NatProvider,
-    Peer,
-    Port,
-    SecurityGroup,
+    Subnet,
+    SubnetSelection,
     SubnetType,
-    Subnet, SubnetSelection
+    Vpc as ec2Vpc,
 } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
-import { SecurityGroups, BaseProps } from '../../schema';
+import { BaseProps, SecurityGroups } from '../../schema';
+import { SecurityGroupEnum } from '../../core/iam/SecurityGroups';
 import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
+import { SecurityGroupFactory } from './security-group-factory';
 
 type VpcProps = {} & BaseProps;
 
@@ -53,9 +53,10 @@ export class Vpc extends Construct {
     public readonly subnetSelection?: SubnetSelection;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   */
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param props
+     */
     constructor (scope: Construct, id: string, props: VpcProps) {
         super(scope, id);
         const { config } = props;
@@ -74,15 +75,11 @@ export class Vpc extends Construct {
                     subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet.subnetId))
                 };
 
-                this.subnetGroup = new SubnetGroup(
-                    this,
-                    createCdkId([config.deploymentName, 'Imported-Subnets']),
-                    {
-                        vpc: vpc,
-                        description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
-                        vpcSubnets: this.subnetSelection,
-                    }
-                );
+                this.subnetGroup = new SubnetGroup(this, createCdkId([config.deploymentName, 'Imported-Subnets']), {
+                    vpc: vpc,
+                    description: 'This SubnetGroup is made up of imported Subnets via the deployment config',
+                    vpcSubnets: this.subnetSelection,
+                });
             }
         } else {
             // Create VPC
@@ -124,48 +121,61 @@ export class Vpc extends Construct {
             }
         }
 
+        const sgOverrides = config.securityGroupConfig;
+
         // Create security groups
-        const ecsModelAlbSg = new SecurityGroup(this, 'EcsModelAlbSg', {
-            securityGroupName: createCdkId([config.deploymentName, 'ECS-ALB-SG']),
-            vpc: vpc,
-            description: 'Security group for ECS model application load balancer',
-        });
-        const restApiAlbSg = new SecurityGroup(this, 'RestApiAlbSg', {
-            securityGroupName: createCdkId([config.deploymentName, 'RestAPI-ALB-SG']),
-            vpc: vpc,
-            description: 'Security group for REST API application load balancer',
-        });
-        const lambdaSecurityGroup = new SecurityGroup(this, 'LambdaSecurityGroup', {
-            securityGroupName: createCdkId([config.deploymentName, 'Lambda-SG']),
-            vpc: vpc,
-            description: 'Security group for authorizer and API Lambdas',
-        });
-
-        // Configure security group rules
-        // All HTTP VPC traffic -> ECS model ALB
-        ecsModelAlbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(80), 'Allow VPC traffic on port 80');
-
-        if (config.restApiConfig?.sslCertIamArn) {
-            // All HTTPS IPV4 traffic -> REST API ALB
-            restApiAlbSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), 'Allow any traffic on port 443');
-        } else {
-            // All HTTP VPC traffic -> REST API ALB
-            restApiAlbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(80), 'Allow VPC traffic on port 80');
+        const ecsModelAlbSg =  SecurityGroupFactory.createSecurityGroup(
+            this,
+            sgOverrides?.modelSecurityGroupId,
+            SecurityGroupEnum.ECS_MODEL_ALB_SG,
+            config.deploymentName,
+            vpc,
+            'ECS model application load balancer',
+        );
+        if (!sgOverrides?.modelSecurityGroupId) {
+            SecurityGroupFactory.addVpcTraffic(ecsModelAlbSg, vpc.vpcCidrBlock);
         }
 
-        // Update
-        this.vpc = vpc;
+        const restApiAlbSg = SecurityGroupFactory.createSecurityGroup(
+            this,
+            sgOverrides?.restAlbSecurityGroupId,
+            SecurityGroupEnum.REST_API_ALB_SG,
+            config.deploymentName,
+            vpc,
+            'REST API application load balancer',
+        );
+        if (!sgOverrides?.restAlbSecurityGroupId){
+            if (config.restApiConfig?.sslCertIamArn) {
+                SecurityGroupFactory.addHttpsTraffic(ecsModelAlbSg);
+            } else {
+                SecurityGroupFactory.addVpcTraffic(ecsModelAlbSg, vpc.vpcCidrBlock);
+            }
+        }
+
+        const lambdaSg = SecurityGroupFactory.createSecurityGroup(
+            this,
+            sgOverrides?.lambdaSecurityGroupId,
+            SecurityGroupEnum.LAMBDA_SG,
+            config.deploymentName,
+            vpc,
+            'authorizer and API Lambdas',
+        );
+
         this.securityGroups = {
-            ecsModelAlbSg: ecsModelAlbSg,
-            restApiAlbSg: restApiAlbSg,
-            lambdaSecurityGroup: lambdaSecurityGroup,
+            ecsModelAlbSg,
+            restApiAlbSg,
+            lambdaSg,
         };
+
+        // The following SGs will be created within their stack (if needed):
+        // [liteLlmSg, openSearchSg, pgVectorSg]
+
+        this.vpc = vpc;
 
         new CfnOutput(this, 'vpcArn', { value: vpc.vpcArn });
         new CfnOutput(this, 'vpcCidrBlock', { value: vpc.vpcCidrBlock });
-
         new CfnOutput(this, 'ecsModelAlbSg', { value: ecsModelAlbSg.securityGroupId });
         new CfnOutput(this, 'restApiAlbSg', { value: restApiAlbSg.securityGroupId });
-        new CfnOutput(this, 'lambdaSecurityGroup', { value: lambdaSecurityGroup.securityGroupId });
+        new CfnOutput(this, 'lambdaSecurityGroup', { value: lambdaSg.securityGroupId });
     }
 }

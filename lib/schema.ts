@@ -14,6 +14,7 @@
  limitations under the License.
  */
 
+
 // Models for schema validation.
 import * as fs from 'fs';
 import * as path from 'path';
@@ -45,15 +46,42 @@ export enum EcsSourceType {
 /**
  * Custom security groups for application.
  *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - .describe('ECS model application load balancer security group.')
- * @property {ec2.SecurityGroup} restApiAlbSg - .describe('REST API application load balancer security group.')
- * @property {ec2.SecurityGroup} lambdaSecurityGroup - .describe('Lambda security group.')
+ * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
+ * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
+ * @property {ec2.SecurityGroup} lambdaSg - Lambda security group.
+ * @property {ec2.SecurityGroup} liteLlmSg - litellm security group.
+ * @property {ec2.SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
+ * @property {ec2.SecurityGroup} pgVectorSg - PGVector security group used by RAG.
  */
 export type SecurityGroups = {
-    ecsModelAlbSg: ec2.SecurityGroup;
-    restApiAlbSg: ec2.SecurityGroup;
-    lambdaSecurityGroup: ec2.SecurityGroup;
+    ecsModelAlbSg: ec2.ISecurityGroup;
+    restApiAlbSg: ec2.ISecurityGroup;
+    lambdaSg: ec2.ISecurityGroup;
+    liteLlmSg?: ec2.ISecurityGroup;
+    openSearchSg?: ec2.ISecurityGroup;
+    pgVectorSg?: ec2.ISecurityGroup;
 };
+
+/**
+ * Configuration schema for Security Group imports.
+ * These values are none/small/all, meaning a user can import any number of these or none of these.
+ *
+ * @property {string} modelSecurityGroupId - Security Group ID.
+ * @property {string} restAlbSecurityGroupId - Security Group ID
+ * @property {string} lambdaSecurityGroupId - Security Group ID
+ * @property {string} liteLlmDbSecurityGroupId - Security Group ID.
+ * @property {string} openSearchSecurityGroupId - Security Group ID.
+ * @property {string} pgVectorSecurityGroupId - Security Group ID.
+ */
+export const SecurityGroupConfigSchema = z.object({
+    modelSecurityGroupId: z.string().startsWith('sg-'),
+    restAlbSecurityGroupId: z.string().startsWith('sg-'),
+    lambdaSecurityGroupId: z.string().startsWith('sg-'),
+    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
+    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
+    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
+})
+    .describe('Security Group Overrides used across stacks.');
 
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),
@@ -459,6 +487,15 @@ const RagRepositoryConfigSchema = z
         type: z.nativeEnum(RagRepositoryType),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),
+        pipelines: z.array(z.object({
+            chunkOverlap: z.number(),
+            chunkSize: z.number(),
+            embeddingModel: z.string(),
+            s3Bucket: z.string(),
+            s3Prefix: z.string(),
+            trigger: z.union([z.literal('daily'), z.literal('event')]),
+            collectionName: z.string()
+        })).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
@@ -527,6 +564,7 @@ const RawConfigSchema = z
             subnetId: z.string().startsWith('subnet-'),
             ipv4CidrBlock: z.string()
         })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
+        securityGroupConfig: SecurityGroupConfigSchema.optional(),
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
         removalPolicy: z.union([z.literal('destroy'), z.literal('retain')])
             .transform((value) => REMOVAL_POLICIES[value])
@@ -596,6 +634,7 @@ const RawConfigSchema = z
             .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
         stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
         litellmConfig: LiteLLMConfig,
+        convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
     })
     .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {
         message: 'Must set PypiConfig if in an iso region',

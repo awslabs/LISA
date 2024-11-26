@@ -126,25 +126,25 @@ export class Vpc extends Construct {
         // Create security groups
         const ecsModelAlbSg =  SecurityGroupFactory.createSecurityGroup(
             this,
-            sgOverrides?.modelSgId,
+            sgOverrides?.modelSecurityGroupId,
             SecurityGroupsEnum.ECS_MODEL_ALB_SG,
             config.deploymentName,
             vpc,
             'ECS model application load balancer',
         );
-        if (!sgOverrides?.modelSgId) {
+        if (!sgOverrides?.modelSecurityGroupId) {
             SecurityGroupFactory.addVpcTraffic(ecsModelAlbSg, vpc.vpcCidrBlock);
         }
 
         const restApiAlbSg = SecurityGroupFactory.createSecurityGroup(
             this,
-            sgOverrides?.restAlbSgId,
+            sgOverrides?.restAlbSecurityGroupId,
             SecurityGroupsEnum.REST_API_ALB_SG,
             config.deploymentName,
             vpc,
             'REST API application load balancer',
         );
-        if (!sgOverrides?.restAlbSgId){
+        if (!sgOverrides?.restAlbSecurityGroupId){
             if (config.restApiConfig?.sslCertIamArn) {
                 SecurityGroupFactory.addHttpsTraffic(ecsModelAlbSg);
             } else {
@@ -154,7 +154,7 @@ export class Vpc extends Construct {
 
         const lambdaSg = SecurityGroupFactory.createSecurityGroup(
             this,
-            sgOverrides?.lambdaSgId,
+            sgOverrides?.lambdaSecurityGroupId,
             SecurityGroupsEnum.LAMBDA_SG,
             config.deploymentName,
             vpc,

@@ -312,7 +312,7 @@ export class LisaServeApplicationStage extends Stage {
 
         if (config.securityGroupConfig) {
             stacks.forEach((lisaStack) => {
-                Aspects.of(lisaStack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSgId));
+                Aspects.of(lisaStack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
             });
         }
 

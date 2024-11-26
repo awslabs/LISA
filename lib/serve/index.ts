@@ -146,13 +146,13 @@ export class LisaServeApplicationStack extends Stack {
 
         const litellmDbSg = SecurityGroupFactory.createSecurityGroup(
             this,
-            config.securityGroupConfig?.liteLlmDbSgId,
+            config.securityGroupConfig?.liteLlmDbSecurityGroupId,
             SecurityGroups.LITE_LLM_SG,
             config.deploymentName,
             vpc.vpc,
             'LiteLLM dynamic model management database',
         );
-        if (!config.securityGroupConfig?.liteLlmDbSgId) {
+        if (!config.securityGroupConfig?.liteLlmDbSecurityGroupId) {
             SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroups.LITE_LLM_SG, vpc, config);
         }
 

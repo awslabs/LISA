@@ -66,20 +66,20 @@ export type SecurityGroups = {
  * Configuration schema for Security Group imports.
  * These values are none/small/all, meaning a user can import any number of these or none of these.
  *
- * @property {string} modelSgId - Security Group ID.
- * @property {string} restAlbSgId - Security Group ID
- * @property {string} lambdaSgId - Security Group ID
- * @property {string} liteLlmDbSgId - Security Group ID.
- * @property {string} openSearchSgId - Security Group ID.
- * @property {string} pgVectorSgId - Security Group ID.
+ * @property {string} modelSecurityGroupId - Security Group ID.
+ * @property {string} restAlbSecurityGroupId - Security Group ID
+ * @property {string} lambdaSecurityGroupId - Security Group ID
+ * @property {string} liteLlmDbSecurityGroupId - Security Group ID.
+ * @property {string} openSearchSecurityGroupId - Security Group ID.
+ * @property {string} pgVectorSecurityGroupId - Security Group ID.
  */
 export const SecurityGroupConfigSchema = z.object({
-    modelSgId: z.string().startsWith('sg-'),
-    restAlbSgId: z.string().startsWith('sg-'),
-    lambdaSgId: z.string().startsWith('sg-'),
-    liteLlmDbSgId: z.string().startsWith('sg-'),
-    openSearchSgId: z.string().startsWith('sg-').optional(),
-    pgVectorSgId: z.string().startsWith('sg-').optional(),
+    modelSecurityGroupId: z.string().startsWith('sg-'),
+    restAlbSecurityGroupId: z.string().startsWith('sg-'),
+    lambdaSecurityGroupId: z.string().startsWith('sg-'),
+    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
+    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
+    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
 })
     .describe('Security Group Overrides used across stacks.');
 

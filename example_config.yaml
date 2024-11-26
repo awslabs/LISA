@@ -14,12 +14,12 @@ s3BucketModels: hf-models-gaiic
 #  - subnetId:
 #    ipv4CidrBlock:
 # securityGroupConfig: # If securityGroupConfig is provided, all security groups must be overridden. Vector stores SGs are optional based on deployment preferences.
-#   modelSgId: sg-0123456789abcdef
-#   restAlbSgId: sg-0123456789abcdef
-#   lambdaSgId: sg-0123456789abcdef
-#   liteLlmDbSgId: sg-0123456789abcdef
-#   openSearchSgId: sg-0123456789abcdef #Optional
-#   pgVectorSgId: sg-0123456789abcdef  #Optional
+#   modelSecurityGroupId: sg-0123456789abcdef
+#   restAlbSecurityGroupId: sg-0123456789abcdef
+#   lambdaSecurityGroupId: sg-0123456789abcdef
+#   liteLlmDbSecurityGroupId: sg-0123456789abcdef
+#   openSearchSecurityGroupId: sg-0123456789abcdef #Optional
+#   pgVectorSecurityGroupId: sg-0123456789abcdef  #Optional
 # The following configuration will allow for using a custom domain for the chat user interface.
 # If this option is specified, the API Gateway invocation URL will NOT work on its own as the application URL.
 # Users must use the custom domain for the user interface to work if this option is populated.

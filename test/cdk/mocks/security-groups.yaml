@@ -1,7 +1,7 @@
 securityGroupConfig:
-  modelSgId: sg-0123456789abcdef
-  restAlbSgId: sg-0123456789abcdef
-  lambdaSgId: sg-0123456789abcdef
-  liteLlmDbSgId: sg-0123456789abcdef
-  openSearchSgId: sg-0123456789abcdef
-  pgVectorSgId: sg-0123456789abcdef
+  modelSecurityGroupId: sg-0123456789abcdef
+  restAlbSecurityGroupId: sg-0123456789abcdef
+  lambdaSecurityGroupId: sg-0123456789abcdef
+  liteLlmDbSecurityGroupId: sg-0123456789abcdef
+  openSearchSecurityGroupId: sg-0123456789abcdef
+  pgVectorSecurityGroupId: sg-0123456789abcdef

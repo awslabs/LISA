@@ -153,13 +153,13 @@ export class LisaRagStack extends Stack {
             if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
                 const openSearchSg = SecurityGroupFactory.createSecurityGroup(
                     this,
-                    config.securityGroupConfig?.openSearchSgId,
+                    config.securityGroupConfig?.openSearchSecurityGroupId,
                     SecurityGroups.OPEN_SEARCH_SG,
                     config.deploymentName,
                     vpc.vpc,
                     'RAG OpenSearch domain',
                 );
-                if (!config.securityGroupConfig?.openSearchSgId) {
+                if (!config.securityGroupConfig?.openSearchSecurityGroupId) {
                     SecurityGroupFactory.addIngress(openSearchSg, SecurityGroups.OPEN_SEARCH_SG, vpc, config);
                 }
 
@@ -272,13 +272,13 @@ export class LisaRagStack extends Stack {
                     // Create new DB and SG
                     const pgvectorSg = SecurityGroupFactory.createSecurityGroup(
                         this,
-                        config.securityGroupConfig?.pgVectorSgId,
+                        config.securityGroupConfig?.pgVectorSecurityGroupId,
                         SecurityGroups.PG_VECTOR_SG,
                         config.deploymentName,
                         vpc.vpc,
                         'RAG PGVector database',
                     );
-                    if (!config.securityGroupConfig?.pgVectorSgId) {
+                    if (!config.securityGroupConfig?.pgVectorSecurityGroupId) {
                         SecurityGroupFactory.addIngress(pgvectorSg, SecurityGroups.PG_VECTOR_SG, vpc, config);
                     }
 

@@ -15,11 +15,6 @@
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v3.2.1...v3.3.0
 
-- Offers dual document loading methodologies:
-  1. Manual file upload via the chatbot user interface
-  2. Automated ingestion pipeline with configurable triggers:
-    - Scheduled daily executions
-    - Event-driven ingestion upon file upload
 
 # v3.2.1
 ## Bug Fixes

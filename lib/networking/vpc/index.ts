@@ -30,7 +30,7 @@ import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
 import { BaseProps, SecurityGroups } from '../../schema';
-import { SecurityGroups as SecurityGroupsEnum } from '../../core/iam/SecurityGroups';
+import { SecurityGroupEnum } from '../../core/iam/SecurityGroups';
 import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 import { SecurityGroupFactory } from './security-group-factory';
 
@@ -127,7 +127,7 @@ export class Vpc extends Construct {
         const ecsModelAlbSg =  SecurityGroupFactory.createSecurityGroup(
             this,
             sgOverrides?.modelSecurityGroupId,
-            SecurityGroupsEnum.ECS_MODEL_ALB_SG,
+            SecurityGroupEnum.ECS_MODEL_ALB_SG,
             config.deploymentName,
             vpc,
             'ECS model application load balancer',
@@ -139,7 +139,7 @@ export class Vpc extends Construct {
         const restApiAlbSg = SecurityGroupFactory.createSecurityGroup(
             this,
             sgOverrides?.restAlbSecurityGroupId,
-            SecurityGroupsEnum.REST_API_ALB_SG,
+            SecurityGroupEnum.REST_API_ALB_SG,
             config.deploymentName,
             vpc,
             'REST API application load balancer',
@@ -155,7 +155,7 @@ export class Vpc extends Construct {
         const lambdaSg = SecurityGroupFactory.createSecurityGroup(
             this,
             sgOverrides?.lambdaSecurityGroupId,
-            SecurityGroupsEnum.LAMBDA_SG,
+            SecurityGroupEnum.LAMBDA_SG,
             config.deploymentName,
             vpc,
             'authorizer and API Lambdas',
@@ -176,6 +176,6 @@ export class Vpc extends Construct {
         new CfnOutput(this, 'vpcCidrBlock', { value: vpc.vpcCidrBlock });
         new CfnOutput(this, 'ecsModelAlbSg', { value: ecsModelAlbSg.securityGroupId });
         new CfnOutput(this, 'restApiAlbSg', { value: restApiAlbSg.securityGroupId });
-        new CfnOutput(this, 'lambdaSg', { value: lambdaSg.securityGroupId });
+        new CfnOutput(this, 'lambdaSecurityGroup', { value: lambdaSg.securityGroupId });
     }
 }

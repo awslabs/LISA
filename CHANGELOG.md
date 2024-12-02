@@ -1,3 +1,16 @@
+# v3.3.1
+## Bug Fixes
+- Resolved issue where AWS partition was hardcoded in RAG Pipeline
+- Added back in LiteLLM environment override support
+- Updated Makefile Model and ECR Account Number parsing
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.3.0...v3.3.1
+
 # v3.3.0
 ## Key Features
 ### RAG ETL Pipeline

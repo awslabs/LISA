@@ -86,7 +86,7 @@ DEPLOYMENT_STAGE := prod
 endif
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR
-ifneq ($(yq '.accountNumbersEcr'), )
+ifneq ($(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.accountNumbersEcr'), null)
 ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumbersEcr[])
 endif
 
@@ -103,7 +103,7 @@ ifneq ($(findstring $(DEPLOYMENT_STAGE),$(STACK)),$(DEPLOYMENT_STAGE))
 endif
 
 # MODEL_IDS - IDs of models to deploy
-ifneq ($(yq '.ecsModels'), )
+ifneq ($(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels'), null)
 MODEL_IDS := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels[].modelName')
 endif
 

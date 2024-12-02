@@ -537,6 +537,10 @@ const LiteLLMConfig = z.object({
         'Key string must be defined for model management operations, and it must start with "sk-".' +
       'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
     ),
+    general_settings: z.any().optional(),
+    litellm_settings: z.any().optional(),
+    router_settings: z.any().optional(),
+    environment_variables: z.any().optional()
 })
     .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
 

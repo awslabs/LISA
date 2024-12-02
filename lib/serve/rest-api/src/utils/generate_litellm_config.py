@@ -50,6 +50,11 @@ def generate_config(filepath: str) -> None:
     config_models = []  # ensure config_models is a list and not None
     config_models.extend(litellm_model_params)
     config_contents["model_list"] = config_models
+    if "litellm_settings" not in config_contents:
+        config_contents["litellm_settings"] = {
+            "drop_params": True,  # drop unrecognized param instead of failing the request on it
+            "request_timeout": 600,
+        }
     config_contents["litellm_settings"].update(
         {
             "drop_params": True,  # drop unrecognized param instead of failing the request on it

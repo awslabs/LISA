@@ -37,6 +37,7 @@ import { Rule, Schedule, EventPattern, RuleTargetInput, EventField } from 'aws-c
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import * as cdk from 'aws-cdk-lib';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -111,8 +112,8 @@ export class IngestPipelineStateMachine extends Construct {
             effect: Effect.ALLOW,
             actions: ['s3:GetObject', 's3:ListBucket'],
             resources: [
-                `arn:aws:s3:::${pipelineConfig.s3Bucket}`,
-                `arn:aws:s3:::${pipelineConfig.s3Bucket}/*`
+                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}`,
+                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
             ]
         });
 
@@ -176,10 +177,10 @@ export class IngestPipelineStateMachine extends Construct {
                     effect: Effect.ALLOW,
                     actions: ['ssm:GetParameter'],
                     resources: [
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/managementKeySecretName`
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`
                     ]
                 }),
                 new PolicyStatement({

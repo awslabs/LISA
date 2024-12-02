@@ -50,10 +50,12 @@ def generate_config(filepath: str) -> None:
     config_models = []  # ensure config_models is a list and not None
     config_models.extend(litellm_model_params)
     config_contents["model_list"] = config_models
-    config_contents["litellm_settings"] = {
-        "drop_params": True,  # drop unrecognized param instead of failing the request on it
-        "request_timeout": 600,
-    }
+    config_contents["litellm_settings"].update(
+        {
+            "drop_params": True,  # drop unrecognized param instead of failing the request on it
+            "request_timeout": 600,
+        }
+    )
 
     # Get database connection info
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
@@ -65,13 +67,11 @@ def generate_config(filepath: str) -> None:
         f"/{db_params['dbName']}"
     )
 
-    config_contents.update(
+    config_contents["general_settings"].update(
         {
-            "general_settings": {
-                "store_model_in_db": True,
-                "database_url": connection_str,
-                "master_key": config_contents["db_key"],
-            }
+            "store_model_in_db": True,
+            "database_url": connection_str,
+            "master_key": config_contents["db_key"],
         }
     )
 

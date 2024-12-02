@@ -106,13 +106,15 @@ export class IngestPipelineStateMachine extends Construct {
             })
         };
 
+        const partition = '${AWS::Partition}';
+
         // Create S3 policy statement for both functions
         const s3PolicyStatement = new PolicyStatement({
             effect: Effect.ALLOW,
             actions: ['s3:GetObject', 's3:ListBucket'],
             resources: [
-                `arn:aws:s3:::${pipelineConfig.s3Bucket}`,
-                `arn:aws:s3:::${pipelineConfig.s3Bucket}/*`
+                `arn:${partition}::s3:::${pipelineConfig.s3Bucket}`,
+                `arn:${partition}::s3:::${pipelineConfig.s3Bucket}/*`
             ]
         });
 
@@ -176,10 +178,10 @@ export class IngestPipelineStateMachine extends Construct {
                     effect: Effect.ALLOW,
                     actions: ['ssm:GetParameter'],
                     resources: [
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                        `arn:aws:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/managementKeySecretName`
+                        `arn:${partition}:ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
+                        `arn:${partition}::ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
+                        `arn:${partition}::ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
+                        `arn:${partition}::ssm:${process.env.CDK_DEFAULT_REGION}:${process.env.CDK_DEFAULT_ACCOUNT}:parameter${config.deploymentPrefix}/managementKeySecretName`
                     ]
                 }),
                 new PolicyStatement({

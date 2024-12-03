@@ -1,3 +1,16 @@
+# v3.3.2
+## Bug Fixes
+- Resolved issue where invalid schema import was causing create model api calls to fail
+- Resolved issue where RAG citations weren't being populated in metadata for non-streaming requests
+- Resolved issue where managing in-memory file context wouldn't display success notification and close the modal
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.3.1...v3.3.2
+
 # v3.3.1
 ## Bug Fixes
 - Resolved issue where AWS partition was hardcoded in RAG Pipeline

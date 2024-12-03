@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { ModelConfig } from './schema';
+import { ModelConfig } from './ecs-schema';
 
 /**
  * Creates a unique CDK ID using configuration data. The CDK ID is used to uniquely identify resources in the AWS

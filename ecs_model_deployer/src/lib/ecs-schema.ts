@@ -18,9 +18,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
-import { SecurityGroupConfigSchema } from '../../../lib/schema';
-
-const VERSION: string = '2.0.1';
+import { SecurityGroupConfigSchema, VERSION } from '../../../lib/schema';
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,

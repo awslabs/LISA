@@ -26,7 +26,7 @@ import { z } from 'zod';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
-const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
+export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,

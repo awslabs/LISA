@@ -110,7 +110,11 @@ export function ContextUploadModal ({
                     <SpaceBetween direction='horizontal' size='xs'>
                         <Button
                             onClick={async () => {
-                                await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 10240);
+                                const successfulUploads = await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 10240);
+                                if(successfulUploads.length > 0) {
+                                    notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
+                                    setShowContextUploadModal(false);
+                                }
                             }}
                             disabled={selectedFiles.length === 0}
                         >

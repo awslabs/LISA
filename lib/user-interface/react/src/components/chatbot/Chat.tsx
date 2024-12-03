@@ -434,7 +434,7 @@ export default function Chat ({ sessionId }) {
                         new LisaChatMessage({
                             type: 'ai',
                             content: result,
-                            metadata: metadata,
+                            metadata: useRag ? { ...metadata, ...prev.history[prev.history.length - 1].metadata } : metadata,
                         }),
                     ),
                 }));

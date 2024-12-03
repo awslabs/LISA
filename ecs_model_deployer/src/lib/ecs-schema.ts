@@ -18,9 +18,12 @@
 import * as cdk from 'aws-cdk-lib';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
-import { SecurityGroupConfigSchema } from '../../../lib/schema';
+import path from 'path';
+import fs from 'fs';
 
-const VERSION: string = '2.0.1';
+const HERE: string = path.resolve(__dirname);
+const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
+export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,
@@ -537,6 +540,27 @@ const PypiConfigSchema = z.object({
     indexUrl: z.string().optional().default(''),
     trustedHost: z.string().optional().default(''),
 });
+
+/**
+ * Configuration schema for Security Group imports.
+ * These values are none/small/all, meaning a user can import any number of these or none of these.
+ *
+ * @property {string} modelSecurityGroupId - Security Group ID.
+ * @property {string} restAlbSecurityGroupId - Security Group ID
+ * @property {string} lambdaSecurityGroupId - Security Group ID
+ * @property {string} liteLlmDbSecurityGroupId - Security Group ID.
+ * @property {string} openSearchSecurityGroupId - Security Group ID.
+ * @property {string} pgVectorSecurityGroupId - Security Group ID.
+ */
+export const SecurityGroupConfigSchema = z.object({
+    modelSecurityGroupId: z.string().startsWith('sg-'),
+    restAlbSecurityGroupId: z.string().startsWith('sg-'),
+    lambdaSecurityGroupId: z.string().startsWith('sg-'),
+    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
+    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
+    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
+})
+    .describe('Security Group Overrides used across stacks.');
 
 /**
  * Raw application configuration schema.

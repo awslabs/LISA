@@ -43,8 +43,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from './utils';
-import { BaseProps, Ec2Metadata, EcsSourceType } from './schema';
-import { ECSConfig } from './schema';
+import { BaseProps, ECSConfig, Ec2Metadata, EcsSourceType } from './ecs-schema';
 
 /**
  * Properties for the ECSCluster Construct.

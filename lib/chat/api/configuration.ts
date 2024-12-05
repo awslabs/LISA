@@ -17,7 +17,6 @@
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Role } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -27,6 +26,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
+import { IRole } from 'aws-cdk-lib/aws-iam';
 
 /**
  * Properties for ConfigurationApi Construct.
@@ -78,7 +78,7 @@ export class ConfigurationApi extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
-        const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', configTable.tableArn);
+        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
 
         // Populate the App Config table with default config
         const date = new Date();

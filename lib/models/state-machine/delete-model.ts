@@ -38,11 +38,12 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[],
-    role?: IRole,
     vpc: Vpc,
     securityGroups: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
+    role?: IRole,
+    executionRole?: IRole;
 };
 
 
@@ -55,7 +56,7 @@ export class DeleteModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: DeleteModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName } = props;
+        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
@@ -212,6 +213,10 @@ export class DeleteModelStateMachine extends Construct {
 
         const stateMachine = new StateMachine(this, 'DeleteModelSM', {
             definitionBody: DefinitionBody.fromChainable(setModelToDeleting),
+            ...(executionRole &&
+            {
+                role: executionRole
+            })
         });
 
         this.stateMachineArn = stateMachine.stateMachineArn;

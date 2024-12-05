@@ -372,7 +372,7 @@ const EcsBaseConfigSchema = z.object({
     containerConfig: ContainerConfigSchema,
     containerMemoryBuffer: z.number().default(1024 * 2)
         .describe('This is the amount of memory to buffer (or subtract off)  from the total instance memory, ' +
-        'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
+            'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
     environment: z.record(z.string()).describe('Environment variables set on the task container'),
     identifier: z.string(),
     instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),
@@ -436,7 +436,7 @@ const RdsInstanceConfig = z.object({
     dbName: z.string().default('postgres').describe('Database name for existing database instance.'),
     dbPort: z.number().default(5432).describe('Port to open on the database instance.'),
 }).describe('Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.\n \n ' +
-  'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
+    'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
 
 const FastApiContainerConfigSchema = z.object({
     internetFacing: z.boolean().default(true).describe('Whether the REST API ALB will be configured as internet facing.'),
@@ -454,8 +454,8 @@ const FastApiContainerConfigSchema = z.object({
             },
             {
                 message:
-              'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
-              'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+                    'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
+                    'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
             },
         ),
 }).describe('Configuration schema for REST API.');
@@ -499,7 +499,7 @@ const RagRepositoryConfigSchema = z
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-        (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
     })
     .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
@@ -535,7 +535,7 @@ const LiteLLMConfig = z.object({
     db_key: z.string().refine(
         (key) => key.startsWith('sk-'), // key needed for model management actions
         'Key string must be defined for model management operations, and it must start with "sk-".' +
-      'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
+        'This can be any string, and a random UUID is recommended. Example: sk-f132c7cc-059c-481b-b5ca-a42e191672aa',
     ),
     general_settings: z.any().optional(),
     litellm_settings: z.any().optional(),
@@ -543,6 +543,28 @@ const LiteLLMConfig = z.object({
     environment_variables: z.any().optional()
 })
     .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
+
+const RoleConfig = z.object({
+    DockerImageBuilderDeploymentRole: z.string().max(64),
+    DockerImageBuilderEC2Role: z.string().max(64),
+    DockerImageBuilderRole: z.string().max(64),
+    DocsRole: z.string().max(64).optional(),
+    DocsDeployerRole: z.string().max(64).optional(),
+    ECSModelDeployerRole: z.string().max(64),
+    ECSModelTaskRole: z.string().max(64),
+    ECSRestApiRole: z.string().max(64),
+    ECSRestApiExRole: z.string().max(64),
+    LambdaExecutionRole: z.string().max(64),
+    LambdaConfigurationApiExecutionRole: z.string().max(64),
+    ModelApiRole: z.string().max(64),
+    ModelsSfnLambdaRole: z.string().max(64),
+    ModelSfnRole: z.string().max(64),
+    RagLambdaExecutionRole: z.string().max(64).optional(),
+    RestApiAuthorizerRole: z.string().max(64),
+    S3ReaderRole: z.string().max(64).optional(),
+    UIDeploymentRole: z.string().max(64).optional(),
+})
+    .describe('Role overrides used across stacks.');
 
 const RawConfigSchema = z
     .object({
@@ -566,7 +588,7 @@ const RawConfigSchema = z
         vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
         subnets: z.array(z.object({
             subnetId: z.string().startsWith('subnet-'),
-            ipv4CidrBlock: z.string()
+            ipv4CidrBlock: z.string(),
         })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
         securityGroupConfig: SecurityGroupConfigSchema.optional(),
         deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
@@ -594,6 +616,7 @@ const RawConfigSchema = z
             .default('DEBUG')
             .describe('Log level for application.'),
         authConfig: AuthConfigSchema.optional().describe('Authorization configuration.'),
+        roles: RoleConfig.optional(),
         pypiConfig: PypiConfigSchema.default({
             indexUrl: '',
             trustedHost: '',
@@ -663,14 +686,14 @@ const RawConfigSchema = z
         (config) => {
             return (
                 !(config.deployChat || config.deployRag || config.deployUi) ||
-          config.authConfig
+                config.authConfig
             );
         },
         {
             message:
-          'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
-          'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
-          'false or that an `authConfig` is provided.',
+                'An auth config must be provided when deploying the chat, RAG, or UI stacks or when deploying an internet ' +
+                'facing ALB. Check that `deployChat`, `deployRag`, `deployUi`, and `restApiConfig.internetFacing` are all ' +
+                'false or that an `authConfig` is provided.',
         },
     )
     .describe('Raw application configuration schema.');

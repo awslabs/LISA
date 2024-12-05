@@ -133,7 +133,7 @@ export class RepositoryApi extends Construct {
                 './lambda',
                 commonLayers,
                 f,
-                Runtime.PYTHON_3_10,
+                Runtime.PYTHON_3_11,
                 vpc,
                 securityGroups,
                 lambdaExecutionRole,

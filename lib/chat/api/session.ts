@@ -156,7 +156,7 @@ export class SessionApi extends Construct {
                 './lambda',
                 [commonLambdaLayer],
                 f,
-                Runtime.PYTHON_3_10,
+                Runtime.PYTHON_3_11,
                 vpc,
                 securityGroups,
                 lambdaRole,

@@ -84,7 +84,7 @@ export class Layer extends Construct {
             const layerAsset = new Asset(this, 'LayerAsset', {
                 path,
                 bundling: {
-                    image: Runtime.PYTHON_3_10.bundlingImage,
+                    image: Runtime.PYTHON_3_11.bundlingImage,
                     platform: architecture.dockerPlatform,
                     command: ['bash', '-c', `set -e ${args.join(' ')}`],
                     outputType: BundlingOutput.AUTO_DISCOVER,
@@ -97,7 +97,7 @@ export class Layer extends Construct {
 
         const layer = new LayerVersion(this, 'Layer', {
             code: layerCode,
-            compatibleRuntimes: [Runtime.PYTHON_3_10],
+            compatibleRuntimes: [Runtime.PYTHON_3_11],
             removalPolicy: config.removalPolicy,
             description: description,
         });

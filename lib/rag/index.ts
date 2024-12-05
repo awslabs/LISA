@@ -133,14 +133,14 @@ export class LisaRagStack extends Stack {
         if (config.lambdaLayerAssets?.sdkLayerPath) {
             sdkLayer = new LayerVersion(this, 'SdkLayer', {
                 code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [Runtime.PYTHON_3_10],
+                compatibleRuntimes: [Runtime.PYTHON_3_11],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });
         } else {
             sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
                 entry: SDK_PATH,
-                compatibleRuntimes: [Runtime.PYTHON_3_10],
+                compatibleRuntimes: [Runtime.PYTHON_3_11],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });

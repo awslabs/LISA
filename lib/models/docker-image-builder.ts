@@ -137,7 +137,7 @@ export class DockerImageBuilder extends Construct {
                 enforceSSL: true,
             }),
             functionName: functionId,
-            runtime: Runtime.PYTHON_3_10,
+            runtime: Runtime.PYTHON_3_11,
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),

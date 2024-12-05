@@ -81,7 +81,7 @@ export class CustomAuthorizer extends Construct {
                 queueName: 'AuthorizerLambdaDLQ',
                 enforceSSL: true,
             }),
-            runtime: Runtime.PYTHON_3_10,
+            runtime: Runtime.PYTHON_3_11,
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
             code: Code.fromAsset('./lambda'),

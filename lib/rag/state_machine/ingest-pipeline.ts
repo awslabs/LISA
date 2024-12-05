@@ -133,7 +133,7 @@ export class IngestPipelineStateMachine extends Construct {
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {
-            runtime: Runtime.PYTHON_3_10,
+            runtime: Runtime.PYTHON_3_11,
             handler: 'repository.state_machine.list_modified_objects.handle_list_modified_objects',
             code: Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -162,7 +162,7 @@ export class IngestPipelineStateMachine extends Construct {
 
         // Create the ingest documents function with S3 permissions
         const pipelineIngestDocumentsFunction = new Function(this, 'pipelineIngestDocumentsMapFunc', {
-            runtime: Runtime.PYTHON_3_10,
+            runtime: Runtime.PYTHON_3_11,
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_documents',
             code: Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,

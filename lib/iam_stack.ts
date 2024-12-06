@@ -21,7 +21,7 @@ import { Construct } from 'constructs';
 
 import { createCdkId, getIamPolicyStatements } from './core/utils';
 import { BaseProps, Config } from './schema';
-import { of, ROLE, Roles } from './core/iam/roles';
+import { getRoleId, ROLE, Roles } from './core/iam/roles';
 
 /**
  * Properties for the LisaServeIAMStack Construct.
@@ -86,7 +86,7 @@ export class LisaServeIAMStack extends Stack {
         ];
 
         ecsRoles.forEach((role) => {
-            const taskRoleOverride = of(`ECS_${role.id}_${role.type}_ROLE`.toUpperCase());
+            const taskRoleOverride = getRoleId(`ECS_${role.id}_${role.type}_ROLE`.toUpperCase());
             const taskRoleId = createCdkId([role.id, ROLE]);
             const taskRoleName = createCdkId([config.deploymentName, role.id, ROLE]);
             const taskRole = config.roles ?
@@ -101,7 +101,7 @@ export class LisaServeIAMStack extends Stack {
             });
 
             if (config.roles) {
-                const executionRoleOverride = of(`ECS_${role.id}_${role.type}_EX_ROLE`.toUpperCase());
+                const executionRoleOverride = getRoleId(`ECS_${role.id}_${role.type}_EX_ROLE`.toUpperCase());
                 // @ts-expect-error - dynamic key lookup of object
                 const executionRole = Role.fromRoleName(this, createCdkId([role.id, 'ExRole']), config.roles[executionRoleOverride]);
 

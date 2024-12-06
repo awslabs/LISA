@@ -25,7 +25,7 @@ import {
     Succeed,
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { BaseProps } from '../../schema';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -34,6 +34,7 @@ import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './c
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { getDefaultRuntime } from '../../api-base/utils';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -75,7 +76,7 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'SetModelToDeletingDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_11,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -98,7 +99,7 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'DeleteFromLitellmDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_11,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -121,7 +122,7 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'DeleteStackDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_11,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -144,7 +145,7 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'MonitorDeleteStackDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_11,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -167,7 +168,7 @@ export class DeleteModelStateMachine extends Construct {
                     queueName: 'DeleteFromDdbDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_11,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,

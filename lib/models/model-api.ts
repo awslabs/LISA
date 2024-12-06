@@ -29,11 +29,11 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
@@ -202,7 +202,7 @@ export class ModelsApi extends Construct {
                 method: 'ANY',
                 environment
             },
-            Runtime.PYTHON_3_11,
+            getDefaultRuntime(),
             vpc,
             securityGroups,
             lambdaRole,
@@ -274,7 +274,7 @@ export class ModelsApi extends Construct {
                 './lambda',
                 [commonLambdaLayer],
                 f,
-                Runtime.PYTHON_3_11,
+                getDefaultRuntime(),
                 vpc,
                 securityGroups,
                 lambdaRole,

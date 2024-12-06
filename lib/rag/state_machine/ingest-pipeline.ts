@@ -28,7 +28,7 @@ import {
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
-import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
 import { Vpc } from '../../networking/vpc';
@@ -38,6 +38,7 @@ import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cdk from 'aws-cdk-lib';
+import { getDefaultRuntime } from '../../api-base/utils';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -133,7 +134,7 @@ export class IngestPipelineStateMachine extends Construct {
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {
-            runtime: Runtime.PYTHON_3_11,
+            runtime: getDefaultRuntime(),
             handler: 'repository.state_machine.list_modified_objects.handle_list_modified_objects',
             code: Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -162,7 +163,7 @@ export class IngestPipelineStateMachine extends Construct {
 
         // Create the ingest documents function with S3 permissions
         const pipelineIngestDocumentsFunction = new Function(this, 'pipelineIngestDocumentsMapFunc', {
-            runtime: Runtime.PYTHON_3_11,
+            runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_documents',
             code: Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,

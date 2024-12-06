@@ -54,7 +54,7 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     ec2_resource = boto3.resource("ec2", region_name=os.environ["AWS_REGION"])
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 
-    response = ssm_client.get_parameter(Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2")
+    response = ssm_client.get_parameter(Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp3")
     ami_id = response["Parameter"]["Value"]
     image_tag = str(uuid.uuid4())
 

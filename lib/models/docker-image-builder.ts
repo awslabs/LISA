@@ -24,7 +24,7 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function } from 'aws-cdk-lib/aws-lambda';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -34,6 +34,7 @@ import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { getDefaultRuntime } from '../api-base/utils';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
@@ -88,7 +89,7 @@ export class DockerImageBuilder extends Construct {
                 enforceSSL: true,
             }),
             functionName: functionId,
-            runtime: Runtime.PYTHON_3_10,
+            runtime: getDefaultRuntime(),
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),

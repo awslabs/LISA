@@ -24,7 +24,7 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Code, LayerVersion, Runtime, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, LayerVersion, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
@@ -42,6 +42,7 @@ import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 import { Roles } from '../core/iam/roles';
+import { getDefaultRuntime } from '../api-base/utils';
 
 const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
@@ -133,14 +134,14 @@ export class LisaRagStack extends Stack {
         if (config.lambdaLayerAssets?.sdkLayerPath) {
             sdkLayer = new LayerVersion(this, 'SdkLayer', {
                 code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [Runtime.PYTHON_3_10],
+                compatibleRuntimes: [getDefaultRuntime()],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });
         } else {
             sdkLayer = new PythonLayerVersion(this, 'SdkLayer', {
                 entry: SDK_PATH,
-                compatibleRuntimes: [Runtime.PYTHON_3_10],
+                compatibleRuntimes: [getDefaultRuntime()],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
             });

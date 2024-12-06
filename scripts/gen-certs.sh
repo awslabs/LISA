@@ -12,7 +12,11 @@ if [[ -z $REGION ]]; then
     exit 1
 fi
 
-domain="*.$REGION.elb.amazonaws.com"
+if [[ -z $DOMAIN ]]; then
+    DOMAIN="amazonaws.com"
+fi
+
+domain="*.$REGION.elb.$DOMAIN"
 
 # Check if the certificate and key files already exist
 if [ ! -f "$outPathCert" ] || [ ! -f "$outPathKey" ]; then
@@ -21,7 +25,7 @@ if [ ! -f "$outPathCert" ] || [ ! -f "$outPathKey" ]; then
   maj=$(echo "$openssl_version" | cut -d. -f1)
   min=$(echo "$openssl_version" | cut -d. -f2)
   if [ $maj -eq 1 ] && [ $min -lt 10 ] || [ $maj -lt 1 ]; then
-    echo "Warning: Your version of OpenSSL ${openssl_version} is not supported. Please upgrade to version 1.10+")
+    echo "Warning: Your version of OpenSSL ${openssl_version} is not supported. Please upgrade to version 1.10+"
     exit 1
   fi
 

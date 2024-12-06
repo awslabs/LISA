@@ -1,26 +1,26 @@
 /**
-  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-  Licensed under the Apache License, Version 2.0 (the "License").
-  You may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 
-import { ExecSyncOptionsWithBufferEncoding, execSync } from 'node:child_process';
+import { execSync, ExecSyncOptionsWithBufferEncoding } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import { ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -29,6 +29,7 @@ import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
+import { Roles } from '../core/iam/roles';
 
 /**
  * Properties for UserInterface Construct.
@@ -48,10 +49,10 @@ type UserInterfaceProps = CustomUserInterfaceProps & StackProps;
  */
 export class UserInterfaceStack extends Stack {
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {UserInterfaceProps} props - The properties of the construct.
-   */
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {UserInterfaceProps} props - The properties of the construct.
+     */
     constructor (scope: Construct, id: string, props: UserInterfaceProps) {
         super(scope, id, props);
 
@@ -73,12 +74,9 @@ export class UserInterfaceStack extends Stack {
 
         // REST APIGW config
         // S3 role
-        const s3ReaderRole = new Role(this, `${Stack.of(this).stackName}-s3-reader-role`, {
-            assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
-            roleName: `${Stack.of(this).stackName}-s3-reader-role`,
-            managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AmazonS3ReadOnlyAccess')],
-            description: 'Allows API gateway to proxy static website assets',
-        });
+        const s3ReaderRole: IRole = config.roles?.S3ReaderRole ?
+            Role.fromRoleName(this, Roles.S3_READER_ROLE, config.roles.S3ReaderRole) :
+            this.createS3ReadOnlyRole();
 
         // Configure static site resources
         const proxyMethodResponse = [
@@ -222,10 +220,29 @@ export class UserInterfaceStack extends Stack {
         } else {
             webappAssets = Source.asset(config.webAppAssetsPath);
         }
+
         new BucketDeployment(this, 'AwsExportsDepolyment', {
             sources: [webappAssets, appEnvSource],
             retainOnDelete: false,
             destinationBucket: websiteBucket,
+            ...(config.roles?.UIDeploymentRole &&
+              {
+                  role: Role.fromRoleName(this, createCdkId(['LisaRestApiUri', Roles.UI_DEPLOYMENT_ROLE]), config.roles.UIDeploymentRole),
+              }),
+        });
+    }
+
+    /**
+     * Create S3 read only role
+     * @returns {IRole} S3 read only role
+     */
+    createS3ReadOnlyRole (): IRole {
+        const roleName = `${Stack.of(this).stackName}-s3-reader-role`;
+        return new Role(this, roleName, {
+            roleName,
+            assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
+            managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AmazonS3ReadOnlyAccess')],
+            description: 'Allows API gateway to proxy static website assets',
         });
     }
 }

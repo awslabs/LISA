@@ -21,6 +21,7 @@ import { Construct } from 'constructs';
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
+import { Role } from 'aws-cdk-lib/aws-iam';
 
 type LisaApiBaseStackProps = {
     vpc: Vpc;
@@ -63,6 +64,10 @@ export class LisaApiBaseStack extends Stack {
             config: config,
             securityGroups: [vpc.securityGroups.lambdaSg],
             vpc,
+            ...(config.roles &&
+            {
+                role: Role.fromRoleName(this, 'AuthorizerRole', config.roles.RestApiAuthorizerRole),
+            })
         });
 
         this.restApi = restApi;

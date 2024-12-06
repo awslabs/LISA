@@ -21,6 +21,7 @@ import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     Effect,
+    IRole,
     ManagedPolicy,
     Policy,
     PolicyDocument,
@@ -44,6 +45,7 @@ import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createLambdaRole } from '../core/utils';
+import { Roles } from '../core/iam/roles';
 
 /**
  * Properties for ModelsApi Construct.
@@ -126,105 +128,14 @@ export class ModelsApi extends Construct {
 
         const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
 
-        const stateMachinesLambdaRole = new Role(this, 'ModelsSfnLambdaRole', {
-            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            managedPolicies: [
-                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
-            ],
-            inlinePolicies: {
-                lambdaPermissions: new PolicyDocument({
-                    statements: [
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'dynamodb:DeleteItem',
-                                'dynamodb:GetItem',
-                                'dynamodb:PutItem',
-                                'dynamodb:UpdateItem',
-                            ],
-                            resources: [
-                                modelTable.tableArn,
-                                `${modelTable.tableArn}/*`,
-                            ]
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'cloudformation:CreateStack',
-                                'cloudformation:DeleteStack',
-                                'cloudformation:DescribeStacks',
-                            ],
-                            resources: [
-                                'arn:*:cloudformation:*:*:stack/*',
-                            ],
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'lambda:InvokeFunction'
-                            ],
-                            resources: [
-                                dockerImageBuilder.dockerImageBuilderFn.functionArn,
-                                ecsModelDeployer.ecsModelDeployerFn.functionArn
-                            ]
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'ecr:DescribeImages'
-                            ],
-                            resources: ['*']
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'ec2:CreateNetworkInterface',
-                                'ec2:DescribeNetworkInterfaces',
-                                'ec2:DescribeSubnets',
-                                'ec2:DeleteNetworkInterface',
-                                'ec2:AssignPrivateIpAddresses',
-                                'ec2:UnassignPrivateIpAddresses'
-                            ],
-                            resources: ['*'],
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'ec2:TerminateInstances'
-                            ],
-                            resources: ['*'],
-                            conditions: {
-                                'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
-                            }
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'ssm:GetParameter'
-                            ],
-                            resources: [
-                                lisaServeEndpointUrlPs.parameterArn
-                            ],
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'secretsmanager:GetSecretValue'
-                            ],
-                            resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'autoscaling:DescribeAutoScalingGroups',
-                                'autoscaling:UpdateAutoScalingGroup',
-                            ],
-                            resources: ['*'],  // We do not know the ASG names in advance
-                        }),
-                    ]
-                }),
-            }
-        });
+        const stateMachineExecutionRole = config.roles ?
+            { executionRole: Role.fromRoleName(this, Roles.MODEL_SFN_ROLE, config.roles.ModelSfnRole) } :
+            undefined;
+
+        const stateMachinesLambdaRole = config.roles ?
+            Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
+            this.createStateMachineLambdaRole(modelTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
+                ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
@@ -238,6 +149,7 @@ export class ModelsApi extends Construct {
             ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
+            ...(stateMachineExecutionRole),
         });
 
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
@@ -249,6 +161,7 @@ export class ModelsApi extends Construct {
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
+            ...(stateMachineExecutionRole),
         });
 
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
@@ -260,6 +173,7 @@ export class ModelsApi extends Construct {
             securityGroups: securityGroups,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
+            ...(stateMachineExecutionRole),
         });
 
         const environment = {
@@ -272,7 +186,7 @@ export class ModelsApi extends Construct {
             MODEL_TABLE_NAME: modelTable.tableName,
         };
 
-        const lambdaRole: Role = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn);
+        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
@@ -401,5 +315,125 @@ export class ModelsApi extends Construct {
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
+    }
+
+    /**
+     * Creates a role for the state machine lambdas
+     * @param modelTableArn - Arn of the model table
+     * @param dockerImageBuilderFnArn - Arn of the docker image builder lambda
+     * @param ecsModelDeployerFnArn - Arn of the ecs model deployer lambda
+     * @param lisaServeEndpointUrlParamArn - Arn of the lisa serve endpoint url parameter
+     * @param managementKeyName - Name of the management key secret
+     * @returns The created role
+     */
+    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string): IRole {
+        return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
+            inlinePolicies: {
+                lambdaPermissions: new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'dynamodb:DeleteItem',
+                                'dynamodb:GetItem',
+                                'dynamodb:PutItem',
+                                'dynamodb:UpdateItem',
+                            ],
+                            resources: [
+                                modelTableArn,
+                                `${modelTableArn}/*`,
+                            ]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'cloudformation:CreateStack',
+                                'cloudformation:DeleteStack',
+                                'cloudformation:DescribeStacks',
+                            ],
+                            resources: [
+                                'arn:*:cloudformation:*:*:stack/*',
+                            ],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'lambda:InvokeFunction'
+                            ],
+                            resources: [
+                                dockerImageBuilderFnArn,
+                                ecsModelDeployerFnArn
+                            ]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ecr:DescribeImages'
+                            ],
+                            resources: ['*']
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ec2:CreateNetworkInterface',
+                                'ec2:DescribeNetworkInterfaces',
+                                'ec2:DescribeSubnets',
+                                'ec2:DeleteNetworkInterface',
+                                'ec2:AssignPrivateIpAddresses',
+                                'ec2:UnassignPrivateIpAddresses'
+                            ],
+                            resources: ['*'],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ec2:TerminateInstances'
+                            ],
+                            resources: ['*'],
+                            conditions: {
+                                'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
+                            }
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ssm:GetParameter'
+                            ],
+                            resources: [
+                                lisaServeEndpointUrlParamArn
+                            ],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'secretsmanager:GetSecretValue'
+                            ],
+                            resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'autoscaling:DescribeAutoScalingGroups',
+                                'autoscaling:UpdateAutoScalingGroup',
+                            ],
+                            resources: ['*'],  // We do not know the ASG names in advance
+                        }),
+                    ]
+                }),
+            }
+        });
+    }
+
+    createStateMachineExecutionRole (): IRole {
+        return new Role(this, Roles.MODEL_SFN_ROLE, {
+            assumedBy: new ServicePrincipal('states.amazonaws.com'),
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaRole'),
+            ]
+        });
     }
 }

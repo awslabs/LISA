@@ -19,11 +19,12 @@ import * as fs from 'node:fs';
 
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, EndpointType, RestApi } from 'aws-cdk-lib/aws-apigateway';
-import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { IRole, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { BlockPublicAccess, Bucket, BucketEncryption, IBucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
+import { Roles } from '../core/iam/roles';
 
 /**
  * Properties for DocsStack Construct.
@@ -60,18 +61,21 @@ export class LisaDocsStack extends Stack {
         if (!fs.existsSync(docsPath)) {
             fs.mkdirSync(docsPath);
         }
+
         // Deploy local folder to S3
         new BucketDeployment(this, 'DeployDocsWebsite', {
             sources: [Source.asset(docsPath)],
             destinationBucket: docsBucket,
+            ...(config.roles?.DocsDeployerRole &&
+            {
+                role: Role.fromRoleName(this, Roles.DOCS_DEPLOYER_ROLE, config.roles.DocsDeployerRole),
+            })
         });
 
         // REST API GW S3 role
-        const apiGatewayRole = new Role(this, `${Stack.of(this).stackName}-s3-reader-role`, {
-            assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
-            description: 'Allows API gateway to proxy static website assets',
-        });
-        docsBucket.grantRead(apiGatewayRole);
+        const apiGatewayRole = config.roles?.DocsRole ?
+            Role.fromRoleName(this, Roles.DOCS_ROLE, config.roles.DocsRole) :
+            this.createApiRole(docsBucket);
 
         // Create API Gateway
         const api = new RestApi(this, 'DocsApi', {
@@ -175,4 +179,19 @@ export class LisaDocsStack extends Stack {
             description: 'API Gateway URL',
         });
     }
+
+    /**
+     * Create API Gateway role to access S3 bucket
+     * @param bucket
+     * @returns role
+     */
+    createApiRole (bucket: IBucket): IRole {
+        const role = new Role(this, `${Stack.of(this).stackName}-s3-reader-role`, {
+            assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
+            description: 'Allows API gateway to proxy static website assets',
+        });
+        bucket.grantRead(role);
+        return role;
+    }
+
 }

@@ -12,7 +12,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // Utility functions.
 import * as fs from 'fs';
@@ -20,8 +20,15 @@ import * as path from 'path';
 
 import * as cdk from 'aws-cdk-lib';
 
-import { Config } from '../schema';
-import { Effect, ManagedPolicy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import {
+    Effect,
+    IRole,
+    ManagedPolicy,
+    PolicyDocument,
+    PolicyStatement,
+    Role,
+    ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 const IAM_DIR = path.join(__dirname, 'iam');
@@ -36,11 +43,10 @@ type JSONPolicyStatement = {
 /**
  * Extract policy statements from JSON file.
  *
- * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
  * @returns {PolicyStatement[]} - Extracted IAM policy statements.
  */
-const extractPolicyStatementsFromJson = (config: Config, serviceName: string): PolicyStatement[] => {
+const extractPolicyStatementsFromJson = (serviceName: string): PolicyStatement[] => {
     const statementData = fs.readFileSync(path.join(IAM_DIR, `${serviceName.toLowerCase()}.json`), 'utf8');
     const statements = JSON.parse(statementData).Statement;
 
@@ -61,18 +67,22 @@ const extractPolicyStatementsFromJson = (config: Config, serviceName: string): P
 
 /**
  * Wrapper to get IAM policy statements.
- * @param {Config} config - The application configuration.
  * @param {string} serviceName - AWS service name.
  * @returns {PolicyStatement[]} - Extracted IAM policy statements.
  */
-export const getIamPolicyStatements = (config: Config, serviceName: string): PolicyStatement[] => {
-    return extractPolicyStatementsFromJson(config, serviceName);
+export const getIamPolicyStatements = (serviceName: string): PolicyStatement[] => {
+    return extractPolicyStatementsFromJson(serviceName);
 };
 
-export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '') => {
-    return new Role(construct, `Lisa${lambdaName}LambdaExecutionRole`, {
+export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '', roleOverride?: string): IRole => {
+    const roleId = `Lisa${lambdaName}LambdaExecutionRole`;
+    if (roleOverride) {
+        return Role.fromRoleName(construct, roleId, roleOverride);
+    }
+
+    return new Role(construct, roleId, {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-        roleName: createCdkId([deploymentName, `Lisa${lambdaName}LambdaExecutionRole`]),
+        roleName: createCdkId([deploymentName, roleId]),
         description: `Role used by LISA ${lambdaName} lambdas to access AWS resources`,
         managedPolicies: [
             ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
@@ -110,14 +120,18 @@ export const createLambdaRole = (construct: Construct, deploymentName: string, l
  * TODO: Make sure all IDs are valid for AWS resources like ECR, CFN, etc.
  *
  * @param {string[]} idParts - The name of the resource.
+ * @param maxLength
+ * @param truncationIdx
  * @throws {Error} Throws an error if the generated CDK ID is longer than 64 characters.
  * @returns {string} The generated CDK ID for the model resource.
  */
-export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
+export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx?: number): string {
     let cdkId = idParts.join('-');
     const length = cdkId.length;
 
     if (length > maxLength) {
+        console.log(`${cdkId} is too long (>${maxLength}). Truncating...`);
+        truncationIdx = typeof truncationIdx === 'undefined' ? idParts.length - 1 : truncationIdx;
         idParts[truncationIdx] = idParts[truncationIdx].slice(0, maxLength - length);
         cdkId = idParts.join('-');
     }

@@ -217,6 +217,7 @@ cleanTypeScript:
 	@find . -type d -name "build" -exec rm -rf {} +
 	@find . -type d -name ".tscache" -exec rm -rf {} +
 	@find . -type d -name ".jest_cache" -exec rm -rf {} +
+	@find . -type d -name "node_modules" -exec rm -rf {} +
 
 
 ## Delete CloudFormation outputs
@@ -280,11 +281,16 @@ endif
 ## Tear down all infrastructure
 destroy: cleanMisc
 	$(call print_config)
+ifneq (,$(findstring true, $(HEADLESS)))
+	npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE});
+else
 	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\
 	if [ $${confirm_config:-'N'} = 'y' ]; then \
 		npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE}); \
 	fi;
+endif
+
 
 
 #################################################################################

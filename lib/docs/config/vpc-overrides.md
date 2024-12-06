@@ -9,11 +9,9 @@ customize network settings including CIDR blocks, availability zones, and subnet
 
 The configuration supports the following subnet types:
 
-Public Subnets `[ publicSubnet1, publicSubnet2 ]`
-
-Private Subnets `[privateSubnet1, privateSubnet2]`
-
-Private Isolated Subnets `[privateIsolatedSubnet1, privateIsolatedSubnet2 ]`
+- Public Subnets `[ publicSubnet1, publicSubnet2 ]`
+- Private Subnets `[privateSubnet1, privateSubnet2]`
+- Private Isolated Subnets `[privateIsolatedSubnet1, privateIsolatedSubnet2 ]`
 
 ## Configuration Example
 
@@ -104,13 +102,10 @@ for your overrides:
 
 For each subnet, you must specify:
 
-AvailabilityZone
-
-CidrBlock
-
-VpcId
-
-MapPublicIpOnLaunch (true for public subnets, false for private)
+- AvailabilityZone
+- CidrBlock
+- VpcId
+- MapPublicIpOnLaunch (true for public subnets, false for private)
 
 ## Best Practices
 

@@ -113,7 +113,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     verify: Union[bool, str]
     """Cert path or option for verifying SSL"""
 
-    embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
+    _embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
     """OpenAI-compliant client for making requests against embedding model."""
 
     class Config:
@@ -124,7 +124,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.embedding_model = OpenAIEmbeddings(
+        self._embedding_model = OpenAIEmbeddings(
             openai_api_base=self.lisa_openai_api_base,
             openai_api_key=self.api_token,
             model=self.model,
@@ -137,19 +137,19 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Use OpenAI API to embed a list of documents."""
-        return cast(List[List[float]], self.embedding_model.embed_documents(texts=texts))
+        return cast(List[List[float]], self._embedding_model.embed_documents(texts=texts))
 
     def embed_query(self, text: str) -> List[float]:
         """Use OpenAI API to embed a text."""
-        return cast(List[float], self.embedding_model.embed_query(text=text))
+        return cast(List[float], self._embedding_model.embed_query(text=text))
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         """Use OpenAI API to embed a list of documents."""
-        return cast(List[List[float]], await self.embedding_model.aembed_documents(texts=texts))
+        return cast(List[List[float]], await self._embedding_model.aembed_documents(texts=texts))
 
     async def aembed_query(self, text: str) -> List[float]:
         """Use OpenAI API to embed a text."""
-        return cast(List[float], await self.embedding_model.aembed_query(text=text))
+        return cast(List[float], await self._embedding_model.aembed_query(text=text))
 
 
 class LisaEmbeddings(BaseModel, Embeddings):

@@ -164,6 +164,7 @@ When deploying for dev and testing you can use a self-signed certificate for the
 
 ```bash
 export REGION=<your-region>
+export DOMAIN=<your-domain> #Optional if not running in 'aws' partition
 ./scripts/gen-certs.sh
 aws iam upload-server-certificate --server-certificate-name <cert-name> --certificate-body file://scripts/server.pem --private-key file://scripts/server.key
 ```
@@ -172,7 +173,7 @@ Update your `config-custom.yaml` with the certificate ARN:
 
 ```yaml
 restApiConfig:
-  sslCertIamArn: arn:aws:iam::<account-number>:server-certificate/<certificate-name>
+  sslCertIamArn: arn:<aws-partition>:iam::<account-number>:server-certificate/<certificate-name>
 ```
 
 ## Step 9: Customize Model Deployment

@@ -24,7 +24,8 @@ const stackGroupOverrides: Record<string, number> = {
 
 const stackGroups: Record<string, number> = {
     LisaServe: 2,
-    LisaNetworking: 3
+    LisaNetworking: 3,
+    LisaRAG: 1,
 };
 const RESOURCE = 'AWS::EC2::SecurityGroup';
 

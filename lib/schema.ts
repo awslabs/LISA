@@ -640,6 +640,8 @@ const RawConfigSchema = z
             })
             .describe('AWS account number for deployment. Must be 12 digits.'),
         region: z.string().describe('AWS region for deployment.'),
+        partition: z.string().default('aws').describe('AWS partition for deployment.'),
+        domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
         restApiConfig: FastApiContainerConfigSchema,
         vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
         subnets: z.array(z.object({

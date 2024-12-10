@@ -40,6 +40,8 @@ const mappings: EnvMapping[] = [
     ['PROFILE', 'profile'],
     ['DEPLOYMENT_NAME', 'deploymentName'],
     ['ACCOUNT_NUMBER', 'accountNumber'],
+    ['PARTITION', 'partition'],
+    ['DOMAIN', 'domain'],
     ['REGION', 'region'],
 ];
 mappings.forEach(([envVar, configVar]) => {

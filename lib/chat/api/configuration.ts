@@ -17,11 +17,11 @@
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
+import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
@@ -156,7 +156,7 @@ export class ConfigurationApi extends Construct {
                 './lambda',
                 [commonLambdaLayer],
                 f,
-                Runtime.PYTHON_3_10,
+                getDefaultRuntime(),
                 vpc,
                 securityGroups,
                 lambdaRole,

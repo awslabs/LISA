@@ -27,7 +27,7 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -36,6 +36,7 @@ import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { getDefaultRuntime } from '../../api-base/utils';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -81,7 +82,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'SetModelToCreatingDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -106,7 +107,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'StartCopyDockerImageDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -129,7 +130,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'PollDockerImageAvailableDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -152,7 +153,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'HandleFailureDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_failure',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -181,7 +182,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'StartCreateStackDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
                 code: Code.fromAsset('./lambda'),
                 timeout: Duration.minutes(8),
@@ -204,7 +205,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'PollCreateStackDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -233,7 +234,7 @@ export class CreateModelStateMachine extends Construct {
                     queueName: 'AddModelToLitellmDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,

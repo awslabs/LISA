@@ -68,7 +68,7 @@ export class FastApiContainer extends Construct {
         const { config, securityGroup, tokenTable, vpc } = props;
 
         const buildArgs: Record<string, string> | undefined = {
-            BASE_IMAGE: 'python:3.10',
+            BASE_IMAGE: 'python:3.11',
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
             PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
@@ -115,7 +115,7 @@ export class FastApiContainer extends Construct {
                 buildArgs,
                 containerConfig: {
                     image: {
-                        baseImage: 'python:3.10',
+                        baseImage: 'python:3.11',
                         path: 'lib/serve/rest-api',
                         type: EcsSourceType.ASSET
                     },

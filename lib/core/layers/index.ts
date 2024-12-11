@@ -15,11 +15,12 @@
 */
 
 import { BundlingOutput } from 'aws-cdk-lib';
-import { Architecture, Code, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Architecture, Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { Construct } from 'constructs';
 
 import { BaseProps } from '../../schema';
+import { getDefaultRuntime } from '../../api-base/utils';
 
 /**
  * Properties for Layer Construct.
@@ -84,7 +85,7 @@ export class Layer extends Construct {
             const layerAsset = new Asset(this, 'LayerAsset', {
                 path,
                 bundling: {
-                    image: Runtime.PYTHON_3_10.bundlingImage,
+                    image: getDefaultRuntime().bundlingImage,
                     platform: architecture.dockerPlatform,
                     command: ['bash', '-c', `set -e ${args.join(' ')}`],
                     outputType: BundlingOutput.AUTO_DISCOVER,
@@ -97,7 +98,7 @@ export class Layer extends Construct {
 
         const layer = new LayerVersion(this, 'Layer', {
             code: layerCode,
-            compatibleRuntimes: [Runtime.PYTHON_3_10],
+            compatibleRuntimes: [getDefaultRuntime()],
             removalPolicy: config.removalPolicy,
             description: description,
         });

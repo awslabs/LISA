@@ -23,6 +23,7 @@ import requests
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
 from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, retry_config
+from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
 from utilities.vector_store import get_vector_store_client
@@ -186,13 +187,29 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     Currently there is not support for dynamic repositories so only a single OpenSearch repository
     is returned.
     """
-    global registered_repositories
 
+    user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
+
+    global registered_repositories
     if not registered_repositories:
         registered_repositories_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS_NAME"])
         registered_repositories = json.loads(registered_repositories_response["Parameter"]["Value"])
 
-    return registered_repositories
+    return list(
+        filter(lambda repository: user_has_group(user_groups, repository["allowedGroups"]), registered_repositories)
+    )
+
+
+def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
+    """Returns if user groups has at least one intersections with allowed groups.
+
+    If allowed groups is empty this will return True.
+    """
+
+    if len(allowed_groups) > 0:
+        return len(set(user_groups).intersection(set(allowed_groups))) > 0
+    else:
+        return True
 
 
 @api_wrapper
@@ -210,10 +227,27 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     repository_type = query_string_params["repositoryType"]
     top_k = query_string_params.get("topK", 3)
 
+    repository_id = event["pathParameters"]["repositoryId"]
+    logger.info(f"using repository {repository_id}")
+
+    global registered_repositories
+    if not registered_repositories:
+        registered_repositories_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS_NAME"])
+        registered_repositories = json.loads(registered_repositories_response["Parameter"]["Value"])
+
+    repository = next(
+        repository for repository in registered_repositories if repository["repositoryId"] == repository_id
+    )
+    logger.info(f"using repository {repository}")
+
+    user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
+    if not user_has_group(user_groups, repository["allowedGroups"]):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+
     id_token = get_id_token(event)
 
     embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_type, index=model_name, embeddings=embeddings)
+    vs = get_vector_store_client(repository_id, repository_type, index=model_name, embeddings=embeddings)
     docs = vs.similarity_search(
         query,
         k=top_k,
@@ -251,6 +285,22 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository_type = query_string_params["repositoryType"]
     chunk_size = int(query_string_params["chunkSize"]) if "chunkSize" in query_string_params else None
     chunk_overlap = int(query_string_params["chunkOverlap"]) if "chunkOverlap" in query_string_params else None
+    repository_id = event["pathParameters"]["repositoryId"]
+    logger.info(f"using repository {repository_id}")
+
+    global registered_repositories
+    if not registered_repositories:
+        registered_repositories_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS_NAME"])
+        registered_repositories = json.loads(registered_repositories_response["Parameter"]["Value"])
+
+    repository = next(
+        repository for repository in registered_repositories if repository["repositoryId"] == repository_id
+    )
+    logger.info(f"using repository {repository}")
+
+    user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
+    if not user_has_group(user_groups, repository["allowedGroups"]):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
     docs = process_record(s3_keys=body["keys"], chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
@@ -264,7 +314,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_type, index=model_name, embeddings=embeddings)
+    vs = get_vector_store_client(repository_id, repository_type, index=model_name, embeddings=embeddings)
     ids = vs.add_texts(texts=texts, metadatas=metadatas)
     return {"ids": ids, "count": len(ids)}
 
@@ -294,3 +344,7 @@ def presigned_url(event: dict, context: dict) -> dict:
         ExpiresIn=3600,
     )
     return {"response": response}
+
+
+def get_groups(event) -> List[str]:
+    return json.loads(event["requestContext"]["authorizer"]["groups"])

@@ -153,7 +153,7 @@ export class LisaServeApplicationStack extends Stack {
             'LiteLLM dynamic model management database',
         );
         if (!config.securityGroupConfig?.liteLlmDbSecurityGroupId) {
-            SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroupEnum.LITE_LLM_SG, vpc, config);
+            SecurityGroupFactory.addIngress(litellmDbSg, SecurityGroupEnum.LITE_LLM_SG, vpc, config, config.restApiConfig.rdsConfig.dbPort);
         }
 
         const username = config.restApiConfig.rdsConfig.username;

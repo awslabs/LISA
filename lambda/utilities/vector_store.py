@@ -34,12 +34,18 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-def get_vector_store_client(store: str, index: str, embeddings: Embeddings) -> VectorStore:
+def get_vector_store_client(
+    repository_id: str, repository_type: str, index: str, embeddings: Embeddings
+) -> VectorStore:
     """Return Langchain VectorStore corresponding to the specified store.
 
     Creates a langchain vector store based on the specified embeddigs adapter and backing store.
     """
-    if store == "opensearch":
+
+    prefix = os.environ["REGISTERED_REPOSITORIES_PS_PREFIX"]
+    connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")
+
+    if repository_type == "opensearch":
         service = "es"
         session = boto3.Session()
         credentials = session.get_credentials()
@@ -52,11 +58,7 @@ def get_vector_store_client(store: str, index: str, embeddings: Embeddings) -> V
             session_token=credentials.token,
         )
 
-        global opensearch_endpoint
-
-        if not opensearch_endpoint:
-            opensearch_param_response = ssm_client.get_parameter(Name=os.environ["OPENSEARCH_ENDPOINT_PS_NAME"])
-            opensearch_endpoint = f'https://{opensearch_param_response["Parameter"]["Value"]}'
+        opensearch_endpoint = f'https://{connection_info["Parameter"]["Value"]}'
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
@@ -69,11 +71,8 @@ def get_vector_store_client(store: str, index: str, embeddings: Embeddings) -> V
             connection_class=RequestsHttpConnection,
         )
 
-    elif store == "pgvector":
-        connection_info = json.loads(
-            ssm_client.get_parameter(Name=os.environ["RDS_CONNECTION_INFO_PS_NAME"])["Parameter"]["Value"]
-        )
-
+    elif repository_type == "pgvector":
+        connection_info = json.loads(connection_info["Parameter"]["Value"])
         secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info["passwordSecretId"])
         password = json.loads(secrets_response["SecretString"])["password"]
 
@@ -91,4 +90,4 @@ def get_vector_store_client(store: str, index: str, embeddings: Embeddings) -> V
             embedding_function=embeddings,
         )
 
-    raise ValueError(f"Unrecognized RAG store: '{store}'")
+    raise ValueError(f"Unrecognized RAG store: '{repository_id}'")

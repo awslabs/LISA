@@ -17,3 +17,10 @@
 
 class RagUploadException(Exception):
     """RAG upload error exception."""
+
+
+class HTTPException(Exception):
+    def __init__(self, status_code=400, message="Bad Request"):
+        self.http_status_code = status_code
+        self.message = message
+        super().__init__(self.message)

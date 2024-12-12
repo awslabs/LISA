@@ -183,11 +183,6 @@ export class LisaRagStack extends Stack {
                         ragConfig.opensearchConfig.endpoint,
                     );
                 } else {
-                    // new CfnServiceLinkedRole(this, 'ServiceLinkedRole', {
-                    //     awsServiceName: 'opensearchservice.amazonaws.com',
-                    //     description: 'Service-linked role for Amazon OpenSearch Service'
-                    // });
-
                     // Service-linked role that Amazon OpenSearch Service will use
                     (async () => {
                         const iam = new IAMClient({

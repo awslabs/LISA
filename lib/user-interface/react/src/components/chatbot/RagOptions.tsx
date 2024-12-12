@@ -57,7 +57,7 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
                 repositories.map((repo) => {
                     setRepositoryMap((map) => new Map(map.set(repo.repositoryId, repo.type)));
                     return {
-                        label: `${repo.repositoryId} (${repo.type})`,
+                        label: `${repo.repositoryName || repo.repositoryId} (${repo.type})`,
                         value: repo.repositoryId,
                     };
                 }),

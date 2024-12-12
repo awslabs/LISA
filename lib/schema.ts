@@ -484,6 +484,7 @@ const OpenSearchExistingClusterConfig = z.object({
 const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string(),
+        repositoryName: z.string().optional().describe('Name to display in the UI'),
         type: z.nativeEnum(RagRepositoryType),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),

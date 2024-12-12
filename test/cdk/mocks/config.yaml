@@ -41,9 +41,27 @@ dev:
     sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
   ragRepositories:
     - repositoryId: pgvector-rag
+      repositoryName: "PGVector"
       type: pgvector
       rdsConfig:
         username: postgres
+    - repositoryId: pgvector-rag2
+      repositoryName: "PGVector 2"
+      type: pgvector
+      rdsConfig:
+        username: postgres
+        allowedGroups:
+          - group1
+    - reposirtoryId: opensearch-rag
+      type: opensearch
+      repositoryName: "Opensearch 2"
+      opensearchConfig:
+        dataNodes: 2
+        dataNodeInstanceType: r7g.large.search
+        masterNodes: 0
+        masterNodeInstanceType: r7g.large.search
+        volumeSize: 20
+        multiAzWithStandby: false
     # - repositoryId: default
     #   type: opensearch
     #   opensearchConfig:

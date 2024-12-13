@@ -64,6 +64,10 @@ type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
  * LisaChat RAG stack.
  */
 export class LisaRagStack extends Stack {
+
+    // Used to link service role if OpenSeach is used
+    openSearchRegion?: string;
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -185,23 +189,7 @@ export class LisaRagStack extends Stack {
                     );
                 } else {
                     // Service-linked role that Amazon OpenSearch Service will use
-                    (async () => {
-                        const iam = new IAMClient({
-                            region: config.region,
-                        });
-                        const response = await iam.send(
-                            new ListRolesCommand({
-                                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
-                            }),
-                        );
-
-                        // Only if the role for OpenSearch Service doesn't exist, it will be created.
-                        if (response.Roles && response.Roles?.length === 0) {
-                            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
-                                awsServiceName: 'opensearchservice.amazonaws.com',
-                            });
-                        }
-                    })();
+                    this.openSearchRegion = config.region;
 
                     openSearchDomain = new Domain(this, createCdkId(['LisaServeRagRepository', ragConfig.repositoryId]), {
                         domainName: ['lisa-rag', ragConfig.repositoryId].join('-'),
@@ -379,5 +367,32 @@ export class LisaRagStack extends Stack {
         ragRepositoriesParam.grantRead(lambdaRole);
         modelsPs.grantRead(lambdaRole);
         endpointUrl.grantRead(lambdaRole);
+    }
+
+    /**
+     * This method links the OpenSearch Service role to the service-linked role if it exists.
+     * If the role doesn't exist, it will be created.
+     */
+    async linkServiceRole() {
+        // Only link open search role if being used
+        if (!this.openSearchRegion) {
+            return;
+        }
+
+        const iam = new IAMClient({
+            region: this.openSearchRegion
+        });
+        const response = await iam.send(
+            new ListRolesCommand({
+                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
+            }),
+        );
+
+        // Only if the role for OpenSearch Service doesn't exist, it will be created.
+        if (response.Roles && response.Roles?.length === 0) {
+            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
+                awsServiceName: 'opensearchservice.amazonaws.com',
+            });
+        }
     }
 }

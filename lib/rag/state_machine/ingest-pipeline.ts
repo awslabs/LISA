@@ -65,6 +65,7 @@ type IngestPipelineStateMachineProps = BaseProps & {
     repositoryId: string;
     type: RagRepositoryType;
     layers?: ILayerVersion[];
+    registeredRepositoriesParamName: string;
 };
 
 /**
@@ -76,7 +77,7 @@ export class IngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers} = props;
+        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName} = props;
 
         // Create KMS key for environment variable encryption
         const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
@@ -98,6 +99,7 @@ export class IngestPipelineStateMachine extends Construct {
             OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
             LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
             LOG_LEVEL: config.logLevel,
+            REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig.sslCertIamArn || '',
             ...(rdsConfig && {
                 RDS_USERNAME: rdsConfig.username,

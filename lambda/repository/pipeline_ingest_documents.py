@@ -123,7 +123,6 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         # Initialize vector store using model name as index, matching lambda_functions.py pattern
         vs = get_vector_store_client(
             repository_id,
-            repository_type,
             index=embedding_model,  # Use model name as index to match lambda_functions.py
             embeddings=embeddings,
         )

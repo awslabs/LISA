@@ -16,6 +16,8 @@
 import json
 import logging
 import os
+from optparse import Option
+from typing import Any, Dict, List
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -32,15 +34,35 @@ logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+registered_repositories: List[Dict[str, Any]] = []
 
 
-def get_vector_store_client(
-    repository_id: str, repository_type: str, index: str, embeddings: Embeddings
-) -> VectorStore:
+def get_registered_repositories() -> List[Any]:
+    """Get a list of all registered RAG repositories."""
+    global registered_repositories
+    if not registered_repositories:
+        registered_repositories_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS_NAME"])
+        registered_repositories = json.loads(registered_repositories_response["Parameter"]["Value"])
+
+    return registered_repositories
+
+
+def find_repository_by_id(repository_id: str) -> Option[Dict]:
+    """Find a RAG repository by id."""
+    return next(
+        (repository for repository in get_registered_repositories() if repository["repositoryId"] == repository_id),
+        None,
+    )
+
+
+def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:
     """Return Langchain VectorStore corresponding to the specified store.
 
     Creates a langchain vector store based on the specified embeddigs adapter and backing store.
     """
+
+    repository = find_repository_by_id(repository_id)
+    repository_type = repository.get("repository_type", None)
 
     prefix = os.environ["REGISTERED_REPOSITORIES_PS_PREFIX"]
     connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")

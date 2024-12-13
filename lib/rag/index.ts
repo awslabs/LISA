@@ -156,6 +156,7 @@ export class LisaRagStack extends Stack {
         let openSearchSg = undefined;
         const connectionParamName = 'LisaServeRagConnectionInfo';
         baseEnvironment['REGISTERED_REPOSITORIES_PS_PREFIX'] = `${config.deploymentPrefix}/${connectionParamName}/`;
+        const registeredRepositoriesParamName = `${config.deploymentPrefix}/registeredRepositories`;
 
         for (const ragConfig of config.ragRepositories) {
             registeredRepositories.push({ repositoryId: ragConfig.repositoryId, repositoryName: ragConfig.repositoryName, type: ragConfig.type, allowedGroups: ragConfig.allowedGroups });
@@ -331,7 +332,8 @@ export class LisaRagStack extends Stack {
                             rdsConfig: ragConfig.rdsConfig,
                             repositoryId: ragConfig.repositoryId,
                             type: ragConfig.type,
-                            layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer]
+                            layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
+                            registeredRepositoriesParamName
                         });
                         console.log(`[DEBUG] Successfully created pipeline ${index}`);
                     } catch (error) {
@@ -344,7 +346,7 @@ export class LisaRagStack extends Stack {
 
         // Create Parameter Store entry with RAG repositories
         const ragRepositoriesParam = new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
-            parameterName: `${config.deploymentPrefix}/registeredRepositories`,
+            parameterName: registeredRepositoriesParamName,
             stringValue: JSON.stringify(registeredRepositories),
             description: 'Serialized JSON of registered RAG repositories',
         });

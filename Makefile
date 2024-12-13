@@ -65,10 +65,12 @@ endif
 
 # DOMAIN - used for the docker login
 ifeq (${DOMAIN},)
-ifeq ($(findstring iso,${REGION}),)
-DOMAIN := amazonaws.com
-else
+ifeq ($(findstring isob,${REGION}),isob)
+DOMAIN := sc2s.sgov.gov
+else ifeq ($(findstring iso,${REGION}),iso)
 DOMAIN := c2s.ic.gov
+else
+DOMAIN := amazonaws.com
 endif
 endif
 
@@ -126,20 +128,7 @@ MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketMod
 
 ## Bootstrap AWS Account with CDK bootstrap
 bootstrap:
-	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION) | $(PARTITION)\n"
-
-ifdef PROFILE
-	@cdk bootstrap \
-		--profile $(PROFILE) \
-		aws://$(ACCOUNT_NUMBER)/$(REGION) \
-		--partition $(PARTITION) \
-		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
-else
-	@cdk bootstrap \
-		aws://$(ACCOUNT_NUMBER)/$(REGION) \
-		--partition $(PARTITION) \
-		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
-endif
+	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION) | $(PARTITION) | $(DOMAIN)\n"
 
 
 ## Set up Python interpreter environment

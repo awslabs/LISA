@@ -373,7 +373,7 @@ export class LisaRagStack extends Stack {
      * This method links the OpenSearch Service role to the service-linked role if it exists.
      * If the role doesn't exist, it will be created.
      */
-    async linkServiceRole() {
+    async linkServiceRole () {
         // Only link open search role if being used
         if (!this.openSearchRegion) {
             return;

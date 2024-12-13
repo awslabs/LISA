@@ -346,5 +346,6 @@ def presigned_url(event: dict, context: dict) -> dict:
     return {"response": response}
 
 
-def get_groups(event) -> List[str]:
-    return json.loads(event["requestContext"]["authorizer"]["groups"])
+def get_groups(event: Any) -> List[str]:
+    groups: List[str] = json.loads(event["requestContext"]["authorizer"]["groups"])
+    return groups

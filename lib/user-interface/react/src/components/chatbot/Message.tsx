@@ -61,7 +61,9 @@ export default function Message ({ message, isRunning, showMetadata }: MessagePr
                                 <ReactMarkdown children={message.content}/>
                                 <div style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
                                     <Button
-                                        onClick={() => {navigator.clipboard.writeText(message.content)}}
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(message.content);
+                                        }}
                                         iconAlign='right'
                                         iconName='copy'
                                         variant='link'

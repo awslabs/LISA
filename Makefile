@@ -128,7 +128,20 @@ MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketMod
 
 ## Bootstrap AWS Account with CDK bootstrap
 bootstrap:
-	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION) | $(PARTITION) | $(DOMAIN)\n"
+	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION) | $(PARTITION)\n"
+
+ifdef PROFILE
+	@cdk bootstrap \
+		--profile $(PROFILE) \
+		aws://$(ACCOUNT_NUMBER)/$(REGION) \
+		--partition $(PARTITION) \
+		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+else
+	@cdk bootstrap \
+		aws://$(ACCOUNT_NUMBER)/$(REGION) \
+		--partition $(PARTITION) \
+		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+endif
 
 
 ## Set up Python interpreter environment

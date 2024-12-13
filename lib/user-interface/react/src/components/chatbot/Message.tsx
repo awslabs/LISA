@@ -20,10 +20,13 @@ import ReactMarkdown from 'react-markdown';
 import Spinner from '@cloudscape-design/components/spinner';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { SpaceBetween } from '@cloudscape-design/components';
+import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { LisaChatMessage } from '../types';
+import { useAppSelector } from '../../config/store';
+import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
+import Avatar from 'react-avatar';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -32,31 +35,51 @@ type MessageProps = {
 };
 
 export default function Message ({ message, isRunning, showMetadata }: MessageProps) {
+    const currentUser = useAppSelector(selectCurrentUsername);
     return (
-        <div className='mt-2'>
+        <div className='mt-2' style={{overflow: 'hidden'}}>
             {isRunning && (
-                <Container>
-                    <Box float='left'>
-                        <Spinner />
-                    </Box>
-                </Container>
+                <Grid gridDefinition={[{colspan: 1}, {colspan: 11}]}>
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%'}} title={message?.metadata?.modelName}>
+                        <Avatar size='40' round={true} color="#ff7f0e"/>
+                    </div>
+                    <Container>
+                        <Box float='left'>
+                            <Spinner/>
+                        </Box>
+                    </Container>
+                </Grid>
             )}
             {message?.type !== 'human' && !isRunning && (
-                <Container>
-                    <SpaceBetween size='s' direction='vertical'>
-                        <ReactMarkdown children={message.content} />
-                        {message.metadata && showMetadata && (
-                            <ExpandableSection variant='footer' headerText='Metadata'>
-                                <JsonView data={message.metadata} style={darkStyles} />
-                            </ExpandableSection>
-                        )}
-                    </SpaceBetween>
-                </Container>
+                <Grid gridDefinition={[{colspan: 1}, {colspan: 11}]}>
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%'}} title={message?.metadata?.modelName}>
+                        <Avatar size='40' round={true} color="#ff7f0e"/>
+                    </div>
+                    <Container>
+                        <SpaceBetween size='s' direction='vertical'>
+                            <ReactMarkdown children={message.content}/>
+                            {message.metadata && showMetadata && (
+                                <ExpandableSection variant='footer' headerText='Metadata'>
+                                    <JsonView data={message.metadata} style={darkStyles}/>
+                                </ExpandableSection>
+                            )}
+                        </SpaceBetween>
+                    </Container>
+                </Grid>
             )}
             {message?.type === 'human' && (
-                <TextContent>
-                    <strong>{message.content}</strong>
-                </TextContent>
+                <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
+                    <Container>
+                    <SpaceBetween size='s' alignItems='end'>
+                            <TextContent>
+                                <strong>{message.content}</strong>
+                            </TextContent>
+                        </SpaceBetween>
+                    </Container>
+                    <div style={{display: 'flex', alignItems: 'center', height: '100%'}} title={currentUser}>
+                        <Avatar name={currentUser} size='40' round={true} />
+                    </div>
+                </Grid>
             )}
         </div>
     );

@@ -41,7 +41,7 @@ export default function Message ({ message, isRunning, showMetadata }: MessagePr
             {isRunning && (
                 <Grid gridDefinition={[{colspan: 1}, {colspan: 11}]}>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%'}} title={message?.metadata?.modelName}>
-                        <Avatar size='40' round={true} color="#ff7f0e"/>
+                        <Avatar size='40' round={true} color='#ff7f0e'/>
                     </div>
                     <Container>
                         <Box float='left'>
@@ -53,7 +53,7 @@ export default function Message ({ message, isRunning, showMetadata }: MessagePr
             {message?.type !== 'human' && !isRunning && (
                 <Grid gridDefinition={[{colspan: 1}, {colspan: 11}]}>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%'}} title={message?.metadata?.modelName}>
-                        <Avatar size='40' round={true} color="#ff7f0e"/>
+                        <Avatar size='40' round={true} color='#ff7f0e'/>
                     </div>
                     <Container>
                         <SpaceBetween size='s' direction='vertical'>
@@ -70,7 +70,7 @@ export default function Message ({ message, isRunning, showMetadata }: MessagePr
             {message?.type === 'human' && (
                 <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
                     <Container>
-                    <SpaceBetween size='s' alignItems='end'>
+                        <SpaceBetween size='s' alignItems='end'>
                             <TextContent>
                                 <strong>{message.content}</strong>
                             </TextContent>

@@ -112,7 +112,7 @@ export type SetFieldsFunction = (
 ) => void;
 
 
-export type TouchFieldsFunction = (fields: string[], method?: ValidationTouchActionMethod) => void;
+export type TouchFieldsFunction = (fields: string[], method?: ValidationTouchActionMethod) => boolean;
 
 
 /**
@@ -268,7 +268,7 @@ export const useValidationReducer = <F, S extends ValidationReducerBaseState<F>>
     return {
         state,
         errors,
-        isValid: parseResult.success,
+        isValid: Object.keys(errors).length === 0,
         setState: (newState: Partial<S>, method: ValidationStateActionMethod = ModifyMethod.Default) => {
             setState({
                 type: ValidationReducerActionTypes.STATE,
@@ -289,12 +289,19 @@ export const useValidationReducer = <F, S extends ValidationReducerBaseState<F>>
         touchFields: (
             fields: string[],
             method: ValidationTouchActionMethod = ModifyMethod.Default
-        ) => {
+        ): boolean => {
             setState({
                 type: ValidationReducerActionTypes.TOUCH,
                 method,
                 fields,
             } as ValidationTouchAction);
+            const parseResult = formSchema.safeParse({...state.form, ...{touched: fields}});
+            if (!parseResult.success) {
+                errors = issuesToErrors(parseResult.error.issues, fields.reduce((acc, key) => {
+                    acc[key] = true; return acc;
+                }, {}));
+            }
+            return Object.keys(errors).length === 0;
         },
     };
 };

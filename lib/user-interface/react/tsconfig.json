@@ -13,7 +13,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "outDir": "dist/"
   },
   "linterOptions": {
     "exclude": ["src", "node_modules", "build", "dist", "coverage", "scripts", "test", "tests"]

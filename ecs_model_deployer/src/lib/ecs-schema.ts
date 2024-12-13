@@ -18,9 +18,12 @@
 import * as cdk from 'aws-cdk-lib';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
-import { SecurityGroupConfigSchema } from '../../../lib/schema';
+import path from 'path';
+import fs from 'fs';
 
-const VERSION: string = '2.0.1';
+const HERE: string = path.resolve(__dirname);
+const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
+export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,
@@ -224,6 +227,62 @@ export class Ec2Metadata {
             vCpus: 96,
         },
         'g5.48xlarge': {
+            memory: 768 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 100,
+            vCpus: 192,
+        },
+        'g6.xlarge': {
+            memory: 16 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 10,
+            vCpus: 4,
+        },
+        'g6.2xlarge': {
+            memory: 32 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 10,
+            vCpus: 8,
+        },
+        'g6.4xlarge': {
+            memory: 64 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 16,
+        },
+        'g6.8xlarge': {
+            memory: 128 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 32,
+        },
+        'g6.16xlarge': {
+            memory: 256 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 64,
+        },
+        'g6.12xlarge': {
+            memory: 192 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 40,
+            vCpus: 48,
+        },
+        'g6.24xlarge': {
+            memory: 384 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 50,
+            vCpus: 96,
+        },
+        'g6.48xlarge': {
             memory: 768 * 1000,
             gpuCount: 8,
             nvmePath: '/dev/nvme1n1',
@@ -537,6 +596,27 @@ const PypiConfigSchema = z.object({
     indexUrl: z.string().optional().default(''),
     trustedHost: z.string().optional().default(''),
 });
+
+/**
+ * Configuration schema for Security Group imports.
+ * These values are none/small/all, meaning a user can import any number of these or none of these.
+ *
+ * @property {string} modelSecurityGroupId - Security Group ID.
+ * @property {string} restAlbSecurityGroupId - Security Group ID
+ * @property {string} lambdaSecurityGroupId - Security Group ID
+ * @property {string} liteLlmDbSecurityGroupId - Security Group ID.
+ * @property {string} openSearchSecurityGroupId - Security Group ID.
+ * @property {string} pgVectorSecurityGroupId - Security Group ID.
+ */
+export const SecurityGroupConfigSchema = z.object({
+    modelSecurityGroupId: z.string().startsWith('sg-'),
+    restAlbSecurityGroupId: z.string().startsWith('sg-'),
+    lambdaSecurityGroupId: z.string().startsWith('sg-'),
+    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
+    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
+    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
+})
+    .describe('Security Group Overrides used across stacks.');
 
 /**
  * Raw application configuration schema.

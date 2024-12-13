@@ -29,6 +29,7 @@ export class SecurityGroupFactory {
     /**
      * Creates a security group for the VPC.
      *
+     * @param construct - Construct for security group
      * @param securityGroupOverride - security group override
      * @param {string} securityGroupId - The name of the security group.
      * @param {string} deploymentName - The deployment name.
@@ -54,13 +55,11 @@ export class SecurityGroupFactory {
             return sg;
         } else {
             const securityGroupName = SecurityGroupNames[securityGroupId];
-            const sg = new SecurityGroup(construct, securityGroupId, {
+            return new SecurityGroup(construct, securityGroupId, {
                 vpc: vpc,
                 description: `Security group for ${description}`,
                 ...(securityGroupName && {securityGroupName: createCdkId(deploymentName ? [deploymentName, securityGroupName] : [securityGroupName])}),
             });
-
-            return sg;
         }
     }
 

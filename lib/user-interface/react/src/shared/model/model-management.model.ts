@@ -230,5 +230,16 @@ export const ModelRequestSchema = z.object({
                 });
             }
         }
+
+        const baseImageValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
+        const baseImageResult = baseImageValidator.safeParse(value.containerConfig.image.baseImage);
+        if (baseImageResult.success === false) {
+            for (const error of baseImageResult.error.errors) {
+                context.addIssue({
+                    ...error,
+                    path: ['containerConfig', 'image', 'baseImage']
+                });
+            }
+        }
     }
 });

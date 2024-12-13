@@ -156,3 +156,7 @@ function getOrCreateResource (scope: Construct, parentResource: IResource, path:
     }
     return resource;
 }
+
+export function getDefaultRuntime (): Runtime{
+    return Runtime.PYTHON_3_11;
+}

@@ -26,6 +26,8 @@ import { UserInterfaceStack } from '../../../lib/user-interface/index';
 import ConfigParser from './ConfigParser';
 import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
+import { LisaModelsApiStack } from '../../../lib/models';
+import { LisaRagStack } from '../../../lib/rag';
 
 export default class MockApp {
 
@@ -77,12 +79,36 @@ export default class MockApp {
             stackName: 'LisaServe',
             vpc: networkingStack.vpc,
         });
+
+        const modelsStack = new LisaModelsApiStack(app, 'LisaModels', {
+            ...baseStackProps,
+            stackName: 'LisaModels',
+            authorizer: apiBaseStack.authorizer,
+            lisaServeEndpointUrlPs: serveStack.endpointUrl,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
+            vpc: networkingStack.vpc,
+        });
+
         const uiStack = new UserInterfaceStack(app, 'LisaUI', {
             ...baseStackProps,
             architecture: ARCHITECTURE,
             stackName: 'LisaUI',
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
+        });
+
+        const ragStack = new LisaRagStack(app, 'LisaRAG', {
+            ...baseStackProps,
+            stackName: 'LisaRAG',
+            authorizer: apiBaseStack.authorizer,
+            endpointUrl: serveStack.endpointUrl,
+            modelsPs: serveStack.modelsPs,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+            vpc: networkingStack.vpc,
         });
 
         const docStack = new LisaDocsStack(app, 'LisaDocs',{
@@ -98,7 +124,9 @@ export default class MockApp {
             chatStack,
             coreStack,
             serveStack,
+            modelsStack,
             uiStack,
+            ragStack,
             docStack
         ];
 

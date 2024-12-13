@@ -52,7 +52,7 @@ dev:
         username: postgres
         allowedGroups:
           - group1
-    - reposirtoryId: opensearch-rag
+    - repositoryId: opensearch-rag
       type: opensearch
       repositoryName: "Opensearch 2"
       opensearchConfig:

@@ -14,10 +14,12 @@
 
 """Domain objects for interacting with the model endpoints."""
 
+import time
+import uuid
 from enum import Enum
-from typing import Annotated, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
@@ -292,3 +294,34 @@ class DeleteModelResponse(ApiResponseBase):
     """Response object when deleting a model."""
 
     pass
+
+
+class IngestionType(Enum):
+    AUTO = "auto"
+    MANUAL = "manual"
+
+
+class RagDocument(BaseModel):
+    """Rag Document Entity for storing in DynamoDB."""
+    pk: Optional[str] = None
+    document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    repository_id: str
+    collection_id: str
+    document_name: str
+    source: str
+    sub_docs: List[str] = Field(default_factory=lambda: [])
+    ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
+    upload_date: int = Field(default_factory=lambda: int(time.time()))
+
+    model_config = ConfigDict(use_enum_values=True, validate_default=True)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.pk = self.createPartitionKey(self.repository_id, self.collection_id)
+
+    def to_dict(self) -> Any:
+        return self.model_dump()
+
+    @staticmethod
+    def createPartitionKey(repository_id: str, collection_id: str) -> str:
+        return f"{repository_id}#{collection_id}"

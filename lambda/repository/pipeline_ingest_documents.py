@@ -24,11 +24,13 @@ from utilities.file_processing import process_record
 from utilities.validation import validate_chunk_params, validate_model_name, validate_repository_type, ValidationError
 from utilities.vector_store import get_vector_store_client
 
-from .lambda_functions import _get_embeddings_pipeline
+from .lambda_functions import _get_embeddings_pipeline, IngestionType, RagDocument
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+doc_table = boto3.resource("dynamodb", os.environ["AWS_REGION"]).Table(os.environ["RAG_DOCUMENT_TABLE"])
 
 
 def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
@@ -110,6 +112,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         # Prepare texts and metadata
         texts = []
         metadatas = []
+
         for doc_list in docs:
             for doc in doc_list:
                 texts.append(doc.page_content)
@@ -146,6 +149,17 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             raise Exception("Failed to store any documents in vector store")
 
         logger.info(f"Successfully processed {len(all_ids)} chunks from {s3_key} for repository {repository_id}")
+
+        # Store RagDocument entry in Document Table
+        doc_entity = RagDocument(
+            repository_id=repository_id,
+            collection_id=embedding_model,
+            document_name=key,
+            source=docs[0][0].metadata.get("source"),
+            sub_docs=all_ids,
+            ingestion_type=IngestionType.AUTO,
+        )
+        doc_table.put_item(Item=doc_entity)
 
         return {
             "message": f"Successfully processed document {s3_key}",

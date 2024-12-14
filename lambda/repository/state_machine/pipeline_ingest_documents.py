@@ -18,7 +18,10 @@ from typing import Any, Dict
 
 import boto3
 from models.document_processor import DocumentProcessor
+from models.domain_objects import IngestionType, RagDocument
 from models.vectorstore import VectorStore
+
+doc_table = boto3.resource("dynamodb", os.environ["AWS_REGION"]).Table(os.environ["RAG_DOCUMENT_TABLE"])
 
 
 def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -42,6 +45,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
         embedding_model = os.environ["EMBEDDING_MODEL"]
         collection_name = os.environ["COLLECTION_NAME"]
+        repository_id = os.environ["REPOSITORY_ID"]
 
         # Initialize document processor and vectorstore
         doc_processor = DocumentProcessor()
@@ -54,9 +58,21 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
 
         # Chunk document
         chunks = doc_processor.chunk_text(text=content, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        source = f"s3://{bucket}/{key}"
 
         # Store chunks in vectorstore
-        vectorstore.add_texts(texts=chunks, metadata={"source": f"s3://{bucket}/{key}"})
+        ids = vectorstore.add_texts(texts=chunks, metadata={"source": source})
+
+        # Store in DocTable
+        doc_entity = RagDocument(
+            repository_id=repository_id,
+            collection_id=collection_name,
+            document_name=key,
+            source=source,
+            sub_docs=ids,
+            ingestion_type=IngestionType.AUTO,
+        )
+        doc_table.put_item(Item=doc_entity)
 
         return {
             "statusCode": 200,

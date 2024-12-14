@@ -24,11 +24,12 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Code, LayerVersion, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -88,6 +89,7 @@ export class LisaRagStack extends Stack {
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
+            enforceSSL: true,
             cors: [
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
@@ -98,6 +100,25 @@ export class LisaRagStack extends Stack {
             ],
         });
 
+        const docTable = new Table(this, createCdkId([config.deploymentName, 'RagDocumentTable']), {
+            partitionKey: {
+                name: 'pk', // Composite of repo/collection ids
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'repository_id',
+                type: AttributeType.STRING
+            },
+            deletionProtection: true,
+        });
+        docTable.addGlobalSecondaryIndex({
+            indexName: 'document_index',
+            partitionKey: {
+                name: 'document_id',
+                type: AttributeType.STRING,
+            },
+        });
+
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             BUCKET_NAME: bucket.bucketName,
@@ -105,6 +126,7 @@ export class LisaRagStack extends Stack {
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
             REST_API_VERSION: 'v2',
+            RAG_DOCUMENT_TABLE: docTable.tableName,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -334,6 +356,7 @@ export class LisaRagStack extends Stack {
                             type: ragConfig.type,
                             layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
                             registeredRepositoriesParamName
+                            ragDocumentTable: docTable.tableName
                         });
                         console.log(`[DEBUG] Successfully created pipeline ${index}`);
                     } catch (error) {
@@ -369,6 +392,7 @@ export class LisaRagStack extends Stack {
         ragRepositoriesParam.grantRead(lambdaRole);
         modelsPs.grantRead(lambdaRole);
         endpointUrl.grantRead(lambdaRole);
+        docTable.grantReadWriteData(lambdaRole);
     }
 
     /**

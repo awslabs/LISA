@@ -106,7 +106,7 @@ export class LisaRagStack extends Stack {
                 type: AttributeType.STRING,
             },
             sortKey: {
-                name: 'repository_id',
+                name: 'document_id',
                 type: AttributeType.STRING
             },
             deletionProtection: true,

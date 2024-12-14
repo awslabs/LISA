@@ -316,17 +316,21 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
     vs = get_vector_store_client(repository_type, index=collection_id, embeddings=embeddings)
 
-    vs_docs = vs.delete(ids=subdoc_ids)
+    vs.delete(ids=subdoc_ids)
+
     with doc_table.batch_writer() as batch:
         for doc in docs:
             batch.delete_item(
-                IndexName="document_index", KeyConditionExpression=Key("document_id").eq(doc.get("document_id"))
+                Key={
+                     "pk":doc.get("pk"),
+                    "document_id": doc.get("document_id")
+                }
             )
 
     return {
         "documentName": docs[0].get("document_name"),
         "removedDocuments": len(docs),
-        "removedDocumentChunks": len(vs_docs),
+        "removedDocumentChunks": len(subdoc_ids),
     }
 
 

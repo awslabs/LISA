@@ -303,6 +303,7 @@ class IngestionType(Enum):
 
 class RagDocument(BaseModel):
     """Rag Document Entity for storing in DynamoDB."""
+
     pk: Optional[str] = None
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     repository_id: str
@@ -318,9 +319,6 @@ class RagDocument(BaseModel):
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self.pk = self.createPartitionKey(self.repository_id, self.collection_id)
-
-    def to_dict(self) -> Any:
-        return self.model_dump()
 
     @staticmethod
     def createPartitionKey(repository_id: str, collection_id: str) -> str:

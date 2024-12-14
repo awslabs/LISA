@@ -20,10 +20,10 @@ from typing import Any, Dict, List
 
 import boto3
 import requests
-from boto3.dynamodb.conditions import Key
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import IngestionType, RagDocument
+from repository.rag_document_repo import RagDocumentRepository
 from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
@@ -47,8 +47,9 @@ s3 = session.client(
         signature_version="s3v4",
     ),
 )
-doc_table = boto3.resource("dynamodb", region_name).Table(os.environ["RAG_DOCUMENT_TABLE"])
 lisa_api_endpoint = ""
+registered_repositories: List[Dict[str, Any]] = []
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -257,7 +258,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def ensure_repository_access(event, repository):
+def ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
     "Ensures a user has access to the repository or else raises an HTTPException"
     user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
     if not user_has_group(user_groups, repository["allowedGroups"]):
@@ -302,9 +303,9 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     docs = []
     if document_id:
-        docs = [_get_document(document_id)]
+        docs = [doc_repo.find_by_id(document_id)]
     elif document_name:
-        docs = _get_documents_by_name(document_name, repository_id, collection_id)
+        docs = doc_repo.find_by_name(repository_id, collection_id, document_name)
 
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
@@ -318,14 +319,7 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     vs.delete(ids=subdoc_ids)
 
-    with doc_table.batch_writer() as batch:
-        for doc in docs:
-            batch.delete_item(
-                Key={
-                     "pk":doc.get("pk"),
-                    "document_id": doc.get("document_id")
-                }
-            )
+    doc_repo.batch_delete(docs)
 
     return {
         "documentName": docs[0].get("document_name"),
@@ -383,27 +377,26 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     # Batch document ingestion one parent document at a time
     for doc_list in docs:
-        with doc_table.batch_writer() as batch:
-            document_name = doc_list[0].metadata.get("name")
-            doc_source = doc_list[0].metadata.get("source")
-            for doc in doc_list:
-                texts.append(doc.page_content)
-                metadatas.append(doc.metadata)
-            # Ingest document into vector store
-            ids = vs.add_texts(texts=texts, metadatas=metadatas)
+        document_name = doc_list[0].metadata.get("name")
+        doc_source = doc_list[0].metadata.get("source")
+        for doc in doc_list:
+            texts.append(doc.page_content)
+            metadatas.append(doc.metadata)
+        # Ingest document into vector store
+        ids = vs.add_texts(texts=texts, metadatas=metadatas)
 
-            # Add document to RagDocTable
-            doc_entity = RagDocument(
-                repository_id=repository_id,
-                collection_id=model_name,
-                document_name=document_name,
-                source=doc_source,
-                sub_docs=ids,
-                ingestion_type=IngestionType.MANUAL,
-            )
-            batch.put_item(Item=doc_entity.to_dict())
+        # Add document to RagDocTable
+        doc_entity = RagDocument(
+            repository_id=repository_id,
+            collection_id=model_name,
+            document_name=document_name,
+            source=doc_source,
+            sub_docs=ids,
+            ingestion_type=IngestionType.MANUAL,
+        )
+        doc_repo.save(doc_entity)
 
-            all_ids.extend(ids)
+        all_ids.extend(ids)
 
     return {"ids": all_ids, "count": len(all_ids)}
 
@@ -449,9 +442,11 @@ def presigned_url(event: dict, context: dict) -> dict:
     )
     return {"response": response}
 
+
 def get_groups(event: Any) -> List[str]:
     groups: List[str] = json.loads(event["requestContext"]["authorizer"]["groups"])
     return groups
+
 
 @api_wrapper
 def list_docs(event: dict, context: dict) -> list[RagDocument]:
@@ -477,19 +472,7 @@ def list_docs(event: dict, context: dict) -> list[RagDocument]:
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
     repository_type = query_string_params.get("repositoryType")
-    pk = RagDocument.createPartitionKey(repository_id, collection_id)
-    response = doc_table.query(
-        KeyConditionExpression=Key("pk").eq(pk),
-    )
-    docs: list[RagDocument] = response["Items"]
-
-    # Handle paginated Dynamo results
-    while "LastEvaluatedKey" in response:
-        response = doc_table.query(
-            KeyConditionExpression=Key("pk").eq(pk),
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
-        docs.extend(response["Items"])
+    docs: list[RagDocument] = doc_repo.list_all(repository_id, collection_id)
 
     # return docs
 
@@ -503,61 +486,5 @@ def list_docs(event: dict, context: dict) -> list[RagDocument]:
     )
     doc_content = [{"name": doc.metadata["source"]} for doc in doc_search]
     logger.info(f"Found the following raw docs: {doc_content}")
-
-    return docs
-
-
-def _get_document(document_id: str) -> RagDocument:
-    """Get a document from the RagDocTable.
-
-    Args:
-        document_id (str): The ID of the document to retrieve
-
-    Returns:
-        RagDocument: The document object
-
-    Raises:
-        KeyError: If the document is not found in the table
-    """
-    response = doc_table.query(IndexName="document_index", KeyConditionExpression=Key("document_id").eq(document_id))
-    docs = response.get("Items")
-    if not docs:
-        raise KeyError(f"Document not found for document_id {document_id}")
-    if len(docs) > 1:
-        raise ValueError(f"Multiple items found for document_id {document_id}")
-
-    logging.info(docs[0])
-
-    return docs[0]
-
-
-def _get_documents_by_name(document_name: str, repository_id: str, collection_id: str) -> list[RagDocument]:
-    """Get a list of documents from the RagDocTable by name.
-
-    Args:
-        document_name (str): The name of the documents to retrieve
-        repository_id (str): The repository id to list documents for
-        collection_id (str): The collection id to list documents for
-
-    Returns:
-        list[RagDocument]: A list of document objects matching the specified name
-
-    Raises:
-        KeyError: If no documents are found with the specified name
-    """
-    pk = RagDocument.createPartitionKey(repository_id, collection_id)
-    response = doc_table.query(
-        KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("document_name").eq(document_name)
-    )
-    docs: list[RagDocument] = response["Items"]
-
-    # Handle paginated Dynamo results
-    while "LastEvaluatedKey" in response:
-        response = doc_table.query(
-            KeyConditionExpression=Key("pk").eq(pk),
-            FilterExpression=Key("document_name").eq(document_name),
-            ExclusiveStartKey=response["LastEvaluatedKey"],
-        )
-        docs.extend(response["Items"])
 
     return docs

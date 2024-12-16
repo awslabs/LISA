@@ -20,13 +20,15 @@ import ReactMarkdown from 'react-markdown';
 import Spinner from '@cloudscape-design/components/spinner';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { Grid, SpaceBetween } from '@cloudscape-design/components';
+import { Button, Grid, SpaceBetween } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { LisaChatMessage } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import Avatar from 'react-avatar';
+import remarkBreaks from 'remark-breaks';
+import gfm from 'remark-gfm';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -57,7 +59,19 @@ export default function Message ({ message, isRunning, showMetadata }: MessagePr
                     </div>
                     <Container>
                         <SpaceBetween size='s' direction='vertical'>
-                            <ReactMarkdown children={message.content}/>
+                            <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
+                                <ReactMarkdown remarkPlugins={[remarkBreaks, gfm]} children={message.content}/>
+                                <div style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
+                                    <Button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(message.content);
+                                        }}
+                                        iconAlign='right'
+                                        iconName='copy'
+                                        variant='link'
+                                    />
+                                </div>
+                            </Grid>
                             {message.metadata && showMetadata && (
                                 <ExpandableSection variant='footer' headerText='Metadata'>
                                     <JsonView data={message.metadata} style={darkStyles}/>

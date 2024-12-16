@@ -65,10 +65,12 @@ endif
 
 # DOMAIN - used for the docker login
 ifeq (${DOMAIN},)
-ifeq ($(findstring iso,${REGION}),)
-DOMAIN := amazonaws.com
-else
+ifeq ($(findstring isob,${REGION}),isob)
+DOMAIN := sc2s.sgov.gov
+else ifeq ($(findstring iso,${REGION}),iso)
 DOMAIN := c2s.ic.gov
+else
+DOMAIN := amazonaws.com
 endif
 endif
 

@@ -27,6 +27,8 @@ import { LisaChatMessage } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import Avatar from 'react-avatar';
+import remarkBreaks from 'remark-breaks';
+import gfm from 'remark-gfm';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -58,7 +60,7 @@ export default function Message ({ message, isRunning, showMetadata }: MessagePr
                     <Container>
                         <SpaceBetween size='s' direction='vertical'>
                             <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
-                                <ReactMarkdown children={message.content}/>
+                                <ReactMarkdown remarkPlugins={[remarkBreaks, gfm]} children={message.content}/>
                                 <div style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
                                     <Button
                                         onClick={() => {

@@ -185,7 +185,8 @@ export class IngestPipelineStateMachine extends Construct {
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagConnectionInfo/*`
                     ]
                 }),
                 new PolicyStatement({

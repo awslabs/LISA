@@ -100,6 +100,7 @@ export class IngestPipelineStateMachine extends Construct {
             LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
             LOG_LEVEL: config.logLevel,
             REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
+            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig.sslCertIamArn || '',
             ...(rdsConfig && {
                 RDS_USERNAME: rdsConfig.username,
@@ -183,7 +184,8 @@ export class IngestPipelineStateMachine extends Construct {
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`
                     ]
                 }),
                 new PolicyStatement({

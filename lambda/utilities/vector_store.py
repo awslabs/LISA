@@ -61,7 +61,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
     """
 
     repository = find_repository_by_id(repository_id)
-    repository_type = repository.get("repository_type", None)
+    repository_type = repository.get("type", None)
 
     prefix = os.environ["REGISTERED_REPOSITORIES_PS_PREFIX"]
     connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")

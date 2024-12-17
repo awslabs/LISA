@@ -16,8 +16,7 @@
 import json
 import logging
 import os
-from optparse import Option
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -47,7 +46,7 @@ def get_registered_repositories() -> List[Any]:
     return registered_repositories
 
 
-def find_repository_by_id(repository_id: str) -> Option[Dict]:
+def find_repository_by_id(repository_id: str) -> Optional[Dict[str, Any]]:
     """Find a RAG repository by id."""
     return next(
         (repository for repository in get_registered_repositories() if repository["repositoryId"] == repository_id),

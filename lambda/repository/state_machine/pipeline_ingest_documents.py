@@ -20,8 +20,9 @@ import boto3
 from models.document_processor import DocumentProcessor
 from models.domain_objects import IngestionType, RagDocument
 from models.vectorstore import VectorStore
+from repository.lambda_functions import RagDocumentRepository
 
-doc_table = boto3.resource("dynamodb", os.environ["AWS_REGION"]).Table(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
 
 
 def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -72,7 +73,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             sub_docs=ids,
             ingestion_type=IngestionType.AUTO,
         )
-        doc_table.put_item(Item=doc_entity)
+        doc_repo.save(doc_entity)
 
         return {
             "statusCode": 200,

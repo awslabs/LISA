@@ -79,7 +79,7 @@ class RagDocumentRepository:
             ClientError: If save operation fails
         """
         try:
-            response = self.table.put_item(Item=document.dict())
+            response = self.table.put_item(Item=document.model_dump())
             return response
         except ClientError as e:
             print(f"Error saving document: {e.response['Error']['Message']}")
@@ -97,7 +97,7 @@ class RagDocumentRepository:
         try:
             with self.table.batch_writer() as batch:
                 for doc in documents:
-                    batch.put_item(Item=doc.dict())
+                    batch.put_item(Item=doc.model_dump())
         except ClientError as e:
             print(f"Error in batch save: {e.response['Error']['Message']}")
             raise

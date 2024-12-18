@@ -356,7 +356,7 @@ export class LisaRagStack extends Stack {
                             type: ragConfig.type,
                             layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
                             registeredRepositoriesParamName,
-                            ragDocumentTable: docTable.tableName
+                            ragDocumentTable: docTable
                         });
                         console.log(`[DEBUG] Successfully created pipeline ${index}`);
                     } catch (error) {

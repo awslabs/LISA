@@ -22,5 +22,5 @@
     "typeRoots": ["./node_modules/@types"],
     "outDir": "dist/"
   },
-  "exclude": ["node_modules", "cdk.out", ".git", "dist"]
+  "exclude": ["node_modules", "cdk.out", ".git", "dist", "lib/user-interface/react"] // Ignore nested modules
 }

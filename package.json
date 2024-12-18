@@ -5,14 +5,14 @@
     "lisa": "bin/lisa.js"
   },
   "scripts": {
-    "build": "tsc && cd ./cdk_runner_lambda && npm run build",
+    "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
     "prepare": "husky install",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
-    "postinstall": "(cd lib/user-interface/react && npm install) && (cd lib/docs && npm install)",
-    "postbuild": "(cd lib/user-interface/react && npm build) && (cd lib/docs && npm build)",
+    "postinstall": "(cd lib/user-interface/react && npm install) && (cd lib/docs && npm install) && (cd ecs_model_deployer && npm install)",
+    "postbuild": "(cd lib/user-interface/react && npm run build) && (cd lib/docs && npm run build) && (cd ecs_model_deployer && npm run build)",
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts"
   },
   "devDependencies": {

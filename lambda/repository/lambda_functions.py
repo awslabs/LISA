@@ -448,7 +448,7 @@ def get_groups(event: Any) -> List[str]:
 
 
 @api_wrapper
-def list_docs(event: dict, context: dict) -> list[RagDocument]:
+def list_docs(event: dict, context: dict) -> List[RagDocument]:
     """List all documents for a given repository/collection.
 
     Args:
@@ -470,19 +470,6 @@ def list_docs(event: dict, context: dict) -> list[RagDocument]:
 
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
-    docs: list[RagDocument] = doc_repo.list_all(repository_id, collection_id)
 
-    # return docs
-
-    id_token = get_id_token(event)
-    embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
-    vs = get_vector_store_client(repository_id, index=collection_id, embeddings=embeddings)
-
-    doc_search = vs.similarity_search(
-        query="ML",
-        k=1000,
-    )
-    doc_content = [{"name": doc.metadata["source"]} for doc in doc_search]
-    logger.info(f"Found the following raw docs: {doc_content}")
-
+    docs: List[RagDocument] = doc_repo.list_all(repository_id, collection_id)
     return docs

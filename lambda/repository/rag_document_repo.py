@@ -179,7 +179,7 @@ class RagDocumentRepository:
         response = self.table.query(
             KeyConditionExpression=Key("pk").eq(pk),
         )
-        docs: list[RagDocument] = response["Items"]
+        docs: List[RagDocument] = response["Items"]
 
         # Handle paginated Dynamo results
         while "LastEvaluatedKey" in response:

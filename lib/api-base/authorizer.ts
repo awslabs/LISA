@@ -38,7 +38,7 @@ import { getDefaultRuntime } from './utils';
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  * @property {Map<number, ISubnet>} importedSubnets for Lambdas
  */
-type AuthorizerProps = {
+export type AuthorizerProps = {
     role?: IRole;
     vpc: Vpc;
     securityGroups: ISecurityGroup[];

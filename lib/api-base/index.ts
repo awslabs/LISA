@@ -14,5 +14,5 @@
   limitations under the License.
 */
 
-export { RestApiGateway } from './rest-api-gw';
-export { Authorizer } from './authorizer';
+export { RestApiGateway, RestApiGatewayProps } from './rest-api-gw';
+export { CustomAuthorizer, AuthorizerProps } from './authorizer';

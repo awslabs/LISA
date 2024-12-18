@@ -3,7 +3,7 @@
 	createTypeScriptEnvironment installTypeScriptRequirements \
 	deploy destroy \
 	clean cleanTypeScript cleanPython cleanCfn cleanMisc \
-	help dockerCheck dockerLogin listStacks modelCheck buildEcsDeployer
+	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -259,8 +259,8 @@ endif
 listStacks:
 	@npx cdk list
 
-buildEcsDeployer:
-	@cd ./ecs_model_deployer && npm install && npm run build
+buildNpmModules:
+	npm run build
 
 define print_config
     @printf "\n \
@@ -280,7 +280,7 @@ define print_config
 endef
 
 ## Deploy all infrastructure
-deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
+deploy: dockerCheck dockerLogin cleanMisc modelCheck buildNpmModules
 	$(call print_config)
 ifneq (,$(findstring true, $(HEADLESS)))
 	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';

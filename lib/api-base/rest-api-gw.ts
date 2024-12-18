@@ -22,7 +22,7 @@ import { BaseProps } from '../schema';
 /**
  * Properties for RestApiGateway Construct.
  */
-type RestApiGatewayProps = {} & BaseProps;
+export type RestApiGatewayProps = {} & BaseProps;
 
 /**
  * RestApiGateway Stack.

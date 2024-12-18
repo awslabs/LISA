@@ -292,7 +292,6 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     query_string_params = event["queryStringParameters"]
     collection_id = query_string_params["collectionId"]
-    repository_type = query_string_params["repositoryType"]
     document_id = query_string_params.get("documentId")
     document_name = query_string_params.get("documentName")
 
@@ -315,7 +314,7 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
-    vs = get_vector_store_client(repository_type, index=collection_id, embeddings=embeddings)
+    vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
 
     vs.delete(ids=subdoc_ids)
 
@@ -471,14 +470,13 @@ def list_docs(event: dict, context: dict) -> list[RagDocument]:
 
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
-    repository_type = query_string_params.get("repositoryType")
     docs: list[RagDocument] = doc_repo.list_all(repository_id, collection_id)
 
     # return docs
 
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
-    vs = get_vector_store_client(repository_type, index=collection_id, embeddings=embeddings)
+    vs = get_vector_store_client(repository_id, index=collection_id, embeddings=embeddings)
 
     doc_search = vs.similarity_search(
         query="ML",

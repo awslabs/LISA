@@ -1,22 +1,36 @@
-import boto3
-import logging
-from botocore.exceptions import ClientError
-from typing import Dict, Any, List, Optional
-from enum import Enum
-from boto3.dynamodb.conditions import Key
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
+import logging
+from typing import Dict, List
+
+import boto3
+from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 from models.domain_objects import RagDocument
 
 logger = logging.getLogger(__name__)
+
 
 class RagDocumentRepository:
     """RAG Document repository for DynamoDB"""
 
     def __init__(self, table_name: str):
-        self.dynamodb = boto3.resource('dynamodb')
+        self.dynamodb = boto3.resource("dynamodb")
         self.table = self.dynamodb.Table(table_name)
 
-    def delete(self, pk: str, document_id: str) -> Dict[str, Any]:
+    def delete(self, pk: str, document_id: str) -> None:
         """Delete a document using partition key and sort key.
 
         Args:
@@ -30,13 +44,7 @@ class RagDocumentRepository:
             ClientError: If deletion fails
         """
         try:
-            response = self.table.delete_item(
-                Key={
-                    'pk': pk,
-                    'document_id': document_id
-                }
-            )
-            return response
+            self.table.delete_item(Key={"pk": pk, "document_id": document_id})
         except ClientError as e:
             print(f"Error deleting document: {e.response['Error']['Message']}")
             raise
@@ -53,12 +61,7 @@ class RagDocumentRepository:
         try:
             with self.table.batch_writer() as batch:
                 for item in items:
-                    batch.delete_item(
-                        Key={
-                            'pk': item['pk'],
-                            'document_id': item['document_id']
-                        }
-                    )
+                    batch.delete_item(Key={"pk": item["pk"], "document_id": item["document_id"]})
         except ClientError as e:
             print(f"Error in batch deletion: {e.response['Error']['Message']}")
             raise
@@ -99,7 +102,7 @@ class RagDocumentRepository:
             print(f"Error in batch save: {e.response['Error']['Message']}")
             raise
 
-    def find_by_id(self, document_id: str) -> List[RagDocument]:
+    def find_by_id(self, document_id: str) -> RagDocument:
         """Query documents using GSI.
 
         Args:
@@ -114,8 +117,9 @@ class RagDocumentRepository:
         """
         try:
             response = self.table.query(
-                IndexName='document_index',
-                KeyConditionExpression='document_id = :document_id',
+                IndexName="document_index",
+                KeyConditionExpression="document_id = :document_id",
+                ExpressionAttributeValues={":document_id": document_id},
             )
             docs = response.get("Items")
             if not docs:
@@ -146,8 +150,7 @@ class RagDocumentRepository:
         """
         pk = RagDocument.createPartitionKey(repository_id, collection_id)
         response = self.table.query(
-            KeyConditionExpression=Key("pk").eq(pk),
-            FilterExpression=Key("document_name").eq(document_name)
+            KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("document_name").eq(document_name)
         )
         docs: list[RagDocument] = response["Items"]
 
@@ -162,7 +165,7 @@ class RagDocumentRepository:
 
         return docs
 
-    def list_all(self, repository_id: str, collection_id: str)-> List[RagDocument]:
+    def list_all(self, repository_id: str, collection_id: str) -> List[RagDocument]:
         """List all documents in a collection.
 
         Args:

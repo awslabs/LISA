@@ -23,6 +23,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
+import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
@@ -530,6 +531,7 @@ const OpenSearchNewClusterConfig = z.object({
     masterNodes: z.number().min(0),
     masterNodeInstanceType: z.string(),
     volumeSize: z.number().min(10),
+    volumeType: z.nativeEnum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3),
     multiAzWithStandby: z.boolean().default(false),
 });
 
@@ -540,6 +542,7 @@ const OpenSearchExistingClusterConfig = z.object({
 const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string(),
+        repositoryName: z.string().optional().describe('Name to display in the UI'),
         type: z.nativeEnum(RagRepositoryType),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),
@@ -552,6 +555,7 @@ const RagRepositoryConfigSchema = z
             trigger: z.union([z.literal('daily'), z.literal('event')]),
             collectionName: z.string()
         })).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
+        allowedGroups: z.array(z.string()).optional().default([])
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||

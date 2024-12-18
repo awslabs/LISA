@@ -92,13 +92,14 @@ export class SecurityGroupFactory {
         securityGroup: ISecurityGroup,
         securityGroupName: string,
         vpc: Vpc,
-        config: Config): void {
+        config: Config,
+        port: number): void {
         const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach((subnet) => {
             securityGroup.connections.allowFrom(
                 Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet: { subnetId: string; }) =>
                     filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
-                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                Port.tcp(port),
                 `Allow REST API private subnets to communicate with ${securityGroupName}`,
             );
         });

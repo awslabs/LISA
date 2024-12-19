@@ -80,6 +80,8 @@ def generate_config(filepath: str) -> None:
         }
     )
 
+    print(f"Generated config_contents file: \n{json.dumps(config_contents, indent=2)}")
+
     # Write updated config back to original path
     with open(filepath, "w") as fp:
         yaml.safe_dump(config_contents, fp)

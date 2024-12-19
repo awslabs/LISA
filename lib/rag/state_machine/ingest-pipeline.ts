@@ -28,7 +28,7 @@ import {
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
-import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
 import { Vpc } from '../../networking/vpc';
@@ -38,6 +38,8 @@ import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cdk from 'aws-cdk-lib';
+import { getDefaultRuntime } from '../../api-base/utils';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -64,6 +66,8 @@ type IngestPipelineStateMachineProps = BaseProps & {
     repositoryId: string;
     type: RagRepositoryType;
     layers?: ILayerVersion[];
+    registeredRepositoriesParamName: string;
+    ragDocumentTable: Table;
 };
 
 /**
@@ -75,7 +79,7 @@ export class IngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers} = props;
+        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable} = props;
 
         // Create KMS key for environment variable encryption
         const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
@@ -96,7 +100,10 @@ export class IngestPipelineStateMachine extends Construct {
             RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
             OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
             LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
+            RAG_DOCUMENT_TABLE: ragDocumentTable.tableName,
             LOG_LEVEL: config.logLevel,
+            REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
+            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig.sslCertIamArn || '',
             ...(rdsConfig && {
                 RDS_USERNAME: rdsConfig.username,
@@ -116,9 +123,23 @@ export class IngestPipelineStateMachine extends Construct {
                 `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
             ]
         });
+        // Allow DynamoDB Read/Write to RAG Document Table
+        const dynamoPolicyStatement = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'dynamodb:BatchGetItem',
+                'dynamodb:GetItem',
+                'dynamodb:Query',
+                'dynamodb:Scan',
+                'dynamodb:BatchWriteItem',
+                'dynamodb:PutItem',
+                'dynamodb:UpdateItem',
+            ],
+            resources: [ragDocumentTable.tableArn, `${ragDocumentTable.tableArn}/index/*`]
+        });
 
         // Create array of policy statements
-        const policyStatements = [s3PolicyStatement];
+        const policyStatements = [s3PolicyStatement, dynamoPolicyStatement];
 
         // Create IAM certificate policy if certificate ARN is provided
         let certPolicyStatement;
@@ -133,7 +154,7 @@ export class IngestPipelineStateMachine extends Construct {
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {
-            runtime: Runtime.PYTHON_3_10,
+            runtime: getDefaultRuntime(),
             handler: 'repository.state_machine.list_modified_objects.handle_list_modified_objects',
             code: Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -162,7 +183,7 @@ export class IngestPipelineStateMachine extends Construct {
 
         // Create the ingest documents function with S3 permissions
         const pipelineIngestDocumentsFunction = new Function(this, 'pipelineIngestDocumentsMapFunc', {
-            runtime: Runtime.PYTHON_3_10,
+            runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_documents',
             code: Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -180,7 +201,9 @@ export class IngestPipelineStateMachine extends Construct {
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
                         `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`,
+                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagConnectionInfo/*`
                     ]
                 }),
                 new PolicyStatement({

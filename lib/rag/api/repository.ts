@@ -18,10 +18,10 @@ import { Duration } from 'aws-cdk-lib';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
+import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
 
@@ -31,11 +31,11 @@ import { Vpc } from '../../networking/vpc';
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {Record<string,string>} baseEnvironment - Default environment properties applied to all
  *                                                      lambdas
- * @property {LayerVersion[]} commonLayers - Lambda layers for all Lambdas.
+ * @property {ILayerVersion[]} commonLayers - Lambda layers for all Lambdas.
  * @property {IRole} lambdaExecutionRole - Execution role for lambdas
- * @property {IRestApi} restAPI - REST APIGW for UI and Lambdas
+ * @property {string} restApiId - REST APIGW for UI and Lambdas
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
- * @property {IVpc} vpc - Stack VPC
+ * @property {Vpc} vpc - Stack VPC
  */
 type RepositoryApiProps = {
     authorizer: IAuthorizer;
@@ -84,27 +84,6 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'purge_document',
-                resource: 'repository',
-                description: 'Purges all records associated with a document from the repository',
-                path: 'repository/{repositoryId}/{documentId}',
-                method: 'DELETE',
-                environment: {
-                    ...baseEnvironment,
-                },
-            },
-            {
-                name: 'ingest_documents',
-                resource: 'repository',
-                description: 'Ingest a set of documents based on specified S3 path',
-                path: 'repository/{repositoryId}/bulk',
-                method: 'POST',
-                timeout: Duration.minutes(15),
-                environment: {
-                    ...baseEnvironment,
-                },
-            },
-            {
                 name: 'presigned_url',
                 resource: 'repository',
                 description: 'Generates a presigned url for uploading files to RAG',
@@ -124,6 +103,37 @@ export class RepositoryApi extends Construct {
                     ...baseEnvironment,
                 },
             },
+            {
+                name: 'ingest_documents',
+                resource: 'repository',
+                description: 'Ingest a set of documents based on specified S3 path',
+                path: 'repository/{repositoryId}/bulk',
+                method: 'POST',
+                timeout: Duration.minutes(15),
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'delete_document',
+                resource: 'repository',
+                description: 'Deletes all records associated with a document from the repository',
+                path: 'repository/{repositoryId}/document',
+                method: 'DELETE',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_docs',
+                resource: 'repository',
+                description: 'List all docs for a repository',
+                path: 'repository/{repositoryId}/document',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
         ];
         apis.forEach((f) => {
             registerAPIEndpoint(
@@ -133,7 +143,7 @@ export class RepositoryApi extends Construct {
                 './lambda',
                 commonLayers,
                 f,
-                Runtime.PYTHON_3_10,
+                getDefaultRuntime(),
                 vpc,
                 securityGroups,
                 lambdaExecutionRole,

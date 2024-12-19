@@ -103,6 +103,7 @@ export type RepositoryTypes = 'OpenSearch';
  */
 export type Repository = {
     repositoryId: string;
+    repositoryName?: string;
     type: RepositoryTypes;
 };
 

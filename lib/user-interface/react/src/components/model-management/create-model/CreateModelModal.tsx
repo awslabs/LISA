@@ -170,7 +170,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }
     }
 
-    const requiredFields = [['modelId', 'modelName'], [], [], [], []];
+    const requiredFields = [['modelId', 'modelName'], ['containerConfig.image.baseImage'], [], [], []];
 
     useEffect(() => {
         const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
@@ -318,8 +318,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         case 'next':
                         case 'skip':
                             {
-                                touchFields(requiredFields[state.activeStepIndex]);
-                                if (isValid) {
+                                if (touchFields(requiredFields[state.activeStepIndex]) && isValid) {
                                     setState({
                                         ...state,
                                         activeStepIndex: event.detail.requestedStepIndex,

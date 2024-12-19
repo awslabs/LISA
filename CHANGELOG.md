@@ -1,3 +1,33 @@
+# v3.4.0
+## Key Features
+### Vector Store Support
+- Implemented support for multiple vector stores of the same type. For example, you can now configure more than 1 OpenSearch vector store with LISA.
+- Introduced granular access control for vector stores based on a list of provided IDP groups. If a list isn’t provided the vector store is available to all LISA users.
+- Expanded APIs for vector store file management to now include file listing and removal capabilities.
+
+### Deployment Flexibility
+- Enabled custom IAM role overrides with documented minimum permissions available on our [documentation site](https://awslabs.github.io/LISA/config/role-overrides)
+- Introduced partition and domain override functionality
+
+## Other System Enhancements
+- Enhanced create model validation to ensure data integrity
+- Upgraded to Python 3.11 runtime for improved performance
+- Updated various third-party dependencies to maintain security and functionality
+- Updated the ChatUI:
+  - Refined ChatUI for improved message display
+  - Upgraded markdown parsing capabilities
+  - Implemented a copy feature for AI-generated responses
+
+## Coming soon
+Happy Holidays! We have a lot in store for 2025. Our roadmap is customer driven. Please reach out to us via Github issues to talk more!  Early in the new year you’ll see chatbot UI and vector store enhancements.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.3.2...v3.4.0
+
 # v3.3.2
 ## Bug Fixes
 - Resolved issue where invalid schema import was causing create model api calls to fail

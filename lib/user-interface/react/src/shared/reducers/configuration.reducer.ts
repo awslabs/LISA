@@ -21,6 +21,9 @@ import { IConfiguration } from '../model/configuration.model';
 export const configurationApi = createApi({
     reducerPath: 'configuration',
     baseQuery: lisaBaseQuery(),
+    tagTypes: ['configuration'],
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
     endpoints: (builder) => ({
         getConfiguration: builder.query<IConfiguration[], String>({
             query: (configScope) => ({

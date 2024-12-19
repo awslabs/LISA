@@ -3,7 +3,7 @@
 	createTypeScriptEnvironment installTypeScriptRequirements \
 	deploy destroy \
 	clean cleanTypeScript cleanPython cleanCfn cleanMisc \
-	help dockerCheck dockerLogin listStacks modelCheck buildEcsDeployer
+	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -56,11 +56,22 @@ ifeq (${REGION},)
 $(error region must be set in command line using REGION variable or config files)
 endif
 
-# URL_SUFFIX - used for the docker login
-ifeq ($(findstring iso,${REGION}),)
-URL_SUFFIX := amazonaws.com
+ifeq (${PARTITION},)
+PARTITION := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .partition )
+endif
+ifeq (${PARTITION}, null)
+PARTITION := aws
+endif
+
+# DOMAIN - used for the docker login
+ifeq (${DOMAIN},)
+ifeq ($(findstring isob,${REGION}),isob)
+DOMAIN := sc2s.sgov.gov
+else ifeq ($(findstring iso,${REGION}),iso)
+DOMAIN := c2s.ic.gov
 else
-URL_SUFFIX := c2s.ic.gov
+DOMAIN := amazonaws.com
+endif
 endif
 
 # Arguments defined through config files
@@ -117,16 +128,18 @@ MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketMod
 
 ## Bootstrap AWS Account with CDK bootstrap
 bootstrap:
-	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION)\n"
+	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION) | $(PARTITION)\n"
 
 ifdef PROFILE
 	@cdk bootstrap \
 		--profile $(PROFILE) \
 		aws://$(ACCOUNT_NUMBER)/$(REGION) \
+		--partition $(PARTITION) \
 		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 else
 	@cdk bootstrap \
 		aws://$(ACCOUNT_NUMBER)/$(REGION) \
+		--partition $(PARTITION) \
 		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 endif
 
@@ -217,6 +230,7 @@ cleanTypeScript:
 	@find . -type d -name "build" -exec rm -rf {} +
 	@find . -type d -name ".tscache" -exec rm -rf {} +
 	@find . -type d -name ".jest_cache" -exec rm -rf {} +
+	@find . -type d -name "node_modules" -exec rm -rf {} +
 
 
 ## Delete CloudFormation outputs
@@ -233,11 +247,11 @@ cleanMisc:
 dockerLogin: dockerCheck
 ifdef PROFILE
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | $(DOCKER_CMD) login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} --profile ${PROFILE} | $(DOCKER_CMD) login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${DOMAIN} >/dev/null 2>&1; \
 	)
 else
 	@$(foreach ACCOUNT,$(ACCOUNT_NUMBERS_ECR), \
-		aws ecr get-login-password --region ${REGION} | $(DOCKER_CMD) login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${URL_SUFFIX} >/dev/null 2>&1; \
+		aws ecr get-login-password --region ${REGION} | $(DOCKER_CMD) login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${REGION}.${DOMAIN} >/dev/null 2>&1; \
 	)
 endif
 
@@ -245,8 +259,8 @@ endif
 listStacks:
 	@npx cdk list
 
-buildEcsDeployer:
-	@cd ./ecs_model_deployer && npm install && npm run build
+buildNpmModules:
+	npm run build
 
 define print_config
     @printf "\n \
@@ -254,6 +268,8 @@ define print_config
     -----------------------------------\n \
     Account Number         $(ACCOUNT_NUMBER)\n \
     Region                 $(REGION)\n \
+    Partition              $(PARTITION)\n \
+    Domain                 $(DOMAIN)\n \
     App Name               $(APP_NAME)\n \
     Deployment Stage       $(DEPLOYMENT_STAGE)\n \
     Deployment Name        $(DEPLOYMENT_NAME)"
@@ -264,7 +280,7 @@ define print_config
 endef
 
 ## Deploy all infrastructure
-deploy: dockerCheck dockerLogin cleanMisc modelCheck buildEcsDeployer
+deploy: dockerCheck dockerLogin cleanMisc modelCheck buildNpmModules
 	$(call print_config)
 ifneq (,$(findstring true, $(HEADLESS)))
 	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';
@@ -280,11 +296,16 @@ endif
 ## Tear down all infrastructure
 destroy: cleanMisc
 	$(call print_config)
+ifneq (,$(findstring true, $(HEADLESS)))
+	npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE});
+else
 	@printf "Is the configuration correct? [y/N]  "\
 	&& read confirm_config &&\
 	if [ $${confirm_config:-'N'} = 'y' ]; then \
 		npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE}); \
 	fi;
+endif
+
 
 
 #################################################################################

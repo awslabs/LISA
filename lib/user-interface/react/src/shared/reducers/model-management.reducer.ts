@@ -21,6 +21,9 @@ import { IModel, IModelListResponse, IModelRequest, IModelUpdateRequest } from '
 export const modelManagementApi = createApi({
     reducerPath: 'models',
     baseQuery: lisaBaseQuery(),
+    tagTypes: ['models'],
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
     endpoints: (builder) => ({
         getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({

@@ -29,6 +29,7 @@ export class SecurityGroupFactory {
     /**
      * Creates a security group for the VPC.
      *
+     * @param construct - Construct for security group
      * @param securityGroupOverride - security group override
      * @param {string} securityGroupId - The name of the security group.
      * @param {string} deploymentName - The deployment name.
@@ -54,13 +55,11 @@ export class SecurityGroupFactory {
             return sg;
         } else {
             const securityGroupName = SecurityGroupNames[securityGroupId];
-            const sg = new SecurityGroup(construct, securityGroupId, {
+            return new SecurityGroup(construct, securityGroupId, {
                 vpc: vpc,
                 description: `Security group for ${description}`,
                 ...(securityGroupName && {securityGroupName: createCdkId(deploymentName ? [deploymentName, securityGroupName] : [securityGroupName])}),
             });
-
-            return sg;
         }
     }
 
@@ -93,13 +92,14 @@ export class SecurityGroupFactory {
         securityGroup: ISecurityGroup,
         securityGroupName: string,
         vpc: Vpc,
-        config: Config): void {
+        config: Config,
+        port: number): void {
         const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach((subnet) => {
             securityGroup.connections.allowFrom(
                 Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet: { subnetId: string; }) =>
                     filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
-                Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                Port.tcp(port),
                 `Allow REST API private subnets to communicate with ${securityGroupName}`,
             );
         });

@@ -134,7 +134,7 @@ class RagDocumentRepository:
             print(f"Error querying document: {e.response['Error']['Message']}")
             raise
 
-    def _get_documents_by_name(self, repository_id: str, collection_id: str, document_name: str) -> list[RagDocument]:
+    def find_by_name(self, repository_id: str, collection_id: str, document_name: str) -> list[RagDocument]:
         """Get a list of documents from the RagDocTable by name.
 
         Args:

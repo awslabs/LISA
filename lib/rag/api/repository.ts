@@ -31,11 +31,11 @@ import { Vpc } from '../../networking/vpc';
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {Record<string,string>} baseEnvironment - Default environment properties applied to all
  *                                                      lambdas
- * @property {LayerVersion[]} commonLayers - Lambda layers for all Lambdas.
+ * @property {ILayerVersion[]} commonLayers - Lambda layers for all Lambdas.
  * @property {IRole} lambdaExecutionRole - Execution role for lambdas
- * @property {IRestApi} restAPI - REST APIGW for UI and Lambdas
+ * @property {string} restApiId - REST APIGW for UI and Lambdas
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
- * @property {IVpc} vpc - Stack VPC
+ * @property {Vpc} vpc - Stack VPC
  */
 type RepositoryApiProps = {
     authorizer: IAuthorizer;
@@ -84,11 +84,21 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'purge_document',
+                name: 'presigned_url',
                 resource: 'repository',
-                description: 'Purges all records associated with a document from the repository',
-                path: 'repository/{repositoryId}/{documentId}',
-                method: 'DELETE',
+                description: 'Generates a presigned url for uploading files to RAG',
+                path: 'repository/presigned-url',
+                method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'similarity_search',
+                resource: 'repository',
+                description: 'Run a similarity search against the specified repository using the specified query',
+                path: 'repository/{repositoryId}/similaritySearch',
+                method: 'GET',
                 environment: {
                     ...baseEnvironment,
                 },
@@ -105,20 +115,20 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'presigned_url',
+                name: 'delete_document',
                 resource: 'repository',
-                description: 'Generates a presigned url for uploading files to RAG',
-                path: 'repository/presigned-url',
-                method: 'POST',
+                description: 'Deletes all records associated with a document from the repository',
+                path: 'repository/{repositoryId}/document',
+                method: 'DELETE',
                 environment: {
                     ...baseEnvironment,
                 },
             },
             {
-                name: 'similarity_search',
+                name: 'list_docs',
                 resource: 'repository',
-                description: 'Run a similarity search against the specified repository using the specified query',
-                path: 'repository/{repositoryId}/similaritySearch',
+                description: 'List all docs for a repository',
+                path: 'repository/{repositoryId}/document',
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,

@@ -39,6 +39,7 @@ import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -66,6 +67,7 @@ type IngestPipelineStateMachineProps = BaseProps & {
     type: RagRepositoryType;
     layers?: ILayerVersion[];
     registeredRepositoriesParamName: string;
+    ragDocumentTable: Table;
 };
 
 /**
@@ -77,7 +79,7 @@ export class IngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName} = props;
+        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable} = props;
 
         // Create KMS key for environment variable encryption
         const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
@@ -98,6 +100,7 @@ export class IngestPipelineStateMachine extends Construct {
             RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
             OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
             LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
+            RAG_DOCUMENT_TABLE: ragDocumentTable.tableName,
             LOG_LEVEL: config.logLevel,
             REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
@@ -120,9 +123,23 @@ export class IngestPipelineStateMachine extends Construct {
                 `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
             ]
         });
+        // Allow DynamoDB Read/Write to RAG Document Table
+        const dynamoPolicyStatement = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'dynamodb:BatchGetItem',
+                'dynamodb:GetItem',
+                'dynamodb:Query',
+                'dynamodb:Scan',
+                'dynamodb:BatchWriteItem',
+                'dynamodb:PutItem',
+                'dynamodb:UpdateItem',
+            ],
+            resources: [ragDocumentTable.tableArn, `${ragDocumentTable.tableArn}/index/*`]
+        });
 
         // Create array of policy statements
-        const policyStatements = [s3PolicyStatement];
+        const policyStatements = [s3PolicyStatement, dynamoPolicyStatement];
 
         // Create IAM certificate policy if certificate ARN is provided
         let certPolicyStatement;

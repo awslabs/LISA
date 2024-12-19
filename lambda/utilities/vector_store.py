@@ -16,7 +16,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -36,7 +36,7 @@ secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["A
 registered_repositories: List[Dict[str, Any]] = []
 
 
-def get_registered_repositories() -> List[Any]:
+def get_registered_repositories() -> List[dict]:
     """Get a list of all registered RAG repositories."""
     global registered_repositories
     if not registered_repositories:
@@ -46,12 +46,16 @@ def get_registered_repositories() -> List[Any]:
     return registered_repositories
 
 
-def find_repository_by_id(repository_id: str) -> Optional[Dict[str, Any]]:
+def find_repository_by_id(repository_id: str) -> Dict[str, Any]:
     """Find a RAG repository by id."""
-    return next(
+    repository = next(
         (repository for repository in get_registered_repositories() if repository["repositoryId"] == repository_id),
         None,
     )
+    if repository is None:
+        raise ValueError(f"Repository with ID '{repository_id}' not found")
+
+    return repository
 
 
 def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:

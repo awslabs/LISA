@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Stack, StackProps, Aws } from 'aws-cdk-lib';
 import { Deployment, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 
@@ -42,5 +42,10 @@ export class LisaApiDeploymentStack extends Stack {
         // Hack to allow deploying to an existing stage
         // https://github.com/aws/aws-cdk/issues/25582
         (deployment as any).resource.stageName = config.deploymentStage;
+
+        new CfnOutput(this, 'ApiUrl', {
+            value: `https://${restApiId}.execute-api.${this.region}.${Aws.URL_SUFFIX}/${config.deploymentStage}`,
+            description: 'API Gateway URL'
+        });
     }
 }

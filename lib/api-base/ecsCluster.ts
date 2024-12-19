@@ -177,6 +177,13 @@ export class ECSCluster extends Construct {
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
         }
 
+        // Retrieve execution role if it has been overridden
+        const executionRole = config.roles ? Role.fromRoleArn(
+            this,
+            createCdkId([ecsConfig.identifier, 'ER']),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}EX`),
+        ) : undefined;
+
         // Create ECS task definition
         const taskRole = Role.fromRoleArn(
             this,
@@ -185,8 +192,9 @@ export class ECSCluster extends Construct {
         );
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            taskRole: taskRole,
-            volumes: volumes,
+            volumes,
+            ...(taskRole && {taskRole}),
+            ...(executionRole && {executionRole}),
         });
 
         // Add container to task definition

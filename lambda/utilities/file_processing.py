@@ -33,8 +33,8 @@ session = boto3.Session()
 s3 = session.client("s3")
 
 
-def _get_metadata(s3_uri: str) -> dict:
-    return {"source": s3_uri}
+def _get_metadata(s3_uri: str, name: str) -> dict:
+    return {"source": s3_uri, "name": name}
 
 
 def _get_s3_uri(bucket: str, key: str) -> str:
@@ -153,7 +153,11 @@ def process_record(
             raise e
         s3_uri = _get_s3_uri(bucket=bucket, key=key)
         extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
-        docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=s3_uri))]
-        chunks.append(_generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap))
+        docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=s3_uri, name=key))]
+        doc_chunks = _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        # Update part number of doc metadata
+        for i, doc in enumerate(doc_chunks):
+            doc.metadata["part"] = i + 1
+        chunks.append(doc_chunks)
 
     return chunks

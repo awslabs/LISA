@@ -18,7 +18,7 @@ import * as cdk from 'aws-cdk-lib';
 import { RequestAuthorizer, IdentitySource } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -27,6 +27,7 @@ import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { getDefaultRuntime } from './utils';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -37,7 +38,7 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  * @property {Map<number, ISubnet>} importedSubnets for Lambdas
  */
-type AuthorizerProps = {
+export type AuthorizerProps = {
     role?: IRole;
     vpc: Vpc;
     securityGroups: ISecurityGroup[];
@@ -81,7 +82,7 @@ export class CustomAuthorizer extends Construct {
                 queueName: 'AuthorizerLambdaDLQ',
                 enforceSSL: true,
             }),
-            runtime: Runtime.PYTHON_3_10,
+            runtime: getDefaultRuntime(),
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
             code: Code.fromAsset('./lambda'),

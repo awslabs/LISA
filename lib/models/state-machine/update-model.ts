@@ -17,26 +17,36 @@
 
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
-import { Choice, Condition, DefinitionBody, StateMachine, Succeed, Wait, WaitTime } from 'aws-cdk-lib/aws-stepfunctions';
+import {
+    Choice,
+    Condition,
+    DefinitionBody,
+    StateMachine,
+    Succeed,
+    Wait,
+    WaitTime,
+} from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
+import { getDefaultRuntime } from '../../api-base/utils';
 
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
     lambdaLayers: ILayerVersion[],
-    role?: IRole,
     vpc: Vpc,
     securityGroups: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
+    role?: IRole,
+    executionRole?: IRole;
 };
 
 
@@ -57,7 +67,8 @@ export class UpdateModelStateMachine extends Construct {
             vpc,
             securityGroups,
             restApiContainerEndpointPs,
-            managementKeyName
+            managementKeyName,
+            executionRole
         } = props;
 
         const environment = {  // Environment variables to set in all Lambda functions
@@ -75,7 +86,7 @@ export class UpdateModelStateMachine extends Construct {
                     queueName: 'HandleJobIntakeDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_job_intake',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -98,7 +109,7 @@ export class UpdateModelStateMachine extends Construct {
                     queueName: 'HandlePollCapacityDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -121,7 +132,7 @@ export class UpdateModelStateMachine extends Construct {
                     queueName: 'HandleFinishUpdateDLQ',
                     enforceSSL: true,
                 }),
-                runtime: Runtime.PYTHON_3_10,
+                runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_finish_update',
                 code: Code.fromAsset('./lambda'),
                 timeout: LAMBDA_TIMEOUT,
@@ -169,6 +180,10 @@ export class UpdateModelStateMachine extends Construct {
 
         const stateMachine = new StateMachine(this, 'UpdateModelSM', {
             definitionBody: DefinitionBody.fromChainable(handleJobIntake),
+            ...(executionRole &&
+            {
+                role: executionRole
+            })
         });
 
         this.stateMachineArn = stateMachine.stateMachineArn;

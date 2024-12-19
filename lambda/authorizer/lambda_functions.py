@@ -13,11 +13,12 @@
 #   limitations under the License.
 
 """Authorize for REST API."""
+import json
 import logging
 import os
 import ssl
 from functools import cache
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -61,8 +62,9 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
+        groups = get_property_path(jwt_data, jwt_groups_property)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])
-        allow_policy["context"] = {"username": jwt_data["sub"]}
+        allow_policy["context"] = {"username": jwt_data["sub"], "groups": json.dumps(groups or [])}
 
         if requested_resource.startswith("/models") and not is_admin_user:
             # non-admin users can still list models
@@ -142,14 +144,20 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[
 
 def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
     """Check if the user is an admin."""
-    props = jwt_groups_property.split(".")
-    current_node = jwt_data
+    return admin_group in (get_property_path(jwt_data, jwt_groups_property) or [])
+
+
+def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:
+    """Get the value represented by a property path."""
+    props = property_path.split(".")
+    current_node = data
     for prop in props:
         if prop in current_node:
             current_node = current_node[prop]
         else:
-            return False
-    return admin_group in current_node
+            return None
+
+    return current_node
 
 
 @cache

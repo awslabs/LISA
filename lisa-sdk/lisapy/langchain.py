@@ -21,9 +21,8 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms.base import LLM
 from langchain.schema.output import GenerationChunk
 from langchain_core.embeddings import Embeddings
-from langchain_core.pydantic_v1 import BaseModel, Extra
 from langchain_openai import OpenAIEmbeddings
-from pydantic import PrivateAttr
+from pydantic import BaseModel, Extra, PrivateAttr
 
 from .main import FoundationModel, Lisa
 
@@ -44,12 +43,12 @@ class LisaTextgen(LLM):
     client: Lisa
     """An instance of the Lisa client."""
 
-    foundation_model: FoundationModel = PrivateAttr(default_factory=None)
+    _foundation_model: FoundationModel = PrivateAttr(default_factory=None)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        self.foundation_model = self.client.describe_model(self.provider, self.model_name)
+        self._foundation_model = self.client.describe_model(self.provider, self.model_name)
 
     @property
     def _llm_type(self) -> str:
@@ -63,7 +62,7 @@ class LisaTextgen(LLM):
             "provider": self.provider,
             "model_name": self.model_name,
             "client": self.client,
-            "foundation_model": self.foundation_model,
+            "foundation_model": self._foundation_model,
         }
 
     def _call(
@@ -73,13 +72,13 @@ class LisaTextgen(LLM):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> str:
-        if self.foundation_model.streaming:
+        if self._foundation_model.streaming:
             completion = ""
             for chunk in self._stream(prompt, stop, run_manager, **kwargs):
                 completion += chunk.text
             return completion
 
-        text, _ = self.client.generate(prompt, self.foundation_model)
+        text, _ = self.client.generate(prompt, self._foundation_model)
 
         return text  # type: ignore
 
@@ -114,7 +113,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     verify: Union[bool, str]
     """Cert path or option for verifying SSL"""
 
-    embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
+    _embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
     """OpenAI-compliant client for making requests against embedding model."""
 
     class Config:
@@ -125,7 +124,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.embedding_model = OpenAIEmbeddings(
+        self._embedding_model = OpenAIEmbeddings(
             openai_api_base=self.lisa_openai_api_base,
             openai_api_key=self.api_token,
             model=self.model,
@@ -138,19 +137,19 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Use OpenAI API to embed a list of documents."""
-        return cast(List[List[float]], self.embedding_model.embed_documents(texts=texts))
+        return cast(List[List[float]], self._embedding_model.embed_documents(texts=texts))
 
     def embed_query(self, text: str) -> List[float]:
         """Use OpenAI API to embed a text."""
-        return cast(List[float], self.embedding_model.embed_query(text=text))
+        return cast(List[float], self._embedding_model.embed_query(text=text))
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         """Use OpenAI API to embed a list of documents."""
-        return cast(List[List[float]], await self.embedding_model.aembed_documents(texts=texts))
+        return cast(List[List[float]], await self._embedding_model.aembed_documents(texts=texts))
 
     async def aembed_query(self, text: str) -> List[float]:
         """Use OpenAI API to embed a text."""
-        return cast(List[float], await self.embedding_model.aembed_query(text=text))
+        return cast(List[float], await self._embedding_model.aembed_query(text=text))
 
 
 class LisaEmbeddings(BaseModel, Embeddings):
@@ -169,7 +168,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
     client: Lisa
     """An instance of the Lisa client."""
 
-    foundation_model: FoundationModel = PrivateAttr(default_factory=None)
+    _foundation_model: FoundationModel = PrivateAttr(default_factory=None)
 
     class Config:
         """Configuration for this pydantic object."""
@@ -179,7 +178,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.foundation_model = self.client.describe_model(self.provider, self.model_name)
+        self._foundation_model = self.client.describe_model(self.provider, self.model_name)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Compute doc embeddings using a LISA model.
@@ -194,7 +193,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         List[List[float]]
             List of embeddings, one for each text.
         """
-        return self.client.embed(texts, self.foundation_model)
+        return self.client.embed(texts, self._foundation_model)
 
     def embed_query(self, text: str) -> List[float]:
         """Compute query embeddings using a LISA model.
@@ -209,7 +208,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         List[float]
             Embedding for the text.
         """
-        return self.client.embed(text, self.foundation_model)[0]
+        return self.client.embed(text, self._foundation_model)[0]
 
     async def aembed_query(self, text: str) -> List[float]:
         """Asynchronous compute query embeddings using a LISA model.
@@ -224,7 +223,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         List[float]
             Embedding for the text.
         """
-        return (await self.client.aembed(text, self.foundation_model))[0]
+        return (await self.client.aembed(text, self._foundation_model))[0]
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         """Asynchronous compute doc embeddings using a LISA model.
@@ -239,4 +238,4 @@ class LisaEmbeddings(BaseModel, Embeddings):
         List[List[float]]
             List of embeddings, one for each text.
         """
-        return await self.client.aembed(texts, self.foundation_model)
+        return await self.client.aembed(texts, self._foundation_model)

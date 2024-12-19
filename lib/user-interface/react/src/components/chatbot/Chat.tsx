@@ -533,7 +533,7 @@ export default function Chat ({ sessionId }) {
                 setFileContext={setFileContext}
             />
             <div className=' overflow-y-auto p-2 mb-96'>
-                <SpaceBetween direction='vertical' size='xs'>
+                <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
                         <Message key={idx} message={message} showMetadata={showMetadata} isRunning={false} />
                     ))}
@@ -548,9 +548,10 @@ export default function Chat ({ sessionId }) {
                         <Container>
                             <SpaceBetween size='m' direction='vertical'>
                                 <div className='flex'>
-                                    <div className='w-2/4'>
+                                    <div style={{width: '95%'}}>
                                         <TextareaAutosize
-                                            className='float-left  min-w-[300px] w-2/3 border-none rounded-md p-2 focus:outline-none focus:ring-none bg-transparent resize-none p-5'
+                                            className='float-left min-w-[300px] border-none rounded-md focus:outline-none focus:ring-none bg-transparent resize-none p-5'
+                                            style={{width: '100%'}}
                                             maxRows={4}
                                             minRows={1}
                                             spellCheck={true}
@@ -570,7 +571,7 @@ export default function Chat ({ sessionId }) {
                                             value={userPrompt}
                                         />
                                     </div>
-                                    <div className='w-2/4'>
+                                    <div style={{width: '10%'}}>
                                         <div className='flex mb-2 justify-end mt-3'>
                                             <div>
                                                 <Button

@@ -48,7 +48,15 @@ const navLinks = [
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Vector Stores', link: '/config/vector-stores' },
       { text: 'Branding', link: '/config/branding' },
-      { text: 'Configuration Schema', link: '/config/configuration' },
+      {
+        text: 'Configuration Schema',
+        link: '/config/configuration',
+        items: [
+          { text: 'VPC & Subnet Overrides', link: '/config/vpc-overrides' },
+          { text: 'Security Group Overrides', link: '/config/security-group-overrides' },
+          { text: 'Role Overrides', link: '/config/role-overrides' },
+        ],
+      },
     ],
   },
   {

@@ -35,6 +35,8 @@ class CreateModelHandler(BaseApiHandler):
         if table_item:
             raise ModelAlreadyExistsError(f"Model '{model_id}' already exists. Please select another name.")
 
+        self.validate(create_request)
+
         self._stepfunctions.start_execution(
             stateMachineArn=os.environ["CREATE_SFN_ARN"], input=create_request.model_dump_json()
         )
@@ -46,3 +48,37 @@ class CreateModelHandler(BaseApiHandler):
             }
         )
         return CreateModelResponse(model=lisa_model)
+
+    @staticmethod
+    def validate(create_request: CreateModelRequest) -> None:
+        # The below check ensures that the model is LISA hosted
+        if (
+            create_request.containerConfig is not None
+            and create_request.autoScalingConfig is not None
+            and create_request.loadBalancerConfig is not None
+        ):
+            if create_request.containerConfig.image.baseImage is None:
+                raise ValueError("Base image must be provided for LISA hosted model.")
+
+        # Validate values relative to current ASG. All conflicting request values have been validated as part of the
+        # AutoScalingInstanceConfig model validations, so those are not duplicated here.
+        if create_request.autoScalingConfig is not None:
+            # Min capacity can't be greater than the deployed ASG's max capacity
+            if (
+                create_request.autoScalingConfig.minCapacity is not None
+                and create_request.autoScalingConfig.maxCapacity is not None
+                and create_request.autoScalingConfig.minCapacity > create_request.autoScalingConfig.maxCapacity
+            ):
+                raise ValueError(
+                    f"Min capacity cannot exceed ASG max of {create_request.autoScalingConfig.maxCapacity}."
+                )
+
+            # Max capacity can't be less than the deployed ASG's min capacity
+            if (
+                create_request.autoScalingConfig.maxCapacity is not None
+                and create_request.autoScalingConfig.minCapacity is not None
+                and create_request.autoScalingConfig.maxCapacity < create_request.autoScalingConfig.minCapacity
+            ):
+                raise ValueError(
+                    f"Max capacity cannot be less than ASG min of {create_request.autoScalingConfig.minCapacity}."
+                )

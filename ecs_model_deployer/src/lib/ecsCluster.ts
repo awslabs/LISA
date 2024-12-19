@@ -12,7 +12,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/
+ */
 
 // ECS Cluster Construct.
 import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
@@ -38,25 +38,29 @@ import {
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { IRole, ManagedPolicy, ServicePrincipal, Role } from 'aws-cdk-lib/aws-iam';
+import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from './utils';
-import { BaseProps, ECSConfig, Ec2Metadata, EcsSourceType } from './ecs-schema';
+import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from './ecs-schema';
 
 /**
  * Properties for the ECSCluster Construct.
  *
  * @property {IVpc} vpc - The virtual private cloud (VPC).
- * @property {SecurityGroups} securityGroups - The security group that the ECS cluster should use.
+ * @property {ISecurityGroup} securityGroup - The security group that the ECS cluster should use.
  * @property {ECSConfig} ecsConfig - The configuration for the cluster.
+ * @property {string} taskRoleName? - The role applied to the task
+ * @property {string} executionRoleName? - The role used for executing the task
  */
 type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
     subnetSelection?: SubnetSelection;
+    taskRoleName?: string;
+    executionRoleName?: string;
 } & BaseProps;
 
 /**
@@ -79,7 +83,7 @@ export class ECSCluster extends Construct {
    */
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
-        const { config, vpc, securityGroup, ecsConfig, subnetSelection } = props;
+        const { config, vpc, securityGroup, ecsConfig, subnetSelection, taskRoleName, executionRoleName } = props;
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
@@ -182,30 +186,17 @@ export class ECSCluster extends Construct {
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
         }
 
-        const taskPolicyId = createCdkId([config.deploymentName, 'ECSPolicy']);
-        const taskPolicyStringParam = StringParameter.fromStringParameterName(this, 'taskPolicyStringParam',
-            `${config.deploymentPrefix}/policies/${taskPolicyId}`
-        );
-        const taskPolicy = ManagedPolicy.fromManagedPolicyArn(this, taskPolicyId, taskPolicyStringParam.stringValue);
-        const role_id = ecsConfig.identifier;
-        const roleName = createCdkId([config.deploymentName, role_id, 'Role']);
-        const taskRole = new Role(this, createCdkId([role_id, 'Role']), {
-            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
-            roleName,
-            description: `Allow ${role_id} ${role_id} ECS task access to AWS resources`,
-            managedPolicies: [taskPolicy],
-        });
-        new StringParameter(this, createCdkId([config.deploymentName, role_id, 'SP']), {
-            parameterName: `${config.deploymentPrefix}/roles/${role_id}`,
-            stringValue: taskRole.roleArn,
-            description: `Role ARN for LISA ${role_id} ${role_id} ECS Task`,
-        });
+        const roleId = ecsConfig.identifier;
+        const taskRole = taskRoleName ?
+            Role.fromRoleName(this, createCdkId([config.deploymentName, roleId]), taskRoleName) :
+            this.createTaskRole(config.deploymentName, config.deploymentPrefix, roleId);
 
         // Create ECS task definition
-        const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
-            family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            taskRole: taskRole,
+        const taskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
+            family: createCdkId([config.deploymentName, roleId], 32, 2),
             volumes: volumes,
+            taskRole,
+            ...(executionRoleName && { executionRole: Role.fromRoleName(this, createCdkId([config.deploymentName, roleId, 'EX']), executionRoleName) }),
         });
 
         // Add container to task definition
@@ -350,5 +341,29 @@ export class ECSCluster extends Construct {
         // Update
         this.container = container;
         this.taskRole = taskRole;
+    }
+
+    createTaskRole (deploymentName: string, deploymentPrefix: string | undefined, roleId: string): IRole {
+        const taskPolicyId = createCdkId([deploymentName, 'ECSPolicy']);
+        const taskPolicyStringParam = StringParameter.fromStringParameterName(this, 'taskPolicyStringParam',
+            `${deploymentPrefix}/policies/${taskPolicyId}`,
+        );
+
+        const taskPolicy = ManagedPolicy.fromManagedPolicyArn(this, taskPolicyId, taskPolicyStringParam.stringValue);
+        const roleName = createCdkId([roleId, 'Role']);
+        const role = new Role(this, roleName, {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+            roleName,
+            description: `Allow ${roleId} ECS task access to AWS resources`,
+            managedPolicies: [taskPolicy],
+        });
+
+        new StringParameter(this, createCdkId([deploymentName, roleId, 'SP']), {
+            parameterName: `${deploymentPrefix}/roles/${roleId}`,
+            stringValue: role.roleArn,
+            description: `Role ARN for LISA ${roleId} ECS Task`,
+        });
+
+        return role;
     }
 }

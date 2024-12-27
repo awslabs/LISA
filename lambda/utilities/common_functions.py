@@ -135,7 +135,7 @@ def api_wrapper(f: F) -> F:
     Parameters
     ----------
     f : F
-        The functiont to be wrapped.
+        The function to be wrapped.
 
     Returns
     -------
@@ -344,3 +344,9 @@ def get_rest_api_container_endpoint() -> str:
     lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
     lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
     return f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
+
+
+def get_username(event: dict) -> str:
+    """Get username from event."""
+    username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
+    return username

@@ -310,6 +310,7 @@ class RagDocument(BaseModel):
     collection_id: str
     document_name: str
     source: str
+    username: str
     sub_docs: List[str] = Field(default_factory=lambda: [])
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: int(time.time()))

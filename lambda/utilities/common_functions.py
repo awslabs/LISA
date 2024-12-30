@@ -21,7 +21,7 @@ import os
 import tempfile
 from contextvars import ContextVar
 from functools import cache
-from typing import Any, Callable, Dict, TypeVar, Union
+from typing import Any, Callable, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
@@ -350,3 +350,21 @@ def get_username(event: dict) -> str:
     """Get username from event."""
     username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
     return username
+
+
+def get_session_id(event: dict) -> str:
+    """Get session_id from event."""
+    session_id: str = event.get("pathParameters", {}).get("sessionId")
+    return session_id
+
+
+def get_groups(event: Any) -> List[str]:
+    """Get user groups from event."""
+    groups: List[str] = event.get("requestContext", {}).get("authorizer", {}).get("groups", [])
+    return groups
+
+
+def get_principal_id(event: Any) -> str:
+    """Get principal from event."""
+    principal: str = event.get("requestContext", {}).get("authorizer", {}).get("principal", "")
+    return principal

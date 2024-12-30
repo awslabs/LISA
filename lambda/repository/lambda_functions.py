@@ -424,7 +424,7 @@ def presigned_url(event: dict, context: dict) -> dict:
     key = event["body"]
 
     # Set derived values for conditions and fields
-    username = event["requestContext"]["authorizer"]["username"]
+    username = get_username(event)
 
     # Conditions is an array of dictionaries.
     # content-length-range restricts the size of the file uploaded
@@ -442,11 +442,6 @@ def presigned_url(event: dict, context: dict) -> dict:
         ExpiresIn=3600,
     )
     return {"response": response}
-
-
-def get_groups(event: Any) -> List[str]:
-    groups: List[str] = json.loads(event["requestContext"]["authorizer"]["groups"])
-    return groups
 
 
 @api_wrapper

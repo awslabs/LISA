@@ -23,7 +23,7 @@ from typing import Any, Dict, List
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from utilities.common_functions import api_wrapper, retry_config
+from utilities.common_functions import api_wrapper, get_session_id, get_username, retry_config
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ def _delete_user_session(session_id: str, user_id: str) -> Dict[str, bool]:
 @api_wrapper
 def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     """List sessions by user ID from DynamoDB."""
-    user_id = event["requestContext"]["authorizer"]["username"]
+    user_id = get_username(event)
 
     logger.info(f"Listing sessions for user {user_id}")
     return _get_all_user_sessions(user_id)
@@ -98,8 +98,8 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
 @api_wrapper
 def get_session(event: dict, context: dict) -> Dict[str, Any]:
     """Get session from DynamoDB."""
-    user_id = event["requestContext"]["authorizer"]["username"]
-    session_id = event["pathParameters"]["sessionId"]
+    user_id = get_username(event)
+    session_id = get_session_id(event)
 
     logger.info(f"Fetching session with ID {session_id} for user {user_id}")
     response = {}
@@ -116,8 +116,8 @@ def get_session(event: dict, context: dict) -> Dict[str, Any]:
 @api_wrapper
 def delete_session(event: dict, context: dict) -> dict:
     """Delete session from DynamoDB."""
-    user_id = event["requestContext"]["authorizer"]["username"]
-    session_id = event["pathParameters"]["sessionId"]
+    user_id = get_username(event)
+    session_id = get_session_id(event)
 
     logger.info(f"Deleting session with ID {session_id} for user {user_id}")
     return _delete_user_session(session_id, user_id)
@@ -126,7 +126,7 @@ def delete_session(event: dict, context: dict) -> dict:
 @api_wrapper
 def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     """Delete sessions by user ID from DyanmoDB."""
-    user_id = event["requestContext"]["authorizer"]["username"]
+    user_id = get_username(event)
 
     logger.info(f"Deleting all sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
@@ -140,8 +140,8 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
 @api_wrapper
 def put_session(event: dict, context: dict) -> None:
     """Append the message to the record in DynamoDB."""
-    user_id = event["requestContext"]["authorizer"]["username"]
-    session_id = event["pathParameters"]["sessionId"]
+    user_id = get_username(event)
+    session_id = get_session_id(event)
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
     messages = body["messages"]

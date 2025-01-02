@@ -17,10 +17,10 @@
 import { ReactElement, useEffect } from 'react';
 import ModelManagementComponent from '../components/model-management/ModelManagementComponent';
 
-export function ModelManagement ({ setTools }): ReactElement {
+export function ModelManagement ({ setNav }): ReactElement {
     useEffect(() => {
-        setTools(null);
-    }, [setTools]);
+        setNav(null);
+    }, [setNav]);
 
     return <ModelManagementComponent />;
 }

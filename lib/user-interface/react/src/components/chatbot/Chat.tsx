@@ -17,42 +17,18 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
-import Button from '@cloudscape-design/components/button';
 import Container from '@cloudscape-design/components/container';
-import TextareaAutosize from 'react-textarea-autosize';
 import Box from '@cloudscape-design/components/box';
 import { v4 as uuidv4 } from 'uuid';
-import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import Modal from '@cloudscape-design/components/modal';
-import Input from '@cloudscape-design/components/input';
-import FormField from '@cloudscape-design/components/form-field';
-import Toggle from '@cloudscape-design/components/toggle';
-import {
-    ColumnLayout,
-    ExpandableSection,
-    Flashbar,
-    Grid,
-    Header,
-    TextContent,
-    Textarea,
-} from '@cloudscape-design/components';
-import { SelectProps } from '@cloudscape-design/components/select';
+import { Grid, TextContent, PromptInput, Autosuggest, ButtonGroup } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatSession, ModelConfig, LisaChatMessageMetadata } from '../types';
-import {
-    getSession,
-    putSession,
-    isModelInterfaceHealthy,
-    RESTAPI_URI,
-    formatDocumentsAsString,
-    RESTAPI_VERSION,
-} from '../utils';
+import { LisaChatMessage, LisaChatSession, LisaChatMessageMetadata } from '../types';
+import { isModelInterfaceHealthy, RESTAPI_URI, formatDocumentsAsString, RESTAPI_VERSION } from '../utils';
 import { LisaRAGRetriever } from '../adapters/lisa';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
-import ModelKwargsEditor from './ModelKwargs';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
@@ -62,53 +38,77 @@ import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { configurationApi, useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { useLazyGetSessionByIdQuery, useUpdateSessionMutation } from '../../shared/reducers/session.reducer';
+import { useAppDispatch } from '../../config/store';
+import { useNotificationService } from '../../shared/util/hooks';
+import SessionConfiguration from './SessionConfiguration';
+import PromptTemplateEditor from './PromptTemplateEditor';
+import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
 
 export default function Chat ({ sessionId }) {
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
+
+    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
+    const [getSessionById] = useLazyGetSessionByIdQuery();
+    const [updateSession] = useUpdateSessionMutation();
     const [userPrompt, setUserPrompt] = useState('');
-    const [humanPrefix, setHumanPrefix] = useState('User');
-    const [aiPrefix, setAiPrefix] = useState('Assistant');
     const [fileContext, setFileContext] = useState('');
-    const [promptTemplate, setPromptTemplate] = useState(
-        `The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
 
-          Current conversation:
-          {history}
-          ${humanPrefix}: {input}
-          ${aiPrefix}:`,
-    );
-
+    const [sessionConfigurationModalVisible, setSessionConfigurationModalVisible] = useState(false);
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
             data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
         })});
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
-    const [modelConfig, setModelConfig] = useState<ModelConfig>();
     const [selectedModel, setSelectedModel] = useState<IModel>();
-    const [selectedModelOption, setSelectedModelOption] = useState<SelectProps.Option>();
     const [session, setSession] = useState<LisaChatSession>({
         history: [],
         sessionId: '',
         userId: '',
         startTime: new Date(Date.now()).toISOString(),
     });
-    const [streamingEnabled, setStreamingEnabled] = useState(false);
-    const [chatHistoryBufferSize, setChatHistoryBufferSize] = useState<number>(3);
-    const [ragTopK, setRagTopK] = useState<number>(3);
+
     const [isStreaming, setIsStreaming] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
-    const [showMetadata, setShowMetadata] = useState(false);
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
-    const [modelKwargsModalVisible, setModelKwargsModalVisible] = useState(false);
-    const [promptTemplateModalVisible, setPromptTemplateModalVisible] = useState(false);
+    const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
     const [showContextUploadModal, setShowContextUploadModal] = useState(false);
     const [showRagUploadModal, setShowRagUploadModal] = useState(false);
 
-    const [flashbarItems, setFlashbarItems] = useState([]);
+    const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>({
+        promptConfiguration: {
+            promptTemplate: `The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+
+                              Current conversation:
+                              {history}
+                              {humanPrefix}: {input}
+                              {aiPrefix}:`,
+            humanPrefix: 'User',
+            aiPrefix: 'Assistant',
+        },
+        sessionConfiguration: {
+            streaming: false,
+            showMetadata: false,
+            max_tokens: null,
+            chatHistoryBufferSize: 3,
+            ragTopK: 3,
+            modelArgs: {
+                n: null,
+                top_p: 0.01,
+                frequency_penalty: null,
+                presence_penalty: null,
+                temperature: null,
+                seed: null,
+                stop: ['\nUser:', '\n User:', 'User:', 'User'],
+            }
+        }
+    });
+
     const [ragContext, setRagContext] = useState('');
     const [useRag, setUseRag] = useState(false);
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
@@ -117,21 +117,13 @@ export default function Chat ({ sessionId }) {
             chatHistory: new LisaChatMessageHistory(session),
             returnMessages: false,
             memoryKey: 'history',
-            k: chatHistoryBufferSize,
-            aiPrefix: aiPrefix,
-            humanPrefix: humanPrefix,
+            k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
+            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
         }),
     );
     const bottomRef = useRef(null);
     const auth = useAuth();
-
-    const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
-        i = i + 1;
-        return {
-            value: i.toString(),
-            label: i.toString(),
-        };
-    });
 
     useEffect(() => {
         isBackendHealthy().then((flag) => setIsConnected(flag));
@@ -141,17 +133,21 @@ export default function Chat ({ sessionId }) {
     useEffect(() => {
         if (!isRunning && session.history.length) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
-                putSession(session, auth.user?.id_token);
+                updateSession(session);
             }
         }
+        if (auth.isAuthenticated){
+            dispatch(configurationApi.util.invalidateTags(['configuration']));
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session, auth.isLoading]);
+    }, [isRunning, session, auth]);
 
     useEffect(() => {
         if (sessionId) {
             setInternalSessionId(sessionId);
-            getSession(sessionId, auth.user?.id_token).then((sess) => {
+            getSessionById(sessionId).then((resp) => {
                 // session doesn't exist so we create it
+                let sess: LisaChatSession = resp.data;
                 if (sess.history === undefined) {
                     sess = {
                         history: [],
@@ -178,23 +174,23 @@ export default function Chat ({ sessionId }) {
 
     useEffect(() => {
         const promptNeedsContext = fileContext || useRag;
-        const promptIncludesContext = promptTemplate.indexOf('{context}') > -1;
+        const promptIncludesContext = chatConfiguration.promptConfiguration.promptTemplate.indexOf('{context}') > -1;
 
         if (promptNeedsContext && !promptIncludesContext) {
             // Add context parameter to prompt if using local file context or RAG
             // New lines included to maintain formatting in the prompt template UI
-            const modifiedText = promptTemplate.replace(
+            const modifiedText = chatConfiguration.promptConfiguration.promptTemplate.replace(
                 `
           Current conversation:`,
                 ` {context}
 
           Current conversation:`,
             );
-            setPromptTemplate(modifiedText);
+            setChatConfiguration({...chatConfiguration, promptConfiguration: {...chatConfiguration.promptConfiguration, promptTemplate: modifiedText}});
         } else if (!promptNeedsContext && promptIncludesContext) {
             // Remove context from the prompt
-            const modifiedText = promptTemplate.replace('{context}', '');
-            setPromptTemplate(modifiedText);
+            const modifiedText = chatConfiguration.promptConfiguration.promptTemplate.replace('{context}', '');
+            setChatConfiguration({...chatConfiguration, promptConfiguration: {...chatConfiguration.promptConfiguration, promptTemplate: modifiedText}});
         }
     // Disabling exhaustive-deps here because we are updating the promptTemplate so we can't trigger
     // this on promptTemplate updating or we would end up in a render loop.
@@ -207,9 +203,9 @@ export default function Chat ({ sessionId }) {
                 chatHistory: new LisaChatMessageHistory(session),
                 returnMessages: false,
                 memoryKey: 'history',
-                k: chatHistoryBufferSize,
-                aiPrefix: aiPrefix,
-                humanPrefix: humanPrefix,
+                k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
+                aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+                humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
             }),
         );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,19 +217,24 @@ export default function Chat ({ sessionId }) {
                 const promptValues = {
                     input: userPrompt,
                     history: formattedHistory.history,
+                    aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+                    humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
                 };
                 // If context is included in template then add value here
-                if (promptTemplate.indexOf('{context}') > -1) {
+                if (chatConfiguration.promptConfiguration.promptTemplate.indexOf('{context}') > -1) {
                     if (useRag) {
                         promptValues['context'] = ragContext;
                     } else {
                         promptValues['context'] = fileContext;
                     }
                 }
-                const prompt = await PromptTemplate.fromTemplate(promptTemplate).format(promptValues);
+                const prompt = await PromptTemplate.fromTemplate(chatConfiguration.promptConfiguration.promptTemplate).format(promptValues);
                 const metadata: LisaChatMessageMetadata = {
                     modelName: selectedModel.modelId,
-                    modelKwargs: modelConfig,
+                    modelKwargs: {
+                        max_tokens: chatConfiguration.sessionConfiguration.max_tokens,
+                        modelKwargs: chatConfiguration.sessionConfiguration.modelArgs,
+                    },
                     userId: auth.user.profile.sub,
                     messages: prompt,
                 };
@@ -241,7 +242,7 @@ export default function Chat ({ sessionId }) {
             });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedModel, modelConfig, auth, userPrompt]);
+    }, [selectedModel, chatConfiguration.sessionConfiguration.modelArgs, auth, userPrompt]);
 
     useEffect(() => {
         if (bottomRef) {
@@ -254,20 +255,6 @@ export default function Chat ({ sessionId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const createFlashbarError = () => {
-        return {
-            header: 'Something Went Wrong',
-            type: 'error',
-            content: 'An error occurred while processing your request.',
-            dismissible: true,
-            dismissLabel: 'Dismiss message',
-            onDismiss: () => {
-                setFlashbarItems([]);
-            },
-            id: 'error_message',
-        };
-    };
-
     const createOpenAiClient = (streaming: boolean) => {
         return new ChatOpenAI({
             modelName: selectedModel?.modelId,
@@ -276,8 +263,8 @@ export default function Chat ({ sessionId }) {
                 baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
             },
             streaming,
-            maxTokens: modelConfig?.max_tokens,
-            modelKwargs: modelConfig?.modelKwargs,
+            maxTokens: chatConfiguration.sessionConfiguration?.max_tokens,
+            modelKwargs: chatConfiguration.sessionConfiguration?.modelArgs,
         });
     };
 
@@ -307,17 +294,19 @@ export default function Chat ({ sessionId }) {
         setIsRunning(true);
         const inputs = {
             input: userPrompt,
+            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
         };
 
-        const llm = createOpenAiClient(streamingEnabled);
+        const llm = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
         const useContext = fileContext || useRag;
-        const inputVariables = ['history', 'input'];
+        const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix'];
 
         if (useContext) {
             inputVariables.push('context');
         }
         const questionPrompt = new PromptTemplate({
-            template: promptTemplate,
+            template: chatConfiguration.promptConfiguration.promptTemplate,
             inputVariables: inputVariables,
         });
 
@@ -328,6 +317,8 @@ export default function Chat ({ sessionId }) {
                 input: (previousOutput) => previousOutput.input,
                 context: (previousOutput) => previousOutput.context,
                 history: (previousOutput) => previousOutput.memory?.history || '',
+                aiPrefix:(previousOutput) => previousOutput.aiPrefix,
+                humanPrefix:(previousOutput) => previousOutput.humanPrefix,
             },
             questionPrompt,
             llm,
@@ -341,7 +332,7 @@ export default function Chat ({ sessionId }) {
                 repositoryId: ragConfig.repositoryId,
                 repositoryType: ragConfig.repositoryType,
                 modelName: ragConfig.embeddingModel.modelId,
-                topK: ragTopK,
+                topK: chatConfiguration.sessionConfiguration.ragTopK,
             });
 
             chainSteps.unshift({
@@ -378,10 +369,12 @@ export default function Chat ({ sessionId }) {
                 input: (initialInput) => initialInput.input,
                 memory: () => memory.loadMemoryVariables({}),
                 context: () => (useContext ? fileContext : ''),
+                humanPrefix: (initialInput) => initialInput.humanPrefix,
+                aiPrefix: (initialInput) => initialInput.aiPrefix,
             });
         }
         const chain = RunnableSequence.from(chainSteps);
-        if (streamingEnabled) {
+        if (chatConfiguration.sessionConfiguration.streaming) {
             setIsStreaming(true);
             setSession((prev) => ({
                 ...prev,
@@ -397,6 +390,8 @@ export default function Chat ({ sessionId }) {
                 const result = await chain.stream({
                     input: userPrompt,
                     chatHistory: session.history,
+                    aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+                    humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
                 });
                 const resp: string[] = [];
                 for await (const chunk of result) {
@@ -405,6 +400,7 @@ export default function Chat ({ sessionId }) {
                         const newMessage = new LisaChatMessage({
                             ...lastMessage,
                             content: lastMessage.content + chunk,
+
                         });
                         return {
                             ...prev,
@@ -414,18 +410,18 @@ export default function Chat ({ sessionId }) {
                     resp.push(chunk);
                 }
 
-                memory.saveContext(inputs, {
+                memory.saveContext({input: inputs.input}, {
                     output: resp.join(''),
                 });
             } catch (exception) {
-                setFlashbarItems((oldItems) => [...oldItems, createFlashbarError()]);
+                notificationService.generateNotification('An error occurred while processing your request.', 'error');
             }
 
             setIsStreaming(false);
         } else {
             try {
                 const result = await chain.invoke(inputs);
-                await memory.saveContext(inputs, {
+                await memory.saveContext({input: inputs.input}, {
                     output: result,
                 });
                 setSession((prev) => ({
@@ -439,92 +435,37 @@ export default function Chat ({ sessionId }) {
                     ),
                 }));
             } catch (exception) {
-                setFlashbarItems((oldItems) => [...oldItems, createFlashbarError()]);
+                notificationService.generateNotification('An error occurred while processing your request.', 'error');
             }
         }
 
         setIsRunning(false);
         setUserPrompt('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, metadata, streamingEnabled]);
+    }, [userPrompt, metadata, chatConfiguration.sessionConfiguration.streaming]);
 
     return (
         <>
-            <ModelKwargsEditor
-                setModelConfig={setModelConfig}
-                visible={modelKwargsModalVisible}
-                setVisible={setModelKwargsModalVisible}
+            <PromptTemplateEditor
+                chatConfiguration={chatConfiguration}
+                setChatConfiguration={setChatConfiguration}
+                setVisible={setPromptTemplateEditorVisible}
+                visible={promptTemplateEditorVisible}
             />
-            <Modal
-                onDismiss={() => setPromptTemplateModalVisible(false)}
-                visible={promptTemplateModalVisible}
-                header='Prompt Editor'
-                footer=''
-                size='large'
-            >
-                <TextContent>
-                    <h4>Prompt Template</h4>
-                    <p>
-                        <small>
-                            Sets the prompt used in a LangChain ConversationChain to converse with an LLM. The <code>`history`</code>{' '}
-                            and <code>`input`</code> keys are available for use in the prompt like:
-                            <br />
-                            <br />
-                            <code>
-                                ```
-                                <br />
-                                Current conversation:
-                                <br />
-                                &#123;history&#125;
-                                <br />
-                                ```
-                            </code>
-                        </small>
-                    </p>
-                </TextContent>
-                <SpaceBetween direction='vertical' size='xs'>
-                    <Textarea
-                        rows={10}
-                        disableBrowserAutocorrect={false}
-                        autoFocus
-                        onChange={(e) => setPromptTemplate(e.detail.value)}
-                        onKeyDown={(e) => {
-                            if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
-                                e.preventDefault();
-                            }
-                        }}
-                        value={promptTemplate}
-                    />
-                    <FormField description='Sets the prefix representing the user in the LLM prompt.' label='Human Prefix'>
-                        <Input
-                            value={humanPrefix}
-                            onChange={(e) => setHumanPrefix(e.detail.value)}
-                            onKeyDown={(e) => {
-                                if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
-                                    e.preventDefault();
-                                }
-                            }}
-                        />
-                    </FormField>
-                    <FormField description='Sets the prefix representing the AI in the LLM prompt.' label='AI Prefix'>
-                        <Input
-                            value={aiPrefix}
-                            onChange={(e) => setAiPrefix(e.detail.value)}
-                            onKeyDown={(e) => {
-                                if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
-                                    e.preventDefault();
-                                }
-                            }}
-                        />
-                    </FormField>
-                </SpaceBetween>
-            </Modal>
+            <SessionConfiguration
+                chatConfiguration={chatConfiguration}
+                setChatConfiguration={setChatConfiguration}
+                selectedModel={selectedModel}
+                isRunning={isRunning}
+                visible={sessionConfigurationModalVisible}
+                setVisible={setSessionConfigurationModalVisible}
+                systemConfig={config}
+            />
             <RagUploadModal
                 auth={auth}
                 ragConfig={ragConfig}
                 showRagUploadModal={showRagUploadModal}
                 setShowRagUploadModal={setShowRagUploadModal}
-                setFlashbarItems={setFlashbarItems}
             />
             <ContextUploadModal
                 showContextUploadModal={showContextUploadModal}
@@ -532,205 +473,153 @@ export default function Chat ({ sessionId }) {
                 fileContext={fileContext}
                 setFileContext={setFileContext}
             />
-            <div className=' overflow-y-auto p-2 mb-96'>
+            <div className='overflow-y-auto p-2 mb-52'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
-                        <Message key={idx} message={message} showMetadata={showMetadata} isRunning={false} />
+                        <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1}/>
                     ))}
-                    <div ref={bottomRef} />
-                    <Flashbar items={flashbarItems} />
                     {isRunning && !isStreaming && <Message isRunning={isRunning} />}
+                    <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
-            <div className='fixed bottom-0 left-0 w-full'>
+            <div className='fixed bottom-8' style={{width: 'calc(100% - 650px)'}}>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form variant='embedded'>
                         <Container>
                             <SpaceBetween size='m' direction='vertical'>
-                                <div className='flex'>
-                                    <div style={{width: '95%'}}>
-                                        <TextareaAutosize
-                                            className='float-left min-w-[300px] border-none rounded-md focus:outline-none focus:ring-none bg-transparent resize-none p-5'
-                                            style={{width: '100%'}}
-                                            maxRows={4}
-                                            minRows={1}
-                                            spellCheck={true}
-                                            placeholder={
-                                                !selectedModel ? 'You must select a model before sending a message' : 'Send a message'
-                                            }
-                                            disabled={!selectedModel}
-                                            onChange={(e) => setUserPrompt(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    if (!isRunning) {
-                                                        handleSendGenerateRequest();
-                                                    }
-                                                }
-                                            }}
-                                            value={userPrompt}
-                                        />
-                                    </div>
-                                    <div style={{width: '10%'}}>
-                                        <div className='flex mb-2 justify-end mt-3'>
-                                            <div>
-                                                <Button
-                                                    disabled={!allModels.length || isRunning || !selectedModel || userPrompt === ''}
-                                                    onClick={handleSendGenerateRequest}
-                                                    iconAlign='right'
-                                                    iconName='angle-right-double'
-                                                    variant='primary'
-                                                >
-                                                    <span className='md:inline hidden'>{isRunning ? 'Loading' : 'Send'}</span>
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <Container
-                                    variant='stacked'
-                                    header={
-                                        <Header
-                                            variant='h2'
-                                            description={`Select the model to use for this chat session.${
-                                                window.env.RAG_ENABLED &&
-                        ' Optionally select a RAG repository and embedding model to use when chatting.'
-                                            }`}
-                                            actions={
-                                                <SpaceBetween direction='horizontal' size='m'>
-                                                    {config && config[0]?.configuration.enabledComponents.uploadContextDocs && <Box float='left' variant='div'>
-                                                        <Button
-                                                            onClick={() => setShowContextUploadModal(true)}
-                                                            disabled={isRunning || !selectedModelOption}
-                                                        >
-                                                            Manage file context
-                                                        </Button>
-                                                    </Box>}
-                                                    {window.env.RAG_ENABLED && config && config[0]?.configuration.enabledComponents.uploadRagDocs && (
-                                                        <Box float='left' variant='div'>
-                                                            <Button
-                                                                onClick={() => setShowRagUploadModal(true)}
-                                                                disabled={isRunning || !ragConfig.embeddingModel || !ragConfig.repositoryId}
-                                                            >
-                                                                Upload files to RAG
-                                                            </Button>
-                                                        </Box>
-                                                    )}
-                                                </SpaceBetween>
-                                            }
-                                        >
-                                            Model configuration
-                                        </Header>
-                                    }
+                                <Grid
+                                    gridDefinition={[
+                                        { colspan: { default: 4 } },
+                                        { colspan: { default: 8} },
+                                    ]}
                                 >
-                                    <SpaceBetween size='l' direction='vertical'>
-                                        <Grid
-                                            gridDefinition={[
-                                                { colspan: { default: 10, xxs: 3 } },
-                                                { colspan: { default: 2, xxs: 1 } },
-                                                { colspan: { default: 12, xxs: 8 } },
-                                            ]}
-                                        >
-                                            <Select
-                                                disabled={isRunning}
-                                                statusType={isFetchingModels ? 'loading' : 'finished'}
-                                                loadingText='Loading models (might take few seconds)...'
-                                                placeholder='Select a model'
-                                                empty={<div className='text-gray-500'>No models available.</div>}
-                                                filteringType='auto'
-                                                selectedOption={selectedModelOption}
-                                                onChange={({ detail: { selectedOption } }) => {
-                                                    setSelectedModelOption(selectedOption);
+                                    <Autosuggest
+                                        disabled={isRunning}
+                                        statusType={isFetchingModels ? 'loading' : 'finished'}
+                                        loadingText='Loading models (might take few seconds)...'
+                                        placeholder='Select a model'
+                                        empty={<div className='text-gray-500'>No models available.</div>}
+                                        filteringType='auto'
+                                        value={selectedModel?.modelId ?? ''}
+                                        onChange={({ detail: { value } }) => {
+                                            if (!value || value.length === 0) {
+                                                setSelectedModel(undefined);
+                                            } else {
+                                                const model = allModels.find((model) => model.modelId === value);
+                                                if (model) {
+                                                    if (!model.streaming && chatConfiguration.sessionConfiguration.streaming) {
+                                                        setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: false }});
+                                                    } else if (model.streaming && !chatConfiguration.sessionConfiguration.streaming) {
+                                                        setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: true }});
+                                                    }
 
-                                                    const model = allModels.find((model) => model.modelId === selectedOption.value);
-                                                    if (model) {
-                                                        if (!model.streaming && streamingEnabled) {
-                                                            setStreamingEnabled(false);
-                                                        }
-
-                                                        setSelectedModel(model);
+                                                    setSelectedModel(model);
+                                                }
+                                            }
+                                        }}
+                                        options={modelsOptions}
+                                    />
+                                    {window.env.RAG_ENABLED && (
+                                        <RagControls
+                                            isRunning={isRunning}
+                                            setUseRag={setUseRag}
+                                            auth={auth}
+                                            setRagConfig={setRagConfig}
+                                        />
+                                    )}
+                                </Grid>
+                                <PromptInput
+                                    value={userPrompt}
+                                    actionButtonAriaLabel='Send message'
+                                    actionButtonIconName='send'
+                                    maxRows={4}
+                                    minRows={2}
+                                    spellcheck={true}
+                                    placeholder={
+                                        !selectedModel ? 'You must select a model before sending a message' : 'Send a message'
+                                    }
+                                    disabled={!selectedModel}
+                                    onChange={({ detail }) => setUserPrompt(detail.value)}
+                                    onAction={handleSendGenerateRequest}
+                                    secondaryActions={
+                                        <Box padding={{ left: 'xxs', top: 'xs' }}>
+                                            <ButtonGroup
+                                                ariaLabel='Chat actions'
+                                                onItemClick={({detail}) => {
+                                                    if (detail.id === 'settings'){
+                                                        setSessionConfigurationModalVisible(true);
+                                                    }
+                                                    if (detail.id === 'edit-prompt-template'){
+                                                        setPromptTemplateEditorVisible(true);
+                                                    }
+                                                    if (detail.id === 'upload-to-rag'){
+                                                        setShowRagUploadModal(true);
+                                                    }
+                                                    if (detail.id === 'add-file-to-context'){
+                                                        setShowContextUploadModal(true);
                                                     }
                                                 }}
-                                                options={modelsOptions}
+                                                items={[
+                                                    {
+                                                        type: 'icon-button',
+                                                        id: 'settings',
+                                                        iconName: 'settings',
+                                                        text: 'Session configuration'
+                                                    },
+                                                    ...(config && config[0]?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
+                                                        [{
+                                                            type: 'icon-button',
+                                                            id: 'upload-to-rag',
+                                                            iconName: 'upload',
+                                                            text: 'Upload to RAG'
+                                                        }] : []),
+                                                    ...(config && config[0]?.configuration.enabledComponents.uploadContextDocs ?
+                                                        [{
+                                                            type: 'icon-button',
+                                                            id: 'add-file-to-context',
+                                                            iconName: 'insert-row',
+                                                            text: 'Add file to context'
+                                                        }] : []),
+                                                    {
+                                                        type: 'icon-button',
+                                                        id: 'summarize-document',
+                                                        iconName: 'transcript',
+                                                        text: 'Summarize Document'
+                                                    },
+                                                    ...(config && config[0].configuration.enabledComponents.editPromptTemplate ?
+                                                        [{
+                                                            type: 'menu-dropdown',
+                                                            id: 'more-actions',
+                                                            text: 'Additional Configuration',
+                                                            items: [
+                                                                {
+                                                                    id: 'edit-prompt-template',
+                                                                    iconName: 'contact',
+                                                                    text: 'Edit Prompt Template'
+                                                                },
+                                                            ]
+                                                        }] : [])
+                                                ]}
+                                                variant='icon'
                                             />
-                                            <div style={{ paddingTop: 4 }}>
-                                                <Toggle
-                                                    onChange={({ detail }) => setStreamingEnabled(detail.checked)}
-                                                    checked={streamingEnabled}
-                                                    disabled={!selectedModel?.streaming || isRunning}
-                                                >
-                                                    Streaming
-                                                </Toggle>
-                                            </div>
-                                            {window.env.RAG_ENABLED && (
-                                                <RagControls
-                                                    isRunning={isRunning}
-                                                    setUseRag={setUseRag}
-                                                    auth={auth}
-                                                    setRagConfig={setRagConfig}
-                                                />
-                                            )}
-                                        </Grid>
-                                        {config && (config[0]?.configuration.enabledComponents.viewMetaData ||
-                                            config[0]?.configuration.enabledComponents.editKwargs ||
-                                            config[0]?.configuration.enabledComponents.editPromptTemplate ||
-                                            config[0]?.configuration.enabledComponents.editChatHistoryBuffer ||
-                                            config[0]?.configuration.enabledComponents.editNumOfRagDocument) &&
-                                            <ExpandableSection headerText='Advanced configuration' variant='footer'>
-                                                <ColumnLayout columns={7}>
-                                                    {config && config[0]?.configuration.enabledComponents.viewMetaData && <Toggle onChange={({ detail }) => setShowMetadata(detail.checked)} checked={showMetadata}>
-                                                        Show metadata
-                                                    </Toggle>}
-                                                    {config && config[0]?.configuration.enabledComponents.editKwargs && <Button onClick={() => setModelKwargsModalVisible(true)}>Edit Model Kwargs</Button>}
-                                                    {config && config[0]?.configuration.enabledComponents.editPromptTemplate && <Button onClick={() => setPromptTemplateModalVisible(true)}>Edit Prompt Template</Button>}
-                                                    {config && config[0]?.configuration.enabledComponents.editChatHistoryBuffer && <><Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
-                                                        Chat history buffer size:
-                                                    </Box>
-                                                    <Box float='left' variant='div'>
-                                                        <Select
-                                                            disabled={isRunning}
-                                                            filteringType='auto'
-                                                            selectedOption={{
-                                                                value: chatHistoryBufferSize.toString(),
-                                                                label: chatHistoryBufferSize.toString(),
-                                                            }}
-                                                            onChange={({ detail }) => setChatHistoryBufferSize(parseInt(detail.selectedOption.value))}
-                                                            options={oneThroughTenOptions}
-                                                        />
-                                                    </Box></>}
-                                                    {config && config[0]?.configuration.enabledComponents.editNumOfRagDocument && <>
-                                                        <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
-                                                            RAG documents:
-                                                        </Box>
-                                                        <Box float='left' variant='div'>
-                                                            <Select
-                                                                disabled={isRunning}
-                                                                filteringType='auto'
-                                                                selectedOption={{
-                                                                    value: ragTopK.toString(),
-                                                                    label: ragTopK.toString(),
-                                                                }}
-                                                                onChange={({ detail }) => setRagTopK(parseInt(detail.selectedOption.value))}
-                                                                options={oneThroughTenOptions}
-                                                            />
-                                                        </Box> </>}
-                                                </ColumnLayout>
-                                            </ExpandableSection>}
-                                    </SpaceBetween>
-                                </Container>
+                                        </Box>
+                                    }
+                                />
                                 <SpaceBetween direction='vertical' size='xs'>
-                                    <Box float='right' variant='div'>
-                                        <StatusIndicator type={isConnected ? 'success' : 'error'}>
-                                            {isConnected ? 'Connected' : 'Disconnected'}
-                                        </StatusIndicator>
-                                    </Box>
-                                    <Box float='right' variant='div'>
-                                        <TextContent>
-                                            <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
-                                                Session ID: {internalSessionId}
-                                            </div>
-                                        </TextContent>
-                                    </Box>
+                                    <Grid gridDefinition={[{ colspan:6 }, { colspan:6 }]}>
+                                        <Box float='left' variant='div'>
+                                            <TextContent>
+                                                <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
+                                                    Session ID: {internalSessionId}
+                                                </div>
+                                            </TextContent>
+                                        </Box>
+                                        <Box float='right' variant='div'>
+                                            <StatusIndicator type={isConnected ? 'success' : 'error'}>
+                                                {isConnected ? 'Connected' : 'Disconnected'}
+                                            </StatusIndicator>
+                                        </Box>
+                                    </Grid>
                                 </SpaceBetween>
                             </SpaceBetween>
                         </Container>

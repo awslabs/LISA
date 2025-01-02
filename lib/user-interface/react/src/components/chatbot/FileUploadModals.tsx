@@ -166,8 +166,6 @@ export function ContextUploadModal ({
 
 export type RagUploadProps = {
     auth: AuthContextProps;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setFlashbarItems: React.Dispatch<React.SetStateAction<any[]>>;
     showRagUploadModal: boolean;
     setShowRagUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     ragConfig: RagConfig;
@@ -175,7 +173,6 @@ export type RagUploadProps = {
 
 export function RagUploadModal ({
     auth,
-    setFlashbarItems,
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,
@@ -234,20 +231,7 @@ export function RagUploadModal ({
             if (ingestResponseStatusCode === 200) {
                 setIngestionType(StatusTypes.SUCCESS);
                 setIngestionStatus('Successfully ingested documents into the selected repository');
-                setFlashbarItems((oldItems) => [
-                    ...oldItems,
-                    {
-                        header: 'Success',
-                        type: 'success',
-                        content: `Successfully ingested ${fileKeys.length} document(s) into the selected repository.`,
-                        dismissible: true,
-                        dismissLabel: 'Dismiss message',
-                        onDismiss: () => {
-                            setFlashbarItems([]);
-                        },
-                        id: 'rag_success',
-                    },
-                ]);
+                notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository.`, 'success');
                 setShowRagUploadModal(false);
             } else {
                 throw new Error('Failed to ingest documents into RAG');

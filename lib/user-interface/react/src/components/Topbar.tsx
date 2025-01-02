@@ -16,8 +16,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
-import { useNavigate, useHref } from 'react-router-dom';
-import { applyMode, applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
+import { useHref, useNavigate } from 'react-router-dom';
+import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
 import { signOut, useAppSelector } from '../config/store';
@@ -61,7 +61,7 @@ function Topbar () {
             identity={{
                 href: useHref('/'),
                 logo: {
-                    src: `${getBaseURI()}logo.png`,
+                    src: `${getBaseURI()}logo.svg`,
                     alt: 'AWS LISA Sample',
                 },
             }}

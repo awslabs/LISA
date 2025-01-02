@@ -29,11 +29,16 @@ import {
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '../types';
 import { useState } from 'react';
-import { getPresignedUrl, ingestDocuments, uploadToS3 } from '../utils';
 import { RagConfig } from './RagOptions';
 import { AuthContextProps } from 'react-oidc-context';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
+import {
+    useIngestDocumentsMutation,
+    useLazyGetPresignedUrlQuery,
+    useUploadToS3Mutation
+} from '../../shared/reducers/rag.reducer';
+import { uploadToS3Request } from '../utils';
 
 const handleUpload = async (
     selectedFiles: File[],
@@ -172,7 +177,6 @@ export type RagUploadProps = {
 };
 
 export function RagUploadModal ({
-    auth,
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,
@@ -188,7 +192,10 @@ export function RagUploadModal ({
     const [chunkSize, setChunkSize] = useState(512);
     const [chunkOverlap, setChunkOverlap] = useState(51);
     const dispatch = useAppDispatch();
+    const [getPresignedUrl] = useLazyGetPresignedUrlQuery();
     const notificationService = useNotificationService(dispatch);
+    const [uploadToS3Mutation] = useUploadToS3Mutation();
+    const [ingestDocuments] = useIngestDocumentsMutation();
 
     function handleError (error: string): void {
         notificationService.generateNotification(error, 'error');
@@ -196,20 +203,18 @@ export function RagUploadModal ({
 
     async function processFile (file: File, fileIndex: number): Promise<boolean> {
         setProgressBarDescription(`Uploading ${file.name}`);
-        try {
-            const urlResponse = await getPresignedUrl(auth.user?.id_token, file.name);
-            const s3UploadStatusCode = await uploadToS3(urlResponse, file);
 
-            if (s3UploadStatusCode !== 204) {
-                throw new Error(`File ${file.name} failed to upload.`);
-            }
-            return true;
-        } catch (err) {
+        const urlResponse = await getPresignedUrl(file.name);
+        const s3UploadRequest = uploadToS3Request(urlResponse.data, file);
+
+        const uploadResp = await uploadToS3Mutation(s3UploadRequest);
+        if (uploadResp.error) {
             handleError(`Error encountered while uploading file ${file.name}`);
             return false;
-        } finally {
-            setProgressBarValue((fileIndex / selectedFiles.length) * 100);
         }
+        setProgressBarValue((fileIndex / selectedFiles.length) * 100);
+        return true;
+
     }
 
     async function indexFiles (fileKeys: string[]): Promise<void> {
@@ -219,22 +224,21 @@ export function RagUploadModal ({
         try {
             // Ingest all of the documents which uploaded successfully
 
-            const ingestResponseStatusCode = await ingestDocuments(
-                auth.user?.id_token,
-                fileKeys,
-                ragConfig.repositoryId,
-                { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
-                ragConfig.repositoryType,
+            const ingestResp = await ingestDocuments({
+                documents: fileKeys,
+                repositoryId: ragConfig.repositoryId,
+                embeddingModel: { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
+                repostiroyType: ragConfig.repositoryType,
                 chunkSize,
-                chunkOverlap,
-            );
-            if (ingestResponseStatusCode === 200) {
+                chunkOverlap});
+
+            if (ingestResp.error) {
+                throw new Error('Failed to ingest documents into RAG');
+            } else {
                 setIngestionType(StatusTypes.SUCCESS);
                 setIngestionStatus('Successfully ingested documents into the selected repository');
                 notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository.`, 'success');
                 setShowRagUploadModal(false);
-            } else {
-                throw new Error('Failed to ingest documents into RAG');
             }
         } catch (err) {
             setIngestionType(StatusTypes.ERROR);

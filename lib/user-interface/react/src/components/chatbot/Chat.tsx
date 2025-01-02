@@ -26,8 +26,7 @@ import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
 import { LisaChatMessage, LisaChatSession, LisaChatMessageMetadata } from '../types';
-import { isModelInterfaceHealthy, RESTAPI_URI, formatDocumentsAsString, RESTAPI_VERSION } from '../utils';
-import { LisaRAGRetriever } from '../adapters/lisa';
+import { RESTAPI_URI, formatDocumentsAsString, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
@@ -39,18 +38,24 @@ import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 import { configurationApi, useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
-import { useLazyGetSessionByIdQuery, useUpdateSessionMutation } from '../../shared/reducers/session.reducer';
+import {
+    useGetSessionHealthQuery,
+    useLazyGetSessionByIdQuery,
+    useUpdateSessionMutation
+} from '../../shared/reducers/session.reducer';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import SessionConfiguration from './SessionConfiguration';
 import PromptTemplateEditor from './PromptTemplateEditor';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
+import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
     const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
+    const {data: sessionHealth} = useGetSessionHealthQuery(undefined, {refetchOnMountOrArgChange: true});
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
     const [userPrompt, setUserPrompt] = useState('');
@@ -79,6 +84,7 @@ export default function Chat ({ sessionId }) {
     const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
     const [showContextUploadModal, setShowContextUploadModal] = useState(false);
     const [showRagUploadModal, setShowRagUploadModal] = useState(false);
+    const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
 
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>({
         promptConfiguration: {
@@ -126,9 +132,11 @@ export default function Chat ({ sessionId }) {
     const auth = useAuth();
 
     useEffect(() => {
-        isBackendHealthy().then((flag) => setIsConnected(flag));
+        if (sessionHealth) {
+            setIsConnected(true);
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [sessionHealth]);
 
     useEffect(() => {
         if (!isRunning && session.history.length) {
@@ -180,8 +188,7 @@ export default function Chat ({ sessionId }) {
             // Add context parameter to prompt if using local file context or RAG
             // New lines included to maintain formatting in the prompt template UI
             const modifiedText = chatConfiguration.promptConfiguration.promptTemplate.replace(
-                `
-          Current conversation:`,
+                `Current conversation:`,
                 ` {context}
 
           Current conversation:`,
@@ -249,11 +256,6 @@ export default function Chat ({ sessionId }) {
             bottomRef?.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [session]);
-
-    const isBackendHealthy = useCallback(async () => {
-        return isModelInterfaceHealthy(auth.user?.id_token);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const createOpenAiClient = (streaming: boolean) => {
         return new ChatOpenAI({
@@ -326,15 +328,6 @@ export default function Chat ({ sessionId }) {
         ];
 
         if (useRag) {
-            const retriever = new LisaRAGRetriever({
-                uri: '/',
-                idToken: auth.user?.id_token,
-                repositoryId: ragConfig.repositoryId,
-                repositoryType: ragConfig.repositoryType,
-                modelName: ragConfig.embeddingModel.modelId,
-                topK: chatConfiguration.sessionConfiguration.ragTopK,
-            });
-
             chainSteps.unshift({
                 input: (input: { input: string; chatHistory?: LisaChatMessage[] }) => input.input,
                 chatHistory: () => memory.loadMemoryVariables({}),
@@ -344,8 +337,14 @@ export default function Chat ({ sessionId }) {
                         question = await contextualizeQChain.invoke(input);
                     }
 
-                    const relevantDocs = await retriever._getRelevantDocuments(question);
-                    const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs)}`;
+                    const relevantDocs = await getRelevantDocuments({
+                        query: question,
+                        repositoryId: ragConfig.repositoryId,
+                        repositoryType: ragConfig.repositoryType,
+                        modelName: ragConfig.embeddingModel.modelId,
+                        topK: chatConfiguration.sessionConfiguration.ragTopK ?? 3,
+                    });
+                    const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs.data?.docs)}`;
                     setRagContext(serialized);
                     setSession((prev) => {
                         const lastMessage = prev.history[prev.history.length - 1];
@@ -353,7 +352,7 @@ export default function Chat ({ sessionId }) {
                             ...lastMessage,
                             metadata: {
                                 ...lastMessage.metadata,
-                                ragContext: formatDocumentsAsString(relevantDocs, true),
+                                ragContext: formatDocumentsAsString(relevantDocs.data?.docs, true),
                             },
                         });
                         return {

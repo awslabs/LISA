@@ -14,12 +14,12 @@
   limitations under the License.
 */
 
-import { Autosuggest, Grid, SelectProps, SpaceBetween } from '@cloudscape-design/components';
+import { Autosuggest, Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useEffect, useMemo, useState } from 'react';
-import { listRagRepositories } from '../utils';
 import { AuthContextProps } from 'react-oidc-context';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
+import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
 
 export type RagConfig = {
     embeddingModel: IModel;
@@ -34,12 +34,10 @@ type RagControlProps = {
     setRagConfig: React.Dispatch<React.SetStateAction<RagConfig>>;
 };
 
-export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig }: RagControlProps) {
-    const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
-    const [repositoryOptions, setRepositoryOptions] = useState<SelectProps.Options>([]);
+export default function RagControls ({isRunning, setUseRag, setRagConfig }: RagControlProps) {
+    const { data: repositories, isFetching: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {refetchOnMountOrArgChange: true});
     const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<string>(undefined);
     const [selectedRepositoryOption, setSelectedRepositoryOption] = useState<string>(undefined);
-    const [repositoryMap, setRepositoryMap] = useState(new Map());
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
@@ -48,25 +46,6 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
     const embeddingOptions = useMemo(() => {
         return allModels?.map((model) => ({value: model.modelId})) || [];
     }, [allModels]);
-
-    useEffect(() => {
-        setIsLoadingRepositories(true);
-
-        listRagRepositories(auth.user?.id_token).then((repositories) => {
-            setRepositoryOptions(
-                repositories.map((repo) => {
-                    setRepositoryMap((map) => new Map(map.set(repo.repositoryId, repo.type)));
-                    return {
-                        label: `${repo.repositoryName || repo.repositoryId} (${repo.type})`,
-                        value: repo.repositoryId,
-                    };
-                }),
-            );
-            setIsLoadingRepositories(false);
-        });
-    // We only want this to run a single time on component mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     useEffect(() => {
         setUseRag(!!selectedEmbeddingOption && !!selectedRepositoryOption);
@@ -95,10 +74,10 @@ export default function RagControls ({ auth, isRunning, setUseRag, setRagConfig 
                         setRagConfig((config) => ({
                             ...config,
                             repositoryId: detail.value,
-                            repositoryType: repositoryMap.get(detail.value),
+                            repositoryType: detail.value,
                         }));
                     }}
-                    options={repositoryOptions}
+                    options={repositories?.map((repository) => ({value: repository.repositoryId})) || []}
                 />
                 <Autosuggest
                     disabled={!selectedRepositoryOption || isRunning}

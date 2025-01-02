@@ -30,6 +30,11 @@ export const sessionApi = createApi({
                 url: `/session/${sessionId}`
             }),
         }),
+        getSessionHealth: builder.query<any, void>({
+            query: () => ({
+                url: `${window.env.RESTAPI_URI}health`
+            }),
+        }),
         listSessions: builder.query<LisaChatSession[], void>({
             query: () => ({
                 url: '/session'
@@ -96,5 +101,6 @@ export const {
     useDeleteSessionByIdMutation,
     useDeleteAllSessionsForUserMutation,
     useUpdateSessionMutation,
-    useLazyGetSessionByIdQuery
+    useLazyGetSessionByIdQuery,
+    useGetSessionHealthQuery
 } = sessionApi;

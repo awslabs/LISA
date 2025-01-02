@@ -29,9 +29,12 @@ lisaAxios.interceptors.request.use(
             config.headers = {};
         }
 
-        config.headers['Authorization'] = `Bearer ${token}`;
-
-        return config;
+        if (config.data instanceof FormData && config.data.get('x-amz-security-token')){
+            return config;
+        } else {
+            config.headers['Authorization'] = `Bearer ${token}`;
+            return config;
+        }
     },
     (error) => {
         return Promise.reject(error).catch(axiosCatch);

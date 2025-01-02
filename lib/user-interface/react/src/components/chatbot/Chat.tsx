@@ -188,7 +188,7 @@ export default function Chat ({ sessionId }) {
             // Add context parameter to prompt if using local file context or RAG
             // New lines included to maintain formatting in the prompt template UI
             const modifiedText = chatConfiguration.promptConfiguration.promptTemplate.replace(
-                `Current conversation:`,
+                'Current conversation:',
                 ` {context}
 
           Current conversation:`,

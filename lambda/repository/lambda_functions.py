@@ -24,7 +24,7 @@ from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
-from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, retry_config
+from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, get_username, retry_config
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
@@ -361,6 +361,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     chunk_overlap = int(query_string_params["chunkOverlap"]) if "chunkOverlap" in query_string_params else None
     logger.info(f"using repository {repository_id}")
 
+    username = get_username(event)
     repository = find_repository_by_id(repository_id)
     ensure_repository_access(event, repository)
 
@@ -391,6 +392,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             document_name=document_name,
             source=doc_source,
             sub_docs=ids,
+            username=username,
             ingestion_type=IngestionType.MANUAL,
         )
         doc_repo.save(doc_entity)
@@ -422,7 +424,7 @@ def presigned_url(event: dict, context: dict) -> dict:
     key = event["body"]
 
     # Set derived values for conditions and fields
-    username = event["requestContext"]["authorizer"]["username"]
+    username = get_username(event)
 
     # Conditions is an array of dictionaries.
     # content-length-range restricts the size of the file uploaded
@@ -440,11 +442,6 @@ def presigned_url(event: dict, context: dict) -> dict:
         ExpiresIn=3600,
     )
     return {"response": response}
-
-
-def get_groups(event: Any) -> List[str]:
-    groups: List[str] = json.loads(event["requestContext"]["authorizer"]["groups"])
-    return groups
 
 
 @api_wrapper

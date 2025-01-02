@@ -20,7 +20,7 @@ from typing import Any, Dict, List
 
 import boto3
 from repository.lambda_functions import RagDocumentRepository
-from utilities.common_functions import retry_config
+from utilities.common_functions import get_username, retry_config
 from utilities.file_processing import process_record
 from utilities.validation import validate_chunk_params, validate_model_name, validate_repository_type, ValidationError
 from utilities.vector_store import get_vector_store_client
@@ -133,6 +133,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
 
         # Process documents in batches
         all_ids = []
+        username = get_username(event)
         batches = batch_texts(texts, metadatas)
         total_batches = len(batches)
 
@@ -158,6 +159,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             document_name=key,
             source=docs[0][0].metadata.get("source"),
             sub_docs=all_ids,
+            username=username,
             ingestion_type=IngestionType.AUTO,
         )
         doc_repo.save(doc_entity)

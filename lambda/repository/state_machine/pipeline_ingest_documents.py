@@ -21,6 +21,7 @@ from models.document_processor import DocumentProcessor
 from models.domain_objects import IngestionType, RagDocument
 from models.vectorstore import VectorStore
 from repository.lambda_functions import RagDocumentRepository
+from utilities.common_functions import get_username
 
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
 
@@ -47,6 +48,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         embedding_model = os.environ["EMBEDDING_MODEL"]
         collection_name = os.environ["COLLECTION_NAME"]
         repository_id = os.environ["REPOSITORY_ID"]
+        username = get_username(event)
 
         # Initialize document processor and vectorstore
         doc_processor = DocumentProcessor()
@@ -71,6 +73,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             document_name=key,
             source=source,
             sub_docs=ids,
+            username=username,
             ingestion_type=IngestionType.AUTO,
         )
         doc_repo.save(doc_entity)

@@ -95,6 +95,7 @@ export class CustomAuthorizer extends Construct {
                 AUTHORITY: config.authConfig!.authority,
                 ADMIN_GROUP: config.authConfig!.adminGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
+                JWT_USER_PROP: config.authConfig!.jwtUserIdProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
             },
             reservedConcurrentExecutions: 20,

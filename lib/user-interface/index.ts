@@ -167,6 +167,7 @@ export class UserInterfaceStack extends Stack {
             CLIENT_ID: config.authConfig!.clientId,
             ADMIN_GROUP: config.authConfig!.adminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
+            JWT_USER_PROP: config.authConfig!.jwtUserIdProperty,
             CUSTOM_SCOPES: config.authConfig!.additionalScopes,
             RESTAPI_URI: StringParameter.fromStringParameterName(
                 this,

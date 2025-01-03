@@ -14,6 +14,7 @@ authConfig:
   clientId:
   adminGroup:
   jwtGroupsProperty:
+  jwtUserIdProperty:
 ```
 
 <!--@include: ./schema.md -->

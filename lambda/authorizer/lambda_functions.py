@@ -52,6 +52,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     authority = os.environ.get("AUTHORITY", "")
     admin_group = os.environ.get("ADMIN_GROUP", "")
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
+    jwt_user_property = os.environ.get("JWT_USER_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
 
@@ -63,7 +64,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
         groups = get_property_path(jwt_data, jwt_groups_property)
-        username = find_jwt_username(jwt_data)
+        username = find_jwt_username(jwt_data, jwt_user_property)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": json.dumps(groups or [])}
 
@@ -159,13 +160,11 @@ def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]
     return current_node
 
 
-def find_jwt_username(jwt_data: dict[str, str]) -> str:
-    """Find the username in the JWT. If the key 'username' doesn't exist, return 'sub', which will be a UUID"""
+def find_jwt_username(jwt_data: dict[str, str], username_property) -> str:
+    """Find the username in the JWT. If the key for username doesn't exist, return 'sub'."""
     username = None
-    if "username" in jwt_data:
-        username = jwt_data.get("username")
-    if "cognito:username" in jwt_data:
-        username = jwt_data.get("cognito:username")
+    if username_property in jwt_data:
+        username = jwt_data.get(username_property)
     else:
         username = jwt_data.get("sub")
 

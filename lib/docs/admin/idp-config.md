@@ -16,6 +16,7 @@ authConfig:
   clientId: your-client-id
   adminGroup: AdminGroup
   jwtGroupsProperty: cognito:groups
+  jwtUserIdProperty: cognito:username
 ```
 
 ## Keycloak Example:
@@ -32,4 +33,5 @@ authConfig:
   clientId: your-client-name
   adminGroup: AdminGroup
   jwtGroupsProperty: realm_access.roles
+  jwtUserIdProperty: realm_access.id
 ```

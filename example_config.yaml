@@ -4,6 +4,7 @@ authConfig:
   authority:
   clientId:
   adminGroup:
+  userIdProperty:
   jwtGroupsProperty:
 s3BucketModels: hf-models-gaiic
 ########################### OPTIONAL BELOW #######################################

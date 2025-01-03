@@ -104,7 +104,7 @@ export function Sessions () {
                     {
                         id: 'title',
                         header: 'Title',
-                        cell: (e) => <Link variant='primary' href={`#/chatbotv2/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
+                        cell: (e) => <Link variant='primary' href={`#/chatbot/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
                         sortingField: 'title',
                         isRowHeader: true,
                     },

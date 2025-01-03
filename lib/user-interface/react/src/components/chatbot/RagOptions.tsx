@@ -16,7 +16,6 @@
 
 import { Autosuggest, Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useEffect, useMemo, useState } from 'react';
-import { AuthContextProps } from 'react-oidc-context';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
@@ -30,7 +29,6 @@ export type RagConfig = {
 type RagControlProps = {
     isRunning: boolean;
     setUseRag: React.Dispatch<React.SetStateAction<boolean>>;
-    auth: AuthContextProps;
     setRagConfig: React.Dispatch<React.SetStateAction<RagConfig>>;
 };
 

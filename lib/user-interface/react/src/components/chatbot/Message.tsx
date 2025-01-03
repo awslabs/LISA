@@ -102,7 +102,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             />
                         </div>}
                     </Grid>
-                    {showMetadata && <ExpandableSection variant='footer' headerText='Metadata'>
+                    {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                         <JsonView data={message.metadata} style={darkStyles}/>
                     </ExpandableSection>}
                 </ChatBubble>

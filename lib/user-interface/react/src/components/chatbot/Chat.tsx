@@ -37,7 +37,10 @@ import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import { configurationApi, useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import {
+    configurationApi,
+    useLazyGetConfigurationQuery
+} from '../../shared/reducers/configuration.reducer';
 import {
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
@@ -49,12 +52,13 @@ import SessionConfiguration from './SessionConfiguration';
 import PromptTemplateEditor from './PromptTemplateEditor';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
+import { IConfiguration } from '../../shared/model/configuration.model';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
+    const [getConfiguration] = useLazyGetConfigurationQuery();
+    const [config, setConfig] = useState<IConfiguration>();
     const {data: sessionHealth} = useGetSessionHealthQuery(undefined, {refetchOnMountOrArgChange: true});
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
@@ -137,6 +141,16 @@ export default function Chat ({ sessionId }) {
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionHealth]);
+
+    useEffect(() => {
+        if (!auth.isLoading && auth.isAuthenticated) {
+            getConfiguration('global').then((resp) => {
+                if (resp.data && resp.data.length > 0) {
+                    setConfig(resp.data[0]);
+                }
+            });
+        }
+    }, [auth, getConfiguration]);
 
     useEffect(() => {
         if (!isRunning && session.history.length) {
@@ -461,7 +475,6 @@ export default function Chat ({ sessionId }) {
                 systemConfig={config}
             />
             <RagUploadModal
-                auth={auth}
                 ragConfig={ragConfig}
                 showRagUploadModal={showRagUploadModal}
                 setShowRagUploadModal={setShowRagUploadModal}
@@ -522,7 +535,6 @@ export default function Chat ({ sessionId }) {
                                         <RagControls
                                             isRunning={isRunning}
                                             setUseRag={setUseRag}
-                                            auth={auth}
                                             setRagConfig={setRagConfig}
                                         />
                                     )}
@@ -565,14 +577,14 @@ export default function Chat ({ sessionId }) {
                                                         iconName: 'settings',
                                                         text: 'Session configuration'
                                                     },
-                                                    ...(config && config[0]?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
+                                                    ...(config && config.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
                                                         [{
                                                             type: 'icon-button',
                                                             id: 'upload-to-rag',
                                                             iconName: 'upload',
                                                             text: 'Upload to RAG'
                                                         }] : []),
-                                                    ...(config && config[0]?.configuration.enabledComponents.uploadContextDocs ?
+                                                    ...(config && config.configuration.enabledComponents.uploadContextDocs ?
                                                         [{
                                                             type: 'icon-button',
                                                             id: 'add-file-to-context',
@@ -585,7 +597,7 @@ export default function Chat ({ sessionId }) {
                                                         iconName: 'transcript',
                                                         text: 'Summarize Document'
                                                     },
-                                                    ...(config && config[0].configuration.enabledComponents.editPromptTemplate ?
+                                                    ...(config && config.configuration.enabledComponents.editPromptTemplate ?
                                                         [{
                                                             type: 'menu-dropdown',
                                                             id: 'more-actions',

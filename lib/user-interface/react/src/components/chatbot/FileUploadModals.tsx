@@ -30,7 +30,6 @@ import {
 import { FileTypes, StatusTypes } from '../types';
 import { useState } from 'react';
 import { RagConfig } from './RagOptions';
-import { AuthContextProps } from 'react-oidc-context';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import {
@@ -170,7 +169,6 @@ export function ContextUploadModal ({
 }
 
 export type RagUploadProps = {
-    auth: AuthContextProps;
     showRagUploadModal: boolean;
     setShowRagUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     ragConfig: RagConfig;

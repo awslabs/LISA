@@ -32,7 +32,7 @@ export type SessionConfigurationProps = {
     visible: boolean;
     selectedModel: IModel;
     isRunning: boolean;
-    systemConfig: IConfiguration[];
+    systemConfig: IConfiguration;
 };
 
 export default function SessionConfiguration ({ chatConfiguration, setChatConfiguration, selectedModel, isRunning, visible, setVisible, systemConfig } : SessionConfigurationProps) {
@@ -68,7 +68,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                     >
                         Stream Responses
                     </Toggle>
-                    { systemConfig && systemConfig[0].configuration.enabledComponents.viewMetaData &&
+                    { systemConfig && systemConfig.configuration.enabledComponents.viewMetaData &&
                     <Toggle
                         onChange={({ detail }) => updateSessionConfiguration('showMetadata', detail.checked)}
                         checked={chatConfiguration.sessionConfiguration.showMetadata}
@@ -76,7 +76,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                     >
                         Show Message Metadata
                     </Toggle>}
-                    { systemConfig && systemConfig[0].configuration.enabledComponents.editChatHistoryBuffer &&
+                    { systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
                                 <label>Chat History Buffer Size:</label>
@@ -92,7 +92,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 options={oneThroughTenOptions}
                             />
                         </SpaceBetween>}
-                    { systemConfig && systemConfig[0].configuration.enabledComponents.editNumOfRagDocument &&
+                    { systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
                                 <label>RAG documents:</label>
@@ -109,7 +109,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                             />
                         </SpaceBetween>}
                 </Grid>
-                { systemConfig && systemConfig[0].configuration.enabledComponents.editKwargs &&
+                { systemConfig && systemConfig.configuration.enabledComponents.editKwargs &&
                     <Container
                         header={
                             <Header

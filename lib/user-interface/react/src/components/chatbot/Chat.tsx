@@ -551,7 +551,7 @@ export default function Chat ({ sessionId }) {
                                     }
                                     disabled={!selectedModel}
                                     onChange={({ detail }) => setUserPrompt(detail.value)}
-                                    onAction={handleSendGenerateRequest}
+                                    onAction={userPrompt.length > 0 && handleSendGenerateRequest}
                                     secondaryActions={
                                         <Box padding={{ left: 'xxs', top: 'xs' }}>
                                             <ButtonGroup

@@ -49,7 +49,7 @@ export type GenerateLLMRequestParams = {
     inputs: any,
     promptTemplate: PromptTemplate,
     message: LisaChatMessage
-}
+};
 
 export const baseConfig: IChatConfiguration = {
     promptConfiguration: {
@@ -78,4 +78,4 @@ export const baseConfig: IChatConfiguration = {
             stop: ['\nUser:', '\n User:', 'User:', 'User'],
         }
     }
-}
+};

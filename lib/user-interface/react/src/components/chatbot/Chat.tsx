@@ -155,7 +155,7 @@ export default function Chat ({ sessionId }) {
             }
         };
 
-// Helper functions to improve readability and maintainability
+        // Helper functions to improve readability and maintainability
         const handleRagConfiguration = async (chainSteps: any[]) => {
             const ragStep = {
                 input: ({ input }: { input: string }) => input,
@@ -461,21 +461,21 @@ export default function Chat ({ sessionId }) {
         if (!userPrompt.trim()) return;
 
         const message = new LisaChatMessage({
-                    type: 'human',
-                    content: userPrompt,
-                    metadata: {},
-                });
+            type: 'human',
+            content: userPrompt,
+            metadata: {},
+        });
 
         setSession((prev) => ({
             ...prev,
             history: prev.history.concat(message),
         }));
 
-       const inputs = {
-           input: message.content,
-           aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-           humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
-        }
+        const inputs = {
+            input: message.content,
+            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
+        };
         const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix', ...(useRag || fileContext ? ['context'] : [])];
 
         const questionPrompt = new PromptTemplate({
@@ -492,7 +492,7 @@ export default function Chat ({ sessionId }) {
             message: message
         });
 
-    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (
         <>

@@ -50,27 +50,36 @@ import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import SessionConfiguration from './SessionConfiguration';
 import PromptTemplateEditor from './PromptTemplateEditor';
-import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
+import { baseConfig, GenerateLLMRequestParams, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const [getConfiguration] = useLazyGetConfigurationQuery();
-    const [config, setConfig] = useState<IConfiguration>();
+
+    const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
     const {data: sessionHealth} = useGetSessionHealthQuery(undefined, {refetchOnMountOrArgChange: true});
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
-    const [userPrompt, setUserPrompt] = useState('');
-    const [fileContext, setFileContext] = useState('');
-
-    const [sessionConfigurationModalVisible, setSessionConfigurationModalVisible] = useState(false);
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
             data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
         })});
+    const [getConfiguration] = useLazyGetConfigurationQuery();
+    const [config, setConfig] = useState<IConfiguration>();
+    const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
+
+
+    const [userPrompt, setUserPrompt] = useState('');
+    const [fileContext, setFileContext] = useState('');
+
+    const [sessionConfigurationModalVisible, setSessionConfigurationModalVisible] = useState(false);
+    const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
+    const [showContextUploadModal, setShowContextUploadModal] = useState(false);
+    const [showRagUploadModal, setShowRagUploadModal] = useState(false);
+
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [selectedModel, setSelectedModel] = useState<IModel>();
     const [session, setSession] = useState<LisaChatSession>({
@@ -79,46 +88,10 @@ export default function Chat ({ sessionId }) {
         userId: '',
         startTime: new Date(Date.now()).toISOString(),
     });
-
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
-    const [isRunning, setIsRunning] = useState(false);
-    const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
-    const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
-    const [showContextUploadModal, setShowContextUploadModal] = useState(false);
-    const [showRagUploadModal, setShowRagUploadModal] = useState(false);
-    const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
 
-    const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>({
-        promptConfiguration: {
-            promptTemplate: `The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
-
-                              Current conversation:
-                              {history}
-                              {humanPrefix}: {input}
-                              {aiPrefix}:`,
-            humanPrefix: 'User',
-            aiPrefix: 'Assistant',
-        },
-        sessionConfiguration: {
-            streaming: false,
-            showMetadata: false,
-            max_tokens: null,
-            chatHistoryBufferSize: 3,
-            ragTopK: 3,
-            modelArgs: {
-                n: null,
-                top_p: 0.01,
-                frequency_penalty: null,
-                presence_penalty: null,
-                temperature: null,
-                seed: null,
-                stop: ['\nUser:', '\n User:', 'User:', 'User'],
-            }
-        }
-    });
-
+    const [isConnected, setIsConnected] = useState(false);
+    const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
     const [ragContext, setRagContext] = useState('');
     const [useRag, setUseRag] = useState(false);
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
@@ -134,6 +107,194 @@ export default function Chat ({ sessionId }) {
     );
     const bottomRef = useRef(null);
     const auth = useAuth();
+
+    const useChatGeneration = () => {
+        const [isRunning, setIsRunning] = useState(false);
+        const [isStreaming, setIsStreaming] = useState(false);
+
+        const generateResponse = async (params: GenerateLLMRequestParams) => {
+            setIsRunning(true);
+            try {
+                const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
+
+                const baseChainSteps = {
+                    input: (previousOutput: any) => previousOutput.input,
+                    context: (previousOutput: any) => previousOutput.context,
+                    history: (previousOutput: any) => previousOutput.memory?.history || '',
+                    aiPrefix: (previousOutput: any) => previousOutput.aiPrefix,
+                    humanPrefix: (previousOutput: any) => previousOutput.humanPrefix,
+                };
+
+                const chainSteps = [
+                    baseChainSteps,
+                    params.promptTemplate,
+                    llmClient,
+                    new StringOutputParser(),
+                ];
+
+                if (useRag) {
+                    await handleRagConfiguration(chainSteps);
+                } else {
+                    handleNonRagConfiguration(chainSteps);
+                }
+
+                const chain = RunnableSequence.from(chainSteps);
+
+                // Handle streaming configuration
+                if (chatConfiguration.sessionConfiguration.streaming) {
+                    await handleStreamingResponse(chain, params);
+                } else {
+                    await handleSyncRequest(chain, params);
+                }
+            } catch (error) {
+                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+                setIsRunning(false);
+                throw error;
+            } finally {
+                setIsRunning(false);
+            }
+        };
+
+// Helper functions to improve readability and maintainability
+        const handleRagConfiguration = async (chainSteps: any[]) => {
+            const ragStep = {
+                input: ({ input }: { input: string }) => input,
+                chatHistory: () => memory.loadMemoryVariables({}),
+                context: async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
+                    const question = await getContextualizedQuestion(input);
+                    const relevantDocs = await fetchRelevantDocuments(question);
+                    const serialized = await updateSessionWithRagContext(relevantDocs);
+                    return serialized;
+                },
+            };
+
+            chainSteps.unshift(ragStep);
+        };
+
+        const getContextualizedQuestion = async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
+            if (!input.chatHistory?.length) {
+                return input.input;
+            }
+
+            return contextualizeQPrompt
+                .pipe(createOpenAiClient(false))
+                .pipe(new StringOutputParser())
+                .invoke(input);
+        };
+
+        const fetchRelevantDocuments = async (query: string) => {
+            const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
+
+            return getRelevantDocuments({
+                query,
+                repositoryId: ragConfig.repositoryId,
+                repositoryType: ragConfig.repositoryType,
+                modelName: ragConfig.embeddingModel.modelId,
+                topK: ragTopK,
+            });
+        };
+
+        const updateSessionWithRagContext = async (relevantDocs: any) => {
+            const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs.data?.docs)}`;
+            setRagContext(serialized);
+
+            setSession((prev) => {
+                const lastMessage = prev.history[prev.history.length - 1];
+                const newMessage = new LisaChatMessage({
+                    ...lastMessage,
+                    metadata: {
+                        ...lastMessage.metadata,
+                        ragContext: formatDocumentsAsString(relevantDocs.data?.docs, true),
+                    },
+                });
+
+                return {
+                    ...prev,
+                    history: [...prev.history.slice(0, -1), newMessage],
+                };
+            });
+
+            return serialized;
+        };
+
+        const handleNonRagConfiguration = (chainSteps: any[]) => {
+            const nonRagStep = {
+                input: (initialInput: any) => initialInput.input,
+                memory: () => memory.loadMemoryVariables({}),
+                context: () => fileContext || '',
+                humanPrefix: (initialInput: any) => initialInput.humanPrefix,
+                aiPrefix: (initialInput: any) => initialInput.aiPrefix,
+            };
+
+            chainSteps.unshift(nonRagStep);
+        };
+
+        const handleStreamingResponse = async (chain: any, params: GenerateLLMRequestParams) => {
+            setIsStreaming(true);
+
+            setSession((prev) => ({
+                ...prev,
+                history: [...prev.history,
+                    new LisaChatMessage({
+                        type: 'ai',
+                        content: '',
+                        metadata,
+                    })
+                ],
+            }));
+
+            try {
+                const result = await chain.stream({
+                    input: params.message.content,
+                    chatHistory: session.history,
+                });
+                const resp: string[] = [];
+                for await (const chunk of result) {
+                    setSession((prev) => {
+                        const lastMessage = prev.history[prev.history.length - 1];
+                        const newMessage = new LisaChatMessage({
+                            ...lastMessage,
+                            content: lastMessage.content + chunk,
+                        });
+                        return {
+                            ...prev,
+                            history: prev.history.slice(0, -1).concat(newMessage),
+                        };
+                    });
+                    resp.push(chunk);
+                }
+
+                await memory.saveContext({input: params.inputs.input}, {output: resp.join('')});
+                setIsStreaming(false);
+            } catch (exception) {
+                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+            }
+        };
+
+        const handleSyncRequest = async (chain: any, params: GenerateLLMRequestParams) => {
+            try {
+                const result = await chain.invoke(params.inputs);
+                await memory.saveContext({input: params.inputs.input}, {output: result});
+                setSession((prev) => ({
+                    ...prev,
+                    history: prev.history.concat(
+                        new LisaChatMessage({
+                            type: 'ai',
+                            content: result,
+                            metadata: useRag ? { ...metadata, ...prev.history[prev.history.length - 1].metadata } : metadata,
+                        }),
+                    ),
+                }));
+            } catch (exception) {
+                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+            }
+        };
+
+
+        return { isRunning, isStreaming, generateResponse };
+    };
+
+    const {isRunning, isStreaming, generateResponse} = useChatGeneration();
 
     useEffect(() => {
         if (sessionHealth) {
@@ -297,165 +458,41 @@ export default function Chat ({ sessionId }) {
     ]);
 
     const handleSendGenerateRequest = useCallback(async () => {
-        const userMessage = new LisaChatMessage({
-            type: 'human',
-            content: userPrompt,
-            metadata: {},
-        });
+        if (!userPrompt.trim()) return;
+
+        const message = new LisaChatMessage({
+                    type: 'human',
+                    content: userPrompt,
+                    metadata: {},
+                });
+
         setSession((prev) => ({
             ...prev,
-            history: prev.history.concat(userMessage),
+            history: prev.history.concat(message),
         }));
 
-        setIsRunning(true);
-        const inputs = {
-            input: userPrompt,
-            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
-        };
-
-        const llm = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
-        const useContext = fileContext || useRag;
-        const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix'];
-
-        if (useContext) {
-            inputVariables.push('context');
+       const inputs = {
+           input: message.content,
+           aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+           humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
         }
+        const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix', ...(useRag || fileContext ? ['context'] : [])];
+
         const questionPrompt = new PromptTemplate({
             template: chatConfiguration.promptConfiguration.promptTemplate,
             inputVariables: inputVariables,
         });
 
-        const contextualizeQChain = contextualizeQPrompt.pipe(createOpenAiClient(false)).pipe(new StringOutputParser());
-
-        const chainSteps = [
-            {
-                input: (previousOutput) => previousOutput.input,
-                context: (previousOutput) => previousOutput.context,
-                history: (previousOutput) => previousOutput.memory?.history || '',
-                aiPrefix:(previousOutput) => previousOutput.aiPrefix,
-                humanPrefix:(previousOutput) => previousOutput.humanPrefix,
-            },
-            questionPrompt,
-            llm,
-            new StringOutputParser(),
-        ];
-
-        if (useRag) {
-            chainSteps.unshift({
-                input: (input: { input: string; chatHistory?: LisaChatMessage[] }) => input.input,
-                chatHistory: () => memory.loadMemoryVariables({}),
-                context: async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
-                    let question = input.input;
-                    if (input.chatHistory?.length > 0) {
-                        question = await contextualizeQChain.invoke(input);
-                    }
-
-                    const relevantDocs = await getRelevantDocuments({
-                        query: question,
-                        repositoryId: ragConfig.repositoryId,
-                        repositoryType: ragConfig.repositoryType,
-                        modelName: ragConfig.embeddingModel.modelId,
-                        topK: chatConfiguration.sessionConfiguration.ragTopK ?? 3,
-                    });
-                    const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs.data?.docs)}`;
-                    setRagContext(serialized);
-                    setSession((prev) => {
-                        const lastMessage = prev.history[prev.history.length - 1];
-                        const newMessage = new LisaChatMessage({
-                            ...lastMessage,
-                            metadata: {
-                                ...lastMessage.metadata,
-                                ragContext: formatDocumentsAsString(relevantDocs.data?.docs, true),
-                            },
-                        });
-                        return {
-                            ...prev,
-                            history: prev.history.slice(0, -1).concat(newMessage),
-                        };
-                    });
-                    return serialized;
-                },
-            });
-        } else {
-            chainSteps.unshift({
-                input: (initialInput) => initialInput.input,
-                memory: () => memory.loadMemoryVariables({}),
-                context: () => (useContext ? fileContext : ''),
-                humanPrefix: (initialInput) => initialInput.humanPrefix,
-                aiPrefix: (initialInput) => initialInput.aiPrefix,
-            });
-        }
-        const chain = RunnableSequence.from(chainSteps);
-        if (chatConfiguration.sessionConfiguration.streaming) {
-            setIsStreaming(true);
-            setSession((prev) => ({
-                ...prev,
-                history: prev.history.concat(
-                    new LisaChatMessage({
-                        type: 'ai',
-                        content: '',
-                        metadata: metadata,
-                    }),
-                ),
-            }));
-            try {
-                const result = await chain.stream({
-                    input: userPrompt,
-                    chatHistory: session.history,
-                    aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-                    humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
-                });
-                const resp: string[] = [];
-                for await (const chunk of result) {
-                    setSession((prev) => {
-                        const lastMessage = prev.history[prev.history.length - 1];
-                        const newMessage = new LisaChatMessage({
-                            ...lastMessage,
-                            content: lastMessage.content + chunk,
-
-                        });
-                        return {
-                            ...prev,
-                            history: prev.history.slice(0, -1).concat(newMessage),
-                        };
-                    });
-                    resp.push(chunk);
-                }
-
-                memory.saveContext({input: inputs.input}, {
-                    output: resp.join(''),
-                });
-            } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error');
-            }
-
-            setIsStreaming(false);
-        } else {
-            try {
-                const result = await chain.invoke(inputs);
-                await memory.saveContext({input: inputs.input}, {
-                    output: result,
-                });
-                setSession((prev) => ({
-                    ...prev,
-                    history: prev.history.concat(
-                        new LisaChatMessage({
-                            type: 'ai',
-                            content: result,
-                            metadata: useRag ? { ...metadata, ...prev.history[prev.history.length - 1].metadata } : metadata,
-                        }),
-                    ),
-                }));
-            } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error');
-            }
-        }
-
-        setIsRunning(false);
         setUserPrompt('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, metadata, chatConfiguration.sessionConfiguration.streaming]);
+
+        await generateResponse({
+            inputVariables: inputVariables,
+            promptTemplate: questionPrompt,
+            inputs: inputs,
+            message: message
+        });
+
+    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate]);
 
     return (
         <>

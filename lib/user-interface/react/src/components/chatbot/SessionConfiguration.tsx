@@ -95,7 +95,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                     { systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
-                                <label>RAG documents:</label>
+                                <label>RAG references:</label>
                             </Box>
                             <Select
                                 disabled={isRunning}

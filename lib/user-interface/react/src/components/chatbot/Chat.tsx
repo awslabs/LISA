@@ -531,7 +531,7 @@ export default function Chat ({ sessionId }) {
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
-            <div className='fixed bottom-8' style={{width: 'calc(100% - 650px)'}}>
+            <div className='fixed bottom-8' style={{width: 'calc(var(--awsui-layout-width-g964ok) - var(--awsui-main-offset-left-g964ok) - var(--awsui-content-gap-left-g964ok) - (var(--awsui-content-gap-right-g964ok) * 2))'}}>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form variant='embedded'>
                         <Container>

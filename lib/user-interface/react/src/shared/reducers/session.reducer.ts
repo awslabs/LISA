@@ -17,6 +17,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { LisaChatMessageFields, LisaChatSession } from '../../components/types';
+import { RESTAPI_URI } from '../../components/utils';
 
 export const sessionApi = createApi({
     reducerPath: 'sessions',
@@ -32,7 +33,7 @@ export const sessionApi = createApi({
         }),
         getSessionHealth: builder.query<any, void>({
             query: () => ({
-                url: `${window.env.RESTAPI_URI}health`
+                url: `${RESTAPI_URI}/health`
             }),
         }),
         listSessions: builder.query<LisaChatSession[], void>({

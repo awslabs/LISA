@@ -124,7 +124,7 @@ export function Sessions () {
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
                                     <Button iconName='add-plus' variant='inline-link'>
-                                        <Link href={`/#/chatbotv2/${uuidv4()}`}>New</Link>
+                                        <Link href={`/#/chatbot/${uuidv4()}`}>New</Link>
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'

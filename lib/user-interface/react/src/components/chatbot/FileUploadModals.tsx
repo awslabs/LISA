@@ -39,7 +39,7 @@ import {
 } from '../../shared/reducers/rag.reducer';
 import { uploadToS3Request } from '../utils';
 
-const handleUpload = async (
+export const handleUpload = async (
     selectedFiles: File[],
     handleError: (error: string) => void,
     processFile: (file: File, fileIndex: number) => Promise<boolean>,

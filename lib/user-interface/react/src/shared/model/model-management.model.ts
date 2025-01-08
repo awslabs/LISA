@@ -90,6 +90,8 @@ export type IContainerConfig = {
 
 export type IModel = {
     status?: ModelStatus;
+    summarizationOverview?: string;
+    features?: string[];
     modelId: string;
     modelName: string;
     modelUrl: string;
@@ -107,6 +109,8 @@ export type IModelListResponse = {
 };
 
 export type IModelRequest = {
+    features: string[];
+    summarizationOverview: string;
     modelId: string;
     modelName: string;
     modelUrl: string;
@@ -200,6 +204,8 @@ export const ModelRequestSchema = z.object({
     modelName: z.string().min(1).default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
+    features: z.array(z.string()).default([]),
+    summarizationOverview: z.string().default(''),
     lisaHostedModel: z.boolean().default(false),
     modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     instanceType: z.string().default(''),

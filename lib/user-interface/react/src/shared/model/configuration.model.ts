@@ -29,6 +29,7 @@ export type IEnabledComponents = {
     editChatHistoryBuffer: boolean;
     uploadRagDocs: boolean;
     uploadContextDocs: boolean;
+    documentSummarization: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -69,6 +70,7 @@ export const enabledComponentsSchema = z.object({
     editNumOfRagDocument: z.boolean().default(true),
     uploadRagDocs: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
+    documentSummarization: z.boolean().default(true)
 });
 
 export const SystemConfigurationSchema = z.object({

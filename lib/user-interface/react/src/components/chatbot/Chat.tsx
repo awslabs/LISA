@@ -53,6 +53,7 @@ import PromptTemplateEditor from './PromptTemplateEditor';
 import { baseConfig, GenerateLLMRequestParams, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
+import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -79,6 +80,7 @@ export default function Chat ({ sessionId }) {
     const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
     const [showContextUploadModal, setShowContextUploadModal] = useState(false);
     const [showRagUploadModal, setShowRagUploadModal] = useState(false);
+    const [showDocumentSummarizationModal, setShowDocumentSummarizationModal] = useState(false);
 
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [selectedModel, setSelectedModel] = useState<IModel>();
@@ -502,6 +504,22 @@ export default function Chat ({ sessionId }) {
                 setVisible={setPromptTemplateEditorVisible}
                 visible={promptTemplateEditorVisible}
             />
+            <DocumentSummarizationModal
+                showDocumentSummarizationModal={showDocumentSummarizationModal}
+                setShowDocumentSummarizationModal={setShowDocumentSummarizationModal}
+                fileContext={fileContext}
+                setFileContext={setFileContext}
+                setUserPrompt={setUserPrompt}
+                userPrompt={userPrompt}
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                chatConfiguration={chatConfiguration}
+                setChatConfiguration={setChatConfiguration}
+                userName={auth.user?.profile.sub}
+                setInternalSessionId={setInternalSessionId}
+                setSession={setSession}
+                handleSendGenerateRequest={handleSendGenerateRequest}
+            />
             <SessionConfiguration
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}
@@ -531,7 +549,7 @@ export default function Chat ({ sessionId }) {
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
-            <div className='fixed bottom-8' style={{width: 'calc(var(--awsui-layout-width-g964ok) - var(--awsui-main-offset-left-g964ok) - var(--awsui-content-gap-left-g964ok))'}}>
+            <div className='fixed bottom-8' style={{width: 'calc(var(--awsui-layout-width-g964ok) - 500px)'}}>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form variant='embedded'>
                         <Container>
@@ -606,6 +624,9 @@ export default function Chat ({ sessionId }) {
                                                     if (detail.id === 'add-file-to-context'){
                                                         setShowContextUploadModal(true);
                                                     }
+                                                    if ( detail.id === 'summarize-document') {
+                                                        setShowDocumentSummarizationModal(true);
+                                                    }
                                                 }}
                                                 items={[
                                                     {
@@ -628,12 +649,12 @@ export default function Chat ({ sessionId }) {
                                                             iconName: 'insert-row',
                                                             text: 'Add file to context'
                                                         }] : []),
-                                                    {
+                                                    ...(config && config.configuration.enabledComponents.documentSummarization ? [{
                                                         type: 'icon-button',
                                                         id: 'summarize-document',
                                                         iconName: 'transcript',
                                                         text: 'Summarize Document'
-                                                    },
+                                                    }] : []),
                                                     ...(config && config.configuration.enabledComponents.editPromptTemplate ?
                                                         [{
                                                             type: 'menu-dropdown',

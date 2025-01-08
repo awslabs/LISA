@@ -74,7 +74,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
         >
             <SpaceBetween direction='vertical' size='l'>
                 <FormField
-                    label='max_tokens'
+                    label='Max Tokens'
                     constraintText='Must be greater than or equal to 0 - Defaults to null (no limit) if not specified.'
                     description='The maximum number of tokens that can be generated in the completion.'
                 >
@@ -95,7 +95,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='n'
+                    label='N'
                     constraintText='Must be greater than or equal to 1 - Defaults to null if not specified.'
                     description='How many completions to generate for each prompt.'
                 >
@@ -116,7 +116,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='top_p'
+                    label='Top P'
                     constraintText='Must be between 0 and 1 - Defaults to 1 if not specified.'
                     description='An alternative to sampling with temperature,
                     called nucleus sampling, where the model considers
@@ -141,7 +141,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='frequency_penalty'
+                    label='Frequency Penalty'
                     constraintText='Must be between -2.0 and 2.0 - Defaults to null if not specified.'
                     description="Number between -2.0 and 2.0. Positive values
                     penalize new tokens based on their existing
@@ -165,7 +165,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='presence_penalty'
+                    label='Presence Penalty'
                     constraintText='Must be between -2.0 and 2.0 - Defaults to null if not specified.'
                     description="Number between -2.0 and 2.0. Positive values
                       penalize new tokens based on whether they appear
@@ -189,7 +189,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     />
                 </FormField>
                 <FormField
-                    label='temperature'
+                    label='Temperature'
                     constraintText='Must be between 0 and 2.0 - Defaults to null if not specified.'
                     description='What sampling temperature to use, between 0 and 2.
                   Higher values like 0.8 will make the output more random,
@@ -212,7 +212,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                         }}
                     />
                 </FormField>
-                <FormField label='stop' description='Up to 4 sequences where the API will stop generating further tokens.'>
+                <FormField label='Stop Word(s)' description='Up to 4 sequences where the API will stop generating further tokens.'>
                     <Container>
                         <AttributeEditor
                             addButtonText='Add'
@@ -251,7 +251,7 @@ export default function ModelKwargsEditor ({ setModelConfig, visible, setVisible
                     </Container>
                 </FormField>
                 <FormField
-                    label='seed'
+                    label='Seed'
                     description='If specified, our system will make a best
                       effort to sample deterministically, such that
                       repeated requests with the same seed and

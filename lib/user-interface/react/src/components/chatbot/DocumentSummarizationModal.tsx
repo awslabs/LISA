@@ -185,8 +185,8 @@ export function DocumentSummarizationModal ({
                     constraintText='Allowed file type is plain text. File size limit is 10 KB'
                 />
                 <Grid gridDefinition={[
-                    { colspan: { default: 6 } },
-                    { colspan: { default: 6 } },
+                    { colspan: { default: 7 } },
+                    { colspan: { default: 5 } },
                 ]}>
                     <FormField label='Summarization Model'>
                         <Autosuggest
@@ -223,7 +223,7 @@ export function DocumentSummarizationModal ({
                     </TextContent>}
                 </Grid>
                 <Grid gridDefinition={[
-                    { colspan: { default: 6 } },
+                    { colspan: { default: 7 } },
                 ]}>
                     <FormField label='Prompt Type'>
                         <Autosuggest

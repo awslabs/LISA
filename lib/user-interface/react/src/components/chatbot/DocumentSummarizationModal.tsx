@@ -47,7 +47,7 @@ export type DocumentSummarizationModalProps = {
     setInternalSessionId: (state: string ) => void;
     setSession: (state: LisaChatSession) => void;
     userName: string;
-    handleSendGenerateRequest: any;
+    handleSendGenerateRequest: () => void;
 };
 
 export function DocumentSummarizationModal ({
@@ -65,8 +65,8 @@ export function DocumentSummarizationModal ({
     userName,
     handleSendGenerateRequest
 }: DocumentSummarizationModalProps) {
-    const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
-    const [successfulUploads, setSuccessfulUpload] = useState<string[] | undefined>(undefined);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const [customPrompt, setCustomPrompt] = useState<string>(undefined);

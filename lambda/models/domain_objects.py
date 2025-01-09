@@ -170,18 +170,10 @@ class ContainerConfig(BaseModel):
 class ModelFeature(BaseModel):
     __exceptions: List[Any] = []
     name: str
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-
-
-class SummarizationModelFeature(ModelFeature):
     overview: str
 
     def __init__(self, **kwargs: Any) -> None:
-        kwargs["name"] = "summarization"
         super().__init__(**kwargs)
-        self.overview = kwargs.get("overview", None)
 
 
 class LISAModel(BaseModel):

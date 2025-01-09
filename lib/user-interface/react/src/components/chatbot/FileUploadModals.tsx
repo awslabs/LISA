@@ -114,7 +114,7 @@ export function ContextUploadModal ({
                     <SpaceBetween direction='horizontal' size='xs'>
                         <Button
                             onClick={async () => {
-                                const successfulUploads = await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 10240);
+                                const successfulUploads = await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 204800);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
@@ -161,7 +161,7 @@ export function ContextUploadModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file type is plain text. File size limit is 10 KB'
+                    constraintText='Allowed file type is plain text. File size limit is 200 KB'
                 />
             </SpaceBetween>
         </Modal>

@@ -20,10 +20,10 @@ import {
     SpaceBetween,
     Button,
     TextContent,
-    FileUpload, Autosuggest, Textarea, Grid,
+    FileUpload, Autosuggest, Textarea,
 } from '@cloudscape-design/components';
 import { FileTypes, LisaChatSession } from '../types';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
@@ -32,6 +32,8 @@ import { handleUpload } from './FileUploadModals';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { v4 as uuidv4 } from 'uuid';
 import FormField from '@cloudscape-design/components/form-field';
+import { BufferWindowMemory } from 'langchain/memory';
+import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;
@@ -48,6 +50,7 @@ export type DocumentSummarizationModalProps = {
     setSession: (state: LisaChatSession) => void;
     userName: string;
     handleSendGenerateRequest: () => void;
+    setMemory: (state: BufferWindowMemory) => void;
 };
 
 export function DocumentSummarizationModal ({
@@ -63,26 +66,27 @@ export function DocumentSummarizationModal ({
     setInternalSessionId,
     setSession,
     userName,
-    handleSendGenerateRequest
+    handleSendGenerateRequest,
+    setMemory
 }: DocumentSummarizationModalProps) {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const [customPrompt, setCustomPrompt] = useState<string>(undefined);
+    const [summarize, setSummarize] = useState<boolean>(false);
 
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
-            data: (state.data || []).filter((model: IModel) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService && model.features && model.features.includes('summarization')),
+            data: (state.data || []).filter((model: IModel) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService && model.features && model.features.filter((feat) => feat.name === 'summarization').length > 0),
         })});
-    const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
+    const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId, description: model.features.filter((feat) => feat.name === 'summarization')[0].overview })), [allModels]);
     const [selectedPromptType, setSelectedPromptType] = useState<string>('');
     const promptOptions = [
-        { label: 'Concise - Short Summary (best for small documents)', value: 'concise' },
-        { label: 'Overview - Key bullet points (best for large documents)', value: 'overview' },
-        { label: 'Chain of Density', value: 'cod' },
-        { label: 'Custom - Write your own prompt', value: 'custom' },
+        { label: 'Concise', value: 'concise', description: 'Short Summary (best for small documents)' },
+        { label: 'Overview', value: 'overview', description: 'Key bullet points (best for large documents)' },
+        { label: 'Chain of Density', value: 'cod', description: 'An iterative summarization technique' },
+        { label: 'Custom', value: 'custom', description: 'Write your own prompt' },
     ];
 
     function handleError (error: string) {
@@ -97,6 +101,19 @@ export function DocumentSummarizationModal ({
         return true;
     }
 
+    useEffect(
+        () => {
+            if (summarize) {
+                setSummarize(false);
+                handleSendGenerateRequest();
+
+                setShowDocumentSummarizationModal(false);
+                setSelectedPromptType(undefined);
+                setSuccessfulUpload(undefined);
+            }
+        },
+        [summarize, handleSendGenerateRequest, setShowDocumentSummarizationModal]);
+
     return (
         <Modal
             onDismiss={() => {
@@ -105,8 +122,8 @@ export function DocumentSummarizationModal ({
                 setSelectedFiles([]);
                 setUserPrompt('');
                 setSelectedModel(undefined);
-                setSelectedPromptType(undefined);
-                setCustomPrompt(undefined);
+                setSuccessfulUpload(undefined);
+                setSelectedPromptType('');
             }}
             visible={showDocumentSummarizationModal}
             header='Summarize Document'
@@ -121,10 +138,10 @@ export function DocumentSummarizationModal ({
                                 setSelectedFiles([]);
                                 setUserPrompt('');
                                 setSelectedModel(undefined);
-                                setSelectedPromptType(undefined);
-                                setCustomPrompt(undefined);
+                                setSuccessfulUpload(undefined);
+                                setSelectedPromptType('');
                             }}
-                            variant={'inline-link'}
+                            variant={'link'}
                         >
                             Cancel
                         </Button>
@@ -141,14 +158,19 @@ export function DocumentSummarizationModal ({
                                     };
                                     setSession(newSession);
 
-                                    handleSendGenerateRequest();
-                                    setShowDocumentSummarizationModal(false);
-                                    setSelectedPromptType(undefined);
-                                    setSuccessfulUpload(undefined);
-                                    setCustomPrompt(undefined);
+                                    setMemory(new BufferWindowMemory({
+                                        chatHistory: new LisaChatMessageHistory(newSession),
+                                        returnMessages: false,
+                                        memoryKey: 'history',
+                                        k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
+                                        aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+                                        humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
+                                    }));
+
+                                    setSummarize(true);
                                 }
                             }}
-                            disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || !successfulUploads || (selectedPromptType === 'custom' && !customPrompt)}
+                            disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || !successfulUploads || !userPrompt}
                         >
                             Summarize
                         </Button>
@@ -168,7 +190,7 @@ export function DocumentSummarizationModal ({
                 <FileUpload
                     onChange={async ({detail}) => {
                         setSelectedFiles(detail.value);
-                        const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 10240);
+                        const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 204800);
                         setSuccessfulUpload(uploads);
                     }}
                     value={selectedFiles}
@@ -182,74 +204,78 @@ export function DocumentSummarizationModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file type is plain text. File size limit is 10 KB'
+                    constraintText='Allowed file type is plain text. File size limit is 200 KB'
                 />
-                <Grid gridDefinition={[
-                    { colspan: { default: 7 } },
-                    { colspan: { default: 5 } },
-                ]}>
-                    <FormField label='Summarization Model'>
-                        <Autosuggest
-                            statusType={isFetchingModels ? 'loading' : 'finished'}
-                            loadingText='Loading models (might take few seconds)...'
-                            placeholder='Select a model'
-                            empty={<div className='text-gray-500'>No models available.</div>}
-                            filteringType='auto'
-                            value={selectedModel?.modelId ?? ''}
-                            onChange={({ detail: { value } }) => {
-                                if (!value || value.length === 0) {
-                                    setSelectedModel(undefined);
-                                } else {
-                                    const model = allModels.find((model) => model.modelId === value);
-                                    if (model) {
-                                        if (!model.streaming && chatConfiguration.sessionConfiguration.streaming) {
-                                            setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: false }});
-                                        } else if (model.streaming && !chatConfiguration.sessionConfiguration.streaming) {
-                                            setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: true }});
-                                        }
-                                        setSelectedModel(model);
+                <FormField label='Summarization Model'>
+                    <Autosuggest
+                        statusType={isFetchingModels ? 'loading' : 'finished'}
+                        loadingText='Loading models (might take few seconds)...'
+                        placeholder='Select a model'
+                        empty={<div className='text-gray-500'>No models available.</div>}
+                        filteringType='auto'
+                        value={selectedModel?.modelId ?? ''}
+                        onChange={({ detail: { value } }) => {
+                            if (!value || value.length === 0) {
+                                setSelectedModel(undefined);
+                            } else {
+                                const model = allModels.find((model) => model.modelId === value);
+                                if (model) {
+                                    if (!model.streaming && chatConfiguration.sessionConfiguration.streaming) {
+                                        setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: false }});
+                                    } else if (model.streaming && !chatConfiguration.sessionConfiguration.streaming) {
+                                        setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: true }});
                                     }
+                                    setSelectedModel(model);
                                 }
-                            }}
-                            options={modelsOptions}
-                        />
-                    </FormField>
-                    {selectedModel && selectedModel.summarizationOverview && <TextContent>
-                        <small>
-                            <p>
-                                <b>Summarization Overview: </b>{selectedModel.summarizationOverview}
-                            </p>
-                        </small>
-                    </TextContent>}
-                </Grid>
-                <Grid gridDefinition={[
-                    { colspan: { default: 7 } },
-                ]}>
-                    <FormField label='Prompt Type'>
-                        <Autosuggest
-                            placeholder='Select prompt type'
-                            filteringType='auto'
-                            value={selectedPromptType}
-                            onChange={({ detail: { value } }) => {
-                                setUserPrompt('');
-                                if (!value || value.length === 0) {
-                                    setSelectedPromptType('');
-                                } else {
-                                    setSelectedPromptType(promptOptions.filter((option) => option.value === value)[0].label);
-                                    if (value === 'concise') {
-                                        setUserPrompt('Please provide a short summary of the included file context. Do not include any other information.');
-                                    } else if (value === 'overview') {
-                                        setUserPrompt('Please provide a general overview of the major topics addressed in the included file context. It will not exceed one page.');
-                                    } else if (value === 'cod') {
-                                        // TODO
-                                    }
+                            }
+                        }}
+                        options={modelsOptions}
+                    />
+                </FormField>
+                <FormField label='Prompt Type'>
+                    <Autosuggest
+                        placeholder='Select prompt type'
+                        filteringType='auto'
+                        value={selectedPromptType}
+                        onChange={({ detail: { value } }) => {
+                            setUserPrompt('');
+                            if (value && value.length !== 0)  {
+                                setSelectedPromptType(promptOptions.filter((option) => option.value === value)[0].label);
+                                if (value === 'concise') {
+                                    setUserPrompt('Please provide a short summary of the included file context. Do not include any other information.');
+                                } else if (value === 'overview') {
+                                    setUserPrompt('Please provide a general overview of the major topics addressed in the included file context. It will not exceed 500 words.');
+                                } else if (value === 'cod') {
+                                    setUserPrompt(`Please generate increasingly concise, entity-dense summaries of the included file context.
+Repeat the following 2 steps 5 times.
+  - Step 1: Identify 1-3 informative Entities from the included file context which are missing from the previously generated summary and are the most relevant.
+  - Step 2: Write a new, denser summary of identical length which covers every entity and detail from the previous summary plus the missing entities.
+  A Missing Entity is:
+  - Relevant: to the main story
+  - Specific: descriptive yet concise (5 words or fewer)
+  - Novel: not in the previous summary
+  - Faithful: present in the Article
+  - Anywhere: located anywhere in the Article
+  Guidelines:
+  - The first summary should be long (4-5 sentences, approx. 80 words) yet
+  highly non-specific, containing little information beyond the entities
+  marked as missing.
+  - Use overly verbose language and fillers (e.g. “this document discusses”) to reach approx. 80 words.
+  - Make every word count: re-write the previous summary to improve flow and make space for additional entities.
+  - Make space with fusion, compression, and removal of uninformative phrases like “the article discusses”
+  - The summaries should become highly dense and concise yet self-contained, e.g., easily understood without the Article.
+  - Missing entities can appear anywhere in the new summary.
+  - Never drop entities from the previous summary. If space cannot be made,  add fewer new entities.
+-Remember to use the exact same number of words for each summary.`);
+                                } else if (value === 'custom') {
+                                    setUserPrompt('Write a custom prompt here. For example, ask the model to provide the main 3-10 main points found in the included file context. Please keep this summary concise, not to exceed 400 words.');
                                 }
-                            }}
-                            options={promptOptions}
-                        />
-                    </FormField>
-                </Grid>
-                {selectedPromptType && selectedPromptType === 'Custom - Write your own prompt' && <>
+                            }
+                        }}
+                        options={promptOptions}
+                    />
+                </FormField>
+                {selectedPromptType && <>
                     <Textarea
                         rows={10}
                         disableBrowserAutocorrect={false}
@@ -261,7 +287,6 @@ export function DocumentSummarizationModal ({
                             }
                         }}
                         value={userPrompt}
-                        placeholder={'Enter custom prompt here'}
                     />
                 </>}
             </SpaceBetween>

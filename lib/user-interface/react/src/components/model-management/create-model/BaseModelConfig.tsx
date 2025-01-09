@@ -129,25 +129,25 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     />
                 </FormField>
                 <FormField label='Summarization' errorText={props.formErrors?.features}
-                    warningText={props.item.features.includes('summarization') ? 'Ensure model is context is large enough to support these requests.' : ''}>
+                    warningText={props.item.features.filter((feature) => feature.name === 'summarization').length > 0 ? 'Ensure model context is large enough to support these requests.' : ''}>
                     <Toggle
                         onChange={({ detail }) => {
-                            if (detail.checked && !props.item.features.includes('summarization')) {
-                                props.setFields({'features': props.item.features.concat('summarization')});
-                            } else if (!detail.checked && props.item.features.includes('summarization')) {
-                                props.setFields({'features': props.item.features.filter((feature) => feature !== 'summarization')});
+                            if (detail.checked && props.item.features.filter((feature) => feature.name === 'summarization').length === 0) {
+                                props.setFields({'features': props.item.features.concat({name: 'summarization', overview: ''})});
+                            } else if (!detail.checked && props.item.features.filter((feature) => feature.name === 'summarization').length > 0) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'summarization')});
                             }
                         }}
                         disabled={props.item.modelType === ModelType.embedding}
                         onBlur={() => props.touchFields(['features'])}
-                        checked={props.item.features.includes('summarization')}
+                        checked={props.item.features.filter((feature) => feature.name === 'summarization').length > 0}
                     />
                 </FormField>
             </Grid>
             <FormField label='Summarization Capabilities' errorText={props.formErrors?.summarizationCapabilities}>
-                <Input value={props.item.summarizationOverview} inputMode='text' onBlur={() => props.touchFields(['summarizationOverview'])} onChange={({ detail }) => {
-                    props.setFields({ 'summarizationOverview': detail.value });
-                }} disabled={props.isEdit || !props.item.features.includes('summarization')} placeholder='Optional overview of Summarization for Model'/>
+                <Input value={props.item.features.filter((feature) => feature.name === 'summarization').length > 0 ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
+                    props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== 'summarization'), {name: 'summarization', overview: detail.value}] });
+                }} disabled={props.isEdit || props.item.features.filter((feature) => feature.name === 'summarization').length === 0} placeholder='Optional overview of Summarization for Model'/>
             </FormField>
         </SpaceBetween>
     );

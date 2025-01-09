@@ -167,6 +167,23 @@ class ContainerConfig(BaseModel):
         return environment
 
 
+class ModelFeature(BaseModel):
+    __exceptions: List[Any] = []
+    name: str
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class SummarizationModelFeature(ModelFeature):
+    overview: str
+
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs["name"] = "summarization"
+        super().__init__(**kwargs)
+        self.overview = kwargs.get("overview", None)
+
+
 class LISAModel(BaseModel):
     """Core model definition fields."""
 
@@ -181,8 +198,7 @@ class LISAModel(BaseModel):
     modelUrl: Optional[str] = None
     status: ModelStatus
     streaming: bool
-    features: Optional[List[str]] = None
-    summarizationOverview: Optional[str] = None
+    features: Optional[List[ModelFeature]]
 
 
 class ApiResponseBase(BaseModel):
@@ -204,8 +220,7 @@ class CreateModelRequest(BaseModel):
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
-    features: Optional[List[str]] = None
-    summarizationOverview: Optional[str] = None
+    features: Optional[List[ModelFeature]]
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:

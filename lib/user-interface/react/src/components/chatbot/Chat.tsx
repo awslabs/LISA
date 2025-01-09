@@ -519,6 +519,7 @@ export default function Chat ({ sessionId }) {
                 setInternalSessionId={setInternalSessionId}
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
+                setMemory={setMemory}
             />
             <SessionConfiguration
                 chatConfiguration={chatConfiguration}

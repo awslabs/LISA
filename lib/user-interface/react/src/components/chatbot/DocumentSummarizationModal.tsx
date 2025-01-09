@@ -34,6 +34,7 @@ import { v4 as uuidv4 } from 'uuid';
 import FormField from '@cloudscape-design/components/form-field';
 import { BufferWindowMemory } from 'langchain/memory';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
+import Toggle from '@cloudscape-design/components/toggle';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;
@@ -74,6 +75,7 @@ export function DocumentSummarizationModal ({
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const [summarize, setSummarize] = useState<boolean>(false);
+    const [createNewChatSession, setCreateNewChatSession] = useState<boolean>(true);
 
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
@@ -148,24 +150,26 @@ export function DocumentSummarizationModal ({
                         <Button
                             onClick={async () => {
                                 if (successfulUploads.length > 0) {
-                                    const newSessionId = uuidv4();
-                                    setInternalSessionId(newSessionId);
-                                    const newSession = {
-                                        history: [],
-                                        sessionId: newSessionId,
-                                        userId: userName,
-                                        startTime: new Date(Date.now()).toISOString(),
-                                    };
-                                    setSession(newSession);
+                                    if(createNewChatSession) {
+                                        const newSessionId = uuidv4();
+                                        setInternalSessionId(newSessionId);
+                                        const newSession = {
+                                            history: [],
+                                            sessionId: newSessionId,
+                                            userId: userName,
+                                            startTime: new Date(Date.now()).toISOString(),
+                                        };
+                                        setSession(newSession);
 
-                                    setMemory(new BufferWindowMemory({
-                                        chatHistory: new LisaChatMessageHistory(newSession),
-                                        returnMessages: false,
-                                        memoryKey: 'history',
-                                        k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-                                        aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-                                        humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
-                                    }));
+                                        setMemory(new BufferWindowMemory({
+                                            chatHistory: new LisaChatMessageHistory(newSession),
+                                            returnMessages: false,
+                                            memoryKey: 'history',
+                                            k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
+                                            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+                                            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
+                                        }));
+                                    }
 
                                     setSummarize(true);
                                 }
@@ -289,6 +293,11 @@ Repeat the following 2 steps 5 times.
                         value={userPrompt}
                     />
                 </>}
+                <FormField label='Create new chat session'>
+                    <Toggle checked={createNewChatSession} onChange={({ detail }) =>
+                        setCreateNewChatSession(detail.checked)
+                    } />
+                </FormField>
             </SpaceBetween>
         </Modal>
     );

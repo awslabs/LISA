@@ -198,7 +198,7 @@ class LISAModel(BaseModel):
     modelUrl: Optional[str] = None
     status: ModelStatus
     streaming: bool
-    features: Optional[List[ModelFeature]]
+    features: Optional[List[ModelFeature]] = None
 
 
 class ApiResponseBase(BaseModel):
@@ -220,7 +220,7 @@ class CreateModelRequest(BaseModel):
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
-    features: Optional[List[ModelFeature]]
+    features: Optional[List[ModelFeature]] = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:

@@ -41,6 +41,11 @@ export const CARD_DEFINITIONS = {
             content: (model: IModel) => model.modelName,
         },
         {
+            id: 'modelFeatures',
+            header: 'Model Features',
+            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : 'Model doesn\'t have any special features',
+        },
+        {
             id: 'modelType',
             header: 'Type',
             content: (model: IModel) => model.modelType,
@@ -84,7 +89,7 @@ export const PAGE_SIZE_OPTIONS = [
 
 export const DEFAULT_PREFERENCES = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -92,6 +97,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
         label: 'Displayed Properties',
         options: [
             { id: 'modelName', label: 'Name' },
+            { id: 'modelFeatures', label: 'Features'},
             { id: 'modelType', label: 'Type' },
             { id: 'modelUrl', label: 'URL' },
             { id: 'streaming', label: 'Streaming' },

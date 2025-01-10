@@ -21,11 +21,11 @@ import { useEffect } from 'react';
 import Chat from '../components/chatbot/Chat';
 import Sessions from '../components/chatbot/Sessions';
 
-export function Chatbot ({ setTools }) {
+export function Chatbot ({ setNav }) {
     const { sessionId } = useParams();
     useEffect(() => {
-        setTools([<Sessions />]);
-    }, [setTools]);
+        setNav([<Sessions />]);
+    }, [setNav]);
 
     return <Chat sessionId={sessionId} />;
 }

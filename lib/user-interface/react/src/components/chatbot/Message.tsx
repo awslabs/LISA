@@ -14,86 +14,113 @@
   limitations under the License.
 */
 
-import Container from '@cloudscape-design/components/container';
-import TextContent from '@cloudscape-design/components/text-content';
 import ReactMarkdown from 'react-markdown';
-import Spinner from '@cloudscape-design/components/spinner';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { Button, Grid, SpaceBetween } from '@cloudscape-design/components';
+import { ButtonGroup, Grid, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { LisaChatMessage } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
-import Avatar from 'react-avatar';
+import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
+import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
-import gfm from 'remark-gfm';
 
 type MessageProps = {
     message?: LisaChatMessage;
     isRunning: boolean;
     showMetadata?: boolean;
+    isStreaming?: boolean;
 };
 
-export default function Message ({ message, isRunning, showMetadata }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     return (
         <div className='mt-2' style={{overflow: 'hidden'}}>
             {isRunning && (
-                <Grid gridDefinition={[{colspan: 1}, {colspan: 11}]}>
-                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%'}} title={message?.metadata?.modelName}>
-                        <Avatar size='40' round={true} color='#ff7f0e'/>
-                    </div>
-                    <Container>
-                        <Box float='left'>
-                            <Spinner/>
-                        </Box>
-                    </Container>
-                </Grid>
+                <ChatBubble
+                    ariaLabel='Generative AI assistant'
+                    type='incoming'
+                    avatar={
+                        <Avatar
+                            loading={true}
+                            color='gen-ai'
+                            iconName='gen-ai'
+                            ariaLabel='Generative AI assistant'
+                            tooltipText='Generative AI assistant'
+                        />
+                    }
+                >
+                    <Box color='text-status-inactive'>
+                        Generating response
+                    </Box>
+                </ChatBubble>
             )}
             {message?.type !== 'human' && !isRunning && (
-                <Grid gridDefinition={[{colspan: 1}, {colspan: 11}]}>
-                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%'}} title={message?.metadata?.modelName}>
-                        <Avatar size='40' round={true} color='#ff7f0e'/>
-                    </div>
-                    <Container>
-                        <SpaceBetween size='s' direction='vertical'>
-                            <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
-                                <ReactMarkdown remarkPlugins={[remarkBreaks, gfm]} children={message.content}/>
-                                <div style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
-                                    <Button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(message.content);
-                                        }}
-                                        iconAlign='right'
-                                        iconName='copy'
-                                        variant='link'
-                                    />
-                                </div>
-                            </Grid>
-                            {message.metadata && showMetadata && (
-                                <ExpandableSection variant='footer' headerText='Metadata'>
-                                    <JsonView data={message.metadata} style={darkStyles}/>
-                                </ExpandableSection>
-                            )}
-                        </SpaceBetween>
-                    </Container>
-                </Grid>
+                <ChatBubble
+                    ariaLabel='Generative AI assistant'
+                    type='incoming'
+                    showLoadingBar={isStreaming}
+                    avatar={
+                        <Avatar
+                            color='gen-ai'
+                            iconName='gen-ai'
+                            ariaLabel='Generative AI assistant'
+                            tooltipText='Generative AI assistant'
+                        />
+                    }
+                >
+                    <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
+                        <ReactMarkdown
+                            remarkPlugins={[remarkBreaks]}
+                            children={message.content}
+                        />
+                        {!isStreaming && <div
+                            style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
+                            <ButtonGroup
+                                onItemClick={({ detail }) =>
+                                    ['copy'].includes(detail.id) &&
+                                    navigator.clipboard.writeText(message.content)
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
+                                    {
+                                        type: 'icon-button',
+                                        id: 'copy',
+                                        iconName: 'copy',
+                                        text: 'Copy',
+                                        popoverFeedback: (
+                                            <StatusIndicator type='success'>
+                                                Message copied
+                                            </StatusIndicator>
+                                        )
+                                    }
+                                ]}
+                                variant='icon'
+                            />
+                        </div>}
+                    </Grid>
+                    {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
+                        <JsonView data={message.metadata} style={darkStyles}/>
+                    </ExpandableSection>}
+                </ChatBubble>
             )}
             {message?.type === 'human' && (
-                <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
-                    <Container>
-                        <SpaceBetween size='s' alignItems='end'>
-                            <TextContent>
-                                <strong>{message.content}</strong>
-                            </TextContent>
-                        </SpaceBetween>
-                    </Container>
-                    <div style={{display: 'flex', alignItems: 'center', height: '100%'}} title={currentUser}>
-                        <Avatar name={currentUser} size='40' round={true} />
-                    </div>
-                </Grid>
+                <ChatBubble
+                    ariaLabel={currentUser}
+                    type='outgoing'
+                    avatar={
+                        <Avatar
+                            ariaLabel={currentUser}
+                            tooltipText={currentUser}
+                            initials={currentUser?.charAt(0).toUpperCase()}
+                        />
+                    }
+                >
+                    <strong>{message.content}</strong>
+                </ChatBubble>
             )}
         </div>
     );

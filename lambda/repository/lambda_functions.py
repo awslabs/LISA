@@ -24,7 +24,7 @@ from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
-from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, get_username, retry_config
+from utilities.common_functions import api_wrapper, get_cert_path, get_groups, get_id_token, get_username, retry_config
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
@@ -186,22 +186,16 @@ def _get_embeddings_pipeline(model_name: str) -> Any:
 
 @api_wrapper
 def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
-    """Return info on all available repositories.
-
-    Currently, there is no support for dynamic repositories so only a single OpenSearch repository
-    is returned.
-    """
-
-    user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
+    """Return info on all available repositories."""
+    user_groups = get_groups(event)
     registered_repositories = get_registered_repositories()
+    return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
 
-    return list(
-        filter(lambda repository: user_has_group(user_groups, repository["allowedGroups"]), registered_repositories)
-    )
+
 
 
 def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
-    """Returns if user groups has at least one intersections with allowed groups.
+    """Returns if user groups has at least one intersection with allowed groups.
 
     If allowed groups is empty this will return True.
     """

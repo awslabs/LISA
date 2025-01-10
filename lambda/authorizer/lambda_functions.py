@@ -54,9 +54,13 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
-
+    groups: list[str]
     if id_token in get_management_tokens():
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username="lisa-management-token")
+        username = "lisa-management-token"
+        # Add management token to Admin groups
+        groups = json.dumps([admin_group])
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
+        allow_policy["context"] = {"username": username, "groups": groups}
         logger.debug(f"Generated policy: {allow_policy}")
         return allow_policy
 
@@ -185,10 +189,14 @@ def get_management_tokens() -> list[str]:
         secret_tokens.append(
             secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
         )
-        secret_tokens.append(
-            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
-        )
+        try:
+            secret_tokens.append(
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+            )
+        except Exception:
+            logger.info("No previous management token version found")
     except ClientError as e:
-        logger.warn(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
+        logger.warning(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
+        logger.warning(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
 
     return secret_tokens

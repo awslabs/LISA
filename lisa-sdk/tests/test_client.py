@@ -13,35 +13,18 @@
 #   limitations under the License.
 
 """Test basic usage of the Lisapy SDK."""
-
-from typing import Any, Union
+from typing import Union
 
 import pytest
-from lisapy import Lisa
+from lisapy import LisaLlm
 from lisapy.errors import NotFoundError
 from lisapy.types import ModelKwargs, ModelType
 
 
-@pytest.fixture(scope="session")
-def url(pytestconfig: pytest.Config) -> Any:
-    """Get the url argument."""
-    return pytestconfig.getoption("url")
-
-
-@pytest.fixture(scope="session")
-def verify(pytestconfig: pytest.Config) -> Union[bool, Any]:
-    """Get the verify argument."""
-    if pytestconfig.getoption("verify") == "false":
-        return False
-    elif pytestconfig.getoption("verify") == "true":
-        return True
-    else:
-        return pytestconfig.getoption("verify")
-
-
-def test_list_textgen_tgi_models(url: str, verify: Union[bool, str]) -> None:
+@pytest.mark.skip(reason="Model not deployed")
+def test_list_textgen_tgi_models(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Test to see if we can retrieve textgen TGI models."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     models = client.list_textgen_models()
 
     assert all(m.model_type == ModelType.TEXTGEN for m in models)
@@ -65,12 +48,13 @@ def test_list_textgen_tgi_models(url: str, verify: Union[bool, str]) -> None:
     assert hasattr(tgi_model.model_kwargs, "watermark")
 
 
-def test_generate_tgi(url: str, verify: Union[bool, str]) -> None:
+@pytest.mark.skip(reason="Model not deployed")
+def test_generate_tgi(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Generates minimal response from textgen.tgi model in batch mode."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     text_gen_models = client.list_textgen_models()
     model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1  # type: ignore
+    model.model_kwargs.max_new_tokens = 1
     response = client.generate("test", model)
 
     # assert response.generated_text == ''
@@ -78,16 +62,17 @@ def test_generate_tgi(url: str, verify: Union[bool, str]) -> None:
     assert response.finish_reason == "length"
 
 
-def test_model_not_found(url: str, verify: Union[bool, str]) -> None:
+def test_model_not_found(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Attempts to describe a model that doesn't exist."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     with pytest.raises(NotFoundError):
         client.describe_model(provider="unknown.provider", model_name="model-name")
 
 
-def test_embed_instructor(url: str, verify: Union[bool, str]) -> None:
+@pytest.mark.skip(reason="Model not deployed")
+def test_embed_instructor(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Generates a simple embedding from the instructor embedding model."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     embedding_models = client.list_embedding_models()
     model = [m for m in embedding_models if m.provider == "ecs.embedding.instructor"][0]
     print(model)
@@ -98,12 +83,12 @@ def test_embed_instructor(url: str, verify: Union[bool, str]) -> None:
     assert isinstance(embedding[0][0], float)
 
 
-def test_generate_stream(url: str, verify: Union[bool, str]) -> None:
+def test_generate_stream(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Generates a streaming response from a textgen.tgi model."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     text_gen_models = client.list_textgen_models()
     model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1  # type: ignore
+    model.model_kwargs.max_new_tokens = 1
     responses = list(client.generate_stream("what is deep learning?", model=model))
 
     assert len(responses) == 1
@@ -115,12 +100,12 @@ def test_generate_stream(url: str, verify: Union[bool, str]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_async(url: str, verify: Union[bool, str]) -> None:
+async def test_generate_async(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Generates a batch async response from a textgen.tgi model."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     text_gen_models = client.list_textgen_models()
     model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1  # type: ignore
+    model.model_kwargs.max_new_tokens = 1
     response = await client.agenerate("test", model=model)
 
     assert response.finish_reason == "length"
@@ -128,12 +113,12 @@ async def test_generate_async(url: str, verify: Union[bool, str]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_stream_async(url: str, verify: Union[bool, str]) -> None:
+async def test_generate_stream_async(url: str, verify: Union[bool, str], headers: dict) -> None:
     """Generates a streaming async response from a textgen.tgi model."""
-    client = Lisa(url=url, verify=verify)
+    client = LisaLlm(url=url, verify=verify, headers=headers)
     text_gen_models = client.list_textgen_models()
     model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1  # type: ignore
+    model.model_kwargs.max_new_tokens = 1
     responses = [response async for response in client.agenerate_stream("what is deep learning?", model=model)]
 
     assert len(responses) == 1

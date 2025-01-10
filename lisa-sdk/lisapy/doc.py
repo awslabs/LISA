@@ -12,5 +12,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .api import LisaApi
-from .main import LisaLlm
+from typing import Dict, List
+
+from .common import BaseMixin
+from .errors import parse_error
+
+
+class DocsMixin(BaseMixin):
+    """Mixin for doc-related operations."""
+
+    def list_docs(self) -> List[Dict]:
+        response = self._session.get(f"{self.url}/docs")
+        if response.status_code == 200:
+            session: List[Dict] = response.json()
+            return session
+        else:
+            raise parse_error(response.status_code, response)
+
+

@@ -12,5 +12,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .api import LisaApi
-from .main import LisaLlm
+from typing import Dict, Optional, Union
+
+from requests import Session
+
+
+class BaseMixin:
+    url: str
+    headers: Optional[Dict[str, str]]
+    cookies: Optional[Dict[str, str]]
+    verify: Optional[Union[str, bool]]
+    timeout: int
+    _session: Session

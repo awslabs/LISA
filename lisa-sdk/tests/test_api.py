@@ -12,5 +12,22 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .api import LisaApi
-from .main import LisaLlm
+"""Test basic usage of the Lisapy SDK."""
+import logging
+
+from lisapy import LisaApi
+
+def test_list_models(lisa_api: LisaApi) -> None:
+    models = lisa_api.list_models()
+    logging.info(f"Found {len(models)} models - {models}")
+    assert len(models) > 0
+
+def test_list_embedding_models(lisa_api: LisaApi) -> None:
+    models = lisa_api.list_embedding_models()
+    logging.info(f"Found {len(models)} models - {models}")
+    assert len(models) > 0
+
+def test_list_repositories(lisa_api: LisaApi) -> None:
+    repos = lisa_api.list_repositories()
+    logging.info(f"Found {len(repos)} repos - {repos}")
+    assert len(repos) > 0

@@ -12,5 +12,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .api import LisaApi
-from .main import LisaLlm
+from typing import Dict, List
+
+from .common import BaseMixin
+from .errors import parse_error
+
+
+class ConfigMixin(BaseMixin):
+    """Mixin for config-related operations."""
+
+    def get_configs(self) -> List[Dict]:
+        response = self._session.get(f"{self.url}/configuration")
+        if response.status_code == 200:
+            json_configs: List[Dict] = response.json()
+            return json_configs
+        else:
+            raise parse_error(response.status_code, response)

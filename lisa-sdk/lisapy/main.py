@@ -28,7 +28,7 @@ from .types import FoundationModel, Response, StreamingResponse
 
 logging.basicConfig(level=logging.INFO)
 
-API_VERSION = "v1"
+API_VERSION = "v2"
 
 
 def on_llm_new_token(token: str) -> None:
@@ -37,18 +37,17 @@ def on_llm_new_token(token: str) -> None:
     sys.stdout.flush()
 
 
-class Lisa(BaseModel):
-    """A wrapper around the LISA REST API."""
+class LisaLlm(BaseModel):
+    """A wrapper around the LISA LLM REST API."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    url: str = Field(..., description="REST API url.")
+    url: str = Field(..., description="REST API url for LiteLLM")
     headers: Optional[Dict[str, str]] = Field(None, description="Headers for request.")
     cookies: Optional[Dict[str, str]] = Field(None, description="Cookies for request.")
     timeout: int = Field(10, description="Timeout in minutes request.")
     verify: Optional[Union[str, bool]] = Field(None, description="Whether to verify SSL certificates.")
     async_timeout: Optional[ClientTimeout] = None  # Do not provide a default value here
-
     _session: Session
 
     @field_validator("url")
@@ -72,29 +71,7 @@ class Lisa(BaseModel):
 
         self.async_timeout = ClientTimeout(self.timeout * 60)
 
-    def describe_model(self, provider: str, model_name: str) -> FoundationModel:
-        """Get model metadata.
-
-        Parameters
-        ----------
-        provider : str
-            Name of provider.
-
-        model_name : str
-            Name of model.
-
-        Returns
-        -------
-        Dict[str, str]
-            Model metadata.
-        """
-        response = self._session.get(f"{self.url}/describeModel?provider={provider}&modelName={model_name}")
-        if response.status_code == 200:
-            return FoundationModel.from_dict(response.json())
-        else:
-            raise parse_error(response.status_code, response)
-
-    def list_models(self) -> List[FoundationModel]:
+    def list_models(self) -> List[Dict[str, Any]]:
         """List all foundation models.
 
         Returns
@@ -102,60 +79,13 @@ class Lisa(BaseModel):
         List[FoundationModel]
             List of available text generation and embedding foundation models.
         """
-        response = self._session.get(f"{self.url}/listModels")
+        response = self._session.get(f"{self.url}/serve/models")
         if response.status_code == 200:
             json_models = response.json()
-            models = [
-                self.describe_model(provider=provider, model_name=model_name)
-                for model_type, providers in json_models.items()
-                for provider, model_names in providers.items()
-                for model_name in model_names
-            ]
+            models: List[Dict] = json_models.get("data")
         else:
             raise parse_error(response.status_code, response)
         return models
-
-    def list_textgen_models(self) -> List[FoundationModel]:
-        """List all text generation foundation models.
-
-        Returns
-        -------
-        List[FoundationModel]
-            List of available text generation foundation models.
-        """
-        response = self._session.get(f"{self.url}/listModels?modelTypes=textgen")
-        if response.status_code == 200:
-            json_models = response.json()
-            models = [
-                self.describe_model(provider=provider, model_name=model_name)
-                for model_type, providers in json_models.items()
-                for provider, model_names in providers.items()
-                for model_name in model_names
-            ]
-            return models
-        else:
-            raise parse_error(response.status_code, response)
-
-    def list_embedding_models(self) -> List[FoundationModel]:
-        """List all embedding foundation models.
-
-        Returns
-        -------
-        List[FoundationModel]
-            List of available text generation foundation models.
-        """
-        response = self._session.get(f"{self.url}/listModels?modelTypes=embedding")
-        if response.status_code == 200:
-            json_models = response.json()
-            models = [
-                self.describe_model(provider=provider, model_name=model_name)
-                for model_type, providers in json_models.items()
-                for provider, model_names in providers.items()
-                for model_name in model_names
-            ]
-            return models
-        else:
-            raise parse_error(response.status_code, response)
 
     def generate(self, prompt: str, model: FoundationModel) -> Response:
         """Generate text based on the provided prompt using a specific model.

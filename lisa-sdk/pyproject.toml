@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.11"
+
 [tool.poetry]
 name = "lisapy"
 version = "3.4.0"
@@ -6,15 +9,18 @@ authors = ["Steve Goley <sgoley@amazon.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 pydantic = "^2.0.0"
 langchain = "*"
 langchain-community = "*"
 langchain-openai = "*"
-boto3 = "*"
 
 [tool.poetry.group.dev.dependencies]
+boto3 = "*"
 ipykernel = "^6.25.2"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.2"
 pytest-asyncio = "*"
 
 [build-system]

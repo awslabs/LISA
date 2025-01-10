@@ -197,6 +197,5 @@ def get_management_tokens() -> list[str]:
             logger.info("No previous management token version found")
     except ClientError as e:
         logger.warning(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
-        logger.warning(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
 
     return secret_tokens

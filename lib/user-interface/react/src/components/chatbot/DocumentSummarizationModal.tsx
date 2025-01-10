@@ -112,6 +112,7 @@ export function DocumentSummarizationModal ({
                 setShowDocumentSummarizationModal(false);
                 setSelectedPromptType(undefined);
                 setSuccessfulUpload(undefined);
+                setSelectedFiles([]);
             }
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [summarize]);

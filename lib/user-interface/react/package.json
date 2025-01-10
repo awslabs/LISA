@@ -11,6 +11,7 @@
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(tsx|js|ts|json)\""
   },
   "dependencies": {
+    "@cloudscape-design/chat-components": "^1.0.19",
     "@cloudscape-design/collection-hooks": "^1.0.23",
     "@cloudscape-design/component-toolkit": "^1.0.0-beta.65",
     "@cloudscape-design/components": "^3.0.638",
@@ -27,7 +28,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-json-view-lite": "^0.9.8",
-    "react-markdown": "^8.0.7",
+    "react-markdown": "^9.0.0",
     "react-oidc-context": "^2.3.0",
     "react-redux": "^8.0.2",
     "react-router-dom": "^6.14.2",
@@ -35,7 +36,6 @@
     "redux-persist": "^6.0.0",
     "regenerator-runtime": "^0.14.0",
     "remark-breaks": "^4.0.0",
-    "remark-gfm": "^4.0.0",
     "tailwindcss": "^3.3.3",
     "typescript": "^5.0.2",
     "unraw": "^3.0.0"

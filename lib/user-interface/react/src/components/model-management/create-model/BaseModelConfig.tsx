@@ -61,6 +61,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             fields['streaming'] = false;
                         }
 
+                        // turn off summarization for embedded models
+                        if (fields.modelType === ModelType.embedding && props.item.features.includes('summarization')) {
+                            fields['features'] = props.item.features.filter((feature) => feature !== 'summarization');
+                        }
+
                         props.setFields(fields);
                     }}
                     onBlur={() => props.touchFields(['modelType'])}
@@ -102,7 +107,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     disabled={props.isEdit}
                 />
             </FormField>
-            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                 <FormField label='LISA Hosted Model' errorText={props.formErrors?.lisaHostedModel}>
                     <Toggle
                         onChange={({ detail }) =>
@@ -123,7 +128,27 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.streaming}
                     />
                 </FormField>
+                <FormField label='Summarization' errorText={props.formErrors?.features}
+                    warningText={props.item.features.filter((feature) => feature.name === 'summarization').length > 0 ? 'Ensure model context is large enough to support these requests.' : ''}>
+                    <Toggle
+                        onChange={({ detail }) => {
+                            if (detail.checked && props.item.features.filter((feature) => feature.name === 'summarization').length === 0) {
+                                props.setFields({'features': props.item.features.concat({name: 'summarization', overview: ''})});
+                            } else if (!detail.checked && props.item.features.filter((feature) => feature.name === 'summarization').length > 0) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'summarization')});
+                            }
+                        }}
+                        disabled={props.item.modelType === ModelType.embedding}
+                        onBlur={() => props.touchFields(['features'])}
+                        checked={props.item.features.filter((feature) => feature.name === 'summarization').length > 0}
+                    />
+                </FormField>
             </Grid>
+            <FormField label='Summarization Capabilities' errorText={props.formErrors?.summarizationCapabilities}>
+                <Input value={props.item.features.filter((feature) => feature.name === 'summarization').length > 0 ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
+                    props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== 'summarization'), {name: 'summarization', overview: detail.value}] });
+                }} disabled={props.isEdit || props.item.features.filter((feature) => feature.name === 'summarization').length === 0} placeholder='Optional overview of Summarization for Model'/>
+            </FormField>
         </SpaceBetween>
     );
 }

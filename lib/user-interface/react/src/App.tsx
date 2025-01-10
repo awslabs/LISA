@@ -57,18 +57,18 @@ const AdminRoute = ({ children }) => {
 };
 
 function App () {
-    const [showTools, setShowTools] = useState(false);
-    const [tools, setTools] = useState(null);
+    const [showNavigation, setShowNavigation] = useState(false);
+    const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
 
     useEffect(() => {
-        if (tools) {
-            setShowTools(true);
+        if (nav) {
+            setShowNavigation(true);
         } else {
-            setShowTools(false);
+            setShowNavigation(false);
         }
-    }, [tools]);
+    }, [nav]);
 
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
     return (
@@ -83,20 +83,20 @@ function App () {
             <AppLayout
                 headerSelector='#h'
                 footerSelector='#f'
-                navigationHide={true}
-                toolsHide={!showTools}
+                navigationHide={!showNavigation}
+                toolsHide={true}
                 notifications={<NotificationBanner />}
                 stickyNotifications={true}
-                tools={tools}
-                toolsWidth={500}
+                navigation={nav}
+                navigationWidth={450}
                 content={
                     <Routes>
-                        <Route index path='*' element={<Home setTools={setTools} />} />
+                        <Route index path='*' element={<Home setNav={setNav} />} />
                         <Route
                             path='chatbot'
                             element={
                                 <PrivateRoute>
-                                    <Chatbot setTools={setTools} />
+                                    <Chatbot setNav={setNav} />
                                 </PrivateRoute>
                             }
                         />
@@ -104,7 +104,7 @@ function App () {
                             path='chatbot/:sessionId'
                             element={
                                 <PrivateRoute>
-                                    <Chatbot setTools={setTools} />
+                                    <Chatbot setNav={setNav} />
                                 </PrivateRoute>
                             }
                         />
@@ -112,7 +112,7 @@ function App () {
                             path='model-management'
                             element={
                                 <AdminRoute>
-                                    <ModelManagement setTools={setTools} />
+                                    <ModelManagement setNav={setNav} />
                                 </AdminRoute>
                             }
                         />
@@ -120,7 +120,7 @@ function App () {
                             path='configuration'
                             element={
                                 <AdminRoute>
-                                    <Configuration setTools={setTools} />
+                                    <Configuration setNav={setNav} />
                                 </AdminRoute>
                             }
                         />

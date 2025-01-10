@@ -167,6 +167,15 @@ class ContainerConfig(BaseModel):
         return environment
 
 
+class ModelFeature(BaseModel):
+    __exceptions: List[Any] = []
+    name: str
+    overview: str
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
 class LISAModel(BaseModel):
     """Core model definition fields."""
 
@@ -181,6 +190,7 @@ class LISAModel(BaseModel):
     modelUrl: Optional[str] = None
     status: ModelStatus
     streaming: bool
+    features: Optional[List[ModelFeature]] = None
 
 
 class ApiResponseBase(BaseModel):
@@ -202,6 +212,7 @@ class CreateModelRequest(BaseModel):
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
+    features: Optional[List[ModelFeature]] = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:

@@ -34,6 +34,7 @@ const configurableOperations = {
     editChatHistoryBuffer: 'Edit Chat History Buffer',
     uploadRagDocs: 'Upload documents to RAG',
     uploadContextDocs: 'Upload documents to context',
+    documentSummarization: 'Document Summarization',
 };
 
 export type ActivatedComponentConfigurationProps = {

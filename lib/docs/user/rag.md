@@ -46,6 +46,7 @@ This configuration allows customers to:
 2. Select the appropriate embedding model for their use case
 3. Specify the source of their documents in S3
 4. Choose between scheduled or event-driven ingestion
+> **_NOTE:_**  Event ingestion requires Amazon EventBridge to be enabled on the S3 bucket. You can enable this in the bucket's properties configuration page in the AWS Management Console.
 5. Organize their data into named collections within the vector store
 
 By adjusting these parameters, customers can optimize the ingestion pipeline for their specific document types, update frequency, and retrieval requirements.

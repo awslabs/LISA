@@ -150,7 +150,7 @@ export function DocumentSummarizationModal ({
                         <Button
                             onClick={async () => {
                                 if (successfulUploads.length > 0) {
-                                    if(createNewChatSession) {
+                                    if (createNewChatSession) {
                                         const newSessionId = uuidv4();
                                         setInternalSessionId(newSessionId);
                                         const newSession = {

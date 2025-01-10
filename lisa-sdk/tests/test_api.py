@@ -17,17 +17,42 @@ import logging
 
 from lisapy import LisaApi
 
+
+# Model operations
 def test_list_models(lisa_api: LisaApi) -> None:
     models = lisa_api.list_models()
     logging.info(f"Found {len(models)} models - {models}")
     assert len(models) > 0
+
 
 def test_list_embedding_models(lisa_api: LisaApi) -> None:
     models = lisa_api.list_embedding_models()
     logging.info(f"Found {len(models)} models - {models}")
     assert len(models) > 0
 
+
+def test_swagger_docs(lisa_api: LisaApi) -> None:
+    text = lisa_api.list_docs()
+    logging.info("Retrieved swagger docs")
+    assert len(text) > 0
+
+
+# RAG operations
 def test_list_repositories(lisa_api: LisaApi) -> None:
     repos = lisa_api.list_repositories()
     logging.info(f"Found {len(repos)} repos - {repos}")
     assert len(repos) > 0
+
+
+# Configs
+def test_get_configs(lisa_api: LisaApi) -> None:
+    configs = lisa_api.get_configs()
+    logging.info(f"Found {len(configs)} configs - {configs}")
+    assert len(configs) > 0
+
+
+# Session
+def test_list_sessions(lisa_api: LisaApi) -> None:
+    sessions = lisa_api.list_sessions()
+    logging.info(f"Found {len(sessions)} sessions - {sessions}")
+    assert isinstance(sessions, list)

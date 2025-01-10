@@ -192,8 +192,6 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
 
 
-
-
 def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
     """Returns if user groups has at least one intersection with allowed groups.
 
@@ -284,8 +282,8 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
 
-    query_string_params = event["queryStringParameters"]
-    collection_id = query_string_params["collectionId"]
+    query_string_params = event.get("queryStringParameters", {})
+    collection_id = query_string_params.get("collectionId")
     document_id = query_string_params.get("documentId")
     document_name = query_string_params.get("documentName")
 

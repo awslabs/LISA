@@ -51,7 +51,7 @@ class LisaLlm(BaseModel):
     _session: Session
 
     @field_validator("url")
-    def validate_url(cls: "Lisa", v: str) -> str:
+    def validate_url(cls: "LisaLlm", v: str) -> str:
         """Validate URL is properly formatted."""
         url = v.rstrip("/")
         if not url.endswith(API_VERSION):
@@ -329,3 +329,33 @@ class LisaLlm(BaseModel):
             self._session.close()
         except Exception:
             pass
+
+
+"""
+TODO: Create support for the following
+# List models
+"models",
+"v1/models",
+# Model Info
+"model/info" "v1/model/info"
+# Text completions
+"chat/completions",
+"v1/chat/completions",
+"completions",
+"v1/completions",
+# Embeddings
+"embeddings",
+"v1/embeddings",
+# Create images
+"images/generations",
+"v1/images/generations",
+# Audio routes
+"audio/speech",
+"v1/audio/speech",
+"audio/transcriptions",
+"v1/audio/transcriptions",
+# Health check routes
+"health",
+"health/readiness",
+"health/liveliness",
+"""

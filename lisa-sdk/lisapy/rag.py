@@ -11,7 +11,7 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
+import logging
 from typing import Dict, List
 
 from .common import BaseMixin
@@ -23,32 +23,36 @@ class RagMixin(BaseMixin):
 
     def list_documents(self, repo_id: str, collection_id: str) -> List[Dict]:
         """Add collection_id as query parameter to request"""
-
-        response = self._session.get(f"{self.url}/rag/repository/${repo_id}")
+        logging.info(f"Using url: {self.url}/repository/{repo_id}/document?collectionId={collection_id}")
+        response = self._session.get(f"{self.url}/repository/{repo_id}/document?collectionId={collection_id}")
         if response.status_code == 200:
             docs: List[Dict] = response.json()
             return docs
         else:
             raise parse_error(response.status_code, response)
 
-    def delete_document_by_id(self, doc_id: str) -> bool:
-        response = self._session.delete(f"{self.url}/docs/{doc_id}")
+    def delete_document_by_id(self, repo_id: str, collection_id: str, doc_id: str) -> dict:
+        response = self._session.delete(
+            f"{self.url}/repository/{repo_id}/document?collectionId={collection_id}&documentId={doc_id}"
+        )
         if response.status_code == 200:
-            return True
+            deleted_docs: dict = response.json()
+            return deleted_docs
         else:
             raise parse_error(response.status_code, response)
 
-    def delete_documents_by_name(self, doc_name: str) -> bool:
-        response = self._session.delete(f"{self.url}/docs/{doc_name}")
+    def delete_documents_by_name(self, repo_id: str, collection_id: str, doc_name: str) -> dict:
+        response = self._session.delete(
+            f"{self.url}/repository/{repo_id}/document?collectionId={collection_id}&documentName={doc_name}"
+        )
         if response.status_code == 200:
-            return True
+            deleted_docs: dict = response.json()
+            return deleted_docs
         else:
             raise parse_error(response.status_code, response)
 
-    def ingest_document(self, doc: Dict) -> Dict:
-        response = self._session.post(f"{self.url}/docs", json=doc)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise parse_error(response.status_code, response)
 
+# TODO:
+# - ingest_document
+# - presigned_url
+# - similarity_search

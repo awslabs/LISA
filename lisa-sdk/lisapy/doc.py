@@ -12,8 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, List
-
 from .common import BaseMixin
 from .errors import parse_error
 
@@ -21,12 +19,10 @@ from .errors import parse_error
 class DocsMixin(BaseMixin):
     """Mixin for doc-related operations."""
 
-    def list_docs(self) -> List[Dict]:
+    def list_docs(self) -> str:
         response = self._session.get(f"{self.url}/docs")
         if response.status_code == 200:
-            session: List[Dict] = response.json()
-            return session
+            html: str = response.text
+            return html
         else:
             raise parse_error(response.status_code, response)
-
-

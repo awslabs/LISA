@@ -35,7 +35,7 @@ class ModelMixin(BaseMixin):
         embeddings = [model for model in models if "embedding" == model["modelType"]]
         return embeddings
 
-    def list_instances(self) -> List[Dict]:
+    def list_instances(self) -> List[str]:
         response = self._session.get(f"{self.url}/models/metadata/instances")
         if response.status_code == 200:
             json_instances: List[str] = response.json()

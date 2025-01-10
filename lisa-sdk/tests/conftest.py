@@ -20,9 +20,9 @@ from typing import Any, Generator, Union
 
 import boto3
 import pytest
+from lisapy import LisaApi, LisaLlm
 from pytest import Parser
 
-from lisapy import LisaApi, LisaLlm
 
 def pytest_addoption(parser: Parser) -> None:
     """Set the options for the cli parser."""
@@ -119,9 +119,11 @@ def api_token(pytestconfig: pytest.Config, api_key: str) -> Generator:
         print(f"Error creating token: {str(e)}")
         raise
 
+
 @pytest.fixture(scope="session")
 def lisa_api(api: str, verify: Union[bool, str], headers: dict) -> LisaApi:
-    return LisaApi(api=api, verify=verify, headers=headers)
+    return LisaApi(url=api, verify=verify, headers=headers)
+
 
 @pytest.fixture(scope="session")
 def lisa_llm(url: str, verify: Union[bool, str], headers: dict) -> LisaLlm:

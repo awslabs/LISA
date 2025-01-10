@@ -14,20 +14,11 @@
 
 """Test basic usage of the Lisapy SDK."""
 import logging
-from typing import Union
 
 from lisapy import LisaLlm
 
 
-def test_list_models(url: str, verify: Union[bool, str], headers: dict) -> None:
-    client = LisaLlm(url=url, verify=verify, headers=headers)
-    models = client.list_models()
-    logging.info(f"Found {len(models)} models - {models}")
-    assert len(models) > 0
-
-
-def test_describe_models(url: str, verify: Union[bool, str], headers: dict) -> None:
-    client = LisaLlm(url=url, verify=verify, headers=headers)
-    models = client.describe_model(model_name="")
+def test_list_models(lisa_llm: LisaLlm) -> None:
+    models = lisa_llm.list_models()
     logging.info(f"Found {len(models)} models - {models}")
     assert len(models) > 0

@@ -63,6 +63,9 @@ if [ -z $API_URL ]; then
 fi
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+echo "Using script dir: ${SCRIPT_DIR}"
 TEST_DIR=${SCRIPT_DIR}/../../lisa-sdk/
+pip install pytest
+pip install -r  ${PROJECT_DIR}/requirements-dev.txt
 pip install -e $TEST_DIR
 pytest $TEST_DIR --url $ALB_URL --api $API_URL --verify $VERIFY --profile $PROFILE -n auto

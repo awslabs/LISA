@@ -17,12 +17,13 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 from requests import Session
 
-from .model import ModelMixin
 from .config import ConfigMixin
 from .doc import DocsMixin
+from .model import ModelMixin
 from .rag import RagMixin
-from .session import SessionMixin
 from .repository import RepositoryMixin
+from .session import SessionMixin
+
 
 class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, RagMixin, SessionMixin):
     url: str = Field(..., description="REST API url for LiteLLM")

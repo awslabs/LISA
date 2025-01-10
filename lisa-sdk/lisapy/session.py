@@ -21,11 +21,11 @@ from .errors import parse_error
 class SessionMixin(BaseMixin):
     """Mixin for session-related operations."""
 
-    def list_session(self) -> List[Dict]:
+    def list_sessions(self) -> List[Dict]:
         response = self._session.get(f"{self.url}/session")
         if response.status_code == 200:
-            session: List[Dict] = response.json()
-            return session
+            sessions: List[Dict] = response.json()
+            return sessions
         else:
             raise parse_error(response.status_code, response)
 
@@ -36,4 +36,3 @@ class SessionMixin(BaseMixin):
             return session
         else:
             raise parse_error(response.status_code, response)
-

@@ -21,8 +21,8 @@ from .errors import parse_error
 class ConfigMixin(BaseMixin):
     """Mixin for config-related operations."""
 
-    def get_configs(self) -> List[Dict]:
-        response = self._session.get(f"{self.url}/configuration")
+    def get_configs(self, config_scope: str = "global") -> List[Dict]:
+        response = self._session.get(f"{self.url}/configuration?configScope={config_scope}")
         if response.status_code == 200:
             json_configs: List[Dict] = response.json()
             return json_configs

@@ -54,7 +54,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
-    groups: list[str]
+    groups: str
     if id_token in get_management_tokens():
         username = "lisa-management-token"
         # Add management token to Admin groups
@@ -66,10 +66,10 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-        groups = get_property_path(jwt_data, jwt_groups_property)
+        groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         username = find_jwt_username(jwt_data)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": json.dumps(groups or [])}
+        allow_policy["context"] = {"username": username, "groups": groups}
 
         if requested_resource.startswith("/models") and not is_admin_user:
             # non-admin users can still list models

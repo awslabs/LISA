@@ -15,7 +15,6 @@ import logging
 from typing import Any
 
 import pytest
-
 from lisapy import LisaApi
 
 
@@ -30,7 +29,7 @@ class TestLisaRag:
 
     @pytest.mark.skip(reason="TODO: Implement test")
     def test_insert_doc(self, lisa_api: LisaApi) -> None:
-        lisa_api.ingest_document(self.repo_id, self.collection_id, "test.txt", "This is a test")
+        lisa_api.ingest_document(self.repo_id, self.collection_id, "test.txt")
 
     def test_list_docs(self, lisa_api: LisaApi) -> Any:
         documents = lisa_api.list_documents(self.repo_id, self.collection_id)

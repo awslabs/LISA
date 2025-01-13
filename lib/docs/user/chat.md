@@ -28,6 +28,10 @@ This feature allows users to more easily upload and summarize documents through 
 - User-friendly interface for easy document processing
 - Maintains document context for accurate summaries
 
+#### Administration
+In order for your LLMs to show up in this modal, ensure that they have been marked for use during the LLM creation process.
+The LLMs used for summarization need to have a context, token limit, and hosting space allocation great enough for documents to be properly included and parsed with requests.
+
 ## Local development
 
 ### Configuring Pre-Commit Hooks

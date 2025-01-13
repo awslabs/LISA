@@ -6,25 +6,21 @@ This repository include an example chatbot web application. The react based web 
 
 ### Document Summarization Feature
 
-A user interface component that allows users to upload and summarize documents using AI technology. This feature provides an interactive popup window (modal) where users can upload files, provide instructions, and receive AI-generated summaries of their documents. This Modal Includes:
+This feature allows users to more easily upload and summarize documents through LISA's non-RAG context feature. Through an interactive popup window (modal) users upload a text file they wish to summarize, select an LLM and choose the appropriate prompt summarization template based on their needs. Then they receive an LLM generated summary of their document. This modal includes:
 
 - Document upload capability
-- AI model selection, tailored to summarization specific models with their summarization summary,  for different summarization approaches
-- Custom instruction input with pre-populated prompts for tailored summaries
+- Access to available LLMs configured with their environment specifically for summarization purposes
+- Summarization prompts with pre-populated instruction for tailored summaries. Users can also edit these prompts,
 - File context preservation for accurate processing
 
 #### How It Works
-1. User opens the summarization window
-2. Uploads the document they want to summarize
-3. Selects the appropriate AI model for their needs
-4. Provides any specific instructions for summarization
-5. Submits the request for processing
-6. Receives the summarized output
-
-#### Output
-- A concise, AI-generated summary of the uploaded document
-- Maintains context and key information from the original document
-- Follows user-provided instructions for customized summarization
+1. In a chat session, select the Summarization feature
+2. Select a text document to summarize and upload it to their chat session
+3. Choose an LLM based on your use case
+4. Select the appropriate prompt summarization template and modify as needed
+5. Choose to remain in the existing chat session or start a new session
+6. Submits the request for summarization
+7. Receives the summarized output in the chat session
 
 #### Benefits
 - Saves time by quickly extracting key information from documents

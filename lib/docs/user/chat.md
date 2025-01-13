@@ -1,7 +1,36 @@
-
-# Chatbot Example
+# LISA Chat
 
 This repository include an example chatbot web application. The react based web application can be optionally deployed to demonstrate the capabilities of LISA Serve. The chatbot consists of a static react based single page application hosted via API GW S3 proxy integration. The app connects to the LISA Serve REST API and an optional RAG API. The app integrates with an OIDC compatible IdP and allows users to interact directly with any of the textgen models hosted with LISA Serve. If the optional RAG stack is deployed then users can also leverage the embeddings models and AWS OpenSearch or PGVector to demonstrate chat with RAG. Chat sessions are maintained in dynamodb table and a number of parameters are exposed through the UI to allow experimentation with various parameters including prompt, temperature, top k, top p, max tokens, and more.
+
+## Key Features
+
+### Document Summarization Feature
+
+A user interface component that allows users to upload and summarize documents using AI technology. This feature provides an interactive popup window (modal) where users can upload files, provide instructions, and receive AI-generated summaries of their documents. This Modal Includes:
+
+- Document upload capability
+- AI model selection, tailored to summarization specific models with their summarization summary,  for different summarization approaches
+- Custom instruction input with pre-populated prompts for tailored summaries
+- File context preservation for accurate processing
+
+#### How It Works
+1. User opens the summarization window
+2. Uploads the document they want to summarize
+3. Selects the appropriate AI model for their needs
+4. Provides any specific instructions for summarization
+5. Submits the request for processing
+6. Receives the summarized output
+
+#### Output
+- A concise, AI-generated summary of the uploaded document
+- Maintains context and key information from the original document
+- Follows user-provided instructions for customized summarization
+
+#### Benefits
+- Saves time by quickly extracting key information from documents
+- Customizable summarization based on specific needs
+- User-friendly interface for easy document processing
+- Maintains document context for accurate summaries
 
 ## Local development
 

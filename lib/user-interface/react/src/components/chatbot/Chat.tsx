@@ -37,10 +37,7 @@ import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import {
-    configurationApi,
-    useLazyGetConfigurationQuery
-} from '../../shared/reducers/configuration.reducer';
+import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
@@ -71,7 +68,6 @@ export default function Chat ({ sessionId }) {
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
-
 
     const [userPrompt, setUserPrompt] = useState('');
     const [fileContext, setFileContext] = useState('');
@@ -320,9 +316,6 @@ export default function Chat ({ sessionId }) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
                 updateSession(session);
             }
-        }
-        if (auth.isAuthenticated){
-            dispatch(configurationApi.util.invalidateTags(['configuration']));
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isRunning, session, auth]);

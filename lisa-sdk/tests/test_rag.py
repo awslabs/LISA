@@ -15,6 +15,7 @@ import logging
 from typing import Any
 
 import pytest
+
 from lisapy import LisaApi
 
 
@@ -27,11 +28,10 @@ class TestLisaRag:
         self.repo_id: str = repos[0].get("repositoryId", "")
         self.collection_id: str = models[0].get("modelId", "")
 
-    @pytest.mark.skip(reason="Not implemented")
+    @pytest.mark.skip(reason="TODO: Implement test")
     def test_insert_doc(self, lisa_api: LisaApi) -> None:
         lisa_api.ingest_document(self.repo_id, self.collection_id, "test.txt", "This is a test")
 
-    @pytest.fixture
     def test_list_docs(self, lisa_api: LisaApi) -> Any:
         documents = lisa_api.list_documents(self.repo_id, self.collection_id)
         logging.info(
@@ -39,7 +39,7 @@ class TestLisaRag:
         )
         return documents
 
-    @pytest.mark.skip(reason="Not implemented")
+    @pytest.mark.skip(reason="TODO: Implement test")
     def test_delete_doc_by_id(self, lisa_api: LisaApi, test_list_docs: Any) -> None:
         logging.info(test_list_docs)
         # repo_id = "pgvector-rag"
@@ -51,7 +51,7 @@ class TestLisaRag:
         # except Exception as e:
         #     assert "Document not found" in str(e)
 
-    @pytest.mark.skip(reason="Not implemented")
+    @pytest.mark.skip(reason="TODO: Implement test")
     def test_delete_docs_by_name(self, lisa_api: LisaApi, test_list_docs: Any) -> None:
         logging.info(test_list_docs)
         # repo_id = "pgvector-rag"
@@ -62,3 +62,14 @@ class TestLisaRag:
         #     logging.info(f"{response}")
         # except Exception as e:
         #     assert "No documents found" in str(e)
+
+    @pytest.mark.skip(reason="Management Token not supported")
+    def test_similarity_search(self, lisa_api: LisaApi) -> None:
+        response = lisa_api.similarity_search(self.repo_id, self.collection_id, "What is OversightML?")
+        logging.info(f"{response}")
+        assert len(response) > 0
+        # repo_id = "pgvector-rag"
+        # collection_id = "intfloat-tei"
+        # query = "What is the name of the author of this document?"
+        # response = lisa_api.similarity_search(repo_id, collection_id, query)
+        # logging.info(f"{response}")

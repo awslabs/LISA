@@ -629,27 +629,27 @@ export default function Chat ({ sessionId }) {
                                                         iconName: 'settings',
                                                         text: 'Session configuration'
                                                     },
-                                                    ...(config && config.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
+                                                    ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
                                                         [{
                                                             type: 'icon-button',
                                                             id: 'upload-to-rag',
                                                             iconName: 'upload',
                                                             text: 'Upload to RAG'
                                                         }] : []),
-                                                    ...(config && config.configuration.enabledComponents.uploadContextDocs ?
+                                                    ...(config?.configuration.enabledComponents.uploadContextDocs ?
                                                         [{
                                                             type: 'icon-button',
                                                             id: 'add-file-to-context',
                                                             iconName: 'insert-row',
                                                             text: 'Add file to context'
                                                         }] : []),
-                                                    ...(config && config.configuration.enabledComponents.documentSummarization ? [{
+                                                    ...(config?.configuration.enabledComponents.documentSummarization ? [{
                                                         type: 'icon-button',
                                                         id: 'summarize-document',
                                                         iconName: 'transcript',
                                                         text: 'Summarize Document'
                                                     }] : []),
-                                                    ...(config && config.configuration.enabledComponents.editPromptTemplate ?
+                                                    ...(config?.configuration.enabledComponents.editPromptTemplate ?
                                                         [{
                                                             type: 'menu-dropdown',
                                                             id: 'more-actions',

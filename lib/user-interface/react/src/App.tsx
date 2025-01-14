@@ -86,10 +86,10 @@ function App () {
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
     return (
         <HashRouter basename={baseHref}>
-            {config && config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
+            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
             <div
                 id='h'
-                style={{ position: 'sticky', top: 0, paddingTop: config && config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
+                style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
             >
                 <Topbar />
             </div>
@@ -141,7 +141,7 @@ function App () {
                 }
             />
             {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-            {config && config.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
+            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
         </HashRouter>
     );
 }

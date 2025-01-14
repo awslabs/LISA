@@ -23,7 +23,10 @@ The following features can be managed:
 5. Contextual Document Management
     - Control the ability to upload in-context documents
 
-6. System Banner Customization
+6. Document Summarization
+   - Control the ability to access the document summarization feature
+
+7. System Banner Customization
     - Toggle banner visibility
     - Edit banner text
     - Customize text color

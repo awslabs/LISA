@@ -29,8 +29,8 @@ This feature allows users to more easily upload and summarize documents through 
 - Maintains document context for accurate summaries
 
 #### Administration
-In order for your LLMs to show up in this modal, ensure that they have been marked for use during the LLM creation process.
-The LLMs used for summarization need to have a context, token limit, and hosting space allocation great enough for documents to be properly included and parsed with requests.
+In order for your LLMs to show up in this modal, ensure that they have been marked for use during the model creation process. 
+The LLMs you select for summarization need to have a context, token limit, and hosting space allocation large enough for documents to be properly included and parsed with requests.
 
 ## Local development
 

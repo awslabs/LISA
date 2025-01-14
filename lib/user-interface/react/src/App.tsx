@@ -141,7 +141,7 @@ function App () {
                 }
             />
             {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-            {config && config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
+            {config && config.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
         </HashRouter>
     );
 }

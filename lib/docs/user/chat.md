@@ -6,31 +6,37 @@ This repository include an example chatbot web application. The react based web 
 
 ### Document Summarization Feature
 
-This feature allows users to more easily upload and summarize documents through LISA's non-RAG context feature. Through an interactive popup window (modal) users upload a text file they wish to summarize, select an LLM and choose the appropriate prompt summarization template based on their needs. Then they receive an LLM generated summary of their document. This modal includes:
+The Document Summarization feature enables efficient document processing through LISA's non-RAG context functionality. Users can streamline their workflow via an intuitive modal interface that facilitates document upload, LLM selection, and customized summarization template configuration. The system generates comprehensive document summaries tailored to specific requirements.
 
-- Document upload capability
-- Access to available LLMs configured with their environment specifically for summarization purposes
-- Summarization prompts with pre-populated instruction for tailored summaries. Users can also edit these prompts,
-- File context preservation for accurate processing
+#### Core Components
+- Document upload interface
+- Environment-specific LLM integration
+- Configurable summarization templates with customizable parameters
+- Context-preserving file processing
 
-#### How It Works
-1. In a chat session, select the Summarization feature
-2. Select a text document to summarize and upload it to their chat session
-3. Choose an LLM based on your use case
-4. Select the appropriate prompt summarization template and modify as needed
-5. Choose to remain in the existing chat session or start a new session
-6. Submits the request for summarization
-7. Receives the summarized output in the chat session
+#### Operational Workflow
+1. Initiate summarization from active chat session
+2. Upload target document for processing
+3. Select appropriate LLM based on requirements
+4. Configure summarization parameters via template selection/modification
+5. Determine session continuity preference
+6. Execute summarization request
+7. Review generated summary in chat interface
 
-#### Benefits
-- Saves time by quickly extracting key information from documents
-- Customizable summarization based on specific needs
-- User-friendly interface for easy document processing
-- Maintains document context for accurate summaries
+#### Key Benefits
+- Efficient information extraction and processing
+- Flexible summarization parameters for diverse use cases
+- Intuitive user interface optimized for accessibility
+- Enhanced contextual accuracy through preserved document integrity
 
-#### Administration
-In order for your LLMs to show up in this modal, ensure that they have been marked for use during the model creation process.
-The LLMs you select for summarization need to have a context, token limit, and hosting space allocation large enough for documents to be properly included and parsed with requests.
+#### Administrative Configuration
+LLM availability within the summarization modal requires summarization flagging and proper model configuration during initial setup. Selected LLMs must meet minimum requirements for:
+
+- Context window capacity
+- Token limit specifications
+- Adequate hosting resource allocation
+
+These parameters ensure optimal document parsing and request processing capabilities.
 
 ## Local development
 

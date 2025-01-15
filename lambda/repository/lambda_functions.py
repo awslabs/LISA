@@ -305,7 +305,7 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
     docs: list[RagDocument.model_dump] = []
     if document_id:
         # TODO: limit document_id to repo that user has access to.
-        docs = doc_repo.find_by_id(document_id=document_id, join_docs=True)
+        docs = [doc_repo.find_by_id(document_id=document_id, join_docs=True)]
     elif document_name:
         docs = doc_repo.find_by_name(repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True)
 
@@ -324,6 +324,7 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
         doc_repo.delete_by_id(document_id=doc.get("document_id"))
 
     doc_ids = {doc.get("document_id") for doc in docs}
+    # Debug chunks
     subdoc_ids = [sub_id for doc in docs for sub_id in doc.get("sub_docs", [])]
 
     return {
@@ -480,4 +481,4 @@ def list_docs(event: dict, context: dict) -> list[RagDocument.model_dump]:
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
 
-    return cast(list[RagDocument.model_dump], doc_repo.list_all(repository_id, collection_id, True))
+    return cast(list[RagDocument.model_dump], doc_repo.list_all(repository_id, collection_id))

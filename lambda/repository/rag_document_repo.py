@@ -20,6 +20,7 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from models.domain_objects import RagDocument, RagSubDocument
 
+
 logger = logging.getLogger(__name__)
 
 MAX_SUBDOCS = 1
@@ -52,13 +53,14 @@ class RagDocumentRepository:
         try:
             document = self.find_by_id(document_id)
             subdocs = self.find_subdocs_by_id(document_id)
-            self.doc_table.delete_item(
-                Key={"pk": document["pk"], "document_id": document["document_id"]}
-            )
 
             with self.subdoc_table.batch_writer() as batch:
                 for doc in subdocs:
                     batch.delete_item(Key={"document_id": doc["document_id"], "sk": doc["sk"]})
+
+            self.doc_table.delete_item(
+                Key={"pk": document["pk"], "document_id": document["document_id"]}
+            )
         except ClientError as e:
             print(f"Error deleting document: {e.response['Error']['Message']}")
             raise
@@ -120,7 +122,7 @@ class RagDocumentRepository:
             if not docs:
                 raise ValueError(f"Document not found for document_id {document_id}")
             if join_docs:
-                subdocs = self.find_subdocs_by_id(document_id)
+                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(document_id))
                 docs[0]['subdocs'] = subdocs
             return docs[0]
         except ClientError as e:
@@ -160,7 +162,7 @@ class RagDocumentRepository:
 
         if join_docs:
             for doc in docs:
-                subdocs = self.find_subdocs_by_id(doc.get('document_id'))
+                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get('document_id')))
                 doc['subdocs'] = subdocs
         return docs
 
@@ -191,7 +193,7 @@ class RagDocumentRepository:
 
             if join_docs:
                 for doc in docs:
-                    subdocs = self.find_subdocs_by_id(doc.get('document_id'))
+                    subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get('document_id')))
                     doc['subdocs'] = subdocs
 
             return docs
@@ -216,15 +218,27 @@ class RagDocumentRepository:
             response = self.subdoc_table.query(
                 KeyConditionExpression=Key("document_id").eq(document_id),
             )
-            subdocs: list[RagDocumentDict] = response.get("Items", [])
+            entries: list[RagDocumentDict] = response.get("Items", [])
             # Handle paginated Dynamo results
             while "LastEvaluatedKey" in response:
                 response = self.subdoc_table.query(
                     KeyConditionExpression=Key("document_id").eq(document_id),
                     ExclusiveStartKey=response["LastEvaluatedKey"],
                 )
-                subdocs.extend(response["Items"])
-            return subdocs
+                entries.extend(response["Items"])
+            return entries
         except ClientError as e:
             print(f"Error querying subdocuments: {e.response['Error']['Message']}")
             raise
+
+    @staticmethod
+    def _get_subdoc_ids(entries: RagSubDocumentDict) -> list[str]:
+        """Map subdocuments from a document object.
+
+        Args:
+            document: The document object containing subdocuments
+
+        Returns:
+            List of subdocument dictionaries
+        """
+        return [doc for entry in entries for doc in entry['sub_docs']]

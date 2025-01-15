@@ -14,6 +14,7 @@
 
 """Domain objects for interacting with the model endpoints."""
 
+import logging
 import time
 import uuid
 from enum import Enum
@@ -24,6 +25,7 @@ from pydantic.functional_validators import AfterValidator, field_validator, mode
 from typing_extensions import Self
 from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
 
+logger = logging.getLogger(__name__)
 
 class InferenceContainer(str, Enum):
     """Enum representing the interface container type."""
@@ -312,16 +314,14 @@ class IngestionType(Enum):
     MANUAL = "manual"
 
 
-# RagDocumentDict = TypeVar("RagDocumentType", bound="RagDocument")
-# RagDocumentDict: TypeAlias = "RagDocument.model_dump"
-
 RagDocumentDict: TypeAlias = Dict[str, Any]
 
 class RagSubDocument(BaseModel):
     """Rag Sub-Document Entity for storing in DynamoDB."""
     document_id: str
-    sk: str
-    sub_docs: str
+    sub_docs: list[str] = Field(default_factory=lambda: [])
+    index: int = Field(exclude=True)
+    sk: Optional[str] = None
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -342,8 +342,8 @@ class RagDocument(BaseModel):
     chunk_overlap: int
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: int(time.time()))
+    chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
-    chunks: int
 
 
     def __init__(self, **data: Any) -> None:
@@ -359,7 +359,9 @@ class RagDocument(BaseModel):
         """Chunk the document into smaller sub-documents."""
         chunked_docs: list[RagSubDocument] = []
         for i in range(0, len(self.sub_docs), chunk_size):
-            chunk = RagSubDocument(document_id=self.document_id, subdocs=self.sub_docs[i : i + chunk_size], index=i)
+            sub_docs = self.sub_docs[i : i + chunk_size]
+            logging.info(f"Chunking document {self.document_id} into {sub_docs} sub-documents {i}")
+            chunk = RagSubDocument(document_id=self.document_id, sub_docs=sub_docs, index=i)
             chunked_docs.append(chunk)
         return chunked_docs
 

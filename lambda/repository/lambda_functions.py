@@ -22,7 +22,7 @@ import boto3
 import requests
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
-from models.domain_objects import IngestionType, RagDocument
+from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
 from utilities.common_functions import api_wrapper, get_cert_path, get_groups, get_id_token, get_username, retry_config
 from utilities.exceptions import HTTPException
@@ -393,7 +393,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             source=doc_source,
             subdocs=ids,
             username=username,
-            chunk_strategy={"chunk_size": str(chunk_size), "chunk_overlap": str(chunk_overlap)},
+            chunk_strategy={"type": ChunkStrategyType.FIXED.value, "size": str(chunk_size), "overlap": str(chunk_overlap)},
             ingestion_type=IngestionType.MANUAL,
         )
         doc_repo.save(doc_entity)

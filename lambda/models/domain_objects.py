@@ -317,6 +317,9 @@ class IngestionType(Enum):
 
 RagDocumentDict: TypeAlias = Dict[str, Any]
 
+class ChunkStrategyType(Enum):
+    """Enum for different types of chunking strategies."""
+    FIXED = "fixed"
 
 class RagSubDocument(BaseModel):
     """Rag Sub-Document Entity for storing in DynamoDB."""

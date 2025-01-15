@@ -73,7 +73,11 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             document_name=key,
             source=source,
             subdocs=ids,
-            chunk_strategy={"type": ChunkStrategyType.FIXED.value, "size": str(chunk_size), "overlap": str(chunk_overlap)},
+            chunk_strategy={
+                "type": ChunkStrategyType.FIXED.value,
+                "size": str(chunk_size),
+                "overlap": str(chunk_overlap),
+            },
             username=username,
             ingestion_type=IngestionType.AUTO,
         )

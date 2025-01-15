@@ -393,7 +393,11 @@ def ingest_documents(event: dict, context: dict) -> dict:
             source=doc_source,
             subdocs=ids,
             username=username,
-            chunk_strategy={"type": ChunkStrategyType.FIXED.value, "size": str(chunk_size), "overlap": str(chunk_overlap)},
+            chunk_strategy={
+                "type": ChunkStrategyType.FIXED.value,
+                "size": str(chunk_size),
+                "overlap": str(chunk_overlap),
+            },
             ingestion_type=IngestionType.MANUAL,
         )
         doc_repo.save(doc_entity)

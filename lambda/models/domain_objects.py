@@ -342,8 +342,7 @@ class RagDocument(BaseModel):
     source: str
     username: str
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
-    chunk_size: int
-    chunk_overlap: int
+    chunk_strategy: dict[str, str] = {}
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: int(time.time()))
     chunks: Optional[int] = 0

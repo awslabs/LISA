@@ -159,8 +159,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             document_name=key,
             source=docs[0][0].metadata.get("source"),
             subdocs=all_ids,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+            chunk_strategy={"chunk_size": str(chunk_size), "chunk_overlap": str(chunk_overlap)},
             username=username,
             ingestion_type=IngestionType.AUTO,
         )

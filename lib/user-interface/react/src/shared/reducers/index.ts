@@ -21,6 +21,8 @@ import notificationReducer from './notification.reducer';
 import modalReducer from './modal.reducer';
 import { modelManagementApi } from './model-management.reducer';
 import { configurationApi } from './configuration.reducer';
+import { sessionApi } from './session.reducer';
+import { ragApi } from './rag.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
@@ -28,8 +30,10 @@ const rootReducer: ReducersMapObject = {
     modal: modalReducer,
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
     [configurationApi.reducerPath]: configurationApi.reducer,
+    [sessionApi.reducerPath]: sessionApi.reducer,
+    [ragApi.reducerPath]: ragApi.reducer,
 };
 
-export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware];
+export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware, sessionApi.middleware, ragApi.middleware];
 
 export default rootReducer;

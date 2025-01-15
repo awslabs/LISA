@@ -1,3 +1,40 @@
+# v3.5.0
+## Key Features
+### User Interface Modernization
+- New year new me? We are rolling out an updated user interface (UI) in Q1. This release is the first stage of this effort.
+- **Document Summarization**
+  - Building on existing non-RAG in context capabilities, we added a more comprehensive Document Summarization feature. This includes a dedicated modal interface where users:
+    - Upload text-based documents
+    - Select from approved summarization models
+    - Select and customize summarization prompts
+    - Choose between integrating summaries into existing chat sessions or initiating new ones
+  - System administrators retain full control through configuration settings in the Admin Configuration page
+
+## Other UI Enhancements
+- Refactored chatbot UI in advance of upcoming UI improvements and this launch
+- Consolidated existing chatbot features to streamline the UI
+- Added several components to improve user experience: copy button, response generation animation
+- Markdown formatting updated in LLM responses
+
+## Other System Enhancements
+- Enhanced user data integration with RAG metadata infrastructure, enabling improved file management within vector stores
+- Optimized RAG metadata schema to accommodate expanded documentation requirements
+- Started updating sdk to be compliant with current APIs
+- Implementation of updated corporate brand guidelines
+
+## Coming soon
+Our development roadmap includes several significant UI/UX enhancements:
+- Streamlined vector store file administration and access control
+- Integrated ingestion pipeline management
+- Enhanced Model Management user interface
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v3.4.0...v3.5.0
+
 # v3.4.0
 ## Key Features
 ### Vector Store Support

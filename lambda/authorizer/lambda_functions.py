@@ -54,26 +54,29 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
-
+    groups: str
     if id_token in get_management_tokens():
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username="lisa-management-token")
+        username = "lisa-management-token"
+        # Add management token to Admin groups
+        groups = json.dumps([admin_group])
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
+        allow_policy["context"] = {"username": username, "groups": groups}
         logger.debug(f"Generated policy: {allow_policy}")
         return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-        groups = get_property_path(jwt_data, jwt_groups_property)
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=jwt_data["sub"])
-        allow_policy["context"] = {"username": jwt_data["sub"], "groups": json.dumps(groups or [])}
+        groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
+        username = find_jwt_username(jwt_data)
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
+        allow_policy["context"] = {"username": username, "groups": groups}
 
         if requested_resource.startswith("/models") and not is_admin_user:
             # non-admin users can still list models
             if event["path"].rstrip("/") != "/models":
-                username = jwt_data.get("sub", "user")
                 logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
                 return deny_policy
         if requested_resource.startswith("/configuration") and request_method == "PUT" and not is_admin_user:
-            username = jwt_data.get("sub", "user")
             logger.info(f"Deny access to {username} due to non-admin trying to update configuration.")
             return deny_policy
         logger.debug(f"Generated policy: {allow_policy}")
@@ -160,6 +163,22 @@ def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]
     return current_node
 
 
+def find_jwt_username(jwt_data: dict[str, str]) -> str:
+    """Find the username in the JWT. If the key 'username' doesn't exist, return 'sub', which will be a UUID"""
+    username = None
+    if "username" in jwt_data:
+        username = jwt_data.get("username")
+    if "cognito:username" in jwt_data:
+        username = jwt_data.get("cognito:username")
+    else:
+        username = jwt_data.get("sub")
+
+    if not username:
+        raise ValueError("No username found in JWT")
+
+    return username
+
+
 @cache
 def get_management_tokens() -> list[str]:
     """Return secret management tokens if they exist."""
@@ -170,10 +189,13 @@ def get_management_tokens() -> list[str]:
         secret_tokens.append(
             secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
         )
-        secret_tokens.append(
-            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
-        )
+        try:
+            secret_tokens.append(
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+            )
+        except Exception:
+            logger.info("No previous management token version found")
     except ClientError as e:
-        logger.warn(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
+        logger.warning(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
 
     return secret_tokens

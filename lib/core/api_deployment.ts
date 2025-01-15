@@ -14,11 +14,12 @@
   limitations under the License.
 */
 
-import { CfnOutput, Stack, StackProps, Aws } from 'aws-cdk-lib';
+import { Aws, CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { Deployment, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 
 import { BaseProps } from '../schema';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type LisaApiDeploymentStackProps = {
     restApiId: string;
@@ -43,8 +44,14 @@ export class LisaApiDeploymentStack extends Stack {
         // https://github.com/aws/aws-cdk/issues/25582
         (deployment as any).resource.stageName = config.deploymentStage;
 
+        const api_url = `https://${restApiId}.execute-api.${this.region}.${Aws.URL_SUFFIX}/${config.deploymentStage}`;
+        new StringParameter(this, 'LisaApiDeploymentStringParameter', {
+            parameterName: `${config.deploymentPrefix}/${config.deploymentName}/${config.appName}/LisaApiUrl`,
+            stringValue: api_url,
+            description: 'API Gateway URL for LISA',
+        });
         new CfnOutput(this, 'ApiUrl', {
-            value: `https://${restApiId}.execute-api.${this.region}.${Aws.URL_SUFFIX}/${config.deploymentStage}`,
+            value: api_url,
             description: 'API Gateway URL'
         });
     }

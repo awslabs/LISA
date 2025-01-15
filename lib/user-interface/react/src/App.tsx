@@ -31,7 +31,8 @@ import ModelManagement from './pages/ModelManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
-import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
+import { useLazyGetConfigurationQuery } from './shared/reducers/configuration.reducer';
+import { IConfiguration } from './shared/model/configuration.model';
 
 const PrivateRoute = ({ children }) => {
     const auth = useAuth();
@@ -57,46 +58,58 @@ const AdminRoute = ({ children }) => {
 };
 
 function App () {
-    const [showTools, setShowTools] = useState(false);
-    const [tools, setTools] = useState(null);
+    const [showNavigation, setShowNavigation] = useState(false);
+    const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
+    const auth = useAuth();
+    const [getConfiguration] = useLazyGetConfigurationQuery();
+    const [config, setConfig] = useState<IConfiguration>();
 
     useEffect(() => {
-        if (tools) {
-            setShowTools(true);
-        } else {
-            setShowTools(false);
+        if (!auth.isLoading && auth.isAuthenticated) {
+            getConfiguration('global').then((resp) => {
+                if (resp.data && resp.data.length > 0) {
+                    setConfig(resp.data[0]);
+                }
+            });
         }
-    }, [tools]);
+    }, [auth, getConfiguration]);
+
+    useEffect(() => {
+        if (nav) {
+            setShowNavigation(true);
+        } else {
+            setShowNavigation(false);
+        }
+    }, [nav]);
 
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
     return (
         <HashRouter basename={baseHref}>
-            {config && config[0]?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
+            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
             <div
                 id='h'
-                style={{ position: 'sticky', top: 0, paddingTop: config && config[0]?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
+                style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
             >
                 <Topbar />
             </div>
             <AppLayout
                 headerSelector='#h'
                 footerSelector='#f'
-                navigationHide={true}
-                toolsHide={!showTools}
+                navigationHide={!showNavigation}
+                toolsHide={true}
                 notifications={<NotificationBanner />}
                 stickyNotifications={true}
-                tools={tools}
-                toolsWidth={500}
+                navigation={nav}
+                navigationWidth={450}
                 content={
                     <Routes>
-                        <Route index path='*' element={<Home setTools={setTools} />} />
+                        <Route index path='*' element={<Home setNav={setNav} />} />
                         <Route
                             path='chatbot'
                             element={
                                 <PrivateRoute>
-                                    <Chatbot setTools={setTools} />
+                                    <Chatbot setNav={setNav} />
                                 </PrivateRoute>
                             }
                         />
@@ -104,7 +117,7 @@ function App () {
                             path='chatbot/:sessionId'
                             element={
                                 <PrivateRoute>
-                                    <Chatbot setTools={setTools} />
+                                    <Chatbot setNav={setNav} />
                                 </PrivateRoute>
                             }
                         />
@@ -112,7 +125,7 @@ function App () {
                             path='model-management'
                             element={
                                 <AdminRoute>
-                                    <ModelManagement setTools={setTools} />
+                                    <ModelManagement setNav={setNav} />
                                 </AdminRoute>
                             }
                         />
@@ -120,7 +133,7 @@ function App () {
                             path='configuration'
                             element={
                                 <AdminRoute>
-                                    <Configuration setTools={setTools} />
+                                    <Configuration setNav={setNav} />
                                 </AdminRoute>
                             }
                         />
@@ -128,7 +141,7 @@ function App () {
                 }
             />
             {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-            {config && config[0]?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
+            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
         </HashRouter>
     );
 }

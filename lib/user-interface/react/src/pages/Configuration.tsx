@@ -17,10 +17,10 @@
 import { ReactElement, useEffect } from 'react';
 import ConfigurationComponent from '../components/configuration/ConfigurationComponent';
 
-export function Configuration ({ setTools }): ReactElement {
+export function Configuration ({ setNav }): ReactElement {
     useEffect(() => {
-        setTools(null);
-    }, [setTools]);
+        setNav(null);
+    }, [setNav]);
 
     return <ConfigurationComponent />;
 }

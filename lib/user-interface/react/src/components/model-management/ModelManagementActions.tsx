@@ -31,8 +31,8 @@ import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 export type ModelActionProps = {
     selectedItems: IModel[];
     setSelectedItems: (items: IModel[]) => void;
-    setNewModelModelVisible: (boolean) => void;
-    setEdit: (boolean) => void;
+    setNewModelModelVisible: (state: boolean) => void;
+    setEdit: (state: boolean) => void;
 };
 
 function ModelActions (props: ModelActionProps): ReactElement {

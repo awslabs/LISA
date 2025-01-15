@@ -22,9 +22,9 @@ import boto3
 import requests
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
-from models.domain_objects import IngestionType, RagDocument
+from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
-from utilities.common_functions import api_wrapper, get_cert_path, get_id_token, retry_config
+from utilities.common_functions import api_wrapper, get_cert_path, get_groups, get_id_token, get_username, retry_config
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
@@ -49,7 +49,7 @@ s3 = session.client(
 )
 lisa_api_endpoint = ""
 registered_repositories: List[Dict[str, Any]] = []
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -186,22 +186,14 @@ def _get_embeddings_pipeline(model_name: str) -> Any:
 
 @api_wrapper
 def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
-    """Return info on all available repositories.
-
-    Currently, there is no support for dynamic repositories so only a single OpenSearch repository
-    is returned.
-    """
-
-    user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
+    """Return info on all available repositories."""
+    user_groups = get_groups(event)
     registered_repositories = get_registered_repositories()
-
-    return list(
-        filter(lambda repository: user_has_group(user_groups, repository["allowedGroups"]), registered_repositories)
-    )
+    return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
 
 
 def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
-    """Returns if user groups has at least one intersections with allowed groups.
+    """Returns if user groups has at least one intersection with allowed groups.
 
     If allowed groups is empty this will return True.
     """
@@ -290,39 +282,47 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
 
-    query_string_params = event["queryStringParameters"]
-    collection_id = query_string_params["collectionId"]
+    query_string_params = event.get("queryStringParameters", {})
+    collection_id = query_string_params.get("collectionId")
     document_id = query_string_params.get("documentId")
     document_name = query_string_params.get("documentName")
+
+    ensure_repository_access(event, find_repository_by_id(repository_id))
 
     if not document_id and not document_name:
         raise ValidationError("Either documentId or documentName must be specified")
     if document_id and document_name:
         raise ValidationError("Only one of documentId or documentName must be specified")
 
-    docs = []
+    docs: list[RagDocument.model_dump] = []
     if document_id:
-        docs = [doc_repo.find_by_id(document_id)]
+        docs = [doc_repo.find_by_id(repository_id=repository_id, document_id=document_id, join_docs=True)]
     elif document_name:
-        docs = doc_repo.find_by_name(repository_id, collection_id, document_name)
+        docs = doc_repo.find_by_name(
+            repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True
+        )
 
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
-
-    # Grab all sub document ids related to the parent document(s)
-    subdoc_ids = [sub_doc for doc in docs for sub_doc in doc.get("sub_docs", [])]
 
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
     vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
 
-    vs.delete(ids=subdoc_ids)
+    for doc in docs:
+        vs.delete(ids=doc.get("subdocs"))
 
-    doc_repo.batch_delete(docs)
+    for doc in docs:
+        doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
+
+    doc_ids = {doc.get("document_id") for doc in docs}
+    subdoc_ids = []
+    for doc in docs:
+        subdoc_ids.extend(doc.get("subdocs"))
 
     return {
         "documentName": docs[0].get("document_name"),
-        "removedDocuments": len(docs),
+        "removedDocuments": len(doc_ids),
         "removedDocumentChunks": len(subdoc_ids),
     }
 
@@ -361,6 +361,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     chunk_overlap = int(query_string_params["chunkOverlap"]) if "chunkOverlap" in query_string_params else None
     logger.info(f"using repository {repository_id}")
 
+    username = get_username(event)
     repository = find_repository_by_id(repository_id)
     ensure_repository_access(event, repository)
 
@@ -369,7 +370,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     texts = []  # list of strings
     metadatas = []  # list of dicts
-    all_ids = []
+    doc_entities = []
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
     vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
@@ -390,14 +391,24 @@ def ingest_documents(event: dict, context: dict) -> dict:
             collection_id=model_name,
             document_name=document_name,
             source=doc_source,
-            sub_docs=ids,
+            subdocs=ids,
+            username=username,
+            chunk_strategy={
+                "type": ChunkStrategyType.FIXED.value,
+                "size": str(chunk_size),
+                "overlap": str(chunk_overlap),
+            },
             ingestion_type=IngestionType.MANUAL,
         )
         doc_repo.save(doc_entity)
+        doc_entities.append(doc_entity)
 
-        all_ids.extend(ids)
-
-    return {"ids": all_ids, "count": len(all_ids)}
+    doc_ids = (doc.document_id for doc in doc_entities)
+    subdoc_ids = [sub_id for doc in doc_entities for sub_id in doc.subdocs]
+    return {
+        "documentIds": doc_ids,
+        "chunkCount": len(subdoc_ids),
+    }
 
 
 @api_wrapper
@@ -422,7 +433,7 @@ def presigned_url(event: dict, context: dict) -> dict:
     key = event["body"]
 
     # Set derived values for conditions and fields
-    username = event["requestContext"]["authorizer"]["username"]
+    username = get_username(event)
 
     # Conditions is an array of dictionaries.
     # content-length-range restricts the size of the file uploaded
@@ -442,13 +453,8 @@ def presigned_url(event: dict, context: dict) -> dict:
     return {"response": response}
 
 
-def get_groups(event: Any) -> List[str]:
-    groups: List[str] = json.loads(event["requestContext"]["authorizer"]["groups"])
-    return groups
-
-
 @api_wrapper
-def list_docs(event: dict, context: dict) -> List[RagDocument]:
+def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_dump] | str | None]:
     """List all documents for a given repository/collection.
 
     Args:
@@ -458,8 +464,8 @@ def list_docs(event: dict, context: dict) -> List[RagDocument]:
         context (dict): The Lambda context object
 
     Returns:
-        list[RagDocument]: A list of RagDocument objects representing all documents
-            in the specified collection
+        Tuple list[RagDocument], dict[lastEvaluatedKey]: A list of RagDocument objects representing all documents
+            in the specified collection and the last evaluated key for pagination
 
     Raises:
         KeyError: If collectionId is not provided in queryStringParameters
@@ -470,6 +476,9 @@ def list_docs(event: dict, context: dict) -> List[RagDocument]:
 
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
+    last_evaluated = query_string_params.get("lastEvaluated")
 
-    docs: List[RagDocument] = doc_repo.list_all(repository_id, collection_id)
-    return docs
+    docs, last_evaluated = doc_repo.list_all(
+        repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated
+    )
+    return {"documents": docs, "lastEvaluated": last_evaluated}

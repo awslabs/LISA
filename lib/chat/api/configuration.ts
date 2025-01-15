@@ -104,7 +104,8 @@ export class ConfigurationApi extends Construct {
                                 'editChatHistoryBuffer': {'BOOL': 'True'},
                                 'editNumOfRagDocument': {'BOOL': 'True'},
                                 'uploadRagDocs': {'BOOL': 'True'},
-                                'uploadContextDocs': {'BOOL': 'True'}
+                                'uploadContextDocs': {'BOOL': 'True'},
+                                'documentSummarization': {'BOOL': 'True'},
                             }},
                             'systemBanner': {'M': {
                                 'isEnabled': {'BOOL': 'False'},

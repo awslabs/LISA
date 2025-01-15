@@ -14,31 +14,44 @@
   limitations under the License.
 */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from 'react-oidc-context';
 import Table from '@cloudscape-design/components/table';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
 import { Pagination } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { DateTime } from 'luxon';
-import { Link } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { v4 as uuidv4 } from 'uuid';
-import { LisaChatSession } from '../types';
-import { listSessions, deleteSession, deleteUserSessions } from '../utils';
-import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import {
+    sessionApi,
+    useDeleteAllSessionsForUserMutation,
+    useDeleteSessionByIdMutation,
+    useListSessionsQuery
+} from '../../shared/reducers/session.reducer';
+import { useAppDispatch } from '../../config/store';
+import { useNotificationService } from '../../shared/util/hooks';
+import { useEffect, useState } from 'react';
+import { useAuth } from 'react-oidc-context';
+import { IConfiguration } from '../../shared/model/configuration.model';
 
 export function Sessions () {
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
-    const [sessions, setSessions] = useState<LisaChatSession[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const { items, collectionProps, paginationProps } = useCollection(sessions, {
+
+    const [selectedItems, setSelectedItems] = useState([]);
+    const [deleteById, { isSuccess: isDeleteByIdSuccess, isError: isDeleteByIdError, error: deleteByIdError, isLoading: isDeleteByIdLoading },] = useDeleteSessionByIdMutation();
+    const [deleteUserSessions, { isSuccess: isDeleteUserSessionsSuccess, isError: isDeleteUserSessionsError, error: deleteUserSessionsError, isLoading: isDeleteUserSessionsLoading },] = useDeleteAllSessionsForUserMutation();
+    const [getConfiguration] = useLazyGetConfigurationQuery();
+    const [config, setConfig] = useState<IConfiguration>();
+    const { data: sessions, isLoading } = useListSessionsQuery(null, {refetchOnMountOrArgChange: 5});
+    const { items, collectionProps, paginationProps } = useCollection(sessions ?? [], {
         filtering: {
             empty: (
-                <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                <Box margin={{ vertical: 'xs' }} textAlign='center'>
                     <SpaceBetween size='m'>
                         <b>No history</b>
                     </SpaceBetween>
@@ -58,28 +71,32 @@ export function Sessions () {
     });
 
     useEffect(() => {
-        doListSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        if (!auth.isLoading && auth.isAuthenticated) {
+            getConfiguration('global').then((resp) => {
+                if (resp.data && resp.data.length > 0) {
+                    setConfig(resp.data[0]);
+                }
+            });
+        }
+    }, [auth, getConfiguration]);
 
-    const doListSessions = useCallback(async () => {
-        setIsLoading(true);
-        const sessions = await listSessions(auth.user?.id_token);
-        setSessions(sessions || []);
-        setIsLoading(false);
-    }, [auth.user?.id_token]);
+    useEffect(() => {
+        if (!isDeleteByIdLoading && isDeleteByIdSuccess) {
+            notificationService.generateNotification('Successfully deleted session', 'success');
+        } else if (!isDeleteByIdLoading && isDeleteByIdError) {
+            notificationService.generateNotification(`Error deleting session: ${deleteByIdError.data?.message ?? deleteByIdError.data}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDeleteByIdSuccess, isDeleteByIdError, deleteByIdError, isDeleteByIdLoading]);
 
-    const doDeleteSession = async (sessionId) => {
-        const status = await deleteSession(sessionId, auth.user?.id_token);
-        void status;
-        doListSessions();
-    };
-
-    const doDeleteUserSessions = async () => {
-        const status = await deleteUserSessions(auth.user?.id_token);
-        void status;
-        doListSessions();
-    };
+    useEffect(() => {
+        if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
+            notificationService.generateNotification('Successfully deleted all user sessions', 'success');
+        } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
+            notificationService.generateNotification(`Error deleting user sessions: ${deleteUserSessionsError.data?.message ?? deleteUserSessionsError.data}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
     return (
         <div className='p-5'>
@@ -89,14 +106,19 @@ export function Sessions () {
                 items={items}
                 pagination={<Pagination {...paginationProps} />}
                 loadingText='Loading history'
-                loading={isLoading}
+                loading={isLoading || isDeleteByIdLoading || isDeleteUserSessionsLoading}
+                selectedItems={selectedItems}
+                onSelectionChange={({ detail }) =>
+                    setSelectedItems(detail.selectedItems)
+                }
                 resizableColumns
                 sortingDescending={true}
+                selectionType='multi'
                 columnDefinitions={[
                     {
                         id: 'title',
                         header: 'Title',
-                        cell: (e) => <Link to={`/chatbot/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
+                        cell: (e) => <Link variant='primary' href={`#/chatbot/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
                         sortingField: 'title',
                         isRowHeader: true,
                     },
@@ -109,22 +131,6 @@ export function Sessions () {
                             return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
                         },
                     },
-                    {
-                        id: 'actions',
-                        header: 'Actions',
-                        cell: (item) => (
-                            <SpaceBetween direction='horizontal' size='m'>
-                                <Button variant='inline-link'>
-                                    <Link to={`/chatbot/${item.sessionId}`}>Open</Link>
-                                </Button>
-                                {config && config[0]?.configuration.enabledComponents.deleteSessionHistory &&
-                                <Button variant='inline-link' onClick={() => doDeleteSession(item.sessionId)}>
-                                    Delete
-                                </Button>}
-                            </SpaceBetween>
-                        ),
-                        minWidth: 170,
-                    },
                 ]}
                 header={
                     <Header
@@ -132,24 +138,32 @@ export function Sessions () {
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
                                     <Button iconName='add-plus' variant='inline-link'>
-                                        <Link to={`/chatbot/${uuidv4()}`}>New</Link>
+                                        <Link href={`/#/chatbot/${uuidv4()}`}>New</Link>
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'
                                         iconName='refresh'
                                         variant='inline-link'
-                                        onClick={() => doListSessions()}
+                                        onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
                                     >
                                         Refresh
                                     </Button>
-                                    {config && config[0].configuration.enabledComponents.deleteSessionHistory &&
+                                    {config?.configuration.enabledComponents.deleteSessionHistory &&
                                     <Button
-                                        iconAlt='Delete all sessions'
+                                        iconAlt='Delete session(s)'
                                         iconName='delete-marker'
                                         variant='inline-link'
-                                        onClick={() => doDeleteUserSessions()}
+                                        onClick={() => {
+                                            if (selectedItems && selectedItems.length === 1) {
+                                                setSelectedItems([]);
+                                                deleteById(selectedItems[0].sessionId);
+                                            } else {
+                                                deleteUserSessions();
+                                            }
+                                        }}
+                                        disabled={selectedItems.length > 1 && (selectedItems.length > 1 && selectedItems.length !== items.length)}
                                     >
-                                        Delete all
+                                        {selectedItems && selectedItems.length === 1 ? 'Delete one' : 'Delete all'}
                                     </Button>}
                                 </SpaceBetween>
                             </div>

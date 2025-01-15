@@ -21,14 +21,14 @@ import { useAuth } from 'react-oidc-context';
 import chatImg from '../assets/chat.png';
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';
 
-export function Home ({ setTools }) {
+export function Home ({ setNav }) {
     const navigate = useNavigate();
     const [visible, setVisible] = useState(false);
     const auth = useAuth();
 
     useEffect(() => {
-        setTools(null);
-    }, [setTools]);
+        setNav(null);
+    }, [setNav]);
 
     useEffect(() => {
         if (auth.isAuthenticated) {

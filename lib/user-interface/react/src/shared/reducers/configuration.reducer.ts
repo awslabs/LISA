@@ -51,5 +51,6 @@ export const configurationApi = createApi({
 
 export const {
     useGetConfigurationQuery,
-    useUpdateConfigurationMutation
+    useUpdateConfigurationMutation,
+    useLazyGetConfigurationQuery
 } = configurationApi;

@@ -16,7 +16,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, cast, Dict, List
 
 import boto3
 import requests
@@ -49,7 +49,7 @@ s3 = session.client(
 )
 lisa_api_endpoint = ""
 registered_repositories: List[Dict[str, Any]] = []
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -295,34 +295,40 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
     document_id = query_string_params.get("documentId")
     document_name = query_string_params.get("documentName")
 
+    ensure_repository_access(event, find_repository_by_id(repository_id))
+
     if not document_id and not document_name:
         raise ValidationError("Either documentId or documentName must be specified")
     if document_id and document_name:
         raise ValidationError("Only one of documentId or documentName must be specified")
 
-    docs = []
+    docs: list[RagDocument.model_dump] = []
     if document_id:
-        docs = [doc_repo.find_by_id(document_id)]
+        # TODO: limit document_id to repo that user has access to.
+        docs = doc_repo.find_by_id(document_id=document_id, join_docs=True)
     elif document_name:
-        docs = doc_repo.find_by_name(repository_id, collection_id, document_name)
+        docs = doc_repo.find_by_name(repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True)
 
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
 
-    # Grab all sub document ids related to the parent document(s)
-    subdoc_ids = [sub_doc for doc in docs for sub_doc in doc.get("sub_docs", [])]
-
+    logging.error(f"{docs}")
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
     vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
 
-    vs.delete(ids=subdoc_ids)
+    for doc in docs:
+        vs.delete(ids=doc.get("sub_docs"))
 
-    doc_repo.batch_delete(docs)
+    for doc in docs:
+        doc_repo.delete_by_id(document_id=doc.get("document_id"))
+
+    doc_ids = {doc.get("document_id") for doc in docs}
+    subdoc_ids = [sub_id for doc in docs for sub_id in doc.get("sub_docs", [])]
 
     return {
         "documentName": docs[0].get("document_name"),
-        "removedDocuments": len(docs),
+        "removedDocuments": len(doc_ids),
         "removedDocumentChunks": len(subdoc_ids),
     }
 
@@ -370,7 +376,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     texts = []  # list of strings
     metadatas = []  # list of dicts
-    all_ids = []
+    doc_entities = []
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
     vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
@@ -393,13 +399,19 @@ def ingest_documents(event: dict, context: dict) -> dict:
             source=doc_source,
             sub_docs=ids,
             username=username,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
             ingestion_type=IngestionType.MANUAL,
         )
         doc_repo.save(doc_entity)
+        doc_entities.append(doc_entity)
 
-        all_ids.extend(ids)
-
-    return {"ids": all_ids, "count": len(all_ids)}
+    doc_ids = (doc.document_id for doc in doc_entities)
+    subdoc_ids = [sub_id for doc in doc_entities for sub_id in doc.sub_docs]
+    return {
+        "documentIds": doc_ids,
+        "chunkCount": len(subdoc_ids),
+    }
 
 
 @api_wrapper
@@ -445,7 +457,7 @@ def presigned_url(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def list_docs(event: dict, context: dict) -> List[RagDocument]:
+def list_docs(event: dict, context: dict) -> list[RagDocument.model_dump]:
     """List all documents for a given repository/collection.
 
     Args:
@@ -468,5 +480,4 @@ def list_docs(event: dict, context: dict) -> List[RagDocument]:
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
 
-    docs: List[RagDocument] = doc_repo.list_all(repository_id, collection_id)
-    return docs
+    return cast(list[RagDocument.model_dump], doc_repo.list_all(repository_id, collection_id, True))

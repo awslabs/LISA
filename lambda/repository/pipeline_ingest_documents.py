@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
@@ -159,6 +159,8 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             document_name=key,
             source=docs[0][0].metadata.get("source"),
             sub_docs=all_ids,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
             username=username,
             ingestion_type=IngestionType.AUTO,
         )

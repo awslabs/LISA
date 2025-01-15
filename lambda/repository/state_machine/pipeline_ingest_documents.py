@@ -23,7 +23,7 @@ from models.vectorstore import VectorStore
 from repository.lambda_functions import RagDocumentRepository
 from utilities.common_functions import get_username
 
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -73,6 +73,8 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             document_name=key,
             source=source,
             sub_docs=ids,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
             username=username,
             ingestion_type=IngestionType.AUTO,
         )

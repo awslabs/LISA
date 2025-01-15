@@ -14,15 +14,18 @@
 
 """Domain objects for interacting with the model endpoints."""
 
+import logging
 import time
 import uuid
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
+
+logger = logging.getLogger(__name__)
 
 
 class InferenceContainer(str, Enum):
@@ -312,6 +315,28 @@ class IngestionType(Enum):
     MANUAL = "manual"
 
 
+RagDocumentDict: TypeAlias = Dict[str, Any]
+
+
+class ChunkStrategyType(Enum):
+    """Enum for different types of chunking strategies."""
+
+    FIXED = "fixed"
+
+
+class RagSubDocument(BaseModel):
+    """Rag Sub-Document Entity for storing in DynamoDB."""
+
+    document_id: str
+    subdocs: list[str] = Field(default_factory=lambda: [])
+    index: int = Field(exclude=True)
+    sk: Optional[str] = None
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.sk = f"subdoc#{self.document_id}#{self.index}"
+
+
 class RagDocument(BaseModel):
     """Rag Document Entity for storing in DynamoDB."""
 
@@ -322,16 +347,47 @@ class RagDocument(BaseModel):
     document_name: str
     source: str
     username: str
-    sub_docs: List[str] = Field(default_factory=lambda: [])
+    subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
+    chunk_strategy: dict[str, str] = {}
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: int(time.time()))
-
+    chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self.pk = self.createPartitionKey(self.repository_id, self.collection_id)
+        self.chunks = len(self.subdocs)
 
     @staticmethod
     def createPartitionKey(repository_id: str, collection_id: str) -> str:
         return f"{repository_id}#{collection_id}"
+
+    def chunk_doc(self, chunk_size: int = 1000) -> Generator[RagSubDocument, None, None]:
+        """Chunk the document into smaller sub-documents."""
+        total_subdocs = len(self.subdocs)
+        for start_index in range(0, total_subdocs, chunk_size):
+            end_index = min(start_index + chunk_size, total_subdocs)
+            yield RagSubDocument(
+                document_id=self.document_id, subdocs=self.subdocs[start_index:end_index], index=start_index
+            )
+
+    @staticmethod
+    def join_docs(documents: List[RagDocumentDict]) -> List[RagDocumentDict]:
+        """Join the multiple sub-documents into a single document."""
+        # Group documents by document_id
+        grouped_docs: dict[str, List[RagDocumentDict]] = {}
+        for doc in documents:
+            doc_id = doc.get("document_id", "")
+            if doc_id not in grouped_docs:
+                grouped_docs[doc_id] = []
+            grouped_docs[doc_id].append(doc)
+
+        # Join same document_id into single RagDocument
+        joined_docs: List[RagDocumentDict] = []
+        for docs in grouped_docs.values():
+            joined_doc = docs[0]
+            joined_doc["subdocs"] = [sub_doc for doc in docs for sub_doc in (doc.get("subdocs", []) or [])]
+            joined_docs.append(joined_doc)
+
+        return joined_docs

@@ -32,6 +32,7 @@ import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 import { RepositoryApi } from './api/repository';
 import { ARCHITECTURE } from '../core';
@@ -100,7 +101,8 @@ export class LisaRagStack extends Stack {
             ],
         });
 
-        const docTable = new Table(this, createCdkId([config.deploymentName, 'RagDocumentTable']), {
+        const ragTableName = createCdkId([config.deploymentName, 'RagDocumentTable']);
+        const docMetaTable = new Table(this, ragTableName, {
             partitionKey: {
                 name: 'pk', // Composite of repo/collection ids
                 type: AttributeType.STRING,
@@ -109,14 +111,29 @@ export class LisaRagStack extends Stack {
                 name: 'document_id',
                 type: AttributeType.STRING
             },
-            deletionProtection: true,
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
         });
-        docTable.addGlobalSecondaryIndex({
+        docMetaTable.addGlobalSecondaryIndex({
             indexName: 'document_index',
             partitionKey: {
                 name: 'document_id',
                 type: AttributeType.STRING,
+            }
+        });
+        const subDocTable = new Table(this, createCdkId([config.deploymentName, 'RagSubDocumentTable']), {
+            partitionKey: {
+                name: 'document_id',
+                type: AttributeType.STRING,
             },
+            sortKey: {
+                name: 'sk',
+                type: AttributeType.STRING
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
         });
 
         const baseEnvironment: Record<string, string> = {
@@ -126,7 +143,8 @@ export class LisaRagStack extends Stack {
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
             REST_API_VERSION: 'v2',
-            RAG_DOCUMENT_TABLE: docTable.tableName,
+            RAG_DOCUMENT_TABLE: docMetaTable.tableName,
+            RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -356,7 +374,8 @@ export class LisaRagStack extends Stack {
                             type: ragConfig.type,
                             layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
                             registeredRepositoriesParamName,
-                            ragDocumentTable: docTable
+                            ragDocumentTable: docMetaTable,
+                            ragSubDocumentTable: subDocTable,
                         });
                         console.log(`[DEBUG] Successfully created pipeline ${index}`);
                     } catch (error) {
@@ -392,7 +411,8 @@ export class LisaRagStack extends Stack {
         ragRepositoriesParam.grantRead(lambdaRole);
         modelsPs.grantRead(lambdaRole);
         endpointUrl.grantRead(lambdaRole);
-        docTable.grantReadWriteData(lambdaRole);
+        docMetaTable.grantReadWriteData(lambdaRole);
+        subDocTable.grantReadWriteData(lambdaRole);
     }
 
     /**

@@ -68,6 +68,7 @@ type IngestPipelineStateMachineProps = BaseProps & {
     layers?: ILayerVersion[];
     registeredRepositoriesParamName: string;
     ragDocumentTable: Table;
+    ragSubDocumentTable: Table;
 };
 
 /**
@@ -79,7 +80,7 @@ export class IngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable} = props;
+        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable, ragSubDocumentTable} = props;
 
         // Create KMS key for environment variable encryption
         const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
@@ -101,6 +102,7 @@ export class IngestPipelineStateMachine extends Construct {
             OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
             LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
             RAG_DOCUMENT_TABLE: ragDocumentTable.tableName,
+            RAG_SUB_DOCUMENT_TABLE: ragSubDocumentTable.tableName,
             LOG_LEVEL: config.logLevel,
             REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
@@ -135,7 +137,12 @@ export class IngestPipelineStateMachine extends Construct {
                 'dynamodb:PutItem',
                 'dynamodb:UpdateItem',
             ],
-            resources: [ragDocumentTable.tableArn, `${ragDocumentTable.tableArn}/index/*`]
+            resources: [
+                ragDocumentTable.tableArn,
+                `${ragDocumentTable.tableArn}/index/*`,
+                ragSubDocumentTable.tableArn,
+                `${ragSubDocumentTable.tableArn}/index/*`
+            ]
         });
 
         // Create array of policy statements

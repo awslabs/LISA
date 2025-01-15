@@ -18,12 +18,12 @@ from typing import Any, Dict
 
 import boto3
 from models.document_processor import DocumentProcessor
-from models.domain_objects import IngestionType, RagDocument
+from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from models.vectorstore import VectorStore
 from repository.lambda_functions import RagDocumentRepository
 from utilities.common_functions import get_username
 
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -72,7 +72,12 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             collection_id=collection_name,
             document_name=key,
             source=source,
-            sub_docs=ids,
+            subdocs=ids,
+            chunk_strategy={
+                "type": ChunkStrategyType.FIXED.value,
+                "size": str(chunk_size),
+                "overlap": str(chunk_overlap),
+            },
             username=username,
             ingestion_type=IngestionType.AUTO,
         )

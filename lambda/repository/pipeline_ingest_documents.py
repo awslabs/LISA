@@ -25,13 +25,13 @@ from utilities.file_processing import process_record
 from utilities.validation import validate_chunk_params, validate_model_name, validate_repository_type, ValidationError
 from utilities.vector_store import get_vector_store_client
 
-from .lambda_functions import _get_embeddings_pipeline, IngestionType, RagDocument
+from .lambda_functions import _get_embeddings_pipeline, ChunkStrategyType, IngestionType, RagDocument
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"])
+doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
@@ -158,7 +158,12 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             collection_id=embedding_model,
             document_name=key,
             source=docs[0][0].metadata.get("source"),
-            sub_docs=all_ids,
+            subdocs=all_ids,
+            chunk_strategy={
+                "type": ChunkStrategyType.FIXED.value,
+                "size": str(chunk_size),
+                "overlap": str(chunk_overlap),
+            },
             username=username,
             ingestion_type=IngestionType.AUTO,
         )

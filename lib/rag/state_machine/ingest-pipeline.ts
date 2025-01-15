@@ -137,7 +137,12 @@ export class IngestPipelineStateMachine extends Construct {
                 'dynamodb:PutItem',
                 'dynamodb:UpdateItem',
             ],
-            resources: [ragDocumentTable.tableArn, `${ragDocumentTable.tableArn}/index/*`]
+            resources: [
+                ragDocumentTable.tableArn,
+                `${ragDocumentTable.tableArn}/index/*`,
+                ragSubDocumentTable.tableArn,
+                `${ragSubDocumentTable.tableArn}/index/*`
+            ]
         });
 
         // Create array of policy statements

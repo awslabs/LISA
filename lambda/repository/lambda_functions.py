@@ -16,7 +16,7 @@
 import json
 import logging
 import os
-from typing import Any, cast, Dict, List
+from typing import Any, Dict, List
 
 import boto3
 import requests
@@ -451,7 +451,7 @@ def presigned_url(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def list_docs(event: dict, context: dict) -> list[RagDocument.model_dump]:
+def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_dump] | str | None]:
     """List all documents for a given repository/collection.
 
     Args:
@@ -461,8 +461,8 @@ def list_docs(event: dict, context: dict) -> list[RagDocument.model_dump]:
         context (dict): The Lambda context object
 
     Returns:
-        list[RagDocument]: A list of RagDocument objects representing all documents
-            in the specified collection
+        Tuple list[RagDocument], dict[lastEvaluatedKey]: A list of RagDocument objects representing all documents
+            in the specified collection and the last evaluated key for pagination
 
     Raises:
         KeyError: If collectionId is not provided in queryStringParameters
@@ -473,5 +473,9 @@ def list_docs(event: dict, context: dict) -> list[RagDocument.model_dump]:
 
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
+    last_evaluated = query_string_params.get("lastEvaluated")
 
-    return cast(list[RagDocument.model_dump], doc_repo.list_all(repository_id, collection_id))
+    docs, last_evaluated = doc_repo.list_all(
+        repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated
+    )
+    return {"documents": docs, "lastEvaluated": last_evaluated}

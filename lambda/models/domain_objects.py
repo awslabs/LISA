@@ -18,7 +18,7 @@ import logging
 import time
 import uuid
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Optional, TypeAlias, Union
+from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
@@ -358,14 +358,14 @@ class RagDocument(BaseModel):
     def createPartitionKey(repository_id: str, collection_id: str) -> str:
         return f"{repository_id}#{collection_id}"
 
-    def chunk_doc(self, chunk_size: int = 1000) -> list[RagSubDocument]:
+    def chunk_doc(self, chunk_size: int = 1000) -> Generator[RagSubDocument, None, None]:
         """Chunk the document into smaller sub-documents."""
-        chunked_docs: list[RagSubDocument] = []
-        for i in range(0, len(self.subdocs), chunk_size):
-            subdocs = self.subdocs[i : i + chunk_size]
-            chunk = RagSubDocument(document_id=self.document_id, subdocs=subdocs, index=i)
-            chunked_docs.append(chunk)
-        return chunked_docs
+        total_subdocs = len(self.subdocs)
+        for start_index in range(0, total_subdocs, chunk_size):
+            end_index = min(start_index + chunk_size, total_subdocs)
+            yield RagSubDocument(
+                document_id=self.document_id, subdocs=self.subdocs[start_index:end_index], index=start_index
+            )
 
     @staticmethod
     def join_docs(documents: List[RagDocumentDict]) -> List[RagDocumentDict]:

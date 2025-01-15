@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 import logging
-from typing import TypeAlias
+from typing import Optional, TypeAlias
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -75,7 +75,7 @@ class RagDocumentRepository:
             ClientError: If save operation fails
         """
         try:
-            chunked_docs = document.chunk_doc(chunk_size=MAX_SUBDOCS)
+            chunked_docs = list(document.chunk_doc(chunk_size=MAX_SUBDOCS))
             # Save document to metadata table
             self.doc_table.put_item(Item=document.model_dump())
             # Save subdocs to separate table
@@ -165,7 +165,14 @@ class RagDocumentRepository:
                 doc["subdocs"] = subdocs
         return docs
 
-    def list_all(self, repository_id: str, collection_id: str, join_docs: bool = False) -> list[RagDocumentDict]:
+    def list_all(
+        self,
+        repository_id: str,
+        collection_id: str,
+        last_evaluated_key: Optional[dict] = None,
+        limit: int = 100,
+        join_docs: bool = False,
+    ) -> tuple[list[RagDocumentDict], Optional[dict]]:
         """List all documents in a collection.
 
         Args:
@@ -177,25 +184,18 @@ class RagDocumentRepository:
         """
         try:
             pk = RagDocument.createPartitionKey(repository_id, collection_id)
-            response = self.doc_table.query(
-                KeyConditionExpression=Key("pk").eq(pk),
-            )
+            query_params = {"KeyConditionExpression": Key("pk").eq(pk), "Limit": limit}
+            if last_evaluated_key:
+                query_params["ExclusiveStartKey"] = last_evaluated_key
+            response = self.doc_table.query(**query_params)
             docs: list[RagDocumentDict] = response.get("Items", [])
-
-            # Handle paginated Dynamo results
-            while "LastEvaluatedKey" in response:
-                response = self.doc_table.query(
-                    KeyConditionExpression=Key("pk").eq(pk),
-                    ExclusiveStartKey=response["LastEvaluatedKey"],
-                )
-                docs.extend(response.get("Items", []))
-
+            next_key = response.get("LastEvaluatedKey", None)
             if join_docs:
                 for doc in docs:
                     subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
                     doc["subdocs"] = subdocs
 
-            return docs
+            return docs, next_key
 
         except ClientError as e:
             logging.error(f"Error listing documents: {e.response['Error']['Message']}")

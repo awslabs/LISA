@@ -24,7 +24,7 @@ import Button from '@cloudscape-design/components/button';
 import { DateTime } from 'luxon';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { v4 as uuidv4 } from 'uuid';
-import { useGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
@@ -34,15 +34,19 @@ import {
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { useEffect, useState } from 'react';
+import { useAuth } from 'react-oidc-context';
+import { IConfiguration } from '../../shared/model/configuration.model';
 
 export function Sessions () {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
+    const auth = useAuth();
 
     const [selectedItems, setSelectedItems] = useState([]);
     const [deleteById, { isSuccess: isDeleteByIdSuccess, isError: isDeleteByIdError, error: deleteByIdError, isLoading: isDeleteByIdLoading },] = useDeleteSessionByIdMutation();
     const [deleteUserSessions, { isSuccess: isDeleteUserSessionsSuccess, isError: isDeleteUserSessionsError, error: deleteUserSessionsError, isLoading: isDeleteUserSessionsLoading },] = useDeleteAllSessionsForUserMutation();
-    const { data: config } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: 5});
+    const [getConfiguration] = useLazyGetConfigurationQuery();
+    const [config, setConfig] = useState<IConfiguration>();
     const { data: sessions, isLoading } = useListSessionsQuery(null, {refetchOnMountOrArgChange: 5});
     const { items, collectionProps, paginationProps } = useCollection(sessions ?? [], {
         filtering: {
@@ -65,6 +69,16 @@ export function Sessions () {
         },
         selection: {},
     });
+
+    useEffect(() => {
+        if (!auth.isLoading && auth.isAuthenticated) {
+            getConfiguration('global').then((resp) => {
+                if (resp.data && resp.data.length > 0) {
+                    setConfig(resp.data[0]);
+                }
+            });
+        }
+    }, [auth, getConfiguration]);
 
     useEffect(() => {
         if (!isDeleteByIdLoading && isDeleteByIdSuccess) {
@@ -134,7 +148,7 @@ export function Sessions () {
                                     >
                                         Refresh
                                     </Button>
-                                    {config && config[0].configuration.enabledComponents.deleteSessionHistory &&
+                                    {config?.configuration.enabledComponents.deleteSessionHistory &&
                                     <Button
                                         iconAlt='Delete session(s)'
                                         iconName='delete-marker'

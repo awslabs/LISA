@@ -1,7 +1,42 @@
-
-# Chatbot Example
+# LISA Chat
 
 This repository include an example chatbot web application. The react based web application can be optionally deployed to demonstrate the capabilities of LISA Serve. The chatbot consists of a static react based single page application hosted via API GW S3 proxy integration. The app connects to the LISA Serve REST API and an optional RAG API. The app integrates with an OIDC compatible IdP and allows users to interact directly with any of the textgen models hosted with LISA Serve. If the optional RAG stack is deployed then users can also leverage the embeddings models and AWS OpenSearch or PGVector to demonstrate chat with RAG. Chat sessions are maintained in dynamodb table and a number of parameters are exposed through the UI to allow experimentation with various parameters including prompt, temperature, top k, top p, max tokens, and more.
+
+## Key Features
+
+### Document Summarization Feature
+
+The Document Summarization feature enables efficient document processing through LISA's non-RAG context functionality. Users can streamline their workflow via an intuitive modal interface that facilitates document upload, LLM selection, and customized summarization template configuration. The system generates comprehensive document summaries tailored to specific requirements.
+
+#### Core Components
+- Document upload interface
+- Environment-specific LLM integration
+- Configurable summarization templates with customizable parameters
+- Context-preserving file processing
+
+#### Operational Workflow
+1. Initiate summarization from active chat session
+2. Upload target document for processing
+3. Select appropriate LLM based on requirements
+4. Configure summarization parameters via template selection/modification
+5. Determine session continuity preference
+6. Execute summarization request
+7. Review generated summary in chat interface
+
+#### Key Benefits
+- Efficient information extraction and processing
+- Flexible summarization parameters for diverse use cases
+- Intuitive user interface optimized for accessibility
+- Enhanced contextual accuracy through preserved document integrity
+
+#### Administrative Configuration
+LLM availability within the summarization modal requires summarization flagging and proper model configuration during initial setup. Selected LLMs must meet minimum requirements for:
+
+- Context window capacity
+- Token limit specifications
+- Adequate hosting resource allocation
+
+These parameters ensure optimal document parsing and request processing capabilities.
 
 ## Local development
 

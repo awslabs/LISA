@@ -135,30 +135,6 @@ export class LisaRagStack extends Stack {
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
         });
-        // const docTable = new Table(this, ragTableName, {
-        //     partitionKey: {
-        //         name: 'pk', // Composite of repo/collection ids
-        //         type: AttributeType.STRING,
-        //     },
-        //     sortKey: {
-        //         name: 'sk',
-        //         type: AttributeType.STRING
-        //     },
-        //     billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-        //     encryption: dynamodb.TableEncryption.AWS_MANAGED,
-        //     removalPolicy: config.removalPolicy,
-        // });
-        // docTable.addGlobalSecondaryIndex({
-        //     indexName: 'document_index',
-        //     partitionKey: {
-        //         name: 'document_id',
-        //         type: AttributeType.STRING,
-        //     },
-        //     sortKey: {
-        //         name: 'sk',
-        //         type: AttributeType.STRING
-        //     },
-        // });
 
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,

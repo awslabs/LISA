@@ -363,7 +363,6 @@ class RagDocument(BaseModel):
         chunked_docs: list[RagSubDocument] = []
         for i in range(0, len(self.subdocs), chunk_size):
             subdocs = self.subdocs[i : i + chunk_size]
-            logging.info(f"Chunking document {self.document_id} into {subdocs} sub-documents {i}")
             chunk = RagSubDocument(document_id=self.document_id, subdocs=subdocs, index=i)
             chunked_docs.append(chunk)
         return chunked_docs

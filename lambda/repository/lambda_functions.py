@@ -304,28 +304,29 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     docs: list[RagDocument.model_dump] = []
     if document_id:
-        # TODO: limit document_id to repo that user has access to.
-        docs = [doc_repo.find_by_id(document_id=document_id, join_docs=True)]
+        docs = [doc_repo.find_by_id(repository_id=repository_id, document_id=document_id, join_docs=True)]
     elif document_name:
-        docs = doc_repo.find_by_name(repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True)
+        docs = doc_repo.find_by_name(
+            repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True
+        )
 
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
 
-    logging.error(f"{docs}")
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
     vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
 
     for doc in docs:
-        vs.delete(ids=doc.get("sub_docs"))
+        vs.delete(ids=doc.get("subdocs"))
 
     for doc in docs:
-        doc_repo.delete_by_id(document_id=doc.get("document_id"))
+        doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
 
     doc_ids = {doc.get("document_id") for doc in docs}
-    # Debug chunks
-    subdoc_ids = [sub_id for doc in docs for sub_id in doc.get("sub_docs", [])]
+    subdoc_ids = []
+    for doc in docs:
+        subdoc_ids.extend(doc.get("subdocs"))
 
     return {
         "documentName": docs[0].get("document_name"),
@@ -398,7 +399,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             collection_id=model_name,
             document_name=document_name,
             source=doc_source,
-            sub_docs=ids,
+            subdocs=ids,
             username=username,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -408,7 +409,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
         doc_entities.append(doc_entity)
 
     doc_ids = (doc.document_id for doc in doc_entities)
-    subdoc_ids = [sub_id for doc in doc_entities for sub_id in doc.sub_docs]
+    subdoc_ids = [sub_id for doc in doc_entities for sub_id in doc.subdocs]
     return {
         "documentIds": doc_ids,
         "chunkCount": len(subdoc_ids),

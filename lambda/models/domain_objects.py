@@ -27,6 +27,7 @@ from utilities.validators import validate_all_fields_defined, validate_any_field
 
 logger = logging.getLogger(__name__)
 
+
 class InferenceContainer(str, Enum):
     """Enum representing the interface container type."""
 
@@ -316,16 +317,19 @@ class IngestionType(Enum):
 
 RagDocumentDict: TypeAlias = Dict[str, Any]
 
+
 class RagSubDocument(BaseModel):
     """Rag Sub-Document Entity for storing in DynamoDB."""
+
     document_id: str
-    sub_docs: list[str] = Field(default_factory=lambda: [])
+    subdocs: list[str] = Field(default_factory=lambda: [])
     index: int = Field(exclude=True)
     sk: Optional[str] = None
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self.sk = f"subdoc#{self.document_id}#{self.index}"
+
 
 class RagDocument(BaseModel):
     """Rag Document Entity for storing in DynamoDB."""
@@ -337,7 +341,7 @@ class RagDocument(BaseModel):
     document_name: str
     source: str
     username: str
-    sub_docs: List[str] = Field(default_factory=lambda: [], exclude=True)
+    subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
     chunk_size: int
     chunk_overlap: int
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
@@ -345,11 +349,10 @@ class RagDocument(BaseModel):
     chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 
-
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self.pk = self.createPartitionKey(self.repository_id, self.collection_id)
-        self.chunks = len(self.sub_docs)
+        self.chunks = len(self.subdocs)
 
     @staticmethod
     def createPartitionKey(repository_id: str, collection_id: str) -> str:
@@ -358,10 +361,10 @@ class RagDocument(BaseModel):
     def chunk_doc(self, chunk_size: int = 1000) -> list[RagSubDocument]:
         """Chunk the document into smaller sub-documents."""
         chunked_docs: list[RagSubDocument] = []
-        for i in range(0, len(self.sub_docs), chunk_size):
-            sub_docs = self.sub_docs[i : i + chunk_size]
-            logging.info(f"Chunking document {self.document_id} into {sub_docs} sub-documents {i}")
-            chunk = RagSubDocument(document_id=self.document_id, sub_docs=sub_docs, index=i)
+        for i in range(0, len(self.subdocs), chunk_size):
+            subdocs = self.subdocs[i : i + chunk_size]
+            logging.info(f"Chunking document {self.document_id} into {subdocs} sub-documents {i}")
+            chunk = RagSubDocument(document_id=self.document_id, subdocs=subdocs, index=i)
             chunked_docs.append(chunk)
         return chunked_docs
 
@@ -380,7 +383,7 @@ class RagDocument(BaseModel):
         joined_docs: List[RagDocumentDict] = []
         for docs in grouped_docs.values():
             joined_doc = docs[0]
-            joined_doc["sub_docs"] = [sub_doc for doc in docs for sub_doc in (doc.get("sub_docs", []) or [])]
+            joined_doc["subdocs"] = [sub_doc for doc in docs for sub_doc in (doc.get("subdocs", []) or [])]
             joined_docs.append(joined_doc)
 
         return joined_docs

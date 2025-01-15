@@ -158,7 +158,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             collection_id=embedding_model,
             document_name=key,
             source=docs[0][0].metadata.get("source"),
-            sub_docs=all_ids,
+            subdocs=all_ids,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             username=username,

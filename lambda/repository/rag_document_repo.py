@@ -13,17 +13,16 @@
 #   limitations under the License.
 
 import logging
-from typing import cast, TypeAlias
+from typing import TypeAlias
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from models.domain_objects import RagDocument, RagSubDocument
 
-
 logger = logging.getLogger(__name__)
 
-MAX_SUBDOCS = 1
+MAX_SUBDOCS = 1000
 
 RagDocumentDict: TypeAlias = RagDocument.model_dump
 RagSubDocumentDict: TypeAlias = RagSubDocument.model_dump
@@ -37,7 +36,7 @@ class RagDocumentRepository:
         self.doc_table = self.dynamodb.Table(document_table_name)
         self.subdoc_table = self.dynamodb.Table(sub_document_table_name)
 
-    def delete_by_id(self, document_id: str) -> None:
+    def delete_by_id(self, repository_id: str, document_id: str) -> None:
         """Delete a document using partition key and sort key.
 
         Args:
@@ -51,18 +50,16 @@ class RagDocumentRepository:
             ClientError: If deletion fails
         """
         try:
-            document = self.find_by_id(document_id)
+            document = self.find_by_id(repository_id=repository_id, document_id=document_id)
             subdocs = self.find_subdocs_by_id(document_id)
 
             with self.subdoc_table.batch_writer() as batch:
                 for doc in subdocs:
                     batch.delete_item(Key={"document_id": doc["document_id"], "sk": doc["sk"]})
 
-            self.doc_table.delete_item(
-                Key={"pk": document["pk"], "document_id": document["document_id"]}
-            )
+            self.doc_table.delete_item(Key={"pk": document["pk"], "document_id": document["document_id"]})
         except ClientError as e:
-            print(f"Error deleting document: {e.response['Error']['Message']}")
+            logging.error(f"Error deleting document: {e.response['Error']['Message']}")
             raise
 
     def save(self, document: RagDocument) -> None:
@@ -87,10 +84,10 @@ class RagDocumentRepository:
                     batch.put_item(Item=chunk.model_dump())
 
         except ClientError as e:
-            print(f"Error saving document: {e.response['Error']['Message']}")
+            logging.error(f"Error saving document: {e.response['Error']['Message']}")
             raise
 
-    def find_by_id(self, document_id: str, join_docs: bool = False) -> RagDocumentDict:
+    def find_by_id(self, repository_id: str, document_id: str, join_docs: bool = False) -> RagDocumentDict:
         """Query documents using GSI.
 
         Args:
@@ -107,7 +104,8 @@ class RagDocumentRepository:
             response = self.doc_table.query(
                 IndexName="document_index",
                 KeyConditionExpression="document_id = :document_id",
-                ExpressionAttributeValues={":document_id": document_id},
+                FilterExpression="repository_id = :repository_id",
+                ExpressionAttributeValues={":document_id": document_id, ":repository_id": repository_id},
             )
             docs: list[RagDocumentDict] = response.get("Items", [])
             # Handle paginated Dynamo results
@@ -115,7 +113,8 @@ class RagDocumentRepository:
                 response = self.doc_table.query(
                     IndexName="document_index",
                     KeyConditionExpression="document_id = :document_id",
-                    ExpressionAttributeValues={":document_id": document_id},
+                    FilterExpression="repository_id = :repository_id",
+                    ExpressionAttributeValues={":document_id": document_id, ":repository_id": repository_id},
                     ExclusiveStartKey=response["LastEvaluatedKey"],
                 )
                 docs.extend(response["Items"])
@@ -123,10 +122,10 @@ class RagDocumentRepository:
                 raise ValueError(f"Document not found for document_id {document_id}")
             if join_docs:
                 subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(document_id))
-                docs[0]['subdocs'] = subdocs
+                docs[0]["subdocs"] = subdocs
             return docs[0]
         except ClientError as e:
-            print(f"Error querying document: {e.response['Error']['Message']}")
+            logging.error(f"Error querying document: {e.response['Error']['Message']}")
             raise
 
     def find_by_name(
@@ -162,8 +161,8 @@ class RagDocumentRepository:
 
         if join_docs:
             for doc in docs:
-                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get('document_id')))
-                doc['subdocs'] = subdocs
+                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                doc["subdocs"] = subdocs
         return docs
 
     def list_all(self, repository_id: str, collection_id: str, join_docs: bool = False) -> list[RagDocumentDict]:
@@ -193,13 +192,13 @@ class RagDocumentRepository:
 
             if join_docs:
                 for doc in docs:
-                    subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get('document_id')))
-                    doc['subdocs'] = subdocs
+                    subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                    doc["subdocs"] = subdocs
 
             return docs
 
         except ClientError as e:
-            print(f"Error listing documents: {e.response['Error']['Message']}")
+            logging.error(f"Error listing documents: {e.response['Error']['Message']}")
             raise
 
     def find_subdocs_by_id(self, document_id: str) -> list[RagSubDocumentDict]:
@@ -228,7 +227,7 @@ class RagDocumentRepository:
                 entries.extend(response["Items"])
             return entries
         except ClientError as e:
-            print(f"Error querying subdocuments: {e.response['Error']['Message']}")
+            logging.error(f"Error querying subdocuments: {e.response['Error']['Message']}")
             raise
 
     @staticmethod
@@ -241,4 +240,4 @@ class RagDocumentRepository:
         Returns:
             List of subdocument dictionaries
         """
-        return [doc for entry in entries for doc in entry['sub_docs']]
+        return [doc for entry in entries for doc in entry["subdocs"]]

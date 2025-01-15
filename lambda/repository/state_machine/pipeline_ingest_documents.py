@@ -72,7 +72,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
             collection_id=collection_name,
             document_name=key,
             source=source,
-            sub_docs=ids,
+            subdocs=ids,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             username=username,

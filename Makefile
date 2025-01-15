@@ -154,6 +154,7 @@ createPythonEnvironment:
 installPythonRequirements:
 	pip3 install pip --upgrade
 	pip3 install -r requirements-dev.txt
+	pip3 install -e lisa-sdk
 
 
 ## Set up TypeScript interpreter environment

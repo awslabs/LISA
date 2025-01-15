@@ -54,18 +54,22 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
-
+    groups: str
     if id_token in get_management_tokens():
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username="lisa-management-token")
+        username = "lisa-management-token"
+        # Add management token to Admin groups
+        groups = json.dumps([admin_group])
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
+        allow_policy["context"] = {"username": username, "groups": groups}
         logger.debug(f"Generated policy: {allow_policy}")
         return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-        groups = get_property_path(jwt_data, jwt_groups_property)
+        groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         username = find_jwt_username(jwt_data)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": json.dumps(groups or [])}
+        allow_policy["context"] = {"username": username, "groups": groups}
 
         if requested_resource.startswith("/models") and not is_admin_user:
             # non-admin users can still list models
@@ -185,10 +189,13 @@ def get_management_tokens() -> list[str]:
         secret_tokens.append(
             secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
         )
-        secret_tokens.append(
-            secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
-        )
+        try:
+            secret_tokens.append(
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+            )
+        except Exception:
+            logger.info("No previous management token version found")
     except ClientError as e:
-        logger.warn(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
+        logger.warning(f"Unable to fetch {secret_id}. {e.response['Error']['Code']}: {e.response['Error']['Message']}")
 
     return secret_tokens

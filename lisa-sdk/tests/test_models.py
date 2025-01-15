@@ -12,5 +12,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .api import LisaApi  # noqa: F401
-from .main import LisaLlm  # noqa: F401
+"""Test basic usage of the Lisapy SDK."""
+import logging
+
+from lisapy import LisaLlm
+
+
+def test_list_models(lisa_llm: LisaLlm) -> None:
+    models = lisa_llm.list_models()
+    logging.info(f"Found {len(models)} models - {models}")
+    assert len(models) > 0

@@ -360,7 +360,7 @@ def get_session_id(event: dict) -> str:
 
 def get_groups(event: Any) -> List[str]:
     """Get user groups from event."""
-    groups: List[str] = event.get("requestContext", {}).get("authorizer", {}).get("groups", [])
+    groups: List[str] = json.loads(event.get("requestContext", {}).get("authorizer", {}).get("groups", "[]"))
     return groups
 
 

@@ -86,6 +86,7 @@ export class ModelsApi extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
+        const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
@@ -140,7 +141,7 @@ export class ModelsApi extends Construct {
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
             securityGroups: securityGroups,
@@ -155,7 +156,7 @@ export class ModelsApi extends Construct {
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
             securityGroups: securityGroups,
@@ -167,7 +168,7 @@ export class ModelsApi extends Construct {
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            lambdaLayers: [commonLambdaLayer, fastapiLambdaLayer],
+            lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
             securityGroups: securityGroups,
@@ -193,7 +194,7 @@ export class ModelsApi extends Construct {
             restApi,
             authorizer,
             './lambda',
-            [commonLambdaLayer, fastapiLambdaLayer],
+            lambdaLayers,
             {
                 name: 'handler',
                 resource: 'models',
@@ -272,7 +273,7 @@ export class ModelsApi extends Construct {
                 restApi,
                 authorizer,
                 './lambda',
-                [commonLambdaLayer],
+                lambdaLayers,
                 f,
                 getDefaultRuntime(),
                 vpc,

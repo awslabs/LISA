@@ -39,6 +39,9 @@ OPENAI_ROUTES = (
     # List models
     "models",
     "v1/models",
+    # Model Info
+    "model/info",
+    "v1/model/info",
     # Text completions
     "chat/completions",
     "v1/chat/completions",

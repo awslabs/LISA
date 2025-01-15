@@ -12,5 +12,17 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from .api import LisaApi  # noqa: F401
-from .main import LisaLlm  # noqa: F401
+from .common import BaseMixin
+from .errors import parse_error
+
+
+class DocsMixin(BaseMixin):
+    """Mixin for doc-related operations."""
+
+    def list_docs(self) -> str:
+        response = self._session.get(f"{self.url}/docs")
+        if response.status_code == 200:
+            html: str = response.text
+            return html
+        else:
+            raise parse_error(response.status_code, response)

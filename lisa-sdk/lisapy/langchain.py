@@ -24,7 +24,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Extra, PrivateAttr
 
-from .main import FoundationModel, Lisa
+from .main import FoundationModel, LisaLlm
 
 
 class LisaTextgen(LLM):
@@ -40,8 +40,8 @@ class LisaTextgen(LLM):
     model_name: str
     """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1"""
 
-    client: Lisa
-    """An instance of the Lisa client."""
+    client: LisaLlm
+    """An instance of the Lisa Llm client."""
 
     _foundation_model: FoundationModel = PrivateAttr(default_factory=None)
 
@@ -165,7 +165,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
     model_name: str
     """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1"""
 
-    client: Lisa
+    client: LisaLlm
     """An instance of the Lisa client."""
 
     _foundation_model: FoundationModel = PrivateAttr(default_factory=None)

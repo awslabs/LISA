@@ -32,6 +32,7 @@ const navLinks = [
       { text: 'Configure IdP: Cognito & Keycloak Examples', link: '/admin/idp-config' },
       { text: 'Deployment', link: '/admin/deploy' },
       { text: 'Setting Model Management Admin Group', link: '/admin/model-management-admin' },
+      { text: 'UI Component Configuration', link: '/admin/ui-configuration' },
       { text: 'LiteLLM', link: '/admin/litellm' },
       { text: 'API Overview', link: '/admin/api-overview' },
       { text: 'API Request Error Handling', link: '/admin/api-error' },

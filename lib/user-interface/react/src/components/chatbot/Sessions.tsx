@@ -29,13 +29,14 @@ import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
     useDeleteSessionByIdMutation,
-    useListSessionsQuery
+    useListSessionsQuery,
 } from '../../shared/reducers/session.reducer';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
+import { getBaseURI } from '../utils';
 
 export function Sessions () {
     const dispatch = useAppDispatch();
@@ -118,7 +119,8 @@ export function Sessions () {
                     {
                         id: 'title',
                         header: 'Title',
-                        cell: (e) => <Link variant='primary' href={`#/chatbot/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
+                        cell: (e) => <Link variant='primary'
+                            href={`${getBaseURI()}#/chatbot/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
                         sortingField: 'title',
                         isRowHeader: true,
                     },
@@ -138,7 +140,7 @@ export function Sessions () {
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
                                     <Button iconName='add-plus' variant='inline-link'>
-                                        <Link href={`/#/chatbot/${uuidv4()}`}>New</Link>
+                                        <Link href={`${getBaseURI()}#/chatbot/${uuidv4()}`}>New</Link>
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'

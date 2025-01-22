@@ -31,15 +31,10 @@ jobs:
         uses: actions/configure-pages@v4
       - name: Install root dependencies
         run: |
-          npm install
-      - name: Install dependencies
-        working-directory: ./lib/docs
-        run: npm install
-        env:
-          CI: ""
+          npm ci
       - name: Build with VitePress
-        working-directory: ./lib/docs
-        run: npm run build
+        working-directory: ./
+        run: npm run build -w lib/docs
         env:
           CI: ""
           DOCS_BASE_PATH: '/LISA/'

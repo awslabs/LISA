@@ -1,0 +1,44 @@
+name: Publish LISA NPM GitHub Package
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  PublishLISA:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      # Setup .npmrc file to publish to GitHub Packages
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+      - run: npm ci
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  SendSlackNotification:
+    name: Send Slack Notification
+    needs: [ PublishLISA ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Notification that package has published
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
+          SLACK_TITLE: 'NPM Package Published'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: 'actions url,commit'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> NPM Package publish FAILED for version  ${{ github.event.pull_request.head.ref }}|commit>'
+          SLACK_MESSAGE_ON_SUCCESS: 'NPM Package published SUCCESS for ${{ github.event.pull_request.head.ref }}|commit>.'
+          SLACK_MESSAGE: 'NPM Publish Finished with status ${{ job.status }} for <${{ github.event.pull_request.head.ref }}|commit>'

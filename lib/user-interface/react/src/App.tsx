@@ -15,8 +15,8 @@
 */
 
 import 'regenerator-runtime/runtime';
-import { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
 import { useAuth } from 'react-oidc-context';
@@ -33,6 +33,8 @@ import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confir
 import Configuration from './pages/Configuration';
 import { useLazyGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
+import DocumentLibrary from './pages/DocumentLibrary';
+import RepositoryLibrary from './pages/RepositoryLibrary';
 
 const PrivateRoute = ({ children }) => {
     const auth = useAuth();
@@ -127,6 +129,22 @@ function App () {
                                 <AdminRoute>
                                     <ModelManagement setNav={setNav} />
                                 </AdminRoute>
+                            }
+                        />
+                        <Route
+                            path="library"
+                            element={
+                                <PrivateRoute>
+                                    <RepositoryLibrary setNav={setNav} />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="library/:repoId"
+                            element={
+                                <PrivateRoute>
+                                    <DocumentLibrary setNav={setNav} />
+                                </PrivateRoute>
                             }
                         />
                         <Route

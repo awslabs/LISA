@@ -96,7 +96,7 @@ export type ModelTypes = 'textgen' | 'embedding';
 /**
  * Supported RAG repository types for LISA
  */
-export type RepositoryTypes = 'OpenSearch';
+export type RepositoryTypes = 'OpenSearch' | 'PGVector';
 
 /**
  * Interface for repository
@@ -105,7 +105,29 @@ export type Repository = {
     repositoryId: string;
     repositoryName?: string;
     type: RepositoryTypes;
+    allowedGroups: String[];
 };
+
+/**
+ * Ingestion types for RAG Document
+ */
+export type IngestionType = 'manual' | 'auto';
+
+/**
+ * Interface for RAG Document
+ */
+export type RagDocument = {
+    document_id: string,
+    document_name: string,
+    repository_id: string,
+    collection_id: string,
+    source: string,
+    username: string,
+    chunk_strategy: any,
+    ingestion_type: IngestionType,
+    upload_date: number,
+    chunks: number,
+}
 
 /**
  * Interface for model

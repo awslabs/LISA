@@ -93,6 +93,16 @@ function Topbar () {
                 {
                     type: 'button',
                     variant: 'link',
+                    text: 'Document Library',
+                    disableUtilityCollapse: false,
+                    external: false,
+                    onClick: () => {
+                        navigate('/library');
+                    },
+                },
+                {
+                    type: 'button',
+                    variant: 'link',
                     text: 'Chatbot',
                     disableUtilityCollapse: false,
                     external: false,

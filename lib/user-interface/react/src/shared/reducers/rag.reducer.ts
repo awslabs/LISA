@@ -16,7 +16,7 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { Model, Repository } from '../../components/types';
+import { Model, RagDocument, Repository } from '../../components/types';
 import { Document } from '@langchain/core/documents';
 
 export type S3UploadRequest = {
@@ -41,10 +41,22 @@ type RelevantDocRequest = {
     topK: number
 };
 
+type ListDocumentRequest = {
+    repositoryId: string,
+    query: string,
+    collectionId?: string
+};
+
+type ListRagDocumentRequest = {
+    repositoryId: string,
+    collectionId?: string,
+    lastEvaluatedKey?: string
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories'],
+    tagTypes: ['repositories', 'Docs'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -99,6 +111,14 @@ export const ragApi = createApi({
                 };
             },
         }),
+        listRagDocuments: builder.query<RagDocument[], ListRagDocumentRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/document`,
+                params: { collectionId: request.collectionId, lastEvaluatedKey: request.lastEvaluatedKey },
+            }),
+            transformResponse: (response) => response.documents,
+            providesTags: ['Docs'],
+        }),
     }),
 });
 
@@ -107,5 +127,6 @@ export const {
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,
+    useListRagDocumentsQuery,
     useLazyGetRelevantDocumentsQuery
 } = ragApi;

@@ -38,7 +38,7 @@ class RagMixin(BaseMixin):
         url = f"{self.url}/repository/{repo_id}/document"
         params = {
             "collectionId": collection_id,
-            "documentId": doc_id,
+            "documentIds": [doc_id],
         }
         response = self._session.delete(url=url, params=params)
         if response.status_code == 200:

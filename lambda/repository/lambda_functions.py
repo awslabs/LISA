@@ -258,7 +258,7 @@ def ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) 
 
 
 @api_wrapper
-def delete_document(event: dict, context: dict) -> Dict[str, Any]:
+def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     """Purge all records related to the specified document from the RAG repository. If a documentId is supplied, a
     single document will be removed. If a documentName is supplied, all documents with that name will be removed
 
@@ -267,7 +267,7 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
             - pathParameters.repositoryId: The repository id of VectorStore
             - queryStringParameters.collectionId: The collection identifier
             - queryStringParameters.repositoryType: Type of repository of VectorStore
-            - queryStringParameters.documentId (optional): Name of document to purge
+            - queryStringParameters.documentIds (optional): Array of document IDs to purge
             - queryStringParameters.documentName (optional): Name of document to purge
         context (dict): The Lambda context object
 
@@ -284,19 +284,19 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     query_string_params = event.get("queryStringParameters", {})
     collection_id = query_string_params.get("collectionId")
-    document_id = query_string_params.get("documentId")
+    document_ids = query_string_params.get("documentIds")
     document_name = query_string_params.get("documentName")
 
     ensure_repository_access(event, find_repository_by_id(repository_id))
 
-    if not document_id and not document_name:
+    if not document_ids and not document_name:
         raise ValidationError("Either documentId or documentName must be specified")
-    if document_id and document_name:
+    if document_ids and document_name:
         raise ValidationError("Only one of documentId or documentName must be specified")
 
     docs: list[RagDocument.model_dump] = []
-    if document_id:
-        docs = [doc_repo.find_by_id(repository_id=repository_id, document_id=document_id, join_docs=True)]
+    if document_ids:
+        docs = [doc_repo.find_by_id(repository_id=repository_id, document_id=doc_id, join_docs=True) for doc_id in document_ids]
     elif document_name:
         docs = doc_repo.find_by_name(
             repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True
@@ -304,6 +304,13 @@ def delete_document(event: dict, context: dict) -> Dict[str, Any]:
 
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
+
+    # Verify ownership of documents
+    username = get_username(event)
+    is_admin = is_admin(event)
+    for doc in docs:
+        if not (is_admin or doc.get('username') == username):
+            raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
 
     id_token = get_id_token(event)
     embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
@@ -471,11 +478,11 @@ def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_du
         KeyError: If collectionId is not provided in queryStringParameters
     """
 
-    path_params = event.get("pathParameters", {})
+    path_params = event.get("pathParameters", {}) or {}
     repository_id = path_params.get("repositoryId")
 
-    query_string_params = event.get("queryStringParameters", {})
-    collection_id = query_string_params.get("collectionId")
+    query_string_params = event.get("queryStringParameters", {})  or {}
+    collection_id = query_string_params.get("collectionId", None)
     last_evaluated = query_string_params.get("lastEvaluated")
 
     docs, last_evaluated = doc_repo.list_all(

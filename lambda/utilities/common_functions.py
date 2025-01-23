@@ -351,6 +351,11 @@ def get_username(event: dict) -> str:
     username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
     return username
 
+def is_admin(event: dict) -> str:
+    """Get admin status from event."""
+    admin_group = os.environ.get("ADMIN_GROUP", "")
+    groups = get_groups(event)
+    return admin_group in groups
 
 def get_session_id(event: dict) -> str:
     """Get session_id from event."""

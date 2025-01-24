@@ -15,7 +15,7 @@
 */
 
 import 'regenerator-runtime/runtime';
-import { useEffect, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
@@ -35,10 +35,22 @@ import { useLazyGetConfigurationQuery } from './shared/reducers/configuration.re
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
 import RepositoryLibrary from './pages/RepositoryLibrary';
+import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 
-const PrivateRoute = ({ children }) => {
+
+export type RouteProps = {
+    children: ReactElement[] | ReactElement;
+    showConfig?: string;
+    configs?: IConfiguration
+}
+
+const PrivateRoute = ({ children, showConfig, configs }: RouteProps) => {
+
     const auth = useAuth();
     if (auth.isAuthenticated) {
+        if (showConfig && configs?.configuration.enabledComponents[showConfig] === false) {
+            return <Navigate to={import.meta.env.BASE_URL} />;
+        }
         return children;
     } else if (auth.isLoading) {
         return <Spinner />;
@@ -47,7 +59,7 @@ const PrivateRoute = ({ children }) => {
     }
 };
 
-const AdminRoute = ({ children }) => {
+const AdminRoute = ({ children }: RouteProps) => {
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     if (auth.isAuthenticated && isUserAdmin) {
@@ -93,12 +105,13 @@ function App () {
                 id='h'
                 style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
             >
-                <Topbar />
+                <Topbar enabledComponents={config?.configuration.enabledComponents} configs={config} />
             </div>
             <AppLayout
                 headerSelector='#h'
                 footerSelector='#f'
                 navigationHide={!showNavigation}
+                breadcrumbs={<Breadcrumbs />}
                 toolsHide={true}
                 notifications={<NotificationBanner />}
                 stickyNotifications={true}
@@ -134,7 +147,7 @@ function App () {
                         <Route
                             path="library"
                             element={
-                                <PrivateRoute>
+                                <PrivateRoute showConfig="showRagLibrary" configs={config}>
                                     <RepositoryLibrary setNav={setNav} />
                                 </PrivateRoute>
                             }
@@ -142,7 +155,7 @@ function App () {
                         <Route
                             path="library/:repoId"
                             element={
-                                <PrivateRoute>
+                                <PrivateRoute showConfig="showRagLibrary" configs={config}>
                                     <DocumentLibrary setNav={setNav} />
                                 </PrivateRoute>
                             }

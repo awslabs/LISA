@@ -14,16 +14,9 @@
  limitations under the License.
  */
 
-import {
-    Container,
-    Grid,
-    Header,
-    SpaceBetween,
-    Toggle,
-    Box
-} from '@cloudscape-design/components';
+import { Box, Container, Grid, Header, SpaceBetween, Toggle } from '@cloudscape-design/components';
 import React from 'react';
-import {SetFieldsFunction} from '../../shared/validation';
+import { SetFieldsFunction } from '../../shared/validation';
 
 const configurableOperations = {
     deleteSessionHistory: 'Delete Session History',
@@ -35,6 +28,7 @@ const configurableOperations = {
     uploadRagDocs: 'Upload documents to RAG',
     uploadContextDocs: 'Upload documents to context',
     documentSummarization: 'Document Summarization',
+    showRagLibrary: 'Show RAG Library',
 };
 
 export type ActivatedComponentConfigurationProps = {
@@ -54,7 +48,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                 <Grid gridDefinition={Object.keys(configurableOperations).map(() => ({colspan: 3}))}>
                     {Object.keys(configurableOperations).map((operation) => {
                         return (
-                            <Box textAlign='center'>
+                            <Box textAlign="center" key={operation}>
                                 <SpaceBetween alignItems='center' size='xs'>
                                     <Toggle
                                         onChange={({detail}) => {
@@ -62,7 +56,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                             updatedField[`enabledComponents.${operation}`] = detail.checked;
                                             props.setFields(updatedField);
                                         }}
-                                        checked={props.enabledComponents[operation]}
+                                        checked={props.enabledComponents[operation] || false}
                                         data-cy={`Toggle-${operation}`}
                                     >
                                     </Toggle>

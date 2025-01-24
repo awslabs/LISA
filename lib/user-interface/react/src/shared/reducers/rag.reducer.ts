@@ -53,6 +53,11 @@ type ListRagDocumentRequest = {
     lastEvaluatedKey?: string
 };
 
+type DeleteRagDocumentRequest = {
+    repositoryId: string,
+    documentIds: string[]
+}
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
@@ -119,6 +124,23 @@ export const ragApi = createApi({
             transformResponse: (response) => response.documents,
             providesTags: ['Docs'],
         }),
+        deleteRagDocuments: builder.mutation<undefined, DeleteRagDocumentRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/document`,
+                method: 'DELETE',
+                data: {
+                    documentIds: request.documentIds,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Delete RAG Document Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
+                };
+            },
+            invalidatesTags: ['Docs'],
+        }),
     }),
 });
 
@@ -128,5 +150,6 @@ export const {
     useUploadToS3Mutation,
     useIngestDocumentsMutation,
     useListRagDocumentsQuery,
+    useDeleteRagDocumentsMutation,
     useLazyGetRelevantDocumentsQuery
 } = ragApi;

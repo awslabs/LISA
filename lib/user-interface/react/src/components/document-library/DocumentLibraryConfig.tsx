@@ -16,6 +16,7 @@
 import Link from '@cloudscape-design/components/link';
 import { RagDocument, Repository } from '../types';
 import { PropertyFilterOperator } from '@cloudscape-design/collection-hooks';
+import { formatDate, formatObject } from '../../shared/util/formats';
 
 export const stringOperators: PropertyFilterOperator[] = [':', '!:', '=', '!='];
 
@@ -66,7 +67,6 @@ export const VISIBLE_CONTENT_OPTIONS = [
     },
 ];
 
-
 export const TABLE_DEFINITION: {
     id: string,
     header: string,
@@ -101,9 +101,9 @@ export const TABLE_DEFINITION: {
         sortingField: 'ingestion_type',
         visible: true,
     },
-    { id: 'upload_date', header: 'Upload Date', cell: e => String(e.upload_date), visible: true },
+    { id: 'upload_date', header: 'Upload Date', cell: e => formatDate(e.upload_date), visible: true },
     { id: 'chunks', header: 'Document Chunks', cell: e => String(e.chunks), visible: true },
-    { id: 'chunk_strategy', header: 'Chunk Strategy', cell: e => JSON.stringify(e.chunk_strategy), visible: true },
+    { id: 'chunk_strategy', header: 'Chunk Strategy', cell: e => formatObject(e.chunk_strategy), visible: true },
 ];
 
 export const TABLE_PREFERENCES = (() => TABLE_DEFINITION.map(c => ({ id: c.id, label: c.header })))();

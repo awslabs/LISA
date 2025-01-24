@@ -34,13 +34,15 @@ class RagMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def delete_document_by_id(self, repo_id: str, collection_id: str, doc_id: str) -> dict:
+    def delete_document_by_ids(self, repo_id: str, collection_id: str, doc_ids: list[str]) -> dict:
         url = f"{self.url}/repository/{repo_id}/document"
         params = {
             "collectionId": collection_id,
-            "documentIds": [doc_id],
         }
-        response = self._session.delete(url=url, params=params)
+        body = {
+            "documentIds": doc_ids,
+        }
+        response = self._session.delete(url=url, params=params, body=body)
         if response.status_code == 200:
             deleted_docs: dict = response.json()
             return deleted_docs

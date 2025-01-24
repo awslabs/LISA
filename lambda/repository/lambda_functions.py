@@ -282,17 +282,20 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
 
-    query_string_params = event.get("queryStringParameters", {})
-    collection_id = query_string_params.get("collectionId")
-    document_ids = query_string_params.get("documentIds")
+    query_string_params = event.get("queryStringParameters", {})  or {}
+    collection_id = query_string_params.get("collectionId", None)
+    body = json.loads(event.get("body", "{}"))
+    document_ids = body.get("documentIds", None)
     document_name = query_string_params.get("documentName")
 
     ensure_repository_access(event, find_repository_by_id(repository_id))
 
     if not document_ids and not document_name:
-        raise ValidationError("Either documentId or documentName must be specified")
+        raise ValidationError("No 'documentIds' or 'documentName' parameter supplied")
     if document_ids and document_name:
-        raise ValidationError("Only one of documentId or documentName must be specified")
+        raise ValidationError("Only one of documentIds or documentName must be specified")
+    if not collection_id and document_name:
+        raise ValidationError("A 'collectionId' must be included to delete a document by name")
 
     docs: list[RagDocument.model_dump] = []
     if document_ids:

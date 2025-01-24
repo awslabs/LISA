@@ -350,7 +350,7 @@ class RagDocument(BaseModel):
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
     chunk_strategy: dict[str, str] = {}
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
-    upload_date: int = Field(default_factory=lambda: int(time.time()))
+    upload_date: int = Field(default_factory=lambda: int(time.time()*1000))
     chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 

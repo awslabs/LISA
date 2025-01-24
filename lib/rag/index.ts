@@ -153,6 +153,7 @@ export class LisaRagStack extends Stack {
             REST_API_VERSION: 'v2',
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
+            ADMIN_GROUP: config.authConfig!.adminGroup,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API

@@ -24,7 +24,7 @@ from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
-from utilities.common_functions import api_wrapper, get_cert_path, get_groups, get_id_token, get_username, retry_config
+from utilities.common_functions import api_wrapper, get_cert_path, get_groups, get_id_token, get_username, retry_config, is_admin
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
@@ -251,11 +251,18 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
 
 def ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
-    "Ensures a user has access to the repository or else raises an HTTPException"
+    """Ensures a user has access to the repository or else raises an HTTPException"""
     user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
     if not user_has_group(user_groups, repository["allowedGroups"]):
         raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
+def _ensure_document_ownership(event: dict[str, Any], docs: dict[str, Any]) -> None:
+    """Verify ownership of documents"""
+    username = get_username(event)
+    admin = is_admin(event)
+    for doc in docs:
+        if not (admin or doc.get('username') == username):
+            raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
 
 @api_wrapper
 def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
@@ -281,14 +288,11 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     """
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
-
     query_string_params = event.get("queryStringParameters", {})  or {}
     collection_id = query_string_params.get("collectionId", None)
     body = json.loads(event.get("body", "{}"))
     document_ids = body.get("documentIds", None)
     document_name = query_string_params.get("documentName")
-
-    ensure_repository_access(event, find_repository_by_id(repository_id))
 
     if not document_ids and not document_name:
         raise ValidationError("No 'documentIds' or 'documentName' parameter supplied")
@@ -296,6 +300,8 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("Only one of documentIds or documentName must be specified")
     if not collection_id and document_name:
         raise ValidationError("A 'collectionId' must be included to delete a document by name")
+
+    ensure_repository_access(event, find_repository_by_id(repository_id))
 
     docs: list[RagDocument.model_dump] = []
     if document_ids:
@@ -308,23 +314,25 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
 
-    # Verify ownership of documents
-    username = get_username(event)
-    is_admin = is_admin(event)
-    for doc in docs:
-        if not (is_admin or doc.get('username') == username):
-            raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
+    _ensure_document_ownership(event, docs)
 
     id_token = get_id_token(event)
-    embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
-    vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
-
+    vs_collection_map = {}
     for doc in docs:
+        # Get vector store for document collection
+        collection_id = doc.get("collection_id")
+        vs = vs_collection_map.get(collection_id)
+        if not vs:
+            embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
+            vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
+            vs_collection_map[collection_id] = vs
+        # Delete all document chunks from vector store collection
         vs.delete(ids=doc.get("subdocs"))
 
     for doc in docs:
         doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
 
+    # Collect all document parts for summary of deletion
     doc_ids = {doc.get("document_id") for doc in docs}
     subdoc_ids = []
     for doc in docs:

@@ -37,7 +37,7 @@
     "regenerator-runtime": "^0.14.0",
     "remark-breaks": "^4.0.0",
     "tailwindcss": "^3.3.3",
-    "typescript": "^5.0.2",
+    "typescript": "~5.1.6",
     "unraw": "^3.0.0"
   },
   "devDependencies": {
@@ -46,8 +46,8 @@
     "@types/redux-mock-store": "^1.0.6",
     "@types/redux-persist": "^4.3.1",
     "@types/uuid": "^9.0.2",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.6.0",
     "@vitejs/plugin-react-swc": "^3.3.2",
     "autoprefixer": "^10.4.14",
     "eslint": "^8.45.0",

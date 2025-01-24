@@ -30,9 +30,10 @@ import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import { PAGE_SIZE_OPTIONS, TABLE_COLUMN_DISPLAY, TABLE_DEFINITION, TABLE_PREFERENCES } from './DocumentLibraryConfig';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import Box from '@cloudscape-design/components/box';
-import { useAppSelector } from '../../config/store';
+import { useAppDispatch, useAppSelector } from '../../config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import { RagDocument } from '../types';
+import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 
 interface DocumentLibraryComponentProps {
     repositoryId?: string;
@@ -57,6 +58,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     const currentUser = useAppSelector(selectCurrentUsername);
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const [preferences, setPreferences] = useState({ pageSize: 10, contentDisplay: TABLE_COLUMN_DISPLAY });
+    const dispatch = useAppDispatch();
 
     const { items, actions, filteredItemsCount, collectionProps, filterProps, paginationProps } = useCollection(
         allDocs ?? [], {
@@ -91,11 +93,20 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     const handleAction = async (e: any) => {
         switch (e.detail.id) {
             case 'rm':
-                deleteMutation({
-                    repositoryId,
-                    documentIds: collectionProps.selectedItems.map(doc => doc.document_id),
-                });
+                const documentIds = collectionProps.selectedItems.map(doc => doc.document_id);
+                const documentView = collectionProps.selectedItems.map(doc =>
+                    <li>{doc.collection_id}/{doc.document_name}</li>);
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Delete',
+                        resourceName: 'Documents',
+                        onConfirm: () => deleteMutation({ repositoryId, documentIds }),
+                        description: <div>This will delete the following documents: <ul>{documentView}</ul></div>,
+                    }),
+                );
                 break;
+            default:
+                console.error('Action not implemented', e.detail.id);
         }
     };
 

@@ -79,7 +79,7 @@ describe.each(regions)('API Core Nag Pack Tests | Region Test: %s', (awsRegion) 
 
     test('AwsSolutions CDK NAG Errors', () => {
         const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
-        expect(errors.length).toBe(9);
+        expect(errors.length).toBe(7);
     });
 
     test('NIST800.53r5 CDK NAG Warnings', () => {

@@ -30,6 +30,7 @@ export type IEnabledComponents = {
     uploadRagDocs: boolean;
     uploadContextDocs: boolean;
     documentSummarization: boolean;
+    showRagLibrary: boolean;
 };
 
 export type ISystemBannerConfiguration = {

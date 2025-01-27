@@ -46,13 +46,12 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         chunk_size = int(os.environ["CHUNK_SIZE"])
         chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
         embedding_model = os.environ["EMBEDDING_MODEL"]
-        collection_name = os.environ["COLLECTION_NAME"]
         repository_id = os.environ["REPOSITORY_ID"]
         username = get_username(event)
 
         # Initialize document processor and vectorstore
         doc_processor = DocumentProcessor()
-        vectorstore = VectorStore(collection_name=collection_name, embedding_model=embedding_model)
+        vectorstore = VectorStore(collection_name=embedding_model, embedding_model=embedding_model)
 
         # Download and process document
         s3_client = boto3.client("s3")
@@ -69,7 +68,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         # Store in DocTable
         doc_entity = RagDocument(
             repository_id=repository_id,
-            collection_id=collection_name,
+            collection_id=embedding_model,
             document_name=key,
             source=source,
             subdocs=ids,

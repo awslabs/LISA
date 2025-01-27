@@ -17,91 +17,83 @@
 import { ReactElement, useEffect, useState } from 'react';
 import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
-import CreateModelModal from './create-model/CreateModelModal';
 import {
     CARD_DEFINITIONS,
     DEFAULT_PREFERENCES,
     PAGE_SIZE_OPTIONS,
     VISIBLE_CONTENT_OPTIONS,
-} from './ModelManagementUtils';
-import { ModelActions } from './ModelManagementActions';
-import { IModel } from '../../shared/model/model-management.model';
+} from './RepositoryLibraryConfig';
+import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
+import { Repository } from '../types';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 
-export function ModelManagementComponent () : ReactElement {
-    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: true});
-    const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
+export function RepositoryLibraryComponent (): ReactElement {
+    const {
+        data: allRepos,
+        isFetching: fetchingRepos,
+    } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: 5 });
+
+    const [matchedRepos, setMatchedRepos] = useState<Repository[]>([]);
+
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);
     const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
-
     const [selectedItems, setSelectedItems] = useState([]);
-    const [preferences, setPreferences] = useLocalStorage('ModelManagerPreferences', DEFAULT_PREFERENCES);
-    const [newModelModalVisible, setNewModelModelVisible] = useState(false);
-    const [isEdit, setEdit] = useState(false);
-    const [count, setCount] = useState('');
+    const [preferences, setPreferences] = useLocalStorage('RagPreferences', DEFAULT_PREFERENCES);
+    const [count, setCount] = useState(0);
 
     useEffect(() => {
-        let newPageCount = 0;
-        if (searchText){
-            const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
-            setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
-            newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
-            setCount(filteredModels.length.toString());
+        let newPageCount: number;
+        if (searchText) {
+            const filteredRepos = allRepos.filter((repo) => JSON.stringify(repo).toLowerCase().includes(searchText.toLowerCase()));
+            setMatchedRepos(
+                filteredRepos.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex),
+            );
+            newPageCount = Math.ceil(filteredRepos.length / preferences.pageSize);
+            setCount(filteredRepos.length);
         } else {
-            setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
-            newPageCount = Math.ceil(allModels ? (allModels.length / preferences.pageSize) : 1);
-            setCount(allModels ? allModels.length.toString() : '0');
+            setMatchedRepos(allRepos ? allRepos.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
+            newPageCount = Math.ceil(allRepos ? (allRepos.length / preferences.pageSize) : 1);
+            setCount(allRepos ? allRepos.length : 0);
         }
 
-        if (newPageCount < numberOfPages){
+        if (newPageCount < numberOfPages) {
             setCurrentPageIndex(1);
         }
         setNumberOfPages(newPageCount);
-    }, [allModels, searchText, preferences, currentPageIndex, numberOfPages]);
+    }, [allRepos, searchText, preferences, currentPageIndex, numberOfPages]);
 
     return (
         <>
-            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems}/>
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
                 ariaLabels={{
                     itemSelectionLabel: (e, t) => `select ${t.modelName}`,
-                    selectionGroupLabel: 'Model selection',
+                    selectionGroupLabel: 'Repo selection',
                 }}
                 cardDefinition={CARD_DEFINITIONS}
                 visibleSections={preferences.visibleContent}
-                loadingText='Loading models'
-                items={matchedModels}
-                selectionType='single' // single | multi
-                trackBy='modelId'
+                loadingText='Loading repos'
+                items={matchedRepos}
+                trackBy='repositoryId'
                 variant='full-page'
-                loading={fetchingModels}
+                loading={fetchingRepos}
                 cardsPerRow={[{ cards: 3 }]}
                 header={
-                    <Header
-                        counter={`(${count})` ?? ''}
-                        actions={
-                            <ModelActions
-                                selectedItems={selectedItems}
-                                setSelectedItems={setSelectedItems}
-                                setNewModelModelVisible={setNewModelModelVisible}
-                                setEdit={setEdit}
-                            />
-                        }
-                    >
-                        Models
+                    <Header counter={`(${count})` ?? ''}>
+                        Repositories
                     </Header>
                 }
                 filter={<TextFilter filteringText={searchText}
-                    filteringPlaceholder='Find models'
-                    filteringAriaLabel='Find models'
+                    filteringPlaceholder='Find repos'
+                    filteringAriaLabel='Find repos'
                     onChange={({ detail }) => {
                         setSearchText(detail.filteringText);
                     }} />}
-                pagination={<Pagination currentPageIndex={currentPageIndex} onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)} pagesCount={numberOfPages} />}
+                pagination={<Pagination currentPageIndex={currentPageIndex}
+                    onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
+                    pagesCount={numberOfPages} />}
                 preferences={
                     <CollectionPreferences
                         title='Preferences'
@@ -122,7 +114,7 @@ export function ModelManagementComponent () : ReactElement {
                 empty={
                     <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
                         <SpaceBetween size='m'>
-                            <b>No models</b>
+                            <b>No repositories</b>
                         </SpaceBetween>
                     </Box>
                 }
@@ -131,4 +123,4 @@ export function ModelManagementComponent () : ReactElement {
     );
 }
 
-export default ModelManagementComponent;
+export default RepositoryLibraryComponent;

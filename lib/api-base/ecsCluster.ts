@@ -25,6 +25,7 @@ import {
     Cluster,
     ContainerDefinition,
     ContainerImage,
+    ContainerInsights,
     Ec2Service,
     Ec2ServiceProps,
     Ec2TaskDefinition,
@@ -85,7 +86,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId(['Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             vpc: vpc.vpc,
-            containerInsights: !config.region.includes('iso'),
+            containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
         // Create auto-scaling group

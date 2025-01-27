@@ -553,7 +553,6 @@ const RagRepositoryConfigSchema = z
             s3Bucket: z.string(),
             s3Prefix: z.string(),
             trigger: z.union([z.literal('daily'), z.literal('event')]),
-            collectionName: z.string()
         })).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
         allowedGroups: z.array(z.string()).optional().default([])
     })

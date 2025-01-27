@@ -48,7 +48,6 @@ type PipelineConfig = {
     s3Bucket: string;
     s3Prefix: string;
     trigger: string;
-    collectionName: string;
 };
 
 type RdsConfig = {

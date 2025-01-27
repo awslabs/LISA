@@ -39,13 +39,13 @@ class TestLisaRag:
         return documents
 
     @pytest.mark.skip(reason="TODO: Implement test")
-    def test_delete_doc_by_id(self, lisa_api: LisaApi, test_list_docs: Any) -> None:
+    def test_delete_doc_by_ids(self, lisa_api: LisaApi, test_list_docs: Any) -> None:
         logging.info(test_list_docs)
         # repo_id = "pgvector-rag"
         # collection_id = "intfloat-tei"
         # document_id = "3f738ec0-05e7-4707-989e-0f21d64ee81e"
         # try:
-        #     response = lisa_api.delete_document_by_id(repo_id, collection_id, document_id)
+        #     response = lisa_api.delete_document_by_ids(repo_id, collection_id, [document_id])
         #     logging.info(f"{response}")
         # except Exception as e:
         #     assert "Document not found" in str(e)

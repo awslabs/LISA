@@ -28,7 +28,6 @@ ragRepositories:
       s3Bucket: ${your source s3 bucket}
       s3Prefix: /
       trigger: ${daily or event (on upload)}
-      collectionName: project-mainline
 ```
 
 ### Configuration Parameters
@@ -39,7 +38,6 @@ ragRepositories:
 - **s3Bucket**: The source S3 bucket where documents are stored
 - **s3Prefix**: The prefix within the S3 bucket (root directory in this example)
 - **trigger**: Specifies when the ingestion should occur (daily or on upload event)
-- **collectionName**: The name of the collection in the vector store (project-mainline in this example)
 
 This configuration allows customers to:
 1. Define the chunking process for optimal document segmentation

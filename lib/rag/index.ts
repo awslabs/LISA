@@ -68,7 +68,8 @@ type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
 export class LisaRagStack extends Stack {
 
     // Used to link service role if OpenSeach is used
-    openSearchRegion?: string;
+    openSearchDomain?: IDomain;
+    region: string;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -79,7 +80,7 @@ export class LisaRagStack extends Stack {
         super(scope, id, props);
 
         const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
-
+        this.region = config.region;
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
@@ -122,6 +123,13 @@ export class LisaRagStack extends Stack {
                 type: AttributeType.STRING,
             }
         });
+        docMetaTable.addGlobalSecondaryIndex({
+            indexName: 'repository_index',
+            partitionKey: {
+                name: 'repository_id',
+                type: AttributeType.STRING,
+            }
+        });
         const subDocTable = new Table(this, createCdkId([config.deploymentName, 'RagSubDocumentTable']), {
             partitionKey: {
                 name: 'document_id',
@@ -145,6 +153,7 @@ export class LisaRagStack extends Stack {
             REST_API_VERSION: 'v2',
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
+            ADMIN_GROUP: config.authConfig!.adminGroup,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -221,7 +230,6 @@ export class LisaRagStack extends Stack {
                 }
 
                 let openSearchDomain: IDomain;
-
                 if ('endpoint' in ragConfig.opensearchConfig) {
                     openSearchDomain = Domain.fromDomainEndpoint(
                         this,
@@ -229,9 +237,6 @@ export class LisaRagStack extends Stack {
                         ragConfig.opensearchConfig.endpoint,
                     );
                 } else {
-                    // Service-linked role that Amazon OpenSearch Service will use
-                    this.openSearchRegion = config.region;
-
                     openSearchDomain = new Domain(this, createCdkId(['LisaServeRagRepository', ragConfig.repositoryId]), {
                         domainName: ['lisa-rag', ragConfig.repositoryId].join('-'),
                         // 2.9 is the latest available in ADC regions as of 1/11/24
@@ -290,6 +295,7 @@ export class LisaRagStack extends Stack {
                 // Add explicit dependency on OpenSearch Domain being created
                 openSearchEndpointPs.node.addDependency(openSearchDomain);
                 openSearchEndpointPs.grantRead(lambdaRole);
+                this.openSearchDomain = openSearchDomain;
             } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
                 let rdsPasswordSecret: ISecret;
                 let rdsConnectionInfoPs: StringParameter;
@@ -421,12 +427,12 @@ export class LisaRagStack extends Stack {
      */
     async linkServiceRole () {
         // Only link open search role if being used
-        if (!this.openSearchRegion) {
+        if (!this.openSearchDomain) {
             return;
         }
 
         const iam = new IAMClient({
-            region: this.openSearchRegion
+            region: this.region
         });
         const response = await iam.send(
             new ListRolesCommand({
@@ -436,9 +442,10 @@ export class LisaRagStack extends Stack {
 
         // Only if the role for OpenSearch Service doesn't exist, it will be created.
         if (response.Roles && response.Roles?.length === 0) {
-            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
+            const serviceLinkedRole = new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
                 awsServiceName: 'opensearchservice.amazonaws.com',
             });
+            this.openSearchDomain.node.addDependency(serviceLinkedRole);
         }
     }
 }

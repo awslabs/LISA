@@ -115,9 +115,9 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'delete_document',
+                name: 'delete_documents',
                 resource: 'repository',
-                description: 'Deletes all records associated with a document from the repository',
+                description: 'Deletes all records associated with documents from the repository',
                 path: 'repository/{repositoryId}/document',
                 method: 'DELETE',
                 environment: {

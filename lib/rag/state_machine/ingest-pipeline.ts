@@ -27,7 +27,7 @@ import {
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
-import { BaseProps } from '../../schema';
+import { BaseProps, PipelineConfig } from '../../schema';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
@@ -40,15 +40,6 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
-
-type PipelineConfig = {
-    chunkOverlap: number;
-    chunkSize: number;
-    embeddingModel: string;
-    s3Bucket: string;
-    s3Prefix: string;
-    trigger: string;
-};
 
 type RdsConfig = {
     username: string;

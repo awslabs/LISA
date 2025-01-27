@@ -176,7 +176,7 @@ class PipelineEmbeddings:
         return self.embed_documents([text])[0]
 
 
-def _get_embeddings_pipeline(model_name: str) -> Any:
+def get_embeddings_pipeline(model_name: str) -> Any:
     """
     Get embeddings for pipeline requests using management token.
 

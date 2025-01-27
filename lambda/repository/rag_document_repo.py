@@ -49,6 +49,7 @@ class RagDocumentRepository:
         Raises:
             ClientError: If deletion fails
         """
+        logging.info(f"Removing document {repository_id}:{document_id}")
         try:
             document = self.find_by_id(repository_id=repository_id, document_id=document_id)
             subdocs = self.find_subdocs_by_id(document_id)
@@ -155,6 +156,42 @@ class RagDocumentRepository:
             response = self.doc_table.query(
                 KeyConditionExpression=Key("pk").eq(pk),
                 FilterExpression=Key("document_name").eq(document_name),
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+            docs.extend(response["Items"])
+
+        if join_docs:
+            for doc in docs:
+                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                doc["subdocs"] = subdocs
+        return docs
+
+    def find_by_source(
+        self, repository_id: str, collection_id: str, document_source: str, join_docs: bool = False
+    ) -> list[RagDocumentDict]:
+        """Get a list of documents from the RagDocTable by source.
+
+        Args:
+            document_source (str): The name of the documents to retrieve
+            repository_id (str): The repository id to list documents for
+
+        Returns:
+            list[RagDocument]: A list of document objects matching the specified name
+
+        Raises:
+            KeyError: If no documents are found with the specified name
+        """
+        pk = RagDocument.createPartitionKey(repository_id, collection_id)
+        response = self.doc_table.query(
+            KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("source").eq(document_source)
+        )
+        docs: list[RagDocumentDict] = response["Items"]
+
+        # Handle paginated Dynamo results
+        while "LastEvaluatedKey" in response:
+            response = self.doc_table.query(
+                KeyConditionExpression=Key("pk").eq(pk),
+                FilterExpression=Key("document_name").eq(document_source),
                 ExclusiveStartKey=response["LastEvaluatedKey"],
             )
             docs.extend(response["Items"])

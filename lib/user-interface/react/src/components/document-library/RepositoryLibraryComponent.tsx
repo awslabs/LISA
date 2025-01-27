@@ -22,9 +22,10 @@ import {
     DEFAULT_PREFERENCES,
     PAGE_SIZE_OPTIONS,
     VISIBLE_CONTENT_OPTIONS,
-} from './DocumentLibraryConfig';
+} from './RepositoryLibraryConfig';
 import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
 import { Repository } from '../types';
+import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 
 export function RepositoryLibraryComponent (): ReactElement {
     const {
@@ -38,11 +39,11 @@ export function RepositoryLibraryComponent (): ReactElement {
     const [numberOfPages, setNumberOfPages] = useState<number>(1);
     const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
     const [selectedItems, setSelectedItems] = useState([]);
-    const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+    const [preferences, setPreferences] = useLocalStorage('RagPreferences', DEFAULT_PREFERENCES);
     const [count, setCount] = useState(0);
 
     useEffect(() => {
-        let newPageCount = 0;
+        let newPageCount: number;
         if (searchText) {
             const filteredRepos = allRepos.filter((repo) => JSON.stringify(repo).toLowerCase().includes(searchText.toLowerCase()));
             setMatchedRepos(

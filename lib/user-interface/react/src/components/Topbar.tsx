@@ -112,7 +112,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     disableUtilityCollapse: false,
                     external: false,
                     onClick: () => {
-                        navigate('/library');
+                        navigate('/document-library');
                     },
                 } as ButtonUtility] : []),
                 {

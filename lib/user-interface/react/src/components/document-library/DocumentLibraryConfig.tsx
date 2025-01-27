@@ -13,60 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import Link from '@cloudscape-design/components/link';
-import { RagDocument, Repository } from '../types';
-import { PropertyFilterOperator } from '@cloudscape-design/collection-hooks';
+import { RagDocument } from '../types';
 import { formatDate, formatObject } from '../../shared/util/formats';
-import { ContentDisplayItem } from '@cloudscape-design/components/collection-preferences/interfaces';
+import { CollectionPreferencesProps } from '@cloudscape-design/components';
+import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 
-export const stringOperators: PropertyFilterOperator[] = [':', '!:', '=', '!='];
-
-export const CARD_DEFINITIONS = {
-    header: (repo: Repository) => <Link
-        // href={`${getBaseURI()}#/library/${repo.repositoryId}`}
-        href={`/#/library/${repo.repositoryId}`}
-        fontSize='heading-m'>{repo.repositoryId}</Link>,
-    sections: [
-        {
-            id: 'repositoryName',
-            header: 'Name',
-            content: (repo: Repository) => repo.repositoryName,
-        },
-        {
-            id: 'repoType',
-            header: 'Type',
-            content: (repo: Repository) => repo.type.toString(),
-        },
-        {
-            id: 'allowedGroups',
-            header: 'Allowed Groups',
-            content: (repo: Repository) => `[${repo.allowedGroups.join(', ')}]`,
-        },
-    ],
-};
-
-export const PAGE_SIZE_OPTIONS = [
-    { value: 6, label: '6 Documents' },
-    { value: 12, label: '12 Documents' },
-    { value: 24, label: '24 Documents' },
-    { value: 48, label: '48 Documents' },
-];
-
-export const DEFAULT_PREFERENCES = {
-    pageSize: 12,
-    visibleContent: ['repositoryName', 'repoType', 'allowedGroups'],
-};
-
-export const VISIBLE_CONTENT_OPTIONS = [
-    {
-        label: 'Displayed Properties',
-        options: [
-            { id: 'repositoryName', label: 'Name' },
-            { id: 'repoType', label: 'Type' },
-            { id: 'allowedGroups', label: 'Allowed Groups' },
-        ],
-    },
-];
+export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Documents');
 
 export const TABLE_DEFINITION: {
     id: string,
@@ -109,7 +61,12 @@ export const TABLE_DEFINITION: {
 
 export const TABLE_PREFERENCES = (() => TABLE_DEFINITION.map((c) => ({ id: c.id, label: c.header })))();
 
-export const TABLE_COLUMN_DISPLAY: ContentDisplayItem[] = (() => TABLE_DEFINITION.map((c) => ({
+export const TABLE_COLUMN_DISPLAY: CollectionPreferencesProps.ContentDisplayItem[] = (() => TABLE_DEFINITION.map((c) => ({
     id: c.id,
     visible: c.visible,
 })))();
+
+export const DEFAULT_PREFERENCES = {
+    pageSize: PAGE_SIZE_OPTIONS[0].value,
+    contentDisplay: TABLE_COLUMN_DISPLAY,
+};

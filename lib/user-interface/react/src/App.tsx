@@ -145,7 +145,7 @@ function App () {
                             }
                         />
                         <Route
-                            path='library'
+                            path='document-library'
                             element={
                                 <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                     <RepositoryLibrary setNav={setNav} />
@@ -153,7 +153,7 @@ function App () {
                             }
                         />
                         <Route
-                            path='library/:repoId'
+                            path='document-library/:repoId'
                             element={
                                 <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                     <DocumentLibrary setNav={setNav} />

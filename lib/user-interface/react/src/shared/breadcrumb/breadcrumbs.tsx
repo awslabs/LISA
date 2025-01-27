@@ -17,6 +17,7 @@
 import { BreadcrumbGroup } from '@cloudscape-design/components';
 import { useLocation, useNavigate } from 'react-router-dom';
 import React from 'react';
+import _ from 'lodash';
 
 type BreadcrumbItem = {
     text: string;
@@ -29,18 +30,15 @@ export const Breadcrumbs: React.FC = () => {
 
     const getBreadcrumbItems = (): BreadcrumbItem[] => {
         const pathSegments = location.pathname.split('/').filter((segment) => segment);
-        // Create breadcrumb items array, starting with home
-        const items: BreadcrumbItem[] = [
-            { text: 'Home', href: '/' },
-        ];
+        const items: BreadcrumbItem[] = [];
 
         let currentPath = '';
         pathSegments.forEach((segment) => {
             currentPath += `/${segment}`;
-            const text = segment
-                .split('-')
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
+            const text = _.startCase(segment);
+            // .split('-')
+            // .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            // .join(' ');
 
             items.push({
                 text,

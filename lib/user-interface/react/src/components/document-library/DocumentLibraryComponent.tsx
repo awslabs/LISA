@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { ReactElement, useState } from 'react';
+import { ReactElement } from 'react';
 import {
     ButtonDropdownProps,
     CollectionPreferences,
@@ -27,13 +27,14 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useDeleteRagDocumentsMutation, useListRagDocumentsQuery } from '../../shared/reducers/rag.reducer';
 import Table from '@cloudscape-design/components/table';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
-import { PAGE_SIZE_OPTIONS, TABLE_COLUMN_DISPLAY, TABLE_DEFINITION, TABLE_PREFERENCES } from './DocumentLibraryConfig';
+import { DEFAULT_PREFERENCES, PAGE_SIZE_OPTIONS, TABLE_DEFINITION, TABLE_PREFERENCES } from './DocumentLibraryConfig';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import Box from '@cloudscape-design/components/box';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import { RagDocument } from '../types';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 
 type DocumentLibraryComponentProps = {
     repositoryId?: string;
@@ -57,7 +58,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     }] = useDeleteRagDocumentsMutation();
     const currentUser = useAppSelector(selectCurrentUsername);
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
-    const [preferences, setPreferences] = useState({ pageSize: 10, contentDisplay: TABLE_COLUMN_DISPLAY });
+    const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
     const { items, actions, filteredItemsCount, collectionProps, filterProps, paginationProps } = useCollection(

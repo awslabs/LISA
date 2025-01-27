@@ -28,7 +28,7 @@ const configurableOperations = {
     uploadRagDocs: 'Upload documents to RAG',
     uploadContextDocs: 'Upload documents to context',
     documentSummarization: 'Document Summarization',
-    showRagLibrary: 'Show RAG Library',
+    showRagLibrary: 'Show Document Library',
 };
 
 export type ActivatedComponentConfigurationProps = {

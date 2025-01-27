@@ -42,7 +42,7 @@ class RagMixin(BaseMixin):
         body = {
             "documentIds": doc_ids,
         }
-        response = self._session.delete(url=url, params=params, body=body)
+        response = self._session.delete(url=url, params=params, data=body)
         if response.status_code == 200:
             deleted_docs: dict = response.json()
             return deleted_docs

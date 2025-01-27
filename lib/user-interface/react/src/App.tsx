@@ -42,7 +42,7 @@ export type RouteProps = {
     children: ReactElement[] | ReactElement;
     showConfig?: string;
     configs?: IConfiguration
-}
+};
 
 const PrivateRoute = ({ children, showConfig, configs }: RouteProps) => {
 
@@ -105,7 +105,7 @@ function App () {
                 id='h'
                 style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
             >
-                <Topbar enabledComponents={config?.configuration.enabledComponents} configs={config} />
+                <Topbar configs={config} />
             </div>
             <AppLayout
                 headerSelector='#h'
@@ -145,17 +145,17 @@ function App () {
                             }
                         />
                         <Route
-                            path="library"
+                            path='library'
                             element={
-                                <PrivateRoute showConfig="showRagLibrary" configs={config}>
+                                <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                     <RepositoryLibrary setNav={setNav} />
                                 </PrivateRoute>
                             }
                         />
                         <Route
-                            path="library/:repoId"
+                            path='library/:repoId'
                             element={
-                                <PrivateRoute showConfig="showRagLibrary" configs={config}>
+                                <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                     <DocumentLibrary setNav={setNav} />
                                 </PrivateRoute>
                             }

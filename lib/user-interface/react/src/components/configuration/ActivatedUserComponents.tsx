@@ -48,7 +48,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                 <Grid gridDefinition={Object.keys(configurableOperations).map(() => ({colspan: 3}))}>
                     {Object.keys(configurableOperations).map((operation) => {
                         return (
-                            <Box textAlign="center" key={operation}>
+                            <Box textAlign='center' key={operation}>
                                 <SpaceBetween alignItems='center' size='xs'>
                                     <Toggle
                                         onChange={({detail}) => {

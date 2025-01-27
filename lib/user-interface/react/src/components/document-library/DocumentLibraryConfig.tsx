@@ -17,6 +17,7 @@ import Link from '@cloudscape-design/components/link';
 import { RagDocument, Repository } from '../types';
 import { PropertyFilterOperator } from '@cloudscape-design/collection-hooks';
 import { formatDate, formatObject } from '../../shared/util/formats';
+import { ContentDisplayItem } from '@cloudscape-design/components/collection-preferences/interfaces';
 
 export const stringOperators: PropertyFilterOperator[] = [':', '!:', '=', '!='];
 
@@ -24,7 +25,7 @@ export const CARD_DEFINITIONS = {
     header: (repo: Repository) => <Link
         // href={`${getBaseURI()}#/library/${repo.repositoryId}`}
         href={`/#/library/${repo.repositoryId}`}
-        fontSize="heading-m">{repo.repositoryId}</Link>,
+        fontSize='heading-m'>{repo.repositoryId}</Link>,
     sections: [
         {
             id: 'repositoryName',
@@ -75,11 +76,11 @@ export const TABLE_DEFINITION: {
     isRowHeader?: boolean,
     visible: boolean
 }[] = [
-    { id: 'document_name', header: 'Name', cell: e => e.document_name, sortingField: 'document_name', visible: true },
+    { id: 'document_name', header: 'Name', cell: (e) => e.document_name, sortingField: 'document_name', visible: true },
     {
         id: 'document_id',
         header: 'Document ID',
-        cell: e => e.document_id,
+        cell: (e) => e.document_id,
         sortingField: 'document_id',
         isRowHeader: true,
         visible: true,
@@ -87,25 +88,28 @@ export const TABLE_DEFINITION: {
     {
         id: 'collection_id',
         header: 'Collection ID',
-        cell: e => e.collection_id,
+        cell: (e) => e.collection_id,
         sortingField: 'collection_id',
         visible: true,
     },
-    { id: 'repository_id', header: 'Repository ID', cell: e => e.repository_id, visible: false },
-    { id: 'source', header: 'Source', cell: e => e.source, visible: true },
-    { id: 'username', header: 'Username', cell: e => e.username, sortingField: 'username', visible: true },
+    { id: 'repository_id', header: 'Repository ID', cell: (e) => e.repository_id, visible: false },
+    { id: 'source', header: 'Source', cell: (e) => e.source, visible: true },
+    { id: 'username', header: 'Username', cell: (e) => e.username, sortingField: 'username', visible: true },
     {
         id: 'ingestion_type',
         header: 'Ingestion',
-        cell: e => e.ingestion_type,
+        cell: (e) => e.ingestion_type,
         sortingField: 'ingestion_type',
         visible: true,
     },
-    { id: 'upload_date', header: 'Upload Date', cell: e => formatDate(e.upload_date), visible: true },
-    { id: 'chunks', header: 'Document Chunks', cell: e => String(e.chunks), visible: true },
-    { id: 'chunk_strategy', header: 'Chunk Strategy', cell: e => formatObject(e.chunk_strategy), visible: true },
+    { id: 'upload_date', header: 'Upload Date', cell: (e) => formatDate(e.upload_date), visible: true },
+    { id: 'chunks', header: 'Document Chunks', cell: (e) => String(e.chunks), visible: true },
+    { id: 'chunk_strategy', header: 'Chunk Strategy', cell: (e) => formatObject(e.chunk_strategy), visible: true },
 ];
 
-export const TABLE_PREFERENCES = (() => TABLE_DEFINITION.map(c => ({ id: c.id, label: c.header })))();
+export const TABLE_PREFERENCES = (() => TABLE_DEFINITION.map((c) => ({ id: c.id, label: c.header })))();
 
-export const TABLE_COLUMN_DISPLAY = (() => TABLE_DEFINITION.map(c => ({ id: c.id, visible: c.visible })))();
+export const TABLE_COLUMN_DISPLAY: ContentDisplayItem[] = (() => TABLE_DEFINITION.map((c) => ({
+    id: c.id,
+    visible: c.visible,
+})))();

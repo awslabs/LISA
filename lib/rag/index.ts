@@ -80,7 +80,7 @@ export class LisaRagStack extends Stack {
         super(scope, id, props);
 
         const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
-        this.region = config.region
+        this.region = config.region;
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
@@ -229,7 +229,7 @@ export class LisaRagStack extends Stack {
                     }
                 }
 
-                let openSearchDomain: IDomain
+                let openSearchDomain: IDomain;
                 if ('endpoint' in ragConfig.opensearchConfig) {
                     openSearchDomain = Domain.fromDomainEndpoint(
                         this,
@@ -295,7 +295,7 @@ export class LisaRagStack extends Stack {
                 // Add explicit dependency on OpenSearch Domain being created
                 openSearchEndpointPs.node.addDependency(openSearchDomain);
                 openSearchEndpointPs.grantRead(lambdaRole);
-                this.openSearchDomain = openSearchDomain
+                this.openSearchDomain = openSearchDomain;
             } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
                 let rdsPasswordSecret: ISecret;
                 let rdsConnectionInfoPs: StringParameter;
@@ -445,7 +445,7 @@ export class LisaRagStack extends Stack {
             const serviceLinkedRole = new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
                 awsServiceName: 'opensearchservice.amazonaws.com',
             });
-            this.openSearchDomain.node.addDependency(serviceLinkedRole)
+            this.openSearchDomain.node.addDependency(serviceLinkedRole);
         }
     }
 }

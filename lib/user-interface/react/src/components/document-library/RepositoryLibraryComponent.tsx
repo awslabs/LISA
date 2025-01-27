@@ -73,10 +73,10 @@ export function RepositoryLibraryComponent (): ReactElement {
                 }}
                 cardDefinition={CARD_DEFINITIONS}
                 visibleSections={preferences.visibleContent}
-                loadingText="Loading repos"
+                loadingText='Loading repos'
                 items={matchedRepos}
-                trackBy="repositoryId"
-                variant="full-page"
+                trackBy='repositoryId'
+                variant='full-page'
                 loading={fetchingRepos}
                 cardsPerRow={[{ cards: 3 }]}
                 header={
@@ -85,19 +85,19 @@ export function RepositoryLibraryComponent (): ReactElement {
                     </Header>
                 }
                 filter={<TextFilter filteringText={searchText}
-                                    filteringPlaceholder="Find repos"
-                                    filteringAriaLabel="Find repos"
-                                    onChange={({ detail }) => {
-                                        setSearchText(detail.filteringText);
-                                    }} />}
+                    filteringPlaceholder='Find repos'
+                    filteringAriaLabel='Find repos'
+                    onChange={({ detail }) => {
+                        setSearchText(detail.filteringText);
+                    }} />}
                 pagination={<Pagination currentPageIndex={currentPageIndex}
-                                        onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
-                                        pagesCount={numberOfPages} />}
+                    onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
+                    pagesCount={numberOfPages} />}
                 preferences={
                     <CollectionPreferences
-                        title="Preferences"
-                        confirmLabel="Confirm"
-                        cancelLabel="Cancel"
+                        title='Preferences'
+                        confirmLabel='Confirm'
+                        cancelLabel='Cancel'
                         preferences={preferences}
                         onConfirm={({ detail }) => setPreferences(detail)}
                         pageSizePreference={{
@@ -111,8 +111,8 @@ export function RepositoryLibraryComponent (): ReactElement {
                     />
                 }
                 empty={
-                    <Box margin={{ vertical: 'xs' }} textAlign="center" color="inherit">
-                        <SpaceBetween size="m">
+                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                        <SpaceBetween size='m'>
                             <b>No repositories</b>
                         </SpaceBetween>
                     </Box>

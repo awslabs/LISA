@@ -41,12 +41,6 @@ type RelevantDocRequest = {
     topK: number
 };
 
-type ListDocumentRequest = {
-    repositoryId: string,
-    query: string,
-    collectionId?: string
-};
-
 type ListRagDocumentRequest = {
     repositoryId: string,
     collectionId?: string,
@@ -56,7 +50,7 @@ type ListRagDocumentRequest = {
 type DeleteRagDocumentRequest = {
     repositoryId: string,
     documentIds: string[]
-}
+};
 
 export const ragApi = createApi({
     reducerPath: 'rag',

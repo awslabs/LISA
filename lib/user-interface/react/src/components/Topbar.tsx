@@ -22,16 +22,16 @@ import TopNavigation from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
 import { signOut, useAppSelector } from '../config/store';
 import { selectCurrentUserIsAdmin } from '../shared/reducers/user.reducer';
-import { IConfiguration, IEnabledComponents } from '../shared/model/configuration.model';
+import { IConfiguration } from '../shared/model/configuration.model';
+import { ButtonUtility } from '@cloudscape-design/components/top-navigation/interfaces';
 
 applyDensity(Density.Comfortable);
 
 export type TopbarProps = {
-    enabledComponents?: IEnabledComponents
     configs?: IConfiguration
-}
+};
 
-function Topbar ({ enabledComponents, configs }: TopbarProps): ReactElement {
+function Topbar ({ configs }: TopbarProps): ReactElement {
     const navigate = useNavigate();
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
@@ -82,7 +82,7 @@ function Topbar ({ enabledComponents, configs }: TopbarProps): ReactElement {
                             onClick: () => {
                                 navigate('/configuration');
                             },
-                        },
+                        } as ButtonUtility,
                         {
                             type: 'button',
                             variant: 'link',
@@ -92,7 +92,7 @@ function Topbar ({ enabledComponents, configs }: TopbarProps): ReactElement {
                             onClick: () => {
                                 navigate('/model-management');
                             },
-                        },
+                        } as ButtonUtility
                     ]
                     : []),
                 {
@@ -114,7 +114,7 @@ function Topbar ({ enabledComponents, configs }: TopbarProps): ReactElement {
                     onClick: () => {
                         navigate('/library');
                     },
-                }] : []),
+                } as ButtonUtility] : []),
                 {
                     type: 'menu-dropdown',
                     description: auth.isAuthenticated ? auth.user?.profile.email : undefined,
@@ -141,7 +141,7 @@ function Topbar ({ enabledComponents, configs }: TopbarProps): ReactElement {
                             <svg
                                 width='24'
                                 height='24'
-                                strokeWidth="1.5"
+                                strokeWidth='1.5'
                                 viewBox='0 0 24 24'
                                 fill='none'
                                 xmlns='http://www.w3.org/2000/svg'
@@ -150,8 +150,8 @@ function Topbar ({ enabledComponents, configs }: TopbarProps): ReactElement {
                                 <path
                                     d='M3 11.5066C3 16.7497 7.25034 21 12.4934 21C16.2209 21 19.4466 18.8518 21 15.7259C12.4934 15.7259 8.27411 11.5066 8.27411 3C5.14821 4.55344 3 7.77915 3 11.5066Z'
                                     stroke='currentColor'
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                                    strokeLinecap='round'
+                                    strokeLinejoin='round'
                                     fill='white'
                                 ></path>
                                 {' '}

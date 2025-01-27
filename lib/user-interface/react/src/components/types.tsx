@@ -127,7 +127,7 @@ export type RagDocument = {
     ingestion_type: IngestionType,
     upload_date: number,
     chunks: number,
-}
+};
 
 /**
  * Interface for model

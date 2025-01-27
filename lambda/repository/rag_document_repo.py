@@ -188,7 +188,11 @@ class RagDocumentRepository:
             response = None
             # Find all rag documents using repo id only
             if not collection_id:
-                query_params = {"IndexName":"repository_index", "KeyConditionExpression": Key("repository_id").eq(repository_id), "Limit": limit}
+                query_params = {
+                    "IndexName": "repository_index",
+                    "KeyConditionExpression": Key("repository_id").eq(repository_id),
+                    "Limit": limit,
+                }
                 if last_evaluated_key:
                     query_params["ExclusiveStartKey"] = last_evaluated_key
                 response = self.doc_table.query(**query_params)

@@ -35,24 +35,24 @@ import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/re
 import { RagDocument } from '../types';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 
-interface DocumentLibraryComponentProps {
+type DocumentLibraryComponentProps = {
     repositoryId?: string;
-}
+};
 
 export function getMatchesCountText (count) {
-    return count === 1 ? `1 match` : `${count} matches`;
+    return count === 1 ? '1 match' : `${count} matches`;
 }
 
 function canDeleteAll (selectedItems: ReadonlyArray<RagDocument>, username: string, isAdmin: boolean) {
-    return selectedItems.length > 0 && (isAdmin || selectedItems.every(doc => doc.username === username));
+    return selectedItems.length > 0 && (isAdmin || selectedItems.every((doc) => doc.username === username));
 }
 
 export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryComponentProps): ReactElement {
     const { data: allDocs, isFetching } = useListRagDocumentsQuery({ repositoryId }, { refetchOnMountOrArgChange: 5 });
     const [deleteMutation, {
-        isSuccess: isDeleteSuccess,
-        isError: isDeleteError,
-        error: deleteError,
+        // isSuccess: isDeleteSuccess,
+        // isError: isDeleteError,
+        // error: deleteError,
         isLoading: isDeleteLoading,
     }] = useDeleteRagDocumentsMutation();
     const currentUser = useAppSelector(selectCurrentUsername);
@@ -64,8 +64,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
         allDocs ?? [], {
             filtering: {
                 empty: (
-                    <Box margin={{ vertical: 'xs' }} textAlign="center">
-                        <SpaceBetween size="m">
+                    <Box margin={{ vertical: 'xs' }} textAlign='center'>
+                        <SpaceBetween size='m'>
                             <b>No documents</b>
                         </SpaceBetween>
                     </Box>
@@ -92,9 +92,9 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     ];
     const handleAction = async (e: any) => {
         switch (e.detail.id) {
-            case 'rm':
-                const documentIds = collectionProps.selectedItems.map(doc => doc.document_id);
-                const documentView = collectionProps.selectedItems.map(doc =>
+            case 'rm': {
+                const documentIds = collectionProps.selectedItems.map((doc) => doc.document_id);
+                const documentView = collectionProps.selectedItems.map((doc) =>
                     <li>{doc.collection_id}/{doc.document_name}</li>);
                 dispatch(
                     setConfirmationModal({
@@ -105,6 +105,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                     }),
                 );
                 break;
+            }
             default:
                 console.error('Action not implemented', e.detail.id);
         }
@@ -124,8 +125,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             enableKeyboardNavigation
             items={items}
             loading={isFetching}
-            loadingText="Loading documents"
-            selectionType="multi"
+            loadingText='Loading documents'
+            selectionType='multi'
             filter={
                 <TextFilter
                     {...filterProps}
@@ -141,8 +142,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                     }
                     actions={
                         <SpaceBetween
-                            direction="horizontal"
-                            size="xs"
+                            direction='horizontal'
+                            size='xs'
                         >
                             <ButtonDropdown
                                 items={actionItems}
@@ -162,10 +163,10 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             }
             preferences={
                 <CollectionPreferences
-                    title="Preferences"
+                    title='Preferences'
                     preferences={preferences}
-                    confirmLabel="Confirm"
-                    cancelLabel="Cancel"
+                    confirmLabel='Confirm'
+                    cancelLabel='Cancel'
                     onConfirm={({ detail }) => setPreferences(detail)}
                     contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
                     pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}

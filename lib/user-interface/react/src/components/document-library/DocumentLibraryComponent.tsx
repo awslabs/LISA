@@ -48,6 +48,10 @@ function canDeleteAll (selectedItems: ReadonlyArray<RagDocument>, username: stri
     return selectedItems.length > 0 && (isAdmin || selectedItems.every((doc) => doc.username === username));
 }
 
+function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
+    return selectedItems.length === 0 ? 'Please select an item' : 'You are not an owner of all selected items';
+}
+
 export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryComponentProps): ReactElement {
     const { data: allDocs, isFetching } = useListRagDocumentsQuery({ repositoryId }, { refetchOnMountOrArgChange: 5 });
     const [deleteMutation, {
@@ -89,6 +93,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             id: 'rm',
             text: 'Delete',
             disabled: !canDeleteAll(collectionProps.selectedItems, currentUser, isAdmin),
+            disabledReason: disabledDeleteReason(collectionProps.selectedItems),
         },
     ];
     const handleAction = async (e: any) => {

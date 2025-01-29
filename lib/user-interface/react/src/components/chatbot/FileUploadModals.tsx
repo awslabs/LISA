@@ -40,7 +40,7 @@ import {
 import { uploadToS3Request } from '../utils';
 
 export const renameFile = (originalFile: File) => {
-    // Add timestampe to filename for RAG uploads to not conflict with existing S3 files
+    // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
     const newFileName = `${Date.now()}_${originalFile.name}`;
     return new File([originalFile], newFileName, {
         type: originalFile.type,

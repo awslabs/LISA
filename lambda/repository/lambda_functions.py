@@ -25,6 +25,7 @@ from langchain_core.vectorstores import VectorStore
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
+from repository.rag_vector_store_repo import RagVectorStoreRepository
 from utilities.common_functions import (
     api_wrapper,
     get_cert_path,
@@ -59,6 +60,7 @@ s3 = session.client(
 lisa_api_endpoint = ""
 registered_repositories: List[Dict[str, Any]] = []
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+vs_repo = RagVectorStoreRepository()
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -406,14 +408,10 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 def _remove_s3_documents(repository_id: str, docs: list[dict]) -> list[str]:
     """Remove documents from S3"""
     removedS3 = []
-    repositories = json.loads(os.environ.get("REPOSITORY_CONFIG", "[]"))
-    repository: dict = next((r for r in repositories if r.get("repositoryId") == repository_id), {})
     for doc in docs:
         if doc.get("ingestion_type") == IngestionType.AUTO:
-            # TODO: Replace this with dynamic vector store config lookup when available
             # Get pipeline config and check if autoRemove is enabled
-            pipelines = repository.get("pipelines", [])
-            pipeline: dict = next((p for p in pipelines if p.get("embeddingModel") == doc.get("collection_id")), {})
+            pipeline = vs_repo.find_pipeline_config(repository_id=repository_id, pipeline_id=doc.get("collection_id"))
             if not pipeline.get("autoRemove"):
                 continue
         source: str = doc.get("source", "")

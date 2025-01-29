@@ -352,6 +352,13 @@ def get_username(event: dict) -> str:
     return username
 
 
+def is_admin(event: dict) -> bool:
+    """Get admin status from event."""
+    admin_group = os.environ.get("ADMIN_GROUP", "")
+    groups = get_groups(event)
+    return admin_group in groups
+
+
 def get_session_id(event: dict) -> str:
     """Get session_id from event."""
     session_id: str = event.get("pathParameters", {}).get("sessionId")

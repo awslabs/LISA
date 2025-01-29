@@ -215,6 +215,27 @@ export class LisaServeApplicationStage extends Stage {
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
         stacks.push(modelsApiDeploymentStack);
 
+        if (config.deployRag) {
+            const ragStack = new LisaRagStack(this, 'LisaRAG', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer,
+                description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
+                endpointUrl: serveStack.endpointUrl,
+                modelsPs: serveStack.modelsPs,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            ragStack.linkServiceRole();
+            ragStack.addDependency(coreStack);
+            ragStack.addDependency(iamStack);
+            ragStack.addDependency(apiBaseStack);
+            stacks.push(ragStack);
+            apiDeploymentStack.addDependency(ragStack);
+        }
+
         if (config.deployChat) {
             const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
@@ -245,31 +266,6 @@ export class LisaServeApplicationStage extends Stage {
                 uiStack.addDependency(apiBaseStack);
                 apiDeploymentStack.addDependency(uiStack);
                 stacks.push(uiStack);
-
-                if (config.deployRag) {
-                    const ragStack = new LisaRagStack(this, 'LisaRAG', {
-                        ...baseStackProps,
-                        authorizer: apiBaseStack.authorizer,
-                        description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
-                        endpointUrl: serveStack.endpointUrl,
-                        modelsPs: serveStack.modelsPs,
-                        restApiId: apiBaseStack.restApiId,
-                        rootResourceId: apiBaseStack.rootResourceId,
-                        stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
-                        securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-                        vpc: networkingStack.vpc,
-                    });
-                    ragStack.linkServiceRole(); // Ignore async response
-                    ragStack.addDependency(coreStack);
-                    ragStack.addDependency(iamStack);
-                    ragStack.addDependency(apiBaseStack);
-                    stacks.push(ragStack);
-
-                    if (config.deployRag) {
-                        uiStack.addDependency(ragStack);
-                        apiDeploymentStack.addDependency(ragStack);
-                    }
-                }
             }
         }
 

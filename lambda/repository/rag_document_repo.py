@@ -168,7 +168,7 @@ class RagDocumentRepository:
     def list_all(
         self,
         repository_id: str,
-        collection_id: str,
+        collection_id: Optional[str],
         last_evaluated_key: Optional[dict] = None,
         limit: int = 100,
         join_docs: bool = False,
@@ -177,19 +177,36 @@ class RagDocumentRepository:
 
         Args:
             repository_id: Repository ID
-            collection_id: Collection ID
-
+            collection_id?: Collection ID
+            last_evaluated_key: last key for pagination
+            limit: maximum returned items
+            join_docs: whether to include subdoc ids with parent doc
         Returns:
             List of documents
         """
         try:
-            pk = RagDocument.createPartitionKey(repository_id, collection_id)
-            query_params = {"KeyConditionExpression": Key("pk").eq(pk), "Limit": limit}
-            if last_evaluated_key:
-                query_params["ExclusiveStartKey"] = last_evaluated_key
-            response = self.doc_table.query(**query_params)
+            response = None
+            # Find all rag documents using repo id only
+            if not collection_id:
+                query_params = {
+                    "IndexName": "repository_index",
+                    "KeyConditionExpression": Key("repository_id").eq(repository_id),
+                    "Limit": limit,
+                }
+                if last_evaluated_key:
+                    query_params["ExclusiveStartKey"] = last_evaluated_key
+                response = self.doc_table.query(**query_params)
+            # Find all rag documents using repo id and collection
+            else:
+                pk = RagDocument.createPartitionKey(repository_id, collection_id)
+                query_params = {"KeyConditionExpression": Key("pk").eq(pk), "Limit": limit}
+                if last_evaluated_key:
+                    query_params["ExclusiveStartKey"] = last_evaluated_key
+                response = self.doc_table.query(**query_params)
+
             docs: list[RagDocumentDict] = response.get("Items", [])
             next_key = response.get("LastEvaluatedKey", None)
+
             if join_docs:
                 for doc in docs:
                     subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))

@@ -55,9 +55,6 @@ function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
 export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryComponentProps): ReactElement {
     const { data: allDocs, isFetching } = useListRagDocumentsQuery({ repositoryId }, { refetchOnMountOrArgChange: 5 });
     const [deleteMutation, {
-        // isSuccess: isDeleteSuccess,
-        // isError: isDeleteError,
-        // error: deleteError,
         isLoading: isDeleteLoading,
     }] = useDeleteRagDocumentsMutation();
     const currentUser = useAppSelector(selectCurrentUsername);

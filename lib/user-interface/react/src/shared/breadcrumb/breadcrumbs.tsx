@@ -36,10 +36,6 @@ export const Breadcrumbs: React.FC = () => {
         pathSegments.forEach((segment) => {
             currentPath += `/${segment}`;
             const text = _.startCase(segment);
-            // .split('-')
-            // .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            // .join(' ');
-
             items.push({
                 text,
                 href: currentPath,

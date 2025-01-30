@@ -15,9 +15,6 @@
 import json
 import logging
 import os
-from typing import Optional
-
-import boto3
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +22,7 @@ logger = logging.getLogger(__name__)
 class RagVectorStoreRepository:
     """RAG Vector Store repository"""
 
-    def __init__(self, vector_store_name: Optional[str]):
-        dynamodb = boto3.resource("dynamodb")
-        self.vs_table = dynamodb.Table(vector_store_name)
+    def __init__(self) -> None:
         self.repositories = json.loads(os.environ.get("REPOSITORY_CONFIG", "[]"))
 
     def find_pipeline_config(self, repository_id: str, pipeline_id: str) -> dict:

@@ -36,19 +36,30 @@ import { useNotificationService } from '../../shared/util/hooks';
 import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
+import { useNavigate } from 'react-router-dom';
 
 export function Sessions () {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
+    const navigate = useNavigate();
 
-    const [selectedItems, setSelectedItems] = useState([]);
-    const [deleteById, { isSuccess: isDeleteByIdSuccess, isError: isDeleteByIdError, error: deleteByIdError, isLoading: isDeleteByIdLoading },] = useDeleteSessionByIdMutation();
-    const [deleteUserSessions, { isSuccess: isDeleteUserSessionsSuccess, isError: isDeleteUserSessionsError, error: deleteUserSessionsError, isLoading: isDeleteUserSessionsLoading },] = useDeleteAllSessionsForUserMutation();
+    const [deleteById, {
+        isSuccess: isDeleteByIdSuccess,
+        isError: isDeleteByIdError,
+        error: deleteByIdError,
+        isLoading: isDeleteByIdLoading,
+    }] = useDeleteSessionByIdMutation();
+    const [deleteUserSessions, {
+        isSuccess: isDeleteUserSessionsSuccess,
+        isError: isDeleteUserSessionsError,
+        error: deleteUserSessionsError,
+        isLoading: isDeleteUserSessionsLoading,
+    }] = useDeleteAllSessionsForUserMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
-    const { data: sessions, isLoading } = useListSessionsQuery(null, {refetchOnMountOrArgChange: 5});
-    const { items, collectionProps, paginationProps } = useCollection(sessions ?? [], {
+    const { data: sessions, isLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { items, actions, collectionProps, paginationProps } = useCollection(sessions ?? [], {
         filtering: {
             empty: (
                 <Box margin={{ vertical: 'xs' }} textAlign='center'>
@@ -67,7 +78,7 @@ export function Sessions () {
                 isDescending: true,
             },
         },
-        selection: {},
+        selection: { trackBy: 'sessionId' },
     });
 
     useEffect(() => {
@@ -107,9 +118,9 @@ export function Sessions () {
                 pagination={<Pagination {...paginationProps} />}
                 loadingText='Loading history'
                 loading={isLoading || isDeleteByIdLoading || isDeleteUserSessionsLoading}
-                selectedItems={selectedItems}
+                selectedItems={collectionProps.selectedItems}
                 onSelectionChange={({ detail }) =>
-                    setSelectedItems(detail.selectedItems)
+                    actions.setSelectedItems(detail.selectedItems)
                 }
                 resizableColumns
                 sortingDescending={true}
@@ -118,7 +129,8 @@ export function Sessions () {
                     {
                         id: 'title',
                         header: 'Title',
-                        cell: (e) => <Link variant='primary' href={`#/chatbot/${e.sessionId}`}>{e.history[0].content || 'No Content'}</Link>,
+                        cell: (e) => <Link variant='primary'
+                            onClick={() => navigate(`chatbot/${e.sessionId}`)}>{e.history[0].content || 'No Content'}</Link>,
                         sortingField: 'title',
                         isRowHeader: true,
                     },
@@ -138,7 +150,7 @@ export function Sessions () {
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
                                     <Button iconName='add-plus' variant='inline-link'>
-                                        <Link href={`/#/chatbot/${uuidv4()}`}>New</Link>
+                                        <Link onClick={() => navigate(`chatbot/${uuidv4()}`)}>New</Link>
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'
@@ -149,22 +161,22 @@ export function Sessions () {
                                         Refresh
                                     </Button>
                                     {config?.configuration.enabledComponents.deleteSessionHistory &&
-                                    <Button
-                                        iconAlt='Delete session(s)'
-                                        iconName='delete-marker'
-                                        variant='inline-link'
-                                        onClick={() => {
-                                            if (selectedItems && selectedItems.length === 1) {
-                                                setSelectedItems([]);
-                                                deleteById(selectedItems[0].sessionId);
-                                            } else {
-                                                deleteUserSessions();
-                                            }
-                                        }}
-                                        disabled={selectedItems.length > 1 && (selectedItems.length > 1 && selectedItems.length !== items.length)}
-                                    >
-                                        {selectedItems && selectedItems.length === 1 ? 'Delete one' : 'Delete all'}
-                                    </Button>}
+                                        <Button
+                                            iconAlt='Delete session(s)'
+                                            iconName='delete-marker'
+                                            variant='inline-link'
+                                            onClick={() => {
+                                                if (collectionProps.selectedItems && collectionProps.selectedItems.length === 1) {
+                                                    actions.setSelectedItems([]);
+                                                    deleteById(collectionProps.selectedItems[0].sessionId);
+                                                } else {
+                                                    deleteUserSessions();
+                                                }
+                                            }}
+                                            disabled={collectionProps.selectedItems.length > 1 && (collectionProps.selectedItems.length > 1 && collectionProps.selectedItems.length !== items.length)}
+                                        >
+                                            {collectionProps.selectedItems && collectionProps.selectedItems.length === 1 ? 'Delete one' : 'Delete all'}
+                                        </Button>}
                                 </SpaceBetween>
                             </div>
                         }

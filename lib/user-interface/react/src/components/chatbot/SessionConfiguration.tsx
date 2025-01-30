@@ -15,9 +15,16 @@
  */
 
 import {
+    AttributeEditor,
+    Box,
+    Container,
+    FormField,
+    Grid,
+    Header,
+    Input,
     Modal,
+    Select,
     SpaceBetween,
-    Header, FormField, Input, Container, AttributeEditor, Grid, Select, Box,
 } from '@cloudscape-design/components';
 
 import Toggle from '@cloudscape-design/components/toggle';
@@ -35,12 +42,23 @@ export type SessionConfigurationProps = {
     systemConfig: IConfiguration;
 };
 
-export default function SessionConfiguration ({ chatConfiguration, setChatConfiguration, selectedModel, isRunning, visible, setVisible, systemConfig } : SessionConfigurationProps) {
+export default function SessionConfiguration ({
+    chatConfiguration,
+    setChatConfiguration,
+    selectedModel,
+    isRunning,
+    visible,
+    setVisible,
+    systemConfig,
+}: SessionConfigurationProps) {
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
-    const updateSessionConfiguration = (property: string, value: any): void  => {
-        setChatConfiguration({ ...chatConfiguration, sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value } });
+    const updateSessionConfiguration = (property: string, value: any): void => {
+        setChatConfiguration({
+            ...chatConfiguration,
+            sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
+        });
     };
 
     const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
@@ -60,7 +78,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
             size='large'
         >
             <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{ colspan:6 }, { colspan:6 }, { colspan:6 }, { colspan:6 }]}>
+                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                     <Toggle
                         onChange={({ detail }) => updateSessionConfiguration('streaming', detail.checked)}
                         checked={chatConfiguration.sessionConfiguration.streaming}
@@ -68,17 +86,18 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                     >
                         Stream Responses
                     </Toggle>
-                    { systemConfig && systemConfig.configuration.enabledComponents.viewMetaData &&
-                    <Toggle
-                        onChange={({ detail }) => updateSessionConfiguration('showMetadata', detail.checked)}
-                        checked={chatConfiguration.sessionConfiguration.showMetadata}
-                        disabled={isRunning}
-                    >
-                        Show Message Metadata
-                    </Toggle>}
-                    { systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.viewMetaData &&
+                        <Toggle
+                            onChange={({ detail }) => updateSessionConfiguration('showMetadata', detail.checked)}
+                            checked={chatConfiguration.sessionConfiguration.showMetadata}
+                            disabled={isRunning}
+                        >
+                            Show Message Metadata
+                        </Toggle>}
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
-                            <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
+                            <Box float='left' textAlign='center' variant='awsui-key-label'
+                                padding={{ vertical: 'xxs' }}>
                                 <label>Chat History Buffer Size:</label>
                             </Box>
                             <Select
@@ -92,9 +111,10 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 options={oneThroughTenOptions}
                             />
                         </SpaceBetween>}
-                    { systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
-                            <Box float='left' textAlign='center' variant='awsui-key-label' padding={{ vertical: 'xxs' }}>
+                            <Box float='left' textAlign='center' variant='awsui-key-label'
+                                padding={{ vertical: 'xxs' }}>
                                 <label>RAG references:</label>
                             </Box>
                             <Select
@@ -109,7 +129,7 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                             />
                         </SpaceBetween>}
                 </Grid>
-                { systemConfig && systemConfig.configuration.enabledComponents.editKwargs &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs &&
                     <Container
                         header={
                             <Header
@@ -154,9 +174,15 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 onChange={(event) => {
                                     const intVal = parseInt(event.detail.value);
                                     if (!isNaN(intVal) && intVal >= 0) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, n: intVal});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            n: intVal,
+                                        });
                                     } else if (isNaN(intVal)) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, n: null});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            n: null,
+                                        });
                                     }
                                 }}
                             />
@@ -179,9 +205,15 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 onChange={(event) => {
                                     const floatVal = parseFloat(event.detail.value);
                                     if (!isNaN(floatVal) && floatVal >= 0.0 && floatVal <= 1.0) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, top_p: floatVal});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            top_p: floatVal,
+                                        });
                                     } else if (isNaN(floatVal)) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, top_p: null});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            top_p: null,
+                                        });
                                     }
                                 }}
                             />
@@ -203,9 +235,15 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 onChange={(event) => {
                                     const floatVal = parseFloat(event.detail.value);
                                     if (!isNaN(floatVal) && floatVal >= -2.0 && floatVal <= 2.0) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, frequency_penalty: floatVal});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            frequency_penalty: floatVal,
+                                        });
                                     } else if (isNaN(floatVal)) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, frequency_penalty: null});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            frequency_penalty: null,
+                                        });
                                     }
                                 }}
                             />
@@ -227,9 +265,15 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 onChange={(event) => {
                                     const floatVal = parseFloat(event.detail.value);
                                     if (!isNaN(floatVal) && floatVal >= -2.0 && floatVal <= 2.0) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, presence_penalty: floatVal});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            presence_penalty: floatVal,
+                                        });
                                     } else if (isNaN(floatVal)) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, presence_penalty: null});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            presence_penalty: null,
+                                        });
                                     }
                                 }}
                             />
@@ -251,21 +295,34 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 onChange={(event) => {
                                     const floatVal = parseFloat(event.detail.value);
                                     if (!isNaN(floatVal) && floatVal >= 0.0 && floatVal <= 2.0) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, temperature: floatVal});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            temperature: floatVal,
+                                        });
                                     } else if (isNaN(floatVal)) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, temperature: null});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            temperature: null,
+                                        });
                                     }
                                 }}
                             />
                         </FormField>
-                        <FormField label='Stop' description='Up to 4 sequences where the API will stop generating further tokens.'>
+                        <FormField label='Stop'
+                            description='Up to 4 sequences where the API will stop generating further tokens.'>
                             <Container>
                                 <AttributeEditor
                                     addButtonText='Add'
-                                    onAddButtonClick={() => updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, stop: chatConfiguration.sessionConfiguration.modelArgs.stop.concat('')})}
+                                    onAddButtonClick={() => updateSessionConfiguration('modelArgs', {
+                                        ...chatConfiguration.sessionConfiguration.modelArgs,
+                                        stop: chatConfiguration.sessionConfiguration.modelArgs.stop.concat(''),
+                                    })}
                                     removeButtonText='Remove'
                                     onRemoveButtonClick={(event) =>
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, stop: chatConfiguration.sessionConfiguration.modelArgs.stop.filter((elem, i) => event.detail.itemIndex !== i)})
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            stop: chatConfiguration.sessionConfiguration.modelArgs.stop.filter((elem, i) => event.detail.itemIndex !== i),
+                                        })
                                     }
                                     isItemRemovable={() => true}
                                     items={chatConfiguration.sessionConfiguration.modelArgs.stop}
@@ -277,15 +334,18 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                                         value={item}
                                                         placeholder='null'
                                                         onChange={(event) => {
-                                                            updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, stop:
-                                                        chatConfiguration.sessionConfiguration.modelArgs.stop.slice(0, 4).map((elem, j) => {
-                                                            if (i === j) {
-                                                                return event.detail.value;
-                                                            } else {
-                                                                return elem;
-                                                            }
-                                                        })},
-                                                            );
+                                                            updateSessionConfiguration('modelArgs',
+                                                                {
+                                                                    ...chatConfiguration.sessionConfiguration.modelArgs,
+                                                                    stop: chatConfiguration.sessionConfiguration.modelArgs.stop.slice(0, 4)
+                                                                        .map((elem, j) => {
+                                                                            if (i === j) {
+                                                                                return event.detail.value;
+                                                                            } else {
+                                                                                return elem;
+                                                                            }
+                                                                        }),
+                                                                });
                                                         }}
                                                     />
                                                 );
@@ -312,9 +372,15 @@ export default function SessionConfiguration ({ chatConfiguration, setChatConfig
                                 onChange={(event) => {
                                     const intVal = parseInt(event.detail.value);
                                     if (!isNaN(intVal) && intVal >= 0) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, seed: intVal});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            seed: intVal,
+                                        });
                                     } else if (isNaN(intVal)) {
-                                        updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, seed: null});
+                                        updateSessionConfiguration('modelArgs', {
+                                            ...chatConfiguration.sessionConfiguration.modelArgs,
+                                            seed: null,
+                                        });
                                     }
                                 }}
                             />

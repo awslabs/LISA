@@ -1,3 +1,21 @@
+# v3.5.1
+
+## Bug Fixes
+
+### Chat Session Management
+
+- Resolved url redirect issue that prevented creation of new chat sessions via the New button
+- Resolved intermittent loading issues when accessing historical conversations due to LangChain memory object
+- Addressed error handling for LLM interactions after multiple prompts
+
+### Document Summarization
+
+- Fixed stability issues with document summarization functionality in existing chat sessions
+
+### UI
+
+-Corrected display scaling issues in Firefox for large screen resolutions
+
 # v3.5.0
 ## Key Features
 ### User Interface Modernization

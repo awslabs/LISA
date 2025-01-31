@@ -135,6 +135,12 @@ export const ragApi = createApi({
             },
             invalidatesTags: ['Docs'],
         }),
+        downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
+            query: ({ documentId, repositoryId }) => ({
+                url: `/repository/${repositoryId}/${documentId}/download`,
+                method: 'GET',
+            }),
+        }),
     }),
 });
 
@@ -145,5 +151,6 @@ export const {
     useIngestDocumentsMutation,
     useListRagDocumentsQuery,
     useDeleteRagDocumentsMutation,
-    useLazyGetRelevantDocumentsQuery
+    useLazyGetRelevantDocumentsQuery,
+    useLazyDownloadRagDocumentQuery,
 } = ragApi;

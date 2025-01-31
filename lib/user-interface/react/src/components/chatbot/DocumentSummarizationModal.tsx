@@ -15,12 +15,14 @@
 */
 
 import {
-    Modal,
+    Autosuggest,
     Box,
-    SpaceBetween,
     Button,
+    FileUpload,
+    Modal,
+    SpaceBetween,
+    Textarea,
     TextContent,
-    FileUpload, Autosuggest, Textarea,
 } from '@cloudscape-design/components';
 import { FileTypes, LisaChatSession } from '../types';
 import { useEffect, useMemo, useState } from 'react';
@@ -32,9 +34,9 @@ import { handleUpload } from './FileUploadModals';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { v4 as uuidv4 } from 'uuid';
 import FormField from '@cloudscape-design/components/form-field';
-import { BufferWindowMemory } from 'langchain/memory';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import Toggle from '@cloudscape-design/components/toggle';
+import { ChatMemory } from '../../shared/util/chat-memory';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;
@@ -51,7 +53,7 @@ export type DocumentSummarizationModalProps = {
     setSession: (state: LisaChatSession) => void;
     userName: string;
     handleSendGenerateRequest: () => void;
-    setMemory: (state: BufferWindowMemory) => void;
+    setMemory: (state: ChatMemory) => void;
 };
 
 export function DocumentSummarizationModal ({
@@ -163,7 +165,7 @@ export function DocumentSummarizationModal ({
                                         };
                                         setSession(newSession);
 
-                                        setMemory(new BufferWindowMemory({
+                                        setMemory(new ChatMemory({
                                             chatHistory: new LisaChatMessageHistory(newSession),
                                             returnMessages: false,
                                             memoryKey: 'history',
@@ -220,6 +222,7 @@ export function DocumentSummarizationModal ({
                         empty={<div className='text-gray-500'>No models available.</div>}
                         filteringType='auto'
                         value={selectedModel?.modelId ?? ''}
+                        enteredTextLabel={(text) => `Use: "${text}"`}
                         onChange={({ detail: { value } }) => {
                             if (!value || value.length === 0) {
                                 setSelectedModel(undefined);
@@ -243,6 +246,7 @@ export function DocumentSummarizationModal ({
                         placeholder='Select prompt type'
                         filteringType='auto'
                         value={selectedPromptType}
+                        enteredTextLabel={(text) => `Use: "${text}"`}
                         onChange={({ detail: { value } }) => {
                             setUserPrompt('');
                             if (value && value.length !== 0)  {

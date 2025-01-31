@@ -67,6 +67,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig }: RagC
                     empty={<div className='text-gray-500'>No repositories available.</div>}
                     filteringType='auto'
                     value={selectedRepositoryOption ?? ''}
+                    enteredTextLabel={(text) => `Use: "${text}"`}
                     onChange={({ detail }) => {
                         setSelectedRepositoryOption(detail.value);
                         setRagConfig((config) => ({
@@ -85,6 +86,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig }: RagC
                     empty={<div className='text-gray-500'>No embedding models available.</div>}
                     filteringType='auto'
                     value={selectedEmbeddingOption ?? ''}
+                    enteredTextLabel={(text) => `Use: "${text}"`}
                     onChange={({ detail }) => {
                         setSelectedEmbeddingOption(detail.value);
 

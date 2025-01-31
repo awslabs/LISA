@@ -26,6 +26,7 @@ import {
 import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
 import { Repository } from '../types';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
+import { useNavigate } from 'react-router-dom';
 
 export function RepositoryLibraryComponent (): ReactElement {
     const {
@@ -41,6 +42,8 @@ export function RepositoryLibraryComponent (): ReactElement {
     const [selectedItems, setSelectedItems] = useState([]);
     const [preferences, setPreferences] = useLocalStorage('RagPreferences', DEFAULT_PREFERENCES);
     const [count, setCount] = useState(0);
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         let newPageCount: number;
@@ -72,7 +75,7 @@ export function RepositoryLibraryComponent (): ReactElement {
                     itemSelectionLabel: (e, t) => `select ${t.modelName}`,
                     selectionGroupLabel: 'Repo selection',
                 }}
-                cardDefinition={CARD_DEFINITIONS}
+                cardDefinition={CARD_DEFINITIONS(navigate)}
                 visibleSections={preferences.visibleContent}
                 loadingText='Loading repos'
                 items={matchedRepos}

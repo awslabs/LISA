@@ -16,39 +16,41 @@
 import Link from '@cloudscape-design/components/link';
 import { Repository } from '../types';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
-import { getBaseURI } from '../utils';
+import { NavigateFunction } from 'react-router-dom';
 
-export const CARD_DEFINITIONS = {
+export const CARD_SECTIONS = [
+    {
+        id: 'repositoryName',
+        header: 'Name',
+        content: (repo: Repository) => repo.repositoryName,
+    },
+    {
+        id: 'repoType',
+        header: 'Type',
+        content: (repo: Repository) => repo.type.toString(),
+    },
+    {
+        id: 'allowedGroups',
+        header: 'Allowed Groups',
+        content: (repo: Repository) => `[${repo.allowedGroups.join(', ')}]`,
+    },
+];
+
+export const CARD_DEFINITIONS = (navigate: NavigateFunction) => ({
     header: (repo: Repository) =>
         <Link
-            href={`${getBaseURI()}#/document-library/${repo.repositoryId}`}
+            onClick={() => navigate(`/document-library/${repo.repositoryId}`)}
             fontSize='heading-m'>{repo.repositoryId}
         </Link>,
-    sections: [
-        {
-            id: 'repositoryName',
-            header: 'Name',
-            content: (repo: Repository) => repo.repositoryName,
-        },
-        {
-            id: 'repoType',
-            header: 'Type',
-            content: (repo: Repository) => repo.type.toString(),
-        },
-        {
-            id: 'allowedGroups',
-            header: 'Allowed Groups',
-            content: (repo: Repository) => `[${repo.allowedGroups.join(', ')}]`,
-        },
-    ],
-};
+    sections: CARD_SECTIONS,
+});
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Repositories');
 
 export const VISIBLE_CONTENT_OPTIONS = [
     {
         label: 'Displayed Properties',
-        options: CARD_DEFINITIONS.sections.map((c) => ({
+        options: CARD_SECTIONS.map((c) => ({
             id: c.id,
             label: c.header,
         })),
@@ -57,5 +59,5 @@ export const VISIBLE_CONTENT_OPTIONS = [
 
 export const DEFAULT_PREFERENCES = {
     pageSize: PAGE_SIZE_OPTIONS[0].value,
-    visibleContent: CARD_DEFINITIONS.sections.map((c) => c.id),
+    visibleContent: CARD_SECTIONS.map((c) => c.id),
 };

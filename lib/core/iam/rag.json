@@ -25,17 +25,6 @@
         {
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:${AWS::Partition}:s3:::${S3Bucket}",
-                "arn:${AWS::Partition}:s3:::${S3Bucket}/*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
                 "secretsmanager:GetSecretValue"
             ],
             "Resource": "*"

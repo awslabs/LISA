@@ -25,6 +25,7 @@ from langchain_core.vectorstores import VectorStore
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
+from repository.rag_vector_store_repo import RagVectorStoreRepository
 from utilities.common_functions import (
     api_wrapper,
     get_cert_path,
@@ -59,9 +60,20 @@ s3 = session.client(
 lisa_api_endpoint = ""
 registered_repositories: List[Dict[str, Any]] = []
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+vs_repo = RagVectorStoreRepository()
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
+    """
+    Initialize and return an embeddings client for the specified model.
+
+    Args:
+        model_name: Name of the embedding model to use
+        id_token: Authentication token for API access
+
+    Returns:
+        LisaOpenAIEmbeddings: Configured embeddings client
+    """
     global lisa_api_endpoint
 
     if not lisa_api_endpoint:
@@ -80,6 +92,13 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
 
 
 class PipelineEmbeddings:
+    """
+    Handles document embeddings for pipeline processing using management credentials.
+
+    This class provides methods to embed both single queries and batches of documents
+    using the LISA API with management-level authentication.
+    """
+
     def __init__(self) -> None:
         try:
             # Get the management key secret name from SSM Parameter Store
@@ -103,6 +122,19 @@ class PipelineEmbeddings:
             raise
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for a list of documents.
+
+        Args:
+            texts: List of text strings to embed
+
+        Returns:
+            List of embedding vectors
+
+        Raises:
+            ValidationError: If input texts are invalid
+            Exception: If embedding request fails
+        """
         if not texts:
             raise ValidationError("No texts provided for embedding")
 
@@ -176,7 +208,7 @@ class PipelineEmbeddings:
         return self.embed_documents([text])[0]
 
 
-def _get_embeddings_pipeline(model_name: str) -> Any:
+def get_embeddings_pipeline(model_name: str) -> Any:
     """
     Get embeddings for pipeline requests using management token.
 
@@ -195,7 +227,16 @@ def _get_embeddings_pipeline(model_name: str) -> Any:
 
 @api_wrapper
 def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
-    """Return info on all available repositories."""
+    """
+    List all available repositories that the user has access to.
+
+    Args:
+        event: Lambda event containing user authentication
+        context: Lambda context
+
+    Returns:
+        List of repository configurations user can access
+    """
     user_groups = get_groups(event)
     registered_repositories = get_registered_repositories()
     return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
@@ -352,11 +393,32 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     for doc in docs:
         subdoc_ids.extend(doc.get("subdocs"))
 
+    removedS3 = _remove_s3_documents(repository_id, docs)
+
+    doc_names = [f"{doc.get('repository_id')}/{doc.get('collection_id')}/{doc.get('document_name')}" for doc in docs]
+
     return {
-        "documentName": docs[0].get("document_name"),
+        "documents": doc_names,
         "removedDocuments": len(doc_ids),
         "removedDocumentChunks": len(subdoc_ids),
+        "removedS3Documents": removedS3,
     }
+
+
+def _remove_s3_documents(repository_id: str, docs: list[dict]) -> list[str]:
+    """Remove documents from S3"""
+    removedS3 = []
+    for doc in docs:
+        if doc.get("ingestion_type") == IngestionType.AUTO:
+            # Get pipeline config and check if autoRemove is enabled
+            pipeline = vs_repo.find_pipeline_config(repository_id=repository_id, pipeline_id=doc.get("collection_id"))
+            if not pipeline.get("autoRemove"):
+                continue
+        source: str = doc.get("source", "")
+        doc_repo.delete_s3_object(uri=source)
+        removedS3.append(source)
+
+    return removedS3
 
 
 @api_wrapper

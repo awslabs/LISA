@@ -25,7 +25,7 @@ from utilities.file_processing import process_record
 from utilities.validation import validate_chunk_params, validate_model_name, validate_repository_type, ValidationError
 from utilities.vector_store import get_vector_store_client
 
-from .lambda_functions import _get_embeddings_pipeline, ChunkStrategyType, IngestionType, RagDocument
+from .lambda_functions import ChunkStrategyType, get_embeddings_pipeline, IngestionType, RagDocument
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
@@ -122,7 +122,7 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
                 metadatas.append(doc.metadata)
 
         # Get embeddings using pipeline-specific function that uses IAM auth
-        embeddings = _get_embeddings_pipeline(model_name=embedding_model)
+        embeddings = get_embeddings_pipeline(model_name=embedding_model)
 
         # Initialize vector store using model name as index, matching lambda_functions.py pattern
         vs = get_vector_store_client(

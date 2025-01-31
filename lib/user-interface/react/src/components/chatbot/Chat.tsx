@@ -14,24 +14,30 @@
   limitations under the License.
 */
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Container from '@cloudscape-design/components/container';
 import Box from '@cloudscape-design/components/box';
 import { v4 as uuidv4 } from 'uuid';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { Grid, TextContent, PromptInput, Autosuggest, ButtonGroup } from '@cloudscape-design/components';
+import {
+    Autosuggest,
+    ButtonGroup,
+    ButtonGroupProps,
+    Grid,
+    PromptInput,
+    TextContent,
+} from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatSession, LisaChatMessageMetadata } from '../types';
-import { RESTAPI_URI, formatDocumentsAsString, RESTAPI_VERSION } from '../utils';
+import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
+import { formatDocumentsAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
-import { BufferWindowMemory } from 'langchain/memory';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
@@ -41,7 +47,7 @@ import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuratio
 import {
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
-    useUpdateSessionMutation
+    useUpdateSessionMutation,
 } from '../../shared/reducers/session.reducer';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
@@ -51,6 +57,7 @@ import { baseConfig, GenerateLLMRequestParams, IChatConfiguration } from '../../
 import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { DocumentSummarizationModal } from './DocumentSummarizationModal';
+import { ChatMemory } from '../../shared/util/chat-memory';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -94,7 +101,7 @@ export default function Chat ({ sessionId }) {
     const [useRag, setUseRag] = useState(false);
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
     const [memory, setMemory] = useState(
-        new BufferWindowMemory({
+        new ChatMemory({
             chatHistory: new LisaChatMessageHistory(session),
             returnMessages: false,
             memoryKey: 'history',
@@ -157,12 +164,11 @@ export default function Chat ({ sessionId }) {
         const handleRagConfiguration = async (chainSteps: any[]) => {
             const ragStep = {
                 input: ({ input }: { input: string }) => input,
-                chatHistory: () => memory.loadMemoryVariables({}),
+                chatHistory: () => memory.loadMemoryVariables(),
                 context: async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
                     const question = await getContextualizedQuestion(input);
                     const relevantDocs = await fetchRelevantDocuments(question);
-                    const serialized = await updateSessionWithRagContext(relevantDocs);
-                    return serialized;
+                    return await updateSessionWithRagContext(relevantDocs);
                 },
             };
 
@@ -218,7 +224,7 @@ export default function Chat ({ sessionId }) {
         const handleNonRagConfiguration = (chainSteps: any[]) => {
             const nonRagStep = {
                 input: (initialInput: any) => initialInput.input,
-                memory: () => memory.loadMemoryVariables({}),
+                memory: () => memory.loadMemoryVariables(),
                 context: () => fileContext || '',
                 humanPrefix: (initialInput: any) => initialInput.humanPrefix,
                 aiPrefix: (initialInput: any) => initialInput.aiPrefix,
@@ -376,7 +382,7 @@ export default function Chat ({ sessionId }) {
 
     useEffect(() => {
         setMemory(
-            new BufferWindowMemory({
+            new ChatMemory({
                 chatHistory: new LisaChatMessageHistory(session),
                 returnMessages: false,
                 memoryKey: 'history',
@@ -390,7 +396,7 @@ export default function Chat ({ sessionId }) {
 
     useEffect(() => {
         if (selectedModel && auth.isAuthenticated) {
-            memory.loadMemoryVariables({}).then(async (formattedHistory) => {
+            memory.loadMemoryVariables().then(async (formattedHistory) => {
                 const promptValues = {
                     input: userPrompt,
                     history: formattedHistory.history,
@@ -543,9 +549,9 @@ export default function Chat ({ sessionId }) {
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
-            <div className='fixed bottom-8' style={{width: 'calc(var(--awsui-layout-width-g964ok) - 500px)'}}>
+            <div className='sticky bottom-8'>
                 <form onSubmit={(e) => e.preventDefault()}>
-                    <Form variant='embedded'>
+                    <Form>
                         <Container>
                             <SpaceBetween size='m' direction='vertical'>
                                 <Grid
@@ -562,6 +568,7 @@ export default function Chat ({ sessionId }) {
                                         empty={<div className='text-gray-500'>No models available.</div>}
                                         filteringType='auto'
                                         value={selectedModel?.modelId ?? ''}
+                                        enteredTextLabel={(text) => `Use: "${text}"`}
                                         onChange={({ detail: { value } }) => {
                                             if (!value || value.length === 0) {
                                                 setSelectedModel(undefined);
@@ -635,20 +642,20 @@ export default function Chat ({ sessionId }) {
                                                             id: 'upload-to-rag',
                                                             iconName: 'upload',
                                                             text: 'Upload to RAG'
-                                                        }] : []),
+                                                        }] as ButtonGroupProps.Item[] : []),
                                                     ...(config?.configuration.enabledComponents.uploadContextDocs ?
                                                         [{
                                                             type: 'icon-button',
                                                             id: 'add-file-to-context',
                                                             iconName: 'insert-row',
                                                             text: 'Add file to context'
-                                                        }] : []),
+                                                        }] as ButtonGroupProps.Item[] : []),
                                                     ...(config?.configuration.enabledComponents.documentSummarization ? [{
                                                         type: 'icon-button',
                                                         id: 'summarize-document',
                                                         iconName: 'transcript',
                                                         text: 'Summarize Document'
-                                                    }] : []),
+                                                    }] as ButtonGroupProps.Item[] : []),
                                                     ...(config?.configuration.enabledComponents.editPromptTemplate ?
                                                         [{
                                                             type: 'menu-dropdown',
@@ -661,7 +668,7 @@ export default function Chat ({ sessionId }) {
                                                                     text: 'Edit Prompt Template'
                                                                 },
                                                             ]
-                                                        }] : [])
+                                                        }] as ButtonGroupProps.Item[] : [])
                                                 ]}
                                                 variant='icon'
                                             />

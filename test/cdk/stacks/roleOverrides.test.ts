@@ -18,6 +18,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import MockApp from '../mocks/MockApp'; // Import your actual stack
 import ConfigParser from '../mocks/ConfigParser';
 import { Roles } from '../../../lib/core/iam/roles';
+import { Stack } from 'aws-cdk-lib';
 
 const stackRolesOverrides: Record<string, number> = {
     'LisaApiBase': 1,
@@ -59,7 +60,7 @@ describe('Verify role overrides', () => {
 });
 
 describe('Verify created roles', () => {
-    const { stacks } = MockApp.create();
+    const stacks: Stack[] = MockApp.getStacks();
     describe('Number of IAM Roles created', () => {
 
         for (const stack of stacks) {

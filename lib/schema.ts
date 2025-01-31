@@ -539,6 +539,18 @@ const OpenSearchExistingClusterConfig = z.object({
     endpoint: z.string(),
 });
 
+export const PipelineConfigSchema = z.object({
+    chunkOverlap: z.number(),
+    chunkSize: z.number(),
+    embeddingModel: z.string(),
+    s3Bucket: z.string(),
+    s3Prefix: z.string(),
+    trigger: z.union([z.literal('daily'), z.literal('event')]),
+    autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
+});
+
+export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
+
 const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string(),
@@ -546,15 +558,8 @@ const RagRepositoryConfigSchema = z
         type: z.nativeEnum(RagRepositoryType),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),
-        pipelines: z.array(z.object({
-            chunkOverlap: z.number(),
-            chunkSize: z.number(),
-            embeddingModel: z.string(),
-            s3Bucket: z.string(),
-            s3Prefix: z.string(),
-            trigger: z.union([z.literal('daily'), z.literal('event')]),
-        })).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string()).optional().default([])
+        pipelines: z.array(PipelineConfigSchema).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
+        allowedGroups: z.array(z.string()).optional().default([]),
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||

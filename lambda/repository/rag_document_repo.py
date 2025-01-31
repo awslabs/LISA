@@ -32,9 +32,10 @@ class RagDocumentRepository:
     """RAG Document repository for DynamoDB"""
 
     def __init__(self, document_table_name: str, sub_document_table_name: str):
-        self.dynamodb = boto3.resource("dynamodb")
-        self.doc_table = self.dynamodb.Table(document_table_name)
-        self.subdoc_table = self.dynamodb.Table(sub_document_table_name)
+        dynamodb = boto3.resource("dynamodb")
+        self.doc_table = dynamodb.Table(document_table_name)
+        self.subdoc_table = dynamodb.Table(sub_document_table_name)
+        self.s3_client = boto3.client("s3")
 
     def delete_by_id(self, repository_id: str, document_id: str) -> None:
         """Delete a document using partition key and sort key.
@@ -49,6 +50,7 @@ class RagDocumentRepository:
         Raises:
             ClientError: If deletion fails
         """
+        logging.info(f"Removing document {repository_id}:{document_id}")
         try:
             document = self.find_by_id(repository_id=repository_id, document_id=document_id)
             subdocs = self.find_subdocs_by_id(document_id)
@@ -165,6 +167,42 @@ class RagDocumentRepository:
                 doc["subdocs"] = subdocs
         return docs
 
+    def find_by_source(
+        self, repository_id: str, collection_id: str, document_source: str, join_docs: bool = False
+    ) -> list[RagDocumentDict]:
+        """Get a list of documents from the RagDocTable by source.
+
+        Args:
+            document_source (str): The name of the documents to retrieve
+            repository_id (str): The repository id to list documents for
+
+        Returns:
+            list[RagDocument]: A list of document objects matching the specified name
+
+        Raises:
+            KeyError: If no documents are found with the specified name
+        """
+        pk = RagDocument.createPartitionKey(repository_id, collection_id)
+        response = self.doc_table.query(
+            KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("source").eq(document_source)
+        )
+        docs: list[RagDocumentDict] = response["Items"]
+
+        # Handle paginated Dynamo results
+        while "LastEvaluatedKey" in response:
+            response = self.doc_table.query(
+                KeyConditionExpression=Key("pk").eq(pk),
+                FilterExpression=Key("document_name").eq(document_source),
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+            docs.extend(response["Items"])
+
+        if join_docs:
+            for doc in docs:
+                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                doc["subdocs"] = subdocs
+        return docs
+
     def list_all(
         self,
         repository_id: str,
@@ -258,3 +296,17 @@ class RagDocumentRepository:
             List of subdocument dictionaries
         """
         return [doc for entry in entries for doc in entry["subdocs"]]
+
+    def delete_s3_object(self, uri: str) -> None:
+        """Delete an object from S3.
+
+        Args:
+            key: The key of the object to delete
+        """
+        try:
+            bucket, key = uri.replace("s3://", "").split("/", 1)
+            logging.info(f"Deleting S3 object: {bucket}/{key}")
+            self.s3_client.delete_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
+            raise

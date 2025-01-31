@@ -20,10 +20,10 @@ import path from 'path';
 
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
-import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Aws, CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, CfnServiceLinkedRole, Effect, Policy, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Code, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
@@ -43,6 +43,7 @@ import { BaseProps, RagRepositoryType } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
+import { DeletePipelineStateMachine } from './state_machine/delete-pipeline';
 import { Roles } from '../core/iam/roles';
 import { getDefaultRuntime } from '../api-base/utils';
 
@@ -144,6 +145,7 @@ export class LisaRagStack extends Stack {
             removalPolicy: config.removalPolicy,
         });
 
+        const connectionParamName = 'LisaServeRagConnectionInfo';
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             BUCKET_NAME: bucket.bucketName,
@@ -154,6 +156,13 @@ export class LisaRagStack extends Stack {
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
             ADMIN_GROUP: config.authConfig!.adminGroup,
+            REPOSITORY_CONFIG: JSON.stringify(config.ragRepositories),
+            REGISTERED_REPOSITORIES_PS_NAME: `${config.deploymentPrefix}/registeredRepositories`,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
+            RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/${connectionParamName}`,
+            OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
+            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
+            LOG_LEVEL: config.logLevel,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -169,8 +178,10 @@ export class LisaRagStack extends Stack {
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
             ),
         );
+
         bucket.grantRead(lambdaRole);
         bucket.grantPut(lambdaRole);
+        bucket.grantDelete(lambdaRole);
 
         // Build RAG Lambda layer
         const ragLambdaLayer = new Layer(this, 'RagLayer', {
@@ -203,17 +214,12 @@ export class LisaRagStack extends Stack {
         const registeredRepositories = [];
         let pgvectorSg = undefined;
         let openSearchSg = undefined;
-        const connectionParamName = 'LisaServeRagConnectionInfo';
-        baseEnvironment['REGISTERED_REPOSITORIES_PS_PREFIX'] = `${config.deploymentPrefix}/${connectionParamName}/`;
-        const registeredRepositoriesParamName = `${config.deploymentPrefix}/registeredRepositories`;
-
         for (const ragConfig of config.ragRepositories) {
             registeredRepositories.push({ repositoryId: ragConfig.repositoryId, repositoryName: ragConfig.repositoryName, type: ragConfig.type, allowedGroups: ragConfig.allowedGroups });
 
             // Create opensearch cluster for RAG
             if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
                 if (!openSearchSg) {
-
                     openSearchSg = SecurityGroupFactory.createSecurityGroup(
                         this,
                         config.securityGroupConfig?.openSearchSecurityGroupId,
@@ -374,15 +380,46 @@ export class LisaRagStack extends Stack {
                         new IngestPipelineStateMachine(this, pipelineId, {
                             config,
                             vpc,
+                            baseEnvironment,
                             pipelineConfig,
                             rdsConfig: ragConfig.rdsConfig,
                             repositoryId: ragConfig.repositoryId,
                             type: ragConfig.type,
                             layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
-                            registeredRepositoriesParamName,
                             ragDocumentTable: docMetaTable,
                             ragSubDocumentTable: subDocTable,
                         });
+                        // Add removal pipeline if enabled
+                        if (pipelineConfig.autoRemove) {
+                            const pipelineDeleteId = `DeletePipeline-${ragConfig.repositoryId}-${index}`;
+                            new DeletePipelineStateMachine(this, pipelineDeleteId, {
+                                baseEnvironment,
+                                config,
+                                vpc,
+                                s3Bucket: pipelineConfig.s3Bucket,
+                                s3Prefix: pipelineConfig.s3Prefix,
+                                embeddingModel: pipelineConfig.embeddingModel,
+                                repositoryId: ragConfig.repositoryId,
+                                type: ragConfig.type,
+                                layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
+                                ragDocumentTable: docMetaTable,
+                                ragSubDocumentTable: subDocTable,
+                            });
+                            // Add lambda execution permissions to remove from RAG bucket via API
+                            const policy = new Policy(this, `${pipelineDeleteId}Policy`, {
+                                statements: [
+                                    new PolicyStatement({
+                                        effect: Effect.ALLOW,
+                                        actions: ['s3:GetObject', 's3:DeleteObject', ],
+                                        resources: [
+                                            `arn:${Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}`,
+                                            `arn:${Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
+                                        ]
+                                    }),
+                                ],
+                            });
+                            policy.attachToRole(lambdaRole);
+                        }
                         console.log(`[DEBUG] Successfully created pipeline ${index}`);
                     } catch (error) {
                         console.error(`[ERROR] Failed to create pipeline ${index}:`, error);
@@ -394,7 +431,7 @@ export class LisaRagStack extends Stack {
 
         // Create Parameter Store entry with RAG repositories
         const ragRepositoriesParam = new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
-            parameterName: registeredRepositoriesParamName,
+            parameterName: baseEnvironment['REGISTERED_REPOSITORIES_PS_NAME'],
             stringValue: JSON.stringify(registeredRepositories),
             description: 'Serialized JSON of registered RAG repositories',
         });

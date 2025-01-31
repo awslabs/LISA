@@ -27,7 +27,7 @@ import {
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
-import { BaseProps } from '../../schema';
+import { BaseProps, PipelineConfig } from '../../schema';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
@@ -41,15 +41,6 @@ import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 
-type PipelineConfig = {
-    chunkOverlap: number;
-    chunkSize: number;
-    embeddingModel: string;
-    s3Bucket: string;
-    s3Prefix: string;
-    trigger: string;
-};
-
 type RdsConfig = {
     username: string;
     dbHost?: string;
@@ -60,12 +51,12 @@ type RdsConfig = {
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;
+    baseEnvironment:  Record<string, string>,
     pipelineConfig: PipelineConfig;
     rdsConfig?: RdsConfig;
     repositoryId: string;
     type: RagRepositoryType;
     layers?: ILayerVersion[];
-    registeredRepositoriesParamName: string;
     ragDocumentTable: Table;
     ragSubDocumentTable: Table;
 };
@@ -79,7 +70,7 @@ export class IngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable, ragSubDocumentTable} = props;
+        const {config, vpc, type, pipelineConfig, baseEnvironment, rdsConfig, repositoryId, layers, ragDocumentTable, ragSubDocumentTable} = props;
 
         // Create KMS key for environment variable encryption
         const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
@@ -88,6 +79,7 @@ export class IngestPipelineStateMachine extends Construct {
         });
 
         const environment = {
+            ...baseEnvironment,
             CHUNK_OVERLAP: pipelineConfig.chunkOverlap.toString(),
             CHUNK_SIZE: pipelineConfig.chunkSize.toString(),
             EMBEDDING_MODEL: pipelineConfig.embeddingModel,
@@ -95,17 +87,6 @@ export class IngestPipelineStateMachine extends Construct {
             S3_PREFIX: pipelineConfig.s3Prefix,
             REPOSITORY_ID: repositoryId,
             REPOSITORY_TYPE: type,
-            REST_API_VERSION: 'v2',
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
-            RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-            OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-            LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
-            RAG_DOCUMENT_TABLE: ragDocumentTable.tableName,
-            RAG_SUB_DOCUMENT_TABLE: ragSubDocumentTable.tableName,
-            LOG_LEVEL: config.logLevel,
-            REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
-            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.sslCertIamArn || '',
             ...(rdsConfig && {
                 RDS_USERNAME: rdsConfig.username,
                 RDS_HOST: rdsConfig.dbHost || '',

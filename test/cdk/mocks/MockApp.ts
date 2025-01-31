@@ -31,8 +31,32 @@ import { LisaRagStack } from '../../../lib/rag';
 
 export default class MockApp {
 
+    private static mockApp: any;
+
+    static getStacks () {
+        if (!this.mockApp) {
+            this.mockApp = MockApp.create();
+        }
+        return this.mockApp.stacks;
+    }
+    static getApp () {
+        if (!this.mockApp) {
+            this.mockApp = MockApp.create();
+        }
+        return this.mockApp.app;
+    }
+
     static create (config?: Config) {
-        const app = new cdk.App();
+        process.env.NODE_ENV = 'test';
+        const app = new cdk.App({
+            context: {
+                // Skip bundling for all assets
+                '@aws-cdk/core:newStyleStackSynthesis': true,
+                '@aws-cdk/aws-lambda:recognizeLayerVersion': true,
+                '@aws-cdk/core:skipBundling': true,
+                'aws:cdk:bundling-stacks': []
+            }
+        });
         config = config || ConfigParser.parseConfig();
         const baseStackProps = {
             env: {
@@ -60,10 +84,6 @@ export default class MockApp {
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
             vpc: networkingStack.vpc,
         });
-        const coreStack = new CoreStack(app, 'LisaCore', {
-            ...baseStackProps,
-            stackName: 'LisaCore'
-        });
         const apiDeploymentStack = new LisaApiDeploymentStack(app, 'LisaApiDeployment', {
             ...baseStackProps,
             stackName: 'LisaApiDeployment',
@@ -80,23 +100,22 @@ export default class MockApp {
             vpc: networkingStack.vpc,
         });
 
-        const modelsStack = new LisaModelsApiStack(app, 'LisaModels', {
-            ...baseStackProps,
-            stackName: 'LisaModels',
-            authorizer: apiBaseStack.authorizer,
-            lisaServeEndpointUrlPs: serveStack.endpointUrl,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
-            vpc: networkingStack.vpc,
-        });
-
         const uiStack = new UserInterfaceStack(app, 'LisaUI', {
             ...baseStackProps,
             architecture: ARCHITECTURE,
             stackName: 'LisaUI',
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
+        });
+
+        const docStack = new LisaDocsStack(app, 'LisaDocs',{
+            ...baseStackProps,
+            stackName: 'LisaDocs'
+        });
+
+        const coreStack = new CoreStack(app, 'LisaCore', {
+            ...baseStackProps,
+            stackName: 'LisaCore'
         });
 
         const ragStack = new LisaRagStack(app, 'LisaRAG', {
@@ -111,9 +130,15 @@ export default class MockApp {
             vpc: networkingStack.vpc,
         });
 
-        const docStack = new LisaDocsStack(app, 'LisaDocs',{
+        const modelsStack = new LisaModelsApiStack(app, 'LisaModels', {
             ...baseStackProps,
-            stackName: 'LisaDocs'
+            stackName: 'LisaModels',
+            authorizer: apiBaseStack.authorizer,
+            lisaServeEndpointUrlPs: serveStack.endpointUrl,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
+            vpc: networkingStack.vpc,
         });
 
         const stacks = [
@@ -122,12 +147,12 @@ export default class MockApp {
             apiBaseStack,
             apiDeploymentStack,
             chatStack,
-            coreStack,
             serveStack,
-            modelsStack,
             uiStack,
+            docStack,
+            coreStack,
+            modelsStack,
             ragStack,
-            docStack
         ];
 
         return { app, stacks };

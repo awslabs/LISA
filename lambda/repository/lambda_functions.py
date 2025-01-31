@@ -527,14 +527,12 @@ def download_document(event: dict, context: dict) -> str:
     ensure_repository_access(event, find_repository_by_id(repository_id))
     doc = doc_repo.find_by_id(repository_id=repository_id, document_id=document_id)
 
-    username = get_username(event)
     source = doc.get("source")
     bucket, key = source.replace("s3://", "").split("/", 1)
 
     url: str = s3.generate_presigned_url(
         ClientMethod="get_object",
         Params={"Bucket": bucket, "Key": key},
-        Field={"x-amz-meta-user": username},
         ExpiresIn=300,
     )
 

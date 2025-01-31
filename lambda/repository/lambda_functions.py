@@ -444,6 +444,42 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
+def download_doc(event: dict) -> str:
+    """Generate a pre-signed S3 URL for downloading a file from the RAG ingested files.
+    Args:
+        event (dict): The Lambda event object containing:
+            path_params:
+                repositoryId - the repository
+                documentId - the document
+
+    Returns:
+        url: The presigned URL response object with download fields and URL
+
+    Notes:
+        - URL expires in 300 seconds (5 mins)
+    """
+    path_params = event.get("pathParameters", {}) or {}
+    repository_id = path_params.get("repositoryId")
+    document_id = path_params.get("documentId")
+
+    ensure_repository_access(event, find_repository_by_id(repository_id))
+    doc = doc_repo.find_by_id(repository_id=repository_id, document_id=document_id)
+
+    username = get_username(event)
+    source = doc.get("source")
+    bucket, key = source.replace("s3://", "").split("/", 1)
+
+    url: str = s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": bucket, "Key": key},
+        Field={"x-amz-meta-user": username},
+        ExpiresIn=300,
+    )
+
+    return url
+
+
+@api_wrapper
 def presigned_url(event: dict, context: dict) -> dict:
     """Generate a pre-signed URL for uploading files to the RAG ingest bucket.
 

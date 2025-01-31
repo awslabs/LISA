@@ -506,7 +506,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def download_doc(event: dict) -> str:
+def download_document(event: dict, context: dict) -> str:
     """Generate a pre-signed S3 URL for downloading a file from the RAG ingested files.
     Args:
         event (dict): The Lambda event object containing:

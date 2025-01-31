@@ -164,7 +164,7 @@ export default function Chat ({ sessionId }) {
         const handleRagConfiguration = async (chainSteps: any[]) => {
             const ragStep = {
                 input: ({ input }: { input: string }) => input,
-                chatHistory: () => memory.loadMemoryVariables({}),
+                chatHistory: () => memory.loadMemoryVariables(),
                 context: async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
                     const question = await getContextualizedQuestion(input);
                     const relevantDocs = await fetchRelevantDocuments(question);
@@ -224,7 +224,7 @@ export default function Chat ({ sessionId }) {
         const handleNonRagConfiguration = (chainSteps: any[]) => {
             const nonRagStep = {
                 input: (initialInput: any) => initialInput.input,
-                memory: () => memory.loadMemoryVariables({}),
+                memory: () => memory.loadMemoryVariables(),
                 context: () => fileContext || '',
                 humanPrefix: (initialInput: any) => initialInput.humanPrefix,
                 aiPrefix: (initialInput: any) => initialInput.aiPrefix,
@@ -396,7 +396,7 @@ export default function Chat ({ sessionId }) {
 
     useEffect(() => {
         if (selectedModel && auth.isAuthenticated) {
-            memory.loadMemoryVariables({}).then(async (formattedHistory) => {
+            memory.loadMemoryVariables().then(async (formattedHistory) => {
                 const promptValues = {
                     input: userPrompt,
                     history: formattedHistory.history,

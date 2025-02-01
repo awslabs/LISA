@@ -134,6 +134,16 @@ export class RepositoryApi extends Construct {
                     ...baseEnvironment,
                 },
             },
+            {
+                name: 'download_document',
+                resource: 'repository',
+                description: 'Creates presigned url to download document within repository',
+                path: 'repository/{repositoryId}/{documentId}/download',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
         ];
         apis.forEach((f) => {
             registerAPIEndpoint(

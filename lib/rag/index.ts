@@ -363,14 +363,14 @@ export class LisaRagStack extends Stack {
             }
 
             // Create ingest pipeline state machines for each pipeline config
-            console.log('[DEBUG] Checking pipelines configuration:', {
+            console.debug('Checking pipelines configuration:', {
                 hasPipelines: !!ragConfig.pipelines,
                 pipelinesLength: ragConfig.pipelines?.length || 0
             });
 
             if (ragConfig.pipelines) {
                 ragConfig.pipelines.forEach((pipelineConfig, index) => {
-                    console.log(`[DEBUG] Creating pipeline ${index}:`, {
+                    console.debug(`Creating pipeline ${index}:`, {
                         pipelineConfig: JSON.stringify(pipelineConfig, null, 2)
                     });
 
@@ -420,9 +420,9 @@ export class LisaRagStack extends Stack {
                             });
                             policy.attachToRole(lambdaRole);
                         }
-                        console.log(`[DEBUG] Successfully created pipeline ${index}`);
+                        console.debug(`Successfully created pipeline ${index}`);
                     } catch (error) {
-                        console.error(`[ERROR] Failed to create pipeline ${index}:`, error);
+                        console.error(`Failed to create pipeline ${index}:`, error);
                         throw error; // Re-throw to ensure CDK deployment fails
                     }
                 });

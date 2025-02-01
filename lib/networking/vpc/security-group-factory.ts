@@ -46,7 +46,7 @@ export class SecurityGroupFactory {
         description: string,
     ): ISecurityGroup {
         if (securityGroupOverride) {
-            console.log(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupId}`);
+            console.debug(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupId}`);
             const sg = SecurityGroup.fromSecurityGroupId(construct, securityGroupId, securityGroupOverride);
             // Validate the security group exists
             if (!sg) {

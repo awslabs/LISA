@@ -58,8 +58,8 @@ export function Home ({ setNav }) {
             }
         >
             {visible && <Alert type='error'>You must sign in to access this page!</Alert>}
-            <Box float='center'>
-                <div align='center'>
+            <Box>
+                <div>
                     <figure>
                         <img
                             src={chatImg}

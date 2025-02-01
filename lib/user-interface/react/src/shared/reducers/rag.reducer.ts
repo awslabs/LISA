@@ -65,6 +65,29 @@ export const ragApi = createApi({
             }),
             providesTags:['repositories'],
         }),
+        createRagRepository: builder.mutation<Repository, Repository>({
+            query: (body) => ({
+                url: '/repository',
+                method: 'POST',
+                data: body,
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        deleteRagRepository: builder.mutation<undefined, string>({
+            query: (repositoryId) => ({
+                url: `/repository/${repositoryId}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        updateRagRepository: builder.mutation<Repository, Repository>({
+            query: (body) => ({
+                url: `/repository/`,
+                method: 'PUT',
+                data: body,
+            }),
+            invalidatesTags: ['repositories'],
+        }),
         getPresignedUrl: builder.query<any, String>({
             query: (body) => ({
                 url: '/repository/presigned-url',
@@ -140,6 +163,9 @@ export const ragApi = createApi({
 
 export const {
     useListRagRepositoriesQuery,
+    useCreateRagRepositoryMutation,
+    useDeleteRagRepositoryMutation,
+    useUpdateRagRepositoryMutation,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,

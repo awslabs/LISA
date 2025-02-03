@@ -70,8 +70,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
         allDocs ?? [], {
             filtering: {
                 empty: (
-                    <Box margin={{ vertical: 'xs' }} textAlign="center">
-                        <SpaceBetween size="m">
+                    <Box margin={{ vertical: 'xs' }} textAlign='center'>
+                        <SpaceBetween size='m'>
                             <b>No documents</b>
                         </SpaceBetween>
                     </Box>
@@ -143,8 +143,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             enableKeyboardNavigation
             items={items}
             loading={isFetching}
-            loadingText="Loading documents"
-            selectionType="multi"
+            loadingText='Loading documents'
+            selectionType='multi'
             filter={
                 <TextFilter
                     {...filterProps}
@@ -160,8 +160,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                     }
                     actions={
                         <SpaceBetween
-                            direction="horizontal"
-                            size="xs"
+                            direction='horizontal'
+                            size='xs'
                         >
                             <ButtonDropdown
                                 items={actionItems}
@@ -182,10 +182,10 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             }
             preferences={
                 <CollectionPreferences
-                    title="Preferences"
+                    title='Preferences'
                     preferences={preferences}
-                    confirmLabel="Confirm"
-                    cancelLabel="Cancel"
+                    confirmLabel='Confirm'
+                    cancelLabel='Cancel'
                     onConfirm={({ detail }) => setPreferences(detail)}
                     contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
                     pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}

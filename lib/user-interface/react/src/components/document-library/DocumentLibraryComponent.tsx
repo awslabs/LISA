@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { ReactElement, useState } from 'react';
+import { ReactElement } from 'react';
 import {
     ButtonDropdownProps,
     CollectionPreferences,
@@ -70,8 +70,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
         allDocs ?? [], {
             filtering: {
                 empty: (
-                    <Box margin={{ vertical: 'xs' }} textAlign='center'>
-                        <SpaceBetween size='m'>
+                    <Box margin={{ vertical: 'xs' }} textAlign="center">
+                        <SpaceBetween size="m">
                             <b>No documents</b>
                         </SpaceBetween>
                     </Box>
@@ -88,8 +88,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             selection: { trackBy: 'document_id' },
         },
     );
-    const [isDownloading, setIsDownloading] = useState<boolean>(false);
-    const [getDownloadUrl] = useLazyDownloadRagDocumentQuery();
+    const [getDownloadUrl, { isFetching: isDownloading }] = useLazyDownloadRagDocumentQuery();
     const actionItems: ButtonDropdownProps.Item[] = [
         {
             id: 'rm',
@@ -120,11 +119,9 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                 break;
             }
             case 'download': {
-                setIsDownloading(true);
-                getDownloadUrl({ documentId: collectionProps.selectedItems[0].document_id, repositoryId })
-                    .then((resp) => downloadFile(resp.data, collectionProps.selectedItems[0].document_name))
-                    .catch((err) => console.error(err))
-                    .finally(() => setIsDownloading(false));
+                const { document_id, document_name } = collectionProps.selectedItems[0];
+                const resp = await getDownloadUrl({ documentId: document_id, repositoryId });
+                downloadFile(resp.data, document_name);
                 break;
             }
             default:
@@ -146,8 +143,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             enableKeyboardNavigation
             items={items}
             loading={isFetching}
-            loadingText='Loading documents'
-            selectionType='multi'
+            loadingText="Loading documents"
+            selectionType="multi"
             filter={
                 <TextFilter
                     {...filterProps}
@@ -163,8 +160,8 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                     }
                     actions={
                         <SpaceBetween
-                            direction='horizontal'
-                            size='xs'
+                            direction="horizontal"
+                            size="xs"
                         >
                             <ButtonDropdown
                                 items={actionItems}
@@ -185,10 +182,10 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             }
             preferences={
                 <CollectionPreferences
-                    title='Preferences'
+                    title="Preferences"
                     preferences={preferences}
-                    confirmLabel='Confirm'
-                    cancelLabel='Cancel'
+                    confirmLabel="Confirm"
+                    cancelLabel="Cancel"
                     onConfirm={({ detail }) => setPreferences(detail)}
                     contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
                     pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}

@@ -20,6 +20,7 @@ from typing import Any, Dict, List
 
 import boto3
 import requests
+from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from langchain_core.vectorstores import VectorStore
 from lisapy.langchain import LisaOpenAIEmbeddings
@@ -46,6 +47,8 @@ session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name, config=retry_config)
 secrets_client = boto3.client("secretsmanager", region_name, config=retry_config)
 iam_client = boto3.client("iam", region_name, config=retry_config)
+step_functions_client = boto3.client('stepfunctions', region_name, config=retry_config)
+ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
 s3 = session.client(
     "s3",
     region_name,
@@ -610,3 +613,96 @@ def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_du
         repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated
     )
     return {"documents": docs, "lastEvaluated": last_evaluated}
+
+@api_wrapper
+def create(event: dict, context: dict) -> Any:
+    """
+    Create a new process execution using AWS Step Functions. This function is only accessible by administrators.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - body: A JSON string with the process creation details.
+        context (dict): The Lambda context object.
+
+    Returns:
+        Dict[str, str]: A dictionary containing:
+            - status: Success status message.
+            - executionArn: The ARN of the step function execution.
+
+    Raises:
+        ValueError: If the user is not an administrator.
+    """
+    # Check if the user has admin privileges
+    if not is_admin(event):
+        raise ValueError("User is not an administrator.")
+    
+    # Fetch the Step Function ARN from SSM Parameter Store
+    parameter_name = os.environ['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER']
+    state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+
+    # Deserialize the event body and prepare input for Step Functions
+    input_data = json.loads(event['body'])
+    serializer = TypeSerializer()
+
+    # Start Step Function execution
+    response = step_functions_client.start_execution(
+        stateMachineArn=state_machine_arn["Parameter"]["Value"],
+        input=json.dumps({
+            "body": input_data,
+            "config": {key: serializer.serialize(value) for key, value in input_data["ragConfig"].items()}
+        })
+    )
+
+    # Return success status and execution ARN
+    return {
+        "status": "success",
+        "executionArn": response['executionArn']
+    }
+
+
+@api_wrapper
+def delete(event: dict, context: dict) -> Any:
+    """
+    Delete a vector store process using AWS Step Functions. This function ensures 
+    that the user is an administrator or owns the vector store being deleted.
+    
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository id of the vector store to delete.
+        context (dict): The Lambda context object.
+
+    Returns:
+        Dict[str, str]: A dictionary containing:
+            - status: Success status message.
+            - executionArn: The ARN of the step function execution.
+
+    Raises:
+        ValueError: If the repository is not found.
+    """
+
+    # Retrieve the repository ID from the path parameters in the event object
+    repository_id = event['pathParameters']['repositoryId']
+
+    # Ensure repository access
+    repository = find_repository_by_id(repository_id)
+    if not is_admin(event):
+        ensure_repository_access(event, repository)
+
+    # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
+    parameter_name = os.environ['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER']
+    state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+    
+    # Start the execution of the State Machine to delete the vector store
+    response = step_functions_client.start_execution(
+        stateMachineArn=state_machine_arn["Parameter"]["Value"],
+        input=json.dumps({
+            "repositoryId": repository_id,
+            "stackName": repository["stackName"]["S"]
+        })
+    )
+    
+    # Return success status and execution ARN
+    return {
+        "status": "success",
+        "executionArn": response['executionArn']
+    }

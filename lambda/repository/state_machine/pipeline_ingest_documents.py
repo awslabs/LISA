@@ -42,11 +42,12 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         bucket = event["bucket"]
         key = event["key"]
 
-        # Get configuration from environment variables
-        chunk_size = int(os.environ["CHUNK_SIZE"])
-        chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
-        embedding_model = os.environ["EMBEDDING_MODEL"]
-        repository_id = os.environ["REPOSITORY_ID"]
+        # Get configuration from event
+        pipelineConfig = event["pipelineConfig"]
+        chunk_size = int(pipelineConfig["chunkSize"])
+        chunk_overlap = int(pipelineConfig["chunkOverlap"])
+        embedding_model = pipelineConfig["embeddingModel"]
+        repository_id = pipelineConfig["repositoryId"]
         username = get_username(event)
 
         # Initialize document processor and vectorstore

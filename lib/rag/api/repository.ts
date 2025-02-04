@@ -144,6 +144,28 @@ export class RepositoryApi extends Construct {
                     ...baseEnvironment,
                 },
             },
+            {
+                name: 'create',
+                resource: 'repository',
+                description: 'List all docs for a repository',
+                path: 'repository',
+                method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                    // LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/createStoreStateMachineArn`)
+                },
+            },
+            {
+                name: 'delete',
+                resource: 'repository',
+                description: 'List all docs for a repository',
+                path: 'repository/{repositoryId}',
+                method: 'DELETE',
+                environment: {
+                    ...baseEnvironment,
+                    // LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/deleteStoreStateMachineArn`)
+                },
+            },
         ];
         apis.forEach((f) => {
             registerAPIEndpoint(

@@ -34,28 +34,48 @@ session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 registered_repositories: List[Dict[str, Any]] = []
+ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 def get_registered_repositories() -> List[dict]:
     """Get a list of all registered RAG repositories."""
     global registered_repositories
     if not registered_repositories:
-        registered_repositories_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS_NAME"])
-        registered_repositories = json.loads(registered_repositories_response["Parameter"]["Value"])
+        table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
+        registered_repositories = []
+
+        try:
+            # Initialize the paginator
+            paginator = ddb_client.get_paginator('scan')
+            # Create the paginated request
+            for page in paginator.paginate(TableName=table_name):
+                # Iterate over each item in the current page
+                for item in page.get('Items', []):
+                    # Extract and append the 'config' attribute
+                    if 'config' in item:
+                        registered_repositories.append(item['config'])
+        except ddb_client.exceptions.ResourceNotFoundException:
+            raise ValueError(f"Table '{table_name}' does not exist")
 
     return registered_repositories
 
 
 def find_repository_by_id(repository_id: str) -> Dict[str, Any]:
     """Find a RAG repository by id."""
-    repository = next(
-        (repository for repository in get_registered_repositories() if repository["repositoryId"] == repository_id),
-        None,
-    )
-    if repository is None:
+    table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
+
+    try:
+        response = ddb_client.get_item(
+            TableName=table_name,
+            Key={"repositoryId": {"S": repository_id}},
+        )
+    except ddb_client.exceptions.ResourceNotFoundException:
+        raise ValueError(f"Table '{table_name}' does not exist")
+
+    if "Item" not in response:
         raise ValueError(f"Repository with ID '{repository_id}' not found")
 
-    return repository
+    return response["Item"]
 
 
 def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:

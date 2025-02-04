@@ -14,14 +14,18 @@
   limitations under the License.
 */
 
-// eslint-disable-next-line no-undef
-module.exports = {
-    testEnvironment: 'node',
-    roots: ['<rootDir>/test'],
-    testMatch: ['**/*.test.ts'],
-    transform: {
-        '^.+\\.tsx?$': 'ts-jest'
-    },
-    collectCoverage: true,
-    silent: true,
-};
+/**
+ * Download a file using hidden link
+ * @param url
+ * @param filename
+ */
+export function downloadFile (url: string, filename: string) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'download';
+    link.hidden = true;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

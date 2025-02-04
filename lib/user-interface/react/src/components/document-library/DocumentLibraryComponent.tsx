@@ -24,7 +24,11 @@ import {
     TextFilter,
 } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { useDeleteRagDocumentsMutation, useListRagDocumentsQuery } from '../../shared/reducers/rag.reducer';
+import {
+    useDeleteRagDocumentsMutation,
+    useLazyDownloadRagDocumentQuery,
+    useListRagDocumentsQuery,
+} from '../../shared/reducers/rag.reducer';
 import Table from '@cloudscape-design/components/table';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import { DEFAULT_PREFERENCES, PAGE_SIZE_OPTIONS, TABLE_DEFINITION, TABLE_PREFERENCES } from './DocumentLibraryConfig';
@@ -35,6 +39,7 @@ import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/re
 import { RagDocument } from '../types';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
+import { downloadFile } from '../../shared/util/downloader';
 
 type DocumentLibraryComponentProps = {
     repositoryId?: string;
@@ -54,9 +59,8 @@ function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
 
 export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryComponentProps): ReactElement {
     const { data: allDocs, isFetching } = useListRagDocumentsQuery({ repositoryId }, { refetchOnMountOrArgChange: 5 });
-    const [deleteMutation, {
-        isLoading: isDeleteLoading,
-    }] = useDeleteRagDocumentsMutation();
+    const [deleteMutation, { isLoading: isDeleteLoading }] = useDeleteRagDocumentsMutation();
+
     const currentUser = useAppSelector(selectCurrentUsername);
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
@@ -84,13 +88,18 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             selection: { trackBy: 'document_id' },
         },
     );
-
+    const [getDownloadUrl, { isFetching: isDownloading }] = useLazyDownloadRagDocumentQuery();
     const actionItems: ButtonDropdownProps.Item[] = [
         {
             id: 'rm',
             text: 'Delete',
             disabled: !canDeleteAll(collectionProps.selectedItems, currentUser, isAdmin),
             disabledReason: disabledDeleteReason(collectionProps.selectedItems),
+        }, {
+            id: 'download',
+            text: 'Download',
+            disabled: collectionProps.selectedItems.length > 1,
+            disabledReason: 'Only one file can be downloaded at a time',
         },
     ];
     const handleAction = async (e: any) => {
@@ -107,6 +116,12 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                         description: <div>This will delete the following documents: <ul>{documentView}</ul></div>,
                     }),
                 );
+                break;
+            }
+            case 'download': {
+                const { document_id, document_name } = collectionProps.selectedItems[0];
+                const resp = await getDownloadUrl({ documentId: document_id, repositoryId });
+                downloadFile(resp.data, document_name);
                 break;
             }
             default:
@@ -150,8 +165,9 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                         >
                             <ButtonDropdown
                                 items={actionItems}
-                                loading={isDeleteLoading}
-                                onItemClick={(e) => handleAction(e)}
+                                loading={isDeleteLoading || isDownloading}
+                                disabled={collectionProps.selectedItems.length === 0}
+                                onItemClick={async (e) => handleAction(e)}
                             >
                                 Actions
                             </ButtonDropdown>

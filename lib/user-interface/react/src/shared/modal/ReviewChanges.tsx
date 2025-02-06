@@ -20,29 +20,39 @@ import { Alert, SpaceBetween, TextContent } from '@cloudscape-design/components'
 import Container from '@cloudscape-design/components/container';
 import { SerializedError } from '@reduxjs/toolkit';
 
-export type ReviewModelChangesProps = {
+export type ReviewChangesProps = {
     jsonDiff: object,
     error?: SerializedError
 };
 
-export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactElement {
+export function ReviewChanges (props: ReviewChangesProps): ReactElement {
     /**
      * Converts a JSON object into an outline structure represented as React nodes.
      *
      * @param {object} [json={}] - The JSON object to be converted.
      * @returns {React.ReactNode[]} - An array of React nodes representing the outline structure.
      */
-    function jsonToOutline (json = {}) {
+    function jsonToOutline (json: object = {}): React.JSX.Element {
         const output: React.ReactNode[] = [];
 
         for (const key in json) {
             const value = json[key];
-            output.push((<li><p><strong>{_.startCase(key)}</strong>{_.isPlainObject(value) ? '' : `: ${value}`}</p></li>));
+            const isNested = _.isPlainObject(value) || _.isArray(value);
+            output.push((
+                <li key={key}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p>
+                </li>));
 
             if (_.isPlainObject(value)) {
                 const recursiveJson = jsonToOutline(value); // recursively call
                 output.push((recursiveJson));
+            } else if (_.isArray(value)) {
+                for (const item of value) {
+                    output.push((<li>-------------------------</li>));
+                    const recursiveJson = jsonToOutline(item); // recursively call
+                    output.push((recursiveJson));
+                }
             }
+
         }
         return <ul>{output}</ul>;
     }
@@ -55,12 +65,11 @@ export function ReviewModelChanges (props: ReviewModelChangesProps) : ReactEleme
                 </TextContent>
             </Container>
 
-            { props?.error && <Alert
+            {props?.error && <Alert
                 type='error'
-                statusIconAriaLabel='Error'
-                header={props?.error?.name || 'Model Error'}
+                header={props?.error?.name || 'Diff Error'}
             >
-                { props?.error?.message }
+                {props?.error?.message}
             </Alert>}
         </SpaceBetween>
     );

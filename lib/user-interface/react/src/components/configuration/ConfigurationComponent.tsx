@@ -25,7 +25,7 @@ import { Button, Header } from '@cloudscape-design/components';
 import { useGetConfigurationQuery, useUpdateConfigurationMutation } from '../../shared/reducers/configuration.reducer';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
-import { getJsonDifference } from '../../shared/util/utils';
+import { getJsonDifference } from '../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useNotificationService } from '../../shared/util/hooks';
 import RepositoryTable from './RepositoryTable';
@@ -145,23 +145,23 @@ export function ConfigurationComponent (): ReactElement {
     return (
         <SpaceBetween size={'m'}>
             <Header
-                variant="h1"
+                variant='h1'
                 description={'The current configuration of LISA'}
             >
                 LISA App Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
             <SystemBannerConfiguration setFields={setFields}
-                                       textColor={state.form.systemBanner.textColor}
-                                       backgroundColor={state.form.systemBanner.backgroundColor}
-                                       text={state.form.systemBanner.text}
-                                       isEnabled={state.form.systemBanner.isEnabled}
-                                       touchFields={touchFields}
-                                       errors={errors} />
-            <SpaceBetween alignItems="end" direction="vertical" size={'s'}>
+                textColor={state.form.systemBanner.textColor}
+                backgroundColor={state.form.systemBanner.backgroundColor}
+                text={state.form.systemBanner.text}
+                isEnabled={state.form.systemBanner.isEnabled}
+                touchFields={touchFields}
+                errors={errors} />
+            <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
                 <Button
-                    iconAlt="Update configuration"
-                    variant="primary"
+                    iconAlt='Update configuration'
+                    variant='primary'
                     onClick={() => {
                         if (!isValid) {
                             setState({ validateAll: true, formSubmitting: false });
@@ -171,14 +171,14 @@ export function ConfigurationComponent (): ReactElement {
                         }
                     }}
                     loading={isUpdating}
-                    data-cy="configuration-submit"
+                    data-cy='configuration-submit'
                     disabled={isUpdating || _.isEmpty(changesDiff)}
                 >
                     Save Changes
                 </Button>
             </SpaceBetween>
             <Header
-                variant="h1"
+                variant='h1'
                 description={'The current configuration of LISA repositories'}
             >
                 Vector Store Repository Configuration

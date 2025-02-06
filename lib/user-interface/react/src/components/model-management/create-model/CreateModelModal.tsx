@@ -16,11 +16,7 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import {
-    IModel,
-    IModelRequest,
-    ModelRequestSchema
-} from '../../../shared/model/model-management.model';
+import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -30,18 +26,17 @@ import { LoadBalancerConfig } from './LoadBalancerConfig';
 import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/reducers/model-management.reducer';
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
-import { ReviewModelChanges } from './ReviewModelChanges';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
-import { z } from 'zod';
-import { SerializedError } from '@reduxjs/toolkit';
-import { getJsonDifference } from '../../../shared/util/utils';
+import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
+import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
+import { getDefaults } from '../../../shared/util/zodUtil';
 
 export type CreateModelModalProps = {
     visible: boolean;
     isEdit: boolean;
-    setIsEdit: (boolean) => void;
-    setVisible: (boolean) => void;
+    setIsEdit: (isEdit: boolean) => void;
+    setVisible: (isEdit: boolean) => void;
     selectedItems: IModel[];
     setSelectedItems: (items: IModel[]) => void;
 };
@@ -53,38 +48,6 @@ export type ModelCreateState = {
     formSubmitting: boolean;
     activeStepIndex: number;
 };
-
-// Builds an object consisting of the default values for all validators.
-// https://github.com/colinhacks/zod/discussions/1953#discussioncomment-5695528
-function getDefaults<T extends z.ZodTypeAny> ( schema: z.AnyZodObject | z.ZodEffects<any> ): z.infer<T> {
-
-    // Check if it's a ZodEffect
-    if (schema instanceof z.ZodEffects) {
-        // Check if it's a recursive ZodEffect
-        if (schema.innerType() instanceof z.ZodEffects) return getDefaults(schema.innerType());
-        // return schema inner shape as a fresh zodObject
-        return getDefaults(z.ZodObject.create(schema.innerType().shape));
-    }
-
-    function getDefaultValue (schema: z.ZodTypeAny): unknown {
-        if (schema instanceof z.ZodDefault) return schema._def.defaultValue();
-        // return an empty array if it is
-        if (schema instanceof z.ZodArray) return [];
-        // return an empty string if it is
-        if (schema instanceof z.ZodString) return '';
-        // return an content of object recursively
-        if (schema instanceof z.ZodObject) return getDefaults(schema);
-
-        if (!('innerType' in schema._def)) return undefined;
-        return getDefaultValue(schema._def.innerType);
-    }
-
-    return Object.fromEntries(
-        Object.entries( schema.shape ).map( ( [ key, value ] ) => {
-            return [key, getDefaultValue(value)];
-        } )
-    );
-}
 
 export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const [
@@ -214,29 +177,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdating, isUpdateSuccess]);
 
-    const normalizeError = (error: SerializedError | {status: string, data: any}): SerializedError | undefined => {
-        // type predicate to help discriminate between types
-        function isResponseError<T extends {status: string, data: any}> (responseError: SerializedError | T): responseError is T {
-            return (responseError as T)?.status !== undefined;
-        }
 
-        if (error !== undefined) {
-            if (isResponseError(error)) {
-                return {
-                    name: 'Model Error',
-                    message: error.status
-                };
-            } else if (error) {
-                return {
-                    name: error?.name || 'Model Error',
-                    message: error?.message
-                };
-            }
-        }
-
-        return undefined;
-    };
-    const reviewError = normalizeError(isCreateError ? createError : isUpdateError ? updateError : undefined);
+    const reviewError = normalizeError('Model', isCreateError ? createError : isUpdateError ? updateError : undefined);
 
     const steps = [
         {
@@ -260,7 +202,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
             isOptional: true,
-            onEdit: true && state.form.lisaHostedModel
+            onEdit: state.form.lisaHostedModel,
         },
         {
             title: 'Load Balancer Configuration',
@@ -273,7 +215,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
             content: (
-                <ReviewModelChanges jsonDiff={changesDiff} error={reviewError} />
+                <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
             ),
             onEdit: state.form.lisaHostedModel
         }
@@ -295,6 +237,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 }));
         }} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
             <Wizard
+                submitButtonText={props.isEdit ? 'Update Model' : 'Create Model'}
                 i18nStrings={{
                     stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
                     collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
@@ -303,7 +246,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     cancelButton: 'Cancel',
                     previousButton: 'Previous',
                     nextButton: 'Next',
-                    submitButton: props.isEdit ? 'Update Model' : 'Create Model',
                     optional: 'LISA hosted models only'
                 }}
                 onNavigate={(event) => {

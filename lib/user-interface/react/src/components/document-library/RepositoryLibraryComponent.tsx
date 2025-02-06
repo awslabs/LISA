@@ -24,9 +24,9 @@ import {
     VISIBLE_CONTENT_OPTIONS,
 } from './RepositoryLibraryConfig';
 import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
-import { Repository } from '../types';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { useNavigate } from 'react-router-dom';
+import { RagRepositoryConfig } from '../../../../../configSchema';
 
 export function RepositoryLibraryComponent (): ReactElement {
     const {
@@ -34,7 +34,7 @@ export function RepositoryLibraryComponent (): ReactElement {
         isFetching: fetchingRepos,
     } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: 5 });
 
-    const [matchedRepos, setMatchedRepos] = useState<Repository[]>([]);
+    const [matchedRepos, setMatchedRepos] = useState<RagRepositoryConfig[]>([]);
 
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);

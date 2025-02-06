@@ -22,16 +22,16 @@ import { INotificationService } from '../../shared/notification/notification.ser
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
-import { Repository } from '../types';
 import {
     ragApi,
     useDeleteRagRepositoryMutation,
     useUpdateRagRepositoryMutation,
 } from '../../shared/reducers/rag.reducer';
+import { RagRepositoryConfig } from '../../../../../configSchema';
 
 export type RepositoryActionProps = {
-    selectedItems: ReadonlyArray<Repository>;
-    setSelectedItems: (items: Repository[]) => void;
+    selectedItems: ReadonlyArray<RagRepositoryConfig>;
+    setSelectedItems: (items: RagRepositoryConfig[]) => void;
     setNewRepositoryModalVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
 };
@@ -41,9 +41,9 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const notificationService = useNotificationService(dispatch);
     const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;
     return (
-        <SpaceBetween direction="horizontal" size="xs">
+        <SpaceBetween direction='horizontal' size='xs'>
             {RepositoryActionButton(dispatch, notificationService, props)}
-            <Button iconName="add-plus" variant="primary" onClick={() => {
+            <Button iconName='add-plus' variant='primary' onClick={() => {
                 setEdit(false);
                 setNewRepositoryModalVisible(true);
             }}>
@@ -56,7 +56,7 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
                 }}
                 ariaLabel={'Refresh repository table'}
             >
-                <Icon name="refresh" />
+                <Icon name='refresh' />
             </Button>
         </SpaceBetween>
     );
@@ -65,16 +65,14 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
 function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps): ReactElement {
     const { setEdit, selectedItems, setSelectedItems, setNewRepositoryModalVisible } = props;
 
-    const selectedRepo: Repository = selectedItems[0];
+    const selectedRepo: RagRepositoryConfig = selectedItems[0];
     const [
         deleteMutation,
         { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
     ] = useDeleteRagRepositoryMutation();
 
-    const [
-        updateRepositoryMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating },
-    ] = useUpdateRagRepositoryMutation();
+    const [, { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating }]
+        = useUpdateRagRepositoryMutation();
 
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedRepo) {
@@ -113,7 +111,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
     return (
         <ButtonDropdown
             items={items}
-            variant="primary"
+            variant='primary'
             disabled={!selectedRepo}
             loading={isDeleteLoading || isUpdating}
             onItemClick={(e) =>

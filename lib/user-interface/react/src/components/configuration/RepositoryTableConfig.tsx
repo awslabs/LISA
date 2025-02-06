@@ -13,16 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { Repository } from '../types';
 import { CollectionPreferencesProps } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
+import { RagRepositoryConfig } from '../../../../../configSchema';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Repositories');
 
 export const TABLE_DEFINITION: {
     id: string,
     header: string,
-    cell: (e: Repository) => string,
+    cell: (e: RagRepositoryConfig) => string,
     sortingField?: string,
     isRowHeader?: boolean,
     visible: boolean

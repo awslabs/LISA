@@ -25,14 +25,14 @@ import { useCollection } from '@cloudscape-design/collection-hooks';
 import Box from '@cloudscape-design/components/box';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { RepositoryActions } from './RepositoryActions';
+import CreateRepositoryModal from './createRepository/CreateRepositoryModal';
 
-type RepositoryTableProps = {};
 
 export function getMatchesCountText (count) {
     return count === 1 ? '1 match' : `${count} matches`;
 }
 
-export function RepositoryTable ({}: RepositoryTableProps): ReactElement {
+export function RepositoryTable (): ReactElement {
     const { data: allRepos, isFetching } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: 5 });
     const [preferences, setPreferences] = useLocalStorage('RepositoryPreferences', DEFAULT_PREFERENCES);
     const [newRepositoryModalVisible, setNewRepositoryModalVisible] = useState(false);
@@ -42,8 +42,8 @@ export function RepositoryTable ({}: RepositoryTableProps): ReactElement {
         allRepos ?? [], {
             filtering: {
                 empty: (
-                    <Box margin={{ vertical: 'xs' }} textAlign="center">
-                        <SpaceBetween size="m">
+                    <Box margin={{ vertical: 'xs' }} textAlign='center'>
+                        <SpaceBetween size='m'>
                             <b>No repositories</b>
                         </SpaceBetween>
                     </Box>
@@ -62,46 +62,52 @@ export function RepositoryTable ({}: RepositoryTableProps): ReactElement {
     );
 
     return (
-        <Table
-            {...collectionProps}
-            selectedItems={collectionProps.selectedItems.length > 0 ? [collectionProps.selectedItems[0]] : []}
-            onSelectionChange={({ detail }) => actions.setSelectedItems(detail.selectedItems)}
-            columnDefinitions={TABLE_DEFINITION}
-            columnDisplay={preferences.contentDisplay}
-            stickyColumns={{ first: 1, last: 0 }}
-            resizableColumns
-            enableKeyboardNavigation
-            items={items}
-            loading={isFetching}
-            loadingText="Loading repositories"
-            selectionType="single"
-            filter={<TextFilter
-                {...filterProps}
-                countText={getMatchesCountText(filteredItemsCount)} />}
-            header={<Header
-                counter={collectionProps.selectedItems.length
-                    ? `(${collectionProps.selectedItems.length}/${allRepos.length})`
-                    : `${allRepos?.length || 0}`}
-                actions={<SpaceBetween
-                    direction="horizontal"
-                    size="xs"
-                >
-                    <RepositoryActions selectedItems={collectionProps.selectedItems}
-                                       setSelectedItems={actions.setSelectedItems}
-                                       setNewRepositoryModalVisible={setNewRepositoryModalVisible}
-                                       setEdit={setEdit}></RepositoryActions>
-                </SpaceBetween>}
-            >Repositories
-            </Header>}
-            pagination={<Pagination {...paginationProps} />}
-            preferences={<CollectionPreferences
-                title="Preferences"
-                preferences={preferences}
-                confirmLabel="Confirm"
-                cancelLabel="Cancel"
-                onConfirm={({ detail }) => setPreferences(detail)}
-                contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
-                pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }} />} />
+        <>
+            <CreateRepositoryModal visible={newRepositoryModalVisible} setVisible={setNewRepositoryModalVisible}
+                isEdit={isEdit}
+                setIsEdit={setEdit} selectedItems={collectionProps.selectedItems}
+                setSelectedItems={actions.setSelectedItems} />
+            <Table
+                {...collectionProps}
+                selectedItems={collectionProps.selectedItems.length > 0 ? [collectionProps.selectedItems[0]] : []}
+                onSelectionChange={({ detail }) => actions.setSelectedItems(detail.selectedItems)}
+                columnDefinitions={TABLE_DEFINITION}
+                columnDisplay={preferences.contentDisplay}
+                stickyColumns={{ first: 1, last: 0 }}
+                resizableColumns
+                enableKeyboardNavigation
+                items={items}
+                loading={isFetching}
+                loadingText='Loading repositories'
+                selectionType='single'
+                filter={<TextFilter
+                    {...filterProps}
+                    countText={getMatchesCountText(filteredItemsCount)} />}
+                header={<Header
+                    counter={collectionProps.selectedItems.length
+                        ? `(${collectionProps.selectedItems.length}/${allRepos.length})`
+                        : `${allRepos?.length || 0}`}
+                    actions={<SpaceBetween
+                        direction='horizontal'
+                        size='xs'
+                    >
+                        <RepositoryActions selectedItems={collectionProps.selectedItems}
+                            setSelectedItems={actions.setSelectedItems}
+                            setNewRepositoryModalVisible={setNewRepositoryModalVisible}
+                            setEdit={setEdit}></RepositoryActions>
+                    </SpaceBetween>}
+                >Repositories
+                </Header>}
+                pagination={<Pagination {...paginationProps} />}
+                preferences={<CollectionPreferences
+                    title='Preferences'
+                    preferences={preferences}
+                    confirmLabel='Confirm'
+                    cancelLabel='Cancel'
+                    onConfirm={({ detail }) => setPreferences(detail)}
+                    contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
+                    pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }} />} />
+        </>
     );
 }
 

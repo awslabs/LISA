@@ -14,30 +14,30 @@
  limitations under the License.
  */
 import Link from '@cloudscape-design/components/link';
-import { Repository } from '../types';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 import { NavigateFunction } from 'react-router-dom';
+import { RagRepositoryConfig } from '../../../../../configSchema';
 
 export const CARD_SECTIONS = [
     {
         id: 'repositoryName',
         header: 'Name',
-        content: (repo: Repository) => repo.repositoryName,
+        content: (repo: RagRepositoryConfig) => repo.repositoryName,
     },
     {
         id: 'repoType',
         header: 'Type',
-        content: (repo: Repository) => repo.type.toString(),
+        content: (repo: RagRepositoryConfig) => repo.type.toString(),
     },
     {
         id: 'allowedGroups',
         header: 'Allowed Groups',
-        content: (repo: Repository) => `[${repo.allowedGroups.join(', ')}]`,
+        content: (repo: RagRepositoryConfig) => `[${repo.allowedGroups.join(', ')}]`,
     },
 ];
 
 export const CARD_DEFINITIONS = (navigate: NavigateFunction) => ({
-    header: (repo: Repository) =>
+    header: (repo: RagRepositoryConfig) =>
         <Link
             onClick={() => navigate(`/document-library/${repo.repositoryId}`)}
             fontSize='heading-m'>{repo.repositoryId}

@@ -18,13 +18,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { Model, RagDocument } from '../../components/types';
 import { Document } from '@langchain/core/documents';
-import {
-    OpenSearchNewClusterConfig,
-    RagRepositoryConfig,
-    RagRepositoryConfigSchema,
-    RagRepositoryType,
-} from '../../../../../configSchema';
-import { getDefaults } from '../util/zodUtil';
+import { RagRepositoryConfig } from '../../../../../configSchema';
 
 export type S3UploadRequest = {
     url: string;
@@ -59,6 +53,10 @@ type DeleteRagDocumentRequest = {
     documentIds: string[]
 };
 
+type CreateRepositoryRequest = {
+    ragConfig: RagRepositoryConfig
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
@@ -70,37 +68,9 @@ export const ragApi = createApi({
             query: () => ({
                 url: '/repository'
             }),
-            transformResponse: (repos) => repos.map((repo) => {
-                let config = {};
-                if (repo.type === RagRepositoryType.OPENSEARCH) {
-                    config = {
-                        opensearchConfig: getDefaults(OpenSearchNewClusterConfig),
-                    };
-                } else if (repo.type === RagRepositoryType.PGVECTOR) {
-                    config = {
-                        rdsConfig: getDefaults(RagRepositoryConfigSchema),
-                    };
-                }
-                const pipelines = {
-                    pipelines: [{
-                        'embeddingModel': 'tgi-test',
-                        's3Bucket': 's3://laksjdfklasjdf',
-                        's3Prefix': 'dev-bots',
-                        'autoRemove': true,
-                        'trigger': 'event',
-                        'chunkSize': 1000,
-                        'chunkOverlap': 100,
-                    }],
-                };
-                return {
-                    ...repo,
-                    ...config,
-                    ...pipelines,
-                };
-            }),
             providesTags:['repositories'],
         }),
-        createRagRepository: builder.mutation<RagRepositoryConfig, RagRepositoryConfig>({
+        createRagRepository: builder.mutation<RagRepositoryConfig, CreateRepositoryRequest>({
             query: (body) => ({
                 url: '/repository',
                 method: 'POST',
@@ -117,7 +87,7 @@ export const ragApi = createApi({
         }),
         updateRagRepository: builder.mutation<RagRepositoryConfig, RagRepositoryConfig>({
             query: (body) => ({
-                url: '/repository/',
+                url: `/repository/${body.repositoryId}`,
                 method: 'PUT',
                 data: body,
             }),

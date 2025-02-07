@@ -51,7 +51,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     onBlur={() => touchFields(['repositoryName'])}
                     onChange={({ detail }) => {
                         setFields({ 'repositoryName': detail.value });
-                    }} disabled={isEdit} placeholder='Postgres RAG' />
+                    }} placeholder='Postgres RAG' />
             </FormField>
             <FormField label='Repository Type' errorText={formErrors?.type}>
                 <Select

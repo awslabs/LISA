@@ -35,21 +35,22 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
     function jsonToOutline (json: object = {}): React.JSX.Element {
         const output: React.ReactNode[] = [];
 
+        if (!_.isObject(json)) {
+            return (<li><p>{json}</p></li>);
+        }
+
         for (const key in json) {
             const value = json[key];
-            const isNested = _.isPlainObject(value) || _.isArray(value);
-            output.push((
-                <li key={key}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p>
-                </li>));
-
+            const isNested = _.isObject(value);
+            output.push((<li key={key}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p></li>));
             if (_.isPlainObject(value)) {
-                const recursiveJson = jsonToOutline(value); // recursively call
-                output.push((recursiveJson));
+                output.push((jsonToOutline(value)));
             } else if (_.isArray(value)) {
                 for (const item of value) {
-                    output.push((<li>-------------------------</li>));
-                    const recursiveJson = jsonToOutline(item); // recursively call
-                    output.push((recursiveJson));
+                    output.push((jsonToOutline(item)));
+                    if (_.isObject(item)) {
+                        output.push((<hr />));
+                    }
                 }
             }
 

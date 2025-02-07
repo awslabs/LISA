@@ -117,7 +117,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 updateRepositoryMutation(toSubmit);
             } else {
                 resetCreate();
-                createRepositoryMutation(toSubmit);
+                createRepositoryMutation({ ragConfig: toSubmit });
             }
         }
     }
@@ -170,7 +170,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     formErrors={errors} isEdit={isEdit} />
             ),
             isOptional: true,
-            onEdit: false,
+            onEdit: true,
         },
         {
             title: `Review and ${isEdit ? 'Update' : 'Create'}`,
@@ -209,7 +209,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     },
                     description: 'Are you sure you want to abandon your changes?',
                 }));
-        }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Model`}>
+        }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
             <Wizard
                 i18nStrings={{
                     stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
@@ -250,7 +250,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     dispatch(
                         setConfirmationModal({
                             action: 'Abandon',
-                            resourceName: 'Model Creation',
+                            resourceName: 'Repository Creation',
                             onConfirm: () => {
                                 setVisible(false);
                                 setIsEdit(false);

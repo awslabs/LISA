@@ -53,7 +53,7 @@ export class DeleteStoreStateMachine extends Construct {
             role,
             ragVectorStoreTable,
         } = props;
-        
+
 
         // Task to delete a CloudFormation stack
         const deleteStack = new tasks.CallAwsService(this, 'DeleteStack', {
@@ -107,9 +107,20 @@ export class DeleteStoreStateMachine extends Construct {
                 // ':error': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.checkResult.statusReason')),
             },
         });
+        // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
+        const updateDeleteStatus = new tasks.DynamoUpdateItem(this, 'UpdateDeleteStatus', {
+            table: ragVectorStoreTable,
+            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
+            updateExpression: 'SET #status = :status',
+            expressionAttributeNames: { '#status': 'status'},
+            expressionAttributeValues: {
+                ':status': tasks.DynamoAttributeValue.fromString('DELETE_IN_PROGRESS'),
+            },
+        });
 
         // Define the sequence of tasks and conditions in the state machine
-        const definition = deleteStack
+        const definition = updateDeleteStatus
+            .next(deleteStack)
             .next(checkStackStatus.addCatch(deleteDynamoDbEntry, {
                 // errors: ['CloudFormation.CloudFormationException'],
                 resultPath: '$.error'

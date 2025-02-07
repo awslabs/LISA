@@ -143,13 +143,13 @@ export function createCdkId (idParts: (string | undefined)[], maxLength: number 
 
 /**
  * Picks specified fields from a source object and returns a new object containing only those fields.
- * 
+ *
  * @template T - The type of the source object
  * @template K - The type of the keys to pick from the source object
  * @param {T} source - The source object to pick fields from
  * @param {readonly K[]} fields - Array of field names to pick from the source object
  * @returns {Pick<T, K>} A new object containing only the specified fields from the source
- * 
+ *
  * @example
  * const person = { name: 'John', age: 30, city: 'Seattle' };
  * const picked = pickFields(person, ['name', 'age']);

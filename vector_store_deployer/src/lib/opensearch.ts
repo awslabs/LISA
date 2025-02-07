@@ -31,7 +31,7 @@ type OpenSearchVectorStoreStackProps = StackProps & {
     ragConfig: z.infer<typeof RagRepositoryConfigSchema>,
 };
 
-export class OpenSearchVectorStoreStack extends PipelineStack {   
+export class OpenSearchVectorStoreStack extends PipelineStack {
     constructor (scope: Construct, id: string, props: OpenSearchVectorStoreStackProps) {
         super(scope, id, props);
 
@@ -76,7 +76,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                 'OpenSearchSecurityGroup',
                 securityGroupId
             );
-            
+
             openSearchDomain = new Domain(this, createCdkId([deploymentName!, deploymentStage!, 'RagRepository', ragConfig.repositoryId]), {
                 domainName: ['lisa-rag', ragConfig.repositoryId].join('-'),
                 // 2.9 is the latest available in ADC regions as of 1/11/24

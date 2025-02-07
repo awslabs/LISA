@@ -31,7 +31,7 @@ export abstract class PipelineStack extends Stack {
 
     // Method to create EventBridge rules for triggering state machine executions based on configuration
     create_pipeline_rules (config: z.infer<typeof PartialConfigSchema>, ragConfig: z.infer<typeof RagRepositoryConfigSchema>) {
-        
+
         // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
         const stateMachine = StateMachine.fromStateMachineArn(this, 'IngestPipelineStateMachine', StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/IngestPipelineStateMachineArnParameter`));
         const stateMachineRole = Role.fromRoleArn(this, 'IngestPipelineRoleArn', StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/IngestPipelineRoleArn`));
@@ -49,7 +49,7 @@ export abstract class PipelineStack extends Stack {
                         `arn:${config.region}:s3:::${pipelineConfig.s3Bucket}/*`
                     ]
                 }));
-        
+
                 // Add EventBridge Rules based on pipeline configuration
                 // Add EventBridge Rules based on trigger type specified in the pipeline configuration
                 switch (pipelineConfig.trigger) {

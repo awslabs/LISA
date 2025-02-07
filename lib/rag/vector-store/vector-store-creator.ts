@@ -96,7 +96,7 @@ export class VectorStoreCreatorStack extends Construct {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AWSStepFunctionsFullAccess'),
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationFullAccess'),
             ],
-        });  
+        });
         vectorStoreTable.grantReadWriteData(stateMachineRole);
 
 

@@ -147,12 +147,12 @@ export class CreateStoreStateMachine extends Construct {
             stateMachineType: sfn.StateMachineType.STANDARD,
             removalPolicy: config.removalPolicy
         });
-        
+
         new ssm.StringParameter(this, 'CreateStoreStateMachineArn', {
             parameterName,
             stringValue: this.stateMachine.stateMachineArn,
         });
-        
+
         executionRole.attachInlinePolicy(new iam.Policy(this, 'StateMachineExecutePolicy', {
             policyName: 'RagVectorStoreStateMacineCreateExec',
             statements: [

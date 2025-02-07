@@ -34,12 +34,18 @@ from utilities.common_functions import (
     get_id_token,
     get_username,
     is_admin,
+    merge_fields,
     retry_config,
 )
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
-from utilities.vector_store import find_repository_by_id, get_registered_repositories, get_vector_store_client
+from utilities.vector_store import (
+    find_repository_by_id,
+    get_registered_repositories,
+    get_vector_store_client,
+    update_repository,
+)
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -47,7 +53,7 @@ session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name, config=retry_config)
 secrets_client = boto3.client("secretsmanager", region_name, config=retry_config)
 iam_client = boto3.client("iam", region_name, config=retry_config)
-step_functions_client = boto3.client('stepfunctions', region_name, config=retry_config)
+step_functions_client = boto3.client("stepfunctions", region_name, config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
 s3 = session.client(
     "s3",
@@ -61,7 +67,6 @@ s3 = session.client(
     ),
 )
 lisa_api_endpoint = ""
-registered_repositories: List[Dict[str, Any]] = []
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 vs_repo = RagVectorStoreRepository()
 
@@ -286,7 +291,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     repository_id = event["pathParameters"]["repositoryId"]
 
     repository = find_repository_by_id(repository_id)
-    ensure_repository_access(event, repository)
+    _ensure_repository_access(event, repository)
 
     id_token = get_id_token(event)
 
@@ -303,7 +308,13 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
+def _ensure_is_admin(event: dict[str, Any]) -> None:
+    """Ensures a user has admin access or else raises an HTTPException"""
+    if not is_admin(event):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+
+
+def _ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
     """Ensures a user has access to the repository or else raises an HTTPException"""
     user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
     if not user_has_group(user_groups, repository["allowedGroups"]):
@@ -356,7 +367,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     if not collection_id and document_name:
         raise ValidationError("A 'collectionId' must be included to delete a document by name")
 
-    ensure_repository_access(event, find_repository_by_id(repository_id))
+    _ensure_repository_access(event, find_repository_by_id(repository_id))
 
     docs: list[RagDocument.model_dump] = []
     if document_ids:
@@ -460,7 +471,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     username = get_username(event)
     repository = find_repository_by_id(repository_id)
-    ensure_repository_access(event, repository)
+    _ensure_repository_access(event, repository)
 
     keys = body["keys"]
     docs = process_record(s3_keys=keys, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -614,6 +625,7 @@ def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_du
     )
     return {"documents": docs, "lastEvaluated": last_evaluated}
 
+
 @api_wrapper
 def create(event: dict, context: dict) -> Any:
     """
@@ -633,39 +645,70 @@ def create(event: dict, context: dict) -> Any:
         ValueError: If the user is not an administrator.
     """
     # Check if the user has admin privileges
-    if not is_admin(event):
-        raise ValueError("User is not an administrator.")
-    
+    _ensure_is_admin(event)
+
     # Fetch the Step Function ARN from SSM Parameter Store
-    parameter_name = os.environ['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER']
+    parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
     # Deserialize the event body and prepare input for Step Functions
-    input_data = json.loads(event['body'])
+    input_data = json.loads(event["body"])
     serializer = TypeSerializer()
 
     # Start Step Function execution
     response = step_functions_client.start_execution(
         stateMachineArn=state_machine_arn["Parameter"]["Value"],
-        input=json.dumps({
-            "body": input_data,
-            "config": {key: serializer.serialize(value) for key, value in input_data["ragConfig"].items()}
-        })
+        input=json.dumps(
+            {
+                "body": input_data,
+                "config": {key: serializer.serialize(value) for key, value in input_data["ragConfig"].items()},
+            }
+        ),
     )
 
     # Return success status and execution ARN
-    return {
-        "status": "success",
-        "executionArn": response['executionArn']
-    }
+    return {"status": "success", "executionArn": response["executionArn"]}
+
+
+@api_wrapper
+def update(event: dict, context: dict) -> Any:
+    """
+    Update a repository attribute that don't require a new infrastructure deployment
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - body: A JSON string with the process creation details.
+        context (dict): The Lambda context object.
+
+    Returns:
+        Dict[str, str]: A dictionary containing:
+            - status: Success status message.
+            - executionArn: The ARN of the step function execution.
+
+    Raises:
+        ValueError: If the user is not an administrator.
+    """
+    # Check if the user has admin privileges
+    _ensure_is_admin(event)
+
+    # Deserialize the event body and prepare input for Step Functions
+    pathParams = event.get("pathParameters", {})
+    repository_id = pathParams.get("repositoryId")
+
+    repo = find_repository_by_id(repository_id, raw_config=True)
+    updated_config = json.loads(event["body"])
+    repo["config"] = merge_fields(
+        updated_config, repo["config"], ["repositoryName", "allowedGroups", "rdsConfig.username"]
+    )
+    update_repository(repo)
 
 
 @api_wrapper
 def delete(event: dict, context: dict) -> Any:
     """
-    Delete a vector store process using AWS Step Functions. This function ensures 
+    Delete a vector store process using AWS Step Functions. This function ensures
     that the user is an administrator or owns the vector store being deleted.
-    
+
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The repository id of the vector store to delete.
@@ -679,30 +722,22 @@ def delete(event: dict, context: dict) -> Any:
     Raises:
         ValueError: If the repository is not found.
     """
+    _ensure_is_admin(event)
 
     # Retrieve the repository ID from the path parameters in the event object
-    repository_id = event['pathParameters']['repositoryId']
+    repository_id = event["pathParameters"]["repositoryId"]
 
-    # Ensure repository access
-    repository = find_repository_by_id(repository_id)
-    if not is_admin(event):
-        ensure_repository_access(event, repository)
+    repository = find_repository_by_id(repository_id, raw_config=True)
 
     # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
-    parameter_name = os.environ['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER']
+    parameter_name = os.environ["LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
-    
+
     # Start the execution of the State Machine to delete the vector store
     response = step_functions_client.start_execution(
         stateMachineArn=state_machine_arn["Parameter"]["Value"],
-        input=json.dumps({
-            "repositoryId": repository_id,
-            "stackName": repository["stackName"]["S"]
-        })
+        input=json.dumps({"repositoryId": repository_id, "stackName": repository.get("stackName")}),
     )
-    
+
     # Return success status and execution ARN
-    return {
-        "status": "success",
-        "executionArn": response['executionArn']
-    }
+    return {"status": "success", "executionArn": response["executionArn"]}

@@ -140,6 +140,7 @@ export class LisaRagStack extends Stack {
             REST_API_VERSION: 'v2',
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
+            ADMIN_GROUP: config.authConfig!.adminGroup,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -191,7 +192,7 @@ export class LisaRagStack extends Stack {
                 description: 'LISA SDK common layer',
             });
         }
-        new StringParameter(this, createCdkId([config.deploymentName, config.deploymentStage, 'SdkLayer']), {
+        const sdkSsm = new StringParameter(this, createCdkId([config.deploymentName, config.deploymentStage, 'SdkLayer']), {
             parameterName: `${config.deploymentPrefix}/layerVersion/sdk`,
             stringValue: sdkLambdaLayer.layerVersionArn
         });
@@ -299,13 +300,16 @@ export class LisaRagStack extends Stack {
             policy.attachToRole(lambdaRole);
         }
         console.debug(`Successfully created pipeline ${index}`);
-        new VectorStoreCreator(this, 'VectorStoreCreatorStack', {
+
+        const vectorStoreCreator = new VectorStoreCreator(this, 'VectorStoreCreatorStack', {
             config,
             vpc,
             ragVectorStoreTable,
             stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
             baseEnvironment,
         });
+        vectorStoreCreator.node.addDependency(sdkSsm);
+
 
         // Add REST API Lambdas to APIGW
         new RepositoryApi(this, 'RepositoryApi', {

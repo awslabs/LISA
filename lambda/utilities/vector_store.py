@@ -16,12 +16,10 @@
 import json
 import logging
 import os
-from functools import lru_cache
 from typing import Any, cast, List
 
 import boto3
 import create_env_variables  # noqa: F401
-from boto3.dynamodb.types import TypeDeserializer
 from langchain_community.vectorstores.opensearch_vector_search import OpenSearchVectorSearch
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_core.embeddings import Embeddings
@@ -40,27 +38,44 @@ ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], conf
 ddb_table = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-@lru_cache
 def get_registered_repositories() -> List[dict]:
     """Get a list of all registered RAG repositories."""
     table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
-    registered_repositories = []
-    deserializer = TypeDeserializer()
-
     try:
-        # Initialize the paginator
-        paginator = ddb_client.get_paginator("scan")
-        # Create the paginated request
-        for page in paginator.paginate(TableName=table_name):
-            # Iterate over each item in the current page
-            for item in page.get("Items", []):
-                # Extract and append the 'config' attribute
-                if "config" in item:
-                    registered_repositories.append(deserializer.deserialize(item["config"]))
+        table = ddb_table.Table(table_name)
+        response = table.scan()
+        items = response["Items"]
+        while "LastEvaluatedKey" in response:
+            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            items.extend(response["Items"])
+
+        return [item["config"] for item in items if "config" in item]
     except ddb_client.exceptions.ResourceNotFoundException:
         raise ValueError(f"Table '{table_name}' does not exist")
+    except Exception as e:
+        raise e
 
-    return registered_repositories
+
+def get_repository_status() -> dict[str, str]:
+    """Get a list the status of all repositories"""
+    table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
+    status = {}
+
+    try:
+        table = ddb_table.Table(table_name)
+        response = table.scan(ProjectionExpression="repositoryId, status")
+        items = response["Items"]
+        while "LastEvaluatedKey" in response:
+            response = table.scan(
+                ExclusiveStartKey=response["LastEvaluatedKey"], ProjectionExpression="repositoryId, status"
+            )
+            items.extend(response["Items"])
+
+        status = {item["repositoryId"]: item["config"] for item in items if "config" in item}
+
+    except ddb_client.exceptions.ResourceNotFoundException:
+        raise ValueError(f"Table '{table_name}' does not exist")
+    return status
 
 
 def find_repository_by_id(repository_id: str, raw_config: bool = False) -> dict[str, Any]:
@@ -95,7 +110,6 @@ def update_repository(repository: dict[str, Any]) -> None:
     table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
     logging.info(f"update_repository: {repository}")
     ddb_table.Table(table_name).put_item(Item=repository)
-    get_registered_repositories.cache_clear()
 
 
 def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:
@@ -105,9 +119,6 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
     """
     repository = find_repository_by_id(repository_id)
     repository_type = repository.get("type")
-
-    prefix = os.environ["REGISTERED_REPOSITORIES_PS_PREFIX"]
-    connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")
 
     if repository_type == "opensearch":
         service = "es"
@@ -122,10 +133,8 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             session_token=credentials.token,
         )
 
-        opensearch_endpoint = f'https://{connection_info["Parameter"]["Value"]}'
-
         return OpenSearchVectorSearch(
-            opensearch_url=opensearch_endpoint,
+            opensearch_url=repository.get("opensearchConfig", {}).get("endpoint"),
             index_name=index,
             embedding_function=embeddings,
             http_auth=auth,
@@ -136,16 +145,17 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
         )
 
     elif repository_type == "pgvector":
-        connection_info = json.loads(connection_info["Parameter"]["Value"])
-        secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info["passwordSecretId"])
+
+        rdsConfig = repository.get("rdsConfig", {})
+        secrets_response = secretsmanager_client.get_secret_value(SecretId=rdsConfig.get("passwordSecretId"))
         password = json.loads(secrets_response["SecretString"])["password"]
 
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",
-            host=connection_info["dbHost"],
-            port=connection_info["dbPort"],
-            database=connection_info["dbName"],
-            user=connection_info["username"],
+            host=rdsConfig["dbHost"],
+            port=rdsConfig["dbPort"],
+            database=rdsConfig["dbName"],
+            user=rdsConfig["username"],
             password=password,
         )
         return PGVector(

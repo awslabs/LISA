@@ -27,6 +27,7 @@ from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from utilities.common_functions import retry_config
+from utilities.encoders import convert_decimal
 
 opensearch_endpoint = ""
 logger = logging.getLogger(__name__)
@@ -48,7 +49,8 @@ def get_registered_repositories() -> List[dict]:
         while "LastEvaluatedKey" in response:
             response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
             items.extend(response["Items"])
-
+        # Convert all ddb Numbers to floats to correctly serialize to json
+        items = convert_decimal(items)
         return [item["config"] for item in items if "config" in item]
     except ddb_client.exceptions.ResourceNotFoundException:
         raise ValueError(f"Table '{table_name}' does not exist")
@@ -102,7 +104,7 @@ def find_repository_by_id(repository_id: str, raw_config: bool = False) -> dict[
     if "Item" not in response:
         raise ValueError(f"Repository with ID '{repository_id}' not found")
 
-    repository: dict[str, Any] = response.get("Item")
+    repository: dict[str, Any] = convert_decimal(response.get("Item"))
     return repository if raw_config else cast(dict[str, Any], repository.get("config", {}))
 
 

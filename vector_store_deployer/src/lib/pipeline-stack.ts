@@ -30,11 +30,12 @@ export abstract class PipelineStack extends Stack {
     }
 
     // Method to create EventBridge rules for triggering state machine executions based on configuration
-    create_pipeline_rules (config: z.infer<typeof PartialConfigSchema>, ragConfig: z.infer<typeof RagRepositoryConfigSchema>) {
+    createPipelineRules (config: z.infer<typeof PartialConfigSchema>, ragConfig: z.infer<typeof RagRepositoryConfigSchema>) {
 
         // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
-        const stateMachine = StateMachine.fromStateMachineArn(this, 'IngestPipelineStateMachine', StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/IngestPipelineStateMachineArnParameter`));
-        const stateMachineRole = Role.fromRoleArn(this, 'IngestPipelineRoleArn', StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/IngestPipelineRoleArn`));
+        console.log(`looking for ${config.deploymentPrefix}/IngestPipelineStateMachineArn`);
+        const stateMachine = StateMachine.fromStateMachineArn(this, 'IngestPipelineStateMachine', StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/IngestPipelineStateMachineArn`));
+        const stateMachineRole = Role.fromRoleArn(this, 'IngestPipelineRoleArn', StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/IngestPipelineRoleArn`));
 
         // Check if pipelines configuration exists
         if (ragConfig.pipelines) {
@@ -45,8 +46,8 @@ export abstract class PipelineStack extends Stack {
                     effect: Effect.ALLOW,
                     actions: ['s3:GetObject', 's3:ListBucket'],
                     resources: [
-                        `arn:${config.region}:s3:::${pipelineConfig.s3Bucket}`,
-                        `arn:${config.region}:s3:::${pipelineConfig.s3Bucket}/*`
+                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}`,
+                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/*`
                     ]
                 }));
 

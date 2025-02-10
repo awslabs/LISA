@@ -144,6 +144,8 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         // Add explicit dependency on OpenSearch Domain being created
         // openSearchEndpointPs.node.addDependency(openSearchDomain);
         openSearchEndpointPs.grantRead(lambdaRole);
+
+        this.createPipelineRules(config, ragConfig);
     }
 
     /**

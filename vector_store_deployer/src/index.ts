@@ -73,6 +73,8 @@ export const handler = async (event: any) => {
 
     const stderr = String(ret.output[2]);
     if ( ret.status !== 0 ) {
+        const stdout = String(ret.output[1]);
+        console.log(stdout);
         console.log(`cdk synth failed with stderr: ${stderr}`);
         throw new Error('Stack failed to synthesize');
     }

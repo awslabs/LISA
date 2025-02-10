@@ -126,6 +126,8 @@ export class PGVectorStoreStack extends PipelineStack {
             // Grant read permissions for secrets to Lambda role
             rdsPasswordSecret.grantRead(lambdaRole);
             rdsConnectionInfo.grantRead(lambdaRole);
+
+            this.createPipelineRules(config, ragConfig);
         }
     }
 }

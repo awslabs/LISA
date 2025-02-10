@@ -85,7 +85,6 @@ export class VectorStoreCreatorStack extends Construct {
                 'opensearch:*',
                 'ssm:*',
                 'iam:*'
-                // Add other necessary service permissions
             ],
             resources: ['*'],
         }));
@@ -99,7 +98,6 @@ export class VectorStoreCreatorStack extends Construct {
         });
         vectorStoreTable.grantReadWriteData(stateMachineRole);
 
-
         // create a stripped down config to store only the fields we care about
         const strippedConfig = {
             ...pickFields(props.config, [
@@ -107,6 +105,8 @@ export class VectorStoreCreatorStack extends Construct {
                 'appName',
                 'deploymentName',
                 'deploymentStage',
+                'deploymentPrefix',
+                'partition',
                 'region',
                 'removalPolicy',
                 'subnets',

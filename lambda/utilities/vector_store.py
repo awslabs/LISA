@@ -69,7 +69,8 @@ def get_repository_status() -> dict[str, str]:
         items = response["Items"]
         while "LastEvaluatedKey" in response:
             response = table.scan(
-                ExclusiveStartKey=response["LastEvaluatedKey"], ProjectionExpression="repositoryId, status"
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+                ProjectionExpression="repositoryId, status"
             )
             items.extend(response["Items"])
 

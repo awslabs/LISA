@@ -84,6 +84,16 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
+                name: 'list_status',
+                resource: 'repository',
+                description: 'List status for all repositories',
+                path: 'repository/status',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
                 name: 'presigned_url',
                 resource: 'repository',
                 description: 'Generates a presigned url for uploading files to RAG',

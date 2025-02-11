@@ -116,6 +116,13 @@ export class LisaRagStack extends Stack {
                 type: AttributeType.STRING,
             }
         });
+        docMetaTable.addGlobalSecondaryIndex({
+            indexName: 'repository_index',
+            partitionKey: {
+                name: 'repository_id',
+                type: AttributeType.STRING,
+            }
+        });
         const subDocTable = new Table(this, createCdkId([config.deploymentName, 'RagSubDocumentTable']), {
             partitionKey: {
                 name: 'document_id',
@@ -130,6 +137,7 @@ export class LisaRagStack extends Stack {
             removalPolicy: config.removalPolicy,
         });
 
+        const connectionParamName = 'LisaServeRagConnectionInfo';
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             BUCKET_NAME: bucket.bucketName,
@@ -140,6 +148,12 @@ export class LisaRagStack extends Stack {
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
             ADMIN_GROUP: config.authConfig!.adminGroup,
+            REGISTERED_REPOSITORIES_PS_NAME: `${config.deploymentPrefix}/registeredRepositories`,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
+            RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/${connectionParamName}`,
+            OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
+            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
+            LOG_LEVEL: config.logLevel,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API

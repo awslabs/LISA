@@ -16,7 +16,7 @@
 import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
-import { PartialConfigSchema, RagRepositoryConfigSchema } from '../../../lib/schema';
+import { PartialConfigSchema, RagRepositoryConfigSchema, RagRepositoryType } from '../../../lib/schema';
 import { z } from 'zod';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
@@ -130,13 +130,13 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         // new CfnOutput(this, createCdkId(['opensearchRagRepositoryEndpoint', ragConfig.repositoryId]), {
         //     value: openSearchDomain.domainEndpoint,
         // });
-
+        const configParam = {type: RagRepositoryType.OPENSEARCH, endpoint: openSearchDomain.domainEndpoint };
         const openSearchEndpointPs = new StringParameter(
             this,
             createCdkId([ragConfig.repositoryId, 'StringParameter']),
             {
                 parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${ragConfig.repositoryId}`,
-                stringValue: openSearchDomain.domainEndpoint,
+                stringValue: JSON.stringify(configParam),
                 description: 'Endpoint for LISA Serve OpenSearch Rag Repository',
             },
         );

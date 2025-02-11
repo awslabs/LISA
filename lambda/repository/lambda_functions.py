@@ -34,18 +34,12 @@ from utilities.common_functions import (
     get_id_token,
     get_username,
     is_admin,
-    merge_fields,
     retry_config,
 )
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
-from utilities.vector_store import (
-    find_repository_by_id,
-    get_registered_repositories,
-    get_vector_store_client,
-    update_repository,
-)
+from utilities.vector_store import find_repository_by_id, get_registered_repositories, get_vector_store_client
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -671,39 +665,6 @@ def create(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def update(event: dict, context: dict) -> Any:
-    """
-    Update a repository attribute that don't require a new infrastructure deployment
-
-    Args:
-        event (dict): The Lambda event object containing:
-            - body: A JSON string with the process creation details.
-        context (dict): The Lambda context object.
-
-    Returns:
-        Dict[str, str]: A dictionary containing:
-            - status: Success status message.
-            - executionArn: The ARN of the step function execution.
-
-    Raises:
-        ValueError: If the user is not an administrator.
-    """
-    # Check if the user has admin privileges
-    _ensure_is_admin(event)
-
-    # Deserialize the event body and prepare input for Step Functions
-    pathParams = event.get("pathParameters", {})
-    repository_id = pathParams.get("repositoryId")
-
-    repo = find_repository_by_id(repository_id, raw_config=True)
-    updated_config = json.loads(event["body"])
-    repo["config"] = merge_fields(
-        updated_config, repo["config"], ["repositoryName", "allowedGroups", "rdsConfig.username"]
-    )
-    update_repository(repo)
-
-
-@api_wrapper
 def delete(event: dict, context: dict) -> Any:
     """
     Delete a vector store process using AWS Step Functions. This function ensures
@@ -725,13 +686,22 @@ def delete(event: dict, context: dict) -> Any:
     _ensure_is_admin(event)
 
     # Retrieve the repository ID from the path parameters in the event object
-    repository_id = event["pathParameters"]["repositoryId"]
+    path_params = event.get("pathParameters", {}) or {}
+    repository_id = path_params.get("repositoryId")
 
-    repository = find_repository_by_id(repository_id, raw_config=True)
+    repository = find_repository_by_id(repository_id=repository_id, raw_config=True)
 
     # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
     parameter_name = os.environ["LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+
+    docs = doc_repo.list_all(repository_id=repository_id)
+    for doc in docs:
+        doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
+
+    if repository.get("ragConfig", {}).get("autoRemove") is True:
+        # removedS3 = _remove_s3_documents(repository_id, docs)
+        logging.info("removing S3 docs")
 
     # Start the execution of the State Machine to delete the vector store
     response = step_functions_client.start_execution(

@@ -79,7 +79,7 @@ export class PGVectorStoreStack extends PipelineStack {
                 // Use existing DB connection details
                 rdsConnectionInfo = new StringParameter(this, createCdkId([ragConfig.repositoryId, 'StringParameter']), {
                     parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${ragConfig.repositoryId}`,
-                    stringValue: JSON.stringify(ragConfig.rdsConfig),
+                    stringValue: JSON.stringify({...ragConfig.rdsConfig, type: RagRepositoryType.PGVECTOR}),
                     description: 'Connection info for LISA Serve PGVector database',
                 });
                 rdsPasswordSecret = Secret.fromSecretNameV2(
@@ -117,6 +117,7 @@ export class PGVectorStoreStack extends PipelineStack {
                         dbHost: pgvectorDb.dbInstanceEndpointAddress,
                         dbName: ragConfig.rdsConfig.dbName,
                         dbPort: pgvectorDb.dbInstanceEndpointPort,
+                        type: RagRepositoryType.PGVECTOR
                     }),
                     description: 'Connection info for LISA Serve PGVector database',
                 });

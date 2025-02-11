@@ -105,16 +105,6 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'update',
-                resource: 'repository',
-                description: 'Update a repository',
-                path: 'repository/{repositoryId}',
-                method: 'PUT',
-                environment: {
-                    ...baseEnvironment
-                },
-            },
-            {
                 name: 'delete',
                 resource: 'repository',
                 description: 'Delete a repository',

@@ -119,10 +119,10 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
     Creates a langchain vector store based on the specified embeddigs adapter and backing store.
     """
-    repository = find_repository_by_id(repository_id)
-    repository_type = repository.get("type")
-
-    if repository_type == "opensearch":
+    prefix = os.environ.get("REGISTERED_REPOSITORIES_PS_PREFIX")
+    connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")
+    connection_info = json.loads(connection_info["Parameter"]["Value"])
+    if connection_info.get("type") == "opensearch":
         service = "es"
         session = boto3.Session()
         credentials = session.get_credentials()
@@ -135,8 +135,10 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             session_token=credentials.token,
         )
 
+        opensearch_endpoint = f"https://{connection_info.get('endpoint')}"
+
         return OpenSearchVectorSearch(
-            opensearch_url=repository.get("opensearchConfig", {}).get("endpoint"),
+            opensearch_url=opensearch_endpoint,
             index_name=index,
             embedding_function=embeddings,
             http_auth=auth,
@@ -146,18 +148,16 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             connection_class=RequestsHttpConnection,
         )
 
-    elif repository_type == "pgvector":
-
-        rdsConfig = repository.get("rdsConfig", {})
-        secrets_response = secretsmanager_client.get_secret_value(SecretId=rdsConfig.get("passwordSecretId"))
-        password = json.loads(secrets_response["SecretString"])["password"]
+    elif connection_info.get("type") == "pgvector":
+        secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
+        password = json.loads(secrets_response.get("SecretString", {}).get("password"))
 
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",
-            host=rdsConfig["dbHost"],
-            port=rdsConfig["dbPort"],
-            database=rdsConfig["dbName"],
-            user=rdsConfig["username"],
+            host=connection_info.get("dbHost"),
+            port=connection_info.get("dbPort"),
+            database=connection_info.get("dbName"),
+            user=connection_info.get("username"),
             password=password,
         )
         return PGVector(

@@ -130,7 +130,6 @@ export class LisaRagStack extends Stack {
             removalPolicy: config.removalPolicy,
         });
 
-        const connectionParamName = 'LisaServeRagConnectionInfo';
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             BUCKET_NAME: bucket.bucketName,
@@ -261,7 +260,7 @@ export class LisaRagStack extends Stack {
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
 
-        new IngestPipelineStateMachine(this, 'IngestPipelineStateMachine', {
+        const ingestPipeline = new IngestPipelineStateMachine(this, 'IngestPipelineStateMachine', {
             config,
             baseEnvironment,
             ragDocumentTable: docMetaTable,
@@ -269,37 +268,17 @@ export class LisaRagStack extends Stack {
             layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLambdaLayer],
             vpc
         });
+        ingestPipeline.node.addDependency(sdkSsm);
 
-            const pipelineDeleteId = `DeletePipeline-${ragConfig.repositoryId}-${index}`;
-            new DeletePipelineStateMachine(this, pipelineDeleteId, {
-                baseEnvironment,
-                config,
-                vpc,
-                s3Bucket: pipelineConfig.s3Bucket,
-                s3Prefix: pipelineConfig.s3Prefix,
-                embeddingModel: pipelineConfig.embeddingModel,
-                repositoryId: ragConfig.repositoryId,
-                type: ragConfig.type,
-                layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer],
-                ragDocumentTable: docMetaTable,
-                ragSubDocumentTable: subDocTable,
-            });
-            // Add lambda execution permissions to remove from RAG bucket via API
-            const policy = new Policy(this, `${pipelineDeleteId}Policy`, {
-                statements: [
-                    new PolicyStatement({
-                        effect: Effect.ALLOW,
-                        actions: ['s3:GetObject', 's3:DeleteObject', ],
-                        resources: [
-                            `arn:${Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}`,
-                            `arn:${Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
-                        ]
-                    }),
-                ],
-            });
-            policy.attachToRole(lambdaRole);
-        }
-        console.debug(`Successfully created pipeline ${index}`);
+        const deletePipeline = new DeletePipelineStateMachine(this, 'DeletePipelineStateMachine', {
+            baseEnvironment,
+            config,
+            vpc,
+            layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLambdaLayer],
+            ragDocumentTable: docMetaTable,
+            ragSubDocumentTable: subDocTable,
+        });
+        deletePipeline.node.addDependency(sdkSsm);
 
         const vectorStoreCreator = new VectorStoreCreator(this, 'VectorStoreCreatorStack', {
             config,

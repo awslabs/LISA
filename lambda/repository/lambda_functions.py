@@ -538,7 +538,7 @@ def download_document(event: dict, context: dict) -> str:
     repository_id = path_params.get("repositoryId")
     document_id = path_params.get("documentId")
 
-    ensure_repository_access(event, find_repository_by_id(repository_id))
+    _ensure_repository_access(event, find_repository_by_id(repository_id))
     doc = doc_repo.find_by_id(repository_id=repository_id, document_id=document_id)
 
     source = doc.get("source")

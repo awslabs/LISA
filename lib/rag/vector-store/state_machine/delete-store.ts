@@ -110,12 +110,13 @@ export class DeleteStoreStateMachine extends Construct {
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
         const updateDeleteStatus = new tasks.DynamoUpdateItem(this, 'UpdateDeleteStatus', {
             table: ragVectorStoreTable,
-            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
+            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
             updateExpression: 'SET #status = :status',
             expressionAttributeNames: { '#status': 'status'},
             expressionAttributeValues: {
                 ':status': tasks.DynamoAttributeValue.fromString('DELETE_IN_PROGRESS'),
             },
+            resultPath: '$.updateDynamoDbResult',
         });
 
         // Define the sequence of tasks and conditions in the state machine

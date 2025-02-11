@@ -17,45 +17,36 @@
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { DefinitionBody, Fail, StateMachine, Succeed } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
-import { BaseProps, RagRepositoryType } from '../../schema';
+import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from './constants';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import * as cdk from 'aws-cdk-lib';
 
-import { EventField, EventPattern, Rule, RuleTargetInput } from 'aws-cdk-lib/aws-events';
-import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Key } from 'aws-cdk-lib/aws-kms';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type DeletePipelineStateMachineProps = BaseProps & {
     baseEnvironment:  Record<string, string>,
     vpc?: Vpc;
-    repositoryId: string;
-    type: RagRepositoryType;
-    layers: ILayerVersion[];
     ragDocumentTable: Table;
     ragSubDocumentTable: Table;
-    embeddingModel: string;
-    s3Bucket: string;
-    s3Prefix: string;
+    layers: ILayerVersion[];
 };
 
 export class DeletePipelineStateMachine extends Construct {
+    readonly stateMachineArn: string;
+
     constructor (scope: Construct, id: string, props: DeletePipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, type, s3Bucket, baseEnvironment, embeddingModel, s3Prefix, repositoryId, layers, ragDocumentTable, ragSubDocumentTable} = props;
+        const {config, vpc,  baseEnvironment, layers, ragDocumentTable, ragSubDocumentTable} = props;
 
         const environment = {
             ...baseEnvironment,
-            EMBEDDING_MODEL: embeddingModel,
-            S3_BUCKET: s3Bucket,
-            S3_PREFIX: s3Prefix,
-            REPOSITORY_TYPE: type,
-            REPOSITORY_ID: repositoryId
         };
 
         // Create KMS key for environment variable encryption
@@ -63,8 +54,17 @@ export class DeletePipelineStateMachine extends Construct {
             enableKeyRotation: true,
             description: 'Key for encrypting Lambda environment variables'
         });
+        const deletePipelineRole = new Role(this, 'DeletePipelineRole', {
+            roleName: 'DeletePipelineRole',
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        });
+        new StringParameter(this, 'DeletePipelineRoleArnParameter', {
+            parameterName: `${config.deploymentPrefix}/DeletePipelineRoleArn`,
+            stringValue: deletePipelineRole.roleArn,
+        });
 
-        const policyStatements = this.createPolicy(s3Bucket, ragDocumentTable, ragSubDocumentTable, config.restApiConfig.sslCertIamArn, config.deploymentPrefix);
+        const policyStatements = this.createPolicy(ragDocumentTable, ragSubDocumentTable, config.restApiConfig.sslCertIamArn, config.deploymentPrefix);
+        policyStatements.map((policyStatement) => deletePipelineRole.addToPolicy(policyStatement));
 
         // Create the ingest documents function with S3 permissions
         const deleteDocumentsFunction = new Function(this, 'pipelineDeleteDocumentFunc', {
@@ -77,7 +77,8 @@ export class DeletePipelineStateMachine extends Construct {
             environment: environment,
             environmentEncryption: kmsKey,
             layers: layers,
-            initialPolicy: policyStatements
+            role: deletePipelineRole
+            // initialPolicy: policyStatements
         });
 
         // Create a Step Function task to invoke the Lambda
@@ -102,59 +103,16 @@ export class DeletePipelineStateMachine extends Construct {
             ),
             tracingEnabled: true
         });
-
-        // Create EventBridge rule for S3 delete events
-        const eventPattern: EventPattern = {
-            source: ['aws.s3'],
-            detailType: ['Object Deleted'],
-            detail: this.getBucketDetails(s3Bucket, s3Prefix)
-        };
-
-        // Create the rule to trigger the state machine
-        new Rule(this, 'S3DeleteDocumentRule', {
-            eventPattern,
-            targets: [new SfnStateMachine(stateMachine, {
-                input: RuleTargetInput.fromObject({
-                    'detail-type': EventField.detailType,
-                    source: EventField.source,
-                    time: EventField.time,
-                    bucket: s3Bucket,
-                    prefix: s3Prefix,
-                    key: EventField.fromPath('$.detail.object.key')
-                }),
-            })],
+        new StringParameter(this, 'DeletePipelineStateMachineArnParameter', {
+            parameterName: `${config.deploymentPrefix}/DeletePipelineStateMachineArn`,
+            stringValue: stateMachine.stateMachineArn,
         });
+
+        this.stateMachineArn = stateMachine.stateMachineArn;
+
     }
 
-    getBucketDetails (s3Bucket:string, s3Prefix: string): [key: string] {
-        // Create S3 event trigger with complete event pattern and transform input
-        const detail: any = {
-            bucket: {
-                name: [s3Bucket]
-            }
-        };
-        // Add prefix filter if specified and not root
-        if (s3Prefix && s3Prefix !== '/') {
-            detail.object = {
-                key: [{
-                    prefix: s3Prefix
-                }]
-            };
-        }
-
-        return detail;
-    }
-
-    createPolicy (s3Bucket:string, ragDocumentTable: any, ragSubDocumentTable: any, sslCertIamArn: string | null, deploymentPrefix?: string){
-        // Create S3 policy statement
-        const s3PolicyStatement = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
-            resources: [
-                `arn:${cdk.Aws.PARTITION}:s3:::${s3Bucket}`,
-                `arn:${cdk.Aws.PARTITION}:s3:::${s3Bucket}/*`
-            ]
-        });
+    createPolicy (ragDocumentTable: any, ragSubDocumentTable: any, sslCertIamArn: string | null, deploymentPrefix?: string){
         // Allow DynamoDB Read/Delete RAG Document Table
         const dynamoPolicyStatement = new PolicyStatement({
             effect: Effect.ALLOW,
@@ -191,8 +149,17 @@ export class DeletePipelineStateMachine extends Construct {
             actions: ['secretsmanager:GetSecretValue'],
             resources: ['*']
         });
+        const ec2Policy = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'ec2:DescribeNetworkInterfaces',
+                'ec2:CreateNetworkInterface',
+                'ec2:DeleteNetworkInterface'
+            ],
+            resources: ['*']
+        });
 
-        const policies = [s3PolicyStatement, dynamoPolicyStatement, ssmPolicy, secretsManagerPolicy];
+        const policies = [dynamoPolicyStatement, ssmPolicy, secretsManagerPolicy, ec2Policy];
         // Create IAM certificate policy if certificate ARN is provided
         if (sslCertIamArn) {
             const certPolicyStatement = new PolicyStatement({

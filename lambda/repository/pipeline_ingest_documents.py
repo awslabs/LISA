@@ -22,7 +22,7 @@ import boto3
 from repository.lambda_functions import RagDocumentRepository
 from utilities.common_functions import get_username, retry_config
 from utilities.file_processing import process_record
-from utilities.validation import validate_chunk_params, validate_model_name, validate_repository_type, ValidationError
+from utilities.validation import validate_chunk_params, validate_model_name, ValidationError
 from utilities.vector_store import get_vector_store_client
 
 from .lambda_functions import ChunkStrategyType, get_embeddings_pipeline, IngestionType, RagDocument
@@ -80,24 +80,17 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         key = event["key"]
         s3_key = f"s3://{bucket}/{key}"
 
-        # Get all configuration from environment variables
-        required_env_vars = ["CHUNK_SIZE", "CHUNK_OVERLAP", "EMBEDDING_MODEL", "REPOSITORY_TYPE", "REPOSITORY_ID"]
-        missing_vars = [var for var in required_env_vars if var not in os.environ]
-        if missing_vars:
-            raise ValidationError(f"Missing required environment variables: {', '.join(missing_vars)}")
-
-        chunk_size = int(os.environ["CHUNK_SIZE"])
-        chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
-        embedding_model = os.environ["EMBEDDING_MODEL"]
-        repository_type = os.environ["REPOSITORY_TYPE"]
-        repository_id = os.environ["REPOSITORY_ID"]
+        pipelineConfig = event["pipelineConfig"]
+        chunk_size = int(pipelineConfig["chunkSize"])
+        chunk_overlap = int(pipelineConfig["chunkOverlap"])
+        embedding_model = pipelineConfig["embeddingModel"]
+        repository_id = pipelineConfig["repositoryId"]
 
         # Validate inputs
         validate_model_name(embedding_model)
-        validate_repository_type(repository_type)
         validate_chunk_params(chunk_size, chunk_overlap)
 
-        logger.info(f"Processing document {s3_key} for repository {repository_id} of type {repository_type}")
+        logger.info(f"Processing document {s3_key} for repository {repository_id}")
 
         # Process document using existing utilities, passing the bucket explicitly
         docs = process_record(
@@ -172,7 +165,6 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         return {
             "message": f"Successfully processed document {s3_key}",
             "repository_id": repository_id,
-            "repository_type": repository_type,
             "chunks_processed": len(all_ids),
             "document_ids": all_ids,
         }

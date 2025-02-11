@@ -73,7 +73,6 @@ export class PGVectorStoreStack extends PipelineStack {
             // Get Security Group ID for PGVector
             const securityGroupId = StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/pgvectorSecurityGroupId`);
             const pgSecurityGroup = SecurityGroup.fromSecurityGroupId(this, 'PGVectorSecurityGroup', securityGroupId);
-
             // if dbHost and passwordSecretId are defined, then connect to DB with existing params
             // Check if existing DB connection details are available
             if (ragConfig.rdsConfig && ragConfig.rdsConfig.passwordSecretId) {
@@ -92,7 +91,7 @@ export class PGVectorStoreStack extends PipelineStack {
                 // Create a new RDS instance with generated credentials
                 const username = ragConfig.rdsConfig.username;
                 const dbCreds = Credentials.fromGeneratedSecret(username);
-                const pgvector_db = new DatabaseInstance(this, createCdkId([ragConfig.repositoryId, 'PGVectorDB']), {
+                const pgvectorDb = new DatabaseInstance(this, createCdkId([ragConfig.repositoryId, 'PGVectorDB']), {
                     engine: DatabaseInstanceEngine.POSTGRES,
                     vpc: vpc,
                     vpcSubnets: subnetSelection,
@@ -104,7 +103,7 @@ export class PGVectorStoreStack extends PipelineStack {
                     databaseName: ragConfig.rdsConfig.dbName,
                     port: ragConfig.rdsConfig.dbPort
                 });
-                rdsPasswordSecret = pgvector_db.secret!;
+                rdsPasswordSecret = pgvectorDb.secret!;
 
                 // Store password secret ID in ragConfig
                 ragConfig.rdsConfig.passwordSecretId = rdsPasswordSecret.secretName;
@@ -115,9 +114,9 @@ export class PGVectorStoreStack extends PipelineStack {
                     stringValue: JSON.stringify({
                         username: username,
                         passwordSecretId: rdsPasswordSecret.secretName,
-                        dbHost: pgvector_db.dbInstanceEndpointAddress,
+                        dbHost: pgvectorDb.dbInstanceEndpointAddress,
                         dbName: ragConfig.rdsConfig.dbName,
-                        dbPort: pgvector_db.dbInstanceEndpointPort,
+                        dbPort: pgvectorDb.dbInstanceEndpointPort,
                     }),
                     description: 'Connection info for LISA Serve PGVector database',
                 });

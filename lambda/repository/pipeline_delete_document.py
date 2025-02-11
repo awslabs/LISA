@@ -82,8 +82,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         prefix = event.get("prefix", "/")
         s3_key = f"s3://{bucket}{prefix}{key}"
 
-        collection_id = os.environ["EMBEDDING_MODEL"]
-        repository_id = os.environ["REPOSITORY_ID"]
+        pipelineConfig = event.get("pipelineConfig", {})
+        collection_id = pipelineConfig.get("embeddingModel")
+        repository_id = pipelineConfig.get("repositoryId")
 
         logger.info(f"Deleting document {s3_key} for repository {repository_id}")
         docs: list[RagDocument.model_dump] = doc_repo.find_by_source(

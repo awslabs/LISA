@@ -16,7 +16,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, cast, Dict, List
 
 import boto3
 import requests
@@ -39,7 +39,12 @@ from utilities.common_functions import (
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
-from utilities.vector_store import find_repository_by_id, get_registered_repositories, get_repository_status, get_vector_store_client
+from utilities.vector_store import (
+    find_repository_by_id,
+    get_registered_repositories,
+    get_repository_status,
+    get_vector_store_client,
+)
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -242,16 +247,18 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     registered_repositories = get_registered_repositories()
     return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
 
+
 @api_wrapper
 @admin_only
-def list_status(event: dict, context: dict) -> List[Dict[str, Any]]:
+def list_status(event: dict, context: dict) -> dict[str, Any]:
     """
     Get all repository status.
 
     Returns:
         List of repository status
     """
-    return get_repository_status()
+    return cast(dict, get_repository_status())
+
 
 def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
     """Returns if user groups has at least one intersection with allowed groups.
@@ -425,7 +432,9 @@ def _remove_s3_documents(repository_id: str, docs: list[dict]) -> list[str]:
         # may not be configured for auto removal
         if doc.get("ingestion_type") == IngestionType.AUTO:
             collection_id = doc.get("collection_id")
-            pipeline = next((pipeline for pipeline in repo.get('pipelines', []) if pipeline["embeddedId"] == collection_id), None)
+            pipeline = next(
+                (pipeline for pipeline in repo.get("pipelines", []) if pipeline["embeddedId"] == collection_id), None
+            )
             if not pipeline or not pipeline.get("autoRemove"):
                 continue
         source: str = doc.get("source", "")
@@ -691,7 +700,9 @@ def delete(event: dict, context: dict) -> Any:
     """
     # Retrieve the repository ID from the path parameters in the event object
     path_params = event.get("pathParameters", {}) or {}
-    repository_id = path_params.get("repositoryId")
+    repository_id = path_params.get("repositoryId", None)
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
 
     repository = find_repository_by_id(repository_id=repository_id, raw_config=True)
 

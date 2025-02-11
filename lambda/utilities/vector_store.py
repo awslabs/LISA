@@ -58,10 +58,10 @@ def get_registered_repositories() -> List[dict]:
         raise e
 
 
-def get_repository_status() -> dict[str, str]:
+def get_repository_status() -> dict[str, Any]:
     """Get a list the status of all repositories"""
     table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
-    status = {}
+    status: dict[str, Any] = {}
 
     try:
         table = ddb_table.Table(table_name)
@@ -69,8 +69,7 @@ def get_repository_status() -> dict[str, str]:
         items = response["Items"]
         while "LastEvaluatedKey" in response:
             response = table.scan(
-                ExclusiveStartKey=response["LastEvaluatedKey"],
-                ProjectionExpression="repositoryId, status"
+                ExclusiveStartKey=response["LastEvaluatedKey"], ProjectionExpression="repositoryId, status"
             )
             items.extend(response["Items"])
 
@@ -151,7 +150,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
     elif connection_info.get("type") == "pgvector":
         secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
-        password = json.loads(secrets_response.get("SecretString", {}).get("password"))
+        password = json.loads(secrets_response.get("SecretString")).get("password")
 
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",

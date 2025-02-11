@@ -15,7 +15,6 @@
 """Common helper functions for RAG Lambdas."""
 import copy
 import functools
-from http.client import HTTPException
 import json
 import logging
 import os
@@ -26,6 +25,7 @@ from typing import Any, Callable, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
+from utilities.exceptions import HTTPException
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -360,17 +360,18 @@ def is_admin(event: dict) -> bool:
     logger.info(f"User groups: {groups} and admin: {admin_group}")
     return admin_group in groups
 
-def admin_only(func: Callable):
+
+def admin_only(func: Callable) -> Callable:
     """Annotation to wrap is_admin"""
+
     @wraps(func)
-    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args, **kwargs):
+    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
         if not is_admin(event):
-            raise HTTPException(
-                status_code=403,
-                message="User does not have permission to access this repository"
-            )
+            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
         return func(event, context, *args, **kwargs)
+
     return wrapper
+
 
 def get_session_id(event: dict) -> str:
     """Get session_id from event."""

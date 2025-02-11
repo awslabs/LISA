@@ -20,7 +20,7 @@ import { scrollToInvalid, useValidationReducer } from '../../../shared/validatio
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
-import { useCreateRagRepositoryMutation, useUpdateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
+import { useCreateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
 import { getDefaults } from '../../../shared/util/zodUtil';
 import { RagRepositoryConfig, RagRepositoryConfigSchema } from '../../../../../../configSchema';
 import { RepositoryConfigForm } from './RepositoryConfigForm';
@@ -48,27 +48,16 @@ export type RepositoryCreateState = {
 };
 
 export function CreateRepositoryModal (props: CreateRepositoryModalProps): ReactElement {
-    const { visible, setVisible, selectedItems, setSelectedItems, isEdit, setIsEdit } = props;
+    const { visible, setVisible, selectedItems, isEdit, setIsEdit } = props;
     const [
         createRepositoryMutation,
         {
             isSuccess: isCreateSuccess,
-            isError: isCreateError,
             error: createError,
             isLoading: isCreating,
             reset: resetCreate,
         },
     ] = useCreateRagRepositoryMutation();
-    const [
-        updateRepositoryMutation,
-        {
-            isSuccess: isUpdateSuccess,
-            isError: isUpdateError,
-            error: updateError,
-            isLoading: isUpdating,
-            reset: resetUpdate,
-        },
-    ] = useUpdateRagRepositoryMutation();
 
     const initialForm: RagRepositoryConfig = {
         ...getDefaults(RagRepositoryConfigSchema),
@@ -105,20 +94,15 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, isEdit]);
 
-    const reviewError = normalizeError('Repository', isCreateError ? createError : isUpdateError ? updateError : undefined);
+    const reviewError = normalizeError('Repository', createError);
 
     const requiredFields = [['repositoryId', 'type', 'rdsConfig.username', 'rdsConfig.dbName', 'rdsConfig.dbPort', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodeInstanceType'], []];
 
 
     function handleSubmit () {
         if (isValid && !_.isEmpty(changesDiff)) {
-            if (isEdit) {
-                resetUpdate();
-                updateRepositoryMutation(toSubmit);
-            } else {
-                resetCreate();
-                createRepositoryMutation({ ragConfig: toSubmit });
-            }
+            resetCreate();
+            createRepositoryMutation({ ragConfig: toSubmit });
         }
     }
 
@@ -139,17 +123,6 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isCreateSuccess]);
-
-    useEffect(() => {
-        if (!isUpdating && isUpdateSuccess) {
-            notificationService.generateNotification(`Successfully updated repository: ${state.form.repositoryId}`, 'success');
-            setVisible(false);
-            setIsEdit(false);
-            setSelectedItems([]);
-            resetState();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdating, isUpdateSuccess]);
 
     const steps = [
         {
@@ -176,7 +149,8 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             title: `Review and ${isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${isEdit ? 'changes' : ''} prior to submitting.`,
             content: (
-                <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
+                <ReviewChanges jsonDiff={changesDiff} error={reviewError}
+                    info={isEdit ? 'Any changes will cause a redeployment of the vector store, which may result in data loss of previously store RAG documents.' : undefined} />
             ),
             onEdit: state.form,
         },
@@ -193,7 +167,6 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             activeStepIndex: 0,
         }, ModifyMethod.Set);
         resetCreate();
-        resetUpdate();
     }
 
     return (
@@ -261,7 +234,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 }}
                 onSubmit={() => handleSubmit()}
                 activeStepIndex={state.activeStepIndex}
-                isLoadingNextStep={isCreating || isUpdating}
+                isLoadingNextStep={isCreating}
                 allowSkipTo
                 steps={steps}
             />

@@ -85,14 +85,6 @@ export const ragApi = createApi({
             }),
             invalidatesTags: ['repositories'],
         }),
-        updateRagRepository: builder.mutation<RagRepositoryConfig, RagRepositoryConfig>({
-            query: (body) => ({
-                url: `/repository/${body.repositoryId}`,
-                method: 'PUT',
-                data: body,
-            }),
-            invalidatesTags: ['repositories'],
-        }),
         getPresignedUrl: builder.query<any, String>({
             query: (body) => ({
                 url: '/repository/presigned-url',
@@ -170,7 +162,6 @@ export const {
     useListRagRepositoriesQuery,
     useCreateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
-    useUpdateRagRepositoryMutation,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,

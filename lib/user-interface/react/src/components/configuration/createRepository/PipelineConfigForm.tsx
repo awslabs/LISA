@@ -93,7 +93,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 'chunkSize', Number(detail.value))
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].chunkSize`])}
-                                disabled={isEdit}
                             />
                         </FormField>
 
@@ -108,7 +107,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 'chunkOverlap', Number(detail.value))
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].chunkOverlap`])}
-                                disabled={isEdit}
                             />
                         </FormField>
 
@@ -120,7 +118,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 options={embeddingOptions}
                                 selectedOption={{ value: pipeline.embeddingModel }}
                                 loadingText='Loading models'
-                                disabled={isEdit}
                                 onBlur={() => touchFields([`pipelines[${index}].embeddingModel`])}
                                 filteringType='auto'
                                 onChange={({ detail }) =>
@@ -140,7 +137,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 's3Bucket', detail.value)
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Bucket`])}
-                                disabled={isEdit}
                             />
                         </FormField>
 
@@ -153,7 +149,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 's3Prefix', detail.value)
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Prefix`])}
-                                disabled={isEdit}
                             />
                         </FormField>
 
@@ -170,7 +165,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     { label: 'Event', value: 'event' },
                                 ]}
                                 onBlur={() => touchFields([`pipelines[${index}].trigger`])}
-                                disabled={isEdit}
                             />
                         </FormField>
 
@@ -183,7 +177,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 onChange={({ detail }) =>
                                     onChange(index, 'autoRemove', detail.checked)
                                 }
-                                disabled={isEdit}
                             />
                         </FormField>
                     </SpaceBetween>

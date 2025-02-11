@@ -28,7 +28,7 @@ import { RepositoryActions } from './RepositoryActions';
 import CreateRepositoryModal from './createRepository/CreateRepositoryModal';
 
 
-export function getMatchesCountText (count) {
+export function getMatchesCountText (count: number) {
     return count === 1 ? '1 match' : `${count} matches`;
 }
 
@@ -60,6 +60,7 @@ export function RepositoryTable (): ReactElement {
             selection: { trackBy: 'repositoryId' },
         },
     );
+
 
     return (
         <>

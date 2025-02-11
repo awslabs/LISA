@@ -22,10 +22,13 @@ import { SerializedError } from '@reduxjs/toolkit';
 
 export type ReviewChangesProps = {
     jsonDiff: object,
-    error?: SerializedError
+    error?: SerializedError,
+    info?: string
 };
 
 export function ReviewChanges (props: ReviewChangesProps): ReactElement {
+    const { jsonDiff, info, error } = props;
+
     /**
      * Converts a JSON object into an outline structure represented as React nodes.
      *
@@ -53,7 +56,6 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                     }
                 }
             }
-
         }
         return <ul>{output}</ul>;
     }
@@ -62,16 +64,18 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
         <SpaceBetween size={'s'}>
             <Container>
                 <TextContent>
-                    {_.isEmpty(props.jsonDiff) ? <p>No changes detected</p> : jsonToOutline(props.jsonDiff)}
+                    {_.isEmpty(jsonDiff) ? <p>No changes detected</p> : jsonToOutline(jsonDiff)}
                 </TextContent>
+
             </Container>
 
-            {props?.error && <Alert
-                type='error'
-                header={props?.error?.name || 'Diff Error'}
-            >
-                {props?.error?.message}
-            </Alert>}
+            {info && <Alert type='info'>{info}</Alert>}
+
+            {error &&
+                <Alert type='error' header={error?.name || 'Diff Error'}>
+                    {error?.message}
+                </Alert>
+            }
         </SpaceBetween>
     );
 }

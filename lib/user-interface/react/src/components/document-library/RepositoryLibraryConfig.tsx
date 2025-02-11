@@ -17,6 +17,7 @@ import Link from '@cloudscape-design/components/link';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 import { NavigateFunction } from 'react-router-dom';
 import { RagRepositoryConfig } from '../../../../../configSchema';
+import { CollectionPreferencesProps } from '@cloudscape-design/components';
 
 export const CARD_SECTIONS = [
     {
@@ -57,7 +58,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
     },
 ];
 
-export const DEFAULT_PREFERENCES = {
+export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: PAGE_SIZE_OPTIONS[0].value,
     visibleContent: CARD_SECTIONS.map((c) => c.id),
 };

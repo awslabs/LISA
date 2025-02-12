@@ -63,7 +63,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
                 <Input value={item.dbPort.toString()}
                     type='number' inputMode='numeric'
                     onBlur={() => touchFields(['rdsConfig.dbPort'])}
-                    onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': detail.value })}
+                       onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': Number(detail.value) })}
                     disabled={isEdit} />
             </FormField>
         </Container>

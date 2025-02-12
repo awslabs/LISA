@@ -536,12 +536,12 @@ const OpenSearchExistingClusterConfig = z.object({
 });
 
 export const PipelineConfigSchema = z.object({
-    chunkOverlap: z.number(),
-    chunkSize: z.number(),
+    chunkOverlap: z.number().default(512),
+    chunkSize: z.number().default(51),
     embeddingModel: z.string(),
     s3Bucket: z.string(),
     s3Prefix: z.string(),
-    trigger: z.union([z.literal('daily'), z.literal('event')]),
+    trigger: z.union([z.literal('daily'), z.literal('event')]).default('event'),
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
 });
 

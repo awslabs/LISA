@@ -60,7 +60,7 @@ type CreateRepositoryRequest = {
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'Docs'],
+    tagTypes: ['repositories', 'Docs', 'repository-status'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -84,6 +84,12 @@ export const ragApi = createApi({
                 method: 'DELETE',
             }),
             invalidatesTags: ['repositories'],
+        }),
+        getRagStatus: builder.query<RagRepositoryConfig[], void>({
+            query: () => ({
+                url: '/repository/status',
+            }),
+            providesTags: ['repository-status'],
         }),
         getPresignedUrl: builder.query<any, String>({
             query: (body) => ({
@@ -162,6 +168,8 @@ export const {
     useListRagRepositoriesQuery,
     useCreateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
+    useGetRagStatusQuery,
+    useLazyGetRagStatusQuery,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,

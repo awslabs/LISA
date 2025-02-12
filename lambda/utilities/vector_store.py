@@ -65,16 +65,21 @@ def get_repository_status() -> dict[str, Any]:
 
     try:
         table = ddb_table.Table(table_name)
-        response = table.scan(ProjectionExpression="repositoryId, status")
+        response = table.scan(
+            ProjectionExpression="repositoryId, #status", ExpressionAttributeNames={"#status": "status"}
+        )
         items = response["Items"]
         while "LastEvaluatedKey" in response:
             response = table.scan(
-                ExclusiveStartKey=response["LastEvaluatedKey"], ProjectionExpression="repositoryId, status"
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+                ProjectionExpression="repositoryId, #status",
+                ExpressionAttributeNames={"#status": "status"},
             )
             items.extend(response["Items"])
 
-        status = {item["repositoryId"]: item["config"] for item in items if "config" in item}
-
+        status = {item["repositoryId"]: item["status"] for item in items}
+        logging.info(f"status: {items}")
+        logging.info(f"status: {status}")
     except ddb_client.exceptions.ResourceNotFoundException:
         raise ValueError(f"Table '{table_name}' does not exist")
     return status

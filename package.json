@@ -34,7 +34,8 @@
   "workspaces": [
     "lib/user-interface/react",
     "lib/docs",
-    "ecs_model_deployer"
+    "ecs_model_deployer",
+    "vector_store_deployer"
   ],
   "scripts": {
     "build": "tsc && npm run build --workspaces",

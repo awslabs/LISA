@@ -14,11 +14,9 @@
   limitations under the License.
 */
 
-import { ISecurityGroup, IVpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Config } from '../../schema';
+import { ISecurityGroup, ISubnet, IVpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { createCdkId } from '../../core/utils';
 import { SecurityGroupNames } from '../../core/iam/SecurityGroups';
-import { Vpc } from '.';
 import { IConstruct } from 'constructs';
 
 /**
@@ -46,7 +44,7 @@ export class SecurityGroupFactory {
         description: string,
     ): ISecurityGroup {
         if (securityGroupOverride) {
-            console.debug(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupId}`);
+            console.log(`Security Role Override provided. Using ${securityGroupOverride} for ${securityGroupId}`);
             const sg = SecurityGroup.fromSecurityGroupId(construct, securityGroupId, securityGroupOverride);
             // Validate the security group exists
             if (!sg) {
@@ -58,47 +56,48 @@ export class SecurityGroupFactory {
             return new SecurityGroup(construct, securityGroupId, {
                 vpc: vpc,
                 description: `Security group for ${description}`,
-                ...(securityGroupName && {securityGroupName: createCdkId(deploymentName ? [deploymentName, securityGroupName] : [securityGroupName])}),
+                ...(securityGroupName && { securityGroupName: createCdkId(deploymentName ? [deploymentName, securityGroupName] : [securityGroupName]) }),
             });
         }
     }
 
     /**
-     * Add VPC traffic to the security group.
-     * @param securityGroup
-     * @param vpcCidrBlock
-     */
+      * Add VPC traffic to the security group.
+      * @param securityGroup
+      * @param vpcCidrBlock
+      */
     static addVpcTraffic (securityGroup: ISecurityGroup, vpcCidrBlock: string): void {
         securityGroup.addIngressRule(Peer.ipv4(vpcCidrBlock), Port.tcp(80), 'Allow VPC traffic on port 80');
     }
 
     /**
-     * Add HTTPS traffic to the security group.
-     * @param securityGroup
-     */
-    static addHttpsTraffic (securityGroup: ISecurityGroup ): void {
+      * Add HTTPS traffic to the security group.
+      * @param securityGroup
+      */
+    static addHttpsTraffic (securityGroup: ISecurityGroup): void {
         securityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(443), 'Allow any traffic on port 443');
     }
 
     /**
-     * Creates a security group for the VPC.
-     *
-     * @param {ISecurityGroup} securityGroup - The security Group.
-     * @param {string} securityGroupName - The security Group name.
-     * @param {Vpc} vpc - The virtual private cloud.
-     * @param {Config} config - LISA config.
-     */
+      * Creates a security group for the VPC.
+      *
+      * @param {ISecurityGroup} securityGroup - The security Group.
+      * @param {string} securityGroupName - The security Group name.
+      * @param {Vpc} vpc - The virtual private cloud.
+      * @param {number} port - port for ingress
+      * @param {ISubnet[]} subnets - subnets if using predefined vpc
+      */
     static addIngress (
         securityGroup: ISecurityGroup,
         securityGroupName: string,
-        vpc: Vpc,
-        config: Config,
-        port: number): void {
-        const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+        vpc: IVpc,
+        port: number,
+        subnets?: ISubnet[]): void {
+        const subNets = subnets || vpc.isolatedSubnets.concat(vpc.privateSubnets);
         subNets?.forEach((subnet) => {
             securityGroup.connections.allowFrom(
-                Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet: { subnetId: string; }) =>
-                    filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
+                Peer.ipv4(subnets ? subNets.filter((filteredSubnet: { subnetId: string; }) =>
+                    filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock : subnet.ipv4CidrBlock),
                 Port.tcp(port),
                 `Allow REST API private subnets to communicate with ${securityGroupName}`,
             );

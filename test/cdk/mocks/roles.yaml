@@ -6,13 +6,14 @@ dev:
     RagLambdaExecutionRole: TestRagRole
     ECSRestApiRole: TestEcsRestApiRole
     ECSRestApiExRole: TestEcsRestApiRole
+    VectorStoreCreatorRole: TestVectorStoreCreatorRole
 
     #ImageBuilderRoles
     DockerImageBuilderEC2Role: TestImageBuilderRole #ImageBuilder
     DockerImageBuilderRole: TestImageBuilderRole #ImageBuilder
     DockerImageBuilderDeploymentRole: TestImageBuilderRole #ImageBuilder
 
-    # ModelDeployerRole
+    #ModelDeployerRole
     ECSModelDeployerRole: TestECSModelDeployerRole
     ECSModelTaskRole: TestECSModelDeployerRole
 

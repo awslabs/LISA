@@ -44,9 +44,7 @@
                 "ssm:GetParameter"
             ],
             "Resource": [
-                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/lisaServeRestApiUri",
-                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/LisaServeRagPGVectorConnectionInfo",
-                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/opensearchEndpoint"
+                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*"
             ]
         },
         {

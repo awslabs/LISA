@@ -76,8 +76,18 @@ export class RepositoryApi extends Construct {
             {
                 name: 'list_all',
                 resource: 'repository',
-                description: 'List all registered repositories',
+                description: 'List all repositories',
                 path: 'repository',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_status',
+                resource: 'repository',
+                description: 'List status for all repositories',
+                path: 'repository/status',
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,
@@ -91,6 +101,28 @@ export class RepositoryApi extends Construct {
                 method: 'POST',
                 environment: {
                     ...baseEnvironment,
+                },
+            },
+            {
+                name: 'create',
+                resource: 'repository',
+                description: 'Create a new repository',
+                path: 'repository',
+                method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                    // LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/createStoreStateMachineArn`)
+                },
+            },
+            {
+                name: 'delete',
+                resource: 'repository',
+                description: 'Delete a repository',
+                path: 'repository/{repositoryId}',
+                method: 'DELETE',
+                environment: {
+                    ...baseEnvironment,
+                    // LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/deleteStoreStateMachineArn`)
                 },
             },
             {
@@ -115,16 +147,6 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'delete_documents',
-                resource: 'repository',
-                description: 'Deletes all records associated with documents from the repository',
-                path: 'repository/{repositoryId}/document',
-                method: 'DELETE',
-                environment: {
-                    ...baseEnvironment,
-                },
-            },
-            {
                 name: 'list_docs',
                 resource: 'repository',
                 description: 'List all docs for a repository',
@@ -144,6 +166,16 @@ export class RepositoryApi extends Construct {
                     ...baseEnvironment,
                 },
             },
+            {
+                name: 'delete_documents',
+                resource: 'repository',
+                description: 'Deletes all records associated with documents from the repository',
+                path: 'repository/{repositoryId}/document',
+                method: 'DELETE',
+                environment: {
+                    ...baseEnvironment,
+                },
+            }
         ];
         apis.forEach((f) => {
             registerAPIEndpoint(

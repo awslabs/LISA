@@ -35,8 +35,6 @@ and its vector embeddings.
 Environment Variables Required:
     RAG_DOCUMENT_TABLE: DynamoDB table name for storing document metadata
     RAG_SUB_DOCUMENT_TABLE: DynamoDB table name for storing sub-document metadata
-    EMBEDDING_MODEL: Identifier for the embedding model being used
-    REPOSITORY_ID: Identifier for the current repository
 
 Dependencies:
     - langchain_core.vectorstores
@@ -82,8 +80,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         prefix = event.get("prefix", "/")
         s3_key = f"s3://{bucket}{prefix}{key}"
 
-        collection_id = os.environ["EMBEDDING_MODEL"]
-        repository_id = os.environ["REPOSITORY_ID"]
+        pipelineConfig = event.get("pipelineConfig", {})
+        collection_id = pipelineConfig.get("embeddingModel")
+        repository_id = pipelineConfig.get("repositoryId")
 
         logger.info(f"Deleting document {s3_key} for repository {repository_id}")
         docs: list[RagDocument.model_dump] = doc_repo.find_by_source(

@@ -206,7 +206,7 @@ class RagDocumentRepository:
     def list_all(
         self,
         repository_id: str,
-        collection_id: Optional[str],
+        collection_id: Optional[str] = None,
         last_evaluated_key: Optional[dict] = None,
         limit: int = 100,
         join_docs: bool = False,

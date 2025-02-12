@@ -22,6 +22,8 @@ import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { IStateMachine, StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { Roles } from '../../../lib/core/iam/roles';
+import { createCdkId } from '../../../lib/core/utils';
 
 // Abstract class representing a general pipeline stack
 export abstract class PipelineStack extends Stack {
@@ -35,7 +37,14 @@ export abstract class PipelineStack extends Stack {
         // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
         const { stateMachine, stateMachineRole} = this.getStateMachine(config, 'Ingest');
         const { stateMachine:deleteStateMachine, stateMachineRole:deleteStateMachineRole} = this.getStateMachine(config, 'Delete');
-
+        const lambdaExecutionRole = Role.fromRoleArn(
+            this,
+            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
+            ),
+        );
         // Check if pipelines configuration exists
         if (ragConfig.pipelines) {
             ragConfig.pipelines.forEach((pipelineConfig) => {
@@ -72,7 +81,7 @@ export abstract class PipelineStack extends Stack {
 
                 if (pipelineConfig.autoRemove) {
                     console.log('Creating autodelete rule...');
-                    deleteStateMachineRole.addToPrincipalPolicy(new PolicyStatement({
+                    lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
                         effect: Effect.ALLOW,
                         actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
                         resources: [

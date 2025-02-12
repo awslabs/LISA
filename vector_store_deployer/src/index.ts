@@ -82,7 +82,9 @@ export const handler = async (event: any) => {
     const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'vector-store', ragConfig.repositoryId].join('-');
     process.env['LISA_STACK_NAME'] = stackName;
     const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
-        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
+        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
+            env: {...process.env}
+        });
 
         cp.on('close', (code) => {
             console.log(`cdk deploy exited early, code ${code}`);
@@ -90,11 +92,12 @@ export const handler = async (event: any) => {
         });
 
         cp.stdout.on('data', (data) => {
-            console.log(`Got data: ${data}`);
+            console.log(`${data}`);
         });
 
+        // cdk std out is also placed on stderr
         cp.stderr.on('data', (data) => {
-            console.log(`Got err data: ${data}`);
+            console.info(`${data}`);
         });
 
         setTimeout(() => {

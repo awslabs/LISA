@@ -241,6 +241,11 @@ export class LisaRagStack extends Stack {
             'RAG PGVector database',
         );
 
+        // Add default ingress port to SG
+        if (!config.securityGroupConfig?.pgVectorSecurityGroupId) {
+            SecurityGroupFactory.addIngress(pgvectorSg, SecurityGroupEnum.PG_VECTOR_SG, vpc.vpc, 5432, vpc.subnetSelection?.subnets);
+        }
+
         new StringParameter(this, createCdkId(['pgvectorSecurityGroupId', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/pgvectorSecurityGroupId`,
             stringValue: pgvectorSg.securityGroupId,

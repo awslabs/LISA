@@ -42,11 +42,12 @@ export class PGVectorStoreStack extends PipelineStack {
         // Destructure the configuration properties
         const { config, ragConfig } = props;
         const { vpcId, deploymentName, deploymentPrefix, subnets } = config;
+        const { repositoryId, type, rdsConfig } = ragConfig;
 
         // Retrieve Lambda execution role using Role ARN
         const lambdaRole = Role.fromRoleArn(
             this,
-            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            `${Roles.RAG_LAMBDA_EXECUTION_ROLE}-${repositoryId}`,
             StringParameter.valueForStringParameter(
                 this,
                 `${deploymentPrefix}/roles/${createCdkId([deploymentName!, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
@@ -68,7 +69,7 @@ export class PGVectorStoreStack extends PipelineStack {
         }
 
         // Check if PGVector type and RDS configuration are provided in ragConfig
-        if (ragConfig?.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
+        if (type === RagRepositoryType.PGVECTOR && rdsConfig) {
             let rdsPasswordSecret: ISecret;
             let rdsConnectionInfo: StringParameter;
 
@@ -76,29 +77,30 @@ export class PGVectorStoreStack extends PipelineStack {
             const securityGroupId = StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/pgvectorSecurityGroupId`);
             const pgSecurityGroup = SecurityGroup.fromSecurityGroupId(this, 'PGVectorSecurityGroup', securityGroupId);
 
-            if (!config.securityGroupConfig?.pgVectorSecurityGroupId) {
-                SecurityGroupFactory.addIngress(pgSecurityGroup, SecurityGroupEnum.PG_VECTOR_SG, vpc, ragConfig.rdsConfig.dbPort, subnetSelection?.subnets);
+            // Add non-default ingress port for SG
+            if (!config.securityGroupConfig?.pgVectorSecurityGroupId && rdsConfig.dbPort !== 5432) {
+                SecurityGroupFactory.addIngress(pgSecurityGroup, SecurityGroupEnum.PG_VECTOR_SG, vpc, rdsConfig.dbPort, subnetSelection?.subnets);
             }
 
             // if dbHost and passwordSecretId are defined, then connect to DB with existing params
             // Check if existing DB connection details are available
-            if (ragConfig.rdsConfig && ragConfig.rdsConfig.passwordSecretId) {
+            if (rdsConfig && rdsConfig.passwordSecretId) {
                 // Use existing DB connection details
-                rdsConnectionInfo = new StringParameter(this, createCdkId([ragConfig.repositoryId, 'StringParameter']), {
-                    parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${ragConfig.repositoryId}`,
-                    stringValue: JSON.stringify({...ragConfig.rdsConfig, type: RagRepositoryType.PGVECTOR}),
+                rdsConnectionInfo = new StringParameter(this, createCdkId([repositoryId, 'StringParameter']), {
+                    parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${repositoryId}`,
+                    stringValue: JSON.stringify({...rdsConfig, type: RagRepositoryType.PGVECTOR}),
                     description: 'Connection info for LISA Serve PGVector database',
                 });
                 rdsPasswordSecret = Secret.fromSecretNameV2(
                     this,
-                    createCdkId([deploymentName!, ragConfig.repositoryId, 'RagRDSPwdSecret']),
-                    ragConfig.rdsConfig.passwordSecretId!,
+                    createCdkId([deploymentName!, repositoryId, 'RagRDSPwdSecret']),
+                    rdsConfig.passwordSecretId!,
                 );
             } else {
                 // Create a new RDS instance with generated credentials
-                const username = ragConfig.rdsConfig.username;
+                const username = rdsConfig.username;
                 const dbCreds = Credentials.fromGeneratedSecret(username);
-                const pgvectorDb = new DatabaseInstance(this, createCdkId([ragConfig.repositoryId, 'PGVectorDB']), {
+                const pgvectorDb = new DatabaseInstance(this, createCdkId([repositoryId, 'PGVectorDB']), {
                     engine: DatabaseInstanceEngine.POSTGRES,
                     vpc: vpc,
                     vpcSubnets: subnetSelection,
@@ -107,22 +109,22 @@ export class PGVectorStoreStack extends PipelineStack {
                     credentials: dbCreds,
                     securityGroups: [pgSecurityGroup],
                     removalPolicy: RemovalPolicy.DESTROY,
-                    databaseName: ragConfig.rdsConfig.dbName,
-                    port: ragConfig.rdsConfig.dbPort
+                    databaseName: rdsConfig.dbName,
+                    port: rdsConfig.dbPort
                 });
                 rdsPasswordSecret = pgvectorDb.secret!;
 
                 // Store password secret ID in ragConfig
-                ragConfig.rdsConfig.passwordSecretId = rdsPasswordSecret.secretName;
+                rdsConfig.passwordSecretId = rdsPasswordSecret.secretName;
 
                 // Save new DB connection details as a parameter
-                rdsConnectionInfo = new StringParameter(this, createCdkId([ragConfig.repositoryId, 'StringParameter']), {
-                    parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${ragConfig.repositoryId}`,
+                rdsConnectionInfo = new StringParameter(this, createCdkId([repositoryId, 'StringParameter']), {
+                    parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${repositoryId}`,
                     stringValue: JSON.stringify({
                         username: username,
                         passwordSecretId: rdsPasswordSecret.secretName,
                         dbHost: pgvectorDb.dbInstanceEndpointAddress,
-                        dbName: ragConfig.rdsConfig.dbName,
+                        dbName: rdsConfig.dbName,
                         dbPort: pgvectorDb.dbInstanceEndpointPort,
                         type: RagRepositoryType.PGVECTOR
                     }),

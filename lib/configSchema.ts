@@ -624,102 +624,102 @@ const RoleConfig = z.object({
     .describe('Role overrides used across stacks.');
 
 export const RawConfigObject = z.object({
-        appName: z.string().default('lisa').describe('Name of the application.'),
-        profile: z
-            .string()
-            .nullish()
-            .transform((value) => value ?? '')
-            .describe('AWS CLI profile for deployment.'),
-        deploymentName: z.string().default('prod').describe('Name of the deployment.'),
-        accountNumber: z
-            .number()
-            .or(z.string())
-            .transform((value) => value.toString())
-            .refine((value) => value.length === 12, {
-                message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
-            })
-            .describe('AWS account number for deployment. Must be 12 digits.'),
-        region: z.string().describe('AWS region for deployment.'),
-        partition: z.string().default('aws').describe('AWS partition for deployment.'),
-        domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
-        restApiConfig: FastApiContainerConfigSchema,
-        vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
-        subnets: z.array(z.object({
-            subnetId: z.string().startsWith('subnet-'),
-            ipv4CidrBlock: z.string(),
-        })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
-        securityGroupConfig: SecurityGroupConfigSchema.optional(),
-        deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
+    appName: z.string().default('lisa').describe('Name of the application.'),
+    profile: z
+        .string()
+        .nullish()
+        .transform((value) => value ?? '')
+        .describe('AWS CLI profile for deployment.'),
+    deploymentName: z.string().default('prod').describe('Name of the deployment.'),
+    accountNumber: z
+        .number()
+        .or(z.string())
+        .transform((value) => value.toString())
+        .refine((value) => value.length === 12, {
+            message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
+        })
+        .describe('AWS account number for deployment. Must be 12 digits.'),
+    region: z.string().describe('AWS region for deployment.'),
+    partition: z.string().default('aws').describe('AWS partition for deployment.'),
+    domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
+    restApiConfig: FastApiContainerConfigSchema,
+    vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
+    subnets: z.array(z.object({
+        subnetId: z.string().startsWith('subnet-'),
+        ipv4CidrBlock: z.string(),
+    })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
+    securityGroupConfig: SecurityGroupConfigSchema.optional(),
+    deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
     removalPolicy: z.enum([RemovalPolicy.DESTROY, RemovalPolicy.RETAIN])
         .default(RemovalPolicy.DESTROY)
-            .describe('Removal policy for resources (destroy or retain).'),
-        runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
-        privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
-        s3BucketModels: z.string().describe('S3 bucket for models.'),
-        mountS3DebUrl: z.string().describe('URL for S3-mounted Debian package.'),
-        accountNumbersEcr: z
-            .array(z.union([z.number(), z.string()]))
-            .transform((arr) => arr.map(String))
-            .refine((value) => value.every((num) => num.length === 12), {
-                message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
-            })
-            .optional()
-            .describe('List of AWS account numbers for ECR repositories.'),
-        deployRag: z.boolean().default(true).describe('Whether to deploy RAG stacks.'),
-        deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
-        deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
-        deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
-        logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
-            .default('DEBUG')
-            .describe('Log level for application.'),
-        authConfig: AuthConfigSchema.optional().describe('Authorization configuration.'),
-        roles: RoleConfig.optional(),
-        pypiConfig: PypiConfigSchema.default({
-            indexUrl: '',
-            trustedHost: '',
-        }).describe('Pypi configuration.'),
-        condaUrl: z.string().default('').describe('Conda URL configuration'),
-        certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
-        ragRepositories: z.array(RagRepositoryConfigSchema).default([]).describe('Rag Repository configuration.'),
-        ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
-        ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
-        apiGatewayConfig: ApiGatewayConfigSchema,
-        nvmeHostMountPath: z.string().default('/nvme').describe('Host path for NVMe drives.'),
-        nvmeContainerMountPath: z.string().default('/nvme').describe('Container path for NVMe drives.'),
-        tags: z
-            .array(
-                z.object({
-                    Key: z.string(),
-                    Value: z.string(),
-                }),
-            )
-            .optional()
-            .describe('Array of key-value pairs for tagging.'),
-        deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
-        webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
-        lambdaLayerAssets: z
-            .object({
-                authorizerLayerPath: z.string().optional().describe('Lambda Authorizer code path'),
-                commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
-                fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
-                ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
-                sdkLayerPath: z.string().optional().describe('Lambda SDK layer code path'),
-            })
-            .optional()
-            .describe('Configuration for local Lambda layer code'),
-        permissionsBoundaryAspect: z
-            .object({
-                permissionsBoundaryPolicyName: z.string(),
-                rolePrefix: z.string().max(20).optional(),
-                policyPrefix: z.string().max(20).optional(),
-                instanceProfilePrefix: z.string().optional(),
-            })
-            .optional()
-            .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
-        stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
-        litellmConfig: LiteLLMConfig,
-        convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
-    })
+        .describe('Removal policy for resources (destroy or retain).'),
+    runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
+    privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
+    s3BucketModels: z.string().describe('S3 bucket for models.'),
+    mountS3DebUrl: z.string().describe('URL for S3-mounted Debian package.'),
+    accountNumbersEcr: z
+        .array(z.union([z.number(), z.string()]))
+        .transform((arr) => arr.map(String))
+        .refine((value) => value.every((num) => num.length === 12), {
+            message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
+        })
+        .optional()
+        .describe('List of AWS account numbers for ECR repositories.'),
+    deployRag: z.boolean().default(true).describe('Whether to deploy RAG stacks.'),
+    deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
+    deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
+    deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+    logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
+        .default('DEBUG')
+        .describe('Log level for application.'),
+    authConfig: AuthConfigSchema.optional().describe('Authorization configuration.'),
+    roles: RoleConfig.optional(),
+    pypiConfig: PypiConfigSchema.default({
+        indexUrl: '',
+        trustedHost: '',
+    }).describe('Pypi configuration.'),
+    condaUrl: z.string().default('').describe('Conda URL configuration'),
+    certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
+    ragRepositories: z.array(RagRepositoryConfigSchema).default([]).describe('Rag Repository configuration.'),
+    ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
+    ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
+    apiGatewayConfig: ApiGatewayConfigSchema,
+    nvmeHostMountPath: z.string().default('/nvme').describe('Host path for NVMe drives.'),
+    nvmeContainerMountPath: z.string().default('/nvme').describe('Container path for NVMe drives.'),
+    tags: z
+        .array(
+            z.object({
+                Key: z.string(),
+                Value: z.string(),
+            }),
+        )
+        .optional()
+        .describe('Array of key-value pairs for tagging.'),
+    deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
+    webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
+    lambdaLayerAssets: z
+        .object({
+            authorizerLayerPath: z.string().optional().describe('Lambda Authorizer code path'),
+            commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
+            fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
+            ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
+            sdkLayerPath: z.string().optional().describe('Lambda SDK layer code path'),
+        })
+        .optional()
+        .describe('Configuration for local Lambda layer code'),
+    permissionsBoundaryAspect: z
+        .object({
+            permissionsBoundaryPolicyName: z.string(),
+            rolePrefix: z.string().max(20).optional(),
+            policyPrefix: z.string().max(20).optional(),
+            instanceProfilePrefix: z.string().optional(),
+        })
+        .optional()
+        .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
+    stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
+    litellmConfig: LiteLLMConfig,
+    convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
+});
 
 export const RawConfigSchema = RawConfigObject
     .refine((config) => (config.pypiConfig.indexUrl && config.region.includes('iso')) || !config.region.includes('iso'), {

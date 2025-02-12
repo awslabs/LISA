@@ -16,7 +16,8 @@
 import { Stack } from 'aws-cdk-lib';
 import * as z from 'zod';
 import { Construct } from 'constructs';
-import { PartialConfigSchema, RagRepositoryConfigSchema, RagRepositoryPipeline } from '../../../lib/schema';
+import { PartialConfigSchema } from '../../../lib/schema';
+import { RagRepositoryConfigSchema, RagRepositoryPipeline } from '../../../lib/configSchema';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { IStateMachine, StateMachine } from 'aws-cdk-lib/aws-stepfunctions';

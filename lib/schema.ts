@@ -620,6 +620,7 @@ const RoleConfig = z.object({
     RestApiAuthorizerRole: z.string().max(64),
     S3ReaderRole: z.string().max(64).optional(),
     UIDeploymentRole: z.string().max(64).optional(),
+    VectorStoreCreatorRole: z.string().max(64).optional(),
 })
     .describe('Role overrides used across stacks.');
 

@@ -87,9 +87,21 @@ export class IngestPipelineStateMachine extends Construct {
                 `${ragSubDocumentTable.tableArn}/index/*`
             ]
         });
+        // Create log group
+        const cloudWatchLogsPolicy = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'logs:CreateLogGroup',
+                'logs:CreateLogStream',
+                'logs:PutLogEvents'
+            ],
+            resources: [
+                `arn:${cdk.Aws.PARTITION}:logs:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:log-group:/aws/lambda/*`
+            ]
+        });
 
         // Create array of policy statements
-        const policyStatements = [dynamoPolicyStatement];
+        const policyStatements = [dynamoPolicyStatement, cloudWatchLogsPolicy];
 
         // Create IAM certificate policy if certificate ARN is provided
         let certPolicyStatement;
@@ -154,7 +166,6 @@ export class IngestPipelineStateMachine extends Construct {
             environmentEncryption: kmsKey,
             layers: layers,
             role: ingestPipelineRole
-            // initialPolicy: policyStatements
         });
 
         const listModifiedObjects = new LambdaInvoke(this, 'listModifiedObjects', {
@@ -166,8 +177,10 @@ export class IngestPipelineStateMachine extends Construct {
         const prepareSingleFile = new Pass(this, 'PrepareSingleFile', {
             parameters: {
                 'files': [{
-                    'bucket': '$.pipelineConfig.s3Bucket',
-                    'key.$': '$.detail.object.key'
+                    'bucket.$': '$.detail.bucket',
+                    'key.$': '$.detail.object.key',
+                    'repositoryId.$': '$.detail.repositoryId',
+                    'pipelineConfig.$': '$.detail.pipelineConfig'
                 }]
             }
         });

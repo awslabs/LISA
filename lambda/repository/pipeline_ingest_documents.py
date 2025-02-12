@@ -80,11 +80,11 @@ def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dic
         key = event["key"]
         s3_key = f"s3://{bucket}/{key}"
 
+        repository_id = event["repositoryId"]
         pipelineConfig = event["pipelineConfig"]
         chunk_size = int(pipelineConfig["chunkSize"])
         chunk_overlap = int(pipelineConfig["chunkOverlap"])
         embedding_model = pipelineConfig["embeddingModel"]
-        repository_id = pipelineConfig["repositoryId"]
 
         # Validate inputs
         validate_model_name(embedding_model)

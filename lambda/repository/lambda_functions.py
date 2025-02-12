@@ -105,8 +105,11 @@ class PipelineEmbeddings:
     using the LISA API with management-level authentication.
     """
 
-    def __init__(self) -> None:
+    model_name: str
+
+    def __init__(self, model_name: str) -> None:
         try:
+            self.model_name = model_name
             # Get the management key secret name from SSM Parameter Store
             secret_name_param = ssm_client.get_parameter(Name=os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"])
             secret_name = secret_name_param["Parameter"]["Value"]
@@ -147,7 +150,7 @@ class PipelineEmbeddings:
         logger.info(f"Embedding {len(texts)} documents")
         try:
             url = f"{self.base_url}/embeddings"
-            request_data = {"input": texts, "model": os.environ["EMBEDDING_MODEL"]}
+            request_data = {"input": texts, "model": self.model_name}
 
             response = requests.post(
                 url,
@@ -228,7 +231,7 @@ def get_embeddings_pipeline(model_name: str) -> Any:
     logger.info("Starting pipeline embeddings request")
     validate_model_name(model_name)
 
-    return PipelineEmbeddings()
+    return PipelineEmbeddings(model_name=model_name)
 
 
 @api_wrapper

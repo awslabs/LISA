@@ -35,8 +35,6 @@ and its vector embeddings.
 Environment Variables Required:
     RAG_DOCUMENT_TABLE: DynamoDB table name for storing document metadata
     RAG_SUB_DOCUMENT_TABLE: DynamoDB table name for storing sub-document metadata
-    EMBEDDING_MODEL: Identifier for the embedding model being used
-    REPOSITORY_ID: Identifier for the current repository
 
 Dependencies:
     - langchain_core.vectorstores

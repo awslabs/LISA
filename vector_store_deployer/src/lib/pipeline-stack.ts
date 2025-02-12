@@ -35,8 +35,8 @@ export abstract class PipelineStack extends Stack {
     createPipelineRules (config: z.infer<typeof PartialConfigSchema>, ragConfig: z.infer<typeof RagRepositoryConfigSchema>) {
 
         // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
-        const { stateMachine, stateMachineRole} = this.getStateMachine(config, 'Ingest');
-        const { stateMachine:deleteStateMachine, stateMachineRole:deleteStateMachineRole} = this.getStateMachine(config, 'Delete');
+        const { stateMachine, stateMachineRole } = this.getStateMachine(config, 'Ingest');
+        const { stateMachine: deleteStateMachine } = this.getStateMachine(config, 'Delete');
         const lambdaExecutionRole = Role.fromRoleArn(
             this,
             Roles.RAG_LAMBDA_EXECUTION_ROLE,

@@ -220,10 +220,10 @@ export class LisaRagStack extends Stack {
             'RAG OpenSearch domain',
         );
 
-        // if (!config.securityGroupConfig?.openSearchSecurityGroupId) {
-        //     SecurityGroupFactory.addIngress(openSearchSg, SecurityGroupEnum.OPEN_SEARCH_SG, vpc, config, 80);
-        //     SecurityGroupFactory.addIngress(openSearchSg, SecurityGroupEnum.OPEN_SEARCH_SG, vpc, config, 443);
-        // }
+        if (!config.securityGroupConfig?.openSearchSecurityGroupId) {
+            SecurityGroupFactory.addIngress(openSearchSg, SecurityGroupEnum.OPEN_SEARCH_SG, vpc.vpc, 80, vpc.subnetSelection?.subnets);
+            SecurityGroupFactory.addIngress(openSearchSg, SecurityGroupEnum.OPEN_SEARCH_SG, vpc.vpc, 443, vpc.subnetSelection?.subnets);
+        }
 
         new StringParameter(this, createCdkId(['openSearchSecurityGroupId', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/openSearchSecurityGroupId`,
@@ -240,10 +240,6 @@ export class LisaRagStack extends Stack {
             vpc.vpc,
             'RAG PGVector database',
         );
-
-        // if (!config.securityGroupConfig?.pgVectorSecurityGroupId) {
-        //     SecurityGroupFactory.addIngress(pgvectorSg, SecurityGroupEnum.PG_VECTOR_SG, vpc, config, ragConfig.rdsConfig.dbPort);
-        // }
 
         new StringParameter(this, createCdkId(['pgvectorSecurityGroupId', 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/pgvectorSecurityGroupId`,

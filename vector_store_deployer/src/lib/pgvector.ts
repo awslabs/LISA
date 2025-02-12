@@ -25,6 +25,8 @@ import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
+import { SecurityGroupFactory } from '../../../lib/networking/vpc/security-group-factory';
+import { SecurityGroupEnum } from '../../../lib/core/iam/SecurityGroups';
 
 // Type definition for PGVectorStoreStack properties
 type PGVectorStoreStackProps = StackProps & {
@@ -73,6 +75,11 @@ export class PGVectorStoreStack extends PipelineStack {
             // Get Security Group ID for PGVector
             const securityGroupId = StringParameter.valueFromLookup(this, `${config.deploymentPrefix}/pgvectorSecurityGroupId`);
             const pgSecurityGroup = SecurityGroup.fromSecurityGroupId(this, 'PGVectorSecurityGroup', securityGroupId);
+
+            if (!config.securityGroupConfig?.pgVectorSecurityGroupId) {
+                SecurityGroupFactory.addIngress(pgSecurityGroup, SecurityGroupEnum.PG_VECTOR_SG, vpc, ragConfig.rdsConfig.dbPort, subnetSelection?.subnets);
+            }
+
             // if dbHost and passwordSecretId are defined, then connect to DB with existing params
             // Check if existing DB connection details are available
             if (ragConfig.rdsConfig && ragConfig.rdsConfig.passwordSecretId) {

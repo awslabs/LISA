@@ -16,8 +16,10 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { Model, RagDocument, Repository } from '../../components/types';
+import { Model, RagDocument } from '../../components/types';
 import { Document } from '@langchain/core/documents';
+import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagStatus } from '../model/rag.model';
 
 export type S3UploadRequest = {
     url: string;
@@ -52,18 +54,43 @@ type DeleteRagDocumentRequest = {
     documentIds: string[]
 };
 
+type CreateRepositoryRequest = {
+    ragConfig: RagRepositoryConfig
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'Docs'],
+    tagTypes: ['repositories', 'Docs', 'repository-status'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
-        listRagRepositories: builder.query<Repository[], void>({
+        listRagRepositories: builder.query<RagRepositoryConfig[], void>({
             query: () => ({
                 url: '/repository'
             }),
             providesTags:['repositories'],
+        }),
+        createRagRepository: builder.mutation<RagRepositoryConfig, CreateRepositoryRequest>({
+            query: (body) => ({
+                url: '/repository',
+                method: 'POST',
+                data: body,
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        deleteRagRepository: builder.mutation<undefined, string>({
+            query: (repositoryId) => ({
+                url: `/repository/${repositoryId}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        getRagStatus: builder.query<RagStatus[], void>({
+            query: () => ({
+                url: '/repository/status',
+            }),
+            providesTags: ['repository-status'],
         }),
         getPresignedUrl: builder.query<any, String>({
             query: (body) => ({
@@ -146,6 +173,10 @@ export const ragApi = createApi({
 
 export const {
     useListRagRepositoriesQuery,
+    useCreateRagRepositoryMutation,
+    useDeleteRagRepositoryMutation,
+    useGetRagStatusQuery,
+    useLazyGetRagStatusQuery,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,

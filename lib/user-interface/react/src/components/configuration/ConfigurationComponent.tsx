@@ -25,9 +25,10 @@ import { Button, Header } from '@cloudscape-design/components';
 import { useGetConfigurationQuery, useUpdateConfigurationMutation } from '../../shared/reducers/configuration.reducer';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
-import { getJsonDifference } from '../../shared/util/utils';
+import { getJsonDifference } from '../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useNotificationService } from '../../shared/util/hooks';
+import RepositoryTable from './RepositoryTable';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -36,22 +37,38 @@ export type ConfigState = {
     formSubmitting: boolean;
 };
 
-export function ConfigurationComponent () : ReactElement {
+export function ConfigurationComponent (): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const { data: config, isFetching: isFetchingConfig } = useGetConfigurationQuery('global', {refetchOnMountOrArgChange: true});
+    const {
+        data: config,
+        isFetching: isFetchingConfig,
+    } = useGetConfigurationQuery('global', { refetchOnMountOrArgChange: true });
     const [
         updateConfigMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
+        {
+            isSuccess: isUpdateSuccess,
+            isError: isUpdateError,
+            error: updateError,
+            isLoading: isUpdating,
+            reset: resetUpdate,
+        },
     ] = useUpdateConfigurationMutation();
     const initialForm = SystemConfigurationSchema.parse({});
     const currentUsername = useAppSelector(selectCurrentUsername);
-    const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(SystemConfigurationSchema, {
+    const {
+        state,
+        setState,
+        setFields,
+        touchFields,
+        errors,
+        isValid,
+    } = useValidationReducer(SystemConfigurationSchema, {
         validateAll: false as boolean,
         touched: {},
         formSubmitting: false as boolean,
         form: {
-            ...initialForm
+            ...initialForm,
         },
     } as ConfigState);
 
@@ -88,11 +105,11 @@ export function ConfigurationComponent () : ReactElement {
             setState({
                 ...state,
                 form: {
-                    ...config[0]?.configuration
-                }
+                    ...config[0]?.configuration,
+                },
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, isFetchingConfig]);
 
     useEffect(() => {
@@ -113,7 +130,7 @@ export function ConfigurationComponent () : ReactElement {
                 configScope: 'global',
                 versionId: Number(config[0]?.versionId) + 1,
                 changedBy: currentUsername ?? 'Admin',
-                changeReason: `Changes to: ${Object.keys(changesDiff)}`
+                changeReason: `Changes to: ${Object.keys(changesDiff)}`,
             };
             dispatch(
                 setConfirmationModal({
@@ -140,7 +157,7 @@ export function ConfigurationComponent () : ReactElement {
                 text={state.form.systemBanner.text}
                 isEnabled={state.form.systemBanner.isEnabled}
                 touchFields={touchFields}
-                errors={errors}/>
+                errors={errors} />
             <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
                 <Button
                     iconAlt='Update configuration'
@@ -160,6 +177,13 @@ export function ConfigurationComponent () : ReactElement {
                     Save Changes
                 </Button>
             </SpaceBetween>
+            <Header
+                variant='h1'
+                description={'The current configuration of LISA repositories'}
+            >
+                Vector Store Repository Configuration
+            </Header>
+            <RepositoryTable></RepositoryTable>
         </SpaceBetween>
     );
 }

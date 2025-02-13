@@ -228,7 +228,6 @@ export class LisaServeApplicationStage extends Stage {
                 securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                 vpc: networkingStack.vpc,
             });
-            ragStack.linkServiceRole();
             ragStack.addDependency(coreStack);
             ragStack.addDependency(iamStack);
             ragStack.addDependency(apiBaseStack);

@@ -15,7 +15,7 @@
 */
 
 import { spawnSync, spawn, ChildProcess } from 'child_process';
-import { readdirSync, symlinkSync, rmSync } from 'fs';
+import { readdirSync, symlinkSync, rmSync, mkdirSync } from 'fs';
 
 /*
   cdk CLI always wants ./ to be writable in order to write cdk.context.json.
@@ -46,18 +46,20 @@ const createWritableEnv = () => {
             }
         }
     }
+    mkdirSync('/tmp/cdk.out', {recursive: true});
 
     process.chdir('/tmp/');
 };
 
 export const handler = async (event: any) => {
     console.log(`Event payload: ${JSON.stringify(event)}`);
-    if (!event.modelConfig) {
-        console.log(`modelConfig not provided in ${JSON.stringify(event)}`);
-        throw new Error('modelConfig not provided');
+
+    if (!event.ragConfig) {
+        console.log(`ragConfig not provided in ${JSON.stringify(event)}`);
+        throw new Error('ragConfig not provided');
     }
-    const modelConfig = event.modelConfig;
-    process.env['LISA_MODEL_CONFIG'] = JSON.stringify(modelConfig);
+    const ragConfig = event.ragConfig;
+    process.env['LISA_RAG_CONFIG'] = JSON.stringify(ragConfig);
 
     if (!process.env['LISA_CONFIG']) {
         console.log('LISA_CONFIG environment variable not set');
@@ -71,14 +73,18 @@ export const handler = async (event: any) => {
 
     const stderr = String(ret.output[2]);
     if ( ret.status !== 0 ) {
+        const stdout = String(ret.output[1]);
+        console.log(stdout);
         console.log(`cdk synth failed with stderr: ${stderr}`);
         throw new Error('Stack failed to synthesize');
     }
 
-
-    const stackName = `${config.deploymentName}-${modelConfig.modelId}`;
+    const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'vector-store', ragConfig.repositoryId].join('-');
+    process.env['LISA_STACK_NAME'] = stackName;
     const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
-        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
+        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
+            env: {...process.env}
+        });
 
         cp.on('close', (code) => {
             console.log(`cdk deploy exited early, code ${code}`);
@@ -95,9 +101,9 @@ export const handler = async (event: any) => {
         });
 
         setTimeout(() => {
-            console.log('180 second timeout');
+            console.warn('14 minute timeout');
             resolve(undefined);
-        }, 180 * 1000);
+        }, 840 * 1000);
     });
 
     const cp = await deploy_promise;

@@ -19,7 +19,7 @@ import { Architecture, Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { Construct } from 'constructs';
 
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import { getDefaultRuntime } from '../../api-base/utils';
 
 /**

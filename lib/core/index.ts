@@ -22,7 +22,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { Layer } from './layers';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 
 const HERE = path.resolve(__dirname);
 const COMMON_LAYER_PATH = path.join(HERE, 'layers', 'common');

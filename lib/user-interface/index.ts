@@ -28,7 +28,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { Roles } from '../core/iam/roles';
 
 /**

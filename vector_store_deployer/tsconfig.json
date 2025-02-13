@@ -22,6 +22,6 @@
     "typeRoots": ["./node_modules/@types"],
     "outDir": "dist"
   },
-  "include": ["src/**/*", "test/**/*", "../lib/core", "../lib/api-base", "../lib/utils", "../lib/schema.ts"],
+  "include": ["src/**/*", "test/**/*", "../lib/core", "../lib/api-base", "../lib/utils", "../lib/schema"],
   "exclude": ["node_modules", "dist", ".git"]
 }

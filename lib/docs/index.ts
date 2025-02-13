@@ -23,7 +23,7 @@ import { IRole, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess, Bucket, BucketEncryption, IBucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { Roles } from '../core/iam/roles';
 
 /**

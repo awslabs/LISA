@@ -22,7 +22,7 @@ import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import { Vpc } from '../../networking/vpc';
 
 /**

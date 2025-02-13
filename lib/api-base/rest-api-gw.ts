@@ -17,7 +17,7 @@
 import { Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 
 /**
  * Properties for RestApiGateway Construct.

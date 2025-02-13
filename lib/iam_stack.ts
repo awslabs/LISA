@@ -20,7 +20,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 
 import { createCdkId, getIamPolicyStatements } from './core/utils';
-import { BaseProps, Config } from './schema';
+import { BaseProps, Config } from './schema/app-private';
 import { getRoleId, ROLE, Roles } from './core/iam/roles';
 
 /**

@@ -17,7 +17,7 @@ import { StackProps, Duration, Size, CfnOutput } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { createCdkId, pickFields } from '../../core/utils';
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Vpc } from '../../networking/vpc';
 import { CreateStoreStateMachine } from './state_machine/create-store';

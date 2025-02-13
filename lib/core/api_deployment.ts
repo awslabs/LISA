@@ -18,7 +18,7 @@ import { Aws, CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { Deployment, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type LisaApiDeploymentStackProps = {

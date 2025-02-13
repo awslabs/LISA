@@ -16,4 +16,4 @@ authConfig:
   jwtGroupsProperty:
 ```
 
-<!--@include: ./schema.md -->
+<!--@include: ./schema/app.md -->

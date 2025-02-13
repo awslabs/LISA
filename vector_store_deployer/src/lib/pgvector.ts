@@ -15,7 +15,8 @@
 */
 import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { RagRepositoryConfigSchema, RagRepositoryType, PartialConfigSchema } from '../../../lib/schema';
+import { RagRepositoryConfigSchema, RagRepositoryType } from '../../../lib/schema/rag';
+import { PartialConfigSchema } from '../../../lib/schema/app-private';
 import { createCdkId } from '../../../lib/core/utils';
 import { z } from 'zod';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';

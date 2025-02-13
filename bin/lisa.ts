@@ -24,7 +24,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as yaml from 'js-yaml';
 import _ from 'lodash';
 
-import { Config, ConfigFile, ConfigSchema } from '../lib/schema';
+import { Config, ConfigFile, ConfigSchema } from '../lib/schema/app-private';
 import { LisaServeApplicationStage } from '../lib/stages';
 
 // Read configuration files

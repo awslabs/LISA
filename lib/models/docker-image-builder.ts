@@ -30,7 +30,7 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { createCdkId } from '../core/utils';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
 import { Queue } from 'aws-cdk-lib/aws-sqs';

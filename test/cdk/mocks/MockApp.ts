@@ -24,7 +24,7 @@ import { LisaServeIAMStack } from '../../../lib/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
 import ConfigParser from './ConfigParser';
-import { Config } from '../../../lib/schema';
+import { Config } from '../../../lib/schema/app-private';
 import { LisaDocsStack } from '../../../lib/docs';
 import { LisaModelsApiStack } from '../../../lib/models';
 import { LisaRagStack } from '../../../lib/rag';

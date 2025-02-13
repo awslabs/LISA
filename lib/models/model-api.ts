@@ -34,7 +34,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { Vpc } from '../networking/vpc';
 
 import { ECSModelDeployer } from './ecs-model-deployer';

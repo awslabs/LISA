@@ -18,7 +18,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { Vpc } from './vpc';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 
 /**
  * Lisa Networking stack.

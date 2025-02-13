@@ -27,7 +27,7 @@ import {
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';

@@ -26,7 +26,7 @@ import {
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';

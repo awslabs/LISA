@@ -16,7 +16,8 @@
 import { App } from 'aws-cdk-lib/core';
 import { OpenSearchVectorStoreStack } from './opensearch';
 import { PGVectorStoreStack } from './pgvector';
-import { RagRepositoryConfigSchema, RagRepositoryType, PartialConfigSchema } from '../../../lib/schema';
+import { RagRepositoryConfigSchema, RagRepositoryType } from '../../../lib/schema/rag';
+import { PartialConfigSchema } from '../../../lib/schema/app-private';
 
 const app = new App();
 

@@ -23,7 +23,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 

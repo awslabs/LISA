@@ -21,7 +21,7 @@ import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { SessionApi } from './api/session';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { Vpc } from '../networking/vpc';
 import { ConfigurationApi } from './api/configuration';
 

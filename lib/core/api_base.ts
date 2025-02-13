@@ -19,7 +19,7 @@ import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-l
 import { Construct } from 'constructs';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { Vpc } from '../networking/vpc';
 import { Role } from 'aws-cdk-lib/aws-iam';
 

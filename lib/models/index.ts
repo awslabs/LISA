@@ -22,7 +22,7 @@ import { Construct } from 'constructs';
 
 import { Vpc } from '../networking/vpc';
 import { ModelsApi } from './model-api';
-import { BaseProps } from '../schema';
+import { BaseProps } from '../schema/app-private';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type LisaModelsApiStackProps = BaseProps &

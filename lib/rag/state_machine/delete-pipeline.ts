@@ -17,7 +17,7 @@
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { DefinitionBody, Fail, StateMachine, Succeed } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
-import { BaseProps } from '../../schema';
+import { BaseProps } from '../../schema/app-private';
 import { Vpc } from '../../networking/vpc';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { getDefaultRuntime } from '../../api-base/utils';

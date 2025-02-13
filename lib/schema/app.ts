@@ -14,11 +14,9 @@
   limitations under the License.
 */
 
-import type { Config } from 'zod2md';
+import { ConfigSchema } from './app-private';
 
-export default {
-    title: 'LISA Configuration Schema',
-    entry: './lib/schema/app.ts',
-    output: './lib/docs/config/schema/app.md',
-    tsconfig: 'tsconfig.json',
-} satisfies Config;
+/**
+ * Application configuration type.
+ */
+export default ConfigSchema;

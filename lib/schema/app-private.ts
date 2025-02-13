@@ -22,11 +22,10 @@ import * as path from 'path';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
-import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 const HERE: string = path.resolve(__dirname);
-const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
+const VERSION_PATH: string = path.resolve(HERE, '../..', 'VERSION');
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 /**
@@ -481,7 +480,7 @@ const AuthConfigSchema = z.object({
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
 
-const RdsInstanceConfig = z.object({
+export const RdsInstanceConfig = z.object({
     username: z.string().default('postgres').describe('Database username.'),
     passwordSecretId: z.string().optional().describe('SecretsManager Secret ID that stores an existing database password.'),
     dbHost: z.string().optional().describe('Database hostname for existing database instance.'),
@@ -511,54 +510,6 @@ const FastApiContainerConfigSchema = z.object({
             },
         ),
 }).describe('Configuration schema for REST API.');
-
-/**
- * Enum for different types of RAG repositories available
- */
-export enum RagRepositoryType {
-    OPENSEARCH = 'opensearch',
-    PGVECTOR = 'pgvector',
-}
-
-const OpenSearchNewClusterConfig = z.object({
-    dataNodes: z.number().min(1).default(2),
-    dataNodeInstanceType: z.string().default('r7g.large.search'),
-    masterNodes: z.number().min(0).default(0),
-    masterNodeInstanceType: z.string().default('r7g.large.search'),
-    volumeSize: z.number().min(20),
-    volumeType: z.nativeEnum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3),
-    multiAzWithStandby: z.boolean().default(false),
-});
-
-const OpenSearchExistingClusterConfig = z.object({
-    endpoint: z.string(),
-});
-
-export const RagRepositoryPipeline = z.object({
-    chunkOverlap: z.number(),
-    chunkSize: z.number(),
-    embeddingModel: z.string(),
-    s3Bucket: z.string(),
-    s3Prefix: z.string(),
-    trigger: z.union([z.literal('daily'), z.literal('event')]),
-    autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
-});
-
-export const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string(),
-        repositoryName: z.string().optional().describe('Name to display in the UI'),
-        type: z.nativeEnum(RagRepositoryType),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-        pipelines: z.array(RagRepositoryPipeline).optional().describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string()).optional().default([])
-    })
-    .refine((input) => {
-        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
-    })
-    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
@@ -681,7 +632,6 @@ export const RawConfigObject = z.object({
     }).describe('Pypi configuration.'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
-    ragRepositories: z.array(RagRepositoryConfigSchema).default([]).describe('Rag Repository configuration.'),
     ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
     ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
     apiGatewayConfig: ApiGatewayConfigSchema,

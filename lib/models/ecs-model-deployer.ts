@@ -28,7 +28,7 @@ import {
 import { Duration, Size, Stack } from 'aws-cdk-lib';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, Config } from '../schema';
+import { BaseProps, Config } from '../schema/app-private';
 import { Vpc } from '../networking/vpc';
 
 export type ECSModelDeployerProps = {

@@ -17,7 +17,7 @@
 import path from 'path';
 import * as yaml from 'js-yaml';
 import fs from 'fs';
-import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
+import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema/app-private';
 
 
 export default class ConfigParser {

@@ -15,6 +15,7 @@
  */
 
 import _ from 'lodash';
+import { SerializedError } from '@reduxjs/toolkit';
 
 /**
  * Computes the difference between two JSON objects, recursively.
@@ -26,7 +27,7 @@ import _ from 'lodash';
  * @param {object} [obj2={}] - The second JSON object to compare.
  * @returns {object} - A new object containing the differences between the two input objects.
  */
-export function getJsonDifference (obj1 = {}, obj2 = {}) {
+export function getJsonDifference (obj1: object = {}, obj2: object = {}): object {
     const output = {},
         merged = { ...obj1, ...obj2 }; // has properties of both
 
@@ -43,9 +44,42 @@ export function getJsonDifference (obj1 = {}, obj2 = {}) {
         } else {
             if (!_.isEqual(value1, value2) && (value1 || value2)) {
                 output[key] = value2;
-                // output[key][value2] = value2.
             }
         }
     }
     return output;
 }
+
+/**
+ * Normalizes error object to a SerializedError object
+ * @param resource - resource name
+ * @param error
+ */
+export const normalizeError = (resource: string, error: SerializedError | {
+    status: string,
+    data: any
+}): SerializedError | undefined => {
+    // type predicate to help discriminate between types
+    function isResponseError<T extends {
+        status: string,
+        data: any
+    }> (responseError: SerializedError | T): responseError is T {
+        return (responseError as T)?.status !== undefined;
+    }
+
+    if (error !== undefined) {
+        if (isResponseError(error)) {
+            return {
+                name: `${resource} Error`,
+                message: error.status,
+            };
+        } else if (error) {
+            return {
+                name: error?.name || `${resource} Error`,
+                message: error?.message,
+            };
+        }
+    }
+
+    return undefined;
+};

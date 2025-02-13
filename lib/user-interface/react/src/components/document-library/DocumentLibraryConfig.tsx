@@ -66,7 +66,7 @@ export const TABLE_COLUMN_DISPLAY: CollectionPreferencesProps.ContentDisplayItem
     visible: c.visible,
 })))();
 
-export const DEFAULT_PREFERENCES = {
+export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: PAGE_SIZE_OPTIONS[0].value,
     contentDisplay: TABLE_COLUMN_DISPLAY,
 };

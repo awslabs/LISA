@@ -23,7 +23,8 @@ import { Construct } from 'constructs';
 import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
-import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
+import { BaseProps } from '../schema';
+import { Ec2Metadata, EcsSourceType } from '../configSchema';
 import { Vpc } from '../networking/vpc';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,

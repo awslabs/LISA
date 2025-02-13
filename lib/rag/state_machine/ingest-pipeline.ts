@@ -15,17 +15,18 @@
 */
 
 import {
+    Chain,
     Choice,
     Condition,
     DefinitionBody,
     Fail,
-    StateMachine,
-    Succeed,
     Map,
     Pass,
-    Chain,
+    StateMachine,
+    Succeed,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -34,7 +35,6 @@ import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
 import { Vpc } from '../../networking/vpc';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';

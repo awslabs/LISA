@@ -527,8 +527,8 @@ const OpenSearchExistingClusterConfig = z.object({
 });
 
 export const RagRepositoryPipeline = z.object({
-    chunkOverlap: z.number().default(512),
-    chunkSize: z.number().default(51),
+    chunkOverlap: z.number().default(51),
+    chunkSize: z.number().default(512),
     embeddingModel: z.string(),
     s3Bucket: z.string(),
     s3Prefix: z.string(),

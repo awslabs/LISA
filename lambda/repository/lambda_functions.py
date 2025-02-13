@@ -26,6 +26,7 @@ from langchain_core.vectorstores import VectorStore
 from lisapy.langchain import LisaOpenAIEmbeddings
 from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
+from repository.vector_store_repo import VectorStoreRepository
 from utilities.common_functions import (
     admin_only,
     api_wrapper,
@@ -39,12 +40,7 @@ from utilities.common_functions import (
 from utilities.exceptions import HTTPException
 from utilities.file_processing import process_record
 from utilities.validation import validate_model_name, ValidationError
-from utilities.vector_store import (
-    find_repository_by_id,
-    get_registered_repositories,
-    get_repository_status,
-    get_vector_store_client,
-)
+from utilities.vector_store import get_vector_store_client
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -67,6 +63,7 @@ s3 = session.client(
 )
 lisa_api_endpoint = ""
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+vs_repo = VectorStoreRepository()
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -247,7 +244,7 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
         List of repository configurations user can access
     """
     user_groups = get_groups(event)
-    registered_repositories = get_registered_repositories()
+    registered_repositories = vs_repo.get_registered_repositories()
     return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
 
 
@@ -260,7 +257,7 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
     Returns:
         List of repository status
     """
-    return cast(dict, get_repository_status())
+    return cast(dict, vs_repo.get_repository_status())
 
 
 def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
@@ -303,7 +300,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     top_k = query_string_params.get("topK", 3)
     repository_id = event["pathParameters"]["repositoryId"]
 
-    repository = find_repository_by_id(repository_id)
+    repository = vs_repo.find_repository_by_id(repository_id)
     _ensure_repository_access(event, repository)
 
     id_token = get_id_token(event)
@@ -374,7 +371,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     if not collection_id and document_name:
         raise ValidationError("A 'collectionId' must be included to delete a document by name")
 
-    _ensure_repository_access(event, find_repository_by_id(repository_id))
+    _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
 
     docs: list[RagDocument.model_dump] = []
     if document_ids:
@@ -414,7 +411,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     for doc in docs:
         subdoc_ids.extend(doc.get("subdocs"))
 
-    removedS3 = _remove_s3_documents(repository_id, docs)
+    removedS3 = doc_repo.delete_s3_docs(repository_id, docs)
 
     doc_names = [f"{doc.get('repository_id')}/{doc.get('collection_id')}/{doc.get('document_name')}" for doc in docs]
 
@@ -424,28 +421,6 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
         "removedDocumentChunks": len(subdoc_ids),
         "removedS3Documents": removedS3,
     }
-
-
-def _remove_s3_documents(repository_id: str, docs: list[dict]) -> list[str]:
-    """Remove documents from S3"""
-    removedS3 = []
-    repo = find_repository_by_id(repository_id=repository_id)
-    for doc in docs:
-        # Manually uploaded docs will be removed. Auto ingested (pipeline) are tied to customer owned S3 buckets, which
-        # may not be configured for auto removal
-        if doc.get("ingestion_type") == IngestionType.AUTO:
-            collection_id = doc.get("collection_id")
-            pipeline = next(
-                (pipeline for pipeline in repo.get("pipelines", []) if pipeline["embeddedId"] == collection_id), None
-            )
-            if not pipeline or not pipeline.get("autoRemove"):
-                continue
-        source: str = doc.get("source", "")
-        logging.info(f"Removing S3 doc: {source}")
-        doc_repo.delete_s3_object(uri=source)
-        removedS3.append(source)
-
-    return removedS3
 
 
 @api_wrapper
@@ -483,7 +458,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     logger.info(f"using repository {repository_id}")
 
     username = get_username(event)
-    repository = find_repository_by_id(repository_id)
+    repository = vs_repo.find_repository_by_id(repository_id)
     _ensure_repository_access(event, repository)
 
     keys = body["keys"]
@@ -551,7 +526,7 @@ def download_document(event: dict, context: dict) -> str:
     repository_id = path_params.get("repositoryId")
     document_id = path_params.get("documentId")
 
-    _ensure_repository_access(event, find_repository_by_id(repository_id))
+    _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
     doc = doc_repo.find_by_id(repository_id=repository_id, document_id=document_id)
 
     source = doc.get("source")
@@ -630,7 +605,7 @@ def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_du
     repository_id = path_params.get("repositoryId")
 
     query_string_params = event.get("queryStringParameters", {}) or {}
-    collection_id = query_string_params.get("collectionId", None)
+    collection_id = query_string_params.get("collectionId")
     last_evaluated = query_string_params.get("lastEvaluated")
 
     docs, last_evaluated = doc_repo.list_all(
@@ -707,17 +682,11 @@ def delete(event: dict, context: dict) -> Any:
     if not repository_id:
         raise ValidationError("repositoryId is required")
 
-    repository = find_repository_by_id(repository_id=repository_id, raw_config=True)
+    repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
 
     # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
     parameter_name = os.environ["LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
-
-    docs, _ = doc_repo.list_all(repository_id=repository_id)
-    for doc in docs:
-        doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
-
-    _remove_s3_documents(repository_id, docs)
 
     # Start the execution of the State Machine to delete the vector store
     response = step_functions_client.start_execution(

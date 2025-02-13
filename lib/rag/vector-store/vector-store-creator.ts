@@ -25,11 +25,13 @@ import { DeleteStoreStateMachine } from './state_machine/delete-store';
 import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput,
     vpc: Vpc;
     baseEnvironment: Record<string, string>
+    layers: ILayerVersion[],
 };
 
 // Main stack that contains the Lambda function
@@ -40,23 +42,9 @@ export class VectorStoreCreatorStack extends Construct {
     constructor (scope: Construct, id: string, props: VectorStoreCreatorStackProps) {
         super(scope, id);
 
-        const { baseEnvironment, config, ragVectorStoreTable, vpc } = props;
+        const { baseEnvironment, config, ragVectorStoreTable, vpc, layers } = props;
 
         const vectorStoreTable = dynamodb.Table.fromTableArn(this, createCdkId([config.deploymentPrefix, 'RagVectorStoreTable']), ragVectorStoreTable.value);
-
-        const commonLayer = lambda.LayerVersion.fromLayerVersionArn(
-            this,
-            'rag-common-lambda-layer',
-            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const sdkLayer = lambda.LayerVersion.fromLayerVersionArn(
-            this,
-            'rag-sdk-lambda-layer',
-            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/sdk`),
-        );
-
-        const ragLayer = lambda.LayerVersion.fromLayerVersionArn(this, 'rag-rag-lambda-layer', `${config.deploymentPrefix}/layerVersion/rag`);
 
         // Create Lambda role with permissions to create CloudFormation stacks
         const cdkRole = new iam.Role(this, `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.VECTOR_STORE_CREATOR_ROLE])}`, {
@@ -146,12 +134,13 @@ export class VectorStoreCreatorStack extends Construct {
         new DeleteStoreStateMachine(this, 'DeleteStoreStateMachine', {
             config: props.config,
             executionRole: lambdaExecutionRole,
-            lambdaLayers: [commonLayer, ragLayer, sdkLayer],
+            lambdaLayers: layers,
             parameterName: baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'],
             role: stateMachineRole,
             ragVectorStoreTable: vectorStoreTable,
             vectorStoreDeployerFnArn: this.vectorStoreCreatorFn.functionArn,
             vpc: props.vpc,
+            environment: baseEnvironment
         });
     }
 }

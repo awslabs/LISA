@@ -1,40 +1,47 @@
 /**
-  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-  Licensed under the Apache License, Version 2.0 (the "License").
-  You may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 import { Construct } from 'constructs';
 import { BaseProps } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import { IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
+import { Choice, Condition, IStateMachine, Succeed } from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../core/utils';
+import { getDefaultRuntime } from '../../../api-base/utils';
+import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
+import { OUTPUT_PATH } from '../../../models/state-machine/constants';
 
-type DeleteStoreStateMachineProps = BaseProps & {
-    ragVectorStoreTable: ITable,
-    lambdaLayers: ILayerVersion[];
-    vectorStoreDeployerFnArn: string;
-    vpc: Vpc,
-    role?: iam.IRole,
-    executionRole: iam.IRole;
-    parameterName: string
-};
+ type DeleteStoreStateMachineProps = BaseProps & {
+     ragVectorStoreTable: ITable,
+     lambdaLayers: ILayerVersion[];
+     vectorStoreDeployerFnArn: string;
+     vpc: Vpc,
+     role?: iam.IRole,
+     executionRole: iam.IRole;
+     parameterName: string,
+     environment: {
+         [key: string]: string;
+     };
+ };
 
 
 export class DeleteStoreStateMachine extends Construct {
@@ -46,9 +53,12 @@ export class DeleteStoreStateMachine extends Construct {
         const {
             config,
             executionRole,
+            lambdaLayers,
             parameterName,
             role,
             ragVectorStoreTable,
+            vpc,
+            environment,
         } = props;
 
 
@@ -114,6 +124,43 @@ export class DeleteStoreStateMachine extends Construct {
             resultPath: '$.updateDynamoDbResult',
         });
 
+        const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
+            runtime: getDefaultRuntime(),
+            handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
+            code: Code.fromAsset('./lambda'),
+            timeout: LAMBDA_TIMEOUT,
+            memorySize: LAMBDA_MEMORY,
+            vpc: vpc.vpc,
+            environment: environment,
+            layers: lambdaLayers,
+            role: executionRole,
+        });
+
+
+        const hasMoreDocs = new Choice(this, 'HasMoreDocs')
+            .when(Condition.isNotNull('$.lastEvaluated'), new LambdaInvoke(this, 'CleanupRepositoryDocsRetry', {
+                lambdaFunction: cleanupDocsFunc,
+                payload: sfn.TaskInput.fromObject({
+                    'repositoryId.$': '$.repositoryId',
+                    'lastEvaluated.$': '$.lastEvaluated'
+                }),
+                outputPath: OUTPUT_PATH,
+            }))
+            .otherwise(new Succeed(this, 'DeleteStoreSuccess'));
+
+        const cleanupDocs = new LambdaInvoke(this, 'CleanupRepositoryDocs', {
+            lambdaFunction: cleanupDocsFunc,
+            payload: sfn.TaskInput.fromObject({
+                'repositoryId.$': '$.repositoryId',
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
+        const shouldSkipCleanup = new Choice(this, 'ShouldSkipCleanup')
+            .when(Condition.and(Condition.isPresent('$.skipDocumentRemoval'), Condition.booleanEquals('$.skipDocumentRemoval', true)),
+                new Succeed(this, 'SkipCleanupSuccess'))
+            .otherwise(cleanupDocs.next(hasMoreDocs));
+
         // Define the sequence of tasks and conditions in the state machine
         const definition = updateDeleteStatus
             .next(deleteStack)
@@ -123,6 +170,7 @@ export class DeleteStoreStateMachine extends Construct {
             .next(
                 new sfn.Choice(this, 'DeletionSuccessful?')
                     .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_FAILED'), updateFailureStatus)
+                    .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_COMPLETE'), shouldSkipCleanup)
                     .otherwise(wait.next(checkStackStatus))
             );
 

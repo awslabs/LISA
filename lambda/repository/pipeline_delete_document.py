@@ -71,12 +71,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info(f"Lambda function started. Event: {event}")
 
     try:
+        bucket = event.get("bucket")
+        key = event.get("object", {}).get("key")
+
         # Get document location from event
         if "bucket" not in event or "key" not in event:
-            raise ValidationError("Missing required fields: bucket and key")
+            raise ValidationError(f"Missing required fields - bucket: {bucket} and key: {key}")
 
-        bucket = event.get("bucket")
-        key = event.get("key")
         prefix = event.get("prefix", "/")
         s3_key = f"s3://{bucket}{prefix}{key}"
 

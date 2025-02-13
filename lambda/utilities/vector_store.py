@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-from typing import Any, cast, List
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -27,95 +26,12 @@ from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from utilities.common_functions import retry_config
-from utilities.encoders import convert_decimal
 
 opensearch_endpoint = ""
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
-ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-ddb_table = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-
-
-def get_registered_repositories() -> List[dict]:
-    """Get a list of all registered RAG repositories."""
-    table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
-    try:
-        table = ddb_table.Table(table_name)
-        response = table.scan()
-        items = response["Items"]
-        while "LastEvaluatedKey" in response:
-            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
-            items.extend(response["Items"])
-        # Convert all ddb Numbers to floats to correctly serialize to json
-        items = convert_decimal(items)
-        return [item["config"] for item in items if "config" in item]
-    except ddb_client.exceptions.ResourceNotFoundException:
-        raise ValueError(f"Table '{table_name}' does not exist")
-    except Exception as e:
-        raise e
-
-
-def get_repository_status() -> dict[str, Any]:
-    """Get a list the status of all repositories"""
-    table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
-    status: dict[str, Any] = {}
-
-    try:
-        table = ddb_table.Table(table_name)
-        response = table.scan(
-            ProjectionExpression="repositoryId, #status", ExpressionAttributeNames={"#status": "status"}
-        )
-        items = response["Items"]
-        while "LastEvaluatedKey" in response:
-            response = table.scan(
-                ExclusiveStartKey=response["LastEvaluatedKey"],
-                ProjectionExpression="repositoryId, #status",
-                ExpressionAttributeNames={"#status": "status"},
-            )
-            items.extend(response["Items"])
-
-        status = {item["repositoryId"]: item["status"] for item in items}
-        logging.info(f"status: {items}")
-        logging.info(f"status: {status}")
-    except ddb_client.exceptions.ResourceNotFoundException:
-        raise ValueError(f"Table '{table_name}' does not exist")
-    return status
-
-
-def find_repository_by_id(repository_id: str, raw_config: bool = False) -> dict[str, Any]:
-    """
-    Find a repository by its ID.
-
-    Args:
-        repository_id: The ID of the repository to find.
-        raw_config: return the full object in dynamo, instead of just the repository config portion
-    Returns:
-        The repository configuration.
-
-    Raises:
-        ValueError: If the repository is not found or the table does not exist.
-    """
-    table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
-    try:
-        response = ddb_table.Table(table_name).get_item(
-            Key={"repositoryId": repository_id},
-        )
-    except Exception as e:
-        raise ValueError(f"Failed to update repository: {repository_id}", e)
-
-    if "Item" not in response:
-        raise ValueError(f"Repository with ID '{repository_id}' not found")
-
-    repository: dict[str, Any] = convert_decimal(response.get("Item"))
-    return repository if raw_config else cast(dict[str, Any], repository.get("config", {}))
-
-
-def update_repository(repository: dict[str, Any]) -> None:
-    table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
-    logging.info(f"update_repository: {repository}")
-    ddb_table.Table(table_name).put_item(Item=repository)
 
 
 def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:
@@ -128,7 +44,6 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
     connection_info = json.loads(connection_info["Parameter"]["Value"])
     if connection_info.get("type") == "opensearch":
         service = "es"
-        session = boto3.Session()
         credentials = session.get_credentials()
 
         auth = AWS4Auth(

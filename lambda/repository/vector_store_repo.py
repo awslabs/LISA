@@ -21,10 +21,11 @@ from utilities.encoders import convert_decimal
 
 logger = logging.getLogger(__name__)
 
+
 class VectorStoreRepository:
     """Vector Store repository for DynamoDB"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
         self.table = dynamodb.Table(os.environ["LISA_RAG_VECTOR_STORE_TABLE"])
 
@@ -38,7 +39,6 @@ class VectorStoreRepository:
         # Convert all ddb Numbers to floats to correctly serialize to json
         items = convert_decimal(items)
         return [item["config"] for item in items if "config" in item]
-
 
     def get_repository_status(self) -> dict[str, str]:
         """Get a list the status of all repositories"""
@@ -58,7 +58,6 @@ class VectorStoreRepository:
 
         status = {item["repositoryId"]: item["status"] for item in items}
         return status
-
 
     def find_repository_by_id(self, repository_id: str, raw_config: bool = False) -> dict[str, Any]:
         """

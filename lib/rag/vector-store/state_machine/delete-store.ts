@@ -19,7 +19,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import { Choice, Condition, IStateMachine, Succeed } from 'aws-cdk-lib/aws-stepfunctions';
+import { Choice, Condition, IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Duration } from 'aws-cdk-lib';
@@ -136,7 +136,6 @@ export class DeleteStoreStateMachine extends Construct {
             role: executionRole,
         });
 
-
         const hasMoreDocs = new Choice(this, 'HasMoreDocs')
             .when(Condition.isNotNull('$.lastEvaluated'), new LambdaInvoke(this, 'CleanupRepositoryDocsRetry', {
                 lambdaFunction: cleanupDocsFunc,
@@ -146,7 +145,7 @@ export class DeleteStoreStateMachine extends Construct {
                 }),
                 outputPath: OUTPUT_PATH,
             }))
-            .otherwise(new Succeed(this, 'DeleteStoreSuccess'));
+            .otherwise(deleteStack);
 
         const cleanupDocs = new LambdaInvoke(this, 'CleanupRepositoryDocs', {
             lambdaFunction: cleanupDocsFunc,
@@ -158,21 +157,20 @@ export class DeleteStoreStateMachine extends Construct {
 
         const shouldSkipCleanup = new Choice(this, 'ShouldSkipCleanup')
             .when(Condition.and(Condition.isPresent('$.skipDocumentRemoval'), Condition.booleanEquals('$.skipDocumentRemoval', true)),
-                new Succeed(this, 'SkipCleanupSuccess'))
+                deleteStack)
             .otherwise(cleanupDocs.next(hasMoreDocs));
 
-        // Define the sequence of tasks and conditions in the state machine
-        const definition = updateDeleteStatus
-            .next(deleteStack)
-            .next(checkStackStatus.addCatch(deleteDynamoDbEntry, {
-                resultPath: '$.error'
-            }))
+        deleteStack.next(checkStackStatus.addCatch(deleteDynamoDbEntry, {
+            resultPath: '$.error'
+        }))
             .next(
                 new sfn.Choice(this, 'DeletionSuccessful?')
                     .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_FAILED'), updateFailureStatus)
-                    .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_COMPLETE'), shouldSkipCleanup)
                     .otherwise(wait.next(checkStackStatus))
             );
+        // Define the sequence of tasks and conditions in the state machine
+        const definition = updateDeleteStatus
+            .next(shouldSkipCleanup);
 
         // Create a new state machine using the definition and roles specified
         this.stateMachine = new sfn.StateMachine(this, 'DeleteStoreStateMachine', {

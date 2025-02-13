@@ -111,7 +111,6 @@ export class RepositoryApi extends Construct {
                 method: 'POST',
                 environment: {
                     ...baseEnvironment,
-                    // LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/createStoreStateMachineArn`)
                 },
             },
             {
@@ -122,7 +121,6 @@ export class RepositoryApi extends Construct {
                 method: 'DELETE',
                 environment: {
                     ...baseEnvironment,
-                    // LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/deleteStoreStateMachineArn`)
                 },
             },
             {

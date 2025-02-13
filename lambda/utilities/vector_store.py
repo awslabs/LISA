@@ -35,7 +35,6 @@ session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ddb_table = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 

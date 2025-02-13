@@ -19,10 +19,10 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import { IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
-import { IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../core/utils';
 
@@ -31,7 +31,6 @@ type DeleteStoreStateMachineProps = BaseProps & {
     lambdaLayers: ILayerVersion[];
     vectorStoreDeployerFnArn: string;
     vpc: Vpc,
-    // securityGroups: ISecurityGroup[];
     role?: iam.IRole,
     executionRole: iam.IRole;
     parameterName: string
@@ -47,8 +46,6 @@ export class DeleteStoreStateMachine extends Construct {
         const {
             config,
             executionRole,
-            // lambdaLayers,
-            // securityGroups,
             parameterName,
             role,
             ragVectorStoreTable,
@@ -86,7 +83,6 @@ export class DeleteStoreStateMachine extends Construct {
             resultSelector: {
                 'stackName.$': '$.Stacks[0].StackName',
                 'status.$': '$.Stacks[0].StackStatus',
-                // 'statusReason.$': '$.Stacks[0].StackStatusReason'
             },
             resultPath: '$.checkResult',
         });
@@ -104,7 +100,6 @@ export class DeleteStoreStateMachine extends Construct {
             expressionAttributeNames: { '#status': 'status', '#error': 'error' },
             expressionAttributeValues: {
                 ':status': tasks.DynamoAttributeValue.fromString('$.checkResult.status'),
-                // ':error': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.checkResult.statusReason')),
             },
         });
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
@@ -123,7 +118,6 @@ export class DeleteStoreStateMachine extends Construct {
         const definition = updateDeleteStatus
             .next(deleteStack)
             .next(checkStackStatus.addCatch(deleteDynamoDbEntry, {
-                // errors: ['CloudFormation.CloudFormationException'],
                 resultPath: '$.error'
             }))
             .next(
@@ -145,7 +139,7 @@ export class DeleteStoreStateMachine extends Construct {
         });
 
         executionRole.attachInlinePolicy(new iam.Policy(this, 'StateMachineExecutePolicy', {
-            policyName: 'RagVectorStoreStateMacineDeleteExec',
+            policyName: 'RagVectorStoreStateMachineDeleteExec',
             statements: [
                 new iam.PolicyStatement({
                     effect: iam.Effect.ALLOW,

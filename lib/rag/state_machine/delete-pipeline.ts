@@ -78,7 +78,6 @@ export class DeletePipelineStateMachine extends Construct {
             environmentEncryption: kmsKey,
             layers: layers,
             role: deletePipelineRole
-            // initialPolicy: policyStatements
         });
 
         // Create a Step Function task to invoke the Lambda

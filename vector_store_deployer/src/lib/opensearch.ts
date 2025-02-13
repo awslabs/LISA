@@ -127,9 +127,6 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         openSearchDomain.grantPathReadWrite('*', lambdaRole);
         openSearchDomain.grantReadWrite(lambdaRole);
 
-        // new CfnOutput(this, createCdkId(['opensearchRagRepositoryEndpoint', ragConfig.repositoryId]), {
-        //     value: openSearchDomain.domainEndpoint,
-        // });
         const configParam = {type: RagRepositoryType.OPENSEARCH, endpoint: openSearchDomain.domainEndpoint };
         const openSearchEndpointPs = new StringParameter(
             this,
@@ -142,7 +139,6 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         );
 
         // Add explicit dependency on OpenSearch Domain being created
-        // openSearchEndpointPs.node.addDependency(openSearchDomain);
         openSearchEndpointPs.grantRead(lambdaRole);
 
         this.createPipelineRules(config, ragConfig);

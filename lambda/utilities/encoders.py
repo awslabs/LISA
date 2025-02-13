@@ -12,16 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import json
 from decimal import Decimal
 from typing import Any
-
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return super().default(obj)
 
 
 def convert_decimal(obj: Any) -> Any:

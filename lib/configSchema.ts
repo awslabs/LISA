@@ -13,39 +13,27 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { RemovalPolicy } from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
-import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
 
-/**
- * Enum for different types of ECS container image sources.
- */
-export enum EcsSourceType {
-    ASSET = 'asset',
-    ECR = 'ecr',
-    REGISTRY = 'registry',
-    TARBALL = 'tarball',
-}
+import { AmiHardwareType, EbsDeviceVolumeType, EcsSourceType, RemovalPolicy } from './cdk';
 
 /**
  * Custom security groups for application.
  *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
- * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
- * @property {ec2.SecurityGroup} lambdaSg - Lambda security group.
- * @property {ec2.SecurityGroup} liteLlmSg - litellm security group.
- * @property {ec2.SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
- * @property {ec2.SecurityGroup} pgVectorSg - PGVector security group used by RAG.
+ * @property {T SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
+ * @property {T SecurityGroup} restApiAlbSg - REST API application load balancer security group.
+ * @property {T SecurityGroup} lambdaSg - Lambda security group.
+ * @property {T SecurityGroup} liteLlmSg - litellm security group.
+ * @property {T SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
+ * @property {T SecurityGroup} pgVectorSg - PGVector security group used by RAG.
  */
-export type SecurityGroups = {
-    ecsModelAlbSg: ec2.ISecurityGroup;
-    restApiAlbSg: ec2.ISecurityGroup;
-    lambdaSg: ec2.ISecurityGroup;
-    liteLlmSg?: ec2.ISecurityGroup;
-    openSearchSg?: ec2.ISecurityGroup;
-    pgVectorSg?: ec2.ISecurityGroup;
+export type SecurityGroups<T> = {
+    ecsModelAlbSg: T;
+    restApiAlbSg: T;
+    lambdaSg: T;
+    liteLlmSg?: T;
+    openSearchSg?: T;
+    pgVectorSg?: T;
 };
 
 /**
@@ -527,8 +515,8 @@ const OpenSearchExistingClusterConfig = z.object({
 });
 
 export const RagRepositoryPipeline = z.object({
-    chunkOverlap: z.number().default(512),
-    chunkSize: z.number().default(51),
+    chunkOverlap: z.number().default(51),
+    chunkSize: z.number().default(512),
     embeddingModel: z.string(),
     s3Bucket: z.string(),
     s3Prefix: z.string(),

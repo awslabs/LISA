@@ -23,11 +23,16 @@ import { Construct } from 'constructs';
 
 import { Layer } from './layers';
 import { BaseProps } from '../schema';
+import { createCdkId } from './utils';
+import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
+import { getDefaultRuntime } from '../api-base/utils';
 
 const HERE = path.resolve(__dirname);
 const COMMON_LAYER_PATH = path.join(HERE, 'layers', 'common');
 const FASTAPI_LAYER_PATH = path.join(HERE, 'layers', 'fastapi');
 const AUTHORIZER_LAYER_PATH = path.join(HERE, 'layers', 'authorizer');
+const SDK_PATH: string = path.resolve(HERE, '..', '..', 'lisa-sdk');
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
 
@@ -78,6 +83,24 @@ export class CoreStack extends cdk.Stack {
             assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
         });
 
+        // Build SDK Layer
+        let sdkLambdaLayer: ILayerVersion;
+        if (config.lambdaLayerAssets?.sdkLayerPath) {
+            sdkLambdaLayer = new LayerVersion(this, 'SdkLayer', {
+                code: lambda.Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
+                compatibleRuntimes: [getDefaultRuntime()],
+                removalPolicy: config.removalPolicy,
+                description: 'LISA SDK common layer',
+            });
+        } else {
+            sdkLambdaLayer = new PythonLayerVersion(this, 'SdkLayer', {
+                entry: SDK_PATH,
+                compatibleRuntimes: [getDefaultRuntime()],
+                removalPolicy: config.removalPolicy,
+                description: 'LISA SDK common layer',
+            });
+        }
+
         new StringParameter(this, 'LisaCommonLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/common`,
             stringValue: commonLambdaLayer.layer.layerVersionArn,
@@ -94,6 +117,12 @@ export class CoreStack extends cdk.Stack {
             parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
             stringValue: authorizerLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
+        });
+
+        new StringParameter(this, createCdkId([config.deploymentName, config.deploymentStage, 'SdkLayer']), {
+            parameterName: `${config.deploymentPrefix}/layerVersion/sdk`,
+            stringValue: sdkLambdaLayer.layerVersionArn,
+            description: 'Layer Version ARN for LISA SDK Layer',
         });
     }
 }

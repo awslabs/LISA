@@ -20,10 +20,10 @@ import FormField from '@cloudscape-design/components/form-field';
 import Tiles from '@cloudscape-design/components/tiles';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
-import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
 import React, { ReactElement, useMemo, useState } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
 import { OpenSearchConfig } from '../../../../../../configSchema';
+import { EbsDeviceVolumeType } from '../../../../../../cdk';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 

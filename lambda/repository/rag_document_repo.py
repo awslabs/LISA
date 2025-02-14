@@ -11,14 +11,14 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
 import logging
 from typing import Optional, TypeAlias
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from models.domain_objects import RagDocument, RagSubDocument
+from models.domain_objects import IngestionType, RagDocument, RagSubDocument
+from repository.vector_store_repo import VectorStoreRepository
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class RagDocumentRepository:
         self.doc_table = dynamodb.Table(document_table_name)
         self.subdoc_table = dynamodb.Table(sub_document_table_name)
         self.s3_client = boto3.client("s3")
+        self.vs_repo = VectorStoreRepository()
 
     def delete_by_id(self, repository_id: str, document_id: str) -> None:
         """Delete a document using partition key and sort key.
@@ -310,3 +311,20 @@ class RagDocumentRepository:
         except ClientError as e:
             logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
             raise
+
+    def delete_s3_docs(self, repository_id: str, docs: list[dict]) -> list[str]:
+        """Remove documents from S3"""
+        repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
+        pipelines = {
+            pipeline.get("embeddingModel"): pipeline["autoRemove"] is True for pipeline in repo.get("pipelines", [])
+        }
+        removed_source: list[str] = [
+            doc.get("source", "")
+            for doc in docs
+            if doc.get("ingestion_type") != IngestionType.AUTO or pipelines.get(doc.get("collection_id"))
+        ]
+        for source in removed_source:
+            logging.info(f"Removing S3 doc: {source}")
+            self.delete_s3_object(uri=source)
+
+        return removed_source

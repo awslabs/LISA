@@ -18,11 +18,10 @@
 
 import path from 'path';
 
-import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Code, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -38,7 +37,6 @@ import { BaseProps } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
-import { getDefaultRuntime } from '../api-base/utils';
 import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/vector-store-creator';
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 import { DeletePipelineStateMachine } from './state_machine/delete-pipeline';
@@ -46,7 +44,6 @@ import { Role } from 'aws-cdk-lib/aws-iam';
 
 const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
-const SDK_PATH: string = path.resolve(HERE, '..', '..', 'lisa-sdk');
 
 type CustomLisaRagStackProps = {
     authorizer: IAuthorizer;
@@ -74,12 +71,6 @@ export class LisaRagStack extends Stack {
 
         const { authorizer, config, endpointUrl, modelsPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'rag-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
 
         const bucket = new Bucket(this, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
             removalPolicy: config.removalPolicy,
@@ -174,6 +165,18 @@ export class LisaRagStack extends Stack {
         bucket.grantPut(lambdaRole);
         bucket.grantDelete(lambdaRole);
 
+        // Get common layer based on arn from SSM due to issues with cross stack references
+        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'rag-common-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        );
+
+        const sdkLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'rag-sdk-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/sdk`),
+        );
         // Build RAG Lambda layer
         const ragLambdaLayer = new Layer(this, 'RagLayer', {
             config: config,
@@ -187,28 +190,8 @@ export class LisaRagStack extends Stack {
             parameterName: `${config.deploymentPrefix}/layerVersion/rag`,
             stringValue: ragLambdaLayer.layer.layerVersionArn
         });
+        const layers = [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer];
 
-        // Build SDK Layer
-        let sdkLambdaLayer: ILayerVersion;
-        if (config.lambdaLayerAssets?.sdkLayerPath) {
-            sdkLambdaLayer = new LayerVersion(this, 'SdkLayer', {
-                code: Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [getDefaultRuntime()],
-                removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
-            });
-        } else {
-            sdkLambdaLayer = new PythonLayerVersion(this, 'SdkLayer', {
-                entry: SDK_PATH,
-                compatibleRuntimes: [getDefaultRuntime()],
-                removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
-            });
-        }
-        const sdkSsm = new StringParameter(this, createCdkId([config.deploymentName, config.deploymentStage, 'SdkLayer']), {
-            parameterName: `${config.deploymentPrefix}/layerVersion/sdk`,
-            stringValue: sdkLambdaLayer.layerVersionArn
-        });
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -274,36 +257,32 @@ export class LisaRagStack extends Stack {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
-
-        const ingestPipeline = new IngestPipelineStateMachine(this, 'IngestPipelineStateMachine', {
+        new IngestPipelineStateMachine(this, 'IngestPipelineStateMachine', {
             config,
             baseEnvironment,
             ragDocumentTable: docMetaTable,
             ragSubDocumentTable: subDocTable,
-            layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLambdaLayer],
+            layers,
             vpc
         });
-        ingestPipeline.node.addDependency(sdkSsm);
 
-        const deletePipeline = new DeletePipelineStateMachine(this, 'DeletePipelineStateMachine', {
+        new DeletePipelineStateMachine(this, 'DeletePipelineStateMachine', {
             baseEnvironment,
             config,
             vpc,
-            layers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLambdaLayer],
+            layers,
             ragDocumentTable: docMetaTable,
             ragSubDocumentTable: subDocTable,
         });
-        deletePipeline.node.addDependency(sdkSsm);
 
-        const vectorStoreCreator = new VectorStoreCreator(this, 'VectorStoreCreatorStack', {
+        new VectorStoreCreator(this, 'VectorStoreCreatorStack', {
             config,
             vpc,
             ragVectorStoreTable,
             stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
             baseEnvironment,
+            layers
         });
-        vectorStoreCreator.node.addDependency(sdkSsm);
-
 
         // Add REST API Lambdas to APIGW
         new RepositoryApi(this, 'RepositoryApi', {
@@ -311,7 +290,7 @@ export class LisaRagStack extends Stack {
             baseEnvironment,
             config,
             vpc: vpc,
-            commonLayers: [commonLambdaLayer, ragLambdaLayer.layer, sdkLambdaLayer],
+            commonLayers: layers,
             restApiId,
             rootResourceId,
             securityGroups,

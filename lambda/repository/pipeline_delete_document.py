@@ -71,12 +71,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info(f"Lambda function started. Event: {event}")
 
     try:
-        # Get document location from event
-        if "bucket" not in event or "key" not in event:
-            raise ValidationError("Missing required fields: bucket and key")
-
         bucket = event.get("bucket")
         key = event.get("key")
+
+        # Get document location from event
+        if "bucket" not in event or "key" not in event:
+            raise ValidationError(f"Missing required fields - bucket: {bucket} and key: {key}")
+
         prefix = event.get("prefix", "/")
         s3_key = f"s3://{bucket}{prefix}{key}"
 
@@ -89,7 +90,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             repository_id=repository_id, collection_id=collection_id, document_source=s3_key
         )
         if len(docs) == 0:
-            msg = "Document {s3_key} not found in repository {repository_id}/{collection_id}. Ignoring deletion"
+            msg = f"Document {s3_key} not found in repository {repository_id}/{collection_id}. Ignoring deletion"
             logging.error(msg)
             return {
                 "statusCode": 404,

@@ -15,7 +15,7 @@
  */
 
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { DefinitionBody, Fail, StateMachine, Succeed } from 'aws-cdk-lib/aws-stepfunctions';
+import { DefinitionBody, Fail, Pass, StateMachine, Succeed } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
@@ -66,6 +66,16 @@ export class DeletePipelineStateMachine extends Construct {
         const policyStatements = this.createPolicy(ragDocumentTable, ragSubDocumentTable, config.restApiConfig.sslCertIamArn, config.deploymentPrefix);
         policyStatements.map((policyStatement) => deletePipelineRole.addToPolicy(policyStatement));
 
+        const normalizeInput = new Pass(this, 'FormatInput', {
+            parameters: {
+                'bucket.$': '$.detail.bucket',
+                'key.$': '$.detail.object.key',
+                'prefix.$': '$.detail.prefix',
+                'repositoryId.$': '$.detail.repositoryId',
+                'pipelineConfig.$': '$.detail.pipelineConfig'
+            },
+        });
+
         // Create the ingest documents function with S3 permissions
         const deleteDocumentsFunction = new Function(this, 'pipelineDeleteDocumentFunc', {
             runtime: getDefaultRuntime(),
@@ -89,11 +99,13 @@ export class DeletePipelineStateMachine extends Construct {
         // Create the state machine
         const stateMachine = new StateMachine(this, 'DeleteProcessingStateMachine', {
             definitionBody: DefinitionBody.fromChainable(
-                invokeTask
-                    .addCatch(new Fail(this, 'FailState', {
-                        cause: 'Lambda function failed to process delete event',
-                        error: 'DeleteProcessingError',
-                    }))
+                normalizeInput
+                    .next(
+                        invokeTask
+                            .addCatch(new Fail(this, 'FailState', {
+                                cause: 'Lambda function failed to process delete event',
+                                error: 'DeleteProcessingError',
+                            })))
                     .next(
                         new Succeed(this, 'SuccessState', {
                             comment: 'Delete processing completed successfully',

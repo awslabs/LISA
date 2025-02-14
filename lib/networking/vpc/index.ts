@@ -19,6 +19,7 @@ import { CfnOutput } from 'aws-cdk-lib';
 import {
     GatewayVpcEndpointAwsService,
     IpAddresses,
+    ISecurityGroup,
     IVpc,
     NatProvider,
     Subnet,
@@ -45,7 +46,7 @@ export class Vpc extends Construct {
     public readonly vpc: IVpc;
 
     /** Security groups for application. */
-    public readonly securityGroups: SecurityGroups;
+    public readonly securityGroups: SecurityGroups<ISecurityGroup>;
 
     /** Created from deployment configured Subnets for application. */
     public readonly subnetGroup?: SubnetGroup;

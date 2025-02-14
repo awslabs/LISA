@@ -45,7 +45,8 @@ import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
-import { Ec2Metadata, ECSConfig, EcsSourceType } from '../configSchema';
+import { EcsSourceType } from '../cdk';
+import { Ec2Metadata, ECSConfig } from '../configSchema';
 import { Vpc } from '../networking/vpc';
 
 /**

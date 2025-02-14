@@ -33,38 +33,38 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
         <Container header={<Header variant='h2'>RDS Config</Header>}>
             <FormField label='Username' errorText={formErrors?.rdsConfig?.username}>
                 <Input value={item.username} inputMode='text'
-                       onBlur={() => touchFields(['rdsConfig.username'])}
-                       onChange={({ detail }) => setFields({ 'rdsConfig.username': detail.value })}
-                       placeholder="RDS Username" disabled={isEdit} />
+                    onBlur={() => touchFields(['rdsConfig.username'])}
+                    onChange={({ detail }) => setFields({ 'rdsConfig.username': detail.value })}
+                    placeholder='RDS Username' disabled={isEdit} />
             </FormField>
             <FormField label='Password Secret Id (optional)'
-                       errorText={formErrors?.rdsConfig?.passwordSecretId}>
+                errorText={formErrors?.rdsConfig?.passwordSecretId}>
                 <Input value={item.passwordSecretId} inputMode='text'
-                       onBlur={() => touchFields(['rdsConfig.passwordSecretId'])}
-                       onChange={({ detail }) => setFields({ 'rdsConfig.passwordSecretId': detail.value })}
-                       placeholder="RDS Password Secret Id" disabled={isEdit} />
+                    onBlur={() => touchFields(['rdsConfig.passwordSecretId'])}
+                    onChange={({ detail }) => setFields({ 'rdsConfig.passwordSecretId': detail.value })}
+                    placeholder='RDS Password Secret Id' disabled={isEdit} />
             </FormField>
             <FormField label='DB Host (optional)'
-                       errorText={formErrors?.rdsConfig?.dbHost}>
+                errorText={formErrors?.rdsConfig?.dbHost}>
                 <Input value={item.dbHost} inputMode='text'
-                       onBlur={() => touchFields(['rdsConfig.dbHost'])}
-                       onChange={({ detail }) => setFields({ 'rdsConfig.dbHost': detail.value })}
-                       placeholder="DB Host" disabled={isEdit} />
+                    onBlur={() => touchFields(['rdsConfig.dbHost'])}
+                    onChange={({ detail }) => setFields({ 'rdsConfig.dbHost': detail.value })}
+                    placeholder='DB Host' disabled={isEdit} />
             </FormField>
             <FormField label='DB Name'
-                       errorText={formErrors?.rdsConfig?.dbName}>
+                errorText={formErrors?.rdsConfig?.dbName}>
                 <Input value={item.dbName} inputMode='text'
-                       onBlur={() => touchFields(['rdsConfig.dbName'])}
-                       onChange={({ detail }) => setFields({ 'rdsConfig.dbName': detail.value })}
-                       placeholder="DB Name" disabled={isEdit} />
+                    onBlur={() => touchFields(['rdsConfig.dbName'])}
+                    onChange={({ detail }) => setFields({ 'rdsConfig.dbName': detail.value })}
+                    placeholder='DB Name' disabled={isEdit} />
             </FormField>
             <FormField label='DB Port'
-                       errorText={formErrors?.rdsConfig?.dbPort}>
+                errorText={formErrors?.rdsConfig?.dbPort}>
                 <Input value={item.dbPort?.toString()}
-                       type="number" inputMode="numeric"
-                       onBlur={() => touchFields(['rdsConfig.dbPort'])}
-                       onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': Number(detail.value) })}
-                       disabled={isEdit} />
+                    type='number' inputMode='numeric'
+                    onBlur={() => touchFields(['rdsConfig.dbPort'])}
+                    onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': Number(detail.value) })}
+                    disabled={isEdit} />
             </FormField>
         </Container>
     );

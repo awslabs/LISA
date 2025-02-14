@@ -13,12 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { RemovalPolicy } from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
-import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
 
+export interface ISecurityGroup {
+    readonly securityGroupId: string;
+    readonly allowAllOutbound: boolean;
+}
 /**
  * Enum for different types of ECS container image sources.
  */
@@ -29,23 +29,138 @@ export enum EcsSourceType {
     TARBALL = 'tarball',
 }
 
+export enum RemovalPolicy {
+    /**
+     * This is the default removal policy. It means that when the resource is
+     * removed from the app, it will be physically destroyed.
+     */
+    DESTROY = 'destroy',
+    /**
+     * This uses the 'Retain' DeletionPolicy, which will cause the resource to be retained
+     * in the account, but orphaned from the stack.
+     */
+    RETAIN = 'retain',
+    /**
+     * This retention policy deletes the resource,
+     * but saves a snapshot of its data before deleting,
+     * so that it can be re-created later.
+     * Only available for some stateful resources,
+     * like databases, EC2 volumes, etc.
+     *
+     * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html#aws-attribute-deletionpolicy-options
+     */
+    SNAPSHOT = 'snapshot',
+    /**
+     * Resource will be retained when they are requested to be deleted during a stack delete request
+     * or need to be replaced due to a stack update request.
+     * Resource are not retained, if the creation is rolled back.
+     *
+     * The result is that new, empty, and unused resources are deleted,
+     * while in-use resources and their data are retained.
+     *
+     * This uses the 'RetainExceptOnCreate' DeletionPolicy,
+     * and the 'Retain' UpdateReplacePolicy, when `applyToUpdateReplacePolicy` is set.
+     *
+     * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-deletionpolicy.html#aws-attribute-deletionpolicy-options
+     */
+    RETAIN_ON_UPDATE_OR_DELETE = 'retain-on-update-or-delete'
+}
+
+export enum EbsDeviceVolumeType {
+    /**
+     * Magnetic
+     */
+    STANDARD = 'standard',
+    /**
+     *  Provisioned IOPS SSD - IO1
+     */
+    IO1 = 'io1',
+    /**
+     *  Provisioned IOPS SSD - IO2
+     */
+    IO2 = 'io2',
+    /**
+     * General Purpose SSD - GP2
+     */
+    GP2 = 'gp2',
+    /**
+     * General Purpose SSD - GP3
+     */
+    GP3 = 'gp3',
+    /**
+     * Throughput Optimized HDD
+     */
+    ST1 = 'st1',
+    /**
+     * Cold HDD
+     */
+    SC1 = 'sc1',
+    /**
+     * General purpose SSD volume (GP2) that balances price and performance for a wide variety of workloads.
+     */
+    GENERAL_PURPOSE_SSD = 'gp2',
+    /**
+     * General purpose SSD volume (GP3) that balances price and performance for a wide variety of workloads.
+     */
+    GENERAL_PURPOSE_SSD_GP3 = 'gp3',
+    /**
+     * Highest-performance SSD volume (IO1) for mission-critical low-latency or high-throughput workloads.
+     */
+    PROVISIONED_IOPS_SSD = 'io1',
+    /**
+     * Highest-performance SSD volume (IO2) for mission-critical low-latency or high-throughput workloads.
+     */
+    PROVISIONED_IOPS_SSD_IO2 = 'io2',
+    /**
+     * Low-cost HDD volume designed for frequently accessed, throughput-intensive workloads.
+     */
+    THROUGHPUT_OPTIMIZED_HDD = 'st1',
+    /**
+     * Lowest cost HDD volume designed for less frequently accessed workloads.
+     */
+    COLD_HDD = 'sc1',
+    /**
+     * Magnetic volumes are backed by magnetic drives and are suited for workloads where data is accessed infrequently, and scenarios where low-cost
+     * storage for small volume sizes is important.
+     */
+    MAGNETIC = 'standard'
+}
+
+export enum AmiHardwareType {
+    /**
+     * Use the standard Amazon ECS-optimized AMI.
+     */
+    STANDARD = 'Standard',
+    /**
+     * Use the Amazon ECS GPU-optimized AMI.
+     */
+    GPU = 'GPU',
+    /**
+     * Use the Amazon ECS-optimized Amazon Linux 2 (arm64) AMI.
+     */
+    ARM = 'ARM64',
+    /**
+     * Use the Amazon ECS-optimized Amazon Linux 2 (Neuron) AMI.
+     */
+    NEURON = 'Neuron'
+}
 /**
  * Custom security groups for application.
  *
- * @property {ec2.SecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
- * @property {ec2.SecurityGroup} restApiAlbSg - REST API application load balancer security group.
- * @property {ec2.SecurityGroup} lambdaSg - Lambda security group.
- * @property {ec2.SecurityGroup} liteLlmSg - litellm security group.
- * @property {ec2.SecurityGroup} openSearchSg - OpenSearch security group used by RAG.
- * @property {ec2.SecurityGroup} pgVectorSg - PGVector security group used by RAG.
+ * @property {ISecurityGroup} ecsModelAlbSg - ECS model application load balancer security group.
+ * @property {ISecurityGroup} restApiAlbSg - REST API application load balancer security group.
+ * @property {ISecurityGroup} lambdaSg - Lambda security group.
+ * @property {ISecurityGroup} liteLlmSg - litellm security group.
+ * @property {ISecurityGroup} openSearchSg - OpenSearch security group used by RAG.
+ * @property {ISecurityGroup} pgVectorSg - PGVector security group used by RAG.
  */
 export type SecurityGroups = {
-    ecsModelAlbSg: ec2.ISecurityGroup;
-    restApiAlbSg: ec2.ISecurityGroup;
-    lambdaSg: ec2.ISecurityGroup;
-    liteLlmSg?: ec2.ISecurityGroup;
-    openSearchSg?: ec2.ISecurityGroup;
-    pgVectorSg?: ec2.ISecurityGroup;
+    ecsModelAlbSg: ISecurityGroup;
+    restApiAlbSg: ISecurityGroup;
+    lambdaSg: ISecurityGroup;
+    liteLlmSg?: ISecurityGroup;
+    openSearchSg?: ISecurityGroup;
+    pgVectorSg?: ISecurityGroup;
 };
 
 /**

@@ -33,24 +33,26 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
      * Converts a JSON object into an outline structure represented as React nodes.
      *
      * @param {object} [json={}] - The JSON object to be converted.
+     * @param propIndex - The index of the current property being processed.
      * @returns {React.ReactNode[]} - An array of React nodes representing the outline structure.
      */
-    function jsonToOutline (json: object = {}): React.JSX.Element {
+    function jsonToOutline (json: object = {}, propIndex = { index: 0 }): React.JSX.Element {
         const output: React.ReactNode[] = [];
-
         if (!_.isObject(json)) {
-            return (<li><p>{json}</p></li>);
+            return (<li key={propIndex.index++}><p>{json}</p></li>);
         }
 
         for (const key in json) {
             const value = json[key];
             const isNested = _.isObject(value);
-            output.push((<li key={key}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p></li>));
+            output.push((
+                <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p>
+                </li>));
             if (_.isPlainObject(value)) {
-                output.push((jsonToOutline(value)));
+                output.push((jsonToOutline(value, propIndex)));
             } else if (_.isArray(value)) {
                 for (const item of value) {
-                    output.push((jsonToOutline(item)));
+                    output.push((jsonToOutline(item, propIndex)));
                     if (_.isObject(item)) {
                         output.push((<hr />));
                     }

@@ -60,7 +60,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
             </FormField>
             <FormField label='DB Port'
                 errorText={formErrors?.rdsConfig?.dbPort}>
-                <Input value={item.dbPort.toString()}
+                <Input value={item.dbPort?.toString()}
                     type='number' inputMode='numeric'
                     onBlur={() => touchFields(['rdsConfig.dbPort'])}
                     onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': Number(detail.value) })}

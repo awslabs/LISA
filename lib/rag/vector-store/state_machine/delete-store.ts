@@ -141,7 +141,8 @@ export class DeleteStoreStateMachine extends Construct {
                 lambdaFunction: cleanupDocsFunc,
                 payload: sfn.TaskInput.fromObject({
                     'repositoryId.$': '$.repositoryId',
-                    'lastEvaluated.$': '$.lastEvaluated'
+                    'lastEvaluated.$': '$.lastEvaluated',
+                    'stackName.$': '$.stackName'
                 }),
                 outputPath: OUTPUT_PATH,
             }))
@@ -151,6 +152,7 @@ export class DeleteStoreStateMachine extends Construct {
             lambdaFunction: cleanupDocsFunc,
             payload: sfn.TaskInput.fromObject({
                 'repositoryId.$': '$.repositoryId',
+                'stackName.$': '$.stackName',
             }),
             outputPath: OUTPUT_PATH,
         });

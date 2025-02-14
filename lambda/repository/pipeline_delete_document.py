@@ -72,7 +72,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     try:
         bucket = event.get("bucket")
-        key = event.get("object", {}).get("key")
+        key = event.get("key")
 
         # Get document location from event
         if "bucket" not in event or "key" not in event:
@@ -90,7 +90,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             repository_id=repository_id, collection_id=collection_id, document_source=s3_key
         )
         if len(docs) == 0:
-            msg = "Document {s3_key} not found in repository {repository_id}/{collection_id}. Ignoring deletion"
+            msg = f"Document {s3_key} not found in repository {repository_id}/{collection_id}. Ignoring deletion"
             logging.error(msg)
             return {
                 "statusCode": 404,

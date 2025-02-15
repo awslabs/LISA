@@ -587,7 +587,6 @@ export class LisaRagStack extends Stack {
 
         return dynamoItem;
     }
-    
 
     /**
      * This method links the OpenSearch Service role to the service-linked role if it exists.

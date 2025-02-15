@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -18,12 +19,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { z } from 'zod';
-import path from 'path';
-import fs from 'fs';
 
-const HERE: string = path.resolve(__dirname);
-const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
-export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
+import VERSION from '../VERSION.txt?raw';
 
 const REMOVAL_POLICIES: Record<string, cdk.RemovalPolicy> = {
     destroy: cdk.RemovalPolicy.DESTROY,

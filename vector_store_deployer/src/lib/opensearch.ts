@@ -16,9 +16,7 @@
 import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
-import { PartialConfigSchema } from '../../../lib/schema';
-import { RagRepositoryConfigSchema, RagRepositoryType } from '../../../lib/configSchema';
-import { z } from 'zod';
+import { PartialConfig, RagRepositoryConfig, RagRepositoryType } from '../../../lib/configSchema';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -28,8 +26,8 @@ import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
 
 type OpenSearchVectorStoreStackProps = StackProps & {
-    config: z.infer<typeof PartialConfigSchema>
-    ragConfig: z.infer<typeof RagRepositoryConfigSchema>,
+    config: PartialConfig
+    ragConfig: RagRepositoryConfig,
 };
 
 export class OpenSearchVectorStoreStack extends PipelineStack {

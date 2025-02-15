@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && cp package.json ./dist && cp ./src/cdk*json ./dist/ && cp ../VERSION ./dist && cd ./dist && npm i --omit dev",
+    "build": "mkdir dist; cp ../VERSION.txt ./dist/ && tsc && cp package.json ./dist && cp ./src/cdk*json ./dist/ && cd ./dist && npm i --omit dev",
     "clean": "rm -rf ./dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

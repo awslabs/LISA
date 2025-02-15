@@ -321,7 +321,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 def _ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
     """Ensures a user has access to the repository or else raises an HTTPException"""
     user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-    if not user_has_group(user_groups, repository["allowedGroups"]):
+    if not user_has_group(user_groups, repository.get("allowedGroups", [])):
         raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
 

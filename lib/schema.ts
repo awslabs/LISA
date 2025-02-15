@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -13,15 +14,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import * as fs from 'fs';
-import * as path from 'path';
 
 import { z } from 'zod';
-import { RawConfigObject, RawConfigSchema } from './configSchema';
-
-const HERE: string = path.resolve(__dirname);
-const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
-export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
+import { RawConfigSchema } from './configSchema';
+import VERSION from '../VERSION.txt?raw';
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -44,31 +40,6 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
             { Key: 'deploymentName', Value: rawConfig.deploymentName },
             { Key: 'deploymentStage', Value: rawConfig.deploymentStage },
             { Key: 'region', Value: rawConfig.region },
-            { Key: 'version', Value: VERSION },
-        ];
-    }
-
-    rawConfig.deploymentPrefix = deploymentPrefix;
-    rawConfig.tags = tags;
-
-    return rawConfig;
-});
-
-export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfig) => {
-    let deploymentPrefix = rawConfig.deploymentPrefix;
-
-    if (!deploymentPrefix && rawConfig.appName && rawConfig.deploymentStage && rawConfig.deploymentName) {
-        deploymentPrefix = `/${rawConfig.deploymentStage}/${rawConfig.deploymentName}/${rawConfig.appName}`;
-    }
-
-    let tags = rawConfig.tags;
-
-    if (!tags && deploymentPrefix) {
-        tags = [
-            { Key: 'deploymentPrefix', Value: deploymentPrefix },
-            { Key: 'deploymentName', Value: rawConfig.deploymentName! },
-            { Key: 'deploymentStage', Value: rawConfig.deploymentStage! },
-            { Key: 'region', Value: rawConfig.region! },
             { Key: 'version', Value: VERSION },
         ];
     }

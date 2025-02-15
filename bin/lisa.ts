@@ -26,6 +26,7 @@ import _ from 'lodash';
 
 import { Config, ConfigFile, ConfigSchema } from '../lib/schema';
 import { LisaServeApplicationStage } from '../lib/stages';
+import { SSMClient, GetParameterCommand, SSMServiceException } from '@aws-sdk/client-ssm';
 
 // Read configuration files
 const baseConfigFilePath = path.join(__dirname, '../config-base.yaml');
@@ -71,12 +72,43 @@ const env: cdk.Environment = {
     region: config.region,
 };
 
-// Application
-const app = new cdk.App();
+function getExistingRagRepositories () {
+    const registeredRepositoriesParamName = `${config.deploymentPrefix}/registeredRepositories`;
+    const client = new SSMClient({ region: config.region });
+    const command = new GetParameterCommand({ Name: registeredRepositoriesParamName });
 
-new LisaServeApplicationStage(app, config.deploymentStage, {
-    env: env,
-    config: config,
-});
+    return client.send(command)
+        .then((response) => {
+            console.log('SSM Parameter Value:', response.Parameter?.Value);
+            return response.Parameter?.Value ? JSON.parse(response.Parameter.Value!) : [];
+        })
+        .catch((error: SSMServiceException) => {
+            // Handle parameter not found separately
+            if (error.name === 'ParameterNotFound') {
+                console.error(`Parameter '${registeredRepositoriesParamName}' not found.`);
+                return [];
+            }
 
-app.synth();
+            // Handle other errors
+            console.error('Error fetching SSM parameter:', error);
+            throw error;
+        });
+}
+
+(async () => {
+    // Lookup and pass any previously deployed RAG configurations as an environment variable
+    // so we can disallow new entries via YAML configuration.
+    const ragRepositories = await getExistingRagRepositories();
+    process.env.RAG_REPOSITORIES = JSON.stringify(ragRepositories || []);
+
+    // Application
+    const app = new cdk.App();
+
+    new LisaServeApplicationStage(app, config.deploymentStage, {
+        env: env,
+        config: config,
+    });
+
+    app.synth();
+
+})();

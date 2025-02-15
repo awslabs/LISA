@@ -151,6 +151,8 @@ export class LisaRagStack extends Stack {
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
             ADMIN_GROUP: config.authConfig!.adminGroup,
+            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
+            LOG_LEVEL: config.logLevel,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -333,16 +335,19 @@ export class LisaRagStack extends Stack {
         ragRepositoryConfigTable: dynamodb.ITable
     ) {
         const registeredRepositories = [];
-        const connectionParamName = 'LisaServeRagConnectionInfo';
-        baseEnvironment['REGISTERED_REPOSITORIES_PS_PREFIX'] = `${config.deploymentPrefix}/${connectionParamName}/`;
         const registeredRepositoriesParamName = `${config.deploymentPrefix}/registeredRepositories`;
 
         const repositoryIds = (JSON.parse(process.env.RAG_REPOSITORIES || '[]') as RagRepositoryConfig[]).map((ragRepository: RagRepositoryConfig) => ragRepository.repositoryId);
 
         for (const ragConfig of config.ragRepositories) {
             if (!repositoryIds.includes(ragConfig.repositoryId)) {
-                readlineSync.keyInPause(`\n\n[WARNING] ${ragConfig.repositoryId} ignored.\n\tAs of LISA 4.0 rag repositories can no longer be added via YAML.`);
-                console.log('\n\tContinuing deployment...');
+                const warning = `\n\n[WARNING] ${ragConfig.repositoryId} ignored.\n\tAs of LISA 4.0 rag repositories can no longer be added via YAML.`;
+                if (process.stdout.isTTY) {
+                    readlineSync.keyInPause(warning);
+                    console.log('\n\tContinuing deployment...');
+                } else {
+                    console.warn(warning);
+                }
                 continue;
             }
 

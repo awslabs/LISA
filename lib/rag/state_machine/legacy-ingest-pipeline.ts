@@ -39,7 +39,7 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { RagRepositoryType } from '../../configSchema';
+import { RagRepositoryType, RdsConfig } from '../../configSchema';
 
 type PipelineConfig = {
     chunkOverlap: number;
@@ -48,14 +48,6 @@ type PipelineConfig = {
     s3Bucket: string;
     s3Prefix: string;
     trigger: string;
-};
-
-type RdsConfig = {
-    username: string;
-    dbHost?: string;
-    dbName: string;
-    dbPort: number;
-    passwordSecretId?: string;
 };
 
 type IngestPipelineStateMachineProps = BaseProps & {

@@ -335,6 +335,7 @@ export class LisaRagStack extends Stack {
         ragRepositoryConfigTable: dynamodb.ITable
     ) {
         const registeredRepositories = [];
+        const connectionParamName = 'LisaServeRagConnectionInfo';
         const registeredRepositoriesParamName = `${config.deploymentPrefix}/registeredRepositories`;
 
         const repositoryIds = (JSON.parse(process.env.RAG_REPOSITORIES || '[]') as RagRepositoryConfig[]).map((ragRepository: RagRepositoryConfig) => ragRepository.repositoryId);

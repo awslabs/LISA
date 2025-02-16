@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 /**
  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -16,8 +15,13 @@
  */
 
 import { z } from 'zod';
-import { RawConfigSchema } from './configSchema';
-import VERSION from '../VERSION.txt?raw';
+import { RawConfigObject, RawConfigSchema } from './configSchema';
+import path from 'path';
+import fs from 'fs';
+
+const HERE: string = path.resolve(__dirname);
+const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
+export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -65,3 +69,30 @@ export type BaseProps = {
 };
 
 export type ConfigFile = Record<string, any>;
+
+export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfig) => {
+    let deploymentPrefix = rawConfig.deploymentPrefix;
+
+    if (!deploymentPrefix && rawConfig.appName && rawConfig.deploymentStage && rawConfig.deploymentName) {
+        deploymentPrefix = `/${rawConfig.deploymentStage}/${rawConfig.deploymentName}/${rawConfig.appName}`;
+    }
+
+    let tags = rawConfig.tags;
+
+    if (!tags && deploymentPrefix) {
+        tags = [
+            { Key: 'deploymentPrefix', Value: deploymentPrefix },
+            { Key: 'deploymentName', Value: rawConfig.deploymentName! },
+            { Key: 'deploymentStage', Value: rawConfig.deploymentStage! },
+            { Key: 'region', Value: rawConfig.region! },
+            { Key: 'version', Value: VERSION },
+        ];
+    }
+
+    rawConfig.deploymentPrefix = deploymentPrefix;
+    rawConfig.tags = tags;
+
+    return rawConfig;
+});
+
+export type PartialConfig = z.infer<typeof PartialConfigSchema>;

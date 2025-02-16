@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 /**
  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
@@ -17,7 +16,6 @@
 import { z } from 'zod';
 
 import { AmiHardwareType, EbsDeviceVolumeType, EcsSourceType, RemovalPolicy } from './cdk';
-import VERSION from '../VERSION.txt?raw';
 
 /**
  * Custom security groups for application.
@@ -748,30 +746,3 @@ export const RawConfigSchema = RawConfigObject
         },
     )
     .describe('Raw application configuration schema.');
-
-export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfig) => {
-    let deploymentPrefix = rawConfig.deploymentPrefix;
-
-    if (!deploymentPrefix && rawConfig.appName && rawConfig.deploymentStage && rawConfig.deploymentName) {
-        deploymentPrefix = `/${rawConfig.deploymentStage}/${rawConfig.deploymentName}/${rawConfig.appName}`;
-    }
-
-    let tags = rawConfig.tags;
-
-    if (!tags && deploymentPrefix) {
-        tags = [
-            { Key: 'deploymentPrefix', Value: deploymentPrefix },
-            { Key: 'deploymentName', Value: rawConfig.deploymentName! },
-            { Key: 'deploymentStage', Value: rawConfig.deploymentStage! },
-            { Key: 'region', Value: rawConfig.region! },
-            { Key: 'version', Value: VERSION },
-        ];
-    }
-
-    rawConfig.deploymentPrefix = deploymentPrefix;
-    rawConfig.tags = tags;
-
-    return rawConfig;
-});
-
-export type PartialConfig = z.infer<typeof PartialConfigSchema>;

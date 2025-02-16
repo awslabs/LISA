@@ -245,7 +245,11 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     """
     user_groups = get_groups(event)
     registered_repositories = vs_repo.get_registered_repositories()
-    return [repo for repo in registered_repositories if is_admin(event) or user_has_group(user_groups, repo["allowedGroups"])]
+    return [
+        repo
+        for repo in registered_repositories
+        if is_admin(event) or user_has_group(user_groups, repo["allowedGroups"])
+    ]
 
 
 @api_wrapper
@@ -701,6 +705,7 @@ def delete(event: dict, context: dict) -> Any:
         # Return success status and execution ARN
         return {"status": "success", "executionArn": response["executionArn"]}
 
+
 def _remove_legacy(repository_id: str):
     registered_repositories = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS"])
     registered_repositories = json.loads(registered_repositories["Parameter"]["Value"])
@@ -712,5 +717,5 @@ def _remove_legacy(repository_id: str):
             Name=os.environ["REGISTERED_REPOSITORIES_PS"],
             Value=json.dumps(updated_repositories),
             Type="String",
-            Overwrite=True
+            Overwrite=True,
         )

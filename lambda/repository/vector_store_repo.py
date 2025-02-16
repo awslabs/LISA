@@ -43,7 +43,7 @@ class VectorStoreRepository:
         for item in items:
             item["config"]["editable"] = item.get("editable", True)
             registered_repositories.append(item["config"])
-            
+
         return registered_repositories
 
     def get_repository_status(self) -> dict[str, str]:
@@ -94,20 +94,18 @@ class VectorStoreRepository:
     def delete(self, repository_id: str) -> bool:
         """
         Delete a repository by its ID.
-        
+
         Args:
             repository_id: The ID of the repository to delete.
-            
+
         Returns:
             True if deletion was successful.
-            
+
         Raises:
             ValueError: If the deletion fails.
         """
         try:
-            self.table.delete_item(
-                Key={"repositoryId": repository_id}
-            )
+            self.table.delete_item(Key={"repositoryId": repository_id})
             return True
         except Exception as e:
-            raise ValueError(f"Failed to delete repository: {repository_id}", e)        
+            raise ValueError(f"Failed to delete repository: {repository_id}", e)

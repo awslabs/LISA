@@ -706,7 +706,7 @@ def delete(event: dict, context: dict) -> Any:
         return {"status": "success", "executionArn": response["executionArn"]}
 
 
-def _remove_legacy(repository_id: str):
+def _remove_legacy(repository_id: str) -> None:
     registered_repositories = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS"])
     registered_repositories = json.loads(registered_repositories["Parameter"]["Value"])
     updated_repositories = [repo for repo in registered_repositories if repo.get("repositoryId") != repository_id]

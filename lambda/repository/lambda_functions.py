@@ -245,7 +245,7 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     """
     user_groups = get_groups(event)
     registered_repositories = vs_repo.get_registered_repositories()
-    return [repo for repo in registered_repositories if user_has_group(user_groups, repo["allowedGroups"])]
+    return [repo for repo in registered_repositories if is_admin(event) or user_has_group(user_groups, repo["allowedGroups"])]
 
 
 @api_wrapper
@@ -683,16 +683,34 @@ def delete(event: dict, context: dict) -> Any:
         raise ValidationError("repositoryId is required")
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
+    if repository.get("editable", False) is False:
+        _remove_legacy(repository_id)
+        vs_repo.delete(repository_id=repository_id)
+        return {"status": "success", "executionArn": "legacy"}
+    else:
+        # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
+        parameter_name = os.environ["LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER"]
+        state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
-    # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
-    parameter_name = os.environ["LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER"]
-    state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+        # Start the execution of the State Machine to delete the vector store
+        response = step_functions_client.start_execution(
+            stateMachineArn=state_machine_arn["Parameter"]["Value"],
+            input=json.dumps({"repositoryId": repository_id, "stackName": repository.get("stackName")}),
+        )
 
-    # Start the execution of the State Machine to delete the vector store
-    response = step_functions_client.start_execution(
-        stateMachineArn=state_machine_arn["Parameter"]["Value"],
-        input=json.dumps({"repositoryId": repository_id, "stackName": repository.get("stackName")}),
-    )
+        # Return success status and execution ARN
+        return {"status": "success", "executionArn": response["executionArn"]}
 
-    # Return success status and execution ARN
-    return {"status": "success", "executionArn": response["executionArn"]}
+def _remove_legacy(repository_id: str):
+    registered_repositories = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS"])
+    registered_repositories = json.loads(registered_repositories["Parameter"]["Value"])
+    updated_repositories = [repo for repo in registered_repositories if repo.get("repositoryId") != repository_id]
+
+    if len(updated_repositories) < len(registered_repositories):
+        # Save the updated list back to the parameter store
+        ssm_client.put_parameter(
+            Name=os.environ["REGISTERED_REPOSITORIES_PS"],
+            Value=json.dumps(updated_repositories),
+            Type="String",
+            Overwrite=True
+        )

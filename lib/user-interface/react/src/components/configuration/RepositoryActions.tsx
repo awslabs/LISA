@@ -15,7 +15,7 @@
  */
 
 import React, { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, ButtonDropdownProps, Icon, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
@@ -62,10 +62,14 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
     );
 }
 
+type RagRepository = RagRepositoryConfig & {
+    editable?: boolean
+};
+
 function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps): ReactElement {
     const { setEdit, selectedItems, setSelectedItems, setNewRepositoryModalVisible } = props;
 
-    const selectedRepo: RagRepositoryConfig = selectedItems[0];
+    const selectedRepo: RagRepository = selectedItems[0];
     const [
         deleteMutation,
         { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
@@ -96,11 +100,12 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSuccess, isUpdateError, updateError, isUpdating]);
 
-    const items = [
+    const items: ButtonDropdownProps.Item[] = [
         {
             id: 'edit',
             text: 'Edit',
-            disabled: selectedItems.length !== 1,
+            disabled: selectedItems.length !== 1 || !selectedRepo?.editable,
+            disabledReason: selectedItems.length !== 1 ? '' : !selectedRepo?.editable ? 'Legacy repositories created through YAML cannot be edited.' : undefined
         },
         {
             id: 'rm',

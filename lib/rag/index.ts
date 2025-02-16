@@ -152,6 +152,7 @@ export class LisaRagStack extends Stack {
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
             ADMIN_GROUP: config.authConfig!.adminGroup,
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
+            REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             LOG_LEVEL: config.logLevel,
         };
 
@@ -506,7 +507,7 @@ export class LisaRagStack extends Stack {
                     action: 'putItem',
                     parameters: {
                         TableName: ragRepositoryConfigTable.tableName,
-                        Key: { id: { S: ragConfig.repositoryId } },
+                        Key: this.toDynamoDBItem({ repositoryId: ragConfig.repositoryId }),
                     },
                 },
                 policy: customResources.AwsCustomResourcePolicy.fromSdkCalls({
@@ -552,11 +553,13 @@ export class LisaRagStack extends Stack {
 
         if (registeredRepositories.length) {
             // Create Parameter Store entry with RAG repositories
-            new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
+            const repositoriesParameter = new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
                 parameterName: registeredRepositoriesParamName,
                 stringValue: JSON.stringify(registeredRepositories),
                 description: 'Serialized JSON of registered RAG repositories',
             });
+            repositoriesParameter.grantRead(lambdaRole);
+            repositoriesParameter.grantWrite(lambdaRole);
         }
     }
 

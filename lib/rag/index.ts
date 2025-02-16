@@ -478,34 +478,28 @@ export class LisaRagStack extends Stack {
                 throw error;
             }
 
+            const createOrUpdateParameters = {
+                TableName: ragRepositoryConfigTable.tableName,
+                Item: this.toDynamoDBItem({
+                    repositoryId: ragConfig.repositoryId, // Partition key value
+                    status: 'CREATE_COMPLETE',
+                    config: ragConfig,
+                    editable: false
+                }),
+            };
+
             // ensure the entry gets updated in the database
             new customResources.AwsCustomResource(this, createCdkId(['InsertRAGConfig', ragConfig.repositoryId]), {
                 onCreate: {
                     service: 'DynamoDB',
                     action: 'putItem',
-                    parameters: {
-                        TableName: ragRepositoryConfigTable.tableName,
-                        Item: {
-                            repositoryId: { S: ragConfig.repositoryId }, // Partition key value
-                            status: { S: 'CREATE_COMPLETE' },
-                            config: { M: this.toDynamoDBItem(ragConfig) },
-                            editable: { BOOL: false }
-                        },
-                    },
+                    parameters: createOrUpdateParameters,
                     physicalResourceId: customResources.PhysicalResourceId.of(`RAGConfigEntry-${ragConfig.repositoryId}`),
                 },
                 onUpdate: {
                     service: 'DynamoDB',
                     action: 'putItem',
-                    parameters: {
-                        TableName: ragRepositoryConfigTable.tableName,
-                        Item: {
-                            repositoryId: { S: ragConfig.repositoryId }, // Partition key value
-                            status: { S: 'CREATE_COMPLETE' },
-                            config: { M: this.toDynamoDBItem(ragConfig) },
-                            editable: { BOOL: false }
-                        },
-                    },
+                    parameters: createOrUpdateParameters,
                 },
                 onDelete: {
                     service: 'DynamoDB',

@@ -39,16 +39,7 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { RagRepositoryType, RdsConfig } from '../../configSchema';
-
-type PipelineConfig = {
-    chunkOverlap: number;
-    chunkSize: number;
-    embeddingModel: string;
-    s3Bucket: string;
-    s3Prefix: string;
-    trigger: string;
-};
+import { PipelineConfig, RagRepositoryType, RdsConfig } from '../../configSchema';
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;

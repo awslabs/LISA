@@ -14,12 +14,11 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import React, { ReactElement, useEffect, useState } from 'react';
+import { Alert, Button, ButtonDropdown, ButtonDropdownProps, Checkbox, Icon, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
-import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import {
@@ -62,10 +61,15 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
     );
 }
 
+type RagRepository = RagRepositoryConfig & {
+    legacy?: boolean
+};
+
 function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps): ReactElement {
     const { setEdit, selectedItems, setSelectedItems, setNewRepositoryModalVisible } = props;
-
-    const selectedRepo: RagRepositoryConfig = selectedItems[0];
+    const [disabledModal, setDisabledModel] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const selectedRepo: RagRepository = selectedItems[0];
     const [
         deleteMutation,
         { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
@@ -96,11 +100,43 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSuccess, isUpdateError, updateError, isUpdating]);
 
-    const items = [
+    useEffect(() => {
+        if (showModal) {
+            dispatch(setConfirmationModal({
+                action: 'Delete',
+                resourceName: 'Repository',
+                onConfirm: () => deleteMutation(selectedRepo.repositoryId),
+                onDismiss: () => {
+                    setDisabledModel(false);
+                    setShowModal(false);
+                },
+                description: (
+                    <SpaceBetween direction='vertical' size='s'>
+                        <p key={'message'}>This will delete the following repository: {selectedRepo.repositoryId}.</p>
+                        {selectedRepo?.legacy &&
+                            <Alert key={'alert'} type='warning'>
+                                <Checkbox
+                                    checked={disabledModal}
+                                    onChange={({ detail }) => {
+                                        setDisabledModel(detail.checked);
+                                    }}>
+                                    This is a legacy repository configured through YAML. Deleting it will only remove it from the UI, and you will need to redeploy the CDK to remove the associated AWS resources.
+                                </Checkbox>
+                            </Alert>
+                        }
+                    </SpaceBetween>
+                ),
+                disabled: selectedRepo?.legacy && !disabledModal
+            }));
+        }
+    }, [showModal, selectedRepo, disabledModal, deleteMutation, dispatch]);
+
+    const items: ButtonDropdownProps.Item[] = [
         {
             id: 'edit',
             text: 'Edit',
-            disabled: selectedItems.length !== 1,
+            disabled: selectedItems.length !== 1 || selectedRepo?.legacy,
+            disabledReason: selectedItems.length !== 1 ? '' : selectedRepo?.legacy ? 'Legacy repositories created through YAML cannot be edited.' : undefined
         },
         {
             id: 'rm',
@@ -115,7 +151,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
             disabled={!selectedRepo}
             loading={isDeleteLoading || isUpdating}
             onItemClick={(e) =>
-                RepositoryActionHandler(e, selectedRepo, dispatch, deleteMutation, setNewRepositoryModalVisible, setEdit)
+                RepositoryActionHandler(e, setNewRepositoryModalVisible, setEdit, setShowModal)
             }
         >
             Actions
@@ -123,13 +159,11 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
     );
 }
 
-const RepositoryActionHandler = async (
+const RepositoryActionHandler = (
     e: any,
-    selectedRepo: RagRepositoryConfig,
-    dispatch: ThunkDispatch<any, any, Action>,
-    deleteMutation: MutationTrigger<any>,
     setNewRepositoryModalVisible: (boolean) => void,
     setEdit: (boolean) => void,
+    setShowModal: (boolean) => void
 ) => {
     switch (e.detail.id) {
         case 'edit':
@@ -137,14 +171,7 @@ const RepositoryActionHandler = async (
             setNewRepositoryModalVisible(true);
             break;
         case 'rm':
-            dispatch(
-                setConfirmationModal({
-                    action: 'Delete',
-                    resourceName: 'Repository',
-                    onConfirm: () => deleteMutation(selectedRepo.repositoryId),
-                    description: `This will delete the following repository: ${selectedRepo.repositoryId}.`,
-                }),
-            );
+            setShowModal(true);
             break;
         default:
             return;

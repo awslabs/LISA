@@ -15,7 +15,7 @@
  */
 
 import Container from '@cloudscape-design/components/container';
-import { Header } from '@cloudscape-design/components';
+import { Header, SpaceBetween } from '@cloudscape-design/components';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import React, { ReactElement } from 'react';
@@ -30,42 +30,50 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
     const { item, touchFields, setFields, formErrors, isEdit } = props;
 
     return (
-        <Container header={<Header variant='h2'>RDS Config</Header>}>
-            <FormField label='Username' errorText={formErrors?.rdsConfig?.username}>
-                <Input value={item.username} inputMode='text'
-                    onBlur={() => touchFields(['rdsConfig.username'])}
-                    onChange={({ detail }) => setFields({ 'rdsConfig.username': detail.value })}
-                    placeholder='RDS Username' disabled={isEdit} />
-            </FormField>
-            <FormField label='Password Secret Id (optional)'
-                errorText={formErrors?.rdsConfig?.passwordSecretId}>
-                <Input value={item.passwordSecretId} inputMode='text'
-                    onBlur={() => touchFields(['rdsConfig.passwordSecretId'])}
-                    onChange={({ detail }) => setFields({ 'rdsConfig.passwordSecretId': detail.value })}
-                    placeholder='RDS Password Secret Id' disabled={isEdit} />
-            </FormField>
-            <FormField label='DB Host (optional)'
-                errorText={formErrors?.rdsConfig?.dbHost}>
-                <Input value={item.dbHost} inputMode='text'
-                    onBlur={() => touchFields(['rdsConfig.dbHost'])}
-                    onChange={({ detail }) => setFields({ 'rdsConfig.dbHost': detail.value })}
-                    placeholder='DB Host' disabled={isEdit} />
-            </FormField>
-            <FormField label='DB Name'
-                errorText={formErrors?.rdsConfig?.dbName}>
-                <Input value={item.dbName} inputMode='text'
-                    onBlur={() => touchFields(['rdsConfig.dbName'])}
-                    onChange={({ detail }) => setFields({ 'rdsConfig.dbName': detail.value })}
-                    placeholder='DB Name' disabled={isEdit} />
-            </FormField>
-            <FormField label='DB Port'
-                errorText={formErrors?.rdsConfig?.dbPort}>
-                <Input value={item.dbPort?.toString()}
-                    type='number' inputMode='numeric'
-                    onBlur={() => touchFields(['rdsConfig.dbPort'])}
-                    onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': Number(detail.value) })}
-                    disabled={isEdit} />
-            </FormField>
+        <Container header={<Header variant='h2'>PostgreSQL Config</Header>}>
+            <SpaceBetween direction='vertical' size='s'>
+                <FormField label='Username' key={'username'}
+                    errorText={formErrors?.rdsConfig?.username}
+                    description={'The username used for database connection.'}>
+                    <Input value={item.username} inputMode='text'
+                        onBlur={() => touchFields(['rdsConfig.username'])}
+                        onChange={({ detail }) => setFields({ 'rdsConfig.username': detail.value })}
+                        placeholder='Username' disabled={isEdit} />
+                </FormField>
+                <FormField label='Password Secret Id - optional' key={'password'}
+                    errorText={formErrors?.rdsConfig?.passwordSecretId}
+                    description={'The SecretsManager Secret ID that stores the existing database password.'}>
+                    <Input value={item.passwordSecretId} inputMode='text'
+                        onBlur={() => touchFields(['rdsConfig.passwordSecretId'])}
+                        onChange={({ detail }) => setFields({ 'rdsConfig.passwordSecretId': detail.value })}
+                        placeholder='Password Secret Id' disabled={isEdit} />
+                </FormField>
+                <FormField label='Host - optional' key={'host'}
+                    errorText={formErrors?.rdsConfig?.dbHost}
+                    description={'Database hostname for existing database instance.'}>
+                    <Input value={item.dbHost} inputMode='text'
+                        onBlur={() => touchFields(['rdsConfig.dbHost'])}
+                        onChange={({ detail }) => setFields({ 'rdsConfig.dbHost': detail.value })}
+                        placeholder='rds.region.amazonaws.com ' disabled={isEdit} />
+                </FormField>
+                <FormField label='Name' key={'name'}
+                    errorText={formErrors?.rdsConfig?.dbName}
+                    description={'The name of the database for the database instance.'}>
+                    <Input value={item.dbName} inputMode='text'
+                        onBlur={() => touchFields(['rdsConfig.dbName'])}
+                        onChange={({ detail }) => setFields({ 'rdsConfig.dbName': detail.value })}
+                        placeholder='postgres' disabled={isEdit} />
+                </FormField>
+                <FormField label='Port' key={'port'}
+                    errorText={formErrors?.rdsConfig?.dbPort}
+                    description={'The port of the existing database instance or the port to be opened on the database instance.'}>
+                    <Input value={item.dbPort?.toString()}
+                        type='number' inputMode='numeric'
+                        onBlur={() => touchFields(['rdsConfig.dbPort'])}
+                        onChange={({ detail }) => setFields({ 'rdsConfig.dbPort': Number(detail.value) })}
+                        disabled={isEdit} />
+                </FormField>
+            </SpaceBetween>
         </Container>
     );
 }

@@ -20,7 +20,6 @@ import Input from '@cloudscape-design/components/input';
 import { Button, SpaceBetween } from '@cloudscape-design/components';
 
 type ArrayInputProps = FormFieldProps & {
-    // label: string;
     values: string[];
     onChange: (newValues: string[]) => void;
 };

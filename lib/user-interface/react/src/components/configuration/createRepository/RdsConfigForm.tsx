@@ -26,7 +26,7 @@ type RdsConfigProps = {
     isEdit: boolean
 };
 
-export function RdsConfigForm(props: FormProps<RdsConfigSchema> & RdsConfigProps): ReactElement {
+export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
 
     return (

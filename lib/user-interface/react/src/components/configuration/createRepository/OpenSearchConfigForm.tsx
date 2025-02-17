@@ -30,7 +30,7 @@ type OpenSearchConfigProps = {
     isEdit: boolean
 };
 
-export function OpenSearchConfigForm(props: FormProps<OpenSearchConfig> & OpenSearchConfigProps): ReactElement {
+export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenSearchConfigProps): ReactElement {
     const { data: instances, isLoading: isLoadingInstances } = useGetInstancesQuery();
     const { item, touchFields, setFields, formErrors, isEdit } = props;
 

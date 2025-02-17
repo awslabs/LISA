@@ -35,7 +35,7 @@ export type RepositoryActionProps = {
     setEdit: (state: boolean) => void;
 };
 
-function RepositoryActions(props: RepositoryActionProps): ReactElement {
+function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;

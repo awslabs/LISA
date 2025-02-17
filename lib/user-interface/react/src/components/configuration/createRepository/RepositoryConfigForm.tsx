@@ -23,6 +23,7 @@ import { SpaceBetween } from '@cloudscape-design/components';
 import {
     OpenSearchNewClusterConfig,
     RagRepositoryConfig,
+    RagRepositoryConfigSchema,
     RagRepositoryType,
     RdsInstanceConfig,
 } from '../../../../../../configSchema';
@@ -37,11 +38,12 @@ export type RepositoryConfigProps = {
 
 export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & RepositoryConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
+    const shape = RagRepositoryConfigSchema.innerType().shape;
     return (
         <SpaceBetween size={'s'}>
             <FormField label='Repository ID'
                 errorText={formErrors?.repositoryId}
-                description={'A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'}>
+                description={shape.repositoryId.description}>
                 <Input value={item.repositoryId} inputMode='text'
                     onBlur={() => touchFields(['repositoryId'])}
                     onChange={({ detail }) => {
@@ -50,7 +52,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
             </FormField>
             <FormField label='Repository Name - optional'
                 errorText={formErrors?.repositoryName}
-                description={'The user-friendly name displayed in the UI.'}>
+                description={shape.repositoryName.description}>
                 <Input value={item.repositoryName} inputMode='text'
                     onBlur={() => touchFields(['repositoryName'])}
                     onChange={({ detail }) => {
@@ -59,7 +61,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
             </FormField>
             <FormField label='Repository Type'
                 errorText={formErrors?.type}
-                description={'The vector store designated for this repository.'}>
+                description={shape.type.description}>
                 <Select
                     selectedOption={{ label: item.type, value: item.type }}
                     onChange={({ detail }) => {
@@ -101,7 +103,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 errorText={formErrors?.allowedGroups}
                 values={item.allowedGroups ?? []}
                 onChange={(detail) => setFields({ 'allowedGroups': detail })}
-                description={'The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'}
+                description={shape.allowedGroups.description}
             ></ArrayInputField>
 
         </SpaceBetween>

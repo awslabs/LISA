@@ -501,26 +501,26 @@ export enum RagRepositoryType {
 }
 
 export const OpenSearchNewClusterConfig = z.object({
-    dataNodes: z.number().min(1).default(2),
-    dataNodeInstanceType: z.string().default('r7g.large.search'),
-    masterNodes: z.number().min(0).default(0),
-    masterNodeInstanceType: z.string().default('r7g.large.search'),
-    volumeSize: z.number().min(20),
-    volumeType: z.nativeEnum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3),
-    multiAzWithStandby: z.boolean().default(false),
+    dataNodes: z.number().min(1).default(2).describe('The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.'),
+    dataNodeInstanceType: z.string().default('r7g.large.search').describe('The instance type for your data nodes'),
+    masterNodes: z.number().min(0).default(0).describe('The number of instances to use for the master node'),
+    masterNodeInstanceType: z.string().default('r7g.large.search').describe('The hardware configuration of the computer that hosts the dedicated master node'),
+    volumeSize: z.number().min(20).default(20).describe('The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.'),
+    volumeType: z.nativeEnum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3).describe('The EBS volume type to use with the Amazon OpenSearch Service domain'),
+    multiAzWithStandby: z.boolean().default(false).describe('Indicates whether Multi-AZ with Standby deployment option is enabled.'),
 });
 
 export const OpenSearchExistingClusterConfig = z.object({
-    endpoint: z.string(),
+    endpoint: z.string().nonempty().describe('Existing OpenSearch Cluster endpoint'),
 });
 
 export const RagRepositoryPipeline = z.object({
-    chunkOverlap: z.number().default(51),
-    chunkSize: z.number().default(512),
-    embeddingModel: z.string(),
-    s3Bucket: z.string(),
-    s3Prefix: z.string(),
-    trigger: z.union([z.literal('daily'), z.literal('event')]).default('event'),
+    chunkSize: z.number().default(512).describe('The size of the chunks used for document segmentation.'),
+    chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
+    embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
+    s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
+    s3Prefix: z.string().describe('The prefix within the S3 bucket monitored for document processing.'),
+    trigger: z.union([z.literal('daily').describe('This ingestion pipeline is scheduled to run once per day'), z.literal('event').describe('This ingestion pipeline runs whenever changes are detected.')]).default('event').describe('The event type that triggers document ingestion.'),
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
 });
 

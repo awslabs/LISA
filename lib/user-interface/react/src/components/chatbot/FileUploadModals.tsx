@@ -38,6 +38,7 @@ import {
     useUploadToS3Mutation,
 } from '../../shared/reducers/rag.reducer';
 import { uploadToS3Request } from '../utils';
+import { RagRepositoryPipeline } from '../../../../../configSchema';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -308,7 +309,7 @@ export function RagUploadModal ({
                     </p>
                 </TextContent>
                 <Grid gridDefinition={[{ colspan: { default: 12, xxs: 6 } }, { colspan: { default: 12, xxs: 6 } }]}>
-                    <FormField label='Chunk Size' description='Size of chunks that will be persisted in the RAG repository'>
+                    <FormField label='Chunk Size' description={RagRepositoryPipeline.shape.chunkSize.description}>
                         <Input
                             value={chunkSize.toString()}
                             type='number'
@@ -323,7 +324,7 @@ export function RagUploadModal ({
                             }}
                         />
                     </FormField>
-                    <FormField label='Chunk Overlap' description='Size of the overlap used when generating content chunks'>
+                    <FormField label='Chunk Overlap' description={RagRepositoryPipeline.shape.chunkOverlap.description}>
                         <Input
                             value={chunkOverlap.toString()}
                             type='number'

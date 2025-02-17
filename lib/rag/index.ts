@@ -504,7 +504,7 @@ export class LisaRagStack extends Stack {
                 },
                 onDelete: {
                     service: 'DynamoDB',
-                    action: 'putItem',
+                    action: 'deleteItem',
                     parameters: {
                         TableName: ragRepositoryConfigTable.tableName,
                         Key: this.toDynamoDBItem({ repositoryId: ragConfig.repositoryId }),

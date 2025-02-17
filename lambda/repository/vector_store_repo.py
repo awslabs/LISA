@@ -41,7 +41,8 @@ class VectorStoreRepository:
 
         registered_repositories = []
         for item in items:
-            item["config"]["legacy"] = item.get("legacy", False)
+            if item.get("legacy", False):
+                item["config"]["legacy"] = True
             registered_repositories.append(item["config"])
 
         return registered_repositories

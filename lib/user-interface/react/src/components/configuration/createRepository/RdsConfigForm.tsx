@@ -20,7 +20,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import React, { ReactElement } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
-import { RdsConfig as RdsConfigSchema } from '../../../../../../configSchema';
+import { RdsConfig as RdsConfigSchema, RdsInstanceConfig } from '../../../../../../configSchema';
 
 type RdsConfigProps = {
     isEdit: boolean
@@ -34,7 +34,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
             <SpaceBetween direction='vertical' size='s'>
                 <FormField label='Username' key={'username'}
                     errorText={formErrors?.rdsConfig?.username}
-                    description={'The username used for database connection.'}>
+                    description={RdsInstanceConfig.shape.username.description}>
                     <Input value={item.username} inputMode='text'
                         onBlur={() => touchFields(['rdsConfig.username'])}
                         onChange={({ detail }) => setFields({ 'rdsConfig.username': detail.value })}
@@ -42,7 +42,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
                 </FormField>
                 <FormField label='Password Secret Id - optional' key={'password'}
                     errorText={formErrors?.rdsConfig?.passwordSecretId}
-                    description={'The SecretsManager Secret ID that stores the existing database password.'}>
+                    description={RdsInstanceConfig.shape.passwordSecretId.description}>
                     <Input value={item.passwordSecretId} inputMode='text'
                         onBlur={() => touchFields(['rdsConfig.passwordSecretId'])}
                         onChange={({ detail }) => setFields({ 'rdsConfig.passwordSecretId': detail.value })}
@@ -50,7 +50,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
                 </FormField>
                 <FormField label='Host - optional' key={'host'}
                     errorText={formErrors?.rdsConfig?.dbHost}
-                    description={'Database hostname for existing database instance.'}>
+                    description={RdsInstanceConfig.shape.dbHost.description}>
                     <Input value={item.dbHost} inputMode='text'
                         onBlur={() => touchFields(['rdsConfig.dbHost'])}
                         onChange={({ detail }) => setFields({ 'rdsConfig.dbHost': detail.value })}
@@ -58,7 +58,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
                 </FormField>
                 <FormField label='Name' key={'name'}
                     errorText={formErrors?.rdsConfig?.dbName}
-                    description={'The name of the database for the database instance.'}>
+                    description={RdsInstanceConfig.shape.dbName.description}>
                     <Input value={item.dbName} inputMode='text'
                         onBlur={() => touchFields(['rdsConfig.dbName'])}
                         onChange={({ detail }) => setFields({ 'rdsConfig.dbName': detail.value })}
@@ -66,7 +66,7 @@ export function RdsConfigForm (props: FormProps<RdsConfigSchema> & RdsConfigProp
                 </FormField>
                 <FormField label='Port' key={'port'}
                     errorText={formErrors?.rdsConfig?.dbPort}
-                    description={'The port of the existing database instance or the port to be opened on the database instance.'}>
+                    description={RdsInstanceConfig.shape.dbPort.description}>
                     <Input value={item.dbPort?.toString()}
                         type='number' inputMode='numeric'
                         onBlur={() => touchFields(['rdsConfig.dbPort'])}

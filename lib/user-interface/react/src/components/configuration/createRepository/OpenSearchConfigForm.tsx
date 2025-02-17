@@ -30,6 +30,7 @@ import { EbsDeviceVolumeType } from '../../../../../../cdk';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { getDefaults } from '../../../shared/util/zodUtil';
+import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 type OpenSearchConfigProps = {
     isEdit: boolean
@@ -63,7 +64,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                             <SpaceBetween direction='vertical' size='s'>
                                 <FormField label='Data Nodes'
                                     errorText={formErrors?.opensearchConfig?.dataNodes}
-                                    description={'The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.'}>
+                                    description={OpenSearchNewClusterConfig.shape.dataNodes.description}>
                                     <Input value={item.dataNodes?.toString()}
                                         type='number' inputMode='numeric'
                                         onBlur={() => touchFields(['opensearchConfig.dataNodes'])}
@@ -72,7 +73,11 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                                 </FormField>
                                 <FormField label='Data Node Instance Type'
                                     errorText={formErrors?.opensearchConfig?.dataNodeInstanceType}
-                                    description={'The instance type for your data nodes.'}>
+                                    description={OpenSearchNewClusterConfig.shape.dataNodeInstanceType.description}
+                                    constraintText={
+                                        <StatusIndicator type='info'>Please verify the selected instance exists
+                                            in region</StatusIndicator>}
+                                >
                                     <Select
                                         options={instanceOptions}
                                         selectedOption={{ value: item.dataNodeInstanceType }}
@@ -87,7 +92,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                                 </FormField>
                                 <FormField label='Master Nodes'
                                     errorText={formErrors?.opensearchConfig?.masterNodes}
-                                    description={'The number of instances to use for the master node.'}>
+                                    description={OpenSearchNewClusterConfig.shape.masterNodes.description}>
                                     <Input value={item.masterNodes?.toString()}
                                         type='number' inputMode='numeric'
                                         onBlur={() => touchFields(['opensearchConfig.masterNodes'])}
@@ -96,7 +101,11 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                                 </FormField>
                                 <FormField label='Master Node Instance Type'
                                     errorText={formErrors?.opensearchConfig?.masterNodeInstanceType}
-                                    description={'The hardware configuration of the computer that hosts the dedicated master node'}>
+                                    description={OpenSearchNewClusterConfig.shape.masterNodeInstanceType.description}
+                                    constraintText={
+                                        <StatusIndicator type='info'>Please verify the selected instance exists
+                                            in region</StatusIndicator>}
+                                >
                                     <Select
                                         options={instanceOptions}
                                         selectedOption={{ value: item.masterNodeInstanceType }}
@@ -111,7 +120,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                                 </FormField>
                                 <FormField label='Volume Size'
                                     errorText={formErrors?.opensearchConfig?.volumeSize}
-                                    description={'The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.'}>
+                                    description={OpenSearchNewClusterConfig.shape.volumeSize.description}>
                                     <Input value={item.volumeSize?.toString()}
                                         type='number' inputMode='numeric'
                                         onBlur={() => touchFields(['opensearchConfig.volumeSize'])}
@@ -120,7 +129,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                                 </FormField>
                                 <FormField label='Volume Type'
                                     errorText={formErrors?.opensearchConfig?.volumeType}
-                                    description={'The EBS volume type to use with the Amazon OpenSearch Service domain'}>
+                                    description={OpenSearchNewClusterConfig.shape.volumeType.description}>
                                     <Select
                                         selectedOption={{
                                             label: item.volumeType,
@@ -141,7 +150,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                                         onChange={({ detail }) => setFields({ 'opensearchConfig.multiAzWithStandby': detail.checked })}
                                         checked={item.multiAzWithStandby}
                                         disabled={isEdit}
-                                        description='Indicates whether Multi-AZ with Standby deployment option is enabled.'>
+                                        description={OpenSearchNewClusterConfig.shape.multiAzWithStandby.description}>
                                         Multiple AZ With Standby
                                     </Checkbox>
                                 </FormField>
@@ -154,7 +163,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
                         content: (
                             <FormField label='Endpoint'
                                 errorText={formErrors?.opensearchConfig?.endpoint}
-                                description={'Existing OpenSearch endoint'}>
+                                description={OpenSearchExistingClusterConfig.shape.endpoint.description}>
                                 <Input
                                     value={item.endpoint}
                                     inputMode='text'

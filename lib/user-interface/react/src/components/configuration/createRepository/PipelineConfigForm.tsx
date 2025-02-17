@@ -85,7 +85,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Chunk Size'
                             errorText={formErrors.pipelines?.[index]?.chunkSize}
-                            description={'The size of the chunks used for document segmentation.'}
+                            description={RagRepositoryPipeline.shape.chunkSize.description}
                         >
                             <Input
                                 type='number' inputMode='numeric'
@@ -100,7 +100,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Chunk Overlap'
                             errorText={formErrors.pipelines?.[index]?.chunkOverlap}
-                            description={'The size of the overlap between chunks.'}
+                            description={RagRepositoryPipeline.shape.chunkOverlap.description}
                         >
                             <Input
                                 type='number' inputMode='numeric'
@@ -115,7 +115,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Embedding Model'
                             errorText={formErrors.pipelines?.[index]?.embeddingModel}
-                            description={'The embedding model used for document ingestion in this pipeline.'}
+                            description={RagRepositoryPipeline.shape.embeddingModel.description}
                         >
                             <Select
                                 options={embeddingOptions}
@@ -133,7 +133,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='S3 Bucket'
                             errorText={formErrors.pipelines?.[index]?.s3Bucket}
-                            description={'The S3 bucket monitored by this pipeline for document processing.'}
+                            description={RagRepositoryPipeline.shape.s3Bucket.description}
                         >
                             <Input
                                 value={pipeline.s3Bucket}
@@ -147,7 +147,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='S3 Prefix'
                             errorText={formErrors.pipelines?.[index]?.s3Prefix}
-                            description={'The prefix within the S3 bucket monitored for document processing.'}>
+                            description={RagRepositoryPipeline.shape.s3Prefix.description}>
                             <Input
                                 value={pipeline.s3Prefix}
                                 onChange={({ detail }) =>
@@ -160,7 +160,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Trigger'
                             errorText={formErrors.pipelines?.[index]?.trigger}
-                            description={'The event type that triggers document ingestion.'}>
+                            description={RagRepositoryPipeline.shape.trigger.description}>
                             <Select
                                 selectedOption={{ label: pipeline.trigger, value: pipeline.trigger }}
                                 onChange={({ detail }) =>
@@ -177,6 +177,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Auto Remove'
                             errorText={formErrors.pipelines?.[index]?.autoRemove}
+                            description={RagRepositoryPipeline.shape.autoRemove.description}
                         >
                             <Toggle
                                 checked={pipeline.autoRemove}

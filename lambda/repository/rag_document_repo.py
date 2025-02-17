@@ -316,7 +316,8 @@ class RagDocumentRepository:
         """Remove documents from S3"""
         repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
         pipelines = {
-            pipeline.get("embeddingModel"): pipeline["autoRemove"] is True for pipeline in repo.get("pipelines", [])
+            pipeline.get("embeddingModel"): pipeline.get("autoRemove", False) is True
+            for pipeline in repo.get("pipelines", [])
         }
         removed_source: list[str] = [
             doc.get("source", "")

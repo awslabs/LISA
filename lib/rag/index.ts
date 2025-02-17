@@ -21,7 +21,7 @@ import path from 'path';
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -33,14 +33,23 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps } from '../schema';
+import { BaseProps, Config } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
 import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/vector-store-creator';
 import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 import { DeletePipelineStateMachine } from './state_machine/delete-pipeline';
-import { Role } from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
+import { RagRepositoryConfig, RagRepositoryType } from '../configSchema';
+import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
+import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
+import { LegacyIngestPipelineStateMachine } from './state_machine/legacy-ingest-pipeline';
+import * as customResources from 'aws-cdk-lib/custom-resources';
+import DynamoDB from 'aws-sdk/clients/dynamodb';
+import * as readlineSync from 'readline-sync';
 
 const HERE = path.resolve(__dirname);
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
@@ -61,6 +70,10 @@ type LisaRagStackProps = CustomLisaRagStackProps & StackProps;
  * LisaChat RAG stack.
  */
 export class LisaRagStack extends Stack {
+
+    // Used to link service role if OpenSeach is used
+    openSearchRegion?: string;
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -128,7 +141,6 @@ export class LisaRagStack extends Stack {
             removalPolicy: config.removalPolicy,
         });
 
-        const connectionParamName = 'LisaServeRagConnectionInfo';
         const baseEnvironment: Record<string, string> = {
             REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             BUCKET_NAME: bucket.bucketName,
@@ -139,10 +151,6 @@ export class LisaRagStack extends Stack {
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
             ADMIN_GROUP: config.authConfig!.adminGroup,
-            REGISTERED_REPOSITORIES_PS_NAME: `${config.deploymentPrefix}/registeredRepositories`,
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
-            RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/${connectionParamName}`,
-            OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             LOG_LEVEL: config.logLevel,
         };
@@ -191,7 +199,6 @@ export class LisaRagStack extends Stack {
             stringValue: ragLambdaLayer.layer.layerVersionArn
         });
         const layers = [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer];
-
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -257,6 +264,7 @@ export class LisaRagStack extends Stack {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
+
         new IngestPipelineStateMachine(this, 'IngestPipelineStateMachine', {
             config,
             baseEnvironment,
@@ -284,6 +292,18 @@ export class LisaRagStack extends Stack {
             layers
         });
 
+        this.legacyRepositories(
+            config,
+            vpc,
+            baseEnvironment,
+            { common: commonLambdaLayer, rag: ragLambdaLayer.layer, sdk: sdkLayer},
+            lambdaRole,
+            docMetaTable,
+            subDocTable,
+            {pgvector: pgvectorSg, opensearch: openSearchSg},
+            ragRepositoryConfigTable
+        );
+
         // Add REST API Lambdas to APIGW
         new RepositoryApi(this, 'RepositoryApi', {
             authorizer,
@@ -301,5 +321,291 @@ export class LisaRagStack extends Stack {
         endpointUrl.grantRead(lambdaRole);
         docMetaTable.grantReadWriteData(lambdaRole);
         subDocTable.grantReadWriteData(lambdaRole);
+    }
+
+    legacyRepositories (
+        config: Config,
+        vpc: Vpc,
+        baseEnvironment: Record<string, string>,
+        layers: {[key in 'common' | 'sdk' | 'rag']: ILayerVersion},
+        lambdaRole: IRole,
+        docMetaTable: dynamodb.ITable,
+        subDocTable: dynamodb.ITable,
+        securityGroups: {[key in 'pgvector' | 'opensearch']: ISecurityGroup},
+        ragRepositoryConfigTable: dynamodb.ITable
+    ) {
+        const registeredRepositories = [];
+        const connectionParamName = 'LisaServeRagConnectionInfo';
+        const registeredRepositoriesParamName = `${config.deploymentPrefix}/registeredRepositories`;
+
+        const repositoryIds = (JSON.parse(process.env.RAG_REPOSITORIES || '[]') as RagRepositoryConfig[]).map((ragRepository: RagRepositoryConfig) => ragRepository.repositoryId);
+
+        for (const ragConfig of config.ragRepositories) {
+            if (!repositoryIds.includes(ragConfig.repositoryId)) {
+                const warning = `\n\n[WARNING] ${ragConfig.repositoryId} ignored.\n\tAs of LISA 4.0 rag repositories can no longer be added via YAML.`;
+                if (process.stdout.isTTY) {
+                    readlineSync.keyInPause(warning);
+                    console.log('\n\tContinuing deployment...');
+                } else {
+                    console.warn(warning);
+                }
+                continue;
+            }
+
+            registeredRepositories.push(ragConfig);
+
+            // Create opensearch cluster for RAG
+            if (ragConfig.type === RagRepositoryType.OPENSEARCH && ragConfig.opensearchConfig) {
+                let openSearchDomain: IDomain;
+
+                if ('endpoint' in ragConfig.opensearchConfig) {
+                    openSearchDomain = Domain.fromDomainEndpoint(
+                        this,
+                        'ExistingOpenSearchDomain',
+                        ragConfig.opensearchConfig.endpoint,
+                    );
+                } else {
+                    // Service-linked role that Amazon OpenSearch Service will use
+                    this.openSearchRegion = config.region;
+
+                    openSearchDomain = new Domain(this, createCdkId(['LisaServeRagRepository', ragConfig.repositoryId]), {
+                        domainName: ['lisa-rag', ragConfig.repositoryId].join('-'),
+                        // 2.9 is the latest available in ADC regions as of 1/11/24
+                        version: EngineVersion.OPENSEARCH_2_9,
+                        enableVersionUpgrade: true,
+                        vpc: vpc.vpc,
+                        ...(vpc.subnetSelection && {vpcSubnets: [vpc.subnetSelection]}),
+                        ebs: {
+                            enabled: true,
+                            volumeSize: ragConfig.opensearchConfig.volumeSize,
+                            volumeType: ragConfig.opensearchConfig.volumeType,
+                        },
+                        zoneAwareness: {
+                            availabilityZoneCount: vpc.vpc.privateSubnets.length,
+                            enabled: true,
+                        },
+                        capacity: {
+                            dataNodes: ragConfig.opensearchConfig.dataNodes,
+                            dataNodeInstanceType: ragConfig.opensearchConfig.dataNodeInstanceType,
+                            masterNodes: ragConfig.opensearchConfig.masterNodes,
+                            masterNodeInstanceType: ragConfig.opensearchConfig.masterNodeInstanceType,
+                            multiAzWithStandbyEnabled: ragConfig.opensearchConfig.multiAzWithStandby,
+                        },
+                        accessPolicies: [
+                            new PolicyStatement({
+                                actions: ['es:*'],
+                                resources: ['*'],
+                                effect: Effect.ALLOW,
+                                principals: [new AnyPrincipal()],
+                            }),
+                        ],
+                        removalPolicy: RemovalPolicy.DESTROY,
+                        securityGroups: [securityGroups.opensearch],
+                    });
+                }
+
+                // Rag API task execution role will read and write
+                openSearchDomain.grantIndexReadWrite('*', lambdaRole);
+                openSearchDomain.grantPathReadWrite('*', lambdaRole);
+                openSearchDomain.grantReadWrite(lambdaRole);
+
+                new CfnOutput(this, createCdkId(['opensearchRagRepositoryEndpoint', ragConfig.repositoryId]), {
+                    value: openSearchDomain.domainEndpoint,
+                });
+
+                const configParam = {type: RagRepositoryType.OPENSEARCH, endpoint: openSearchDomain.domainEndpoint };
+                const openSearchEndpointPs = new StringParameter(
+                    this,
+                    createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']),
+                    {
+                        parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
+                        stringValue: JSON.stringify(configParam),
+                        description: 'Endpoint for LISA Serve OpenSearch Rag Repository',
+                    },
+                );
+
+                // Add explicit dependency on OpenSearch Domain being created
+                openSearchEndpointPs.node.addDependency(openSearchDomain);
+                openSearchEndpointPs.grantRead(lambdaRole);
+            } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
+                let rdsPasswordSecret: ISecret;
+                let rdsConnectionInfoPs: StringParameter;
+                // if dbHost and passwordSecretId are defined, then connect to DB with existing params
+                if (!!ragConfig.rdsConfig.dbHost && !!ragConfig.rdsConfig.passwordSecretId) {
+                    rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
+                        parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
+                        stringValue: JSON.stringify({
+                            ...ragConfig.rdsConfig,
+                            type: RagRepositoryType.PGVECTOR
+                        }),
+                        description: 'Connection info for LISA Serve PGVector database',
+                    });
+                    rdsPasswordSecret = Secret.fromSecretNameV2(
+                        this,
+                        createCdkId([config.deploymentName, ragConfig.repositoryId, 'RagRDSPwdSecret']),
+                        ragConfig.rdsConfig.passwordSecretId,
+                    );
+                } else {
+                    const username = ragConfig.rdsConfig.username;
+                    const dbCreds = Credentials.fromGeneratedSecret(username);
+                    const pgvector_db = new DatabaseInstance(this, createCdkId([ragConfig.repositoryId, 'PGVectorDB']), {
+                        engine: DatabaseInstanceEngine.POSTGRES,
+                        vpc: vpc.vpc,
+                        subnetGroup: vpc.subnetGroup,
+                        credentials: dbCreds,
+                        securityGroups: [securityGroups.pgvector],
+                        removalPolicy: RemovalPolicy.DESTROY,
+                    });
+                    rdsPasswordSecret = pgvector_db.secret!;
+                    rdsConnectionInfoPs = new StringParameter(this, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
+                        parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
+                        stringValue: JSON.stringify({
+                            username: username,
+                            passwordSecretId: rdsPasswordSecret.secretName,
+                            dbHost: pgvector_db.dbInstanceEndpointAddress,
+                            dbName: ragConfig.rdsConfig.dbName,
+                            dbPort: ragConfig.rdsConfig.dbPort,
+                            type: RagRepositoryType.PGVECTOR
+                        }),
+                        description: 'Connection info for LISA Serve PGVector database',
+                    });
+                }
+                rdsPasswordSecret.grantRead(lambdaRole);
+                rdsConnectionInfoPs.grantRead(lambdaRole);
+            } else {
+                const error = `[ERROR] Invalid RAG configuratio for ${ragConfig.repositoryId}`;
+                console.error(error);
+                throw error;
+            }
+
+            const createOrUpdateParameters = {
+                TableName: ragRepositoryConfigTable.tableName,
+                Item: this.toDynamoDBItem({
+                    repositoryId: ragConfig.repositoryId, // Partition key value
+                    status: 'CREATE_COMPLETE',
+                    config: ragConfig,
+                    editable: false
+                }),
+            };
+
+            // ensure the entry gets updated in the database
+            new customResources.AwsCustomResource(this, createCdkId(['InsertRAGConfig', ragConfig.repositoryId]), {
+                onCreate: {
+                    service: 'DynamoDB',
+                    action: 'putItem',
+                    parameters: createOrUpdateParameters,
+                    physicalResourceId: customResources.PhysicalResourceId.of(`RAGConfigEntry-${ragConfig.repositoryId}`),
+                },
+                onUpdate: {
+                    service: 'DynamoDB',
+                    action: 'putItem',
+                    parameters: createOrUpdateParameters,
+                },
+                onDelete: {
+                    service: 'DynamoDB',
+                    action: 'putItem',
+                    parameters: {
+                        TableName: ragRepositoryConfigTable.tableName,
+                        Key: { id: { S: ragConfig.repositoryId } },
+                    },
+                },
+                policy: customResources.AwsCustomResourcePolicy.fromSdkCalls({
+                    resources: [ragRepositoryConfigTable.tableArn],
+                }),
+            });
+
+            // Create ingest pipeline state machines for each pipeline config
+            console.log('[DEBUG] Checking pipelines configuration:', {
+                hasPipelines: !!ragConfig.pipelines,
+                pipelinesLength: ragConfig.pipelines?.length || 0
+            });
+
+            if (ragConfig.pipelines) {
+                ragConfig.pipelines.forEach((pipelineConfig, index) => {
+                    console.log(`[DEBUG] Creating pipeline ${index}:`, {
+                        pipelineConfig: JSON.stringify(pipelineConfig, null, 2)
+                    });
+
+                    try {
+                        // Create a unique ID for each pipeline using repository ID and index
+                        const pipelineId = `IngestPipeline-${ragConfig.repositoryId}-${index}`;
+                        new LegacyIngestPipelineStateMachine(this, pipelineId, {
+                            config,
+                            vpc,
+                            pipelineConfig,
+                            rdsConfig: ragConfig.rdsConfig,
+                            repositoryId: ragConfig.repositoryId,
+                            type: ragConfig.type,
+                            layers: [layers.common, layers.rag, layers.sdk],
+                            registeredRepositoriesParamName,
+                            ragDocumentTable: docMetaTable,
+                            ragSubDocumentTable: subDocTable,
+                        });
+                        console.log(`[DEBUG] Successfully created pipeline ${index}`);
+                    } catch (error) {
+                        console.error(`[ERROR] Failed to create pipeline ${index}:`, error);
+                        throw error; // Re-throw to ensure CDK deployment fails
+                    }
+                });
+            }
+        }
+
+        if (registeredRepositories.length) {
+            // Create Parameter Store entry with RAG repositories
+            new StringParameter(this, createCdkId([config.deploymentName, 'RagReposSP']), {
+                parameterName: registeredRepositoriesParamName,
+                stringValue: JSON.stringify(registeredRepositories),
+                description: 'Serialized JSON of registered RAG repositories',
+            });
+        }
+    }
+
+    toDynamoDBItem (obj: Record<string, any>): DynamoDB.PutItemInputAttributeMap {
+        const dynamoItem: DynamoDB.PutItemInputAttributeMap = {};
+
+        for (const [key, value] of Object.entries(obj)) {
+            if (typeof value === 'string') {
+                dynamoItem[key] = { S: value };
+            } else if (typeof value === 'number') {
+                dynamoItem[key] = { N: value.toString() };
+            } else if (typeof value === 'boolean') {
+                dynamoItem[key] = { BOOL: value };
+            } else if (Array.isArray(value)) {
+                dynamoItem[key] = { L: value.map((item) => this.toDynamoDBItem({ item })['item']) };
+            } else if (typeof value === 'object' && value !== null) {
+                dynamoItem[key] = { M: this.toDynamoDBItem(value) };
+            } else if (value === null) {
+                dynamoItem[key] = { NULL: true };
+            }
+        }
+
+        return dynamoItem;
+    }
+
+    /**
+     * This method links the OpenSearch Service role to the service-linked role if it exists.
+     * If the role doesn't exist, it will be created.
+     */
+    async linkServiceRole () {
+        // Only link open search role if being used
+        if (!this.openSearchRegion) {
+            return;
+        }
+
+        const iam = new IAMClient({
+            region: this.openSearchRegion
+        });
+        const response = await iam.send(
+            new ListRolesCommand({
+                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
+            }),
+        );
+
+        // Only if the role for OpenSearch Service doesn't exist, it will be created.
+        if (response.Roles && response.Roles?.length === 0) {
+            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
+                awsServiceName: 'opensearchservice.amazonaws.com',
+            });
+        }
     }
 }

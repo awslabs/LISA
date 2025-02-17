@@ -28,7 +28,7 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
-    ragVectorStoreTable: CfnOutput,
+    ragVectorStoreTable: CfnOutput;
     vpc: Vpc;
     baseEnvironment: Record<string, string>
     layers: ILayerVersion[],
@@ -42,7 +42,7 @@ export class VectorStoreCreatorStack extends Construct {
     constructor (scope: Construct, id: string, props: VectorStoreCreatorStackProps) {
         super(scope, id);
 
-        const { baseEnvironment, config, ragVectorStoreTable, vpc, layers } = props;
+        const { baseEnvironment, config, layers, ragVectorStoreTable, vpc } = props;
 
         const vectorStoreTable = dynamodb.Table.fromTableArn(this, createCdkId([config.deploymentPrefix, 'RagVectorStoreTable']), ragVectorStoreTable.value);
 

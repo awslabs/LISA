@@ -510,7 +510,7 @@ export const OpenSearchNewClusterConfig = z.object({
     multiAzWithStandby: z.boolean().default(false),
 });
 
-const OpenSearchExistingClusterConfig = z.object({
+export const OpenSearchExistingClusterConfig = z.object({
     endpoint: z.string(),
 });
 
@@ -529,29 +529,11 @@ export type OpenSearchConfig =
     z.infer<typeof OpenSearchNewClusterConfig>
     | z.infer<typeof OpenSearchExistingClusterConfig>;
 
-export const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string().nonempty().describe('Unique identifier for repository. Used in API calls and UI. Must be unique across all repositories.'),
-        repositoryName: z.string().optional().describe('Name to display in the UI'),
-        type: z.nativeEnum(RagRepositoryType),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string().nonempty()).optional().default([]),
-    })
-    .refine((input) => {
-        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
-    })
-    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
-
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
     chunkOverlap: z.number().min(0),
 })
     .describe('Configuration schema for RAG file processing. Determines the chunk size and chunk overlap when processing documents.');
-
-export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
 
 const PypiConfigSchema = z.object({
     indexUrl: z.string().default('').describe('URL for the pypi index.'),
@@ -611,6 +593,26 @@ const RoleConfig = z.object({
 })
     .describe('Role overrides used across stacks.');
 
+
+export const RagRepositoryConfigSchema = z
+    .object({
+        repositoryId: z.string().nonempty().describe('Unique identifier for repository. Used in API calls and UI. Must be unique across all repositories.'),
+        repositoryName: z.string().optional().describe('Name to display in the UI'),
+        type: z.nativeEnum(RagRepositoryType),
+        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
+        rdsConfig: RdsInstanceConfig.optional(),
+        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
+        allowedGroups: z.array(z.string().nonempty()).optional().default([]),
+    })
+    .refine((input) => {
+        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+    })
+    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
+
+export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
+
+
 export const RawConfigObject = z.object({
     appName: z.string().default('lisa').describe('Name of the application.'),
     profile: z
@@ -668,7 +670,7 @@ export const RawConfigObject = z.object({
     }).describe('Pypi configuration.'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
-    ragRepositories: z.array(RagRepositoryConfigSchema).default([]).describe('Rag Repository configuration.'),
+    ragRepositories: z.array(RagRepositoryConfigSchema).optional().default([]).describe('Rag Repository configuration.'),
     ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
     ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
     apiGatewayConfig: ApiGatewayConfigSchema,

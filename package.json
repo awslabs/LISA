@@ -44,7 +44,7 @@
     "cdk": "cdk",
     "prepare": "husky install",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
-    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts"
+    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",

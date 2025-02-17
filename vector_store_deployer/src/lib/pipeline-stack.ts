@@ -14,10 +14,9 @@
   limitations under the License.
 */
 import { Stack } from 'aws-cdk-lib';
-import * as z from 'zod';
 import { Construct } from 'constructs';
-import { PartialConfigSchema } from '../../../lib/schema';
-import { RagRepositoryConfigSchema, RagRepositoryPipeline } from '../../../lib/configSchema';
+import { PipelineConfig, RagRepositoryConfig } from '../../../lib/configSchema';
+import { PartialConfig } from '../../../lib/schema';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { IStateMachine, StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
@@ -33,7 +32,7 @@ export abstract class PipelineStack extends Stack {
     }
 
     // Method to create EventBridge rules for triggering state machine executions based on configuration
-    createPipelineRules (config: z.infer<typeof PartialConfigSchema>, ragConfig: z.infer<typeof RagRepositoryConfigSchema>) {
+    createPipelineRules (config: PartialConfig, ragConfig: RagRepositoryConfig) {
 
         // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
         const { stateMachine, stateMachineRole } = this.getStateMachine(config, 'Ingest');
@@ -97,7 +96,7 @@ export abstract class PipelineStack extends Stack {
     }
 
     // Method to create an EventBridge rule triggered by S3 events
-    private createEventRule (repositoryId:string, stateMachine: IStateMachine, pipelineConfig: z.infer<typeof RagRepositoryPipeline>, eventTypes: string[], eventName: string): Rule {
+    private createEventRule (repositoryId:string, stateMachine: IStateMachine, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string): Rule {
         const detail: any = {
             bucket: {
                 name: [pipelineConfig.s3Bucket]
@@ -148,7 +147,7 @@ export abstract class PipelineStack extends Stack {
     }
 
     // Method to create a daily scheduled EventBridge rule
-    private createDailyRule (ragConfig: z.infer<typeof RagRepositoryConfigSchema>, stateMachine: IStateMachine, pipelineConfig: z.infer<typeof RagRepositoryPipeline>): Rule {
+    private createDailyRule (ragConfig: RagRepositoryConfig, stateMachine: IStateMachine, pipelineConfig: PipelineConfig): Rule {
         return new Rule(this, 'DailyIngestRule', {
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({
@@ -176,7 +175,7 @@ export abstract class PipelineStack extends Stack {
         });
     }
 
-    private getStateMachine (config: z.infer<typeof PartialConfigSchema>, resource: string){
+    private getStateMachine (config: PartialConfig, resource: string){
         // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
         console.log(`looking for ${config.deploymentPrefix}/${resource}PipelineStateMachineArn`);
         const stateMachine = StateMachine.fromStateMachineArn(this, `${resource}PipelineStateMachine`, StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${resource}PipelineStateMachineArn`));

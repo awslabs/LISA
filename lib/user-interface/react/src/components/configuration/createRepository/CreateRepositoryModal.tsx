@@ -22,13 +22,13 @@ import { useNotificationService } from '../../../shared/util/hooks';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { useCreateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
 import { getDefaults } from '../../../shared/util/zodUtil';
-import { RagRepositoryConfig, RagRepositoryConfigSchema } from '../../../../../../configSchema';
 import { RepositoryConfigForm } from './RepositoryConfigForm';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
+import { RagRepositoryConfig, RagRepositoryConfigSchema } from '../../../../../../configSchema';
 
 export type CreateRepositoryModalProps = {
     visible: boolean;

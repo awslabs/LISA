@@ -247,9 +247,7 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     registered_repositories = vs_repo.get_registered_repositories()
     admin_override = is_admin(event)
     return [
-        repo
-        for repo in registered_repositories
-        if admin_override or user_has_group(user_groups, repo["allowedGroups"])
+        repo for repo in registered_repositories if admin_override or user_has_group(user_groups, repo["allowedGroups"])
     ]
 
 

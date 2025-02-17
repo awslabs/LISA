@@ -184,7 +184,7 @@ export class LisaRagStack extends Stack {
         const sdkLayer = LayerVersion.fromLayerVersionArn(
             this,
             'rag-sdk-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/sdk`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/sdk-2`),
         );
         // Build RAG Lambda layer
         const ragLambdaLayer = new Layer(this, 'RagLayer', {

@@ -545,6 +545,8 @@ export const RagRepositoryConfigSchema = z
     })
     .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
+export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
+
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
     chunkOverlap: z.number().min(0),
@@ -608,25 +610,6 @@ const RoleConfig = z.object({
     VectorStoreCreatorRole: z.string().max(64).optional(),
 })
     .describe('Role overrides used across stacks.');
-
-
-export const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string().nonempty().describe('Unique identifier for repository. Used in API calls and UI. Must be unique across all repositories.'),
-        repositoryName: z.string().optional().describe('Name to display in the UI'),
-        type: z.nativeEnum(RagRepositoryType),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string().nonempty()).optional().default([]),
-    })
-    .refine((input) => {
-        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
-    })
-    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
-
-export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
 
 
 export const RawConfigObject = z.object({

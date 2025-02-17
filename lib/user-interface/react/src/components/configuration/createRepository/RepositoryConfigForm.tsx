@@ -39,21 +39,27 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
     const { item, touchFields, setFields, formErrors, isEdit } = props;
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Repository ID' errorText={formErrors?.repositoryId}>
+            <FormField label='Repository ID'
+                errorText={formErrors?.repositoryId}
+                description={'A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'}>
                 <Input value={item.repositoryId} inputMode='text'
                     onBlur={() => touchFields(['repositoryId'])}
                     onChange={({ detail }) => {
                         setFields({ 'repositoryId': detail.value });
                     }} disabled={isEdit} placeholder='postgres-rag' />
             </FormField>
-            <FormField label='Repository Name (optional)' errorText={formErrors?.repositoryName}>
+            <FormField label='Repository Name - optional'
+                errorText={formErrors?.repositoryName}
+                description={'The user-friendly name displayed in the UI.'}>
                 <Input value={item.repositoryName} inputMode='text'
                     onBlur={() => touchFields(['repositoryName'])}
                     onChange={({ detail }) => {
                         setFields({ 'repositoryName': detail.value });
                     }} placeholder='Postgres RAG' />
             </FormField>
-            <FormField label='Repository Type' errorText={formErrors?.type}>
+            <FormField label='Repository Type'
+                errorText={formErrors?.type}
+                description={'The vector store designated for this repository.'}>
                 <Select
                     selectedOption={{ label: item.type, value: item.type }}
                     onChange={({ detail }) => {
@@ -95,6 +101,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 errorText={formErrors?.allowedGroups}
                 values={item.allowedGroups ?? []}
                 onChange={(detail) => setFields({ 'allowedGroups': detail })}
+                description={'The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'}
             ></ArrayInputField>
 
         </SpaceBetween>

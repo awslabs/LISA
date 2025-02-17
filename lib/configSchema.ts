@@ -460,11 +460,11 @@ const AuthConfigSchema = z.object({
 }).describe('Configuration schema for authorization.');
 
 export const RdsInstanceConfig = z.object({
-    username: z.string().default('postgres').describe('Database username.'),
-    passwordSecretId: z.string().optional().describe('SecretsManager Secret ID that stores an existing database password.'),
-    dbHost: z.string().optional().describe('Database hostname for existing database instance.'),
-    dbName: z.string().default('postgres').describe('Database name for existing database instance.'),
-    dbPort: z.number().default(5432).describe('Port to open on the database instance.'),
+    username: z.string().default('postgres').describe('The username used for database connection.'),
+    passwordSecretId: z.string().optional().describe('The SecretsManager Secret ID that stores the existing database password.'),
+    dbHost: z.string().optional().describe('The database hostname for the existing database instance.'),
+    dbName: z.string().default('postgres').describe('The name of the database for the database instance.'),
+    dbPort: z.number().default(5432).describe('The port of the existing database instance or the port to be opened on the database instance.'),
 }).describe('Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.\n \n ' +
     'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
 
@@ -529,6 +529,24 @@ export type OpenSearchConfig =
     z.infer<typeof OpenSearchNewClusterConfig>
     | z.infer<typeof OpenSearchExistingClusterConfig>;
 
+export const RagRepositoryConfigSchema = z
+    .object({
+        repositoryId: z.string().nonempty().describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
+        repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
+        type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
+        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
+        rdsConfig: RdsInstanceConfig.optional(),
+        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
+        allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+    })
+    .refine((input) => {
+        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+    })
+    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
+
+export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
+
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
     chunkOverlap: z.number().min(0),
@@ -592,25 +610,6 @@ const RoleConfig = z.object({
     VectorStoreCreatorRole: z.string().max(64).optional(),
 })
     .describe('Role overrides used across stacks.');
-
-
-export const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string().nonempty().describe('Unique identifier for repository. Used in API calls and UI. Must be unique across all repositories.'),
-        repositoryName: z.string().optional().describe('Name to display in the UI'),
-        type: z.nativeEnum(RagRepositoryType),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string().nonempty()).optional().default([]),
-    })
-    .refine((input) => {
-        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
-    })
-    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
-
-export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
 
 
 export const RawConfigObject = z.object({

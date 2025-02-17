@@ -38,7 +38,14 @@ class VectorStoreRepository:
             items.extend(response["Items"])
         # Convert all ddb Numbers to floats to correctly serialize to json
         items = convert_decimal(items)
-        return [item["config"] for item in items if "config" in item]
+
+        registered_repositories = []
+        for item in items:
+            if item.get("legacy", False):
+                item["config"]["legacy"] = True
+            registered_repositories.append(item["config"])
+
+        return registered_repositories
 
     def get_repository_status(self) -> dict[str, str]:
         """Get a list the status of all repositories"""
@@ -84,3 +91,22 @@ class VectorStoreRepository:
 
         repository: dict[str, Any] = convert_decimal(response.get("Item"))
         return repository if raw_config else cast(dict[str, Any], repository.get("config", {}))
+
+    def delete(self, repository_id: str) -> bool:
+        """
+        Delete a repository by its ID.
+
+        Args:
+            repository_id: The ID of the repository to delete.
+
+        Returns:
+            True if deletion was successful.
+
+        Raises:
+            ValueError: If the deletion fails.
+        """
+        try:
+            self.table.delete_item(Key={"repositoryId": repository_id})
+            return True
+        except Exception as e:
+            raise ValueError(f"Failed to delete repository: {repository_id}", e)

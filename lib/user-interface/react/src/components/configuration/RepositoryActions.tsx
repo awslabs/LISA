@@ -62,7 +62,7 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
 }
 
 type RagRepository = RagRepositoryConfig & {
-    editable?: boolean
+    legacy?: boolean
 };
 
 function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps): ReactElement {
@@ -113,7 +113,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
                 description: (
                     <SpaceBetween direction='vertical' size='s'>
                         <p key={'message'}>This will delete the following repository: {selectedRepo.repositoryId}.</p>
-                        {selectedRepo.editable === false &&
+                        {selectedRepo?.legacy &&
                             <Alert key={'alert'} type='warning'>
                                 <Checkbox
                                     checked={disabledModal}
@@ -126,7 +126,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
                         }
                     </SpaceBetween>
                 ),
-                disabled: selectedRepo.editable === false && !disabledModal
+                disabled: selectedRepo?.legacy && !disabledModal
             }));
         }
     }, [showModal, selectedRepo, disabledModal, deleteMutation, dispatch]);
@@ -135,8 +135,8 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
         {
             id: 'edit',
             text: 'Edit',
-            disabled: selectedItems.length !== 1 || !selectedRepo?.editable,
-            disabledReason: selectedItems.length !== 1 ? '' : !selectedRepo?.editable ? 'Legacy repositories created through YAML cannot be edited.' : undefined
+            disabled: selectedItems.length !== 1 || selectedRepo?.legacy,
+            disabledReason: selectedItems.length !== 1 ? '' : selectedRepo?.legacy ? 'Legacy repositories created through YAML cannot be edited.' : undefined
         },
         {
             id: 'rm',

@@ -485,7 +485,7 @@ export class LisaRagStack extends Stack {
                     repositoryId: ragConfig.repositoryId, // Partition key value
                     status: 'CREATE_COMPLETE',
                     config: ragConfig,
-                    editable: false
+                    legacy: true
                 }),
             };
 

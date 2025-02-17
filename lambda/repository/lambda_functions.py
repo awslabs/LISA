@@ -245,10 +245,11 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     """
     user_groups = get_groups(event)
     registered_repositories = vs_repo.get_registered_repositories()
+    admin_override = is_admin(event)
     return [
         repo
         for repo in registered_repositories
-        if is_admin(event) or user_has_group(user_groups, repo["allowedGroups"])
+        if admin_override or user_has_group(user_groups, repo["allowedGroups"])
     ]
 
 
@@ -687,7 +688,7 @@ def delete(event: dict, context: dict) -> Any:
         raise ValidationError("repositoryId is required")
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
-    if repository.get("editable", False) is False:
+    if repository.get("legacy", False) is True:
         _remove_legacy(repository_id)
         vs_repo.delete(repository_id=repository_id)
         return {"status": "success", "executionArn": "legacy"}

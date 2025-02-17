@@ -13,11 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import * as fs from 'fs';
-import * as path from 'path';
 
 import { z } from 'zod';
 import { RawConfigObject, RawConfigSchema } from './configSchema';
+import path from 'path';
+import fs from 'fs';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
@@ -54,6 +54,22 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
     return rawConfig;
 });
 
+/**
+ * Application configuration type.
+ */
+export type Config = z.infer<typeof ConfigSchema>;
+
+/**
+ * Basic properties required for a stack definition in CDK.
+ *
+ * @property {Config} config - .describe('The application configuration.')
+ */
+export type BaseProps = {
+    config: Config;
+};
+
+export type ConfigFile = Record<string, any>;
+
 export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfig) => {
     let deploymentPrefix = rawConfig.deploymentPrefix;
 
@@ -79,18 +95,4 @@ export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfi
     return rawConfig;
 });
 
-/**
- * Application configuration type.
- */
-export type Config = z.infer<typeof ConfigSchema>;
-
-/**
- * Basic properties required for a stack definition in CDK.
- *
- * @property {Config} config - .describe('The application configuration.')
- */
-export type BaseProps = {
-    config: Config;
-};
-
-export type ConfigFile = Record<string, any>;
+export type PartialConfig = z.infer<typeof PartialConfigSchema>;

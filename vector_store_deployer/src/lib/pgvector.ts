@@ -15,10 +15,9 @@
 */
 import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { PartialConfigSchema } from '../../../lib/schema';
-import { RagRepositoryConfigSchema, RagRepositoryType } from '../../../lib/configSchema';
+import { RagRepositoryConfig, RagRepositoryType } from '../../../lib/configSchema';
+import { PartialConfig } from '../../../lib/schema';
 import { createCdkId } from '../../../lib/core/utils';
-import { z } from 'zod';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -31,8 +30,8 @@ import { SecurityGroupEnum } from '../../../lib/core/iam/SecurityGroups';
 
 // Type definition for PGVectorStoreStack properties
 type PGVectorStoreStackProps = StackProps & {
-    config: z.infer<typeof PartialConfigSchema>,
-    ragConfig: z.infer<typeof RagRepositoryConfigSchema>,
+    config: PartialConfig,
+    ragConfig: RagRepositoryConfig,
 };
 
 // PGVectorStoreStack class, extending PipelineStack

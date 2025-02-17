@@ -64,7 +64,6 @@ const navLinks = [
     text: 'User Guide',
     items: [
       { text: 'LISA Chat UI', link: '/user/chat' },
-      { text: 'RAG', link: '/user/rag' },
       { text: 'Document Library Management', link: '/user/document-library' },
       { text: 'Context Windows', link: '/user/context-windows' },
       { text: 'Model KWARGS', link: '/user/model-kwargs' },

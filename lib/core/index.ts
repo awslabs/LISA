@@ -120,7 +120,7 @@ export class CoreStack extends cdk.Stack {
         });
 
         new StringParameter(this, createCdkId([config.deploymentName, config.deploymentStage, 'SdkLayer']), {
-            parameterName: `${config.deploymentPrefix}/layerVersion/sdk`,
+            parameterName: `${config.deploymentPrefix}/layerVersion/lisa-sdk`,
             stringValue: sdkLambdaLayer.layerVersionArn,
             description: 'Layer Version ARN for LISA SDK Layer',
         });

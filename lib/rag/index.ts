@@ -184,7 +184,7 @@ export class LisaRagStack extends Stack {
         const sdkLayer = LayerVersion.fromLayerVersionArn(
             this,
             'rag-sdk-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/sdk`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/lisa-sdk`),
         );
         // Build RAG Lambda layer
         const ragLambdaLayer = new Layer(this, 'RagLayer', {
@@ -504,7 +504,7 @@ export class LisaRagStack extends Stack {
                 },
                 onDelete: {
                     service: 'DynamoDB',
-                    action: 'putItem',
+                    action: 'deleteItem',
                     parameters: {
                         TableName: ragRepositoryConfigTable.tableName,
                         Key: this.toDynamoDBItem({ repositoryId: ragConfig.repositoryId }),

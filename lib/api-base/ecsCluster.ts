@@ -38,7 +38,11 @@ import {
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import {
+    ApplicationLoadBalancer,
+    BaseApplicationListenerProps,
+    SslPolicy,
+} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -289,6 +293,7 @@ export class ECSCluster extends Construct {
             certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
                 ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
                 : undefined,
+            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.RECOMMENDED_TLS : SslPolicy.RECOMMENDED,
         };
 
         const listener = loadBalancer.addListener(

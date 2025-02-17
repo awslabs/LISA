@@ -229,6 +229,7 @@ export class LisaServeApplicationStage extends Stage {
                 securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                 vpc: networkingStack.vpc,
             });
+            ragStack.linkServiceRole(); // Ignore async response
             ragStack.addDependency(coreStack);
             ragStack.addDependency(iamStack);
             ragStack.addDependency(apiBaseStack);

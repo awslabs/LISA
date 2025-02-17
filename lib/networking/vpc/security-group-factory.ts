@@ -18,6 +18,8 @@ import { ISecurityGroup, ISubnet, IVpc, Peer, Port, SecurityGroup } from 'aws-cd
 import { createCdkId } from '../../core/utils';
 import { SecurityGroupNames } from '../../core/iam/SecurityGroups';
 import { IConstruct } from 'constructs';
+import { Config } from '../../schema';
+import { Vpc } from '.';
 
 /**
  * Security Group Factory to create consistent security groups
@@ -98,6 +100,31 @@ export class SecurityGroupFactory {
             securityGroup.connections.allowFrom(
                 Peer.ipv4(subnets ? subNets.filter((filteredSubnet: { subnetId: string; }) =>
                     filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock : subnet.ipv4CidrBlock),
+                Port.tcp(port),
+                `Allow REST API private subnets to communicate with ${securityGroupName}`,
+            );
+        });
+    }
+
+    /**
+     * Creates a security group for the VPC.
+     *
+     * @param {ISecurityGroup} securityGroup - The security Group.
+     * @param {string} securityGroupName - The security Group name.
+     * @param {Vpc} vpc - The virtual private cloud.
+     * @param {Config} config - LISA config.
+     */
+    static legacyAddIngress (
+        securityGroup: ISecurityGroup,
+        securityGroupName: string,
+        vpc: Vpc,
+        config: Config,
+        port: number): void {
+        const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
+        subNets?.forEach((subnet) => {
+            securityGroup.connections.allowFrom(
+                Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet: { subnetId: string; }) =>
+                    filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
                 Port.tcp(port),
                 `Allow REST API private subnets to communicate with ${securityGroupName}`,
             );

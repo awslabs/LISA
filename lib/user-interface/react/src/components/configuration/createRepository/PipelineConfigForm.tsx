@@ -85,6 +85,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Chunk Size'
                             errorText={formErrors.pipelines?.[index]?.chunkSize}
+                            description={'The size of the chunks used for document segmentation.'}
                         >
                             <Input
                                 type='number' inputMode='numeric'
@@ -99,6 +100,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Chunk Overlap'
                             errorText={formErrors.pipelines?.[index]?.chunkOverlap}
+                            description={'The size of the overlap between chunks.'}
                         >
                             <Input
                                 type='number' inputMode='numeric'
@@ -113,6 +115,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='Embedding Model'
                             errorText={formErrors.pipelines?.[index]?.embeddingModel}
+                            description={'The embedding model used for document ingestion in this pipeline.'}
                         >
                             <Select
                                 options={embeddingOptions}
@@ -130,6 +133,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <FormField
                             label='S3 Bucket'
                             errorText={formErrors.pipelines?.[index]?.s3Bucket}
+                            description={'The S3 bucket monitored by this pipeline for document processing.'}
                         >
                             <Input
                                 value={pipeline.s3Bucket}
@@ -142,7 +146,8 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
 
                         <FormField
                             label='S3 Prefix'
-                            errorText={formErrors.pipelines?.[index]?.s3Prefix}>
+                            errorText={formErrors.pipelines?.[index]?.s3Prefix}
+                            description={'The prefix within the S3 bucket monitored for document processing.'}>
                             <Input
                                 value={pipeline.s3Prefix}
                                 onChange={({ detail }) =>
@@ -154,15 +159,16 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
 
                         <FormField
                             label='Trigger'
-                            errorText={formErrors.pipelines?.[index]?.trigger}>
+                            errorText={formErrors.pipelines?.[index]?.trigger}
+                            description={'The event type that triggers document ingestion.'}>
                             <Select
                                 selectedOption={{ label: pipeline.trigger, value: pipeline.trigger }}
                                 onChange={({ detail }) =>
                                     onChange(index, 'trigger', detail.selectedOption.value as 'daily' | 'event')
                                 }
                                 options={[
-                                    { label: 'Daily', value: 'daily' },
-                                    { label: 'Event', value: 'event' },
+                                    { label: 'Daily', value: 'daily', description: 'This ingestion pipeline is scheduled to run once per day.' },
+                                    { label: 'Event', value: 'event', description: 'This ingestion pipeline runs whenever changes are detected.' },
                                 ]}
                                 onBlur={() => touchFields([`pipelines[${index}].trigger`])}
                             />

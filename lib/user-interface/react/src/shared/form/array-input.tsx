@@ -15,18 +15,19 @@
 */
 
 import React, { ReactElement } from 'react';
-import FormField from '@cloudscape-design/components/form-field';
+import FormField, { FormFieldProps } from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import { Button, SpaceBetween } from '@cloudscape-design/components';
 
-type ArrayInputProps = {
-    label: string;
+type ArrayInputProps = FormFieldProps & {
+    // label: string;
     values: string[];
     onChange: (newValues: string[]) => void;
-    errorText?: string;
 };
 
-export function ArrayInputField ({ label, values, onChange, errorText }: ArrayInputProps): ReactElement {
+export function ArrayInputField (props: ArrayInputProps): ReactElement {
+    const { onChange, values } = props;
+
     const handleInputChange = (index: number, value: string) => {
         const newValues = [...values];
         newValues[index] = value;
@@ -44,8 +45,7 @@ export function ArrayInputField ({ label, values, onChange, errorText }: ArrayIn
 
     return (
         <FormField
-            label={label}
-            errorText={errorText}
+            {...props}
         >
             <SpaceBetween size='xs'>
                 {values.map((value, index) => (

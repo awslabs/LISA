@@ -181,7 +181,7 @@ export function ConfigurationComponent (): ReactElement {
                 variant='h1'
                 description={'The current configuration of LISA repositories'}
             >
-                Vector Store Repository Configuration
+                RAG Repository Configuration
             </Header>
             <RepositoryTable></RepositoryTable>
         </SpaceBetween>

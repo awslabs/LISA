@@ -76,7 +76,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig }: RagC
                             repositoryType: detail.value,
                         }));
                     }}
-                    options={repositories?.map((repository) => ({value: repository.repositoryId})) || []}
+                    options={repositories?.map((repository) => ({value: repository.repositoryId, label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId})) || []}
                 />
                 <Autosuggest
                     disabled={!selectedRepositoryOption || isRunning}

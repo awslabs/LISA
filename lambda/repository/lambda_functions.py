@@ -336,7 +336,7 @@ def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]
     username = get_username(event)
     if is_admin(event) is False:
         for doc in docs:
-            if not (admin or doc.get("username") == username):
+            if not (doc.get("username") == username):
                 raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
 
 

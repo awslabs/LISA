@@ -25,17 +25,6 @@
         {
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:${AWS::Partition}:s3:::${S3Bucket}",
-                "arn:${AWS::Partition}:s3:::${S3Bucket}/*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
                 "secretsmanager:GetSecretValue"
             ],
             "Resource": "*"
@@ -55,9 +44,7 @@
                 "ssm:GetParameter"
             ],
             "Resource": [
-                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/lisaServeRestApiUri",
-                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/LisaServeRagPGVectorConnectionInfo",
-                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dev/dev/lisa/opensearchEndpoint"
+                "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*"
             ]
         },
         {

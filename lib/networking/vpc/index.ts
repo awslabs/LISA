@@ -19,6 +19,7 @@ import { CfnOutput } from 'aws-cdk-lib';
 import {
     GatewayVpcEndpointAwsService,
     IpAddresses,
+    ISecurityGroup,
     IVpc,
     NatProvider,
     Subnet,
@@ -29,7 +30,8 @@ import {
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
-import { BaseProps, SecurityGroups } from '../../schema';
+import { BaseProps } from '../../schema';
+import { SecurityGroups } from '../../configSchema';
 import { SecurityGroupEnum } from '../../core/iam/SecurityGroups';
 import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 import { SecurityGroupFactory } from './security-group-factory';
@@ -44,7 +46,7 @@ export class Vpc extends Construct {
     public readonly vpc: IVpc;
 
     /** Security groups for application. */
-    public readonly securityGroups: SecurityGroups;
+    public readonly securityGroups: SecurityGroups<ISecurityGroup>;
 
     /** Created from deployment configured Subnets for application. */
     public readonly subnetGroup?: SubnetGroup;

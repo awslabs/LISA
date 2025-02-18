@@ -76,8 +76,18 @@ export class RepositoryApi extends Construct {
             {
                 name: 'list_all',
                 resource: 'repository',
-                description: 'List all registered repositories',
+                description: 'List all repositories',
                 path: 'repository',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_status',
+                resource: 'repository',
+                description: 'List status for all repositories',
+                path: 'repository/status',
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,
@@ -89,6 +99,26 @@ export class RepositoryApi extends Construct {
                 description: 'Generates a presigned url for uploading files to RAG',
                 path: 'repository/presigned-url',
                 method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'create',
+                resource: 'repository',
+                description: 'Create a new repository',
+                path: 'repository',
+                method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'delete',
+                resource: 'repository',
+                description: 'Delete a repository',
+                path: 'repository/{repositoryId}',
+                method: 'DELETE',
                 environment: {
                     ...baseEnvironment,
                 },
@@ -115,16 +145,6 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'delete_document',
-                resource: 'repository',
-                description: 'Deletes all records associated with a document from the repository',
-                path: 'repository/{repositoryId}/document',
-                method: 'DELETE',
-                environment: {
-                    ...baseEnvironment,
-                },
-            },
-            {
                 name: 'list_docs',
                 resource: 'repository',
                 description: 'List all docs for a repository',
@@ -134,6 +154,26 @@ export class RepositoryApi extends Construct {
                     ...baseEnvironment,
                 },
             },
+            {
+                name: 'download_document',
+                resource: 'repository',
+                description: 'Creates presigned url to download document within repository',
+                path: 'repository/{repositoryId}/{documentId}/download',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'delete_documents',
+                resource: 'repository',
+                description: 'Deletes all records associated with documents from the repository',
+                path: 'repository/{repositoryId}/document',
+                method: 'DELETE',
+                environment: {
+                    ...baseEnvironment,
+                },
+            }
         ];
         apis.forEach((f) => {
             registerAPIEndpoint(

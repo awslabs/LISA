@@ -1,5 +1,13 @@
 # Breaking Changes
 
+## v4.0.0
+
+With the release of LISA v4.0, we introduced a significant update to the configuration and functionality of RAG
+repositories, enabling dynamic configuration of vector stores and ingestion pipelines. New vector stores and
+ingestion pipelines can now only be created using this dynamic system. Existing RAG configurations defined in YAML
+will continue to function and can be updated; however, once removed, they cannot be recreated using the YAML-based
+configuration.
+
 ## Migrating to v3.2.0
 
 With the release of LISA v3.2.0, we have implemented a significant update to the configuration file schema to streamline

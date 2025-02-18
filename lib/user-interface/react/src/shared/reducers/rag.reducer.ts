@@ -16,8 +16,10 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { Model, Repository } from '../../components/types';
+import { Model, RagDocument } from '../../components/types';
 import { Document } from '@langchain/core/documents';
+import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagStatus } from '../model/rag.model';
 
 export type S3UploadRequest = {
     url: string;
@@ -41,18 +43,54 @@ type RelevantDocRequest = {
     topK: number
 };
 
+type ListRagDocumentRequest = {
+    repositoryId: string,
+    collectionId?: string,
+    lastEvaluatedKey?: string
+};
+
+type DeleteRagDocumentRequest = {
+    repositoryId: string,
+    documentIds: string[]
+};
+
+type CreateRepositoryRequest = {
+    ragConfig: RagRepositoryConfig
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories'],
+    tagTypes: ['repositories', 'Docs', 'repository-status'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
-        listRagRepositories: builder.query<Repository[], void>({
+        listRagRepositories: builder.query<RagRepositoryConfig[], void>({
             query: () => ({
                 url: '/repository'
             }),
             providesTags:['repositories'],
+        }),
+        createRagRepository: builder.mutation<RagRepositoryConfig, CreateRepositoryRequest>({
+            query: (body) => ({
+                url: '/repository',
+                method: 'POST',
+                data: body,
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        deleteRagRepository: builder.mutation<undefined, string>({
+            query: (repositoryId) => ({
+                url: `/repository/${repositoryId}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        getRagStatus: builder.query<RagStatus[], void>({
+            query: () => ({
+                url: '/repository/status',
+            }),
+            providesTags: ['repository-status'],
         }),
         getPresignedUrl: builder.query<any, String>({
             query: (body) => ({
@@ -99,13 +137,51 @@ export const ragApi = createApi({
                 };
             },
         }),
+        listRagDocuments: builder.query<RagDocument[], ListRagDocumentRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/document`,
+                params: { collectionId: request.collectionId, lastEvaluatedKey: request.lastEvaluatedKey },
+            }),
+            transformResponse: (response) => response.documents,
+            providesTags: ['Docs'],
+        }),
+        deleteRagDocuments: builder.mutation<undefined, DeleteRagDocumentRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/document`,
+                method: 'DELETE',
+                data: {
+                    documentIds: request.documentIds,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Delete RAG Document Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
+                };
+            },
+            invalidatesTags: ['Docs'],
+        }),
+        downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
+            query: ({ documentId, repositoryId }) => ({
+                url: `/repository/${repositoryId}/${documentId}/download`,
+                method: 'GET',
+            }),
+        }),
     }),
 });
 
 export const {
     useListRagRepositoriesQuery,
+    useCreateRagRepositoryMutation,
+    useDeleteRagRepositoryMutation,
+    useGetRagStatusQuery,
+    useLazyGetRagStatusQuery,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,
-    useLazyGetRelevantDocumentsQuery
+    useListRagDocumentsQuery,
+    useDeleteRagDocumentsMutation,
+    useLazyGetRelevantDocumentsQuery,
+    useLazyDownloadRagDocumentQuery,
 } = ragApi;

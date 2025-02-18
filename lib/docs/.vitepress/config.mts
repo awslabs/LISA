@@ -32,6 +32,7 @@ const navLinks = [
       { text: 'Configure IdP: Cognito & Keycloak Examples', link: '/admin/idp-config' },
       { text: 'Deployment', link: '/admin/deploy' },
       { text: 'Setting Model Management Admin Group', link: '/admin/model-management-admin' },
+      { text: 'UI Component Configuration', link: '/admin/ui-configuration' },
       { text: 'LiteLLM', link: '/admin/litellm' },
       { text: 'API Overview', link: '/admin/api-overview' },
       { text: 'API Request Error Handling', link: '/admin/api-error' },
@@ -63,7 +64,7 @@ const navLinks = [
     text: 'User Guide',
     items: [
       { text: 'LISA Chat UI', link: '/user/chat' },
-      { text: 'RAG', link: '/user/rag' },
+      { text: 'Document Library Management', link: '/user/document-library' },
       { text: 'Context Windows', link: '/user/context-windows' },
       { text: 'Model KWARGS', link: '/user/model-kwargs' },
       { text: 'Model Management UI', link: '/user/model-management-ui' },

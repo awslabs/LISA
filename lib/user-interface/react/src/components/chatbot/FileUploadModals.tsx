@@ -15,17 +15,17 @@
 */
 
 import {
-    Modal,
     Box,
-    SpaceBetween,
     Button,
-    TextContent,
     FileUpload,
     FormField,
     Grid,
     Input,
+    Modal,
     ProgressBar,
+    SpaceBetween,
     StatusIndicator,
+    TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '../types';
 import { useState } from 'react';
@@ -35,9 +35,19 @@ import { useNotificationService } from '../../shared/util/hooks';
 import {
     useIngestDocumentsMutation,
     useLazyGetPresignedUrlQuery,
-    useUploadToS3Mutation
+    useUploadToS3Mutation,
 } from '../../shared/reducers/rag.reducer';
 import { uploadToS3Request } from '../utils';
+import { RagRepositoryPipeline } from '../../../../../configSchema';
+
+export const renameFile = (originalFile: File) => {
+    // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
+    const newFileName = `${Date.now()}_${originalFile.name}`;
+    return new File([originalFile], newFileName, {
+        type: originalFile.type,
+        lastModified: originalFile.lastModified,
+    });
+};
 
 export const handleUpload = async (
     selectedFiles: File[],
@@ -48,7 +58,6 @@ export const handleUpload = async (
 ) => {
     if (selectedFiles.length > 0) {
         const successfulUploads: string[] = [];
-
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
             let error = '';
@@ -93,7 +102,7 @@ export function ContextUploadModal ({
     }
 
     async function processFile (file: File): Promise<boolean> {
-    //File context currently only supports single files
+        //File context currently only supports single files
         const fileContents = await file.text();
         setFileContext(`File context: ${fileContents}`);
         setSelectedFiles([file]);
@@ -114,7 +123,8 @@ export function ContextUploadModal ({
                     <SpaceBetween direction='horizontal' size='xs'>
                         <Button
                             onClick={async () => {
-                                const successfulUploads = await handleUpload(selectedFiles, handleError, processFile, [FileTypes.TEXT], 204800);
+                                const files = selectedFiles.map((f) => renameFile(f));
+                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT], 204800);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
@@ -267,8 +277,9 @@ export function RagUploadModal ({
                                 setProgressBarValue(0);
 
                                 //Allowed file types are plain text, docx, and pdf. File size limit is 50 MB
+                                const files = selectedFiles.map((f) => renameFile(f));
                                 const successfulUploads = await handleUpload(
-                                    selectedFiles,
+                                    files,
                                     handleError,
                                     processFile,
                                     [FileTypes.TEXT, FileTypes.DOCX, FileTypes.PDF],
@@ -298,7 +309,7 @@ export function RagUploadModal ({
                     </p>
                 </TextContent>
                 <Grid gridDefinition={[{ colspan: { default: 12, xxs: 6 } }, { colspan: { default: 12, xxs: 6 } }]}>
-                    <FormField label='Chunk Size' description='Size of chunks that will be persisted in the RAG repository'>
+                    <FormField label='Chunk Size' description={RagRepositoryPipeline.shape.chunkSize.description}>
                         <Input
                             value={chunkSize.toString()}
                             type='number'
@@ -313,7 +324,7 @@ export function RagUploadModal ({
                             }}
                         />
                     </FormField>
-                    <FormField label='Chunk Overlap' description='Size of the overlap used when generating content chunks'>
+                    <FormField label='Chunk Overlap' description={RagRepositoryPipeline.shape.chunkOverlap.description}>
                         <Input
                             value={chunkOverlap.toString()}
                             type='number'

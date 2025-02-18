@@ -125,16 +125,41 @@ export const createLambdaRole = (construct: Construct, deploymentName: string, l
  * @throws {Error} Throws an error if the generated CDK ID is longer than 64 characters.
  * @returns {string} The generated CDK ID for the model resource.
  */
-export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx?: number): string {
-    let cdkId = idParts.join('-');
+export function createCdkId (idParts: (string | undefined)[], maxLength: number = 64, truncationIdx?: number): string {
+    // filter idsParts to ignore undefined parts
+    const filteredIdParts = idParts.filter((part): part is string => Boolean(part));
+    let cdkId = filteredIdParts.join('-');
     const length = cdkId.length;
 
     if (length > maxLength) {
         console.log(`${cdkId} is too long (>${maxLength}). Truncating...`);
-        truncationIdx = typeof truncationIdx === 'undefined' ? idParts.length - 1 : truncationIdx;
-        idParts[truncationIdx] = idParts[truncationIdx].slice(0, maxLength - length);
-        cdkId = idParts.join('-');
+        truncationIdx = truncationIdx === undefined ? filteredIdParts.length - 1 : truncationIdx;
+        filteredIdParts[truncationIdx] = filteredIdParts[truncationIdx].slice(0, maxLength - length);
+        cdkId = filteredIdParts.join('-');
     }
 
     return cdkId;
+}
+
+/**
+ * Picks specified fields from a source object and returns a new object containing only those fields.
+ *
+ * @template T - The type of the source object
+ * @template K - The type of the keys to pick from the source object
+ * @param {T} source - The source object to pick fields from
+ * @param {readonly K[]} fields - Array of field names to pick from the source object
+ * @returns {Pick<T, K>} A new object containing only the specified fields from the source
+ *
+ * @example
+ * const person = { name: 'John', age: 30, city: 'Seattle' };
+ * const picked = pickFields(person, ['name', 'age']);
+ * // Result: { name: 'John', age: 30 }
+ */
+export function pickFields<T extends object, K extends keyof T> (
+    source: T,
+    fields: readonly K[]
+): Pick<T, K> {
+    return Object.fromEntries(
+        fields.map((field) => [field, source[field]])
+    ) as Pick<T, K>;
 }

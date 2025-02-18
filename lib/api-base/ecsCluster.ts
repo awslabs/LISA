@@ -25,6 +25,7 @@ import {
     Cluster,
     ContainerDefinition,
     ContainerImage,
+    ContainerInsights,
     Ec2Service,
     Ec2ServiceProps,
     Ec2TaskDefinition,
@@ -37,13 +38,19 @@ import {
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancer, BaseApplicationListenerProps } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import {
+    ApplicationLoadBalancer,
+    BaseApplicationListenerProps,
+    SslPolicy,
+} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
+import { BaseProps } from '../schema';
+import { EcsSourceType } from '../cdk';
+import { Ec2Metadata, ECSConfig } from '../configSchema';
 import { Vpc } from '../networking/vpc';
 
 /**
@@ -85,7 +92,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId(['Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             vpc: vpc.vpc,
-            containerInsights: !config.region.includes('iso'),
+            containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
         // Create auto-scaling group
@@ -286,6 +293,7 @@ export class ECSCluster extends Construct {
             certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
                 ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
                 : undefined,
+            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.RECOMMENDED_TLS : SslPolicy.RECOMMENDED,
         };
 
         const listener = loadBalancer.addListener(

@@ -29,7 +29,7 @@ import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
     useDeleteSessionByIdMutation,
-    useListSessionsQuery
+    useListSessionsQuery,
 } from '../../shared/reducers/session.reducer';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';

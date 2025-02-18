@@ -15,7 +15,8 @@
  */
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
-import { StatusIndicator } from '@cloudscape-design/components';
+import { CollectionPreferencesProps, StatusIndicator } from '@cloudscape-design/components';
+import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
     [K in T]: U;
@@ -80,14 +81,9 @@ export const CARD_DEFINITIONS = {
     ],
 };
 
-export const PAGE_SIZE_OPTIONS = [
-    { value: 6, label: '6 Models' },
-    { value: 12, label: '12 Models' },
-    { value: 24, label: '24 Models' },
-    { value: 48, label: '48 Models' },
-];
+export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
-export const DEFAULT_PREFERENCES = {
+export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
     visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
 };

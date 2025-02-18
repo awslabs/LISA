@@ -29,15 +29,14 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 import { IRole } from 'aws-cdk-lib/aws-iam';
 
 /**
- * Properties for ConfigurationApi Construct.
- *
- * @property {IVpc} vpc - Stack VPC
- * @property {Layer} commonLayer - Lambda layer for all Lambdas.
- * @property {IRestApi} restAPI - REST APIGW for UI and Lambdas
- * @property {IRole} lambdaExecutionRole - Execution role for lambdas
- * @property {IAuthorizer} authorizer - APIGW authorizer
- * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
- * @property {Map<number, ISubnet> }importedSubnets for application.
+ * Props for the ConfigurationApi construct
+ * Extends BaseProps to include authorizer, restApiId, rootResourceId, securityGroups, and vpc
+ * @extends BaseProps
+ * @property {IAuthorizer} authorizer - The authorizer for the API
+ * @property {string} restApiId - The ID of the API Gateway RestApi
+ * @property {string} rootResourceId - The root resource ID of the API Gateway RestApi
+ * @property {ISecurityGroup[]} securityGroups - The security groups to use for the API
+ * @property {Vpc} vpc - The VPC to use for the API
  */
 type ConfigurationApiProps = {
     authorizer: IAuthorizer;

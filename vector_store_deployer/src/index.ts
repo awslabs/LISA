@@ -69,13 +69,8 @@ export const handler = async (event: any) => {
 
     createWritableEnv();
 
-    const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out']);
-
-    const stderr = String(ret.output[2]);
+    const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out'], {stdio: 'inherit'});
     if ( ret.status !== 0 ) {
-        const stdout = String(ret.output[1]);
-        console.log(stdout);
-        console.log(`cdk synth failed with stderr: ${stderr}`);
         throw new Error('Stack failed to synthesize');
     }
 
@@ -83,22 +78,21 @@ export const handler = async (event: any) => {
     process.env['LISA_STACK_NAME'] = stackName;
     const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
         const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
-            env: {...process.env}
+            env: {...process.env},
+            stdio: 'inherit'
         });
 
-        cp.on('close', (code) => {
-            console.log(`cdk deploy exited early, code ${code}`);
-            resolve(cp);
+        cp.on('exit', (code, signal) => {
+            console.log(`Process exited with code: ${code}, signal: ${signal}`);
         });
 
-        cp.stdout.on('data', (data) => {
-            console.log(`${data}`);
+        cp.on('close', (code, signal) => {
+            console.log(`Process closed with code: ${code}, signal: ${signal}`);
         });
 
-        // cdk std out is also placed on stderr
-        cp.stderr.on('data', (data) => {
-            console.info(`${data}`);
-        });
+        cp.on('error', (err) => {
+            console.error(`Failed to start process: ${err.message}`);
+        });          
 
         setTimeout(() => {
             console.warn('14 minute timeout');

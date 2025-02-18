@@ -92,7 +92,7 @@ export const handler = async (event: any) => {
 
         cp.on('error', (err) => {
             console.error(`Failed to start process: ${err.message}`);
-        });          
+        });
 
         setTimeout(() => {
             console.warn('14 minute timeout');

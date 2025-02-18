@@ -37,6 +37,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
 
         const { config, ragConfig } = props;
         const { vpcId, deploymentName, deploymentPrefix, deploymentStage, subnets} = config;
+        const { repositoryId, opensearchConfig } = ragConfig;
 
         if (config.region) {
             this.linkServiceRole(config.region);
@@ -44,7 +45,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
 
         let openSearchDomain: IDomain;
 
-        if (ragConfig?.opensearchConfig === undefined) {
+        if (opensearchConfig === undefined) {
             return;
         }
 
@@ -59,8 +60,6 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                 subnets: subnets?.map((subnet, index) => Subnet.fromSubnetId(this, `subnet-${index}`, subnet.subnetId))
             };
         }
-
-        const opensearchConfig = ragConfig.opensearchConfig;
 
         if ('endpoint' in opensearchConfig) {
             openSearchDomain = Domain.fromDomainEndpoint(
@@ -77,8 +76,8 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                 securityGroupId
             );
 
-            openSearchDomain = new Domain(this, createCdkId([deploymentName!, deploymentStage!, 'RagRepository', ragConfig.repositoryId]), {
-                domainName: ['lisa-rag', ragConfig.repositoryId].join('-'),
+            openSearchDomain = new Domain(this, createCdkId([deploymentName!, deploymentStage!, 'RagRepository', repositoryId]), {
+                domainName: ['lisa-rag', repositoryId].join('-'),
                 // 2.9 is the latest available in ADC regions as of 1/11/24
                 version: EngineVersion.OPENSEARCH_2_9,
                 enableVersionUpgrade: true,
@@ -115,7 +114,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
 
         const lambdaRole = Role.fromRoleArn(
             this,
-            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            `${Roles.RAG_LAMBDA_EXECUTION_ROLE}-${repositoryId}`,
             StringParameter.valueForStringParameter(
                 this,
                 `${deploymentPrefix}/roles/${createCdkId([deploymentName!, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
@@ -130,9 +129,9 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         const configParam = {type: RagRepositoryType.OPENSEARCH, endpoint: openSearchDomain.domainEndpoint };
         const openSearchEndpointPs = new StringParameter(
             this,
-            createCdkId([ragConfig.repositoryId, 'StringParameter']),
+            createCdkId([repositoryId, 'StringParameter']),
             {
-                parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${ragConfig.repositoryId}`,
+                parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${repositoryId}`,
                 stringValue: JSON.stringify(configParam),
                 description: 'Endpoint for LISA Serve OpenSearch Rag Repository',
             },

@@ -101,6 +101,7 @@ export class DockerImageBuilder extends Construct {
                 'LISA_ECR_URI': props.ecrUri,
                 'LISA_INSTANCE_PROFILE': ec2InstanceProfile.instanceProfileArn,
                 'LISA_MOUNTS3_DEB_URL': props.mountS3DebUrl,
+                ...props.vpc.subnetSelection?.subnets && props.vpc.subnetSelection?.subnets[0].subnetId ? {'LISA_SUBNET_ID': props.vpc.subnetSelection?.subnets[0].subnetId} : {}
             },
             vpc: props.vpc.vpc,
             vpcSubnets: props.vpc.subnetSelection,

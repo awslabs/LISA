@@ -38,7 +38,7 @@ export function getTableDefinition ({
         {
             id: 'repositoryName',
             header: 'Name',
-            cell: (e) => e.repositoryName,
+            cell: (e) => e.repositoryName?.length > 0 ? e.repositoryName : e.repositoryId,
             sortingField: 'repositoryName',
             visible: true,
         },
@@ -60,7 +60,7 @@ export function getTableDefinition ({
         {
             id: 'allowedGroups',
             header: 'Allowed Groups',
-            cell: (e) => `[${(e?.allowedGroups || []).join(', ')}]`,
+            cell: (e) => e?.allowedGroups?.length > 0 ? `[${e.allowedGroups.join(', ')}]` : 'GLOBAL',
             visible: true,
         },
         {

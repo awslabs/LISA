@@ -325,18 +325,19 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
 def _ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
     """Ensures a user has access to the repository or else raises an HTTPException"""
-    user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-    if not user_has_group(user_groups, repository.get("allowedGroups", [])):
-        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+    if is_admin(event) is False:
+        user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
+        if not user_has_group(user_groups, repository.get("allowedGroups", [])):
+            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
 
 def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:
     """Verify ownership of documents"""
     username = get_username(event)
-    admin = is_admin(event)
-    for doc in docs:
-        if not (admin or doc.get("username") == username):
-            raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
+    if is_admin(event) is False:
+        for doc in docs:
+            if not (doc.get("username") == username):
+                raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
 
 
 @api_wrapper

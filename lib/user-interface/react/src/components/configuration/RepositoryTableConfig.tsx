@@ -38,7 +38,7 @@ export function getTableDefinition ({
         {
             id: 'repositoryName',
             header: 'Name',
-            cell: (e) => e.repositoryName,
+            cell: (e) => e.repositoryName?.length > 0 ? e.repositoryName : e.repositoryId,
             sortingField: 'repositoryName',
             visible: true,
         },

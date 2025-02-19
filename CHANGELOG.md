@@ -1,3 +1,58 @@
+# v4.0.1
+## Bug Fixes
+### Vector Store Management
+- Enhanced UI to display default repository name when not specified
+- Improved UI to show "GLOBAL" when no groups are assigned
+- Refined repository schema regex to ensure valid input fields
+- Optimized admin routing for RAG repository access
+- Updated RAG Configuration table to align with config destruction property
+- Resolved issue preventing creation of OpenSearch vector stores
+
+### User Interface
+- Implemented consistent positioning of chat input at the bottom of the screen
+
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.0.0..v4.0.1
+
+# v4.0.0
+Our 4.0 launch brings enhanced RAG repository management features to LISA’s chatbot user interface (UI). Our new RAG document library allows users to view and manage RAG repository files. Administrators are now able to manage and configure vector stores (also known as RAG repositories), and document ingestion pipelines directly in the Configuration page without having to redeploy LISA.
+
+
+## **Enhancements**
+
+### **RAG Repository Management**
+
+* Admins can create, edit, delete RAG repositories via LISA’s Configuration UI. Admins can also manage access through the UI. LISA re-deployments are no longer required.
+* Admins can create, edit, delete new document ingestion pipelines via LISA’s Configuration UI. LISA re-deployments are no longer required.
+* We added a RAG deletion pipeline that automatically removes S3 documents when deleted from RAG repositories.
+* We introduced new API endpoints for dynamic management of vector stores and ingestion pipelines.
+* Customers who previously configured LISA with RAG repositories (v3.5 and before) will be able to view these legacy RAG repositories in the Configuration UI. However, they will not be able to make any changes through the UI. Admins must continue to manage RAG repositories through the config file. We recommend that when you are ready, you delete any legacy RAG repositories through the UI. Then you will need to redeploy CDK which will automatically tear down the legacy repository’s resources. Then you will be able to recreate RAG repositories through the UI and re-load documents.
+
+### **Document Library**
+
+* Added a RAG Document Library page in the chatbot UI. Users can download previously uploaded documents from the RAG repositories that they have access to.
+* Users can also delete files from RAG repositories that they originally uploaded in the Document Library. Admins can delete any files through the Document Library. Files are also automatically removed from S3.
+
+> **Note:** As of LISA 4.0, new RAG repositories and document ingestion pipelines can no longer be configured at deployment via YAML.
+
+
+
+## **Security**
+
+* Updated third-party dependencies.
+
+
+## **Acknowledgements**
+- [@bedanley](https://amzn-aws.slack.com/team/U03P7CBD673)
+- @dustins
+- @estohlmann
+  [**Full Changelog**](https://github.com/awslabs/LISA/compare/v3.5.1...v4.0.0)
+
 # v3.5.1
 
 ## Bug Fixes

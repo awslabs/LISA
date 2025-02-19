@@ -249,7 +249,7 @@ export class LisaRagStack extends Stack {
                 name: 'repositoryId',
                 type: AttributeType.STRING
             },
-            removalPolicy: RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+            removalPolicy: config.removalPolicy,
             billingMode: BillingMode.PAY_PER_REQUEST,
             pointInTimeRecovery: true,
             timeToLiveAttribute: 'ttl',

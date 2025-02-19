@@ -28,14 +28,29 @@ export function getDefaults<T extends z.ZodTypeAny> (schema: z.AnyZodObject | z.
         return getDefaults(z.ZodObject.create(schema.innerType().shape));
     }
 
+    function isDefault (schema: z.ZodTypeAny): boolean {
+        const type = schema._def.typeName;
+        return (schema instanceof z.ZodDefault || type === z.ZodFirstPartyTypeKind.ZodDefault);
+    }
+
+    function isArray (schema: z.ZodTypeAny): boolean {
+        const type = schema._def.typeName;
+        return (schema instanceof z.ZodArray || type === z.ZodFirstPartyTypeKind.ZodArray || type === z.ZodFirstPartyTypeKind.ZodSet);
+    }
+
+    function isObject (schema: z.ZodTypeAny): boolean {
+        const type = schema._def.typeName;
+        return (schema instanceof z.ZodObject || type === z.ZodFirstPartyTypeKind.ZodObject);
+    }
+
     function getDefaultValue (schema: z.ZodTypeAny): unknown {
-        if (schema instanceof z.ZodDefault) return schema._def.defaultValue();
+        if (isDefault(schema)) return schema._def.defaultValue();
         // return an empty array if it is
-        if (schema instanceof z.ZodArray) return [];
+        if (isArray(schema)) return [];
         // return an empty string if it is
+        if (isObject(schema)) return getDefaults(schema);
+        // return content of object recursively
         if (schema instanceof z.ZodString) return '';
-        // return an content of object recursively
-        if (schema instanceof z.ZodObject) return getDefaults(schema);
 
         if (!('innerType' in schema._def)) return undefined;
         return getDefaultValue(schema._def.innerType);

@@ -496,7 +496,7 @@ export default function Chat ({ sessionId }) {
     }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (
-        <div className="h-[80vh]">
+        <div className='h-[80vh]'>
             <PromptTemplateEditor
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}

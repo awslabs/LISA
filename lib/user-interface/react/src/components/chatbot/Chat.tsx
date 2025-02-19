@@ -496,7 +496,7 @@ export default function Chat ({ sessionId }) {
     }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (
-        <>
+        <div className="h-[80vh]">
             <PromptTemplateEditor
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}
@@ -540,7 +540,7 @@ export default function Chat ({ sessionId }) {
                 fileContext={fileContext}
                 setFileContext={setFileContext}
             />
-            <div className='overflow-y-auto p-2 mb-52'>
+            <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
                         <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1}/>
@@ -696,6 +696,6 @@ export default function Chat ({ sessionId }) {
                     </Form>
                 </form>
             </div>
-        </>
+        </div>
     );
 }

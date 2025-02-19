@@ -60,7 +60,7 @@ export function getTableDefinition ({
         {
             id: 'allowedGroups',
             header: 'Allowed Groups',
-            cell: (e) => `[${(e?.allowedGroups || []).join(', ')}]`,
+            cell: (e) => e?.allowedGroups && e?.allowedGroups.size > 0 ? `[${e.allowedGroups.join(', ')}]` : 'GLOBAL',
             visible: true,
         },
         {

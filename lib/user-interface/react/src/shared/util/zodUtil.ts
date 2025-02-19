@@ -38,19 +38,14 @@ export function getDefaults<T extends z.ZodTypeAny> (schema: z.AnyZodObject | z.
         return (schema instanceof z.ZodArray || type === z.ZodFirstPartyTypeKind.ZodArray || type === z.ZodFirstPartyTypeKind.ZodSet);
     }
 
-    function isObject (schema: z.ZodTypeAny): boolean {
-        const type = schema._def.typeName;
-        return (schema instanceof z.ZodObject || type === z.ZodFirstPartyTypeKind.ZodObject);
-    }
-
     function getDefaultValue (schema: z.ZodTypeAny): unknown {
         if (isDefault(schema)) return schema._def.defaultValue();
         // return an empty array if it is
         if (isArray(schema)) return [];
         // return an empty string if it is
-        if (schema instanceof z.ZodString) return '';
+        if (schema instanceof z.ZodString || schema._def.type === z.ZodFirstPartyTypeKind.ZodString) return '';
         // return content of object recursively
-        if (isObject(schema)) return getDefaults(schema);
+        if (schema instanceof z.ZodObject || schema._def.type === z.ZodFirstPartyTypeKind.ZodObject) return getDefaults(schema);
 
         if (!('innerType' in schema._def)) return undefined;
         return getDefaultValue(schema._def.innerType);

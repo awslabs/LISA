@@ -48,9 +48,9 @@ export function getDefaults<T extends z.ZodTypeAny> (schema: z.AnyZodObject | z.
         // return an empty array if it is
         if (isArray(schema)) return [];
         // return an empty string if it is
-        if (isObject(schema)) return getDefaults(schema);
-        // return content of object recursively
         if (schema instanceof z.ZodString) return '';
+        // return content of object recursively
+        if (isObject(schema)) return getDefaults(schema);
 
         if (!('innerType' in schema._def)) return undefined;
         return getDefaultValue(schema._def.innerType);

@@ -23,4 +23,5 @@ module.exports = {
         '^.+\\.tsx?$': 'ts-jest'
     },
     collectCoverage: true,
+    silent: true,
 };

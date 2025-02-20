@@ -86,11 +86,12 @@ export const handler = async (event: any) => {
         });
 
         cp.stdout.on('data', (data) => {
-            console.log(`Got data: ${data}`);
+            console.log(`${data}`);
         });
 
+        // cdk std out is also placed on stderr
         cp.stderr.on('data', (data) => {
-            console.log(`Got err data: ${data}`);
+            console.info(`${data}`);
         });
 
         setTimeout(() => {

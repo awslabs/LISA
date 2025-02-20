@@ -17,15 +17,17 @@
 import { Template } from 'aws-cdk-lib/assertions';
 import MockApp from '../mocks/MockApp'; // Import your actual stack
 import ConfigParser from '../mocks/ConfigParser';
+import { Stack } from 'aws-cdk-lib';
 
 const stackGroupOverrides: Record<string, number> = {
     LisaServe: 1,
+    LisaRAG: 4,
 };
 
 const stackGroups: Record<string, number> = {
     LisaServe: 2,
     LisaNetworking: 3,
-    LisaRAG: 2,
+    LisaRAG: 6,
 };
 const RESOURCE = 'AWS::EC2::SecurityGroup';
 
@@ -33,7 +35,7 @@ describe('Verify security group overrides', () => {
     describe('Number of Security Groups created with overrides', () => {
         const config = ConfigParser.parseConfig(['config.yaml', 'security-groups.yaml']);
 
-        const { stacks } = MockApp.create(config);
+        const {stacks} = MockApp.create(config);
 
         for (const stack of stacks) {
             const expectedGroups = stackGroupOverrides[stack.stackName] || 0;
@@ -48,7 +50,7 @@ describe('Verify security group overrides', () => {
 
 describe('Verify created security groups', () => {
     describe('Number of Security Groups created', () => {
-        const { stacks } = MockApp.create();
+        const stacks: Stack[] = MockApp.getStacks();
 
         for (const stack of stacks) {
             const expectedGroups = stackGroups[stack.stackName] || 0;

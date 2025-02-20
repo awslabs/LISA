@@ -20,11 +20,12 @@ import logging
 import os
 import tempfile
 from contextvars import ContextVar
-from functools import cache
+from functools import cache, wraps
 from typing import Any, Callable, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
+from utilities.exceptions import HTTPException
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -352,6 +353,26 @@ def get_username(event: dict) -> str:
     return username
 
 
+def is_admin(event: dict) -> bool:
+    """Get admin status from event."""
+    admin_group = os.environ.get("ADMIN_GROUP", "")
+    groups = get_groups(event)
+    logger.info(f"User groups: {groups} and admin: {admin_group}")
+    return admin_group in groups
+
+
+def admin_only(func: Callable) -> Callable:
+    """Annotation to wrap is_admin"""
+
+    @wraps(func)
+    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+        if not is_admin(event):
+            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+        return func(event, context, *args, **kwargs)
+
+    return wrapper
+
+
 def get_session_id(event: dict) -> str:
     """Get session_id from event."""
     session_id: str = event.get("pathParameters", {}).get("sessionId")
@@ -368,3 +389,51 @@ def get_principal_id(event: Any) -> str:
     """Get principal from event."""
     principal: str = event.get("requestContext", {}).get("authorizer", {}).get("principal", "")
     return principal
+
+
+def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
+    """
+    Merge specified fields from source dictionary to target dictionary.
+    Supports both top-level and nested fields using dot notation.
+
+    Args:
+        source: Source dictionary to copy fields from
+        target: Target dictionary to copy fields into
+        fields: List of field names, can use dot notation for nested fields
+
+    Returns:
+        Updated target dictionary
+    """
+
+    def get_nested_value(obj: dict[str, Any], path: list[str]) -> Any:
+        current: Any = obj
+        for key in path:
+            if not isinstance(current, dict):
+                return None
+            current = current.get(key)
+            if current is None:
+                return None
+        return current
+
+    def set_nested_value(obj: dict, path: list[str], value: Any) -> None:
+        current = obj
+        for key in path[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        if value is not None:
+            current[path[-1]] = value
+
+    for field in fields:
+        if "." in field:
+            # Handle nested fields
+            keys = field.split(".")
+            value = get_nested_value(source, keys)
+            if value is not None:
+                set_nested_value(target, keys, value)
+        else:
+            # Handle top-level fields
+            if field in source:
+                target[field] = source[field]
+
+    return target

@@ -35,7 +35,7 @@ jobs:
           node-version: 20.x
       - name: Install dependencies
         run: |
-          npm install
+          npm ci
       - name: Run tests
         run: |
           npm run test
@@ -53,14 +53,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20.x
-      - name: Install Chatbot dependencies
-        working-directory: ./lib/user-interface/react
-        run: |
-          npm install
       - name: Install CDK dependencies
         working-directory: ./
         run: |
-          npm install
+          npm ci
       - uses: pre-commit/action@v3.0.1
   send_final_slack_notification:
     name: Send Final Slack Notification

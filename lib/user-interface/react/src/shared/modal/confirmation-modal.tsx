@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { Modal as CloudscapeModal, Box, SpaceBetween, Button } from '@cloudscape-design/components';
+import { Modal as CloudscapeModal, Box, SpaceBetween, Button, ModalProps, NonCancelableCustomEvent } from '@cloudscape-design/components';
 import React, { ReactElement, useState } from 'react';
 import { useAppDispatch } from '../../config/store';
 import { dismissModal } from '../reducers/modal.reducer';
@@ -28,6 +28,7 @@ export type ConfirmationModalProps = {
     postConfirm?: CallbackFunction;
     description?: string | ReactElement;
     disabled?: boolean;
+    onDismiss?: (event?: NonCancelableCustomEvent<ModalProps.DismissDetail>) => void;
 };
 
 function ConfirmationModal ({
@@ -37,19 +38,20 @@ function ConfirmationModal ({
     postConfirm,
     description,
     disabled,
+    onDismiss
 }: ConfirmationModalProps) : ReactElement{
     const [processing, setProcessing] = useState(false);
     const dispatch = useAppDispatch();
 
     return (
         <CloudscapeModal
-            onDismiss={() => [dispatch(dismissModal())]}
+            onDismiss={(event) => [dispatch(dismissModal()), onDismiss?.(event)]}
             visible={true}
             closeAriaLabel='Close modal'
             footer={
                 <Box float='right'>
                     <SpaceBetween direction='horizontal' size='xs'>
-                        <Button onClick={() => [dispatch(dismissModal())]}>
+                        <Button onClick={() => [dispatch(dismissModal()), onDismiss?.()]}>
                             Cancel
                         </Button>
                         <Button
@@ -59,6 +61,7 @@ function ConfirmationModal ({
                                 setProcessing(true);
                                 await onConfirm();
                                 dispatch(dismissModal());
+                                onDismiss?.();
                                 if (postConfirm) {
                                     postConfirm();
                                 }

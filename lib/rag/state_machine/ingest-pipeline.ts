@@ -15,58 +15,34 @@
 */
 
 import {
+    Chain,
     Choice,
     Condition,
     DefinitionBody,
     Fail,
-    StateMachine,
-    Succeed,
     Map,
     Pass,
-    Chain,
+    StateMachine,
+    Succeed,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
 import { Vpc } from '../../networking/vpc';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { Rule, Schedule, EventPattern, RuleTargetInput, EventField } from 'aws-cdk-lib/aws-events';
-import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
-import { RagRepositoryType } from '../../schema';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
-
-type PipelineConfig = {
-    chunkOverlap: number;
-    chunkSize: number;
-    embeddingModel: string;
-    s3Bucket: string;
-    s3Prefix: string;
-    trigger: string;
-    collectionName: string;
-};
-
-type RdsConfig = {
-    username: string;
-    dbHost?: string;
-    dbName: string;
-    dbPort: number;
-    passwordSecretId?: string;
-};
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type IngestPipelineStateMachineProps = BaseProps & {
+    baseEnvironment:  Record<string, string>,
     vpc?: Vpc;
-    pipelineConfig: PipelineConfig;
-    rdsConfig?: RdsConfig;
-    repositoryId: string;
-    type: RagRepositoryType;
     layers?: ILayerVersion[];
-    registeredRepositoriesParamName: string;
     ragDocumentTable: Table;
     ragSubDocumentTable: Table;
 };
@@ -80,7 +56,7 @@ export class IngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable, ragSubDocumentTable} = props;
+        const {config, vpc, layers, baseEnvironment, ragDocumentTable, ragSubDocumentTable} = props;
 
         // Create KMS key for environment variable encryption
         const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
@@ -89,42 +65,9 @@ export class IngestPipelineStateMachine extends Construct {
         });
 
         const environment = {
-            CHUNK_OVERLAP: pipelineConfig.chunkOverlap.toString(),
-            CHUNK_SIZE: pipelineConfig.chunkSize.toString(),
-            EMBEDDING_MODEL: pipelineConfig.embeddingModel,
-            S3_BUCKET: pipelineConfig.s3Bucket,
-            S3_PREFIX: pipelineConfig.s3Prefix,
-            REPOSITORY_ID: repositoryId,
-            REPOSITORY_TYPE: type,
-            REST_API_VERSION: 'v2',
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
-            RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-            OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-            LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
-            RAG_DOCUMENT_TABLE: ragDocumentTable.tableName,
-            RAG_SUB_DOCUMENT_TABLE: ragSubDocumentTable.tableName,
-            LOG_LEVEL: config.logLevel,
-            REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
-            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.sslCertIamArn || '',
-            ...(rdsConfig && {
-                RDS_USERNAME: rdsConfig.username,
-                RDS_HOST: rdsConfig.dbHost || '',
-                RDS_DATABASE: rdsConfig.dbName,
-                RDS_PORT: rdsConfig.dbPort.toString(),
-                RDS_PASSWORD_SECRET_ID: rdsConfig.passwordSecretId || ''
-            })
+            ...baseEnvironment,
         };
 
-        // Create S3 policy statement for both functions
-        const s3PolicyStatement = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['s3:GetObject', 's3:ListBucket'],
-            resources: [
-                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}`,
-                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
-            ]
-        });
         // Allow DynamoDB Read/Write to RAG Document Table
         const dynamoPolicyStatement = new PolicyStatement({
             effect: Effect.ALLOW,
@@ -144,9 +87,21 @@ export class IngestPipelineStateMachine extends Construct {
                 `${ragSubDocumentTable.tableArn}/index/*`
             ]
         });
+        // Create log group
+        const cloudWatchLogsPolicy = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'logs:CreateLogGroup',
+                'logs:CreateLogStream',
+                'logs:PutLogEvents'
+            ],
+            resources: [
+                `arn:${cdk.Aws.PARTITION}:logs:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:log-group:/aws/lambda/*`
+            ]
+        });
 
         // Create array of policy statements
-        const policyStatements = [s3PolicyStatement, dynamoPolicyStatement];
+        const policyStatements = [dynamoPolicyStatement, cloudWatchLogsPolicy];
 
         // Create IAM certificate policy if certificate ARN is provided
         let certPolicyStatement;
@@ -159,6 +114,46 @@ export class IngestPipelineStateMachine extends Construct {
             policyStatements.push(certPolicyStatement);
         }
 
+        const ingestPipelineRole = new Role(this, 'IngestPipelineRole', {
+            roleName: 'IngestPipelineRole',
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+        });
+        new StringParameter(this, 'IngestPipelineRoleArnParameter', {
+            parameterName: `${config.deploymentPrefix}/IngestPipelineRoleArn`,
+            stringValue: ingestPipelineRole.roleArn,
+        });
+
+        policyStatements.push(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['ssm:GetParameter'],
+            resources: [
+                `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
+                `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
+                `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
+                `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`,
+                `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`,
+                `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagConnectionInfo/*`
+            ]
+        }));
+
+        policyStatements.push(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['secretsmanager:GetSecretValue'],
+            resources: ['*']
+        }));
+
+        policyStatements.push(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'ec2:DescribeNetworkInterfaces',
+                'ec2:CreateNetworkInterface',
+                'ec2:DeleteNetworkInterface'
+            ],
+            resources: ['*']
+        }));
+
+        policyStatements.map((policyStatement) => ingestPipelineRole.addToPolicy(policyStatement));
+
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {
             runtime: getDefaultRuntime(),
@@ -170,7 +165,7 @@ export class IngestPipelineStateMachine extends Construct {
             environment: environment,
             environmentEncryption: kmsKey,
             layers: layers,
-            initialPolicy: policyStatements
+            role: ingestPipelineRole
         });
 
         const listModifiedObjects = new LambdaInvoke(this, 'listModifiedObjects', {
@@ -182,8 +177,10 @@ export class IngestPipelineStateMachine extends Construct {
         const prepareSingleFile = new Pass(this, 'PrepareSingleFile', {
             parameters: {
                 'files': [{
-                    'bucket': pipelineConfig.s3Bucket,
-                    'key.$': '$.detail.object.key'
+                    'bucket.$': '$.detail.bucket',
+                    'key.$': '$.detail.object.key',
+                    'repositoryId.$': '$.detail.repositoryId',
+                    'pipelineConfig.$': '$.detail.pipelineConfig'
                 }]
             }
         });
@@ -199,26 +196,7 @@ export class IngestPipelineStateMachine extends Construct {
             environment: environment,
             environmentEncryption: kmsKey,
             layers: layers,
-            initialPolicy: [
-                ...policyStatements, // Include all base policies including certificate policy
-                new PolicyStatement({
-                    effect: Effect.ALLOW,
-                    actions: ['ssm:GetParameter'],
-                    resources: [
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagConnectionInfo/*`
-                    ]
-                }),
-                new PolicyStatement({
-                    effect: Effect.ALLOW,
-                    actions: ['secretsmanager:GetSecretValue'],
-                    resources: ['*']
-                })
-            ]
+            role: ingestPipelineRole
         });
 
         const pipelineIngestDocumentsMap = new LambdaInvoke(this, 'pipelineIngestDocumentsMap', {
@@ -267,74 +245,10 @@ export class IngestPipelineStateMachine extends Construct {
             definitionBody: DefinitionBody.fromChainable(definition),
             timeout: Duration.hours(2),
         });
-
-        // Add EventBridge Rules based on pipeline configuration
-        if (pipelineConfig.trigger === 'daily') {
-            // Create daily cron trigger with input template
-            new Rule(this, 'DailyIngestRule', {
-                schedule: Schedule.cron({
-                    minute: '0',
-                    hour: '0'
-                }),
-                targets: [new SfnStateMachine(stateMachine, {
-                    input: RuleTargetInput.fromObject({
-                        version: '0',
-                        id: EventField.eventId,
-                        'detail-type': 'Scheduled Event',
-                        source: 'aws.events',
-                        time: EventField.time,
-                        region: EventField.region,
-                        detail: {
-                            bucket: pipelineConfig.s3Bucket,
-                            prefix: pipelineConfig.s3Prefix,
-                            trigger: 'daily'
-                        }
-                    })
-                })]
-            });
-        } else if (pipelineConfig.trigger === 'event') {
-            // Create S3 event trigger with complete event pattern and transform input
-            const detail: any = {
-                bucket: {
-                    name: [pipelineConfig.s3Bucket]
-                }
-            };
-
-            // Add prefix filter if specified and not root
-            if (pipelineConfig.s3Prefix && pipelineConfig.s3Prefix !== '/') {
-                detail.object = {
-                    key: [{
-                        prefix: pipelineConfig.s3Prefix
-                    }]
-                };
-            }
-
-            const eventPattern: EventPattern = {
-                source: ['aws.s3'],
-                detailType: ['Object Created', 'Object Modified'],
-                detail
-            };
-
-            new Rule(this, 'S3EventIngestRule', {
-                eventPattern,
-                targets: [new SfnStateMachine(stateMachine, {
-                    input: RuleTargetInput.fromObject({
-                        'detail-type': EventField.detailType,
-                        source: EventField.source,
-                        time: EventField.time,
-                        region: EventField.region,
-                        detail: {
-                            bucket: pipelineConfig.s3Bucket,
-                            prefix: pipelineConfig.s3Prefix,
-                            object: {
-                                key: EventField.fromPath('$.detail.object.key')
-                            },
-                            trigger: 'event'
-                        }
-                    })
-                })]
-            });
-        }
+        new StringParameter(this, 'IngestPipelineStateMachineArnParameter', {
+            parameterName: `${config.deploymentPrefix}/IngestPipelineStateMachineArn`,
+            stringValue: stateMachine.stateMachineArn,
+        });
 
         this.stateMachineArn = stateMachine.stateMachineArn;
     }

@@ -27,6 +27,7 @@ import {
 } from './ModelManagementUtils';
 import { ModelActions } from './ModelManagementActions';
 import { IModel } from '../../shared/model/model-management.model';
+import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 
 export function ModelManagementComponent () : ReactElement {
     const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: true});
@@ -36,7 +37,7 @@ export function ModelManagementComponent () : ReactElement {
     const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
 
     const [selectedItems, setSelectedItems] = useState([]);
-    const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+    const [preferences, setPreferences] = useLocalStorage('ModelManagerPreferences', DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
     const [count, setCount] = useState('');

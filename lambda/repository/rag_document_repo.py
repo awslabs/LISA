@@ -11,14 +11,14 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
 import logging
 from typing import Optional, TypeAlias
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from models.domain_objects import RagDocument, RagSubDocument
+from models.domain_objects import IngestionType, RagDocument, RagSubDocument
+from repository.vector_store_repo import VectorStoreRepository
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,11 @@ class RagDocumentRepository:
     """RAG Document repository for DynamoDB"""
 
     def __init__(self, document_table_name: str, sub_document_table_name: str):
-        self.dynamodb = boto3.resource("dynamodb")
-        self.doc_table = self.dynamodb.Table(document_table_name)
-        self.subdoc_table = self.dynamodb.Table(sub_document_table_name)
+        dynamodb = boto3.resource("dynamodb")
+        self.doc_table = dynamodb.Table(document_table_name)
+        self.subdoc_table = dynamodb.Table(sub_document_table_name)
+        self.s3_client = boto3.client("s3")
+        self.vs_repo = VectorStoreRepository()
 
     def delete_by_id(self, repository_id: str, document_id: str) -> None:
         """Delete a document using partition key and sort key.
@@ -49,6 +51,7 @@ class RagDocumentRepository:
         Raises:
             ClientError: If deletion fails
         """
+        logging.info(f"Removing document {repository_id}:{document_id}")
         try:
             document = self.find_by_id(repository_id=repository_id, document_id=document_id)
             subdocs = self.find_subdocs_by_id(document_id)
@@ -165,10 +168,46 @@ class RagDocumentRepository:
                 doc["subdocs"] = subdocs
         return docs
 
+    def find_by_source(
+        self, repository_id: str, collection_id: str, document_source: str, join_docs: bool = False
+    ) -> list[RagDocumentDict]:
+        """Get a list of documents from the RagDocTable by source.
+
+        Args:
+            document_source (str): The name of the documents to retrieve
+            repository_id (str): The repository id to list documents for
+
+        Returns:
+            list[RagDocument]: A list of document objects matching the specified name
+
+        Raises:
+            KeyError: If no documents are found with the specified name
+        """
+        pk = RagDocument.createPartitionKey(repository_id, collection_id)
+        response = self.doc_table.query(
+            KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("source").eq(document_source)
+        )
+        docs: list[RagDocumentDict] = response["Items"]
+
+        # Handle paginated Dynamo results
+        while "LastEvaluatedKey" in response:
+            response = self.doc_table.query(
+                KeyConditionExpression=Key("pk").eq(pk),
+                FilterExpression=Key("document_name").eq(document_source),
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+            docs.extend(response["Items"])
+
+        if join_docs:
+            for doc in docs:
+                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                doc["subdocs"] = subdocs
+        return docs
+
     def list_all(
         self,
         repository_id: str,
-        collection_id: str,
+        collection_id: Optional[str] = None,
         last_evaluated_key: Optional[dict] = None,
         limit: int = 100,
         join_docs: bool = False,
@@ -177,19 +216,36 @@ class RagDocumentRepository:
 
         Args:
             repository_id: Repository ID
-            collection_id: Collection ID
-
+            collection_id?: Collection ID
+            last_evaluated_key: last key for pagination
+            limit: maximum returned items
+            join_docs: whether to include subdoc ids with parent doc
         Returns:
             List of documents
         """
         try:
-            pk = RagDocument.createPartitionKey(repository_id, collection_id)
-            query_params = {"KeyConditionExpression": Key("pk").eq(pk), "Limit": limit}
-            if last_evaluated_key:
-                query_params["ExclusiveStartKey"] = last_evaluated_key
-            response = self.doc_table.query(**query_params)
+            response = None
+            # Find all rag documents using repo id only
+            if not collection_id:
+                query_params = {
+                    "IndexName": "repository_index",
+                    "KeyConditionExpression": Key("repository_id").eq(repository_id),
+                    "Limit": limit,
+                }
+                if last_evaluated_key:
+                    query_params["ExclusiveStartKey"] = last_evaluated_key
+                response = self.doc_table.query(**query_params)
+            # Find all rag documents using repo id and collection
+            else:
+                pk = RagDocument.createPartitionKey(repository_id, collection_id)
+                query_params = {"KeyConditionExpression": Key("pk").eq(pk), "Limit": limit}
+                if last_evaluated_key:
+                    query_params["ExclusiveStartKey"] = last_evaluated_key
+                response = self.doc_table.query(**query_params)
+
             docs: list[RagDocumentDict] = response.get("Items", [])
             next_key = response.get("LastEvaluatedKey", None)
+
             if join_docs:
                 for doc in docs:
                     subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
@@ -241,3 +297,35 @@ class RagDocumentRepository:
             List of subdocument dictionaries
         """
         return [doc for entry in entries for doc in entry["subdocs"]]
+
+    def delete_s3_object(self, uri: str) -> None:
+        """Delete an object from S3.
+
+        Args:
+            key: The key of the object to delete
+        """
+        try:
+            bucket, key = uri.replace("s3://", "").split("/", 1)
+            logging.info(f"Deleting S3 object: {bucket}/{key}")
+            self.s3_client.delete_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
+            raise
+
+    def delete_s3_docs(self, repository_id: str, docs: list[dict]) -> list[str]:
+        """Remove documents from S3"""
+        repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
+        pipelines = {
+            pipeline.get("embeddingModel"): pipeline.get("autoRemove", False) is True
+            for pipeline in repo.get("pipelines", [])
+        }
+        removed_source: list[str] = [
+            doc.get("source", "")
+            for doc in docs
+            if doc.get("ingestion_type") != IngestionType.AUTO or pipelines.get(doc.get("collection_id"))
+        ]
+        for source in removed_source:
+            logging.info(f"Removing S3 doc: {source}")
+            self.delete_s3_object(uri=source)
+
+        return removed_source

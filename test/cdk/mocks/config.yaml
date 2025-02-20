@@ -5,7 +5,10 @@ dev:
   profile:
   deploymentName: test-lisa
   accountNumber: '012345678901'
-  region: us-gov-west-1
+  region: us-iso-east-1
+  pypiConfig:
+    indexUrl: localhost:8080
+    trustedHost: localhost
   deploymentStage: dev
   removalPolicy: destroy
   runCdkNag: false

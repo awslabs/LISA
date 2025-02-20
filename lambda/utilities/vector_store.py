@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -33,29 +32,6 @@ logger = logging.getLogger(__name__)
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
-registered_repositories: List[Dict[str, Any]] = []
-
-
-def get_registered_repositories() -> List[dict]:
-    """Get a list of all registered RAG repositories."""
-    global registered_repositories
-    if not registered_repositories:
-        registered_repositories_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS_NAME"])
-        registered_repositories = json.loads(registered_repositories_response["Parameter"]["Value"])
-
-    return registered_repositories
-
-
-def find_repository_by_id(repository_id: str) -> Dict[str, Any]:
-    """Find a RAG repository by id."""
-    repository = next(
-        (repository for repository in get_registered_repositories() if repository["repositoryId"] == repository_id),
-        None,
-    )
-    if repository is None:
-        raise ValueError(f"Repository with ID '{repository_id}' not found")
-
-    return repository
 
 
 def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:
@@ -63,16 +39,11 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
     Creates a langchain vector store based on the specified embeddigs adapter and backing store.
     """
-
-    repository = find_repository_by_id(repository_id)
-    repository_type = repository.get("type", None)
-
-    prefix = os.environ["REGISTERED_REPOSITORIES_PS_PREFIX"]
+    prefix = os.environ.get("REGISTERED_REPOSITORIES_PS_PREFIX")
     connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")
-
-    if repository_type == "opensearch":
+    connection_info = json.loads(connection_info["Parameter"]["Value"])
+    if connection_info.get("type") == "opensearch":
         service = "es"
-        session = boto3.Session()
         credentials = session.get_credentials()
 
         auth = AWS4Auth(
@@ -83,7 +54,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             session_token=credentials.token,
         )
 
-        opensearch_endpoint = f'https://{connection_info["Parameter"]["Value"]}'
+        opensearch_endpoint = f"https://{connection_info.get('endpoint')}"
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
@@ -96,17 +67,16 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             connection_class=RequestsHttpConnection,
         )
 
-    elif repository_type == "pgvector":
-        connection_info = json.loads(connection_info["Parameter"]["Value"])
-        secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info["passwordSecretId"])
-        password = json.loads(secrets_response["SecretString"])["password"]
+    elif connection_info.get("type") == "pgvector":
+        secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
+        password = json.loads(secrets_response.get("SecretString")).get("password")
 
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",
-            host=connection_info["dbHost"],
-            port=connection_info["dbPort"],
-            database=connection_info["dbName"],
-            user=connection_info["username"],
+            host=connection_info.get("dbHost"),
+            port=connection_info.get("dbPort"),
+            database=connection_info.get("dbName"),
+            user=connection_info.get("username"),
             password=password,
         )
         return PGVector(

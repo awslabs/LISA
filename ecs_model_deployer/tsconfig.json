@@ -8,14 +8,6 @@
     "types": [
       "node"
     ],
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "#root/*": [
-        "../*"
-      ]
-    },
     "moduleResolution": "node",
     "module": "commonjs",
     "resolveJsonModule": true,

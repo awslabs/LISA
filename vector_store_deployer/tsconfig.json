@@ -7,14 +7,6 @@
     "types": [
       "node"
     ],
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "#root/*": [
-        "../*"
-      ]
-    },
     "moduleResolution": "node",
     "module": "commonjs",
     "target": "ES2020",

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { EcsClusterConfig } from '#root/lib/schema';
+import { EcsClusterConfig } from '../../../lib/schema';
 
 /**
  * Creates a "normalized" identifier based on the provided model config. If a modelId has been

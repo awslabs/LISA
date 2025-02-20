@@ -15,14 +15,14 @@
 */
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { PipelineConfig, RagRepositoryConfig, PartialConfig } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryConfig, PartialConfig } from '../../../lib/schema';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import { IStateMachine, StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Roles } from '#root/lib/core/iam/roles';
-import { createCdkId } from '#root/lib/core/utils';
+import { Roles } from '../../../lib/core/iam/roles';
+import { createCdkId } from '../../../lib/core/utils';
 
 // Abstract class representing a general pipeline stack
 export abstract class PipelineStack extends Stack {

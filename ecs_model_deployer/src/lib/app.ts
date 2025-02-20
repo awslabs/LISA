@@ -18,7 +18,7 @@ import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
 import { App, Aspects } from 'aws-cdk-lib';
 import { LisaModelStack, LisaModelStackProps } from './lisa_model_stack';
 
-import { ConfigFile, ConfigSchema } from '#root/lib/schema';
+import { ConfigFile, ConfigSchema } from '../../../lib/schema';
 
 
 export const app = new App();

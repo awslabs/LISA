@@ -42,9 +42,9 @@ import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-ia
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { createCdkId } from '#root/lib/core/utils';
-import { BaseProps, AmiHardwareType, EcsSourceType } from '#root/lib/schema';
-import { Ec2Metadata, ECSConfig } from '#root/lib/schema';
+import { createCdkId } from '../../../lib/core/utils';
+import { BaseProps, AmiHardwareType, EcsSourceType } from '../../../lib/schema';
+import { Ec2Metadata, ECSConfig } from '../../../lib/schema';
 
 /**
  * Properties for the ECSCluster Construct.

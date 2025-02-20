@@ -22,7 +22,7 @@ import { Construct } from 'constructs';
 
 import { ECSCluster } from './ecsCluster';
 import { getModelIdentifier } from './utils';
-import { BaseProps, Config, Ec2Metadata, EcsClusterConfig, EcsSourceType } from '#root/lib/schema';
+import { BaseProps, Config, Ec2Metadata, EcsClusterConfig, EcsSourceType } from '../../../lib/schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,

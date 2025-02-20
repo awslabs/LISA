@@ -38,7 +38,7 @@ import {
     useUploadToS3Mutation,
 } from '../../shared/reducers/rag.reducer';
 import { uploadToS3Request } from '../utils';
-import { RagRepositoryPipeline } from '../../../../../configSchema';
+import { RagRepositoryPipeline } from '#root/lib/schema';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files

@@ -39,11 +39,18 @@ import { LisaServeIAMStack } from './iam_stack';
 import { LisaModelsApiStack } from './models';
 import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
-import { BaseProps } from './schema';
-import { stackSynthesizerType } from './configSchema';
+import { BaseProps, stackSynthesizerType } from '#root/lib/schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
+
+import path from 'path';
+import fs from 'fs';
+
+const HERE: string = path.resolve(__dirname);
+const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
+export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
+
 
 type CustomLisaServeApplicationStageProps = {} & BaseProps;
 type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & StageProps;
@@ -284,6 +291,7 @@ export class LisaServeApplicationStage extends Stage {
             for (const tag of config.tags ?? []) {
                 Tags.of(this).add(tag['Key'], tag['Value']);
             }
+            Tags.of(this).add('VERSION', VERSION);
         }
 
         // Apply permissions boundary aspect to all stacks if the boundary is defined in

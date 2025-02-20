@@ -15,17 +15,18 @@
 */
 
 import {
+    Chain,
     Choice,
     Condition,
     DefinitionBody,
     Fail,
-    StateMachine,
-    Succeed,
     Map,
     Pass,
-    Chain,
+    StateMachine,
+    Succeed,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -33,13 +34,12 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
 import { Vpc } from '../../networking/vpc';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { Rule, Schedule, EventPattern, RuleTargetInput, EventField } from 'aws-cdk-lib/aws-events';
+import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import * as kms from 'aws-cdk-lib/aws-kms';
-import * as cdk from 'aws-cdk-lib';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { PipelineConfig, RagRepositoryType, RdsConfig } from '../../configSchema';
+import { PipelineConfig, RagRepositoryType, RdsConfig } from '#root/lib/schema';
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;

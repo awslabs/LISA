@@ -1,8 +1,23 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    "lib": [
+      "es2020",
+      "dom"
+    ],
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "#root/*": [
+        "../*"
+      ]
+    },
+    "moduleResolution": "node",
     "module": "commonjs",
-    "lib": ["es2020", "dom"],
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "declaration": true,
@@ -19,8 +34,16 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "typeRoots": ["./node_modules/@types"],
-    "outDir": "dist"
+    "typeRoots": [
+      "../node_modules/@types"
+    ],
+    "outDir": "dist",
+    "skipLibCheck": true
   },
-  "exclude": ["node_modules", "dist", ".git"]
+  "include": ["src/**/*", "test/**/*", "../lib/core"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".git"
+  ]
 }

@@ -15,18 +15,17 @@
 */
 import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { RagRepositoryConfig, RagRepositoryType } from '../../../lib/configSchema';
-import { PartialConfig } from '../../../lib/schema';
-import { createCdkId } from '../../../lib/core/utils';
+import { RagRepositoryConfig, RagRepositoryType,PartialConfig } from '#root/lib/schema';
+import { createCdkId } from '#root/lib/core/utils';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
-import { Roles } from '../../../lib/core/iam/roles';
+import { Roles } from '#root/lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
-import { SecurityGroupFactory } from '../../../lib/networking/vpc/security-group-factory';
-import { SecurityGroupEnum } from '../../../lib/core/iam/SecurityGroups';
+import { SecurityGroupFactory } from '#root/lib/networking/vpc/security-group-factory';
+import { SecurityGroupEnum } from '#root/lib/core/iam/SecurityGroups';
 
 // Type definition for PGVectorStoreStack properties
 type PGVectorStoreStackProps = StackProps & {

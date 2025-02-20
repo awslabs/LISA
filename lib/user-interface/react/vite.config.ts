@@ -16,8 +16,21 @@
 
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig, splitVendorChunkPlugin } from 'vite';
+import { resolve } from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react(), splitVendorChunkPlugin()],
+    server: {
+        port: 3000,
+    },
+    resolve: {
+        alias: {
+            '@': resolve(__dirname, 'src'),
+            '#root': resolve(__dirname, '..', '..', '..'),
+        },
+    },
+    build: {
+        sourcemap: true,
+    },
 });

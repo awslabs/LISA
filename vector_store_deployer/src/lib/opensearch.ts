@@ -16,14 +16,13 @@
 import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
-import { RagRepositoryConfig, RagRepositoryType } from '../../../lib/configSchema';
-import { PartialConfig } from '../../../lib/schema';
+import { RagRepositoryConfig, RagRepositoryType,PartialConfig } from '#root/lib/schema';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { createCdkId } from '../../../lib/core/utils';
+import { createCdkId } from '#root/lib/core/utils';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
-import { Roles } from '../../../lib/core/iam/roles';
+import { Roles } from '#root/lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
 
 type OpenSearchVectorStoreStackProps = StackProps & {

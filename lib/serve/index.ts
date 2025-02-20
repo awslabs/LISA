@@ -32,7 +32,7 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
-const HERE = path.resolve(__dirname);
+const HERE: string = path.resolve(__dirname);
 
 type CustomLisaStackProps = {
     vpc: Vpc;

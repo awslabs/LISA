@@ -14,37 +14,16 @@
   limitations under the License.
 */
 
-import { ModelConfig } from './ecs-schema';
-
-/**
- * Creates a unique CDK ID using configuration data. The CDK ID is used to uniquely identify resources in the AWS
- * Cloud Development Kit (CDK). The maximum length of the CDK ID is 64 characters.
- * TODO: Make sure all IDs are valid for AWS resources like ECR, CFN, etc.
- *
- * @param {string[]} idParts - The name of the resource.
- * @throws {Error} Throws an error if the generated CDK ID is longer than 64 characters.
- * @returns {string} The generated CDK ID for the model resource.
- */
-export function createCdkId (idParts: string[], maxLength: number = 64, truncationIdx: number = -1): string {
-    let cdkId = idParts.join('-');
-    const length = cdkId.length;
-
-    if (length > maxLength) {
-        idParts[truncationIdx] = idParts[truncationIdx].slice(0, maxLength - length);
-        cdkId = idParts.join('-');
-    }
-
-    return cdkId;
-}
+import { EcsClusterConfig } from '#root/lib/schema';
 
 /**
  * Creates a "normalized" identifier based on the provided model config. If a modelId has been
  * defined the id will be used otherwise the model name will be used. This normalized identifier
  * strips all non alpha numeric characters.
  *
- * @param {string} modelConfig model config
+ * @param {EcsClusterConfig} modelConfig model config
  * @returns {string} normalized model name for use in CDK identifiers/resource names
  */
-export function getModelIdentifier (modelConfig: ModelConfig): string {
+export function getModelIdentifier (modelConfig: EcsClusterConfig): string {
     return (modelConfig.modelId || modelConfig.modelName).replace(/[^a-zA-Z0-9]/g, '');
 }

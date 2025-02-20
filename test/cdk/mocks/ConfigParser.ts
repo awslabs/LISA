@@ -19,13 +19,14 @@ import * as yaml from 'js-yaml';
 import fs from 'fs';
 import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 
+const HERE: string = path.resolve(__dirname);
 
 export default class ConfigParser {
 
     static parseConfig (configPaths = ['config.yaml']): Config {
         // Read configuration file
         const configData = configPaths.map((configPath) => {
-            const configFilePath = path.join(__dirname, `../mocks/${configPath}`);
+            const configFilePath = path.join(HERE, `../mocks/${configPath}`);
             const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
             const configEnv = configFile.env || 'dev';
             if (!configFile[configEnv]) {

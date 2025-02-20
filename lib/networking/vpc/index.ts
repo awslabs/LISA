@@ -31,7 +31,7 @@ import { Construct } from 'constructs';
 
 import { createCdkId } from '../../core/utils';
 import { BaseProps } from '../../schema';
-import { SecurityGroups } from '../../configSchema';
+import { SecurityGroups } from '#root/lib/schema';
 import { SecurityGroupEnum } from '../../core/iam/SecurityGroups';
 import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 import { SecurityGroupFactory } from './security-group-factory';

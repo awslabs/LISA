@@ -9,11 +9,6 @@
       "jest",
       "linkify-it"
     ],
-    "paths": {
-      "#root/*": [
-        "./*"
-      ]
-    },
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,

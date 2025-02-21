@@ -39,7 +39,7 @@ import { LisaServeIAMStack } from './iam_stack';
 import { LisaModelsApiStack } from './models';
 import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
-import { BaseProps, stackSynthesizerType } from '#root/lib/schema';
+import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';

@@ -42,7 +42,7 @@ import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 import { DeletePipelineStateMachine } from './state_machine/delete-pipeline';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
-import { RagRepositoryConfig, RagRepositoryType } from '#root/lib/schema';
+import { RagRepositoryConfig, RagRepositoryType } from '../schema';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';

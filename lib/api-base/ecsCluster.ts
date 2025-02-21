@@ -48,7 +48,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, EcsSourceType, Ec2Metadata, ECSConfig } from '#root/lib/schema';
+import { BaseProps, EcsSourceType, Ec2Metadata, ECSConfig } from '../schema';
 import { Vpc } from '../networking/vpc';
 
 /**

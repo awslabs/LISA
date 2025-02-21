@@ -39,7 +39,7 @@ import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { PipelineConfig, RagRepositoryType, RdsConfig } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryType, RdsConfig } from '../../schema';
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;

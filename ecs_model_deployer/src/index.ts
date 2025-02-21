@@ -14,9 +14,9 @@
   limitations under the License.
 */
 
-import { ChildProcess, spawn, spawnSync } from 'child_process';
+import { ChildProcess, spawn, spawnSync } from 'node:child_process';
 
-import { readdirSync, rmSync, symlinkSync } from 'fs';
+import { readdirSync, rmSync, symlinkSync } from 'node:fs';
 
 /*
   cdk CLI always wants ./ to be writable in order to write cdk.context.json.

@@ -183,7 +183,6 @@ export class UserInterfaceStack extends Stack {
         const uriSuffix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
         let webappAssets;
         if (!config.webAppAssetsPath) {
-            console.log('Building from source---------------------------------------------');
             webappAssets = Source.asset(appPath, {
                 bundling: {
                     image: Runtime.NODEJS_18_X.bundlingImage,
@@ -199,7 +198,6 @@ export class UserInterfaceStack extends Stack {
                     local: {
                         tryBundle (outputDir: string) {
                             try {
-                                console.log('Building from LOCAL source ---------------------------------------------');
                                 execSync(`npm --silent --prefix "${appPath}" i && npm --silent --prefix "${appPath}" run build -- --base="/${uriSuffix}"`, {
                                     env: process.env,
                                 });

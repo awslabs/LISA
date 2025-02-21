@@ -14,9 +14,9 @@
   limitations under the License.
 */
 
-import path from 'path';
+import path from 'node:path';
 import * as yaml from 'js-yaml';
-import fs from 'fs';
+import fs from 'node:fs';
 import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 
 const HERE: string = path.resolve(__dirname);

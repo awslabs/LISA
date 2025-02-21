@@ -63,7 +63,7 @@ _(\*) Required._
 ## RdsInstanceConfig
 
 Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
- 
+
  The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.
 
 _Object containing the following properties:_

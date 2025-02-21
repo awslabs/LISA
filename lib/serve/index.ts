@@ -15,7 +15,7 @@
  */
 
 // LISA-serve Stack.
-import path from 'path';
+import path from 'node:path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';

@@ -44,8 +44,8 @@ import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
 
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 
 const HERE: string = path.resolve(__dirname);
 const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');

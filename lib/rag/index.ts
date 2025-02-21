@@ -16,7 +16,7 @@
 
 // LisaChat Stack.
 
-import path from 'path';
+import path from 'node:path';
 
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';

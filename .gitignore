@@ -3,13 +3,13 @@
 !postcss.config.js
 !jest.config.js
 *.d.ts
+dist/
 node_modules/
 __pycache__/
 .ruff_cache/
 .husky/
 .mypy_cache/
 .pytest_cache/
-
 *.key
 *.pem
 

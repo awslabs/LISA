@@ -23,9 +23,7 @@ import { Construct } from 'constructs';
 import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
-import { BaseProps } from '../schema';
-import { Ec2Metadata } from '../configSchema';
-import { EcsSourceType } from '../cdk';
+import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
@@ -68,7 +66,7 @@ export class FastApiContainer extends Construct {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
-
+        config.authConfig;
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: 'python:3.11',
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
@@ -108,7 +106,7 @@ export class FastApiContainer extends Construct {
                     cooldown: 60,
                     defaultInstanceWarmup: 60,
                     metricConfig: {
-                        AlbMetricName: 'RequestCountPerTarget',
+                        albMetricName: 'RequestCountPerTarget',
                         targetValue: 1000,
                         duration: 60,
                         estimatedInstanceWarmup: 30

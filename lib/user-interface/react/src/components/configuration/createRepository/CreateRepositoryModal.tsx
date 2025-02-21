@@ -28,7 +28,7 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
-import { RagRepositoryConfig, RagRepositoryConfigSchema } from '../../../../../../configSchema';
+import { RagRepositoryConfig, RagRepositoryConfigSchema } from '#root/lib/schema';
 
 export type CreateRepositoryModalProps = {
     visible: boolean;

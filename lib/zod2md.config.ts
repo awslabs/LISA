@@ -18,7 +18,7 @@ import type { Config } from 'zod2md';
 
 export default {
     title: 'LISA Configuration Schema',
-    entry: './lib/schema.ts',
+    entry: './lib/schema/schema.ts',
     output: './lib/docs/config/schema.md',
     tsconfig: 'tsconfig.json',
 } satisfies Config;

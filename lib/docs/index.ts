@@ -26,6 +26,8 @@ import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
 
+const HERE: string = path.resolve(__dirname);
+
 /**
  * Properties for DocsStack Construct.
  */
@@ -57,7 +59,7 @@ export class LisaDocsStack extends Stack {
         });
 
         // Ensure dist folder is created (for tests)
-        const docsPath = path.join(__dirname, 'dist');
+        const docsPath = path.join(HERE, 'dist');
         if (!fs.existsSync(docsPath)) {
             fs.mkdirSync(docsPath);
         }

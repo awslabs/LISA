@@ -26,7 +26,7 @@ import {
 import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { useNavigate } from 'react-router-dom';
-import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagRepositoryConfig } from '#root/lib/schema';
 
 export function RepositoryLibraryComponent (): ReactElement {
     const {

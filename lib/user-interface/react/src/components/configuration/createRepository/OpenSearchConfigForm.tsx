@@ -25,8 +25,7 @@ import {
     OpenSearchConfig,
     OpenSearchExistingClusterConfig,
     OpenSearchNewClusterConfig,
-} from '../../../../../../configSchema';
-import { EbsDeviceVolumeType } from '../../../../../../cdk';
+    EbsDeviceVolumeType } from '#root/lib/schema';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { getDefaults } from '../../../shared/util/zodUtil';

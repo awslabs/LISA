@@ -21,7 +21,6 @@ import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
-    AmiHardwareType,
     Cluster,
     ContainerDefinition,
     ContainerImage,
@@ -43,8 +42,9 @@ import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-ia
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { createCdkId } from './utils';
-import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from './ecs-schema';
+import { createCdkId } from '../../../lib/core/utils';
+import { BaseProps, AmiHardwareType, EcsSourceType } from '../../../lib/schema';
+import { Ec2Metadata, ECSConfig } from '../../../lib/schema';
 
 /**
  * Properties for the ECSCluster Construct.

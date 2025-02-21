@@ -16,18 +16,18 @@
 
 import { Aspects, CfnResource, IAspect, Stack, StackProps } from 'aws-cdk-lib';
 
-import { Vpc, SecurityGroup, Subnet, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
+import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 
 import { Construct } from 'constructs';
 import { EcsModel } from './ecs-model';
 
-import { Config, ModelConfig } from './ecs-schema';
+import { Config,EcsClusterConfig } from '../../../lib/schema';
 
 export type LisaModelStackProps = {
     vpcId: string;
     securityGroupId: string;
     config: Config;
-    modelConfig: ModelConfig;
+    modelConfig: EcsClusterConfig;
 } & StackProps;
 
 /**

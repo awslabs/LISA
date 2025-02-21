@@ -232,6 +232,8 @@ cleanTypeScript:
 	@find . -type d -name ".tscache" -exec rm -rf {} +
 	@find . -type d -name ".jest_cache" -exec rm -rf {} +
 	@find . -type d -name "node_modules" -exec rm -rf {} +
+	@find . -type d -name "cdk.out" -exec rm -rf {} +
+	@find . -type d -name "coverage" -exec rm -rf {} +
 
 
 ## Delete CloudFormation outputs

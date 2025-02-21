@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { execSync, ExecSyncOptionsWithBufferEncoding } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -31,6 +31,7 @@ import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
 
+const HERE: string = path.resolve(__dirname);
 /**
  * Properties for UserInterface Construct.
  *
@@ -57,7 +58,7 @@ export class UserInterfaceStack extends Stack {
         super(scope, id, props);
 
         const { architecture, config, restApiId, rootResourceId } = props;
-        const appPath = path.join(__dirname, '.', 'react');
+        const appPath = path.join(HERE, '.', 'react');
         const distPath = path.join(appPath, 'dist');
 
         // Create website S3 bucket
@@ -187,27 +188,19 @@ export class UserInterfaceStack extends Stack {
                     image: Runtime.NODEJS_18_X.bundlingImage,
                     platform: architecture.dockerPlatform,
                     command: [
-                        'sh',
-                        '-c',
-                        [
+                        'sh', '-c', [
                             'set -x',
-                            'npm --cache /tmp/.npm install',
+                            'npm --cache /tmp/.npm i',
                             `npm --cache /tmp/.npm run build -- --base="/${uriSuffix}"`,
-                            'cp -aur /asset-input/dist/* /asset-output/',
+                            'cp -r dist/* /asset-output/',
                         ].join(' && '),
                     ],
                     local: {
                         tryBundle (outputDir: string) {
                             try {
-                                const options: ExecSyncOptionsWithBufferEncoding = {
-                                    stdio: 'inherit',
-                                    env: {
-                                        ...process.env,
-                                    },
-                                };
-
-                                execSync(`npm --silent --prefix "${appPath}" ci`, options);
-                                execSync(`npm --silent --prefix "${appPath}" run build -- --base="/${uriSuffix}"`, options);
+                                execSync(`npm --silent --prefix "${appPath}" i && npm --silent --prefix "${appPath}" run build -- --base="/${uriSuffix}"`, {
+                                    env: process.env,
+                                });
                                 copyDirRecursive(distPath, outputDir);
                             } catch (e) {
                                 return false;
@@ -226,9 +219,9 @@ export class UserInterfaceStack extends Stack {
             retainOnDelete: false,
             destinationBucket: websiteBucket,
             ...(config.roles?.UIDeploymentRole &&
-              {
-                  role: Role.fromRoleName(this, createCdkId(['LisaRestApiUri', Roles.UI_DEPLOYMENT_ROLE]), config.roles.UIDeploymentRole),
-              }),
+                {
+                    role: Role.fromRoleName(this, createCdkId(['LisaRestApiUri', Roles.UI_DEPLOYMENT_ROLE]), config.roles.UIDeploymentRole),
+                }),
         });
     }
 

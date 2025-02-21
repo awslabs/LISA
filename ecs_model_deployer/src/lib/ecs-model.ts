@@ -12,9 +12,8 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- */
+*/
 
-// ECS Model Construct.
 import { ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
@@ -22,7 +21,7 @@ import { Construct } from 'constructs';
 
 import { ECSCluster } from './ecsCluster';
 import { getModelIdentifier } from './utils';
-import { BaseProps, Config, Ec2Metadata, EcsSourceType, ModelConfig } from './ecs-schema';
+import { BaseProps, Config, Ec2Metadata, EcsClusterConfig, EcsSourceType } from '../../../lib/schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
@@ -33,11 +32,11 @@ const CONTAINER_MEMORY_BUFFER = 1024 * 5;
  * Properties for the EcsModel Construct.
  *
  * @property {IVpc} vpc - The virtual private cloud (VPC).
- * @property {SecurityGroup} securityGroup - The security group to use for the ECS cluster
- * @property {ModelConfig} modelConfig - The model configuration.
+ * @property {ISecurityGroup} securityGroup - The security group to use for the ECS cluster
+ * @property {EcsClusterConfig} modelConfig - The model configuration.
  */
 type ECSModelProps = {
-    modelConfig: ModelConfig;
+    modelConfig: EcsClusterConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
     subnetSelection?: SubnetSelection;
@@ -51,10 +50,10 @@ export class EcsModel extends Construct {
     public readonly endpointUrl: string;
 
     /**
-   * @param {Construct} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {ECSModelProps} props - The properties of the construct.
-   */
+    * @param {Construct} scope - The parent or owner of the construct.
+    * @param {string} id - The unique identifier for the construct within its scope.
+    * @param {ECSModelProps} props - The properties of the construct.
+    */
     constructor (scope: Construct, id: string, props: ECSModelProps) {
         super(scope, id);
         const { config, modelConfig, securityGroup, vpc, subnetSelection } = props;
@@ -87,15 +86,15 @@ export class EcsModel extends Construct {
     }
 
     /**
-   * Generates environment variables for Docker at runtime based on the configuration. The environment variables
-   * include the local model path, S3 bucket for models, model name, and other variables depending on the model type.
-   *
-   * @param {Config} config - The application configuration.
-   * @param {ModelConfig} modelConfig - Configuration for the specific model.
-   * @returns {Object} An object containing the environment variables. The object has string keys and values, which
-   *                   represent the environment variables for Docker at runtime.
-   */
-    private getEnvironmentVariables (config: Config, modelConfig: ModelConfig): { [key: string]: string } {
+    * Generates environment variables for Docker at runtime based on the configuration. The environment variables
+    * include the local model path, S3 bucket for models, model name, and other variables depending on the model type.
+    *
+    * @param {Config} config - The application configuration.
+    * @param {EcsClusterConfig} modelConfig - Configuration for the specific model.
+    * @returns {Object} An object containing the environment variables. The object has string keys and values, which
+    *                   represent the environment variables for Docker at runtime.
+    */
+    private getEnvironmentVariables (config: Config, modelConfig: EcsClusterConfig): { [key: string]: string } {
         const environment: { [key: string]: string } = {
             LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath}/model`,
             S3_BUCKET_MODELS: config.s3BucketModels,
@@ -127,15 +126,15 @@ export class EcsModel extends Construct {
     }
 
     /**
-   * Generates build arguments for the Docker build based on the configuration. The build arguments include the base
-   * image, and depending on the model type, either the local code path or the S3 deb URL.
-   *
-   * @param {Config} config - The application configuration.
-   * @param {ModelConfig} modelConfig - Configuration for the specific model.
-   * @returns {Object} An object containing the build arguments. The object has string keys and values, which represent
-   *                   the arguments for the Docker build.
-   */
-    private getBuildArguments (config: Config, modelConfig: ModelConfig): { [key: string]: string } | undefined {
+    * Generates build arguments for the Docker build based on the configuration. The build arguments include the base
+    * image, and depending on the model type, either the local code path or the S3 deb URL.
+    *
+    * @param {Config} config - The application configuration.
+    * @param {EcsClusterConfig} modelConfig - Configuration for the specific model.
+    * @returns {Object} An object containing the build arguments. The object has string keys and values, which represent
+    *                   the arguments for the Docker build.
+    */
+    private getBuildArguments (config: Config, modelConfig: EcsClusterConfig): { [key: string]: string } | undefined {
         if (modelConfig.containerConfig.image.type !== EcsSourceType.ASSET) {
             return undefined;
         }

@@ -22,7 +22,7 @@ import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
 
 export default class ConfigParser {
 
-    static parseConfig (configPaths = ['config.yaml']): Config {
+    static parseConfig (configPaths = ['config-test.yaml']): Config {
         // Read configuration file
         const configData = configPaths.map((configPath) => {
             const configFilePath = path.join(__dirname, `../mocks/${configPath}`);

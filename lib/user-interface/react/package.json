@@ -11,7 +11,7 @@
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(tsx|js|ts|json)\""
   },
   "dependencies": {
-    "@cloudscape-design/chat-components": "^1.0.22",
+    "@cloudscape-design/chat-components": "^1.0.19",
     "@cloudscape-design/collection-hooks": "^1.0.59",
     "@cloudscape-design/component-toolkit": "^1.0.0-beta.65",
     "@cloudscape-design/components": "^3.0.883",

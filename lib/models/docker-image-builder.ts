@@ -85,7 +85,7 @@ export class DockerImageBuilder extends Construct {
         this.dockerImageBuilderFn = new Function(this, functionId, {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
-                queueName: 'docker-image-builderDLQ',
+                queueName: `${stackName}-docker-image-builderDLQ`,
                 enforceSSL: true,
             }),
             functionName: functionId,

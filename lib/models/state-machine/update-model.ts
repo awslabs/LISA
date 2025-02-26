@@ -36,6 +36,7 @@ import {
 import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../../api-base/utils';
+import * as cdk from 'aws-cdk-lib';
 
 
 type UpdateModelStateMachineProps = BaseProps & {
@@ -83,7 +84,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleJobIntakeDLQ', {
-                    queueName: 'HandleJobIntakeDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-HandleJobIntakeDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -106,7 +107,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandlePollCapacityDLQ', {
-                    queueName: 'HandlePollCapacityDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-HandlePollCapacityDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -129,7 +130,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleFinishUpdateDLQ', {
-                    queueName: 'HandleFinishUpdateDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-HandleFinishUpdateDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),

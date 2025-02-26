@@ -108,7 +108,7 @@ export function registerAPIEndpoint (
         handler = new Function(scope, functionId, {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(scope, `${functionId}DLQ`, {
-                queueName: `${functionId}DLQ`,
+                queueName: `${cdk.Stack.of(scope).stackName}-${functionId}DLQ`,
                 enforceSSL: true,
             }),
             functionName: functionId,

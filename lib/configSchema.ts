@@ -673,7 +673,7 @@ export const RawConfigObject = z.object({
     }).describe('Pypi configuration.'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
-    ragRepositories: z.array(RagRepositoryConfigSchema).optional().default([]).describe('Rag Repository configuration.'),
+    ragRepositories: z.array(RagRepositoryConfigSchema).describe('Rag Repository configuration.'),
     ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
     ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
     apiGatewayConfig: ApiGatewayConfigSchema,

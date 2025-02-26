@@ -79,7 +79,7 @@ export class CustomAuthorizer extends Construct {
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
-                queueName: 'AuthorizerLambdaDLQ',
+                queueName: `${cdk.Stack.of(this).stackName}-AuthorizerLambdaDLQ`,
                 enforceSSL: true,
             }),
             runtime: getDefaultRuntime(),

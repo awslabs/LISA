@@ -55,7 +55,7 @@ export class DeletePipelineStateMachine extends Construct {
             description: 'Key for encrypting Lambda environment variables'
         });
         const deletePipelineRole = new Role(this, 'DeletePipelineRole', {
-            roleName: `${config.deploymentName}-DeletePipelineRole`,
+            roleName: `${config.deploymentPrefix}-DeletePipelineRole`,
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         });
         new StringParameter(this, 'DeletePipelineRoleArnParameter', {

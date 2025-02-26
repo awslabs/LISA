@@ -115,7 +115,7 @@ export class IngestPipelineStateMachine extends Construct {
         }
 
         const ingestPipelineRole = new Role(this, 'IngestPipelineRole', {
-            roleName: `${config.deploymentName}-IngestPipelineRole`,
+            roleName: `${config.deploymentPrefix}-IngestPipelineRole`,
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         });
         new StringParameter(this, 'IngestPipelineRoleArnParameter', {

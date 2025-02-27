@@ -15,6 +15,7 @@
  */
 
 
+import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import {
@@ -73,7 +74,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'SetModelToDeletingFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'SetModelToDeletingDLQ', {
-                    queueName: 'SetModelToDeletingDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-SetModelToDeletingDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -96,7 +97,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteFromLitellmFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'DeleteFromLitellmDLQ', {
-                    queueName: 'DeleteFromLitellmDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-DeleteFromLitellmDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -119,7 +120,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteStackFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'DeleteStackDLQ', {
-                    queueName: 'DeleteStackDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-DeleteStackDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -142,7 +143,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'MonitorDeleteStackFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'MonitorDeleteStackDLQ', {
-                    queueName: 'MonitorDeleteStackDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-MonitorDeleteStackDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -165,7 +166,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteFromDdbFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'DeleteFromDdbDLQ', {
-                    queueName: 'DeleteFromDdbDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-DeleteFromDdbDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),

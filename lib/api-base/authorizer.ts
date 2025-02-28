@@ -79,7 +79,7 @@ export class CustomAuthorizer extends Construct {
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
-                queueName: 'AuthorizerLambdaDLQ',
+                queueName: `${cdk.Stack.of(this).stackName}-AuthorizerLambdaDLQ`,
                 enforceSSL: true,
             }),
             runtime: getDefaultRuntime(),
@@ -97,7 +97,7 @@ export class CustomAuthorizer extends Construct {
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
             },
-            reservedConcurrentExecutions: 20,
+            reservedConcurrentExecutions: 5,
             role: role,
             vpc: vpc.vpc,
             securityGroups: securityGroups,

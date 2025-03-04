@@ -19,26 +19,26 @@ import React from 'react';
 import { SetFieldsFunction } from '../../shared/validation';
 
 const ragOptions = {
-    uploadRagDocs: 'Upload documents to RAG',
+    uploadRagDocs: 'Allow document upload from Chat',
     showRagLibrary: 'Show Document Library',
-    editNumOfRagDocument: 'Edit Number of RAG documents',
+    editNumOfRagDocument: 'Edit number of referenced documents',
 };
 
 const inContextOptions = {
-    uploadContextDocs: 'Upload documents to context',
-    documentSummarization: 'Document Summarization',
+    uploadContextDocs: 'Allow document upload to context',
+    documentSummarization: 'Allow Document Summarization',
 };
 
 const advancedOptions = {
-    editKwargs: 'Edit Kwargs',
+    editKwargs: 'Edit model arguments',
     editPromptTemplate: 'Update Prompt Template',
-    viewMetaData: 'View Chat Meta Data',
+    viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
-    editChatHistoryBuffer: 'Edit Chat History Buffer',
+    editChatHistoryBuffer: 'Edit chat history buffer',
 };
 
 const configurableOperations = [{
-    header: 'Rag Components',
+    header: 'RAG Components',
     items: ragOptions
 },
 {

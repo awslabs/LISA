@@ -64,36 +64,35 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                 </Header>
             }>
             <SpaceBetween direction='vertical' size='m'>
+                <Grid gridDefinition={configurableOperations.map(() => ({colspan: 4}))}>
                 {configurableOperations.map((operation) =>
-                <Container
-                    header={
+                    <SpaceBetween size={'xs'}>
                         <Header variant='h3'>
                             {operation.header}
                         </Header>
-                    }>
-                    <Grid gridDefinition={Object.keys(operation.items).map(() => ({colspan: 3}))}>
-                        {Object.keys(operation.items).map((item) => {
-                            return (
-                                <Box textAlign='center' key={operation}>
-                                    <SpaceBetween alignItems='left' size='xs'>
-                                        <Toggle
-                                            onChange={({detail}) => {
-                                                const updatedField = {};
-                                                updatedField[`enabledComponents.${item}`] = detail.checked;
-                                                props.setFields(updatedField);
-                                            }}
-                                            checked={props.enabledComponents[item] || false}
-                                            data-cy={`Toggle-${item}`}
-                                        >
-                                            {operation.items[item]}
-                                        </Toggle>
-                                    </SpaceBetween>
-                                </Box>
-                            );
-                        })}
-                    </Grid>
-                </Container>
+                            {Object.keys(operation.items).map((item) => {
+                                return (
+                                    <Box textAlign='center' key={operation}>
+                                        <SpaceBetween alignItems='left' size='xs'>
+                                            <Toggle
+                                                onChange={({detail}) => {
+                                                    const updatedField = {};
+                                                    updatedField[`enabledComponents.${item}`] = detail.checked;
+                                                    props.setFields(updatedField);
+                                                }}
+                                                checked={props.enabledComponents[item] || false}
+                                                data-cy={`Toggle-${item}`}
+                                            >
+                                                {operation.items[item]}
+                                            </Toggle>
+                                        </SpaceBetween>
+                                    </Box>
+                                );
+                            })}
+                    </SpaceBetween>
+
 )}
+                </Grid>
             </SpaceBetween>
         </Container>
     );

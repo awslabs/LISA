@@ -20,6 +20,7 @@ import { useAuth } from 'react-oidc-context';
 
 import chatImg from '../assets/chat.png';
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';
+import { purgeStore } from '../config/store';
 
 export function Home ({ setNav }) {
     const navigate = useNavigate();
@@ -36,6 +37,12 @@ export function Home ({ setNav }) {
         }
     // eslint-disable-next-line
   }, [auth.isAuthenticated]);
+
+    useEffect(() => {
+        if (!auth.isAuthenticated && !window.location.href.includes('?')) {
+            purgeStore();
+        }
+    }, []);
 
     return (
         <Modal

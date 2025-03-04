@@ -46,64 +46,9 @@ export function SystemBannerConfiguration (props: SystemBannerConfigurationProps
                 </Header>
             }>
             <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{colspan: 4}, {colspan: 4}, {colspan: 4}]}>
-                    <Box textAlign='center'>
-                        <SpaceBetween alignItems='center' size='xs'>
-                            <Toggle
-                                onChange={({detail}) => {
-                                    props.setFields({'systemBanner.isEnabled': detail.checked});
-                                }}
-                                checked={props.isEnabled!}
-                            >
-                            </Toggle>
-                        </SpaceBetween>
-                        <p>Activate System Banner</p>
-                    </Box>
-                    <FormField>
-                        <Box textAlign='center'>
-                            <SpaceBetween alignItems='center' size='xs'>
-                                <input
-                                    type='color'
-                                    onInput={(event) =>
-                                        props.setFields({'systemBanner.textColor': event.target.value})
-                                    }
-                                    value={props.textColor}
-                                    disabled={!props.isEnabled}
-                                    style={{
-                                        border: '2px solid #7F8897',
-                                        borderRadius: '6px',
-                                        padding: '3px'
-                                    }}
-                                />
-                            </SpaceBetween>
-                            <p>Text Color</p>
-                        </Box>
-                    </FormField>
-                    <FormField>
-                        <Box textAlign='center'>
-                            <SpaceBetween alignItems='center' size='xs'>
-                                <input
-                                    type='color'
-                                    onInput={(event) =>
-                                        props.setFields({'systemBanner.backgroundColor': event.target.value})
-                                    }
-                                    value={props.backgroundColor}
-                                    disabled={!props.isEnabled}
-                                    style={{
-                                        border: '2px solid #7F8897',
-                                        borderRadius: '6px',
-                                        padding: '3px'
-                                    }}
-                                />
-                            </SpaceBetween>
-                            <p>Background Color</p>
-                        </Box>
-                    </FormField>
-                </Grid>
                 <FormField
                     label='Banner Text'
                     errorText={props.errors?.systemBanner?.text}
-                    constraintText='Must have at least one character.'
                 >
                     <Input
                         onChange={({detail}) => {
@@ -115,6 +60,50 @@ export function SystemBannerConfiguration (props: SystemBannerConfigurationProps
                         disabled={!props.isEnabled}
                     />
                 </FormField>
+                <Toggle
+                    onChange={({detail}) => {
+                        props.setFields({'systemBanner.isEnabled': detail.checked});
+                    }}
+                    checked={props.isEnabled!}
+                >
+                    Activate System Banner
+                </Toggle>
+                    <FormField>
+                        <Grid gridDefinition={[{colspan: 1}, {colspan: 2}]}>
+                            <input
+                                type='color'
+                                onInput={(event) =>
+                                    props.setFields({'systemBanner.textColor': event.target.value})
+                                }
+                                value={props.textColor}
+                                disabled={!props.isEnabled}
+                                style={{
+                                    border: '2px solid #7F8897',
+                                    borderRadius: '6px',
+                                    padding: '3px'
+                                }}
+                            />
+                            <p>Text Color</p>
+                        </Grid>
+                    </FormField>
+                    <FormField>
+                        <Grid gridDefinition={[{colspan: 1}, {colspan: 2}]}>
+                            <input
+                                type='color'
+                                onInput={(event) =>
+                                    props.setFields({'systemBanner.backgroundColor': event.target.value})
+                                }
+                                value={props.backgroundColor}
+                                disabled={!props.isEnabled}
+                                style={{
+                                    border: '2px solid #7F8897',
+                                    borderRadius: '6px',
+                                    padding: '3px'
+                                }}
+                            />
+                            <p>Background Color</p>
+                        </Grid>
+                    </FormField>
             </SpaceBetween>
         </Container>
     );

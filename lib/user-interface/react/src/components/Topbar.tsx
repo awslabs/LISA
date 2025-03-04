@@ -20,7 +20,7 @@ import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
-import { signOut, useAppSelector } from '../config/store';
+import { purgeStore, useAppSelector } from '../config/store';
 import { selectCurrentUserIsAdmin } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '../shared/model/configuration.model';
 import { ButtonUtility } from '@cloudscape-design/components/top-navigation/interfaces';
@@ -124,7 +124,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 auth.signinRedirect({ redirect_uri: window.location.toString() });
                                 break;
                             case 'signout':
-                                await signOut();
+                                await purgeStore();
                                 await auth.signoutSilent();
                                 break;
                             case 'color-mode':

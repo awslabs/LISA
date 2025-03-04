@@ -18,18 +18,37 @@ import { Box, Container, Grid, Header, SpaceBetween, Toggle } from '@cloudscape-
 import React from 'react';
 import { SetFieldsFunction } from '../../shared/validation';
 
-const configurableOperations = {
-    deleteSessionHistory: 'Delete Session History',
-    viewMetaData: 'View Chat Meta Data',
-    editKwargs: 'Edit Kwargs',
-    editPromptTemplate: 'Update Prompt Template',
-    editNumOfRagDocument: 'Edit Number of RAG documents',
-    editChatHistoryBuffer: 'Edit Chat History Buffer',
+const ragOptions = {
     uploadRagDocs: 'Upload documents to RAG',
+    showRagLibrary: 'Show Document Library',
+    editNumOfRagDocument: 'Edit Number of RAG documents',
+}
+
+const inContextOptions = {
     uploadContextDocs: 'Upload documents to context',
     documentSummarization: 'Document Summarization',
-    showRagLibrary: 'Show Document Library',
-};
+}
+
+const advancedOptions = {
+    editKwargs: 'Edit Kwargs',
+    editPromptTemplate: 'Update Prompt Template',
+    viewMetaData: 'View Chat Meta Data',
+    deleteSessionHistory: 'Delete Session History',
+    editChatHistoryBuffer: 'Edit Chat History Buffer',
+}
+
+const configurableOperations = [{
+        header: 'Rag Components',
+        items: ragOptions
+    },
+    {
+        header: 'In-Context Components',
+        items: inContextOptions
+    },
+    {
+        header: 'Advanced Components',
+        items: advancedOptions
+    }];
 
 export type ActivatedComponentConfigurationProps = {
     setFields: SetFieldsFunction;
@@ -45,27 +64,36 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                 </Header>
             }>
             <SpaceBetween direction='vertical' size='m'>
-                <Grid gridDefinition={Object.keys(configurableOperations).map(() => ({colspan: 3}))}>
-                    {Object.keys(configurableOperations).map((operation) => {
-                        return (
-                            <Box textAlign='center' key={operation}>
-                                <SpaceBetween alignItems='center' size='xs'>
-                                    <Toggle
-                                        onChange={({detail}) => {
-                                            const updatedField = {};
-                                            updatedField[`enabledComponents.${operation}`] = detail.checked;
-                                            props.setFields(updatedField);
-                                        }}
-                                        checked={props.enabledComponents[operation] || false}
-                                        data-cy={`Toggle-${operation}`}
-                                    >
-                                    </Toggle>
-                                </SpaceBetween>
-                                <p>{configurableOperations[operation]}</p>
-                            </Box>
-                        );
-                    })}
-                </Grid>
+                {configurableOperations.map((operation) =>
+                <Container
+                    header={
+                        <Header variant='h3'>
+                            {operation.header}
+                        </Header>
+                    }>
+                    <Grid gridDefinition={Object.keys(operation.items).map(() => ({colspan: 3}))}>
+                        {Object.keys(operation.items).map((item) => {
+                            return (
+                                <Box textAlign='center' key={operation}>
+                                    <SpaceBetween alignItems='left' size='xs'>
+                                        <Toggle
+                                            onChange={({detail}) => {
+                                                const updatedField = {};
+                                                updatedField[`enabledComponents.${item}`] = detail.checked;
+                                                props.setFields(updatedField);
+                                            }}
+                                            checked={props.enabledComponents[item] || false}
+                                            data-cy={`Toggle-${item}`}
+                                        >
+                                            {operation.items[item]}
+                                        </Toggle>
+                                    </SpaceBetween>
+                                </Box>
+                            );
+                        })}
+                    </Grid>
+                </Container>
+)}
             </SpaceBetween>
         </Container>
     );

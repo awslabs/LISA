@@ -36,7 +36,7 @@ const store = configureStore({
         }).concat(...rootMiddleware),
 });
 
-export async function signOut () {
+export async function purgeStore () {
     await storage.removeItem('persist:lisa');
     persistor.purge().then(() => {
         persistor.flush().then(() => {

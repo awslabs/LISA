@@ -118,8 +118,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
-            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to delete a model that is in a pending or failed state' : '',
+            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
+            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to stop a model that is not hosted in LISA' : ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
         });
     }
 

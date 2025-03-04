@@ -130,14 +130,16 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     http_method = request.method
     if http_method == "GET":
-        return JSONResponse(requests.request(method=http_method, url=litellm_path, headers=headers).json())
+        response = requests.request(method=http_method, url=litellm_path, headers=headers)
+        return JSONResponse(response.json(), status_code=response.status_code)
     # not a GET request, so expect a JSON payload as part of the request
     params = await request.json()
     if params.get("stream", False):  # if a streaming request
         response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
-        return StreamingResponse(generate_response(response.iter_lines()))
+        return StreamingResponse(generate_response(response.iter_lines()), status_code=response.status_code)
     else:  # not a streaming request
-        return JSONResponse(requests.request(method=http_method, url=litellm_path, json=params, headers=headers).json())
+        response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers)
+        return JSONResponse(response.json(), status_code=response.status_code)
 
 
 def refresh_management_tokens() -> list[str]:

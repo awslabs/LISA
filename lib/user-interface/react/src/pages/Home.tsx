@@ -42,6 +42,7 @@ export function Home ({ setNav }) {
         if (!auth.isAuthenticated && !window.location.href.includes('?')) {
             purgeStore();
         }
+        // eslint-disable-next-line
     }, []);
 
     return (

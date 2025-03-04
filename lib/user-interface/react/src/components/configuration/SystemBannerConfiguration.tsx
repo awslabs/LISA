@@ -15,7 +15,6 @@
  */
 
 import {
-    Box,
     Container,
     FormField,
     Grid,
@@ -68,42 +67,42 @@ export function SystemBannerConfiguration (props: SystemBannerConfigurationProps
                 >
                     Activate System Banner
                 </Toggle>
-                    <FormField>
-                        <Grid gridDefinition={[{colspan: 1}, {colspan: 2}]}>
-                            <input
-                                type='color'
-                                onInput={(event) =>
-                                    props.setFields({'systemBanner.textColor': event.target.value})
-                                }
-                                value={props.textColor}
-                                disabled={!props.isEnabled}
-                                style={{
-                                    border: '2px solid #7F8897',
-                                    borderRadius: '6px',
-                                    padding: '3px'
-                                }}
-                            />
-                            <p>Text Color</p>
-                        </Grid>
-                    </FormField>
-                    <FormField>
-                        <Grid gridDefinition={[{colspan: 1}, {colspan: 2}]}>
-                            <input
-                                type='color'
-                                onInput={(event) =>
-                                    props.setFields({'systemBanner.backgroundColor': event.target.value})
-                                }
-                                value={props.backgroundColor}
-                                disabled={!props.isEnabled}
-                                style={{
-                                    border: '2px solid #7F8897',
-                                    borderRadius: '6px',
-                                    padding: '3px'
-                                }}
-                            />
-                            <p>Background Color</p>
-                        </Grid>
-                    </FormField>
+                <FormField>
+                    <Grid gridDefinition={[{colspan: 1}, {colspan: 2}]}>
+                        <input
+                            type='color'
+                            onInput={(event) =>
+                                props.setFields({'systemBanner.textColor': event.target.value})
+                            }
+                            value={props.textColor}
+                            disabled={!props.isEnabled}
+                            style={{
+                                border: '2px solid #7F8897',
+                                borderRadius: '6px',
+                                padding: '3px'
+                            }}
+                        />
+                        <p>Text Color</p>
+                    </Grid>
+                </FormField>
+                <FormField>
+                    <Grid gridDefinition={[{colspan: 1}, {colspan: 2}]}>
+                        <input
+                            type='color'
+                            onInput={(event) =>
+                                props.setFields({'systemBanner.backgroundColor': event.target.value})
+                            }
+                            value={props.backgroundColor}
+                            disabled={!props.isEnabled}
+                            style={{
+                                border: '2px solid #7F8897',
+                                borderRadius: '6px',
+                                padding: '3px'
+                            }}
+                        />
+                        <p>Background Color</p>
+                    </Grid>
+                </FormField>
             </SpaceBetween>
         </Container>
     );

@@ -22,12 +22,12 @@ const ragOptions = {
     uploadRagDocs: 'Upload documents to RAG',
     showRagLibrary: 'Show Document Library',
     editNumOfRagDocument: 'Edit Number of RAG documents',
-}
+};
 
 const inContextOptions = {
     uploadContextDocs: 'Upload documents to context',
     documentSummarization: 'Document Summarization',
-}
+};
 
 const advancedOptions = {
     editKwargs: 'Edit Kwargs',
@@ -35,20 +35,20 @@ const advancedOptions = {
     viewMetaData: 'View Chat Meta Data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit Chat History Buffer',
-}
+};
 
 const configurableOperations = [{
-        header: 'Rag Components',
-        items: ragOptions
-    },
-    {
-        header: 'In-Context Components',
-        items: inContextOptions
-    },
-    {
-        header: 'Advanced Components',
-        items: advancedOptions
-    }];
+    header: 'Rag Components',
+    items: ragOptions
+},
+{
+    header: 'In-Context Components',
+    items: inContextOptions
+},
+{
+    header: 'Advanced Components',
+    items: advancedOptions
+}];
 
 export type ActivatedComponentConfigurationProps = {
     setFields: SetFieldsFunction;
@@ -65,11 +65,11 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
             }>
             <SpaceBetween direction='vertical' size='m'>
                 <Grid gridDefinition={configurableOperations.map(() => ({colspan: 4}))}>
-                {configurableOperations.map((operation) =>
-                    <SpaceBetween size={'xs'}>
-                        <Header variant='h3'>
-                            {operation.header}
-                        </Header>
+                    {configurableOperations.map((operation) =>
+                        <SpaceBetween size={'xs'}>
+                            <Header variant='h3'>
+                                {operation.header}
+                            </Header>
                             {Object.keys(operation.items).map((item) => {
                                 return (
                                     <Box textAlign='center' key={operation}>
@@ -89,9 +89,9 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                     </Box>
                                 );
                             })}
-                    </SpaceBetween>
+                        </SpaceBetween>
 
-)}
+                    )}
                 </Grid>
             </SpaceBetween>
         </Container>

@@ -24,7 +24,7 @@ import Sessions from '../components/chatbot/Sessions';
 export function Chatbot ({ setNav }) {
     const { sessionId } = useParams();
     useEffect(() => {
-        setNav([<Sessions />]);
+        setNav(<Sessions />);
     }, [setNav]);
 
     return <Chat sessionId={sessionId} />;

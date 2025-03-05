@@ -14,40 +14,19 @@
   limitations under the License.
 */
 
-import { BreadcrumbGroup } from '@cloudscape-design/components';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { BreadcrumbGroup, BreadcrumbGroupProps } from '@cloudscape-design/components';
+import { useNavigate } from 'react-router-dom';
 import React from 'react';
-import _ from 'lodash';
-
-type BreadcrumbItem = {
-    text: string;
-    href: string;
-};
+import { useAppSelector } from '../../config/store';
+import { selectBreadcrumbGroupItems } from '../reducers/breadcrumbs.reducer';
 
 export const Breadcrumbs: React.FC = () => {
-    const location = useLocation();
     const navigate = useNavigate();
-
-    const getBreadcrumbItems = (): BreadcrumbItem[] => {
-        const pathSegments = location.pathname.split('/').filter((segment) => segment);
-        const items: BreadcrumbItem[] = [];
-
-        let currentPath = '';
-        pathSegments.forEach((segment) => {
-            currentPath += `/${segment}`;
-            const text = _.startCase(segment);
-            items.push({
-                text,
-                href: currentPath,
-            });
-        });
-
-        return items;
-    };
+    const breadcrumbs: BreadcrumbGroupProps.Item[] = useAppSelector(selectBreadcrumbGroupItems);
 
     return (
         <BreadcrumbGroup
-            items={getBreadcrumbItems()}
+            items={breadcrumbs}
             ariaLabel='Breadcrumbs'
             onFollow={(event) => {
                 // Prevent default behavior

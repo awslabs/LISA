@@ -22,12 +22,14 @@ import modalReducer from './modal.reducer';
 import { modelManagementApi } from './model-management.reducer';
 import { configurationApi } from './configuration.reducer';
 import { sessionApi } from './session.reducer';
+import breadcrumbGroup from './breadcrumbs.reducer';
 import { ragApi } from './rag.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
     notification: notificationReducer,
     modal: modalReducer,
+    breadcrumbGroup: breadcrumbGroup,
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
     [configurationApi.reducerPath]: configurationApi.reducer,
     [sessionApi.reducerPath]: sessionApi.reducer,

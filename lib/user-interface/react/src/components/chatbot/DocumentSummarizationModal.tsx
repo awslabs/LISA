@@ -46,17 +46,17 @@ export type DocumentSummarizationModalProps = {
     setUserPrompt: (state: string) => void;
     userPrompt: string;
     selectedModel: IModel;
-    setSelectedModel: (state: IModel ) => void;
+    setSelectedModel: (state: IModel) => void;
     chatConfiguration: IChatConfiguration;
     setChatConfiguration: (state: IChatConfiguration) => void;
-    setInternalSessionId: (state: string ) => void;
+    setInternalSessionId: (state: string) => void;
     setSession: (state: LisaChatSession) => void;
     userName: string;
     handleSendGenerateRequest: () => void;
     setMemory: (state: ChatMemory) => void;
 };
 
-export function DocumentSummarizationModal ({
+export function DocumentSummarizationModal({
     showDocumentSummarizationModal,
     setShowDocumentSummarizationModal,
     setFileContext,
@@ -79,11 +79,13 @@ export function DocumentSummarizationModal ({
     const [summarize, setSummarize] = useState<boolean>(false);
     const [createNewChatSession, setCreateNewChatSession] = useState<boolean>(true);
 
-    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
+        refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
             data: (state.data || []).filter((model: IModel) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService && model.features && model.features.filter((feat) => feat.name === 'summarization').length > 0),
-        })});
+        })
+    });
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId, description: model.features.filter((feat) => feat.name === 'summarization')[0].overview })), [allModels]);
     const [selectedPromptType, setSelectedPromptType] = useState<string>('');
     const promptOptions = [
@@ -93,12 +95,12 @@ export function DocumentSummarizationModal ({
         { label: 'Custom', value: 'custom', description: 'Write your own prompt' },
     ];
 
-    function handleError (error: string) {
+    function handleError(error: string) {
         notificationService.generateNotification(error, 'error');
     }
 
-    async function processFile (file: File): Promise<boolean> {
-    //File context currently only supports single files
+    async function processFile(file: File): Promise<boolean> {
+        //File context currently only supports single files
         const fileContents = await file.text();
         setFileContext(`File context: ${fileContents}`);
         setSelectedFiles([file]);
@@ -196,7 +198,7 @@ export function DocumentSummarizationModal ({
                     </p>
                 </TextContent>
                 <FileUpload
-                    onChange={async ({detail}) => {
+                    onChange={async ({ detail }) => {
                         setSelectedFiles(detail.value);
                         const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 204800);
                         setSuccessfulUpload(uploads);
@@ -230,9 +232,9 @@ export function DocumentSummarizationModal ({
                                 const model = allModels.find((model) => model.modelId === value);
                                 if (model) {
                                     if (!model.streaming && chatConfiguration.sessionConfiguration.streaming) {
-                                        setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: false }});
+                                        setChatConfiguration({ ...chatConfiguration, sessionConfiguration: { ...chatConfiguration.sessionConfiguration, streaming: false } });
                                     } else if (model.streaming && !chatConfiguration.sessionConfiguration.streaming) {
-                                        setChatConfiguration({...chatConfiguration, sessionConfiguration: {...chatConfiguration.sessionConfiguration, streaming: true }});
+                                        setChatConfiguration({ ...chatConfiguration, sessionConfiguration: { ...chatConfiguration.sessionConfiguration, streaming: true } });
                                     }
                                     setSelectedModel(model);
                                 }
@@ -249,7 +251,7 @@ export function DocumentSummarizationModal ({
                         enteredTextLabel={(text) => `Use: "${text}"`}
                         onChange={({ detail: { value } }) => {
                             setUserPrompt('');
-                            if (value && value.length !== 0)  {
+                            if (value && value.length !== 0) {
                                 setSelectedPromptType(promptOptions.filter((option) => option.value === value)[0].label);
                                 if (value === 'concise') {
                                     setUserPrompt('Please provide a short summary of the included file context. Do not include any other information.');
@@ -285,20 +287,19 @@ Repeat the following 2 steps 5 times.
                         options={promptOptions}
                     />
                 </FormField>
-                {selectedPromptType && <>
-                    <Textarea
-                        rows={10}
-                        disableBrowserAutocorrect={false}
-                        autoFocus
-                        onChange={(e) => setUserPrompt(e.detail.value)}
-                        onKeyDown={(e) => {
-                            if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
-                                e.preventDefault();
-                            }
-                        }}
-                        value={userPrompt}
-                    />
-                </>}
+                {selectedPromptType ? <Textarea
+                    key='textarea-prompt-textarea'
+                    rows={10}
+                    disableBrowserAutocorrect={false}
+                    autoFocus
+                    onChange={(e) => setUserPrompt(e.detail.value)}
+                    onKeyDown={(e) => {
+                        if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
+                            e.preventDefault();
+                        }
+                    }}
+                    value={userPrompt}
+                /> : null}
                 <FormField label='Create new chat session'>
                     <Toggle checked={createNewChatSession} onChange={({ detail }) =>
                         setCreateNewChatSession(detail.checked)

@@ -58,6 +58,8 @@ import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.redu
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 import { ChatMemory } from '../../shared/util/chat-memory';
+import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
+import { truncateText } from '../../shared/util/formats';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -333,6 +335,15 @@ export default function Chat ({ sessionId }) {
     useEffect(() => {
         if (sessionId) {
             setInternalSessionId(sessionId);
+
+            dispatch(setBreadcrumbs([{
+                text: 'Chatbot',
+                href: ''
+            }, {
+                text: 'Loading session...',
+                href: ''
+            }]));
+
             getSessionById(sessionId).then((resp) => {
                 // session doesn't exist so we create it
                 let sess: LisaChatSession = resp.data;
@@ -345,6 +356,15 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
+
+                // override the default breadcrumbs
+                dispatch(setBreadcrumbs([{
+                    text: 'Chatbot',
+                    href: ''
+                }, {
+                    text: truncateText(sess.history?.[0]?.content?.toString()) || 'New Session',
+                    href: ''
+                }]));
             });
         } else {
             const newSessionId = uuidv4();

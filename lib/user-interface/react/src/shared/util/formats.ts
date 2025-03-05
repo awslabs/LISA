@@ -39,3 +39,18 @@ export function formatObject (data: object): string {
         .replaceAll('}', '')
         .replaceAll('"', '');
 }
+
+/**
+ * Truncates a string to a specified length, adding an ellipsis ("...") if it exceeds the limit.
+ *
+ * @param {string} text - The input string to truncate.
+ * @param {number} [maxLength=32] - The maximum allowed length of the string, including the ellipsis.
+ * @returns {string} - The truncated string with an ellipsis if necessary.
+ */
+export function truncateText (text?: string, maxLength = 32) {
+    if (text === undefined) {
+        return text;
+    }
+
+    return text.length > maxLength ? text.slice(0, maxLength - 3) + '...' : text;
+}

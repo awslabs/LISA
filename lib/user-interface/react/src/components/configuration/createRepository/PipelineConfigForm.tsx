@@ -27,7 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline } from '../../../../../../configSchema';
+import { PipelineConfig, RagRepositoryPipeline } from '#root/lib/schema';
 import { getDefaults } from '../../../shared/util/zodUtil';
 import { useGetAllModelsQuery } from '../../../shared/reducers/model-management.reducer';
 import { ModelStatus, ModelType } from '../../../shared/model/model-management.model';

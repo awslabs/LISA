@@ -38,7 +38,8 @@
     "vector_store_deployer"
   ],
   "scripts": {
-    "build": "tsc && npm run build --workspaces",
+    "build": "tsc && npm run build -ws",
+    "deploy": "tsx ./bin/lisa.ts",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
@@ -55,7 +56,7 @@
     "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.15",
-    "@types/node": "20.5.3",
+    "@types/node": "^22.13.4",
     "@types/readline-sync": "^1.4.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
@@ -71,6 +72,7 @@
     "readline-sync": "^1.4.10",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
     "typescript": "~5.1.6",
     "zod2md": "^0.1.4"
   },
@@ -95,5 +97,9 @@
     "hooks": {
       "pre-commit": "lint-staged"
     }
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   }
 }

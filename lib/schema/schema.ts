@@ -16,12 +16,6 @@
 
 import { z } from 'zod';
 import { RawConfigObject, RawConfigSchema } from './configSchema';
-import path from 'path';
-import fs from 'fs';
-
-const HERE: string = path.resolve(__dirname);
-const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
-export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -43,15 +37,27 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
             { Key: 'deploymentPrefix', Value: deploymentPrefix },
             { Key: 'deploymentName', Value: rawConfig.deploymentName },
             { Key: 'deploymentStage', Value: rawConfig.deploymentStage },
-            { Key: 'region', Value: rawConfig.region },
-            { Key: 'version', Value: VERSION },
+            { Key: 'region', Value: rawConfig.region }
         ];
     }
 
-    rawConfig.deploymentPrefix = deploymentPrefix;
-    rawConfig.tags = tags;
+    let awsRegionArn;
+    if (rawConfig.region.includes('iso-b')) {
+        awsRegionArn = 'aws-iso-b';
+    } else if (rawConfig.region.includes('iso')) {
+        awsRegionArn = 'aws-iso';
+    } else if (rawConfig.region.includes('gov')) {
+        awsRegionArn = 'aws-gov';
+    } else {
+        awsRegionArn = 'aws';
+    }
 
-    return rawConfig;
+    return {
+        ...rawConfig,
+        deploymentPrefix: deploymentPrefix,
+        tags: tags,
+        awsRegionArn,
+    };
 });
 
 /**
@@ -84,15 +90,15 @@ export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfi
             { Key: 'deploymentPrefix', Value: deploymentPrefix },
             { Key: 'deploymentName', Value: rawConfig.deploymentName! },
             { Key: 'deploymentStage', Value: rawConfig.deploymentStage! },
-            { Key: 'region', Value: rawConfig.region! },
-            { Key: 'version', Value: VERSION },
+            { Key: 'region', Value: rawConfig.region! }
         ];
     }
 
-    rawConfig.deploymentPrefix = deploymentPrefix;
-    rawConfig.tags = tags;
-
-    return rawConfig;
+    return {
+        ...rawConfig,
+        deploymentPrefix: deploymentPrefix,
+        tags: tags,
+    };
 });
 
 export type PartialConfig = z.infer<typeof PartialConfigSchema>;

@@ -85,7 +85,7 @@ export class DockerImageBuilder extends Construct {
         this.dockerImageBuilderFn = new Function(this, functionId, {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
-                queueName: 'docker-image-builderDLQ',
+                queueName: `${stackName}-docker-image-builderDLQ`,
                 enforceSSL: true,
             }),
             functionName: functionId,
@@ -93,7 +93,7 @@ export class DockerImageBuilder extends Construct {
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),
-            reservedConcurrentExecutions: 10,
+            reservedConcurrentExecutions: 5,
             memorySize: 1024,
             role: ec2BuilderRole,
             environment: {

@@ -1,10 +1,5 @@
 mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
 stackSynthesizer: CliCredentialsStackSynthesizer
-ragRepositories:
-  - repositoryId: pgvector-rag
-    type: pgvector
-    rdsConfig:
-      username: postgres
 ragFileProcessingConfig:
   chunkSize: 512
   chunkOverlap: 51

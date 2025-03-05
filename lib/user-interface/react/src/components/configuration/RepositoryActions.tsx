@@ -15,7 +15,15 @@
  */
 
 import React, { ReactElement, useEffect, useState } from 'react';
-import { Alert, Button, ButtonDropdown, ButtonDropdownProps, Checkbox, Icon, SpaceBetween } from '@cloudscape-design/components';
+import {
+    Alert,
+    Button,
+    ButtonDropdown,
+    ButtonDropdownProps,
+    Checkbox,
+    Icon,
+    SpaceBetween,
+} from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
@@ -26,7 +34,7 @@ import {
     useCreateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
 } from '../../shared/reducers/rag.reducer';
-import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagRepositoryConfig } from '#root/lib/schema';
 
 export type RepositoryActionProps = {
     selectedItems: ReadonlyArray<RagRepositoryConfig>;

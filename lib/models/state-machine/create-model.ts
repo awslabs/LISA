@@ -14,6 +14,7 @@
  limitations under the License.
  */
 
+import * as cdk from 'aws-cdk-lib';
 import {
     Choice,
     Condition,
@@ -79,7 +80,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'SetModelToCreatingDLQ', {
-                    queueName: 'SetModelToCreatingDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-SetModelToCreatingDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -104,7 +105,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'StartCopyDockerImageDLQ', {
-                    queueName: 'StartCopyDockerImageDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-StartCopyDockerImageDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -127,7 +128,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'PollDockerImageAvailableDLQ', {
-                    queueName: 'PollDockerImageAvailableDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-PollDockerImageAvailableDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -150,7 +151,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleFailureDLQ', {
-                    queueName: 'HandleFailureDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-HandleFailureDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -179,7 +180,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'StartCreateStackDLQ', {
-                    queueName: 'StartCreateStackDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-StartCreateStackDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -202,7 +203,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'PollCreateStackDLQ', {
-                    queueName: 'PollCreateStackDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-PollCreateStackDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
@@ -231,7 +232,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'AddModelToLitellmDLQ', {
-                    queueName: 'AddModelToLitellmDLQ',
+                    queueName: `${cdk.Stack.of(this).stackName}-AddModelToLitellmDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),

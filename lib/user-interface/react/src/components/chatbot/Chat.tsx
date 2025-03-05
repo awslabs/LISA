@@ -271,7 +271,11 @@ export default function Chat ({ sessionId }) {
                 await memory.saveContext({input: params.inputs.input}, {output: resp.join('')});
                 setIsStreaming(false);
             } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+                setSession((prev) => ({
+                    ...prev,
+                    history: prev.history.slice(0, -1),
+                }));
+                notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, exception.error?.message ? <p>{JSON.stringify(exception.error.message)}</p> : undefined);
             }
         };
 
@@ -290,7 +294,7 @@ export default function Chat ({ sessionId }) {
                     ),
                 }));
             } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+                notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, exception.error?.message ? <p>{JSON.stringify(exception.error.message)}</p> : undefined);
             }
         };
 

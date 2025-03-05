@@ -20,7 +20,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import React, { ReactElement } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
-import { RdsConfig as RdsConfigSchema, RdsInstanceConfig } from '../../../../../../configSchema';
+import { RdsConfig as RdsConfigSchema, RdsInstanceConfig } from '#root/lib/schema';
 
 type RdsConfigProps = {
     isEdit: boolean

@@ -1,6 +1,5 @@
 {
   "name": "lisa-web",
-  "private": true,
   "version": "4.0.1",
   "type": "module",
   "scripts": {

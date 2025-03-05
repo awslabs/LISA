@@ -27,7 +27,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 type LisaModelsApiStackProps = BaseProps &
   StackProps & {
-      authorizer: IAuthorizer;
+      authorizer?: IAuthorizer;
       lisaServeEndpointUrlPs: StringParameter;
       restApiId: string;
       rootResourceId: string;

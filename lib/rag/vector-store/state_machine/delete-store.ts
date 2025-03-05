@@ -29,6 +29,9 @@ import { createCdkId } from '../../../core/utils';
 import { getDefaultRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
+import path from 'node:path';
+
+const HERE = path.resolve(__dirname);
 
  type DeleteStoreStateMachineProps = BaseProps & {
      ragVectorStoreTable: ITable,
@@ -123,11 +126,12 @@ export class DeleteStoreStateMachine extends Construct {
             },
             resultPath: '$.updateDynamoDbResult',
         });
+        const lambdaPath = path.join(HERE, '..', '..', '..','..', 'lambda');
 
         const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
             runtime: getDefaultRuntime(),
             handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
-            code: Code.fromAsset('./lambda'),
+            code: Code.fromAsset(lambdaPath),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc.vpc,

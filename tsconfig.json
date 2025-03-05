@@ -36,5 +36,6 @@
       "experimentalSpecifierResolution": "node"
     }
   },
-  "exclude": ["node_modules", "cdk.out", ".git", "dist", "lib/user-interface/react"]
+  "exclude": ["node_modules", "build", "cdk.out", ".git", "dist", "test", "lib/user-interface/react", "coverage", "package.json"],
+  "include": ["lib/**/*", "lib/**/*.json", "bin/*", "VERSION"]
 }

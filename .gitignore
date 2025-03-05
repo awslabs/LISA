@@ -5,6 +5,8 @@
 *.d.ts
 dist/
 node_modules/
+/build
+/dist
 __pycache__/
 .ruff_cache/
 .husky/
@@ -31,6 +33,7 @@ coverage
 
 # Model Cache Folders
 /models
+
 # Deployment configuration file
 config.yaml
 config-custom.yaml

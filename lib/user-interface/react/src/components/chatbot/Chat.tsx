@@ -126,8 +126,8 @@ export default function Chat ({ sessionId }) {
                     input: (previousOutput: any) => previousOutput.input,
                     context: (previousOutput: any) => previousOutput.context,
                     history: (previousOutput: any) => previousOutput.memory?.history || '',
-                    aiPrefix: (previousOutput: any) => chatConfiguration.promptConfiguration.aiPrefix,
-                    humanPrefix: (previousOutput: any) => chatConfiguration.promptConfiguration.humanPrefix,
+                    aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
+                    humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
                 };
 
                 const chainSteps = [
@@ -226,8 +226,8 @@ export default function Chat ({ sessionId }) {
                 input: (initialInput: any) => initialInput.input,
                 memory: () => memory.loadMemoryVariables(),
                 context: () => fileContext || '',
-                humanPrefix: (initialInput: any) => chatConfiguration.promptConfiguration.humanPrefix,
-                aiPrefix: (initialInput: any) => chatConfiguration.promptConfiguration.aiPrefix,
+                humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
+                aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
             };
 
             chainSteps.unshift(nonRagStep);

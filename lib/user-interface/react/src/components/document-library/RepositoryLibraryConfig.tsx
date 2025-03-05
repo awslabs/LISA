@@ -16,7 +16,7 @@
 import Link from '@cloudscape-design/components/link';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 import { NavigateFunction } from 'react-router-dom';
-import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagRepositoryConfig } from '#root/lib/schema';
 import { CollectionPreferencesProps } from '@cloudscape-design/components';
 
 export const CARD_SECTIONS = [

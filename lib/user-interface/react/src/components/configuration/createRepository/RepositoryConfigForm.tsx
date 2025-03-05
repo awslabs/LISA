@@ -26,7 +26,7 @@ import {
     RagRepositoryConfigSchema,
     RagRepositoryType,
     RdsInstanceConfig,
-} from '../../../../../../configSchema';
+} from '#root/lib/schema';
 import { getDefaults } from '../../../shared/util/zodUtil';
 import { ArrayInputField } from '../../../shared/form/array-input';
 import { RdsConfigForm } from './RdsConfigForm';

@@ -18,7 +18,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { Model, RagDocument } from '../../components/types';
 import { Document } from '@langchain/core/documents';
-import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagRepositoryConfig } from '#root/lib/schema';
 import { RagStatus } from '../model/rag.model';
 
 export type S3UploadRequest = {

@@ -16,17 +16,17 @@
 
 // LisaChat Stack.
 
-import path from 'path';
+import path from 'node:path';
 
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 import { RepositoryApi } from './api/repository';
 import { ARCHITECTURE } from '../core';
@@ -42,7 +42,7 @@ import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
 import { DeletePipelineStateMachine } from './state_machine/delete-pipeline';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
-import { RagRepositoryConfig, RagRepositoryType } from '../configSchema';
+import { RagRepositoryConfig, RagRepositoryType } from '../schema';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
@@ -51,7 +51,8 @@ import * as customResources from 'aws-cdk-lib/custom-resources';
 import DynamoDB from 'aws-sdk/clients/dynamodb';
 import * as readlineSync from 'readline-sync';
 
-const HERE = path.resolve(__dirname);
+const HERE: string = path.resolve(__dirname);
+
 const RAG_LAYER_PATH = path.join(HERE, 'layer');
 
 type CustomLisaRagStackProps = {

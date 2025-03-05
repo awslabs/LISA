@@ -13,12 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-
-import type { Config } from 'zod2md';
-
-export default {
-    title: 'LISA Configuration Schema',
-    entry: './lib/schema/ragSchema.ts',
-    output: './lib/docs/config/rag-schema.md',
-    tsconfig: 'tsconfig.json',
-} satisfies Config;
+export * from './configSchema';
+export * from './ragSchema';
+export * from './cdk';
+export * from './schema';

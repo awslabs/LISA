@@ -61,7 +61,7 @@ type CreateRepositoryRequest = {
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'Docs', 'repository-status'],
+    tagTypes: ['repositories', 'docs', 'repository-status'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -143,7 +143,7 @@ export const ragApi = createApi({
                 params: { collectionId: request.collectionId, lastEvaluatedKey: request.lastEvaluatedKey },
             }),
             transformResponse: (response) => response.documents,
-            providesTags: ['Docs'],
+            providesTags: ['docs'],
         }),
         deleteRagDocuments: builder.mutation<undefined, DeleteRagDocumentRequest>({
             query: (request) => ({
@@ -160,7 +160,7 @@ export const ragApi = createApi({
                     message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
                 };
             },
-            invalidatesTags: ['Docs'],
+            invalidatesTags: ['docs'],
         }),
         downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
             query: ({ documentId, repositoryId }) => ({

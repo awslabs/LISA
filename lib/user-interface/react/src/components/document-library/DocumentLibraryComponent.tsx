@@ -17,14 +17,17 @@
 import * as React from 'react';
 import { ReactElement } from 'react';
 import {
+    Button,
     ButtonDropdownProps,
     CollectionPreferences,
     Header,
+    Icon,
     Pagination,
     TextFilter,
 } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
+    ragApi,
     useDeleteRagDocumentsMutation,
     useLazyDownloadRagDocumentQuery,
     useListRagDocumentsQuery,
@@ -163,6 +166,15 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                             direction='horizontal'
                             size='xs'
                         >
+                            <Button
+                                onClick={() => {
+                                    actions.setSelectedItems([]);
+                                    dispatch(ragApi.util.invalidateTags(['docs']));
+                                }}
+                                ariaLabel={'Refresh models cards'}
+                            >
+                                <Icon name='refresh' />
+                            </Button>
                             <ButtonDropdown
                                 items={actionItems}
                                 loading={isDeleteLoading || isDownloading}

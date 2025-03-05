@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && cp package.json ./dist && cp ./src/cdk*json ./dist/ && cp ../VERSION ./dist && cd ./dist && npm i --omit dev",
+    "build": "tsc && npm run copy-deps && npm run install-run-deps",
+    "copy-deps": "cp package.json ./dist && cp ./src/cdk*json ./dist/ && cp ../VERSION ./dist",
+    "install-run-deps": "cd dist && npm i --omit dev --include-workspace-root",
     "clean": "rm -rf ./dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

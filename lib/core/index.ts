@@ -14,21 +14,22 @@
   limitations under the License.
 */
 
-import * as path from 'path';
+import * as path from 'node:path';
 
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { Layer } from './layers';
 import { BaseProps } from '../schema';
 import { createCdkId } from './utils';
-import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { getDefaultRuntime } from '../api-base/utils';
 
-const HERE = path.resolve(__dirname);
+const HERE: string = path.resolve(__dirname);
+
 const COMMON_LAYER_PATH = path.join(HERE, 'layers', 'common');
 const FASTAPI_LAYER_PATH = path.join(HERE, 'layers', 'fastapi');
 const AUTHORIZER_LAYER_PATH = path.join(HERE, 'layers', 'authorizer');

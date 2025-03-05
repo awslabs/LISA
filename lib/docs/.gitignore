@@ -1,3 +1,4 @@
 dist/
 .vitepress/cache/
 /config/schema.md
+/config/rag-schema.md

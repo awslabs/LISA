@@ -60,7 +60,7 @@ export function Sessions () {
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const { data: sessions, isLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
-    const { items, actions, collectionProps, paginationProps } = useCollection(sessions, {
+    const { items, actions, collectionProps, paginationProps } = useCollection(sessions || [], {
         filtering: {
             empty: (
                 <Box margin={{ vertical: 'xs' }} textAlign='center'>

@@ -89,6 +89,7 @@ export default function Chat ({ sessionId }) {
 
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [selectedModel, setSelectedModel] = useState<IModel>();
+    const [dirtySession, setDirtySession] = useState(false);
     const [session, setSession] = useState<LisaChatSession>({
         history: [],
         sessionId: '',
@@ -324,13 +325,13 @@ export default function Chat ({ sessionId }) {
     }, [auth, getConfiguration]);
 
     useEffect(() => {
-        if (!isRunning && session.history.length) {
+        if (!isRunning && session.history.length && dirtySession) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
+                setDirtySession(false);
                 updateSession(session);
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session, auth]);
+    }, [isRunning, session, dirtySession, auth, updateSession]);
 
     useEffect(() => {
         if (sessionId) {
@@ -517,6 +518,7 @@ export default function Chat ({ sessionId }) {
             message: message
         });
 
+        setDirtySession(true);
     }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (

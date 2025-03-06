@@ -56,7 +56,7 @@ export type DocumentSummarizationModalProps = {
     setMemory: (state: ChatMemory) => void;
 };
 
-export function DocumentSummarizationModal({
+export function DocumentSummarizationModal ({
     showDocumentSummarizationModal,
     setShowDocumentSummarizationModal,
     setFileContext,
@@ -95,11 +95,11 @@ export function DocumentSummarizationModal({
         { label: 'Custom', value: 'custom', description: 'Write your own prompt' },
     ];
 
-    function handleError(error: string) {
+    function handleError (error: string) {
         notificationService.generateNotification(error, 'error');
     }
 
-    async function processFile(file: File): Promise<boolean> {
+    async function processFile (file: File): Promise<boolean> {
         //File context currently only supports single files
         const fileContents = await file.text();
         setFileContext(`File context: ${fileContents}`);

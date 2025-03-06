@@ -338,6 +338,7 @@ export default function Chat ({ sessionId }) {
         if (sessionId) {
             setInternalSessionId(sessionId);
             setLoadingSession(true);
+            setSession({...session, history: []});
             dispatch(setBreadcrumbs([{
                 text: 'Chatbot',
                 href: ''

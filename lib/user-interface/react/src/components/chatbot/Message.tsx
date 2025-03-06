@@ -32,9 +32,10 @@ type MessageProps = {
     isRunning: boolean;
     showMetadata?: boolean;
     isStreaming?: boolean;
+    markdownDisplay?: boolean;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     return (
         <div className='mt-2' style={{overflow: 'hidden'}}>
@@ -72,10 +73,10 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     }
                 >
                     <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
-                        <ReactMarkdown
+                        {markdownDisplay ? <ReactMarkdown
                             remarkPlugins={[remarkBreaks]}
                             children={message.content}
-                        />
+                        /> : <div style={{whiteSpace: 'pre-line'}}>{message.content}</div>}
                         {!isStreaming && <div
                             style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
                             <ButtonGroup

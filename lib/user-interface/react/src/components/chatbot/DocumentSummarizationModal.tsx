@@ -231,10 +231,8 @@ export function DocumentSummarizationModal ({
                             } else {
                                 const model = allModels.find((model) => model.modelId === value);
                                 if (model) {
-                                    if (!model.streaming && chatConfiguration.sessionConfiguration.streaming) {
-                                        setChatConfiguration({ ...chatConfiguration, sessionConfiguration: { ...chatConfiguration.sessionConfiguration, streaming: false } });
-                                    } else if (model.streaming && !chatConfiguration.sessionConfiguration.streaming) {
-                                        setChatConfiguration({ ...chatConfiguration, sessionConfiguration: { ...chatConfiguration.sessionConfiguration, streaming: true } });
+                                    if (model.streaming != chatConfiguration.sessionConfiguration.streaming) {
+                                        setChatConfiguration({ ...chatConfiguration, sessionConfiguration: { ...chatConfiguration.sessionConfiguration, streaming: model.streaming } });
                                     }
                                     setSelectedModel(model);
                                 }

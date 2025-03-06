@@ -97,6 +97,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
 
     const items = [];
     if (selectedModel) {
+        const externalModel: boolean = selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null;
         items.push({
             text: 'Delete',
             id: 'deleteModel',
@@ -106,20 +107,20 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Start',
             id: 'startModel',
-            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || selectedModel.status !== ModelStatus.Stopped,
-            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to start a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.Stopped ? 'Unable to start a model that is not in Stopped state' : '',
+            disabled: externalModel || selectedModel.status !== ModelStatus.Stopped,
+            disabledReason: externalModel ? 'Unable to start a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.Stopped ? 'Unable to start a model that is not in Stopped state' : '',
         });
         items.push({
             text: 'Stop',
             id: 'stopModel',
-            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || selectedModel.status !== ModelStatus.InService,
-            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to stop a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.InService ? 'Unable to stop a model that is not in InService state' : '',
+            disabled: externalModel || selectedModel.status !== ModelStatus.InService,
+            disabledReason: externalModel ? 'Unable to stop a model that is not hosted in LISA' : selectedModel.status !== ModelStatus.InService ? 'Unable to stop a model that is not in InService state' : '',
         });
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: (selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null) || ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
-            disabledReason: selectedModel.containerConfig === null && selectedModel.autoScalingConfig === null && selectedModel.loadBalancerConfig === null ? 'Unable to stop a model that is not hosted in LISA' : ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
+            disabled: externalModel || ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
+            disabledReason: externalModel ? 'Unable to stop a model that is not hosted in LISA' : ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
         });
     }
 

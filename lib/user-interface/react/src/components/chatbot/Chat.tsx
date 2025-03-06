@@ -97,6 +97,7 @@ export default function Chat ({ sessionId }) {
         startTime: new Date(Date.now()).toISOString(),
     });
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
+    const [loadingSession, setLoadingSession] = useState(false);
 
     const [isConnected, setIsConnected] = useState(false);
     const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
@@ -336,7 +337,7 @@ export default function Chat ({ sessionId }) {
     useEffect(() => {
         if (sessionId) {
             setInternalSessionId(sessionId);
-
+            setLoadingSession(true);
             dispatch(setBreadcrumbs([{
                 text: 'Chatbot',
                 href: ''
@@ -366,6 +367,7 @@ export default function Chat ({ sessionId }) {
                     text: truncateText(sess.history?.[0]?.content?.toString()) || 'New Session',
                     href: ''
                 }]));
+                setLoadingSession(false);
             });
         } else {
             const newSessionId = uuidv4();
@@ -631,9 +633,9 @@ export default function Chat ({ sessionId }) {
                                     placeholder={
                                         !selectedModel ? 'You must select a model before sending a message' : 'Send a message'
                                     }
-                                    disabled={!selectedModel}
+                                    disabled={!selectedModel || loadingSession}
                                     onChange={({ detail }) => setUserPrompt(detail.value)}
-                                    onAction={userPrompt.length > 0 && !isRunning && handleSendGenerateRequest}
+                                    onAction={userPrompt.length > 0 && !isRunning && !loadingSession && handleSendGenerateRequest}
                                     secondaryActions={
                                         <Box padding={{ left: 'xxs', top: 'xs' }}>
                                             <ButtonGroup

@@ -82,6 +82,13 @@ export class SessionApi extends Construct {
             partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
         });
 
+        const byUserIdIndexSorted = 'byUserIdSorted';
+        sessionTable.addGlobalSecondaryIndex({
+            indexName: byUserIdIndexSorted,
+            partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+            sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
+        });
+
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
@@ -97,7 +104,7 @@ export class SessionApi extends Construct {
                 method: 'GET',
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndexSorted,
                 },
             },
             {

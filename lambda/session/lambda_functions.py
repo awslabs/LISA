@@ -50,6 +50,7 @@ def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
             KeyConditionExpression="userId = :user_id",
             ExpressionAttributeValues={":user_id": user_id},
             IndexName=os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
+            ScanIndexForward=False
         )
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
@@ -147,13 +148,21 @@ def put_session(event: dict, context: dict) -> None:
     messages = body["messages"]
 
     try:
-        table.put_item(
-            Item={
-                "sessionId": session_id,
-                "userId": user_id,
-                "startTime": datetime.now().isoformat(),
-                "history": messages,
-            }
+        table.update_item(
+            Key={"sessionId": session_id, "userId": user_id},
+            UpdateExpression="SET #history = :history, #startTime = :startTime, " +
+                            "#createTime = if_not_exists(#createTime, :createTime)",
+            ExpressionAttributeNames={
+                "#history": "history",
+                "#startTime": "startTime",
+                "#createTime": "createTime"
+            },
+            ExpressionAttributeValues={
+                ":history": messages,
+                ":startTime": datetime.now().isoformat(),
+                ":createTime": datetime.now().isoformat(),
+            },
+            ReturnValues="UPDATED_NEW"
         )
     except ClientError:
         logger.exception("Error updating session in DynamoDB")

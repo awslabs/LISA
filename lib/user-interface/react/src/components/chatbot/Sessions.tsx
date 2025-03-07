@@ -37,6 +37,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
+import { truncateText } from '../../shared/util/formats';
 
 export function Sessions () {
     const dispatch = useAppDispatch();
@@ -59,7 +60,7 @@ export function Sessions () {
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const { data: sessions, isLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
-    const { items, actions, collectionProps, paginationProps } = useCollection(sessions ?? [], {
+    const { items, actions, collectionProps, paginationProps } = useCollection(sessions || [], {
         filtering: {
             empty: (
                 <Box margin={{ vertical: 'xs' }} textAlign='center'>
@@ -122,22 +123,21 @@ export function Sessions () {
                 onSelectionChange={({ detail }) =>
                     actions.setSelectedItems(detail.selectedItems)
                 }
-                resizableColumns
-                sortingDescending={true}
+                resizableColumns={true}
+                trackBy={(item) => item.sessionId}
                 selectionType='multi'
                 columnDefinitions={[
                     {
                         id: 'title',
                         header: 'Title',
                         cell: (e) => <Link variant='primary'
-                            onClick={() => navigate(`chatbot/${e.sessionId}`)}>{e.history[0].content || 'No Content'}</Link>,
-                        sortingField: 'title',
+                            onClick={() => navigate(`chatbot/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(String(e.history?.[0]?.content || 'No Content'), 32, '')}</span></Link>,
                         isRowHeader: true,
                     },
                     {
                         id: 'StartTime',
-                        header: 'Time',
-                        cell: (e) => DateTime.fromISO(new Date(e.startTime).toISOString()).toLocaleString(DateTime.DATETIME_SHORT),
+                        header: 'Last Updated',
+                        cell: (e) => DateTime.fromJSDate(new Date(e.startTime)).toFormat('DD T ZZZZ'),
                         sortingField: 'StartTime',
                         sortingComparator: (a, b) => {
                             return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();

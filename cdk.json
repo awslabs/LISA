@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/lisa.ts",
+  "app": "npm run deploy",
   "requireApproval": "never",
   "watch": {
     "include": ["**"],

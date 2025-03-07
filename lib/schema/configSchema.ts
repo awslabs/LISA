@@ -15,7 +15,8 @@
  */
 import { z } from 'zod';
 
-import { AmiHardwareType, EbsDeviceVolumeType, EcsSourceType, RemovalPolicy } from './cdk';
+import { AmiHardwareType, EcsSourceType, RemovalPolicy } from './cdk';
+import { RagRepositoryConfigSchema, RdsInstanceConfig } from './ragSchema';
 
 /**
  * Custom security groups for application.
@@ -35,6 +36,14 @@ export type SecurityGroups<T> = {
     openSearchSg?: T;
     pgVectorSg?: T;
 };
+
+/**
+ * Enum for different types of models.
+ */
+export enum ModelType {
+    TEXTGEN = 'textgen',
+    EMBEDDING = 'embedding',
+}
 
 /**
  * Configuration schema for Security Group imports.
@@ -304,7 +313,7 @@ export class Ec2Metadata {
     }
 }
 
-const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string, ...string[]];
+export const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string, ...string[]];
 
 const ContainerHealthCheckConfigSchema = z.object({
     command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']).describe('The command to run for health checks'),
@@ -341,7 +350,7 @@ const ImageRegistryAsset = z.object({
 })
     .describe('Container image that will be pulled from the specified public registry');
 
-const ContainerConfigSchema = z.object({
+export const ContainerConfigSchema = z.object({
     image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]).describe('Base image for the container.'),
     environment: z
         .record(z.any())
@@ -369,22 +378,22 @@ const HealthCheckConfigSchema = z.object({
 })
     .describe('Health check configuration for the load balancer.');
 
-const LoadBalancerConfigSchema = z.object({
+export const LoadBalancerConfigSchema = z.object({
     sslCertIamArn: z.string().nullish().default(null).describe('SSL certificate IAM ARN for load balancer.'),
     healthCheckConfig: HealthCheckConfigSchema,
     domainName: z.string().nullish().default(null).describe('Domain name to use instead of the load balancer\'s default DNS name.'),
 })
     .describe('Configuration for load balancer settings.');
 
-const MetricConfigSchema = z.object({
-    AlbMetricName: z.string().describe('Name of the ALB metric.'),
+export const MetricConfigSchema = z.object({
+    albMetricName: z.string().describe('Name of the ALB metric.'),
     targetValue: z.number().describe('Target value for the metric.'),
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
     estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
 })
     .describe('Metric configuration for ECS auto scaling.');
 
-const AutoScalingConfigSchema = z.object({
+export const AutoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(30),
     minCapacity: z.number().min(1).default(1).describe('Minimum capacity for auto scaling. Must be at least 1.'),
     maxCapacity: z.number().min(1).default(2).describe('Maximum capacity for auto scaling. Must be at least 1.'),
@@ -394,7 +403,26 @@ const AutoScalingConfigSchema = z.object({
 })
     .describe('Configuration for auto scaling settings.');
 
-const EcsBaseConfigSchema = z.object({
+
+/**
+ * Configuration schema for an ECS model.
+ *
+ * @property {AmiHardwareType} amiHardwareType - Name of the model.
+ * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
+ * @property {Record<string,string>} buildArgs - Optional build args to be applied when creating the
+ *                                              task container if containerConfig.image.type is ASSET
+ * @property {ContainerConfigSchema} containerConfig - Configuration for the container.
+ * @property {number} [containerMemoryBuffer=2048] - This is the amount of memory to buffer (or subtract off)
+ *                                                from the total instance memory, if we don't include this,
+ *                                                the container can have a hard time finding available RAM
+ *                                                resources to start and the tasks will fail deployment
+ * @property {Record<string,string>} environment - Environment variables set on the task container
+ * @property {identifier} modelType - Unique identifier for the cluster which will be used when naming resources
+ * @property {string} instanceType - EC2 instance type for running the model.
+ * @property {boolean} [internetFacing=false] - Whether or not the cluster will be configured as internet facing
+ * @property {LoadBalancerConfigSchema} loadBalancerConfig - Configuration for load balancer settings.
+ */
+export const EcsBaseConfigSchema = z.object({
     amiHardwareType: z.nativeEnum(AmiHardwareType).describe('Name of the model.'),
     autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
     buildArgs: z.record(z.string()).optional()
@@ -408,8 +436,28 @@ const EcsBaseConfigSchema = z.object({
     instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),
     internetFacing: z.boolean().default(false).describe('Whether or not the cluster will be configured as internet facing'),
     loadBalancerConfig: LoadBalancerConfigSchema,
-})
-    .describe('Configuration schema for an ECS model');
+});
+
+
+/**
+ * Details and configurations of a registered model.
+ *
+ * @property {string} provider - Model provider, of the form <engine>.<type>.
+ * @property {string} modelName - The unique name that identifies the model.
+ * @property {string} modelId - The unique user-provided name for the model.
+ * @property {ModelType} modelType - Specifies the type of model (e.g., 'textgen', 'embedding').
+ * @property {string} endpointUrl - The URL endpoint where the model can be accessed or invoked.
+ * @property {boolean} streaming - Indicates whether the model supports streaming capabilities.
+ */
+export type RegisteredModel = {
+    provider: string;
+    modelId: string;
+    modelName: string;
+    modelType: ModelType;
+    endpointUrl: string;
+    streaming?: boolean;
+};
+
 
 /**
  * Type representing configuration for an ECS model.
@@ -421,12 +469,87 @@ type EcsBaseConfig = z.infer<typeof EcsBaseConfigSchema>;
  */
 export type ECSConfig = EcsBaseConfig;
 
+/**
+ * Configuration schema for an ECS model.
+ *
+ * @property {string} modelName - Name of the model.
+ * @property {string} modelId - An optional short id to use when creating cdk ids for model related
+ *                              resources
+ * @property {boolean} [deploy=true] - Whether to deploy model.
+ * @property {boolean} [streaming=null] - Whether the model supports streaming.
+ * @property {string} modelType - Type of model.
+ * @property {string} instanceType - EC2 instance type for running the model.
+ * @property {string} inferenceContainer - Prebuilt inference container for serving model.
+ * @property {ContainerConfigSchema} containerConfig - Configuration for the container.
+ * @property {AutoScalingConfigSchema} autoScalingConfig - Configuration for auto scaling settings.
+ * @property {LoadBalancerConfigSchema} loadBalancerConfig - Configuration for load balancer settings.
+ * @property {string} [localModelCode='/opt/model-code'] - Path in container for local model code.
+ * @property {string} [modelHosting='ecs'] - Model hosting.
+ */
+export const EcsClusterConfigSchema = z
+    .object({
+        modelName: z.string(),
+        modelId: z.string().optional(),
+        deploy: z.boolean().default(true),
+        streaming: z.boolean().nullable().default(null),
+        modelType: z.nativeEnum(ModelType),
+        instanceType: z.enum(VALID_INSTANCE_KEYS),
+        inferenceContainer: z
+            .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
+            .refine((data) => {
+                return !data.includes('.'); // string cannot contain a period
+            }),
+        containerConfig: ContainerConfigSchema,
+        autoScalingConfig: AutoScalingConfigSchema,
+        loadBalancerConfig: LoadBalancerConfigSchema,
+        localModelCode: z.string().default('/opt/model-code'),
+        modelHosting: z
+            .string()
+            .default('ecs')
+            .refine((data) => {
+                return !data.includes('.'); // string cannot contain a period
+            }),
+    })
+    .refine(
+        (data) => {
+            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+            const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
+            const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
+
+            return isValidForTextgen || isValidForEmbedding;
+        },
+        {
+            message: `For 'textgen' models, 'streaming' must be true or false.
+            For 'embedding' models, 'streaming' must not be set.`,
+            path: ['streaming'],
+        },
+    );
+
+/**
+ * Type representing configuration for an ECS model.
+ */
+export type EcsClusterConfig = z.infer<typeof EcsClusterConfigSchema>;
+
+const InferenceContainer = {
+    tgi: 'tgi',
+    tei: 'tei',
+    instructor: 'instructor',
+    vllm: 'vllm',
+} as const;
+
+const InferenceContainerSchema = z.object({
+    tgi: z.literal(InferenceContainer.tgi).describe('Text Generation Inference'),
+    tei: z.literal(InferenceContainer.tei).describe('Text Embeddings Inference'),
+    instructor: z.literal(InferenceContainer.instructor).describe('Instructor Library'),
+    vllm: z.literal(InferenceContainer.vllm).describe('vLLM (Virtual Large Language Model) Library'),
+});
+
 const EcsModelConfigSchema = z
     .object({
         modelName: z.string().describe('Name of the model.'),
         baseImage: z.string().describe('Base image for the container.'),
         inferenceContainer: z
-            .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
+            .union([InferenceContainerSchema.shape.tgi, InferenceContainerSchema.shape.tei, InferenceContainerSchema.shape.instructor, InferenceContainerSchema.shape.vllm])
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
             })
@@ -459,17 +582,6 @@ const AuthConfigSchema = z.object({
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
 
-export const RdsInstanceConfig = z.object({
-    username: z.string().default('postgres').describe('The username used for database connection.'),
-    passwordSecretId: z.string().optional().describe('The SecretsManager Secret ID that stores the existing database password.'),
-    dbHost: z.string().optional().describe('The database hostname for the existing database instance.'),
-    dbName: z.string().default('postgres').describe('The name of the database for the database instance.'),
-    dbPort: z.number().default(5432).describe('The port of the existing database instance or the port to be opened on the database instance.'),
-}).describe('Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.\n \n ' +
-    'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
-
-export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
-
 const FastApiContainerConfigSchema = z.object({
     internetFacing: z.boolean().default(true).describe('Whether the REST API ALB will be configured as internet facing.'),
     domainName: z.string().nullish().default(null),
@@ -492,64 +604,6 @@ const FastApiContainerConfigSchema = z.object({
         ),
 }).describe('Configuration schema for REST API.');
 
-/**
- * Enum for different types of RAG repositories available
- */
-export enum RagRepositoryType {
-    OPENSEARCH = 'opensearch',
-    PGVECTOR = 'pgvector',
-}
-
-export const OpenSearchNewClusterConfig = z.object({
-    dataNodes: z.number().min(1).default(2).describe('The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.'),
-    dataNodeInstanceType: z.string().default('r7g.large.search').describe('The instance type for your data nodes'),
-    masterNodes: z.number().min(0).default(0).describe('The number of instances to use for the master node'),
-    masterNodeInstanceType: z.string().default('r7g.large.search').describe('The hardware configuration of the computer that hosts the dedicated master node'),
-    volumeSize: z.number().min(20).default(20).describe('The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.'),
-    volumeType: z.nativeEnum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3).describe('The EBS volume type to use with the Amazon OpenSearch Service domain'),
-    multiAzWithStandby: z.boolean().default(false).describe('Indicates whether Multi-AZ with Standby deployment option is enabled.'),
-});
-
-export const OpenSearchExistingClusterConfig = z.object({
-    endpoint: z.string().nonempty().describe('Existing OpenSearch Cluster endpoint'),
-});
-
-export const RagRepositoryPipeline = z.object({
-    chunkSize: z.number().default(512).describe('The size of the chunks used for document segmentation.'),
-    chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
-    embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
-    s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
-    s3Prefix: z.string().describe('The prefix within the S3 bucket monitored for document processing.'),
-    trigger: z.union([z.literal('daily').describe('This ingestion pipeline is scheduled to run once per day'), z.literal('event').describe('This ingestion pipeline runs whenever changes are detected.')]).default('event').describe('The event type that triggers document ingestion.'),
-    autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
-});
-
-export type PipelineConfig = z.infer<typeof RagRepositoryPipeline>;
-export type OpenSearchConfig =
-    z.infer<typeof OpenSearchNewClusterConfig>
-    | z.infer<typeof OpenSearchExistingClusterConfig>;
-
-export const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string()
-            .nonempty()
-            .regex(/^[a-z0-9-]{1,63}/, 'Only alphanumeric characters and \'-\' are supported.')
-            .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
-            .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
-        repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
-        type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
-    })
-    .refine((input) => {
-        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
-    })
-    .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
-
-export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
 
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
@@ -673,7 +727,7 @@ export const RawConfigObject = z.object({
     }).describe('Pypi configuration.'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
-    ragRepositories: z.array(RagRepositoryConfigSchema).optional().default([]).describe('Rag Repository configuration.'),
+    ragRepositories: z.array(RagRepositoryConfigSchema).describe('Rag Repository configuration.'),
     ragFileProcessingConfig: RagFileProcessingConfigSchema.optional().describe('Rag file processing configuration.'),
     ecsModels: z.array(EcsModelConfigSchema).optional().describe('Array of ECS model configurations.'),
     apiGatewayConfig: ApiGatewayConfigSchema,

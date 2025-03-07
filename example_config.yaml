@@ -6,6 +6,7 @@ authConfig:
   adminGroup:
   jwtGroupsProperty:
 s3BucketModels: hf-models-gaiic
+ragRepositories: []
 ########################### OPTIONAL BELOW #######################################
 # profile: AWS CLI profile for deployment.
 # vpcId: VPC ID for the application. (e.g. vpc-0123456789abcdef)

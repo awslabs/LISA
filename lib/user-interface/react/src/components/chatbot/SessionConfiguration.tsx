@@ -86,6 +86,12 @@ export default function SessionConfiguration ({
                     >
                         Stream Responses
                     </Toggle>
+                    <Toggle
+                        onChange={({ detail }) => updateSessionConfiguration('markdownDisplay', detail.checked)}
+                        checked={chatConfiguration.sessionConfiguration.markdownDisplay}
+                    >
+                        Display Responses as Markdown
+                    </Toggle>
                     {systemConfig && systemConfig.configuration.enabledComponents.viewMetaData &&
                         <Toggle
                             onChange={({ detail }) => updateSessionConfiguration('showMetadata', detail.checked)}

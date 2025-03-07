@@ -18,7 +18,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { Model, RagDocument } from '../../components/types';
 import { Document } from '@langchain/core/documents';
-import { RagRepositoryConfig } from '../../../../../configSchema';
+import { RagRepositoryConfig } from '#root/lib/schema';
 import { RagStatus } from '../model/rag.model';
 
 export type S3UploadRequest = {
@@ -61,7 +61,7 @@ type CreateRepositoryRequest = {
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'Docs', 'repository-status'],
+    tagTypes: ['repositories', 'docs', 'repository-status'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -143,7 +143,7 @@ export const ragApi = createApi({
                 params: { collectionId: request.collectionId, lastEvaluatedKey: request.lastEvaluatedKey },
             }),
             transformResponse: (response) => response.documents,
-            providesTags: ['Docs'],
+            providesTags: ['docs'],
         }),
         deleteRagDocuments: builder.mutation<undefined, DeleteRagDocumentRequest>({
             query: (request) => ({
@@ -160,7 +160,7 @@ export const ragApi = createApi({
                     message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
                 };
             },
-            invalidatesTags: ['Docs'],
+            invalidatesTags: ['docs'],
         }),
         downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
             query: ({ documentId, repositoryId }) => ({

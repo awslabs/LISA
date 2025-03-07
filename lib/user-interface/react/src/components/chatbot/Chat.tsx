@@ -58,6 +58,8 @@ import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.redu
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 import { ChatMemory } from '../../shared/util/chat-memory';
+import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
+import { truncateText } from '../../shared/util/formats';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -87,6 +89,7 @@ export default function Chat ({ sessionId }) {
 
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [selectedModel, setSelectedModel] = useState<IModel>();
+    const [dirtySession, setDirtySession] = useState(false);
     const [session, setSession] = useState<LisaChatSession>({
         history: [],
         sessionId: '',
@@ -94,6 +97,7 @@ export default function Chat ({ sessionId }) {
         startTime: new Date(Date.now()).toISOString(),
     });
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
+    const [loadingSession, setLoadingSession] = useState(false);
 
     const [isConnected, setIsConnected] = useState(false);
     const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
@@ -126,8 +130,8 @@ export default function Chat ({ sessionId }) {
                     input: (previousOutput: any) => previousOutput.input,
                     context: (previousOutput: any) => previousOutput.context,
                     history: (previousOutput: any) => previousOutput.memory?.history || '',
-                    aiPrefix: (previousOutput: any) => previousOutput.aiPrefix,
-                    humanPrefix: (previousOutput: any) => previousOutput.humanPrefix,
+                    aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
+                    humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
                 };
 
                 const chainSteps = [
@@ -226,8 +230,8 @@ export default function Chat ({ sessionId }) {
                 input: (initialInput: any) => initialInput.input,
                 memory: () => memory.loadMemoryVariables(),
                 context: () => fileContext || '',
-                humanPrefix: (initialInput: any) => initialInput.humanPrefix,
-                aiPrefix: (initialInput: any) => initialInput.aiPrefix,
+                humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
+                aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
             };
 
             chainSteps.unshift(nonRagStep);
@@ -271,7 +275,11 @@ export default function Chat ({ sessionId }) {
                 await memory.saveContext({input: params.inputs.input}, {output: resp.join('')});
                 setIsStreaming(false);
             } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+                setSession((prev) => ({
+                    ...prev,
+                    history: prev.history.slice(0, -1),
+                }));
+                notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, exception.error?.message ? <p>{JSON.stringify(exception.error.message)}</p> : undefined);
             }
         };
 
@@ -290,7 +298,7 @@ export default function Chat ({ sessionId }) {
                     ),
                 }));
             } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error');
+                notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, exception.error?.message ? <p>{JSON.stringify(exception.error.message)}</p> : undefined);
             }
         };
 
@@ -318,17 +326,27 @@ export default function Chat ({ sessionId }) {
     }, [auth, getConfiguration]);
 
     useEffect(() => {
-        if (!isRunning && session.history.length) {
+        if (!isRunning && session.history.length && dirtySession) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
+                setDirtySession(false);
                 updateSession(session);
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session, auth]);
+    }, [isRunning, session, dirtySession, auth, updateSession]);
 
     useEffect(() => {
         if (sessionId) {
             setInternalSessionId(sessionId);
+            setLoadingSession(true);
+            setSession({...session, history: []});
+            dispatch(setBreadcrumbs([{
+                text: 'Chatbot',
+                href: ''
+            }, {
+                text: 'Loading session...',
+                href: ''
+            }]));
+
             getSessionById(sessionId).then((resp) => {
                 // session doesn't exist so we create it
                 let sess: LisaChatSession = resp.data;
@@ -341,6 +359,16 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
+
+                // override the default breadcrumbs
+                dispatch(setBreadcrumbs([{
+                    text: 'Chatbot',
+                    href: ''
+                }, {
+                    text: truncateText(sess.history?.[0]?.content?.toString()) || 'New Session',
+                    href: ''
+                }]));
+                setLoadingSession(false);
             });
         } else {
             const newSessionId = uuidv4();
@@ -493,6 +521,7 @@ export default function Chat ({ sessionId }) {
             message: message
         });
 
+        setDirtySession(true);
     }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (
@@ -543,9 +572,9 @@ export default function Chat ({ sessionId }) {
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
-                        <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1}/>
+                        <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>
                     ))}
-                    {isRunning && !isStreaming && <Message isRunning={isRunning} />}
+                    {isRunning && !isStreaming && <Message isRunning={isRunning} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>}
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
@@ -605,9 +634,9 @@ export default function Chat ({ sessionId }) {
                                     placeholder={
                                         !selectedModel ? 'You must select a model before sending a message' : 'Send a message'
                                     }
-                                    disabled={!selectedModel}
+                                    disabled={!selectedModel || loadingSession}
                                     onChange={({ detail }) => setUserPrompt(detail.value)}
-                                    onAction={userPrompt.length > 0 && !isRunning && handleSendGenerateRequest}
+                                    onAction={userPrompt.length > 0 && !isRunning && !loadingSession && handleSendGenerateRequest}
                                     secondaryActions={
                                         <Box padding={{ left: 'xxs', top: 'xs' }}>
                                             <ButtonGroup

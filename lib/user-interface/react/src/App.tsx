@@ -36,6 +36,7 @@ import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
 import RepositoryLibrary from './pages/RepositoryLibrary';
 import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
+import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 
 
 export type RouteProps = {
@@ -107,6 +108,7 @@ function App () {
             >
                 <Topbar configs={config} />
             </div>
+            <BreadcrumbsDefaultChangeListener />
             <AppLayout
                 headerSelector='#h'
                 footerSelector='#f'

@@ -28,6 +28,7 @@ export type IPromptConfiguration = {
 };
 
 export type ISessionConfiguration = {
+    markdownDisplay: boolean
     streaming: boolean,
     showMetadata: boolean,
     max_tokens: number,
@@ -64,6 +65,7 @@ export const baseConfig: IChatConfiguration = {
     },
     sessionConfiguration: {
         streaming: false,
+        markdownDisplay: true,
         showMetadata: false,
         max_tokens: null,
         chatHistoryBufferSize: 3,

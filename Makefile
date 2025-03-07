@@ -13,7 +13,6 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HEADLESS = false
 DOCKER_CMD ?= $(or $(CDK_DOCKER),docker)
 
-# Arguments defined through command line or config.yaml
 
 # PROFILE (optional argument)
 ifeq (${PROFILE},)
@@ -131,13 +130,13 @@ bootstrap:
 	@printf "Bootstrapping: $(ACCOUNT_NUMBER) | $(REGION) | $(PARTITION)\n"
 
 ifdef PROFILE
-	@cdk bootstrap \
+	@npx cdk bootstrap \
 		--profile $(PROFILE) \
 		aws://$(ACCOUNT_NUMBER)/$(REGION) \
 		--partition $(PARTITION) \
 		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 else
-	@cdk bootstrap \
+	@npx cdk bootstrap \
 		aws://$(ACCOUNT_NUMBER)/$(REGION) \
 		--partition $(PARTITION) \
 		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
@@ -232,6 +231,8 @@ cleanTypeScript:
 	@find . -type d -name ".tscache" -exec rm -rf {} +
 	@find . -type d -name ".jest_cache" -exec rm -rf {} +
 	@find . -type d -name "node_modules" -exec rm -rf {} +
+	@find . -type d -name "cdk.out" -exec rm -rf {} +
+	@find . -type d -name "coverage" -exec rm -rf {} +
 
 
 ## Delete CloudFormation outputs

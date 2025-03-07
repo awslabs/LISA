@@ -1,6 +1,18 @@
 {
   "compilerOptions": {
     "composite": true,
+    "types": [
+      "node",
+      "linkify-it"
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "#root/*": [
+        "../../../*"
+      ]
+    },
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -8,5 +20,5 @@
     "target": "ESNext",
     "jsx": "react-jsx"
   },
-  "include": ["vite.config.ts", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "styles.d.ts"]
+  "include": ["vite.config.ts", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "styles.d.ts", "../../schema"]
 }

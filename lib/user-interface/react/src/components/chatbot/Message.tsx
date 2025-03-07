@@ -17,7 +17,7 @@
 import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonGroup, Grid, StatusIndicator } from '@cloudscape-design/components';
+import { ButtonGroup, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { LisaChatMessage } from '../types';
@@ -32,12 +32,13 @@ type MessageProps = {
     isRunning: boolean;
     showMetadata?: boolean;
     isStreaming?: boolean;
+    markdownDisplay?: boolean;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     return (
-        <div className='mt-2' style={{overflow: 'hidden'}}>
+        <div className='mt-2' style={{ overflow: 'hidden' }}>
             {isRunning && (
                 <ChatBubble
                     ariaLabel='Generative AI assistant'
@@ -58,54 +59,56 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 </ChatBubble>
             )}
             {message?.type !== 'human' && !isRunning && (
-                <ChatBubble
-                    ariaLabel='Generative AI assistant'
-                    type='incoming'
-                    showLoadingBar={isStreaming}
-                    avatar={
-                        <Avatar
-                            color='gen-ai'
-                            iconName='gen-ai'
-                            ariaLabel='Generative AI assistant'
-                            tooltipText='Generative AI assistant'
-                        />
-                    }
-                >
-                    <Grid gridDefinition={[{colspan: 11}, {colspan: 1}]}>
-                        <ReactMarkdown
-                            remarkPlugins={[remarkBreaks]}
-                            children={message.content}
-                        />
-                        {!isStreaming && <div
-                            style={{display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end'}}>
-                            <ButtonGroup
-                                onItemClick={({ detail }) =>
-                                    ['copy'].includes(detail.id) &&
-                                    navigator.clipboard.writeText(message.content)
-                                }
-                                ariaLabel='Chat actions'
-                                dropdownExpandToViewport
-                                items={[
-                                    {
-                                        type: 'icon-button',
-                                        id: 'copy',
-                                        iconName: 'copy',
-                                        text: 'Copy',
-                                        popoverFeedback: (
-                                            <StatusIndicator type='success'>
-                                                Message copied
-                                            </StatusIndicator>
-                                        )
-                                    }
-                                ]}
-                                variant='icon'
+                <SpaceBetween direction='horizontal' size='m'>
+                    <ChatBubble
+                        ariaLabel='Generative AI assistant'
+                        type='incoming'
+                        showLoadingBar={isStreaming}
+                        avatar={
+                            <Avatar
+                                color='gen-ai'
+                                iconName='gen-ai'
+                                ariaLabel='Generative AI assistant'
+                                tooltipText='Generative AI assistant'
                             />
-                        </div>}
-                    </Grid>
-                    {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
-                        <JsonView data={message.metadata} style={darkStyles}/>
-                    </ExpandableSection>}
-                </ChatBubble>
+                        }
+                    >
+                        <div style={{ maxWidth: '60em' }}>
+                            {markdownDisplay ? <ReactMarkdown
+                                remarkPlugins={[remarkBreaks]}
+                                children={message.content}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{message.content}</div>}
+                        </div>
+                        {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
+                            <JsonView data={message.metadata} style={darkStyles} />
+                        </ExpandableSection>}
+                    </ChatBubble>
+                    {!isStreaming && <div
+                        style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        <ButtonGroup
+                            onItemClick={({ detail }) =>
+                                ['copy'].includes(detail.id) &&
+                                navigator.clipboard.writeText(message.content)
+                            }
+                            ariaLabel='Chat actions'
+                            dropdownExpandToViewport
+                            items={[
+                                {
+                                    type: 'icon-button',
+                                    id: 'copy',
+                                    iconName: 'copy',
+                                    text: 'Copy',
+                                    popoverFeedback: (
+                                        <StatusIndicator type='success'>
+                                            Message copied
+                                        </StatusIndicator>
+                                    )
+                                }
+                            ]}
+                            variant='icon'
+                        />
+                    </div>}
+                </SpaceBetween>
             )}
             {message?.type === 'human' && (
                 <ChatBubble
@@ -119,7 +122,9 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         />
                     }
                 >
-                    <strong>{message.content}</strong>
+                    <div style={{ maxWidth: '60em' }}>
+                        <strong>{message.content}</strong>
+                    </div>
                 </ChatBubble>
             )}
         </div>

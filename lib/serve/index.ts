@@ -15,7 +15,7 @@
  */
 
 // LISA-serve Stack.
-import path from 'path';
+import path from 'node:path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
@@ -32,7 +32,7 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 
-const HERE = path.resolve(__dirname);
+const HERE: string = path.resolve(__dirname);
 
 type CustomLisaStackProps = {
     vpc: Vpc;
@@ -216,7 +216,7 @@ export class LisaServeApplicationStack extends Stack {
                         'bedrock:InvokeModelWithResponseStream',
                     ],
                     resources: [
-                        'arn:*:bedrock:*::foundation-model/*'
+                        '*'
                     ]
                 }),
                 new PolicyStatement({

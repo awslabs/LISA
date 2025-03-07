@@ -1,3 +1,27 @@
+# v4.0.2
+## Enhancements
+- Revised base configuration to eliminate default RagRepository declaration. **Important:** Ensure config-custom.yaml contains an empty array declaration if no configurations are defined.
+-  Implemented multi-instance LISA deployment support within single AWS accounts. Customers may now deploy more than one LISA environment into a single account.
+- Optimized data schema architecture to eliminate redundant reference patterns
+
+## User Interface Improvements
+- Enhanced proxy configuration to support HTTP status code propagation for improved error handling
+- Introduced configurable markdown viewer toggle for non-standard model outputs
+- Implemented redesigned administrative configuration interface
+- Enhanced session management:
+  - Removed UUID exposure from breadcrumb navigation
+  - Transitioned to last-modified timestamp display from access time
+  - Improved session loading indicators for enhanced user feedback
+- Integrated document library refresh functionality
+- Resolved critical Redux store corruption issue affecting state management overrides, reducing noticeable latency when fetching data in the UI
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.0.1..v4.0.2
+
 # v4.0.1
 ## Bug Fixes
 ### Vector Store Management

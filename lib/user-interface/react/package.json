@@ -63,6 +63,6 @@
     "prettier": "^3.4.2",
     "redux-mock-store": "^1.5.5",
     "uuid": "^9.0.1",
-    "vite": "^4.5.9"
+    "vite": "^6.2.1"
   }
 }

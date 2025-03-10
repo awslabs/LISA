@@ -76,8 +76,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <div style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? <ReactMarkdown
                                 remarkPlugins={[remarkBreaks]}
-                                children={message.content}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{message.content}</div>}
+                                children={message.content + (!isStreaming && message.metadata.ragDocuments ? message.metadata.ragDocuments : '')}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{message.content + (!isStreaming && message.metadata.ragDocuments ? message.metadata.ragDocuments : '')}</div>}
                         </div>
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />

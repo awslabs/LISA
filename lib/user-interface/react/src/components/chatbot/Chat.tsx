@@ -33,7 +33,7 @@ import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
 import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
-import { formatDocumentsAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
+import { formatDocumentsAsString, formatDocumentTitlesAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
@@ -213,6 +213,7 @@ export default function Chat ({ sessionId }) {
                     metadata: {
                         ...lastMessage.metadata,
                         ragContext: formatDocumentsAsString(relevantDocs.data?.docs, true),
+                        ragDocuments: formatDocumentTitlesAsString(relevantDocs.data?.docs)
                     },
                 });
 

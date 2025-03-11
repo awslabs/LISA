@@ -37,6 +37,7 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
+    const displayableMessage = message?.content + (!isStreaming && message?.metadata?.ragDocuments ? message?.metadata?.ragDocuments : '');
     return (
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             {isRunning && (
@@ -76,8 +77,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <div style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? <ReactMarkdown
                                 remarkPlugins={[remarkBreaks]}
-                                children={message.content + (!isStreaming && message.metadata.ragDocuments ? message.metadata.ragDocuments : '')}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{message.content + (!isStreaming && message.metadata.ragDocuments ? message.metadata.ragDocuments : '')}</div>}
+                                children={displayableMessage}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{displayableMessage}</div>}
                         </div>
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />

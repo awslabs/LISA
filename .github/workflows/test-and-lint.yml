@@ -28,7 +28,7 @@ jobs:
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.MISSION_SOLUTION_PR_WEBHOOK }}
-          SLACK_TITLE: 'PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
+          SLACK_TITLE: 'PR Created for repo ${{github.event.repository.name}}: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
           SLACK_FOOTER: ''
           MSG_MINIMAL: true
           SLACK_MESSAGE: 'PR Created ${{ github.event.pull_request.html_url }}'

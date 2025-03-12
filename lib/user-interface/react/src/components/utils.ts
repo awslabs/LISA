@@ -63,3 +63,10 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
     });
     return contents;
 };
+
+export const formatDocumentTitlesAsString = (docs: any): string => {
+    const uniqueNames = [...new Set(
+        docs.map((doc) => doc.Document.metadata.name)
+    )];
+    return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
+};

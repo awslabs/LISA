@@ -14,12 +14,21 @@ jobs:
     name: Send Starting Slack Notification
     runs-on: ubuntu-latest
     steps:
-      - name: Send PR Created Notification
+      - name: Send Internal PR Created Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_TITLE: 'PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
+          SLACK_FOOTER: ''
+          MSG_MINIMAL: true
+          SLACK_MESSAGE: 'PR Created ${{ github.event.pull_request.html_url }}'
+      - name: Send Mission Solution PR Created Notification
+        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.MISSION_SOLUTION_PR_WEBHOOK }}
+          SLACK_TITLE: 'PR Created for repo ${{github.event.repository.name}}: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
           SLACK_FOOTER: ''
           MSG_MINIMAL: true
           SLACK_MESSAGE: 'PR Created ${{ github.event.pull_request.html_url }}'

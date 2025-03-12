@@ -46,6 +46,7 @@ export type LisaChatMessageMetadata = {
     userId?: string;
     messages?: string;
     ragContext?: string;
+    ragDocuments?: string;
 };
 /**
  * Interface for storing data for messages

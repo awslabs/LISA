@@ -20,12 +20,13 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import { ButtonGroup, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { LisaChatMessage } from '../types';
+import { LisaChatMessage, LisaChatMessageMetadata } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
+import { MessageContent } from '@langchain/core/messages';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -37,7 +38,28 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
-    const displayableMessage = message?.content + (!isStreaming && message?.metadata?.ragDocuments ? message?.metadata?.ragDocuments : '');
+    
+    const getDisplayableMessage = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
+        if (Array.isArray(content)) {
+            return content.find(item => item.type === 'text')?.text || '';
+        }
+        return content + (!isStreaming && metadata?.ragDocuments ? metadata.ragDocuments : '');
+    };
+
+    const renderContent = (content: MessageContent) => {
+        if (Array.isArray(content)) {
+            return content.map((item, index) => {
+                if (item.type === 'text') {
+                    return <div key={index}>{item.text}</div>;
+                } else if (item.type === 'image_url') {
+                    return <img key={index} src={item.image_url.url} alt="User provided" style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
+                }
+                return null;
+            });
+        }
+        return <div>{content}</div>;
+    };
+
     return (
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             {isRunning && (
@@ -77,8 +99,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <div style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? <ReactMarkdown
                                 remarkPlugins={[remarkBreaks]}
-                                children={displayableMessage}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{displayableMessage}</div>}
+                                children={getDisplayableMessage(message.content, message.metadata)}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, message.metadata)}</div>}
                         </div>
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />
@@ -89,7 +111,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(message.content)
+                                navigator.clipboard.writeText(typeof message.content === 'string' ? message.content : JSON.stringify(message.content))
                             }
                             ariaLabel='Chat actions'
                             dropdownExpandToViewport
@@ -124,7 +146,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     }
                 >
                     <div style={{ maxWidth: '60em' }}>
-                        <strong>{message.content}</strong>
+                        {renderContent(message.content)}
                     </div>
                 </ChatBubble>
             )}

@@ -33,11 +33,9 @@ import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
 import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
-import { formatDocumentsAsString, formatDocumentTitlesAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
+import { RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
-import { StringOutputParser } from '@langchain/core/output_parsers';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
@@ -118,31 +116,16 @@ export default function Chat ({ sessionId }) {
     const auth = useAuth();
 
     const getPromptTemplate = (params: GenerateLLMRequestParams) => {
-        if (fileContext?.startsWith('File context: data:image')) {
-            // For image inputs, we need to create a template that includes the image
-            const imageData = fileContext.split(',')[1] || fileContext;
-            return new PromptTemplate({
-                template: chatConfiguration.promptConfiguration.promptTemplate,
-                inputVariables: params.inputVariables,
-                additionalContentFields: {
-                    content: [
-                        { type: "text", text: params.inputs.input },
-                        {
-                            type: "image_url",
-                            image_url: { url: `data:image/jpeg;base64,${imageData}` }
-                        }
-                    ]
-                }
-            });
-        }
+        const content = Array.isArray(params.message.content) 
+            ? params.message.content 
+            : [{ type: 'text', text: params.message.content }];
 
-        // For non-image inputs, return regular template
         return new PromptTemplate({
             template: chatConfiguration.promptConfiguration.promptTemplate,
-            inputVariables: params.inputVariables
+            inputVariables: params.inputVariables,
+            additionalContentFields: { content }
         });
     };
-
 
     const useChatGeneration = () => {
         const [isRunning, setIsRunning] = useState(false);
@@ -152,82 +135,67 @@ export default function Chat ({ sessionId }) {
             setIsRunning(true);
             try {
                 const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
+                
+                // Convert chat history to messages format
+                const historyMessages = session.history.map(msg => ({
+                    role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
+                    content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
+                }));
 
-                if (fileContext?.startsWith('File context: data:image')) {
-                    // For image inputs, call the vision model directly
-                    const imageData = fileContext.split(',')[1] || fileContext;
-                    const messages = [{
+                // Add current message
+                const messages = [
+                    ...historyMessages,
+                    {
                         role: "user",
-                        content: [
-                            { type: "text", text: params.message.content },
-                            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } }
-                        ]
-                    }];
+                        content: Array.isArray(params.message.content) 
+                            ? params.message.content 
+                            : [{ type: 'text', text: params.message.content }]
+                    }
+                ];
 
-                    if (chatConfiguration.sessionConfiguration.streaming) {
-                        setIsStreaming(true);
-                        setSession((prev) => ({
-                            ...prev,
-                            history: [...prev.history, new LisaChatMessage({ type: 'ai', content: '', metadata })],
-                        }));
+                if (chatConfiguration.sessionConfiguration.streaming) {
+                    setIsStreaming(true);
+                    setSession((prev) => ({
+                        ...prev,
+                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content: '', metadata })],
+                    }));
 
-                        try {
-                            const stream = await llmClient.stream(messages);
-                            const resp: string[] = [];
-                            for await (const chunk of stream) {
-                                const content = chunk.content as string;
-                                setSession((prev) => {
-                                    const lastMessage = prev.history[prev.history.length - 1];
-                                    return {
-                                        ...prev,
-                                        history: [...prev.history.slice(0, -1), 
-                                            new LisaChatMessage({
-                                                ...lastMessage,
-                                                content: lastMessage.content + content
-                                            })
-                                        ],
-                                    };
-                                });
-                                resp.push(content);
-                            }
-                            await memory.saveContext({ input: params.inputs.input ?? params.inputs.messages[params.inputs.messages.length - 1].content[0].text }, { output: resp.join('') });
-                            setIsStreaming(false);
-                        } catch (exception) {
-                            setSession((prev) => ({
-                                ...prev,
-                                history: prev.history.slice(0, -1),
-                            }));
-                            throw exception;
+                    try {
+                        const stream = await llmClient.stream(messages);
+                        const resp: string[] = [];
+                        for await (const chunk of stream) {
+                            const content = chunk.content as string;
+                            setSession((prev) => {
+                                const lastMessage = prev.history[prev.history.length - 1];
+                                return {
+                                    ...prev,
+                                    history: [...prev.history.slice(0, -1), 
+                                        new LisaChatMessage({
+                                            ...lastMessage,
+                                            content: lastMessage.content + content
+                                        })
+                                    ],
+                                };
+                            });
+                            resp.push(content);
                         }
-                    } else {
-                        const response = await llmClient.invoke(messages);
-                        const content = response.content as string;
-                        await memory.saveContext({ input: params.inputs.input }, { output: content });
+                        await memory.saveContext({ input: params.inputs.input }, { output: resp.join('') });
+                        setIsStreaming(false);
+                    } catch (exception) {
                         setSession((prev) => ({
                             ...prev,
-                            history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata })],
+                            history: prev.history.slice(0, -1),
                         }));
+                        throw exception;
                     }
                 } else {
-                    // For regular text inputs, use the chain
-                    const chain = RunnableSequence.from([
-                        {
-                            input: (previousOutput: any) => previousOutput.input,
-                            context: (previousOutput: any) => previousOutput.context,
-                            history: (previousOutput: any) => previousOutput.memory?.history || '',
-                            aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
-                            humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
-                        },
-                        getPromptTemplate(params),
-                        llmClient,
-                        new StringOutputParser()
-                    ]);
-
-                    if (chatConfiguration.sessionConfiguration.streaming) {
-                        await handleStreamingResponse(chain, params);
-                    } else {
-                        await handleSyncRequest(chain, params);
-                    }
+                    const response = await llmClient.invoke(messages);
+                    const content = response.content as string;
+                    await memory.saveContext({ input: params.inputs.input }, { output: content });
+                    setSession((prev) => ({
+                        ...prev,
+                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata })],
+                    }));
                 }
             } catch (error) {
                 notificationService.generateNotification('An error occurred while processing your request.', 'error');
@@ -237,146 +205,6 @@ export default function Chat ({ sessionId }) {
                 setIsRunning(false);
             }
         };
-
-        // Helper functions to improve readability and maintainability
-        const handleRagConfiguration = async (chainSteps: any[]) => {
-            const ragStep = {
-                input: ({ input }: { input: string }) => input,
-                chatHistory: () => memory.loadMemoryVariables(),
-                context: async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
-                    const question = await getContextualizedQuestion(input);
-                    const relevantDocs = await fetchRelevantDocuments(question);
-                    return await updateSessionWithRagContext(relevantDocs);
-                },
-            };
-
-            chainSteps.unshift(ragStep);
-        };
-
-        const getContextualizedQuestion = async (input: { input: string; chatHistory?: LisaChatMessage[] }) => {
-            if (!input.chatHistory?.length) {
-                return input.input;
-            }
-
-            return contextualizeQPrompt
-                .pipe(createOpenAiClient(false))
-                .pipe(new StringOutputParser())
-                .invoke(input);
-        };
-
-        const fetchRelevantDocuments = async (query: string) => {
-            const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
-
-            return getRelevantDocuments({
-                query,
-                repositoryId: ragConfig.repositoryId,
-                repositoryType: ragConfig.repositoryType,
-                modelName: ragConfig.embeddingModel.modelId,
-                topK: ragTopK,
-            });
-        };
-
-        const updateSessionWithRagContext = async (relevantDocs: any) => {
-            const serialized = `${fileContext}\n${formatDocumentsAsString(relevantDocs.data?.docs)}`;
-            setRagContext(serialized);
-
-            setSession((prev) => {
-                const lastMessage = prev.history[prev.history.length - 1];
-                const newMessage = new LisaChatMessage({
-                    ...lastMessage,
-                    metadata: {
-                        ...lastMessage.metadata,
-                        ragContext: formatDocumentsAsString(relevantDocs.data?.docs, true),
-                        ragDocuments: formatDocumentTitlesAsString(relevantDocs.data?.docs)
-                    },
-                });
-
-                return {
-                    ...prev,
-                    history: [...prev.history.slice(0, -1), newMessage],
-                };
-            });
-
-            return serialized;
-        };
-
-        const handleNonRagConfiguration = (chainSteps: any[]) => {
-            const nonRagStep = {
-                input: (initialInput: any) => initialInput.input,
-                memory: () => memory.loadMemoryVariables(),
-                context: () => fileContext && !fileContext.startsWith('File context: data:image') ? fileContext : '',
-                humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
-                aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
-            };
-
-            chainSteps.unshift(nonRagStep);
-        };
-
-        const handleStreamingResponse = async (chain: any, params: GenerateLLMRequestParams) => {
-            setIsStreaming(true);
-
-            setSession((prev) => ({
-                ...prev,
-                history: [...prev.history,
-                    new LisaChatMessage({
-                        type: 'ai',
-                        content: '',
-                        metadata,
-                    })
-                ],
-            }));
-
-            try {
-                const result = await chain.stream({
-                    input: params.message.content,
-                    chatHistory: session.history,
-                });
-                const resp: string[] = [];
-                for await (const chunk of result) {
-                    setSession((prev) => {
-                        const lastMessage = prev.history[prev.history.length - 1];
-                        const newMessage = new LisaChatMessage({
-                            ...lastMessage,
-                            content: lastMessage.content + chunk,
-                        });
-                        return {
-                            ...prev,
-                            history: prev.history.slice(0, -1).concat(newMessage),
-                        };
-                    });
-                    resp.push(chunk);
-                }
-
-                await memory.saveContext({input: params.inputs.input}, {output: resp.join('')});
-                setIsStreaming(false);
-            } catch (exception) {
-                setSession((prev) => ({
-                    ...prev,
-                    history: prev.history.slice(0, -1),
-                }));
-                notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, exception.error?.message ? <p>{JSON.stringify(exception.error.message)}</p> : undefined);
-            }
-        };
-
-        const handleSyncRequest = async (chain: any, params: GenerateLLMRequestParams) => {
-            try {
-                const result = await chain.invoke(params.inputs);
-                await memory.saveContext({input: params.inputs.input}, {output: result});
-                setSession((prev) => ({
-                    ...prev,
-                    history: prev.history.concat(
-                        new LisaChatMessage({
-                            type: 'ai',
-                            content: result,
-                            metadata: useRag ? { ...metadata, ...prev.history[prev.history.length - 1].metadata } : metadata,
-                        }),
-                    ),
-                }));
-            } catch (exception) {
-                notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, exception.error?.message ? <p>{JSON.stringify(exception.error.message)}</p> : undefined);
-            }
-        };
-
 
         return { isRunning, isStreaming, generateResponse };
     };
@@ -572,9 +400,20 @@ export default function Chat ({ sessionId }) {
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;
 
+        let messageContent;
+        if (fileContext?.startsWith('File context: data:image')) {
+            const imageData = fileContext.split(',')[1] || fileContext;
+            messageContent = [
+                { type: "text", text: userPrompt },
+                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } }
+            ];
+        } else {
+            messageContent = userPrompt;
+        }
+
         const message = new LisaChatMessage({
             type: 'human',
-            content: userPrompt,
+            content: messageContent,
             metadata: {},
         });
 
@@ -583,25 +422,11 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(message),
         }));
 
-        let inputs;
-        if (fileContext?.startsWith('File context: data:image')) {
-            const imageData = fileContext.split(',')[1] || fileContext;
-            inputs = {
-                messages: [{
-                    role: "user",
-                    content: [
-                        { type: "text", text: message.content },
-                        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } }
-                    ]
-                }]
-            };
-        } else {
-            inputs = {
-                input: message.content,
-                aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-                humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
-            };
-        }
+        const inputs = {
+            input: userPrompt,
+            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
+        };
 
         const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix', ...(useRag || (fileContext && !fileContext.startsWith('File context: data:image')) ? ['context'] : [])];
 

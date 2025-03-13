@@ -45,8 +45,7 @@ export type ISessionConfiguration = {
 };
 
 export type GenerateLLMRequestParams = {
-    inputVariables: string[],
-    inputs: any,
+    input: string,
     message: LisaChatMessage[]
 };
 

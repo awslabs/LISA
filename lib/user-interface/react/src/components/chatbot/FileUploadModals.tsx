@@ -105,7 +105,7 @@ export function ContextUploadModal ({
         //File context currently only supports single files
         let fileContents: string;
 
-        if (file.type === FileTypes.JPEG || file.type === FileTypes.JPG) {
+        if (file.type === FileTypes.JPEG || file.type === FileTypes.JPG || file.type === FileTypes.PNG) {
             // Handle JPEG files
             fileContents = await new Promise((resolve) => {
                 const reader = new FileReader();
@@ -140,7 +140,7 @@ export function ContextUploadModal ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT, FileTypes.JPEG], 204800);
+                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG], 204800);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
@@ -187,7 +187,7 @@ export function ContextUploadModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file type is plain text. File size limit is 200 KB'
+                    constraintText='Allowed file types are txt, png, jpg, jpeg. File size limit is 200 KB'
                 />
             </SpaceBetween>
         </Modal>

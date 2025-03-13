@@ -35,7 +35,7 @@ import Message from './Message';
 import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
 import { RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
-import { ChatPromptTemplate, MessagesPlaceholder, PromptTemplate } from '@langchain/core/prompts';
+import { PromptTemplate } from '@langchain/core/prompts';
 import RagControls, { RagConfig } from './RagOptions';
 import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
@@ -115,18 +115,6 @@ export default function Chat ({ sessionId }) {
     const bottomRef = useRef(null);
     const auth = useAuth();
 
-    const getPromptTemplate = (params: GenerateLLMRequestParams) => {
-        const content = Array.isArray(params.message.content) 
-            ? params.message.content 
-            : [{ type: 'text', text: params.message.content }];
-
-        return new PromptTemplate({
-            template: chatConfiguration.promptConfiguration.promptTemplate,
-            inputVariables: params.inputVariables,
-            additionalContentFields: { content }
-        });
-    };
-
     const useChatGeneration = () => {
         const [isRunning, setIsRunning] = useState(false);
         const [isStreaming, setIsStreaming] = useState(false);
@@ -135,23 +123,12 @@ export default function Chat ({ sessionId }) {
             setIsRunning(true);
             try {
                 const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
-                
+
                 // Convert chat history to messages format
-                const historyMessages = session.history.map(msg => ({
+                const messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
                     content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
                 }));
-
-                // Add current message
-                const messages = [
-                    ...historyMessages,
-                    {
-                        role: "user",
-                        content: Array.isArray(params.message.content) 
-                            ? params.message.content 
-                            : [{ type: 'text', text: params.message.content }]
-                    }
-                ];
 
                 if (chatConfiguration.sessionConfiguration.streaming) {
                     setIsStreaming(true);
@@ -169,7 +146,7 @@ export default function Chat ({ sessionId }) {
                                 const lastMessage = prev.history[prev.history.length - 1];
                                 return {
                                     ...prev,
-                                    history: [...prev.history.slice(0, -1), 
+                                    history: [...prev.history.slice(0, -1),
                                         new LisaChatMessage({
                                             ...lastMessage,
                                             content: lastMessage.content + content
@@ -268,7 +245,7 @@ export default function Chat ({ sessionId }) {
                     text: 'Chatbot',
                     href: ''
                 }, {
-                    text: truncateText(sess.history?.[0]?.content?.toString()) || 'New Session',
+                    text: truncateText(Array.isArray(sess.history?.[0]?.content) ? sess.history?.[0]?.content.find((item) => item.type === 'text')?.text || '' : sess.history?.[0]?.content) || 'New Session',
                     href: ''
                 }]));
                 setLoadingSession(false);
@@ -385,41 +362,46 @@ export default function Chat ({ sessionId }) {
         return new ChatOpenAI(modelConfig);
     };
 
-    const contextualizeQSystemPrompt = `Given a chat history and the latest user question
-    which might reference context in the chat history, formulate a standalone question
-    which can be understood without the chat history. Do NOT answer the question,
-    just reformulate it if needed and otherwise return it as is.`;
-
-    const contextualizeQPrompt = ChatPromptTemplate.fromMessages([
-        ['user', contextualizeQSystemPrompt],
-        ['assistant', 'Okay!'],
-        new MessagesPlaceholder('chatHistory'),
-        ['human', '{input}'],
-    ]);
-
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;
 
+        const messages = [];
+
+        if (session.history.length === 0){
+            messages.push(new LisaChatMessage({
+                type: 'system',
+                content: chatConfiguration.promptConfiguration.promptTemplate,
+                metadata: {},
+            }));
+        }
+
         let messageContent;
         if (fileContext?.startsWith('File context: data:image')) {
-            const imageData = fileContext.split(',')[1] || fileContext;
+            const imageData = fileContext.replace('File context: ', '');
             messageContent = [
-                { type: "text", text: userPrompt },
-                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } }
+                { type: 'text', text: userPrompt },
+                { type: 'image_url', image_url: { url: `${imageData}` } }
             ];
+        } else if (fileContext) {
+            messages.push(new LisaChatMessage({
+                type: 'system',
+                content: fileContext,
+                metadata: {},
+            }));
+            messageContent = userPrompt;
         } else {
             messageContent = userPrompt;
         }
 
-        const message = new LisaChatMessage({
+        messages.push(new LisaChatMessage({
             type: 'human',
             content: messageContent,
             metadata: {},
-        });
+        }));
 
         setSession((prev) => ({
             ...prev,
-            history: prev.history.concat(message),
+            history: prev.history.concat(...messages),
         }));
 
         const inputs = {
@@ -433,7 +415,7 @@ export default function Chat ({ sessionId }) {
         const params: GenerateLLMRequestParams = {
             inputVariables,
             inputs,
-            message,
+            message: messages,
             promptTemplate: new PromptTemplate({
                 template: chatConfiguration.promptConfiguration.promptTemplate,
                 inputVariables
@@ -443,12 +425,12 @@ export default function Chat ({ sessionId }) {
         setUserPrompt('');
 
         await generateResponse({
-            ...params,
-            promptTemplate: getPromptTemplate(params)
+            ...params
         });
 
         setDirtySession(true);
-    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse, getPromptTemplate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (
         <div className='h-[80vh]'>

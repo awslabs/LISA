@@ -172,6 +172,7 @@ export enum FileTypes {
     PDF = 'application/pdf',
     JPEG = 'image/jpeg',
     JPG = 'image/jpg',
+    PNG = 'image/png',
 }
 
 /**

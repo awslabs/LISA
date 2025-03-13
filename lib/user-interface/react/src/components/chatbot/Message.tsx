@@ -38,10 +38,10 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
-    
+
     const getDisplayableMessage = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
-            return content.find(item => item.type === 'text')?.text || '';
+            return content.find((item) => item.type === 'text')?.text || '';
         }
         return content + (!isStreaming && metadata?.ragDocuments ? metadata.ragDocuments : '');
     };
@@ -52,7 +52,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 if (item.type === 'text') {
                     return <div key={index}>{item.text}</div>;
                 } else if (item.type === 'image_url') {
-                    return <img key={index} src={item.image_url.url} alt="User provided" style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
+                    return <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
                 }
                 return null;
             });
@@ -61,6 +61,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
     };
 
     return (
+        (message.type === 'human' || message.type === 'ai') &&
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             {isRunning && (
                 <ChatBubble
@@ -81,7 +82,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type !== 'human' && !isRunning && (
+            {message?.type === 'ai' && !isRunning && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'

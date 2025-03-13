@@ -170,6 +170,8 @@ export enum FileTypes {
     TEXT = 'text/plain',
     DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     PDF = 'application/pdf',
+    JPEG = 'image/jpeg',
+    JPG = 'image/jpg',
 }
 
 /**

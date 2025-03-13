@@ -103,7 +103,23 @@ export function ContextUploadModal ({
 
     async function processFile (file: File): Promise<boolean> {
         //File context currently only supports single files
-        const fileContents = await file.text();
+        let fileContents: string;
+
+        if (file.type === FileTypes.JPEG || file.type === FileTypes.JPG) {
+            // Handle JPEG files
+            fileContents = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result as string;
+                    resolve(base64String);
+                };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            // Handle text files
+            fileContents = await file.text();
+        }
+
         setFileContext(`File context: ${fileContents}`);
         setSelectedFiles([file]);
         return true;
@@ -124,7 +140,7 @@ export function ContextUploadModal ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT], 204800);
+                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT, FileTypes.JPEG], 204800);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);

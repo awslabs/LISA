@@ -117,6 +117,33 @@ export default function Chat ({ sessionId }) {
     const bottomRef = useRef(null);
     const auth = useAuth();
 
+    const getPromptTemplate = (params: GenerateLLMRequestParams) => {
+        if (fileContext?.startsWith('File context: data:image')) {
+            // For image inputs, we need to create a template that includes the image
+            const imageData = fileContext.split(',')[1] || fileContext;
+            return new PromptTemplate({
+                template: chatConfiguration.promptConfiguration.promptTemplate,
+                inputVariables: params.inputVariables,
+                additionalContentFields: {
+                    content: [
+                        { type: "text", text: params.inputs.input },
+                        {
+                            type: "image_url",
+                            image_url: { url: `data:image/jpeg;base64,${imageData}` }
+                        }
+                    ]
+                }
+            });
+        }
+
+        // For non-image inputs, return regular template
+        return new PromptTemplate({
+            template: chatConfiguration.promptConfiguration.promptTemplate,
+            inputVariables: params.inputVariables
+        });
+    };
+
+
     const useChatGeneration = () => {
         const [isRunning, setIsRunning] = useState(false);
         const [isStreaming, setIsStreaming] = useState(false);
@@ -126,34 +153,81 @@ export default function Chat ({ sessionId }) {
             try {
                 const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
 
-                const baseChainSteps = {
-                    input: (previousOutput: any) => previousOutput.input,
-                    context: (previousOutput: any) => previousOutput.context,
-                    history: (previousOutput: any) => previousOutput.memory?.history || '',
-                    aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
-                    humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
-                };
+                if (fileContext?.startsWith('File context: data:image')) {
+                    // For image inputs, call the vision model directly
+                    const imageData = fileContext.split(',')[1] || fileContext;
+                    const messages = [{
+                        role: "user",
+                        content: [
+                            { type: "text", text: params.message.content },
+                            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } }
+                        ]
+                    }];
 
-                const chainSteps = [
-                    baseChainSteps,
-                    params.promptTemplate,
-                    llmClient,
-                    new StringOutputParser(),
-                ];
+                    if (chatConfiguration.sessionConfiguration.streaming) {
+                        setIsStreaming(true);
+                        setSession((prev) => ({
+                            ...prev,
+                            history: [...prev.history, new LisaChatMessage({ type: 'ai', content: '', metadata })],
+                        }));
 
-                if (useRag) {
-                    await handleRagConfiguration(chainSteps);
+                        try {
+                            const stream = await llmClient.stream(messages);
+                            const resp: string[] = [];
+                            for await (const chunk of stream) {
+                                const content = chunk.content as string;
+                                setSession((prev) => {
+                                    const lastMessage = prev.history[prev.history.length - 1];
+                                    return {
+                                        ...prev,
+                                        history: [...prev.history.slice(0, -1), 
+                                            new LisaChatMessage({
+                                                ...lastMessage,
+                                                content: lastMessage.content + content
+                                            })
+                                        ],
+                                    };
+                                });
+                                resp.push(content);
+                            }
+                            await memory.saveContext({ input: params.inputs.input ?? params.inputs.messages[params.inputs.messages.length - 1].content[0].text }, { output: resp.join('') });
+                            setIsStreaming(false);
+                        } catch (exception) {
+                            setSession((prev) => ({
+                                ...prev,
+                                history: prev.history.slice(0, -1),
+                            }));
+                            throw exception;
+                        }
+                    } else {
+                        const response = await llmClient.invoke(messages);
+                        const content = response.content as string;
+                        await memory.saveContext({ input: params.inputs.input }, { output: content });
+                        setSession((prev) => ({
+                            ...prev,
+                            history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata })],
+                        }));
+                    }
                 } else {
-                    handleNonRagConfiguration(chainSteps);
-                }
+                    // For regular text inputs, use the chain
+                    const chain = RunnableSequence.from([
+                        {
+                            input: (previousOutput: any) => previousOutput.input,
+                            context: (previousOutput: any) => previousOutput.context,
+                            history: (previousOutput: any) => previousOutput.memory?.history || '',
+                            aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
+                            humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
+                        },
+                        getPromptTemplate(params),
+                        llmClient,
+                        new StringOutputParser()
+                    ]);
 
-                const chain = RunnableSequence.from(chainSteps);
-
-                // Handle streaming configuration
-                if (chatConfiguration.sessionConfiguration.streaming) {
-                    await handleStreamingResponse(chain, params);
-                } else {
-                    await handleSyncRequest(chain, params);
+                    if (chatConfiguration.sessionConfiguration.streaming) {
+                        await handleStreamingResponse(chain, params);
+                    } else {
+                        await handleSyncRequest(chain, params);
+                    }
                 }
             } catch (error) {
                 notificationService.generateNotification('An error occurred while processing your request.', 'error');
@@ -230,7 +304,7 @@ export default function Chat ({ sessionId }) {
             const nonRagStep = {
                 input: (initialInput: any) => initialInput.input,
                 memory: () => memory.loadMemoryVariables(),
-                context: () => fileContext || '',
+                context: () => fileContext && !fileContext.startsWith('File context: data:image') ? fileContext : '',
                 humanPrefix: () => chatConfiguration.promptConfiguration.humanPrefix,
                 aiPrefix: () => chatConfiguration.promptConfiguration.aiPrefix,
             };
@@ -386,7 +460,7 @@ export default function Chat ({ sessionId }) {
     }, [sessionId]);
 
     useEffect(() => {
-        const promptNeedsContext = fileContext || useRag;
+        const promptNeedsContext = (fileContext && !fileContext.startsWith('File context: data:image')) || useRag;
         const promptIncludesContext = chatConfiguration.promptConfiguration.promptTemplate.indexOf('{context}') > -1;
 
         if (promptNeedsContext && !promptIncludesContext) {
@@ -463,7 +537,7 @@ export default function Chat ({ sessionId }) {
     }, [session]);
 
     const createOpenAiClient = (streaming: boolean) => {
-        return new ChatOpenAI({
+        const modelConfig = {
             modelName: selectedModel?.modelId,
             openAIApiKey: auth.user?.id_token,
             configuration: {
@@ -471,8 +545,16 @@ export default function Chat ({ sessionId }) {
             },
             streaming,
             maxTokens: chatConfiguration.sessionConfiguration?.max_tokens,
-            modelKwargs: chatConfiguration.sessionConfiguration?.modelArgs,
-        });
+            modelKwargs: {
+                ...chatConfiguration.sessionConfiguration?.modelArgs,
+                ...(fileContext?.startsWith('File context: data:image') && {
+                    model: selectedModel?.modelId,
+                    max_tokens: chatConfiguration.sessionConfiguration?.max_tokens
+                })
+            }
+        };
+
+        return new ChatOpenAI(modelConfig);
     };
 
     const contextualizeQSystemPrompt = `Given a chat history and the latest user question
@@ -501,29 +583,47 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(message),
         }));
 
-        const inputs = {
-            input: message.content,
-            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
-        };
-        const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix', ...(useRag || fileContext ? ['context'] : [])];
+        let inputs;
+        if (fileContext?.startsWith('File context: data:image')) {
+            const imageData = fileContext.split(',')[1] || fileContext;
+            inputs = {
+                messages: [{
+                    role: "user",
+                    content: [
+                        { type: "text", text: message.content },
+                        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageData}` } }
+                    ]
+                }]
+            };
+        } else {
+            inputs = {
+                input: message.content,
+                aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
+                humanPrefix: chatConfiguration.promptConfiguration.humanPrefix
+            };
+        }
 
-        const questionPrompt = new PromptTemplate({
-            template: chatConfiguration.promptConfiguration.promptTemplate,
-            inputVariables: inputVariables,
-        });
+        const inputVariables = ['history', 'input', 'aiPrefix', 'humanPrefix', ...(useRag || (fileContext && !fileContext.startsWith('File context: data:image')) ? ['context'] : [])];
+
+        const params: GenerateLLMRequestParams = {
+            inputVariables,
+            inputs,
+            message,
+            promptTemplate: new PromptTemplate({
+                template: chatConfiguration.promptConfiguration.promptTemplate,
+                inputVariables
+            })
+        };
 
         setUserPrompt('');
 
         await generateResponse({
-            inputVariables: inputVariables,
-            promptTemplate: questionPrompt,
-            inputs: inputs,
-            message: message
+            ...params,
+            promptTemplate: getPromptTemplate(params)
         });
 
         setDirtySession(true);
-    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse, getPromptTemplate]);
 
     return (
         <div className='h-[80vh]'>

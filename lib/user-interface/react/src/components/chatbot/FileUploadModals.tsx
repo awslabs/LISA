@@ -39,6 +39,7 @@ import {
 } from '../../shared/reducers/rag.reducer';
 import {uploadToS3Request} from '../utils';
 import {RagRepositoryPipeline} from '#root/lib/schema';
+import { IModel } from '@/shared/model/model-management.model';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -85,6 +86,7 @@ export type ContextUploadProps = {
     setShowContextUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     fileContext: string;
     setFileContext: React.Dispatch<React.SetStateAction<string>>;
+    selectedModel: IModel;
 };
 
 export function ContextUploadModal ({
@@ -92,10 +94,12 @@ export function ContextUploadModal ({
     setShowContextUploadModal,
     fileContext,
     setFileContext,
+    selectedModel
 }: ContextUploadProps) {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
+    const modelSupportsImages = selectedModel?.features.filter(feature => feature.name === 'imageInput').length > 0;
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');
@@ -140,7 +144,7 @@ export function ContextUploadModal ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF], 20971520);
+                                const successfulUploads = await handleUpload(files, handleError, processFile, modelSupportsImages ? [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF] : [FileTypes.TEXT], 20971520);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
@@ -187,7 +191,7 @@ export function ContextUploadModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file types are txt, png, jpg, jpeg. File size limit is 200 KB'
+                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg' : 'txt'}. File size limit is 20 MB.`}
                 />
             </SpaceBetween>
         </Modal>
@@ -370,7 +374,7 @@ export function RagUploadModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file types are plain text, PDF, and docx. File size limit is 50 MB'
+                    constraintText='Allowed file types are plain text, PDF, and docx. File size limit is 50 MB.'
                 />
                 {displayProgressBar && (
                     <ProgressBar

@@ -32,7 +32,7 @@ import {
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
+import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession, StatusTypes } from '../types';
 import { formatDocumentsAsString, formatDocumentTitlesAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import RagControls, { RagConfig } from './RagOptions';
@@ -299,6 +299,11 @@ export default function Chat ({ sessionId }) {
                 setMetadata(metadata);
             });
         }
+
+        if(selectedModel && selectedModel?.features.filter(feature => feature.name === 'imageInput').length === 0 && fileContext.startsWith('File context: data:image')) {
+            setFileContext('');
+            notificationService.generateNotification(`Removed file from context as new model doesn't support image input`, 'info');
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedModel, chatConfiguration.sessionConfiguration.modelArgs, auth, userPrompt]);
 
@@ -446,6 +451,7 @@ export default function Chat ({ sessionId }) {
                 setShowContextUploadModal={setShowContextUploadModal}
                 fileContext={fileContext}
                 setFileContext={setFileContext}
+                selectedModel={selectedModel}
             />
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>

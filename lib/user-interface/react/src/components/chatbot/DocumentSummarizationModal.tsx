@@ -214,7 +214,7 @@ export function DocumentSummarizationModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file type is plain text. File size limit is 200 KB'
+                    constraintText='Allowed file type is plain text. File size limit is 20 MB.'
                 />
                 <FormField label='Summarization Model'>
                     <Autosuggest

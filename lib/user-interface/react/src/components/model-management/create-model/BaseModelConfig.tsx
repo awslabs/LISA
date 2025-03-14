@@ -128,18 +128,18 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.streaming}
                     />
                 </FormField>
-                <FormField label='Multi Modal' errorText={props.formErrors?.multiModal}>
+                <FormField label='Image Input' errorText={props.formErrors?.imageInput}>
                     <Toggle
                         onChange={({ detail }) => {
-                            if (detail.checked && props.item.features.filter((feature) => feature.name === 'multiModal').length === 0) {
-                                props.setFields({'features': props.item.features.concat({name: 'multiModal', overview: ''})});
-                            } else if (!detail.checked && props.item.features.filter((feature) => feature.name === 'multiModal').length > 0) {
-                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'multiModal')});
+                            if (detail.checked && props.item.features.filter((feature) => feature.name === 'imageInput').length === 0) {
+                                props.setFields({'features': props.item.features.concat({name: 'imageInput', overview: ''})});
+                            } else if (!detail.checked && props.item.features.filter((feature) => feature.name === 'imageInput').length > 0) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'imageInput')});
                             }
                         }}
                         disabled={props.item.modelType === ModelType.embedding}
                         onBlur={() => props.touchFields(['features'])}
-                        checked={props.item.features.filter((feature) => feature.name === 'multiModal').length > 0}
+                        checked={props.item.features.filter((feature) => feature.name === 'imageInput').length > 0}
                     />
                 </FormField>
                 <FormField label='Summarization' errorText={props.formErrors?.features}

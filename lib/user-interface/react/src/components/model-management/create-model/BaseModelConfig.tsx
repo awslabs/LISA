@@ -130,12 +130,16 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 </FormField>
                 <FormField label='Multi Modal' errorText={props.formErrors?.multiModal}>
                     <Toggle
-                        onChange={({ detail }) =>
-                            props.setFields({'multiModal': detail.checked})
-                        }
-                        onBlur={() => props.touchFields(['multiModal'])}
+                        onChange={({ detail }) => {
+                            if (detail.checked && props.item.features.filter((feature) => feature.name === 'multiModal').length === 0) {
+                                props.setFields({'features': props.item.features.concat({name: 'multiModal', overview: ''})});
+                            } else if (!detail.checked && props.item.features.filter((feature) => feature.name === 'multiModal').length > 0) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'multiModal')});
+                            }
+                        }}
                         disabled={props.item.modelType === ModelType.embedding}
-                        checked={props.item.multiModal}
+                        onBlur={() => props.touchFields(['features'])}
+                        checked={props.item.features.filter((feature) => feature.name === 'multiModal').length > 0}
                     />
                 </FormField>
                 <FormField label='Summarization' errorText={props.formErrors?.features}

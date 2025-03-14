@@ -170,17 +170,13 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # metadata updates
     payload_model_type = event["update_payload"].get("modelType", None)
     is_payload_streaming_update = (payload_streaming := event["update_payload"].get("streaming", None)) is not None
-    is_payload_multi_modal_update = (payload_multi_modal := event["update_payload"].get("multiModal", None)) is not None
-    if payload_model_type or is_payload_streaming_update or is_autoscaling_update or is_payload_multi_modal_update:
+    if payload_model_type or is_payload_streaming_update or is_autoscaling_update:
         if payload_model_type:
             logger.info(f"Setting type '{payload_model_type}' for model '{model_id}'")
             model_config["modelType"] = payload_model_type
         if is_payload_streaming_update:
             logger.info(f"Setting streaming to '{payload_streaming}' for model '{model_id}'")
             model_config["streaming"] = payload_streaming
-        if is_payload_multi_modal_update:
-            logger.info(f"Setting multiModal to '{payload_multi_modal}' for model '{model_id}'")
-            model_config["multiModal"] = payload_multi_modal
 
         ddb_update_expression += ", model_config = :mc"
         ddb_update_values[":mc"] = model_config

@@ -200,7 +200,7 @@ export function DocumentSummarizationModal ({
                 <FileUpload
                     onChange={async ({ detail }) => {
                         setSelectedFiles(detail.value);
-                        const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 204800);
+                        const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 20971520);
                         setSuccessfulUpload(uploads);
                     }}
                     value={selectedFiles}

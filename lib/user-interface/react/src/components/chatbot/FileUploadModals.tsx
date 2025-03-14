@@ -27,18 +27,18 @@ import {
     StatusIndicator,
     TextContent,
 } from '@cloudscape-design/components';
-import { FileTypes, StatusTypes } from '../types';
-import { useState } from 'react';
-import { RagConfig } from './RagOptions';
-import { useAppDispatch } from '../../config/store';
-import { useNotificationService } from '../../shared/util/hooks';
+import {FileTypes, StatusTypes} from '../types';
+import {useState} from 'react';
+import {RagConfig} from './RagOptions';
+import {useAppDispatch} from '../../config/store';
+import {useNotificationService} from '../../shared/util/hooks';
 import {
     useIngestDocumentsMutation,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
 } from '../../shared/reducers/rag.reducer';
-import { uploadToS3Request } from '../utils';
-import { RagRepositoryPipeline } from '#root/lib/schema';
+import {uploadToS3Request} from '../utils';
+import {RagRepositoryPipeline} from '#root/lib/schema';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -140,7 +140,7 @@ export function ContextUploadModal ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG], 204800);
+                                const successfulUploads = await handleUpload(files, handleError, processFile, [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF], 20971520);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);

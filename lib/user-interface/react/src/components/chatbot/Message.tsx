@@ -112,7 +112,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(typeof message.content === 'string' ? message.content : JSON.stringify(message.content))
+                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
                             }
                             ariaLabel='Chat actions'
                             dropdownExpandToViewport

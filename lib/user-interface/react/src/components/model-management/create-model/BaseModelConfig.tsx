@@ -128,6 +128,16 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.streaming}
                     />
                 </FormField>
+                <FormField label='Multi Modal' errorText={props.formErrors?.multiModal}>
+                    <Toggle
+                        onChange={({ detail }) =>
+                            props.setFields({'multiModal': detail.checked})
+                        }
+                        onBlur={() => props.touchFields(['multiModal'])}
+                        disabled={props.item.modelType === ModelType.embedding}
+                        checked={props.item.multiModal}
+                    />
+                </FormField>
                 <FormField label='Summarization' errorText={props.formErrors?.features}
                     warningText={props.item.features.filter((feature) => feature.name === 'summarization').length > 0 ? 'Ensure model context is large enough to support these requests.' : ''}>
                     <Toggle

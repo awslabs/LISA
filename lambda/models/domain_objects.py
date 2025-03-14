@@ -193,6 +193,7 @@ class LISAModel(BaseModel):
     modelUrl: Optional[str] = None
     status: ModelStatus
     streaming: bool
+    multiModal: bool
     features: Optional[List[ModelFeature]] = None
 
 
@@ -215,6 +216,7 @@ class CreateModelRequest(BaseModel):
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
+    multiModal: Optional[bool] = False
     features: Optional[List[ModelFeature]] = None
 
     @model_validator(mode="after")
@@ -267,6 +269,7 @@ class UpdateModelRequest(BaseModel):
     enabled: Optional[bool] = None
     modelType: Optional[ModelType] = None
     streaming: Optional[bool] = None
+    multiModal: Optional[bool] = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -276,6 +279,7 @@ class UpdateModelRequest(BaseModel):
             self.enabled,
             self.modelType,
             self.streaming,
+            self.multiModal,
         ]
         # Validate that at minimum one field is defined, otherwise there's no action to take in this update
         if not validate_any_fields_defined(fields):

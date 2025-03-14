@@ -247,7 +247,7 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
-                const firstHumanMessage = sess.history?.find(hist => hist.type === 'human')?.content;
+                const firstHumanMessage = sess.history?.find((hist) => hist.type === 'human')?.content;
 
                 // override the default breadcrumbs
                 dispatch(setBreadcrumbs([{

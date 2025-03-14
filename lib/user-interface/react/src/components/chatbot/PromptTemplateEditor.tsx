@@ -20,8 +20,6 @@ import {
     TextContent, Textarea,
 } from '@cloudscape-design/components';
 
-import FormField from '@cloudscape-design/components/form-field';
-import Input from '@cloudscape-design/components/input';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
 
 export type PromptTemplateEditorProps = {

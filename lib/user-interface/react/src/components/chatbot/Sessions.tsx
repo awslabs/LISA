@@ -139,7 +139,7 @@ export function Sessions () {
                         id: 'title',
                         header: 'Title',
                         cell: (e) => <Link variant='primary'
-                            onClick={() => navigate(`chatbot/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(getDisplayableMessage(e.history?.find(hist => hist.type === 'human')?.content) || 'No Content', 32, '')}</span></Link>,
+                            onClick={() => navigate(`chatbot/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(getDisplayableMessage(e.history?.find((hist) => hist.type === 'human')?.content) || 'No Content', 32, '')}</span></Link>,
                         isRowHeader: true,
                     },
                     {

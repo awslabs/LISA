@@ -191,7 +191,7 @@ export function ContextUploadModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg' : 'txt'}. File size limit is 20 MB.`}
+                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt'}. File size limit is 20 MB.`}
                 />
             </SpaceBetween>
         </Modal>

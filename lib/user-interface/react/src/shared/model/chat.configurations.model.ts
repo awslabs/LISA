@@ -22,8 +22,6 @@ export type IChatConfiguration = {
 
 export type IPromptConfiguration = {
     promptTemplate: string;
-    humanPrefix: string;
-    aiPrefix: string;
 };
 
 export type ISessionConfiguration = {
@@ -52,8 +50,6 @@ export type GenerateLLMRequestParams = {
 export const baseConfig: IChatConfiguration = {
     promptConfiguration: {
         promptTemplate: 'The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.',
-        humanPrefix: 'User',
-        aiPrefix: 'Assistant',
     },
     sessionConfiguration: {
         streaming: false,

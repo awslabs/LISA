@@ -106,8 +106,6 @@ export default function Chat ({ sessionId }) {
             returnMessages: false,
             memoryKey: 'history',
             k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
         }),
     );
     const bottomRef = useRef(null);
@@ -249,13 +247,14 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
+                const firstHumanMessage = sess.history?.find(hist => hist.type === 'human')?.content;
 
                 // override the default breadcrumbs
                 dispatch(setBreadcrumbs([{
                     text: 'Chatbot',
                     href: ''
                 }, {
-                    text: truncateText(Array.isArray(sess.history?.[0]?.content) ? sess.history?.[0]?.content.find((item) => item.type === 'text')?.text || '' : sess.history?.[0]?.content) || 'New Session',
+                    text: truncateText(Array.isArray(firstHumanMessage) ? firstHumanMessage.find((item) => item.type === 'text')?.text || '' : firstHumanMessage) || 'New Session',
                     href: ''
                 }]));
                 setLoadingSession(false);
@@ -281,8 +280,6 @@ export default function Chat ({ sessionId }) {
                 returnMessages: false,
                 memoryKey: 'history',
                 k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-                aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-                humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
             }),
         );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -403,7 +400,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.aiPrefix, chatConfiguration.promptConfiguration.humanPrefix, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
 
     return (
         <div className='h-[80vh]'>

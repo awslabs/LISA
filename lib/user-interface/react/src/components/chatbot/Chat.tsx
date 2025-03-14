@@ -32,7 +32,7 @@ import {
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession, StatusTypes } from '../types';
+import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
 import { formatDocumentsAsString, formatDocumentTitlesAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import RagControls, { RagConfig } from './RagOptions';
@@ -300,9 +300,9 @@ export default function Chat ({ sessionId }) {
             });
         }
 
-        if(selectedModel && selectedModel?.features.filter(feature => feature.name === 'imageInput').length === 0 && fileContext.startsWith('File context: data:image')) {
+        if (selectedModel && selectedModel?.features.filter((feature) => feature.name === 'imageInput').length === 0 && fileContext.startsWith('File context: data:image')) {
             setFileContext('');
-            notificationService.generateNotification(`Removed file from context as new model doesn't support image input`, 'info');
+            notificationService.generateNotification('Removed file from context as new model doesn\'t support image input', 'info');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedModel, chatConfiguration.sessionConfiguration.modelArgs, auth, userPrompt]);

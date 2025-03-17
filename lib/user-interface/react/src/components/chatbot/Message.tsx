@@ -39,6 +39,7 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
+    const ragCitations = !isStreaming && message.metadata?.ragDocuments ? message.metadata.ragDocuments : undefined;
 
     const renderContent = (content: MessageContent) => {
         if (Array.isArray(content)) {
@@ -94,8 +95,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <div style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? <ReactMarkdown
                                 remarkPlugins={[remarkBreaks]}
-                                children={getDisplayableMessage(message.content, !isStreaming && message.metadata?.ragDocuments ? message.metadata.ragDocuments : undefined)}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, !isStreaming && message.metadata?.ragDocuments ? message.metadata.ragDocuments : undefined)}</div>}
+                                children={getDisplayableMessage(message.content, ragCitations)}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, ragCitations)}</div>}
                         </div>
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />

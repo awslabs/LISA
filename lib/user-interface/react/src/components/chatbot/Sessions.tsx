@@ -38,7 +38,7 @@ import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { truncateText } from '../../shared/util/formats';
-import { MessageContent } from '@langchain/core/messages';
+import { getDisplayableMessage } from '@/components/utils';
 
 export function Sessions () {
     const dispatch = useAppDispatch();
@@ -46,12 +46,6 @@ export function Sessions () {
     const auth = useAuth();
     const navigate = useNavigate();
 
-    const getDisplayableMessage = (content: MessageContent) => {
-        if (Array.isArray(content)) {
-            return content.find((item) => item.type === 'text')?.text || '';
-        }
-        return content;
-    };
 
     const [deleteById, {
         isSuccess: isDeleteByIdSuccess,

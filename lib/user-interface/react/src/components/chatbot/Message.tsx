@@ -20,13 +20,14 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import { ButtonGroup, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { LisaChatMessage, LisaChatMessageMetadata } from '../types';
+import { LisaChatMessage } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
+import { getDisplayableMessage } from '@/components/utils';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -38,13 +39,6 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
-
-    const getDisplayableMessage = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
-        if (Array.isArray(content)) {
-            return content.find((item) => item.type === 'text')?.text || '';
-        }
-        return content + (!isStreaming && metadata?.ragDocuments ? metadata.ragDocuments : '');
-    };
 
     const renderContent = (content: MessageContent) => {
         if (Array.isArray(content)) {
@@ -100,8 +94,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <div style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? <ReactMarkdown
                                 remarkPlugins={[remarkBreaks]}
-                                children={getDisplayableMessage(message.content, message.metadata)}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, message.metadata)}</div>}
+                                children={getDisplayableMessage(message.content, !isStreaming && message.metadata?.ragDocuments ? message.metadata.ragDocuments : undefined)}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, !isStreaming && message.metadata?.ragDocuments ? message.metadata.ragDocuments : undefined)}</div>}
                         </div>
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />

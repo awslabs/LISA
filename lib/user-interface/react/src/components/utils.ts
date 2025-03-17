@@ -14,6 +14,7 @@
   limitations under the License.
 */
 import { S3UploadRequest } from '../shared/reducers/rag.reducer';
+import { MessageContent } from '@langchain/core/messages';
 
 const stripTrailingSlash = (str) => {
     return str && str.endsWith('/') ? str.slice(0, -1) : str;
@@ -69,4 +70,11 @@ export const formatDocumentTitlesAsString = (docs: any): string => {
         docs.map((doc) => doc.Document.metadata.name)
     )];
     return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
+};
+
+export const getDisplayableMessage = (content: MessageContent, ragCitations?: string) => {
+    if (Array.isArray(content)) {
+        return content.find((item) => item.type === 'text')?.text + (ragCitations ?? '') || '';
+    }
+    return content + (ragCitations ?? '');
 };

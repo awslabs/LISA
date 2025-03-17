@@ -20,8 +20,6 @@ import {
     TextContent, Textarea,
 } from '@cloudscape-design/components';
 
-import FormField from '@cloudscape-design/components/form-field';
-import Input from '@cloudscape-design/components/input';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
 
 export type PromptTemplateEditorProps = {
@@ -46,19 +44,7 @@ export default function PromptTemplateEditor ({ chatConfiguration, setChatConfig
                 <h4>Prompt Template</h4>
                 <p>
                     <small>
-                        Sets the prompt used in a LangChain ConversationChain to converse with an LLM. The <code>`history`</code>{' '}
-                        and <code>`input`</code> keys are available for use in the prompt like:
-                        <br />
-                        <br />
-                        <code>
-                            ```
-                            <br />
-                            Current conversation:
-                            <br />
-                            &#123;history&#125;
-                            <br />
-                            ```
-                        </code>
+                        Sets the initial system prompt to setup the conversation with an LLM.
                     </small>
                 </p>
             </TextContent>
@@ -75,28 +61,6 @@ export default function PromptTemplateEditor ({ chatConfiguration, setChatConfig
                     }}
                     value={chatConfiguration.promptConfiguration.promptTemplate}
                 />
-                <FormField description='Sets the prefix representing the user in the LLM prompt.' label='Human Prefix'>
-                    <Input
-                        value={chatConfiguration.promptConfiguration.humanPrefix}
-                        onChange={(e) => setChatConfiguration({ ...chatConfiguration, promptConfiguration: { ...chatConfiguration.promptConfiguration, humanPrefix: e.detail.value } })}
-                        onKeyDown={(e) => {
-                            if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
-                                e.preventDefault();
-                            }
-                        }}
-                    />
-                </FormField>
-                <FormField description='Sets the prefix representing the AI in the LLM prompt.' label='AI Prefix'>
-                    <Input
-                        value={chatConfiguration.promptConfiguration.aiPrefix}
-                        onChange={(e) => setChatConfiguration({ ...chatConfiguration, promptConfiguration: { ...chatConfiguration.promptConfiguration, aiPrefix: e.detail.value } })}
-                        onKeyDown={(e) => {
-                            if (e.detail.key === 'Enter' && !e.detail.shiftKey) {
-                                e.preventDefault();
-                            }
-                        }}
-                    />
-                </FormField>
             </SpaceBetween>
         </Modal>
     );

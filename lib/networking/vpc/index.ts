@@ -73,7 +73,10 @@ export class Vpc extends Construct {
             // A VPC must be supplied if Subnets are being used.
             if (config.subnets && config.subnets.length > 0) {
                 this.subnetSelection = {
-                    subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet.subnetId))
+                    subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetAttributes(this, index.toString(), {
+                        subnetId: subnet.subnetId,
+                        ipv4CidrBlock: subnet.ipv4CidrBlock
+                    }))
                 };
 
                 this.subnetGroup = new SubnetGroup(this, createCdkId([config.deploymentName, 'Imported-Subnets']), {

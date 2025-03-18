@@ -128,7 +128,7 @@ export class ECSCluster extends Construct {
         // If NVMe drive available, mount and use it
         if (Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
             // EC2 user data to mount ephemeral NVMe drive
-            const MOUNT_PATH = config.nvmeHostMountPath;
+            const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
             const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
             /* eslint-disable no-useless-escape */
             const rawUserData = `#!/bin/bash
@@ -156,11 +156,11 @@ export class ECSCluster extends Construct {
 
             // Create mount point for container
             const sourceVolume = 'nvme';
-            const host: Host = { sourcePath: config.nvmeHostMountPath };
+            const host: Host = { sourcePath: config.nvmeHostMountPath ?? '/nvme' };
             const nvmeVolume: Volume = { name: sourceVolume, host: host };
             const nvmeMountPoint: MountPoint = {
                 sourceVolume: sourceVolume,
-                containerPath: config.nvmeContainerMountPath ?? '/',
+                containerPath: config.nvmeContainerMountPath ?? '/nvme',
                 readOnly: false,
             };
             volumes.push(nvmeVolume);

@@ -1,5 +1,5 @@
 {
-  "app": "node ./ecs_model_deployer/src/index.js",
+  "app": "node ./ecs_model_deployer/src/lib/app.js",
   "requireApproval": "never",
   "watch": {
     "include": ["**"],

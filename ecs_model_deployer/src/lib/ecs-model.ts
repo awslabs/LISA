@@ -97,7 +97,7 @@ export class EcsModel extends Construct {
     */
     private getEnvironmentVariables (config: PartialConfig, modelConfig: EcsClusterConfig): { [key: string]: string } {
         const environment: { [key: string]: string } = {
-            LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath}/model`,
+            LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath ?? ''}/model`,
             S3_BUCKET_MODELS: config.s3BucketModels ?? '',
             MODEL_NAME: modelConfig.modelName,
             LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
@@ -106,7 +106,7 @@ export class EcsModel extends Construct {
         };
 
         if (modelConfig.modelType === 'embedding') {
-            environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath ?? '';
+            environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath ?? '/';
         }
 
         if (config.mountS3DebUrl) {

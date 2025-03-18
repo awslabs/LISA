@@ -160,7 +160,7 @@ export class ECSCluster extends Construct {
             const nvmeVolume: Volume = { name: sourceVolume, host: host };
             const nvmeMountPoint: MountPoint = {
                 sourceVolume: sourceVolume,
-                containerPath: config.nvmeContainerMountPath ?? '',
+                containerPath: config.nvmeContainerMountPath ?? '/',
                 readOnly: false,
             };
             volumes.push(nvmeVolume);

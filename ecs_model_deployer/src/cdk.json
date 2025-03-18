@@ -1,5 +1,5 @@
 {
-  "app": "node ./lib/app.js",
+  "app": "node ./ecs_model_deployer/src/lib/index.js",
   "requireApproval": "never",
   "watch": {
     "include": ["**"],

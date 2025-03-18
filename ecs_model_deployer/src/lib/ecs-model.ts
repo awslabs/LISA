@@ -21,7 +21,7 @@ import { Construct } from 'constructs';
 
 import { ECSCluster } from './ecsCluster';
 import { getModelIdentifier } from './utils';
-import { BaseProps, Config, Ec2Metadata, EcsClusterConfig, EcsSourceType } from '../../../lib/schema';
+import { BaseProps, Config, Ec2Metadata, EcsClusterConfig, EcsSourceType, PartialConfig } from '../../../lib/schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
@@ -40,7 +40,8 @@ type ECSModelProps = {
     securityGroup: ISecurityGroup;
     vpc: IVpc;
     subnetSelection?: SubnetSelection;
-} & BaseProps;
+    config: PartialConfig
+};
 
 /**
  * Create an ECS model.
@@ -78,7 +79,7 @@ export class EcsModel extends Construct {
         });
 
         // Single bucket for all models
-        const s3BucketModels = Bucket.fromBucketName(this, 'Bucket', config.s3BucketModels);
+        const s3BucketModels = Bucket.fromBucketName(this, 'Bucket', config.s3BucketModels ?? '');
         s3BucketModels.grantReadWrite(modelCluster.taskRole);
 
         // Update
@@ -94,18 +95,18 @@ export class EcsModel extends Construct {
     * @returns {Object} An object containing the environment variables. The object has string keys and values, which
     *                   represent the environment variables for Docker at runtime.
     */
-    private getEnvironmentVariables (config: Config, modelConfig: EcsClusterConfig): { [key: string]: string } {
+    private getEnvironmentVariables (config: PartialConfig, modelConfig: EcsClusterConfig): { [key: string]: string } {
         const environment: { [key: string]: string } = {
             LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath}/model`,
-            S3_BUCKET_MODELS: config.s3BucketModels,
+            S3_BUCKET_MODELS: config.s3BucketModels ?? '',
             MODEL_NAME: modelConfig.modelName,
             LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
-            AWS_REGION: config.region, // needed for s5cmd
+            AWS_REGION: config.region ?? '', // needed for s5cmd
             MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`)
         };
 
         if (modelConfig.modelType === 'embedding') {
-            environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath;
+            environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath ?? '';
         }
 
         if (config.mountS3DebUrl) {
@@ -134,7 +135,7 @@ export class EcsModel extends Construct {
     * @returns {Object} An object containing the build arguments. The object has string keys and values, which represent
     *                   the arguments for the Docker build.
     */
-    private getBuildArguments (config: Config, modelConfig: EcsClusterConfig): { [key: string]: string } | undefined {
+    private getBuildArguments (config: PartialConfig, modelConfig: EcsClusterConfig): { [key: string]: string } | undefined {
         if (modelConfig.containerConfig.image.type !== EcsSourceType.ASSET) {
             return undefined;
         }
@@ -149,7 +150,7 @@ export class EcsModel extends Construct {
         if (config.mountS3DebUrl) {
             buildArgs.MOUNTS3_DEB_URL = config.mountS3DebUrl;
         }
-        if (config.pypiConfig.indexUrl) {
+        if (config.pypiConfig?.indexUrl) {
             buildArgs.PYPI_INDEX_URL = config.pypiConfig.indexUrl;
             buildArgs.PYPI_TRUSTED_HOST = config.pypiConfig.trustedHost;
         }

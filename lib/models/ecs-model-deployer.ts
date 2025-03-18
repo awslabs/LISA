@@ -60,6 +60,8 @@ export class ECSModelDeployer extends Construct {
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
             'subnets': props.config.subnets,
             'taskRole': props.config.roles?.ECSModelTaskRole,
+            'nvmeContainerMountPath': props.config.nvmeContainerMountPath,
+            'certificateAuthorityBundle': props.config.certificateAuthorityBundle
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);

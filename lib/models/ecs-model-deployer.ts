@@ -52,6 +52,7 @@ export class ECSModelDeployer extends Construct {
         const stripped_config = {
             'appName': props.config.appName,
             'deploymentName': props.config.deploymentName,
+            'deploymentPrefix': props.config.deploymentPrefix,
             'region': props.config.region,
             'deploymentStage': props.config.deploymentStage,
             'removalPolicy': props.config.removalPolicy,
@@ -60,7 +61,11 @@ export class ECSModelDeployer extends Construct {
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
             'subnets': props.config.subnets,
             'taskRole': props.config.roles?.ECSModelTaskRole,
-            'certificateAuthorityBundle': props.config.certificateAuthorityBundle
+            'certificateAuthorityBundle': props.config.certificateAuthorityBundle,
+            'pypiConfig': props.config.pypiConfig,
+            'nvmeContainerMountPath': props.config.nvmeContainerMountPath,
+            'nvmeHostMountPath': props.config.nvmeHostMountPath,
+            'condaUrl': props.config.condaUrl
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);

@@ -43,7 +43,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../../lib/core/utils';
-import { BaseProps, AmiHardwareType, EcsSourceType, PartialConfig } from '../../../lib/schema';
+import { AmiHardwareType, EcsSourceType, PartialConfig } from '../../../lib/schema';
 import { Ec2Metadata, ECSConfig } from '../../../lib/schema';
 
 /**

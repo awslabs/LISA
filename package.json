@@ -25,9 +25,6 @@
     "rag",
     "retrieval-augmented-generation"
   ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "workspaces": [
     "lib/user-interface/react",
     "lib/docs",
@@ -37,10 +34,13 @@
   "scripts": {
     "build": "tsc && npm run build -ws",
     "deploy": "tsx ./bin/lisa.ts",
+    "copy-dist": "bash ./bin/copy-deps.sh",
+    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "prepare": "husky install",
+    "prepare": "husky",
+    "prepublishOnly": "npm run build && npm run copy-dist",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },
@@ -83,6 +83,12 @@
     "source-map-support": "^0.5.21",
     "util": "^0.12.5",
     "zod": "^3.24.1"
+  },
+  "peerDependencies": {
+    "micromark-core-commonmark": "2.0.1",
+    "micromark": "4.0.0",
+    "@types/lodash": "^4.17.14",
+    "@cfworker/json-schema": "^4.1.0"
   },
   "lint-staged": {
     "*.ts": [

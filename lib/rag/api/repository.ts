@@ -24,7 +24,9 @@ import { Construct } from 'constructs';
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
+import path from 'node:path';
 
+const HERE = path.resolve(__dirname);
 /**
  * Properties for RepositoryAPI Construct.
  *
@@ -38,7 +40,7 @@ import { Vpc } from '../../networking/vpc';
  * @property {Vpc} vpc - Stack VPC
  */
 type RepositoryApiProps = {
-    authorizer: IAuthorizer;
+    authorizer?: IAuthorizer;
     baseEnvironment: Record<string, string>;
     commonLayers: ILayerVersion[];
     lambdaExecutionRole: IRole;
@@ -175,17 +177,19 @@ export class RepositoryApi extends Construct {
                 },
             }
         ];
+        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+
         apis.forEach((f) => {
             registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
-                './lambda',
+                lambdaPath,
                 commonLayers,
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaExecutionRole,
             );
         });

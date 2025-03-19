@@ -26,6 +26,9 @@ import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import path from 'node:path';
+
+const HERE = path.resolve(__dirname);
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput;
@@ -37,7 +40,6 @@ export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
 // Main stack that contains the Lambda function
 export class VectorStoreCreatorStack extends Construct {
     readonly vectorStoreCreatorFn: lambda.IFunction;
-    readonly ragRepositoryConfigTable: dynamodb.ITable;
 
     constructor (scope: Construct, id: string, props: VectorStoreCreatorStackProps) {
         super(scope, id);
@@ -104,10 +106,15 @@ export class VectorStoreCreatorStack extends Construct {
             ...(vpc.vpc.vpcId && {vpcId: vpc.vpc.vpcId})
         };
 
+        const vectorStoreDeployerPath = config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer');
         const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer']);
         this.vectorStoreCreatorFn = new lambda.DockerImageFunction(this, functionId, {
             functionName: functionId,
-            code: lambda.DockerImageCode.fromImageAsset('./vector_store_deployer/'),
+            code: lambda.DockerImageCode.fromImageAsset(vectorStoreDeployerPath, {
+                buildArgs: {
+                    BASE_IMAGE: config.nodejsImage
+                }
+            }),
             timeout: Duration.minutes(15),
             ephemeralStorageSize: Size.mebibytes(2048),
             memorySize: 1024,

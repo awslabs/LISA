@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, ExecSyncOptionsWithBufferEncoding } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -59,6 +59,7 @@ export class UserInterfaceStack extends Stack {
 
         const { architecture, config, restApiId, rootResourceId } = props;
         const appPath = path.join(HERE, '.', 'react');
+        const rootPath = path.join(HERE, '..', '..');
         const distPath = path.join(appPath, 'dist');
 
         // Create website S3 bucket
@@ -183,24 +184,32 @@ export class UserInterfaceStack extends Stack {
         const uriSuffix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
         let webappAssets;
         if (!config.webAppAssetsPath) {
-            webappAssets = Source.asset(appPath, {
+            webappAssets = Source.asset(rootPath, {
                 bundling: {
                     image: Runtime.NODEJS_18_X.bundlingImage,
                     platform: architecture.dockerPlatform,
                     command: [
-                        'sh', '-c', [
+                        'sh',
+                        '-c',
+                        [
                             'set -x',
-                            'npm --cache /tmp/.npm i',
-                            `npm --cache /tmp/.npm run build -- --base="/${uriSuffix}"`,
-                            'cp -r dist/* /asset-output/',
+                            'npm --cache /tmp/.npm install',
+                            `npm --cache /tmp/.npm run build -w lisa-web -- --base="/${uriSuffix}"`,
+                            'cp -aur /asset-input/lib/user-interface/react/dist/* /asset-output/',
                         ].join(' && '),
                     ],
                     local: {
                         tryBundle (outputDir: string) {
                             try {
-                                execSync(`npm --silent --prefix "${appPath}" i && npm --silent --prefix "${appPath}" run build -- --base="/${uriSuffix}"`, {
-                                    env: process.env,
-                                });
+                                const options: ExecSyncOptionsWithBufferEncoding = {
+                                    stdio: 'inherit',
+                                    env: {
+                                        ...process.env,
+                                    },
+                                };
+
+                                execSync(`npm --silent --prefix "${rootPath}" ci`, options);
+                                execSync(`npm --silent --prefix "${rootPath}" run build -w lisa-web -- --base="/${uriSuffix}"`, options);
                                 copyDirRecursive(distPath, outputDir);
                             } catch (e) {
                                 return false;

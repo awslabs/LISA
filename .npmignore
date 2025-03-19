@@ -1,0 +1,40 @@
+.github/
+.git/
+.husky/
+build/
+coverage/
+node_modules/
+/assets
+/test
+/lisa-sdk
+/models
+/ecs_model_deployer
+/vector_store_deployer
+lib/**/dist/
+!/dist/
+
+
+# Non-source files
+.eslintrc.json
+.pre-commit-config.yaml
+.pre*
+COMMIT_ID
+Config
+example_config.yaml
+config.yaml
+config-base.yaml
+config-custom.yaml
+
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out/
+cdk.context.json
+
+# Misc
+.idea
+.vscode
+.venv
+.DS_Store
+*.iml
+*.code-workspace

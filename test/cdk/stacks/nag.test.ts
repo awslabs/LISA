@@ -35,13 +35,13 @@ const nagResults: NagResult = {
     LisaApiDeployment: [0,0,0,0],
     LisaChat: [2,33,0,13],
     LisaCore: [0,0,0,0],
-    LisaDocs: [1,23,0,12],
+    LisaDocs: [1,23,0,13],
     LisaIAM: [0,14,0,0],
-    LisaModels: [1,74,0,26],
+    LisaModels: [1,74,0,46],
     LisaNetworking: [1,2,3,5],
-    LisaRAG: [2,66,0,26],
-    LisaServe: [1,21,0,30],
-    LisaUI: [0,16,0,7],
+    LisaRAG: [2,66,0,41],
+    LisaServe: [1,21,0,31],
+    LisaUI: [0,16,0,8],
 };
 
 describe('Nag Pack Tests', () => {

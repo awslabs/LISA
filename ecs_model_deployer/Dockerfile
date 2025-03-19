@@ -1,4 +1,5 @@
-FROM public.ecr.aws/lambda/nodejs:18
+ARG BASE_IMAGE=public.ecr.aws/lambda/nodejs:18
+FROM ${BASE_IMAGE}
 
 COPY ./dist/ ${LAMBDA_TASK_ROOT}
 RUN chmod 777 -R ${LAMBDA_TASK_ROOT}

@@ -1,7 +1,12 @@
+# v4.0.3
+## Bug Fixes
+- Resolved issue with subnets imports
+- Resolved issue with custom model deployment
+
 # v4.0.2
 ## Enhancements
 - Revised base configuration to eliminate default RagRepository declaration. **Important:** Ensure config-custom.yaml contains an empty array declaration if no configurations are defined.
--  Implemented multi-instance LISA deployment support within single AWS accounts. Customers may now deploy more than one LISA environment into a single account.
+- Implemented multi-instance LISA deployment support within single AWS accounts. Customers may now deploy more than one LISA environment into a single account.
 - Optimized data schema architecture to eliminate redundant reference patterns
 
 ## User Interface Improvements

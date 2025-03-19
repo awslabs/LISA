@@ -14,7 +14,6 @@
  limitations under the License.
  */
 
-import * as cdk from 'aws-cdk-lib';
 import {
     Choice,
     Condition,
@@ -25,7 +24,7 @@ import {
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -38,6 +37,9 @@ import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../../api-base/utils';
+import * as path from 'path';
+
+const HERE = path.resolve(__dirname);
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -63,7 +65,7 @@ export class CreateModelStateMachine extends Construct {
         super(scope, id);
 
         const { config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
-
+        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
             ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,
@@ -80,12 +82,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'SetModelToCreatingDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-SetModelToCreatingDLQ`,
+                    queueName: `${Stack.of(this).stackName}-SetModelToCreatingDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -104,12 +106,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'StartCopyDockerImageDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-StartCopyDockerImageDLQ`,
+                    queueName: `${Stack.of(this).stackName}-StartCopyDockerImageDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -126,12 +128,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'PollDockerImageAvailableDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-PollDockerImageAvailableDLQ`,
+                    queueName: `${Stack.of(this).stackName}-PollDockerImageAvailableDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -148,12 +150,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleFailureDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandleFailureDLQ`,
+                    queueName: `${Stack.of(this).stackName}-HandleFailureDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_failure',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -176,12 +178,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'StartCreateStackDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-StartCreateStackDLQ`,
+                    queueName: `${Stack.of(this).stackName}-StartCreateStackDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: Duration.minutes(8),
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -198,12 +200,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'PollCreateStackDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-PollCreateStackDLQ`,
+                    queueName: `${Stack.of(this).stackName}-PollCreateStackDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -226,12 +228,12 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'AddModelToLitellmDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-AddModelToLitellmDLQ`,
+                    queueName: `${Stack.of(this).stackName}-AddModelToLitellmDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

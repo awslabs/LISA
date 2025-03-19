@@ -1,5 +1,12 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=public.ecr.aws/ubuntu/ubuntu
 FROM ${BASE_IMAGE}
+
+# Install Python 3
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -y \
+    && apt-get install -y python3 python3-pip rsync wget \
+    && ln -s /bin/python3 /bin/python
+
 
 #### POINT TO NEW PYPI CONFIG
 ARG PYPI_INDEX_URL
@@ -26,7 +33,7 @@ RUN if [ "$CONDA_URL" != "" ]; then \
 
 RUN /opt/conda/bin/conda install s5cmd && \
     /opt/conda/bin/conda clean -ya && \
-    pip install -U --no-cache --upgrade torchserve torch-model-archiver torch-workflow-archiver
+    pip install -U --no-cache --upgrade --break-system-packages torchserve torch-model-archiver torch-workflow-archiver
 
 ARG LOCAL_CODE_PATH
 WORKDIR ${LOCAL_CODE_PATH}

@@ -726,6 +726,8 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
+    baseImage: z.string().default('public.ecr.aws/ubuntu/ubuntu').describe('Base image used for LISA serve components'),
+    nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:18').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
     ragRepositories: z.array(RagRepositoryConfigSchema).describe('Rag Repository configuration.'),
@@ -745,6 +747,9 @@ export const RawConfigObject = z.object({
         .describe('Array of key-value pairs for tagging.'),
     deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
     webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
+    ecsModelDeployerPath: z.string().optional().describe('Optional path to precompiled ecs model deployer. If not specified the ecs model deployer will be built at deploy time.'),
+    vectorStoreDeployerPath: z.string().optional().describe('Optional path to precompiled vector store deployer. If not specified the vector store deployer will be built at deploy time.'),
+    documentsPath: z.string().optional().describe('Optional path to precompiled LISA documents. If not specified the LISA docs will be built at deploy time.'),
     lambdaLayerAssets: z
         .object({
             authorizerLayerPath: z.string().optional().describe('Lambda Authorizer code path'),

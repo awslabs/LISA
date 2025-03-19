@@ -36,8 +36,10 @@ import {
 import { Vpc } from '../../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../../api-base/utils';
-import * as cdk from 'aws-cdk-lib';
+import * as path from 'path';
+import { Stack } from 'aws-cdk-lib';
 
+const HERE = path.resolve(__dirname);
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -79,17 +81,17 @@ export class UpdateModelStateMachine extends Construct {
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
-
+        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleJobIntakeDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandleJobIntakeDLQ`,
+                    queueName: `${Stack.of(this).stackName}-HandleJobIntakeDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_job_intake',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -106,12 +108,12 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandlePollCapacityDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandlePollCapacityDLQ`,
+                    queueName: `${Stack.of(this).stackName}-HandlePollCapacityDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -128,12 +130,12 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
                 deadLetterQueueEnabled: true,
                 deadLetterQueue: new Queue(this, 'HandleFinishUpdateDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandleFinishUpdateDLQ`,
+                    queueName: `${Stack.of(this).stackName}-HandleFinishUpdateDLQ`,
                     enforceSSL: true,
                 }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_finish_update',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

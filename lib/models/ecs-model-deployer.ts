@@ -30,6 +30,9 @@ import { Duration, Size, Stack } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
 import { Vpc } from '../networking/vpc';
+import * as path from 'path';
+
+const HERE = path.resolve(__dirname);
 
 export type ECSModelDeployerProps = {
     securityGroupId: string;
@@ -68,10 +71,15 @@ export class ECSModelDeployer extends Construct {
             'condaUrl': props.config.condaUrl
         };
 
+        const ecsModelDeployerPath = config.ecsModelDeployerPath || path.join(HERE, '..', '..', 'ecs_model_deployer');
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
         this.ecsModelDeployerFn = new DockerImageFunction(this, functionId, {
             functionName: functionId,
-            code: DockerImageCode.fromImageAsset('./ecs_model_deployer/'),
+            code: DockerImageCode.fromImageAsset(ecsModelDeployerPath, {
+                buildArgs: {
+                    BASE_IMAGE: config.nodejsImage
+                }
+            }),
             timeout: Duration.minutes(10),
             ephemeralStorageSize: Size.mebibytes(2048),
             memorySize: 1024,

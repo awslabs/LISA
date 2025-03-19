@@ -38,7 +38,9 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import path from 'node:path';
 
+const HERE = path.resolve(__dirname);
 type IngestPipelineStateMachineProps = BaseProps & {
     baseEnvironment:  Record<string, string>,
     vpc?: Vpc;
@@ -153,12 +155,13 @@ export class IngestPipelineStateMachine extends Construct {
         }));
 
         policyStatements.map((policyStatement) => ingestPipelineRole.addToPolicy(policyStatement));
+        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {
             runtime: getDefaultRuntime(),
             handler: 'repository.state_machine.list_modified_objects.handle_list_modified_objects',
-            code: Code.fromAsset('./lambda'),
+            code: Code.fromAsset(lambdaPath),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc!.vpc,
@@ -189,7 +192,7 @@ export class IngestPipelineStateMachine extends Construct {
         const pipelineIngestDocumentsFunction = new Function(this, 'pipelineIngestDocumentsMapFunc', {
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_documents',
-            code: Code.fromAsset('./lambda'),
+            code: Code.fromAsset(lambdaPath),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc!.vpc,

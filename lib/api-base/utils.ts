@@ -77,13 +77,13 @@ export type PythonLambdaFunction = {
 export function registerAPIEndpoint (
     scope: Construct,
     api: IRestApi,
-    authorizer: IAuthorizer,
     lambdaSourcePath: string,
     layers: ILayerVersion[],
     funcDef: PythonLambdaFunction,
     pythonRuntime: Runtime,
     vpc: Vpc,
     securityGroups: ISecurityGroup[],
+    authorizer?: IAuthorizer,
     role?: IRole,
 ): IFunction {
     const functionId = `${
@@ -129,7 +129,7 @@ export function registerAPIEndpoint (
         });
     }
 
-    if (funcDef.disableAuthorizer) {
+    if (funcDef.disableAuthorizer || !authorizer) {
         functionResource.addMethod(funcDef.method, new LambdaIntegration(handler));
     } else {
         functionResource.addMethod(funcDef.method, new LambdaIntegration(handler), {

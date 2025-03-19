@@ -25,6 +25,9 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
+import path from 'node:path';
+
+const HERE = path.resolve(__dirname);
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -66,7 +69,6 @@ export class FastApiContainer extends Construct {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
-        config.authConfig;
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: 'python:3.11',
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
@@ -94,7 +96,7 @@ export class FastApiContainer extends Construct {
         if (tokenTable) {
             environment.TOKEN_TABLE_NAME = tokenTable.tableName;
         }
-
+        const restApiPath = path.join(HERE, '..', 'serve', 'rest-api');
         const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
             config,
             ecsConfig: {
@@ -116,7 +118,7 @@ export class FastApiContainer extends Construct {
                 containerConfig: {
                     image: {
                         baseImage: 'python:3.11',
-                        path: 'lib/serve/rest-api',
+                        path: restApiPath,
                         type: EcsSourceType.ASSET
                     },
                     healthCheckConfig: {

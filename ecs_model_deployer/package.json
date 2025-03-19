@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && npm run copy-deps && npm run install-run-deps",
-    "copy-deps": "cp package.json ./dist && cp ./src/cdk*json ./dist/ && cp ../VERSION ./dist",
-    "install-run-deps": "cd dist && npm i --omit dev --include-workspace-root",
+    "build": "tsc && npm run copy-dist && npm run pack:prod",
+    "copy-dist": "cp Dockerfile package.json ./src/cdk*json ../VERSION ./dist",
+    "pack:prod": "cd ./dist && npm i --omit dev",
     "clean": "rm -rf ./dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

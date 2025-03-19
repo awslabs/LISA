@@ -28,8 +28,10 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from './utils';
+import path from 'node:path';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
+const HERE = path.resolve(__dirname);
 /**
  * Properties for RestApiGateway Construct.
  *
@@ -78,6 +80,7 @@ export class CustomAuthorizer extends Construct {
         const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
 
         // Create Lambda authorizer
+        const lambdaPath = path.join(HERE, '..', '..', 'lambda');
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
@@ -87,7 +90,7 @@ export class CustomAuthorizer extends Construct {
             runtime: getDefaultRuntime(),
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
-            code: Code.fromAsset('./lambda'),
+            code: Code.fromAsset(lambdaPath),
             description: 'REST API and UI Authorization Lambda',
             timeout: cdk.Duration.seconds(30),
             memorySize: 128,

@@ -28,6 +28,7 @@ import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
 import { LisaModelsApiStack } from '../../../lib/models';
 import { LisaRagStack } from '../../../lib/rag';
+import { NagSuppressions } from 'cdk-nag';
 
 export default class MockApp {
 
@@ -155,6 +156,18 @@ export default class MockApp {
             ragStack,
         ];
 
+
+        stacks.forEach((lisaStack) => {
+            NagSuppressions.addStackSuppressions(
+                lisaStack,
+                [
+                    {
+                        id: 'NIST.800.53.R5-LambdaConcurrency',
+                        reason: 'Not applying lambda concurrency limits',
+                    },
+                ],
+            );
+        });
         return { app, stacks };
     }
 }

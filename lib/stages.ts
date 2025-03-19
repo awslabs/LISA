@@ -28,7 +28,7 @@ import {
     Tags,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { AwsSolutionsChecks, NIST80053R5Checks } from 'cdk-nag';
+import { AwsSolutionsChecks, NagSuppressions, NIST80053R5Checks } from 'cdk-nag';
 
 import { LisaChatApplicationStack } from './chat';
 import { ARCHITECTURE, CoreStack } from './core';
@@ -307,6 +307,18 @@ export class LisaServeApplicationStage extends Stage {
                 Aspects.of(lisaStack).add(new ConvertInlinePoliciesToManaged());
             });
         }
+        // Nag Suppressions
+        stacks.forEach((lisaStack) => {
+            NagSuppressions.addStackSuppressions(
+                lisaStack,
+                [
+                    {
+                        id: 'NIST.800.53.R5-LambdaConcurrency',
+                        reason: 'Not applying lambda concurrency limits',
+                    },
+                ],
+            );
+        });
 
         // Run CDK-nag on app if specified
         if (config.runCdkNag) {

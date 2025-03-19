@@ -226,7 +226,7 @@ export class LisaServeApplicationStage extends Stage {
         if (config.deployRag) {
             const ragStack = new LisaRagStack(this, 'LisaRAG', {
                 ...baseStackProps,
-                authorizer: apiBaseStack.authorizer,
+                authorizer: apiBaseStack.authorizer!,
                 description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
                 endpointUrl: serveStack.endpointUrl,
                 modelsPs: serveStack.modelsPs,
@@ -247,7 +247,7 @@ export class LisaServeApplicationStage extends Stage {
         if (config.deployChat) {
             const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
-                authorizer: apiBaseStack.authorizer,
+                authorizer: apiBaseStack.authorizer!,
                 stackName: createCdkId([config.deploymentName, config.appName, 'chat', config.deploymentStage]),
                 description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,

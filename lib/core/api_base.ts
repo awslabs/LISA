@@ -30,7 +30,7 @@ type LisaApiBaseStackProps = {
 
 export class LisaApiBaseStack extends Stack {
     public readonly restApi: RestApi;
-    public readonly authorizer: Authorizer;
+    public readonly authorizer?: Authorizer;
     public readonly restApiId: string;
     public readonly rootResourceId: string;
     public readonly restApiUrl: string;
@@ -59,21 +59,23 @@ export class LisaApiBaseStack extends Stack {
             binaryMediaTypes: ['font/*', 'image/*'],
         });
 
-        // Create the authorizer Lambda for APIGW
-        const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
-            config: config,
-            securityGroups: [vpc.securityGroups.lambdaSg],
-            vpc,
-            ...(config.roles &&
-            {
-                role: Role.fromRoleName(this, 'AuthorizerRole', config.roles.RestApiAuthorizerRole),
-            })
-        });
+        if (config.authConfig) {
+            // Create the authorizer Lambda for APIGW
+            const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
+                config: config,
+                securityGroups: [vpc.securityGroups.lambdaSg],
+                vpc,
+                ...(config.roles &&
+                {
+                    role: Role.fromRoleName(this, 'AuthorizerRole', config.roles.RestApiAuthorizerRole),
+                })
+            });
+            this.authorizer = authorizer.authorizer;
+        }
 
         this.restApi = restApi;
         this.restApiId = restApi.restApiId;
         this.rootResourceId = restApi.restApiRootResourceId;
-        this.authorizer = authorizer.authorizer;
         this.restApiUrl = restApi.url;
     }
 }

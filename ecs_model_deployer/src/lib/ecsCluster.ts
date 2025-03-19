@@ -43,7 +43,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../../lib/core/utils';
-import { BaseProps, AmiHardwareType, EcsSourceType } from '../../../lib/schema';
+import { AmiHardwareType, EcsSourceType, PartialConfig } from '../../../lib/schema';
 import { Ec2Metadata, ECSConfig } from '../../../lib/schema';
 
 /**
@@ -62,7 +62,8 @@ type ECSClusterProps = {
     subnetSelection?: SubnetSelection;
     taskRoleName?: string;
     executionRoleName?: string;
-} & BaseProps;
+    config: PartialConfig
+};
 
 /**
  * Create an ECS model.
@@ -90,7 +91,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             vpc: vpc,
-            containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
+            containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
         // Create auto scaling group
@@ -127,7 +128,7 @@ export class ECSCluster extends Construct {
         // If NVMe drive available, mount and use it
         if (Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
             // EC2 user data to mount ephemeral NVMe drive
-            const MOUNT_PATH = config.nvmeHostMountPath;
+            const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
             const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
             /* eslint-disable no-useless-escape */
             const rawUserData = `#!/bin/bash
@@ -155,11 +156,11 @@ export class ECSCluster extends Construct {
 
             // Create mount point for container
             const sourceVolume = 'nvme';
-            const host: Host = { sourcePath: config.nvmeHostMountPath };
+            const host: Host = { sourcePath: config.nvmeHostMountPath ?? '/nvme' };
             const nvmeVolume: Volume = { name: sourceVolume, host: host };
             const nvmeMountPoint: MountPoint = {
                 sourceVolume: sourceVolume,
-                containerPath: config.nvmeContainerMountPath,
+                containerPath: config.nvmeContainerMountPath ?? '/nvme',
                 readOnly: false,
             };
             volumes.push(nvmeVolume);
@@ -171,7 +172,7 @@ export class ECSCluster extends Construct {
             autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'));
         }
 
-        if (config.region.includes('iso')) {
+        if (config.region?.includes('iso')) {
             const pkiSourceVolume = 'pki';
             const pkiHost: Host = { sourcePath: '/etc/pki' };
             const pkiVolume: Volume = { name: pkiSourceVolume, host: pkiHost };
@@ -184,13 +185,13 @@ export class ECSCluster extends Construct {
             mountPoints.push(pkiMountPoint);
             // Requires mount point /etc/pki from host
             environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
-            environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
+            environment.SSL_CERT_FILE = config.certificateAuthorityBundle ?? '';
         }
 
         const roleId = ecsConfig.identifier;
         const taskRole = taskRoleName ?
             Role.fromRoleName(this, createCdkId([config.deploymentName, roleId]), taskRoleName) :
-            this.createTaskRole(config.deploymentName, config.deploymentPrefix, roleId);
+            this.createTaskRole(config.deploymentName ?? '', config.deploymentPrefix, roleId);
 
         // Create ECS task definition
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
@@ -263,7 +264,7 @@ export class ECSCluster extends Construct {
             daemon: true,
             serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             taskDefinition: taskDefinition,
-            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
+            circuitBreaker: !config.region?.includes('iso') ? { rollback: true } : undefined,
         };
 
         const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);

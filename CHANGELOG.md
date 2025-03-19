@@ -1,7 +1,7 @@
 # v4.0.3
 ## Bug Fixes
 - Resolved issue with subnets imports
-- Resolved issue with custom model hosting/deployment
+- Resolved issue with custom model deployment
 
 # v4.0.2
 ## Enhancements

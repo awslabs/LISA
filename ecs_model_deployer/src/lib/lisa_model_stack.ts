@@ -21,12 +21,12 @@ import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2
 import { Construct } from 'constructs';
 import { EcsModel } from './ecs-model';
 
-import { Config,EcsClusterConfig } from '../../../lib/schema';
+import { EcsClusterConfig, PartialConfig } from '../../../lib/schema';
 
 export type LisaModelStackProps = {
     vpcId: string;
     securityGroupId: string;
-    config: Config;
+    config: PartialConfig;
     modelConfig: EcsClusterConfig;
 } & StackProps;
 

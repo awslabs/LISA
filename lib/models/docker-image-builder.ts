@@ -93,7 +93,6 @@ export class DockerImageBuilder extends Construct {
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset('./lambda/'),
             timeout: Duration.minutes(1),
-            reservedConcurrentExecutions: 5,
             memorySize: 1024,
             role: ec2BuilderRole,
             environment: {

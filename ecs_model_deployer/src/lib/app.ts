@@ -18,13 +18,12 @@ import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
 import { App, Aspects } from 'aws-cdk-lib';
 import { LisaModelStack, LisaModelStackProps } from './lisa_model_stack';
 
-import { ConfigFile, ConfigSchema } from '../../../lib/schema';
+import { PartialConfigSchema } from '../../../lib/schema';
 
 
 export const app = new App();
 
-const configFile = JSON.parse(process.env['LISA_CONFIG']!) as ConfigFile;
-const config = ConfigSchema.parse(configFile);
+const config = PartialConfigSchema.parse(JSON.parse(process.env['LISA_CONFIG']!));
 
 const modelConfig = JSON.parse(process.env['LISA_MODEL_CONFIG']!);
 

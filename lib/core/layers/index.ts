@@ -14,15 +14,13 @@
   limitations under the License.
 */
 
-import { BundlingOutput } from 'aws-cdk-lib';
 import { Architecture, Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { Construct } from 'constructs';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
-import * as path from 'path';
 import { BaseProps } from '../../schema';
 import { getDefaultRuntime } from '../../api-base/utils';
-
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 /**
  * Properties for Layer Construct.
  * @property {string} path - The path to the directory containing relevant files.
@@ -54,12 +52,11 @@ export class Layer extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LayerProps} props - The properties of the construct.
    */
-    constructor(scope: Construct, id: string, props: LayerProps) {
+    constructor (scope: Construct, id: string, props: LayerProps) {
         super(scope, id);
 
-        const { assetPath, config, path: layerPath, description, architecture, autoUpgrade, slimDeployment, removePackages } = props;
+        const { assetPath, config, path: layerPath, description, architecture } = props;
 
-        const fs = require('fs');
         if (!fs.existsSync(`${layerPath}/requirements.txt`)) {
             throw new Error(`requirements.txt not found in ${layerPath}`);
         }
@@ -74,7 +71,7 @@ export class Layer extends Construct {
                     removalPolicy: config.removalPolicy,
                 });
             } else {
-                console.error(`Building layer: ${id} path:${layerPath}`)
+                console.error(`Building layer: ${id} path:${layerPath}`);
                 // Use PythonLayerVersion with bundling as before
                 this.layer = new PythonLayerVersion(this, 'Layer', {
                     entry: layerPath,
@@ -84,10 +81,10 @@ export class Layer extends Construct {
                     bundling: {
                         platform: architecture.dockerPlatform,
                         commandHooks: packagesExists ? {
-                            beforeBundling(inputDir: string, outputDir: string): string[] {
+                            beforeBundling (inputDir: string, outputDir: string): string[] {
                                 return [`touch ${outputDir}/requirements.txt`];
                             },
-                            afterBundling(inputDir: string, outputDir: string): string[] {
+                            afterBundling (inputDir: string, outputDir: string): string[] {
                                 return [`cp -r ${inputDir}/packages/* ${outputDir}/python/`];
                             },
                         } : undefined

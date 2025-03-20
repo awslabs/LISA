@@ -110,7 +110,11 @@ export class VectorStoreCreatorStack extends Construct {
         const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer']);
         this.vectorStoreCreatorFn = new lambda.DockerImageFunction(this, functionId, {
             functionName: functionId,
-            code: lambda.DockerImageCode.fromImageAsset(vectorStoreDeployerPath),
+            code: lambda.DockerImageCode.fromImageAsset(vectorStoreDeployerPath, {
+                buildArgs: {
+                    BASE_IMAGE: config.nodejsImage
+                }
+            }),
             timeout: Duration.minutes(15),
             ephemeralStorageSize: Size.mebibytes(2048),
             memorySize: 1024,

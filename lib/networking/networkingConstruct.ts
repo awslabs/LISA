@@ -13,24 +13,40 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import { LisaChatApplicationConstruct, LisaChatProps } from './chatConstruct';
 
-export * from './chatConstruct';
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+
+import { Vpc } from './vpc';
+import { BaseProps } from '../schema';
+import { Stack } from 'aws-cdk-lib';
 
 /**
- * LisaChat Application stack.
+ * Lisa Networking stack.
  */
-export class LisaChatApplicationStack extends Stack {
+export type LisaNetworkingProps = {} & BaseProps & cdk.StackProps;
+
+/**
+ * Lisa Networking stack. Defines a VPC for LISA
+ */
+export class LisaNetworkingConstruct extends Construct {
+
+    /** Virtual private cloud. */
+    public readonly vpc: Vpc;
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaChatProps} props - Properties for the Stack.
+   * @param {LisaNetworkingProps} props - Properties for the Stack.
    */
-    constructor (scope: Construct, id: string, props: LisaChatProps) {
-        super(scope, id, props);
+    constructor (scope: Stack, id: string, props: LisaNetworkingProps) {
+        super(scope, id);
 
-        (new LisaChatApplicationConstruct(this, id + 'Resources', props)).node.addMetadata('aws:cdk:path', this.node.path);
+        const { config } = props;
+
+        // Create VPC
+        this.vpc = new Vpc(scope, 'Vpc', {
+            config: config,
+        });
     }
 }

@@ -13,27 +13,12 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-
-// LisaModelsApi Stack.
-import { Stack, StackProps } from 'aws-cdk-lib';
-import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-import { Vpc } from '../networking/vpc';
-import { ModelsApi } from './model-api';
-import { BaseProps } from '../schema';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { LisaModelsApiConstruct, LisaModelsApiProps } from './modelsApiConstruct';
 
-type LisaModelsApiStackProps = BaseProps &
-  StackProps & {
-      authorizer: IAuthorizer;
-      lisaServeEndpointUrlPs: StringParameter;
-      restApiId: string;
-      rootResourceId: string;
-      securityGroups: ISecurityGroup[];
-      vpc: Vpc;
-  };
+export * from './modelsApiConstruct';
 
 /**
  * Lisa Models API Stack.
@@ -44,20 +29,9 @@ export class LisaModelsApiStack extends Stack {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaModelsApiStackProps} props - Properties for the Stack.
    */
-    constructor (scope: Construct, id: string, props: LisaModelsApiStackProps) {
+    constructor (scope: Construct, id: string, props: LisaModelsApiProps) {
         super(scope, id, props);
 
-        const { authorizer, lisaServeEndpointUrlPs, config, restApiId, rootResourceId, securityGroups, vpc } = props;
-
-        // Add REST API Lambdas to APIGW
-        new ModelsApi(this, 'ModelsApi', {
-            authorizer,
-            config,
-            lisaServeEndpointUrlPs,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
+        (new LisaModelsApiConstruct(this, id + 'Resources', props)).node.addMetadata('aws:cdk:path', this.node.path);
     }
 }

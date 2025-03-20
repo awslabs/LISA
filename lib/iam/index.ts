@@ -14,15 +14,5 @@
   limitations under the License.
 */
 
-import { Stack } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-
-import { LisaApiDeploymentConstruct, LisaApiDeploymentProps } from './apiDeploymentConstruct';
-
-export class LisaApiDeploymentStack extends Stack {
-    constructor (scope: Construct, id: string, props: LisaApiDeploymentProps) {
-        super(scope, id, props);
-
-        (new LisaApiDeploymentConstruct(this, id + 'Resources', props)).node.addMetadata('aws:cdk:path', this.node.path);
-    }
-}
+export * from './iam_stack';
+export * from './iamConstruct';

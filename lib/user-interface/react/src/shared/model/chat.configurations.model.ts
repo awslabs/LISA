@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { PromptTemplate } from '@langchain/core/prompts';
 import { LisaChatMessage } from '../../components/types';
 
 export type IChatConfiguration = {
@@ -23,8 +22,6 @@ export type IChatConfiguration = {
 
 export type IPromptConfiguration = {
     promptTemplate: string;
-    humanPrefix: string;
-    aiPrefix: string;
 };
 
 export type ISessionConfiguration = {
@@ -46,22 +43,13 @@ export type ISessionConfiguration = {
 };
 
 export type GenerateLLMRequestParams = {
-    inputVariables: string[],
-    inputs: any,
-    promptTemplate: PromptTemplate,
-    message: LisaChatMessage
+    input: string,
+    message: LisaChatMessage[]
 };
 
 export const baseConfig: IChatConfiguration = {
     promptConfiguration: {
-        promptTemplate: `The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
-
-                              Current conversation:
-                              {history}
-                              {humanPrefix}: {input}
-                              {aiPrefix}:`,
-        humanPrefix: 'User',
-        aiPrefix: 'Assistant',
+        promptTemplate: 'The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.',
     },
     sessionConfiguration: {
         streaming: false,

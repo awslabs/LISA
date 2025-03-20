@@ -113,6 +113,7 @@ export type IModelRequest = {
     modelName: string;
     modelUrl: string;
     streaming: boolean;
+    multiModal: boolean;
     modelType: ModelType;
     instanceType: string;
     inferenceContainer: InferenceContainer;

@@ -200,7 +200,7 @@ export function DocumentSummarizationModal ({
                 <FileUpload
                     onChange={async ({ detail }) => {
                         setSelectedFiles(detail.value);
-                        const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 204800);
+                        const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 20971520);
                         setSuccessfulUpload(uploads);
                     }}
                     value={selectedFiles}
@@ -214,7 +214,7 @@ export function DocumentSummarizationModal ({
                     }}
                     showFileSize
                     tokenLimit={3}
-                    constraintText='Allowed file type is plain text. File size limit is 200 KB'
+                    constraintText='Allowed file type is plain text. File size limit is 20 MB.'
                 />
                 <FormField label='Summarization Model'>
                     <Autosuggest

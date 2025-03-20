@@ -39,13 +39,13 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
-    const ragCitations = !isStreaming && message.metadata?.ragDocuments ? message.metadata.ragDocuments : undefined;
+    const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
 
     const renderContent = (content: MessageContent) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
                 if (item.type === 'text') {
-                    return <div key={index}>{item.text}</div>;
+                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{item.text}</div>;
                 } else if (item.type === 'image_url') {
                     return <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
                 }

@@ -136,7 +136,7 @@ export default function Chat ({ sessionId }) {
                 const messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
                     content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
-                }));
+                })).slice(-chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2);
 
                 if (chatConfiguration.sessionConfiguration.streaming) {
                     setIsStreaming(true);
@@ -191,10 +191,10 @@ export default function Chat ({ sessionId }) {
             }
         };
 
-        return { isRunning, isStreaming, generateResponse };
+        return { isRunning, setIsRunning, isStreaming, generateResponse };
     };
 
-    const {isRunning, isStreaming, generateResponse} = useChatGeneration();
+    const {isRunning, setIsRunning, isStreaming, generateResponse} = useChatGeneration();
 
     useEffect(() => {
         if (sessionHealth) {
@@ -317,6 +317,7 @@ export default function Chat ({ sessionId }) {
         const modelConfig = {
             modelName: selectedModel?.modelId,
             openAIApiKey: auth.user?.id_token,
+            maxRetries: 0,
             configuration: {
                 baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
             },
@@ -336,6 +337,16 @@ export default function Chat ({ sessionId }) {
 
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;
+        setIsRunning(true);
+
+        setSession((prev) => ({
+            ...prev,
+            history: prev.history.concat(new LisaChatMessage({
+                type: 'human',
+                content: userPrompt,
+                metadata: {},
+            }))
+        }));
 
         const messages = [];
 
@@ -366,12 +377,10 @@ export default function Chat ({ sessionId }) {
             }));
             messageContent = userPrompt;
         } else if (fileContext) {
-            messages.push(new LisaChatMessage({
-                type: 'system',
-                content: fileContext,
-                metadata: {},
-            }));
-            messageContent = userPrompt;
+            messageContent = [
+                { type: 'text', text: userPrompt },
+                { type: 'text', text: fileContext }
+            ];
         } else {
             messageContent = userPrompt;
         }
@@ -389,7 +398,7 @@ export default function Chat ({ sessionId }) {
 
         setSession((prev) => ({
             ...prev,
-            history: prev.history.concat(...messages),
+            history: prev.history.slice(0, -1).concat(...messages),
         }));
 
         const params: GenerateLLMRequestParams = {
@@ -458,7 +467,7 @@ export default function Chat ({ sessionId }) {
                     {session.history.map((message, idx) => (
                         <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>
                     ))}
-                    {isRunning && !isStreaming && <Message isRunning={isRunning} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>}
+                    {isRunning && !isStreaming && <Message isRunning={isRunning} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay} message={new LisaChatMessage({type: 'ai', content: ''})}/>}
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>

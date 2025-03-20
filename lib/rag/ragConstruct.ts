@@ -95,7 +95,7 @@ export class LisaRagConstruct extends Construct {
         });
 
         const ragTableName = createCdkId([config.deploymentName, 'RagDocumentTable']);
-        const docMetaTable = new Table(this, ragTableName, {
+        const docMetaTable = new Table(scope, ragTableName, {
             partitionKey: {
                 name: 'pk', // Composite of repo/collection ids
                 type: AttributeType.STRING,
@@ -122,7 +122,7 @@ export class LisaRagConstruct extends Construct {
                 type: AttributeType.STRING,
             }
         });
-        const subDocTable = new Table(this, createCdkId([config.deploymentName, 'RagSubDocumentTable']), {
+        const subDocTable = new Table(scope, createCdkId([config.deploymentName, 'RagSubDocumentTable']), {
             partitionKey: {
                 name: 'document_id',
                 type: AttributeType.STRING,
@@ -157,10 +157,10 @@ export class LisaRagConstruct extends Construct {
         }
 
         const lambdaRole = Role.fromRoleArn(
-            this,
+            scope,
             Roles.RAG_LAMBDA_EXECUTION_ROLE,
             StringParameter.valueForStringParameter(
-                this,
+                scope,
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
             ),
         );

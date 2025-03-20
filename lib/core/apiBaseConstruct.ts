@@ -46,7 +46,7 @@ export class LisaApiBaseConstruct extends Construct {
             throttlingBurstLimit: 100,
         };
 
-        const restApi = new RestApi(scope, `${id}-RestApi`, {
+        const restApi = new RestApi(scope, `${scope.node.id}-RestApi`, {
             description: 'Base API Gateway for LISA.',
             endpointConfiguration: { types: [config.privateEndpoints ? EndpointType.PRIVATE : EndpointType.REGIONAL] },
             deploy: true,

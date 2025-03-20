@@ -113,7 +113,6 @@ export class LisaServeApplicationConstruct extends Construct {
         //     },
         //     layers: [commonLambdaLayer],
         //     vpc: props.vpc.vpc,
-        //     reservedConcurrentExecutions: 5,
         // });
 
         // managementKeySecret.grantRead(rotateManagementKeyLambda);

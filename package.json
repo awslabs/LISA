@@ -38,7 +38,7 @@
     "build": "tsc && npm run build -ws",
     "deploy": "tsx ./bin/lisa.ts",
     "copy-dist": "bash ./bin/copy-deps.sh",
-    "clean": "rm -rf dist node_modules cdk.out",
+    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",

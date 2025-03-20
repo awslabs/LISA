@@ -211,7 +211,7 @@ export class LisaServeApplicationConstruct extends Construct {
                         'bedrock:InvokeModelWithResponseStream',
                     ],
                     resources: [
-                        'arn:*:bedrock:*::foundation-model/*'
+                        '*'
                     ]
                 }),
                 new PolicyStatement({

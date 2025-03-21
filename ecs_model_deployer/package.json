@@ -14,7 +14,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@cdklabs/cdk-enterprise-iac": "^0.0.512",
-    "aws-cdk": "^2.177.0",
+    "aws-cdk": "^2.178.2",
     "aws-cdk-lib": "^2.177.0",
     "zod": "^3.24.1"
   },

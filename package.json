@@ -60,7 +60,7 @@
     "@types/readline-sync": "^1.4.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "aws-cdk": "^2.177.0",
+    "aws-cdk": "^2.178.2",
     "depcheck": "^1.4.7",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",

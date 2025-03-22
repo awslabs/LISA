@@ -6,7 +6,7 @@ click==8.1.7
 cryptography==42.0.8
 fastapi==0.111.1
 fastapi_utils==0.7.0
-gunicorn==22.0.0
+gunicorn==23.0.0
 litellm[proxy]==1.53.7
 loguru==0.7.2
 pydantic==2.8.2

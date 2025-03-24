@@ -16,7 +16,7 @@
     "@aws-sdk/client-iam": "^3.490.0",
     "@cdklabs/cdk-enterprise-iac": "^0.0.512",
     "aws-cdk": "^2.153.0",
-    "aws-cdk-lib": "^2.153.0",
+    "aws-cdk-lib": "^2.185.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

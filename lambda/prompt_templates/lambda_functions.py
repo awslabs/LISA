@@ -1,0 +1,223 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+"""Lambda functions for managing sessions."""
+import json
+import logging
+import os
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Dict, List, Optional
+from boto3.dynamodb.conditions import Key, Attr
+
+import boto3
+import create_env_variables  # noqa: F401
+from botocore.exceptions import ClientError
+from .models import PromptTemplateModel
+from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, is_admin, retry_config
+
+logger = logging.getLogger(__name__)
+
+dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+table = dynamodb.Table(os.environ["PROMPT_TEMPLATES_TABLE_NAME"])
+
+
+def _get_prompt_templates(user_id: Optional[str] = None, groups: Optional[List] = None, cursor: Optional[str] = None, latest: Optional[bool] = None):
+    filter_expression = None
+
+    if latest:
+        print(f"latest({latest})")
+        condition = Attr('latest').eq(True)
+        filter_expression = condition if filter_expression is None else filter_expression & condition
+
+    if user_id:
+        print(f"owner({user_id})")
+        condition = Attr("owner").eq(user_id)
+        filter_expression = condition if filter_expression is None else filter_expression & condition
+
+    if groups:
+        print(f"groups({groups})")
+        if len(groups) == 0:
+            condition = Attr("groups").size().eq(0)
+            filter_expression = condition if filter_expression is None else filter_expression & condition
+        else:
+            conditions = [Attr("groups").contains(group) for group in groups]
+            condition = reduce(lambda a, b: a | b, conditions)
+            filter_expression = condition if filter_expression is None else filter_expression & condition
+    
+    scan_arguments = {
+        'TableName': os.environ["PROMPT_TEMPLATES_TABLE_NAME"],
+        'IndexName': os.environ["PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME"],
+    }
+
+    if filter_expression:
+        scan_arguments['FilterExpression'] = filter_expression
+
+    items = []
+    while True:
+        response = table.scan(**scan_arguments)
+        items.extend(response.get('Items', []))
+        if 'LastEvaluatedKey' in response:
+            scan_arguments['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        else:
+            break
+    
+    return {"Items": items}
+
+
+@api_wrapper
+def get(event: dict, context: dict) -> Dict[str, Any]:
+    """Get session from DynamoDB."""
+    user_id = get_username(event)
+    prompt_template_id = get_prompt_template_id(event)
+
+    # todo: make sure they're admin or part of all groups
+
+    # find latest prompt template revision
+    response = table.query(
+        KeyConditionExpression=Key("id").eq(prompt_template_id),
+        Limit=1,
+        ScanIndexForward=False
+    )
+    items = response.get("Items", [])
+    item = items[0] if items else None
+
+    if item is None:
+        raise ValueError(f"Prompt template {prompt_template_id} not found.")
+    
+    return item
+
+
+@api_wrapper
+def list(event: dict, context: dict) -> List[Dict[str, Any]]:
+    """List sessions by user ID from DynamoDB."""
+
+    query_params = event.get("queryStringParameters", {})
+    cursor = query_params.get("cursor", None)
+    user_id = get_username(event) 
+    
+    if query_params.get('public') == 'true':
+        if is_admin(event):
+            logger.info(f"Listing all templates for user {user_id} (is_admin)")
+            return _get_prompt_templates(cursor=cursor, latest=True)
+        else:
+            groups = get_groups(event)
+            logger.info(f"Listing public templates for user {user_id} with groups {groups}")
+            return _get_prompt_templates(groups=groups, cursor=cursor, latest=True)
+    else:
+        logger.info(f"Listing private templates for user {user_id}")
+        return _get_prompt_templates(user_id=user_id, cursor=cursor, latest=True)
+
+
+@api_wrapper
+def create(event: dict, context: dict) -> Dict[str, Any]:
+    """Get session from DynamoDB."""
+    user_id = get_username(event)
+    # from https://stackoverflow.com/a/71446846
+    body = json.loads(event["body"], parse_float=Decimal)
+    # enforce owner
+    body["owner"] = user_id
+    model = PromptTemplateModel(**body)
+
+    # todo: make sure they're admin or part of all groups
+
+    table.put_item(Item=model.model_dump(exclude_none=True))
+    return model.model_dump()
+
+@api_wrapper
+def update(event: dict, context: dict) -> Dict[str, Any]:
+    """Get session from DynamoDB."""
+    user_id = get_username(event)
+    prompt_template_id = get_prompt_template_id(event)
+    # from https://stackoverflow.com/a/71446846
+    body = json.loads(event["body"], parse_float=Decimal)
+    model = PromptTemplateModel(**body)
+
+    # todo: make sure they're admin or part of all groups
+
+    if prompt_template_id != model.id:
+        raise ValueError(f"URL id {prompt_template_id} doesn't match body id {model.id}")
+
+    # find latest prompt template revision
+    response = table.query(
+        KeyConditionExpression=Key("id").eq(prompt_template_id),
+        Limit=1,
+        ScanIndexForward=False
+    )
+    items = response.get("Items", [])
+    item = items[0] if items else None
+
+    if item is None:
+        raise ValueError(f"Prompt template {model} not found.")
+
+    if is_admin(event) or item["owner"] == user_id:
+        logger.info(f"Removing latest attribute from prompt_template with ID {prompt_template_id} for user {user_id}")
+        table.update_item(
+            Key={
+                "id": item["id"],
+                "created": item["created"],
+            },
+            UpdateExpression="REMOVE latest",
+        )
+
+        # overwite non-editable fields to make sure nothing is being updated unexpectedly
+        model = model.new_revision(update={
+            'id': item['id'],
+            'owner': user_id
+        })
+        logger.info(f"new model: {model.model_dump(exclude_none=True)}")
+        response = table.put_item(Item=model.model_dump(exclude_none=True))
+        return model.model_dump()
+
+    raise ValueError(f"Not authorized to delete {prompt_template_id}.")
+
+
+@api_wrapper
+def delete(event: dict, context: dict) -> dict:
+    """Delete prompt template from DynamoDB."""
+    user_id = get_username(event)
+    prompt_template_id = get_prompt_template_id(event)
+
+    # find latest prompt template revision
+    response = table.query(
+        KeyConditionExpression=Key("id").eq(prompt_template_id),
+        Limit=1,
+        ScanIndexForward=False
+    )
+    items = response.get("Items", [])
+    item = items[0] if items else None
+    
+    if item is None:
+        raise ValueError(f"Prompt template {prompt_template_id} not found.")
+
+    if is_admin(event) or item["owner"] == user_id:
+        logger.info(f"Removing latest attribute from prompt_template with ID {prompt_template_id} for user {user_id}")
+
+        # logical delete by just removing the latest attribute
+        table.update_item(
+            Key={
+                "id": item["id"],
+                "created": item["created"]
+            },
+            UpdateExpression="REMOVE latest",
+        )
+
+        return {"status": "ok"}
+        
+    raise ValueError(f"Not authorized to delete {prompt_template_id}.")
+
+
+def get_prompt_template_id(event: dict) -> str:
+    """Get session_id from event."""
+    return event.get("pathParameters", {}).get("promptTemplateId")

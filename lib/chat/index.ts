@@ -24,6 +24,7 @@ import { SessionApi } from './api/session';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { ConfigurationApi } from './api/configuration';
+import { PromptTemplateApi } from './api/prompt-template-api';
 
 type CustomLisaChatStackProps = {
     authorizer: IAuthorizer;
@@ -65,6 +66,15 @@ export class LisaChatApplicationStack extends Stack {
             rootResourceId,
             securityGroups,
             vpc,
+        });
+
+        new PromptTemplateApi(this, 'PromptTemplateApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc
         });
     }
 }

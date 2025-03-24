@@ -37,6 +37,7 @@ import DocumentLibrary from './pages/DocumentLibrary';
 import RepositoryLibrary from './pages/RepositoryLibrary';
 import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
+import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 
 
 export type RouteProps = {
@@ -159,6 +160,14 @@ function App () {
                             element={
                                 <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                     <DocumentLibrary setNav={setNav} />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path='prompt-templates/*'
+                            element={
+                                <PrivateRoute showConfig='showPromptTemplates' configs={config}>
+                                    <PromptTemplatesLibrary setNav={setNav} />
                                 </PrivateRoute>
                             }
                         />

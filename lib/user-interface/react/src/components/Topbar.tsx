@@ -115,6 +115,16 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                         navigate('/document-library');
                     },
                 } as ButtonUtility] : []),
+                ...(configs?.configuration.enabledComponents?.showPromptTemplateLibrary ? [{
+                    type: 'button',
+                    variant: 'link',
+                    text: 'Prompt Library',
+                    disableUtilityCollapse: false,
+                    external: false,
+                    onClick: () => {
+                        navigate('/prompt-templates');
+                    },
+                } as ButtonUtility] : []),
                 {
                     type: 'menu-dropdown',
                     description: auth.isAuthenticated ? auth.user?.profile.email : undefined,

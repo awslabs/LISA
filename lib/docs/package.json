@@ -16,6 +16,6 @@
     "vitepress": "^1.6.3"
   },
   "dependencies": {
-    "vite": "6.2.1"
+    "vite": "6.2.3"
   }
 }

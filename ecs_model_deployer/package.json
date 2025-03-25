@@ -15,7 +15,7 @@
   "dependencies": {
     "@cdklabs/cdk-enterprise-iac": "^0.0.512",
     "aws-cdk": "^2.177.0",
-    "aws-cdk-lib": "^2.177.0",
+    "aws-cdk-lib": "^2.185.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

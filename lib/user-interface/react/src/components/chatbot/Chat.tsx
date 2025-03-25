@@ -57,6 +57,7 @@ import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 import { ChatMemory } from '../../shared/util/chat-memory';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
 import { truncateText } from '../../shared/util/formats';
+import { Buffer } from "buffer";
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -378,8 +379,8 @@ export default function Chat ({ sessionId }) {
             messageContent = userPrompt;
         } else if (fileContext) {
             messageContent = [
+                { type: 'file', file: { filename: 'FileContext', file_data: 'data:plain/text;base64,' + Buffer.from(fileContext, 'binary').toString('base64') } },
                 { type: 'text', text: userPrompt },
-                { type: 'text', text: fileContext }
             ];
         } else {
             messageContent = userPrompt;

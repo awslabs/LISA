@@ -56,7 +56,10 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
 
         if (subnets && subnets.length > 0) {
             subnetSelection = {
-                subnets: subnets?.map((subnet, index) => Subnet.fromSubnetId(this, `subnet-${index}`, subnet.subnetId))
+                subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetAttributes(this, index.toString(), {
+                    subnetId: subnet.subnetId,
+                    ipv4CidrBlock: subnet.ipv4CidrBlock
+                }))
             };
         }
 
@@ -88,7 +91,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                     volumeType: opensearchConfig.volumeType,
                 },
                 zoneAwareness: {
-                    availabilityZoneCount: vpc.privateSubnets.length,
+                    availabilityZoneCount: (config.subnets && config.subnets.length) ?? vpc.privateSubnets.length,
                     enabled: true,
                 },
                 capacity: {
@@ -106,6 +109,11 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                         principals: [new AnyPrincipal()],
                     }),
                 ],
+                nodeToNodeEncryption: true,
+                enforceHttps: true,
+                encryptionAtRest: {
+                    enabled: true
+                },
                 removalPolicy: RemovalPolicy.DESTROY,
                 securityGroups: [openSearchSecurityGroup],
             });

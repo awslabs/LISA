@@ -38,12 +38,14 @@ import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { truncateText } from '../../shared/util/formats';
+import { getDisplayableMessage } from '@/components/utils';
 
 export function Sessions () {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
     const navigate = useNavigate();
+
 
     const [deleteById, {
         isSuccess: isDeleteByIdSuccess,
@@ -131,7 +133,7 @@ export function Sessions () {
                         id: 'title',
                         header: 'Title',
                         cell: (e) => <Link variant='primary'
-                            onClick={() => navigate(`chatbot/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(String(e.history?.[0]?.content || 'No Content'), 32, '')}</span></Link>,
+                            onClick={() => navigate(`chatbot/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(getDisplayableMessage(e.history?.find((hist) => hist.type === 'human')?.content) || 'No Content', 32, '')}</span></Link>,
                         isRowHeader: true,
                     },
                     {

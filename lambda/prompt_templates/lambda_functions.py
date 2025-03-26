@@ -37,7 +37,7 @@ def _get_prompt_templates(
     groups: Optional[List] = None,
     cursor: Optional[str] = None,
     latest: Optional[bool] = None,
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     filter_expression = None
 
     if latest:
@@ -100,7 +100,7 @@ def get(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def list(event: dict, context: dict) -> List[Dict[str, Any]]:
+def list(event: dict, context: dict) -> Dict[str, Any]:
     """List sessions by user ID from DynamoDB."""
 
     query_params = event.get("queryStringParameters", {})

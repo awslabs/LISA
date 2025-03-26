@@ -30,6 +30,6 @@ class PromptTemplateModel(BaseModel):
     body: str
 
     def new_revision(self, update: Dict[str, Any]) -> "PromptTemplateModel":
-        return self.model_copy(
+        return self.model_copy(  # type: ignore
             update=update | {"created": datetime.now().isoformat(), "revisio n": (self.revision or 0) + 1}
         )

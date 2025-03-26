@@ -37,7 +37,7 @@ def _get_prompt_templates(
     groups: Optional[List] = None,
     cursor: Optional[str] = None,
     latest: Optional[bool] = None,
-) -> Dict[str, Any]:
+) -> List[Dict[str, Any]]:
     filter_expression = None
 
     if latest:

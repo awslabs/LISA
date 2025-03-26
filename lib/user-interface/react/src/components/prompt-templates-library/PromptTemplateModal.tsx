@@ -18,21 +18,23 @@ import {
     Autosuggest,
     Box,
     Button,
+    Link,
     Modal,
     Select,
     SelectProps,
     SpaceBetween,
     Textarea,
-    TextContent,
 } from '@cloudscape-design/components';
 import { useMemo, useState } from 'react';
 import { IModel } from '../../shared/model/model-management.model';
-import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
+import { DEFAULT_PROMPT_TEMPLATE, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import FormField from '@cloudscape-design/components/form-field';
 import { PromptTemplate, useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
+import { LisaChatSession } from '../types';
 
 export type PromptTemplateModalProps = {
+    session: LisaChatSession,
     showModal: boolean;
     setShowModal: (state: boolean) => void;
     setUserPrompt: (state: string) => void;
@@ -43,6 +45,7 @@ export type PromptTemplateModalProps = {
 };
 
 export function PromptTemplateModal ({
+    session,
     showModal,
     setShowModal,
     setUserPrompt,
@@ -57,6 +60,7 @@ export function PromptTemplateModal ({
     const [selectedItem, setSelectedItem] = useState<PromptTemplate>();
     const [suggestText, setSuggestText] = useState<string>('');
     const [promptTemplateText, setPromptTemplateText] = useState(chatConfiguration.promptConfiguration.promptTemplate);
+    const disabled = session.history.length > 0;
 
     const options: SelectProps.Option[] = useMemo(() => {
         return isFetchingList ? [] : allItems.map((item) => ({
@@ -106,16 +110,17 @@ export function PromptTemplateModal ({
 
                                 setShowModal(false);
                             }}
-                            disabled={selectedItem === undefined}
+                            disabled={disabled}
+                            disabledReason={'The Prompt cannot be updated after session has started.'}
                         >
-                            Use Prompt
+                            Update Prompt
                         </Button>
                     </SpaceBetween>
                 </Box>
             }
         >
             <SpaceBetween direction='vertical' size='m'>
-                { config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <SpaceBetween direction='horizontal' size='s'>
+                { !disabled && config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <SpaceBetween direction='horizontal' size='s'>
                     <FormField label='Select existing Prompt'>
                         <SpaceBetween direction='horizontal' size='s'>
                             <Autosuggest
@@ -152,16 +157,17 @@ export function PromptTemplateModal ({
                 </SpaceBetween>}
 
                 <hr />
-                    
-                { selectedItem  && <SpaceBetween direction='vertical' size='s'>
-                    <FormField label='Title'>
-                        <TextContent>{ selectedItem.title }</TextContent>
-                    </FormField>
-                </SpaceBetween>}
 
                 <FormField label='Prompt Template' description='Sets the initial system prompt to setup the conversation with an LLM.'>
                     <Textarea rows={10} value={promptTemplateText} placeholder='Enter prompt text' onChange={({detail}) => setPromptTemplateText(detail.value)} />
                 </FormField>
+                { !disabled && promptTemplateText !== DEFAULT_PROMPT_TEMPLATE && (
+                    <Link onClick={() => {
+                        setSuggestText('');
+                        setSelectedItem(undefined);
+                        setPromptTemplateText(DEFAULT_PROMPT_TEMPLATE);
+                    }}>Reset to default</Link>
+                )}
             </SpaceBetween>
         </Modal>
     );

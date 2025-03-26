@@ -33,7 +33,7 @@ export function Home ({ setNav }) {
 
     useEffect(() => {
         if (auth.isAuthenticated) {
-            navigate('/chatbot');
+            navigate('/ai-assistant');
         }
     // eslint-disable-next-line
   }, [auth.isAuthenticated]);

@@ -47,9 +47,11 @@ export type GenerateLLMRequestParams = {
     message: LisaChatMessage[]
 };
 
+export const DEFAULT_PROMPT_TEMPLATE = 'The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.';
+
 export const baseConfig: IChatConfiguration = {
     promptConfiguration: {
-        promptTemplate: 'The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.',
+        promptTemplate: DEFAULT_PROMPT_TEMPLATE,
     },
     sessionConfiguration: {
         streaming: false,

@@ -50,17 +50,15 @@ import {
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import SessionConfiguration from './SessionConfiguration';
-import PromptTemplateEditor from './PromptTemplateEditor';
 import { baseConfig, GenerateLLMRequestParams, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 import { ChatMemory } from '../../shared/util/chat-memory';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
-import { truncateText } from '../../shared/util/formats';
 import { useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFileLines, faMessage, faPenToSquare } from '@fortawesome/free-regular-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFileLines, faMessage, faPenToSquare } from '@fortawesome/free-regular-svg-icons';
 import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
 import ConfigurationContext from '../../shared/configuration.provider';
 
@@ -85,8 +83,7 @@ export default function Chat ({ sessionId }) {
     const [fileContext, setFileContext] = useState('');
 
     const [sessionConfigurationModalVisible, setSessionConfigurationModalVisible] = useState(false);
-    const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
-    const [promptTemplateKey, setPromptTemplateKey] = useState(new Date().toISOString())
+    const [promptTemplateKey, setPromptTemplateKey] = useState(new Date().toISOString());
     const [showContextUploadModal, setShowContextUploadModal] = useState(false);
     const [showRagUploadModal, setShowRagUploadModal] = useState(false);
     const [showDocumentSummarizationModal, setShowDocumentSummarizationModal] = useState(false);
@@ -221,17 +218,13 @@ export default function Chat ({ sessionId }) {
     }, [isRunning, session, dirtySession, auth, updateSession]);
 
     useEffect(() => {
+        // always hide breadcrumbs
+        dispatch(setBreadcrumbs([]));
+
         if (sessionId) {
             setInternalSessionId(sessionId);
             setLoadingSession(true);
             setSession({...session, history: []});
-            dispatch(setBreadcrumbs([{
-                text: 'Chatbot',
-                href: ''
-            }, {
-                text: 'Loading session...',
-                href: ''
-            }]));
 
             getSessionById(sessionId).then((resp) => {
                 // session doesn't exist so we create it
@@ -245,16 +238,6 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
-                const firstHumanMessage = sess.history?.find((hist) => hist.type === 'human')?.content;
-
-                // override the default breadcrumbs
-                dispatch(setBreadcrumbs([{
-                    text: 'Chatbot',
-                    href: ''
-                }, {
-                    text: truncateText(Array.isArray(firstHumanMessage) ? firstHumanMessage.find((item) => item.type === 'text')?.text || '' : firstHumanMessage) || 'New Session',
-                    href: ''
-                }]));
                 setLoadingSession(false);
             });
         } else {
@@ -416,12 +399,6 @@ export default function Chat ({ sessionId }) {
 
     return (
         <div className='h-[80vh]'>
-            <PromptTemplateEditor
-                chatConfiguration={chatConfiguration}
-                setChatConfiguration={setChatConfiguration}
-                setVisible={setPromptTemplateEditorVisible}
-                visible={promptTemplateEditorVisible}
-            />
             <DocumentSummarizationModal
                 showDocumentSummarizationModal={showDocumentSummarizationModal}
                 setShowDocumentSummarizationModal={setShowDocumentSummarizationModal}
@@ -461,6 +438,7 @@ export default function Chat ({ sessionId }) {
                 selectedModel={selectedModel}
             />
             <PromptTemplateModal
+                session={session}
                 showModal={showPromptTemplateModal}
                 setShowModal={setShowPromptTemplateModal}
                 setUserPrompt={setUserPrompt}
@@ -481,13 +459,13 @@ export default function Chat ({ sessionId }) {
                             <Header variant='h1'>What would you like to do?</Header>
                         </div>
                         <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '1em', textAlign: 'center'}}>
-                            <Button variant='normal' onClick={() => navigate(`/chatbot/${uuidv4()}`)}>
+                            <Button variant='normal' onClick={() => navigate(`/ai-assistant/${uuidv4()}`)}>
                                 <SpaceBetween direction='horizontal' size='xs'>
                                     <FontAwesomeIcon icon={faMessage} />
                                     <TextContent>Start chatting</TextContent>
                                 </SpaceBetween>
                             </Button>
-                            
+
                             { config?.configuration?.enabledComponents?.editPromptTemplate && (
                                 <Button variant='normal' onClick={() => {
                                     setPromptTemplateKey(new Date().toISOString());
@@ -499,7 +477,7 @@ export default function Chat ({ sessionId }) {
                                     </SpaceBetween>
                                 </Button>
                             )}
-                            
+
                             <Button variant='normal' onClick={() => setShowDocumentSummarizationModal(true)}>
                                 <SpaceBetween direction='horizontal' size='xs'>
                                     <FontAwesomeIcon icon={faFileLines} />
@@ -579,7 +557,8 @@ export default function Chat ({ sessionId }) {
                                                         setSessionConfigurationModalVisible(true);
                                                     }
                                                     if (detail.id === 'edit-prompt-template'){
-                                                        setPromptTemplateEditorVisible(true);
+                                                        setPromptTemplateKey(new Date().toISOString());
+                                                        setShowPromptTemplateModal(true);
                                                     }
                                                     if (detail.id === 'upload-to-rag'){
                                                         setShowRagUploadModal(true);

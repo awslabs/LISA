@@ -74,7 +74,7 @@ const AdminRoute = ({ children }: RouteProps) => {
     }
 };
 
-function App() {
+function App () {
     const [showNavigation, setShowNavigation] = useState(false);
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
@@ -124,7 +124,7 @@ function App() {
                         <Routes>
                             <Route index path='*' element={<Home setNav={setNav} />} />
                             <Route
-                                path='chatbot'
+                                path='ai-assistant'
                                 element={
                                     <PrivateRoute>
                                         <Chatbot setNav={setNav} />
@@ -132,7 +132,7 @@ function App() {
                                 }
                             />
                             <Route
-                                path='chatbot/:sessionId'
+                                path='ai-assistant/:sessionId'
                                 element={
                                     <PrivateRoute>
                                         <Chatbot setNav={setNav} />

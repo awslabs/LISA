@@ -74,7 +74,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                 {
                     type: 'button',
                     variant: 'link',
-                    text: 'Chatbot',
+                    text: 'AI Assistant',
                     disableUtilityCollapse: false,
                     external: false,
                     onClick: () => {

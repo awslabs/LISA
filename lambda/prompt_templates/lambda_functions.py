@@ -13,19 +13,18 @@
 #   limitations under the License.
 
 """Lambda functions for managing sessions."""
-from functools import reduce
 import json
 import logging
 import os
-from datetime import datetime
 from decimal import Decimal
+from functools import reduce
 from typing import Any, Dict, List, Optional
-from boto3.dynamodb.conditions import Key, Attr
 
 import boto3
-from botocore.exceptions import ClientError
+from boto3.dynamodb.conditions import Attr, Key
+from utilities.common_functions import api_wrapper, get_groups, get_username, is_admin, retry_config
+
 from .models import PromptTemplateModel
-from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, is_admin, retry_config
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +32,16 @@ dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], conf
 table = dynamodb.Table(os.environ["PROMPT_TEMPLATES_TABLE_NAME"])
 
 
-def _get_prompt_templates(user_id: Optional[str] = None, groups: Optional[List] = None, cursor: Optional[str] = None, latest: Optional[bool] = None):
+def _get_prompt_templates(
+    user_id: Optional[str] = None,
+    groups: Optional[List] = None,
+    cursor: Optional[str] = None,
+    latest: Optional[bool] = None,
+) -> Dict[str, Any]:
     filter_expression = None
 
     if latest:
-        condition = Attr('latest').eq(True)
+        condition = Attr("latest").eq(True)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     if user_id:
@@ -52,24 +56,24 @@ def _get_prompt_templates(user_id: Optional[str] = None, groups: Optional[List] 
             conditions = [Attr("groups").contains(group) for group in groups]
             condition = reduce(lambda a, b: a | b, conditions)
             filter_expression = condition if filter_expression is None else filter_expression & condition
-    
+
     scan_arguments = {
-        'TableName': os.environ["PROMPT_TEMPLATES_TABLE_NAME"],
-        'IndexName': os.environ["PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME"],
+        "TableName": os.environ["PROMPT_TEMPLATES_TABLE_NAME"],
+        "IndexName": os.environ["PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME"],
     }
 
     if filter_expression:
-        scan_arguments['FilterExpression'] = filter_expression
+        scan_arguments["FilterExpression"] = filter_expression
 
     items = []
     while True:
         response = table.scan(**scan_arguments)
-        items.extend(response.get('Items', []))
-        if 'LastEvaluatedKey' in response:
-            scan_arguments['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        items.extend(response.get("Items", []))
+        if "LastEvaluatedKey" in response:
+            scan_arguments["ExclusiveStartKey"] = response["LastEvaluatedKey"]
         else:
             break
-    
+
     return {"Items": items}
 
 
@@ -79,24 +83,19 @@ def get(event: dict, context: dict) -> Dict[str, Any]:
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)
 
-
     # find latest prompt template revision
-    response = table.query(
-        KeyConditionExpression=Key("id").eq(prompt_template_id),
-        Limit=1,
-        ScanIndexForward=False
-    )
+    response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
     items = response.get("Items", [])
     item = items[0] if items else None
 
     if item is None:
         raise ValueError(f"Prompt template {prompt_template_id} not found.")
-    
+
     is_owner = item["owner"] == user_id
     is_group_member = set(get_groups(event)) & set(item["groups"])
     if not is_admin(event) and not is_owner and not is_group_member:
         raise ValueError(f"Not authorized to get {prompt_template_id}.")
-    
+
     return item
 
 
@@ -106,9 +105,9 @@ def list(event: dict, context: dict) -> List[Dict[str, Any]]:
 
     query_params = event.get("queryStringParameters", {})
     cursor = query_params.get("cursor", None)
-    user_id = get_username(event) 
-    
-    if query_params.get('public') == 'true':
+    user_id = get_username(event)
+
+    if query_params.get("public") == "true":
         if is_admin(event):
             logger.info(f"Listing all templates for user {user_id} (is_admin)")
             return _get_prompt_templates(cursor=cursor, latest=True)
@@ -122,7 +121,7 @@ def list(event: dict, context: dict) -> List[Dict[str, Any]]:
 
 
 @api_wrapper
-def create(event: dict, context: dict) -> Dict[str, Any]:
+def create(event: dict, context: dict) -> Any:
     """Get session from DynamoDB."""
     user_id = get_username(event)
     # from https://stackoverflow.com/a/71446846
@@ -134,8 +133,9 @@ def create(event: dict, context: dict) -> Dict[str, Any]:
     table.put_item(Item=model.model_dump(exclude_none=True))
     return model.model_dump()
 
+
 @api_wrapper
-def update(event: dict, context: dict) -> Dict[str, Any]:
+def update(event: dict, context: dict) -> Any:
     """Get session from DynamoDB."""
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)
@@ -147,11 +147,7 @@ def update(event: dict, context: dict) -> Dict[str, Any]:
         raise ValueError(f"URL id {prompt_template_id} doesn't match body id {model.id}")
 
     # find latest prompt template revision
-    response = table.query(
-        KeyConditionExpression=Key("id").eq(prompt_template_id),
-        Limit=1,
-        ScanIndexForward=False
-    )
+    response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
     items = response.get("Items", [])
     item = items[0] if items else None
 
@@ -168,11 +164,8 @@ def update(event: dict, context: dict) -> Dict[str, Any]:
             UpdateExpression="REMOVE latest",
         )
 
-        # overwite non-editable fields to make sure nothing is being updated unexpectedly
-        model = model.new_revision(update={
-            'id': item['id'],
-            'owner': item['owner']
-        })
+        # overwrite non-editable fields to make sure nothing is being updated unexpectedly
+        model = model.new_revision(update={"id": item["id"], "owner": item["owner"]})
         logger.info(f"new model: {model.model_dump(exclude_none=True)}")
         response = table.put_item(Item=model.model_dump(exclude_none=True))
         return model.model_dump()
@@ -181,20 +174,16 @@ def update(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def delete(event: dict, context: dict) -> dict:
+def delete(event: dict, context: dict) -> Dict[str, str]:
     """Delete prompt template from DynamoDB."""
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)
 
     # find latest prompt template revision
-    response = table.query(
-        KeyConditionExpression=Key("id").eq(prompt_template_id),
-        Limit=1,
-        ScanIndexForward=False
-    )
+    response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
     items = response.get("Items", [])
     item = items[0] if items else None
-    
+
     if item is None:
         raise ValueError(f"Prompt template {prompt_template_id} not found.")
 
@@ -203,18 +192,15 @@ def delete(event: dict, context: dict) -> dict:
 
         # logical delete by just removing the latest attribute
         table.update_item(
-            Key={
-                "id": item["id"],
-                "created": item["created"]
-            },
+            Key={"id": item["id"], "created": item["created"]},
             UpdateExpression="REMOVE latest",
         )
 
         return {"status": "ok"}
-        
+
     raise ValueError(f"Not authorized to delete {prompt_template_id}.")
 
 
 def get_prompt_template_id(event: dict) -> str:
     """Get session_id from event."""
-    return event.get("pathParameters", {}).get("promptTemplateId")
+    return str(event["pathParameters"]["promptTemplateId"])

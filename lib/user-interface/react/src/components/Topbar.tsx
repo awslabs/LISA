@@ -18,12 +18,12 @@ import { ReactElement, useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/global-styles';
-import TopNavigation from '@cloudscape-design/components/top-navigation';
+import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
 import { purgeStore, useAppSelector } from '../config/store';
 import { selectCurrentUserIsAdmin } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '../shared/model/configuration.model';
-import { ButtonUtility } from '@cloudscape-design/components/top-navigation/interfaces';
+import { ButtonDropdownProps } from '@cloudscape-design/components';
 
 applyDensity(Density.Comfortable);
 
@@ -71,30 +71,6 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                 },
             }}
             utilities={[
-                ...(isUserAdmin
-                    ? [
-                        {
-                            type: 'button',
-                            variant: 'link',
-                            text: 'Configuration',
-                            disableUtilityCollapse: false,
-                            external: false,
-                            onClick: () => {
-                                navigate('/configuration');
-                            },
-                        } as ButtonUtility,
-                        {
-                            type: 'button',
-                            variant: 'link',
-                            text: 'Model Management',
-                            disableUtilityCollapse: false,
-                            external: false,
-                            onClick: () => {
-                                navigate('/model-management');
-                            },
-                        } as ButtonUtility
-                    ]
-                    : []),
                 {
                     type: 'button',
                     variant: 'link',
@@ -105,26 +81,63 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                         navigate('/chatbot');
                     },
                 },
-                ...(configs?.configuration.enabledComponents?.showRagLibrary ? [{
-                    type: 'button',
-                    variant: 'link',
-                    text: 'Document Library',
-                    disableUtilityCollapse: false,
-                    external: false,
-                    onClick: () => {
-                        navigate('/document-library');
+                {
+                    type: 'menu-dropdown',
+                    text: 'Libraries',
+                    onItemClick: (event) => {
+                        event.preventDefault();
+                        navigate(event.detail.href);
                     },
-                } as ButtonUtility] : []),
-                ...(configs?.configuration.enabledComponents?.showPromptTemplateLibrary ? [{
-                    type: 'button',
-                    variant: 'link',
-                    text: 'Prompt Library',
-                    disableUtilityCollapse: false,
-                    external: false,
-                    onClick: () => {
-                        navigate('/prompt-templates');
-                    },
-                } as ButtonUtility] : []),
+                    items: [
+                        ...(configs?.configuration.enabledComponents?.showRagLibrary ? [{
+                            id: 'document-library',
+                            type: 'button',
+                            variant: 'link',
+                            text: 'Document Library',
+                            disableUtilityCollapse: false,
+                            external: false,
+                            href: '/document-library',
+                        } as ButtonDropdownProps.Item] : []),
+                        ...(configs?.configuration.enabledComponents?.showPromptTemplateLibrary ? [{
+                            id: 'prompt-template',
+                            type: 'button',
+                            variant: 'link',
+                            text: 'Prompt Library',
+                            disableUtilityCollapse: false,
+                            external: false,
+                            href: '/prompt-templates',
+                        } as ButtonDropdownProps.Item] : []),
+                    ]
+                } as TopNavigationProps.Utility,
+                ...((isUserAdmin
+                    ? [{
+                        type: 'menu-dropdown',
+                        text: 'Administration',
+                        onItemClick: (event) => {
+                            event.preventDefault();
+                            navigate(event.detail.href);
+                        },
+                        items: [
+                            {
+                                id: 'configuration',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Configuration',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/configuration',
+                            } as ButtonDropdownProps.Item,
+                            {
+                                id: 'model-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Model Management',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/model-management',
+                            } as ButtonDropdownProps.Item
+                        ]
+                    }] : []) as TopNavigationProps.Utility[]),
                 {
                     type: 'menu-dropdown',
                     description: auth.isAuthenticated ? auth.user?.profile.email : undefined,

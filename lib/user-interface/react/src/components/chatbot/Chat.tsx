@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Container from '@cloudscape-design/components/container';
@@ -23,9 +23,11 @@ import { v4 as uuidv4 } from 'uuid';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
     Autosuggest,
+    Button,
     ButtonGroup,
     ButtonGroupProps,
     Grid,
+    Header,
     PromptInput,
     TextContent,
 } from '@cloudscape-design/components';
@@ -40,7 +42,6 @@ import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
@@ -57,9 +58,16 @@ import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 import { ChatMemory } from '../../shared/util/chat-memory';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
 import { truncateText } from '../../shared/util/formats';
+import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFileLines, faMessage, faPenToSquare } from '@fortawesome/free-regular-svg-icons'
+import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
+import ConfigurationContext from '../../shared/configuration.provider';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
+    const config: IConfiguration = useContext(ConfigurationContext);
     const notificationService = useNotificationService(dispatch);
 
     const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
@@ -71,8 +79,6 @@ export default function Chat ({ sessionId }) {
             isFetching: state.isFetching,
             data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
         })});
-    const [getConfiguration] = useLazyGetConfigurationQuery();
-    const [config, setConfig] = useState<IConfiguration>();
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
 
     const [userPrompt, setUserPrompt] = useState('');
@@ -80,9 +86,11 @@ export default function Chat ({ sessionId }) {
 
     const [sessionConfigurationModalVisible, setSessionConfigurationModalVisible] = useState(false);
     const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
+    const [promptTemplateKey, setPromptTemplateKey] = useState(new Date().toISOString())
     const [showContextUploadModal, setShowContextUploadModal] = useState(false);
     const [showRagUploadModal, setShowRagUploadModal] = useState(false);
     const [showDocumentSummarizationModal, setShowDocumentSummarizationModal] = useState(false);
+    const [showPromptTemplateModal, setShowPromptTemplateModal] = useState(false);
 
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [selectedModel, setSelectedModel] = useState<IModel>();
@@ -202,16 +210,6 @@ export default function Chat ({ sessionId }) {
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionHealth]);
-
-    useEffect(() => {
-        if (!auth.isLoading && auth.isAuthenticated) {
-            getConfiguration('global').then((resp) => {
-                if (resp.data && resp.data.length > 0) {
-                    setConfig(resp.data[0]);
-                }
-            });
-        }
-    }, [auth, getConfiguration]);
 
     useEffect(() => {
         if (!isRunning && session.history.length && dirtySession) {
@@ -462,12 +460,54 @@ export default function Chat ({ sessionId }) {
                 setFileContext={setFileContext}
                 selectedModel={selectedModel}
             />
+            <PromptTemplateModal
+                showModal={showPromptTemplateModal}
+                setShowModal={setShowPromptTemplateModal}
+                setUserPrompt={setUserPrompt}
+                setSelectedModel={setSelectedModel}
+                chatConfiguration={chatConfiguration}
+                setChatConfiguration={setChatConfiguration}
+                key={promptTemplateKey}
+                config={config}
+            />
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
                         <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>
                     ))}
                     {isRunning && !isStreaming && <Message isRunning={isRunning} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay} message={new LisaChatMessage({type: 'ai', content: ''})}/>}
+                    { session.history.length === 0 && sessionId === undefined && <div style={{height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '2em', textAlign: 'center'}}>
+                        <div>
+                            <Header variant='h1'>What would you like to do?</Header>
+                        </div>
+                        <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '1em', textAlign: 'center'}}>
+                            <Button variant='normal' onClick={() => navigate(`/chatbot/${uuidv4()}`)}>
+                                <SpaceBetween direction='horizontal' size='xs'>
+                                    <FontAwesomeIcon icon={faMessage} />
+                                    <TextContent>Start chatting</TextContent>
+                                </SpaceBetween>
+                            </Button>
+                            
+                            { config?.configuration?.enabledComponents?.editPromptTemplate && (
+                                <Button variant='normal' onClick={() => {
+                                    setPromptTemplateKey(new Date().toISOString());
+                                    setShowPromptTemplateModal(true);
+                                }}>
+                                    <SpaceBetween direction='horizontal' size='xs'>
+                                        <FontAwesomeIcon icon={faPenToSquare} />
+                                        <TextContent>Update Prompt</TextContent>
+                                    </SpaceBetween>
+                                </Button>
+                            )}
+                            
+                            <Button variant='normal' onClick={() => setShowDocumentSummarizationModal(true)}>
+                                <SpaceBetween direction='horizontal' size='xs'>
+                                    <FontAwesomeIcon icon={faFileLines} />
+                                    <TextContent>Summarize a doc</TextContent>
+                                </SpaceBetween>
+                            </Button>
+                        </div>
+                    </div>}
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>

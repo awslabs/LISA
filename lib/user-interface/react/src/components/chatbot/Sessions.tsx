@@ -23,7 +23,6 @@ import { Pagination } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { DateTime } from 'luxon';
 import { useCollection } from '@cloudscape-design/collection-hooks';
-import { v4 as uuidv4 } from 'uuid';
 import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     sessionApi,
@@ -152,7 +151,7 @@ export function Sessions () {
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
                                     <Button iconName='add-plus' variant='inline-link'>
-                                        <Link onClick={() => navigate(`chatbot/${uuidv4()}`)}>New</Link>
+                                        <Link onClick={() => navigate('chatbot')}>New</Link>
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'

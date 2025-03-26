@@ -79,6 +79,12 @@ export class PromptTemplateApi extends Construct {
             }
         });
 
+        const environment = {
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
+            PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME: byOwnerIndexName,
+        };
+
         const apis: PythonLambdaFunction[] = [
             {
                 name: 'create',
@@ -86,9 +92,7 @@ export class PromptTemplateApi extends Construct {
                 description: 'Creates prompt template',
                 path: 'prompt-templates',
                 method: 'POST',
-                environment: {
-                    PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
-                },
+                environment,
             },
             {
                 name: 'get',
@@ -96,9 +100,7 @@ export class PromptTemplateApi extends Construct {
                 description: 'Creates or updates prompt template',
                 path: 'prompt-templates/{promptTemplateId}',
                 method: 'GET',
-                environment: {
-                    PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
-                },
+                environment,
             },
             {
                 name: 'list',
@@ -106,10 +108,7 @@ export class PromptTemplateApi extends Construct {
                 description: 'Lists available prompt templates',
                 path: 'prompt-templates',
                 method: 'GET',
-                environment: {
-                    PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
-                    PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME: byOwnerIndexName,
-                },
+                environment,
             },
             {
                 name: 'update',
@@ -117,9 +116,7 @@ export class PromptTemplateApi extends Construct {
                 description: 'Updates prompt template',
                 path: 'prompt-templates/{promptTemplateId}',
                 method: 'PUT',
-                environment: {
-                    PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
-                },
+                environment,
             },
             {
                 name: 'delete',
@@ -127,9 +124,7 @@ export class PromptTemplateApi extends Construct {
                 description: 'Creates or updates prompt template',
                 path: 'prompt-templates/{promptTemplateId}',
                 method: 'DELETE',
-                environment: {
-                    PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
-                },
+                environment,
             },
         ];
 

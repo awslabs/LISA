@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing sessions."""
+from functools import reduce
 import json
 import logging
 import os
@@ -22,7 +23,6 @@ from typing import Any, Dict, List, Optional
 from boto3.dynamodb.conditions import Key, Attr
 
 import boto3
-import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
 from .models import PromptTemplateModel
 from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, is_admin, retry_config
@@ -37,17 +37,14 @@ def _get_prompt_templates(user_id: Optional[str] = None, groups: Optional[List] 
     filter_expression = None
 
     if latest:
-        print(f"latest({latest})")
         condition = Attr('latest').eq(True)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     if user_id:
-        print(f"owner({user_id})")
         condition = Attr("owner").eq(user_id)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     if groups:
-        print(f"groups({groups})")
         if len(groups) == 0:
             condition = Attr("groups").size().eq(0)
             filter_expression = condition if filter_expression is None else filter_expression & condition
@@ -82,7 +79,6 @@ def get(event: dict, context: dict) -> Dict[str, Any]:
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)
 
-    # todo: make sure they're admin or part of all groups
 
     # find latest prompt template revision
     response = table.query(
@@ -95,6 +91,11 @@ def get(event: dict, context: dict) -> Dict[str, Any]:
 
     if item is None:
         raise ValueError(f"Prompt template {prompt_template_id} not found.")
+    
+    is_owner = item["owner"] == user_id
+    is_group_member = set(get_groups(event)) & set(item["groups"])
+    if not is_admin(event) and not is_owner and not is_group_member:
+        raise ValueError(f"Not authorized to get {prompt_template_id}.")
     
     return item
 
@@ -130,8 +131,6 @@ def create(event: dict, context: dict) -> Dict[str, Any]:
     body["owner"] = user_id
     model = PromptTemplateModel(**body)
 
-    # todo: make sure they're admin or part of all groups
-
     table.put_item(Item=model.model_dump(exclude_none=True))
     return model.model_dump()
 
@@ -143,8 +142,6 @@ def update(event: dict, context: dict) -> Dict[str, Any]:
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
     model = PromptTemplateModel(**body)
-
-    # todo: make sure they're admin or part of all groups
 
     if prompt_template_id != model.id:
         raise ValueError(f"URL id {prompt_template_id} doesn't match body id {model.id}")
@@ -174,13 +171,13 @@ def update(event: dict, context: dict) -> Dict[str, Any]:
         # overwite non-editable fields to make sure nothing is being updated unexpectedly
         model = model.new_revision(update={
             'id': item['id'],
-            'owner': user_id
+            'owner': item['owner']
         })
         logger.info(f"new model: {model.model_dump(exclude_none=True)}")
         response = table.put_item(Item=model.model_dump(exclude_none=True))
         return model.model_dump()
 
-    raise ValueError(f"Not authorized to delete {prompt_template_id}.")
+    raise ValueError(f"Not authorized to update {prompt_template_id}.")
 
 
 @api_wrapper

@@ -82,16 +82,17 @@ function PromptTemplatesActionButton (dispatch: ThunkDispatch<any, any, Action>,
     const items = [];
     if (selectedPromptTemplate) {
         items.push({
-            text: 'Delete',
-            id: 'deletePromptTemplate',
-            disabled: !user.isUserAdmin && props.showPublic,
-            disabledReason: 'You cannot delete a Prompt Template you down own.',
-        });
-        items.push({
             text: 'Edit',
             id: 'editPromptTemplate',
             disabled: !user.isUserAdmin && props.showPublic,
             disabledReason: 'You cannot edit a Prompt Template you down own.',
+        });
+
+        items.push({
+            text: 'Delete',
+            id: 'deletePromptTemplate',
+            disabled: !user.isUserAdmin && props.showPublic,
+            disabledReason: 'You cannot delete a Prompt Template you down own.',
         });
     }
 

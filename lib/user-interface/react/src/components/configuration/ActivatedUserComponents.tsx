@@ -73,7 +73,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                             </Header>
                             {Object.keys(operation.items).map((item) => {
                                 return (
-                                    <Box textAlign='center' key={operation}>
+                                    <Box textAlign='center' key={item}>
                                         <SpaceBetween alignItems='start' size='xs'>
                                             <Toggle
                                                 onChange={({detail}) => {

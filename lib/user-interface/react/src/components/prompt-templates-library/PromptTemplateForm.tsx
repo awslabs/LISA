@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { Button, Container, Form, FormField, Header, Input, SpaceBetween, Textarea, TokenGroup } from '@cloudscape-design/components';
+import { Button, Container, Form, FormField, Header, Input, SpaceBetween, Textarea, Toggle, TokenGroup } from '@cloudscape-design/components';
 import 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DefaultPromptTemplate, NewPromptTemplate, useCreatePromptTemplateMutation, useLazyGetPromptTemplateQuery, useUpdatePromptTemplateMutation } from '../../shared/reducers/prompt-templates.reducer';
@@ -51,7 +51,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
         dispatch(setBreadcrumbs([
             { text: 'Prompt Templates', href: '/prompt-templates' },
             { text: data.title, href: '' }
-        ]));        
+        ]));
     } else {
         dispatch(setBreadcrumbs([
             { text: 'Prompt Templates', href: '/prompt-templates' },
@@ -61,7 +61,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
 
     const schema = z.object({
         title: z.string().trim().min(1, 'String cannot be empty.'),
-        body: z.string().trim().min(1, 'String cannot be empty.')
+        body: z.string().trim().min(1, 'String cannot be empty.'),
     });
 
     const { errors, touchFields, setFields, isValid, state, setState } = useValidationReducer(schema, {
@@ -99,9 +99,19 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     const tokenTextResult = tokenTextSchema.safeParse({'groups': tokenText});
     const tokenTextErrors = tokenTextResult.success ? undefined : issuesToErrors(tokenTextResult?.error?.issues || [], state.touched);
 
+    const [sharePublic, setSharePublic] = useState(false);
+
+    useEffect(() => {
+        if (data?.groups?.findIndex((group) => group === 'lisa:public') > -1) {
+            setSharePublic(true);
+        }
+    }, [data?.groups]);
+
     // memoize conversion to tokens
     const tokens = useMemo(() => {
-        return state.form.groups.map((group) => ({label: group}));
+        return state.form.groups
+            .filter((group) => group !== 'lisa:public')
+            .map((group) => ({label: group.replace(/^\w+:/, '')}));
     }, [state.form.groups]);
 
     // create success notification
@@ -143,7 +153,17 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                         placeholder='Enter prompt template title' />
                     </FormField>
 
-                    <FormField label='Share with groups' errorText={tokenTextErrors?.groups} description={'Groups who can view this template. Enter a group name and then press return.'}>
+                    <FormField label='Share with everyone'>
+                        <Toggle checked={sharePublic} onChange={({detail}) => {
+                            setSharePublic(detail.checked);
+                            setFields({groups: detail.checked ? ['lisa:public'] : []});
+                            touchFields(['groups'], ModifyMethod.Unset);
+                            setTokenText('');
+                        }}
+                        disabled={disabled} />
+                    </FormField>
+
+                    <FormField label='Share only with groups' errorText={tokenTextErrors?.groups} description={'Prompts are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
                         <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
                             setTokenText(detail.value);
                             if (detail.value.length === 0) {
@@ -151,7 +171,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                             }
                         }} onKeyDown={({detail}) => {
                             if (detail.keyCode === KeyCode.enter) {
-                                setFields({groups: state.form.groups.concat(tokenText)});
+                                setFields({groups: state.form.groups.concat(`group:${tokenText}`)});
                                 touchFields(['groups'], ModifyMethod.Unset);
                                 setTokenText('');
                             }
@@ -164,13 +184,13 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                             }
                         }}
                         placeholder='Enter group name'
-                        disabled={disabled} />
+                        disabled={disabled || sharePublic} />
                     </FormField>
                     <TokenGroup items={tokens} onDismiss={({detail}) => {
                         const newTokens = [...state.form.groups];
                         newTokens.splice(detail.itemIndex, 1);
                         setFields({groups: newTokens});
-                    }} readOnly={disabled} />
+                    }} readOnly={disabled || sharePublic} />
 
                     <hr />
 

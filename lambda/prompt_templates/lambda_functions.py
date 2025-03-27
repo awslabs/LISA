@@ -49,13 +49,11 @@ def _get_prompt_templates(
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     if groups:
-        if len(groups) == 0:
-            condition = Attr("groups").size().eq(0)
-            filter_expression = condition if filter_expression is None else filter_expression & condition
-        else:
-            conditions = [Attr("groups").contains(group) for group in groups]
-            condition = reduce(lambda a, b: a | b, conditions)
-            filter_expression = condition if filter_expression is None else filter_expression & condition
+        condition = Attr("groups").contains("lisa:public")
+        if len(groups) > 0:
+            conditions = [Attr("groups").contains(f"group:{group}") for group in groups]
+            condition = reduce(lambda a, b: a | b, conditions, condition)
+        filter_expression = condition if filter_expression is None else filter_expression & condition
 
     scan_arguments = {
         "TableName": os.environ["PROMPT_TEMPLATES_TABLE_NAME"],

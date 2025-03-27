@@ -88,7 +88,13 @@ export function PromptTemplatesLibraryComponent () {
             items={items}
             columnDefinitions={[
                 { header: 'Title', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.title}</Link>},
-                { header: 'Groups', cell: (item) => item.groups.length ? item.groups.join(', ') : '-'},
+                { header: 'Groups', cell: (item) => {
+                    if (item.groups.findIndex((group) => group === 'lisa:public') > -1) {
+                        return <em>(public)</em>;
+                    }
+
+                    return item.groups.length ? item.groups.map((group) => group.replace(/^\w+?:/, '')).join(', ') : '-';
+                }},
                 { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
                 { header: 'Revision', cell: (item) => (item.revision || 1)}
             ]}

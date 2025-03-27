@@ -53,7 +53,7 @@ def _get_prompt_templates(
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     # Filter by user groups if provided
-    if groups:
+    if groups is not None:
         condition = Attr("groups").contains("lisa:public")
         if len(groups) > 0:
             conditions = [Attr("groups").contains(f"group:{group}") for group in groups]
@@ -98,11 +98,20 @@ def get(event: dict, context: dict) -> Any:
 
     # Check if the user is authorized to get the prompt template
     is_owner = item["owner"] == user_id
-    is_group_member = set(get_groups(event)) & set(item["groups"])
-    if not is_admin(event) and not is_owner and not is_group_member:
-        raise ValueError(f"Not authorized to get {prompt_template_id}.")
+    if is_owner or is_admin(event) or is_member(get_groups(event), item["groups"]):
+        # add extra attribute so the frontend doesn't have to determine this
+        if is_owner:
+            item["isOwner"] = True
+        return item
 
-    return item
+    raise ValueError(f"Not authorized to get {prompt_template_id}.")
+
+
+def is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
+    if "lisa:public" in prompt_groups:
+        return True
+
+    return set(user_groups) & set(prompt_groups)
 
 
 @api_wrapper

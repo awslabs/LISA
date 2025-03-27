@@ -23,9 +23,10 @@ import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyCode } from '@cloudscape-design/component-toolkit/internal';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
-import { useAppDispatch } from '../../config/store';
+import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { ModifyMethod } from '../../shared/validation/modify-method';
+import { selectCurrentUserIsAdmin } from '../../shared/reducers/user.reducer';
 
 export type PromptTemplateFormProps = {
     isEdit?: boolean
@@ -36,6 +37,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     const { promptTemplateId } = useParams();
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
 
     const [createPromptTemplate, {isLoading: isCreating, isSuccess: isCreatingSuccess, isError: isCreatingError, error: createError}] = useCreatePromptTemplateMutation();
     const [updatePromptTemplate, {isLoading: isUpdating, isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdatePromptTemplateMutation();
@@ -70,6 +72,8 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
         touched: {},
         validateAll: false
     });
+
+    const canEdit = promptTemplateId ? (isUserAdmin || data?.isOwner) : true;
     const disabled = isFetching || isCreating || isUpdating;
 
     if (isEdit && isUninitialized && promptTemplateId) {
@@ -137,8 +141,8 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
             actions={
                 <SpaceBetween direction='horizontal' size='s'>
                     <Button onClick={() => navigate(-1)}>Cancel</Button>
-                    <Button variant='primary' disabled={disabled} onClick={() => submit(state.form)}>
-                        Create Prompt Template
+                    <Button variant='primary' disabled={disabled || !canEdit} onClick={() => submit(state.form)}>
+                        { promptTemplateId ? 'Update' : 'Create'} Prompt Template
                     </Button>
                 </SpaceBetween>
             }

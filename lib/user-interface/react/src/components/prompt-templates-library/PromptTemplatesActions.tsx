@@ -54,7 +54,7 @@ export function PromptTemplatesActions (props: PromptTemplatesActionsProps): Rea
             <Button variant='primary' onClick={() => {
                 navigate('./new');
             }}>
-                New Prompt Template
+                Create Prompt Template
             </Button>
         </SpaceBetween>
     );

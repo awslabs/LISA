@@ -27,6 +27,7 @@ export type PromptTemplate = {
     revision: number;
     latest?: boolean;
     body: string;
+    isOwner?: true;
 };
 
 export type NewPromptTemplate = Partial<PromptTemplate> & Pick<PromptTemplate, | 'groups' | 'title' | 'body'>;

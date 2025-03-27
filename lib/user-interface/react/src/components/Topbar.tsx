@@ -61,6 +61,27 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
         }
     }, []);
 
+    const libraryItems = [
+        ...(configs?.configuration.enabledComponents?.showRagLibrary ? [{
+            id: 'document-library',
+            type: 'button',
+            variant: 'link',
+            text: 'Document Library',
+            disableUtilityCollapse: false,
+            external: false,
+            href: '/document-library',
+        } as ButtonDropdownProps.Item] : []),
+        ...(configs?.configuration.enabledComponents?.showPromptTemplateLibrary ? [{
+            id: 'prompt-template',
+            type: 'button',
+            variant: 'link',
+            text: 'Prompt Library',
+            disableUtilityCollapse: false,
+            external: false,
+            href: '/prompt-templates',
+        } as ButtonDropdownProps.Item] : []),
+    ];
+
     return (
         <TopNavigation
             identity={{
@@ -78,37 +99,18 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     disableUtilityCollapse: false,
                     external: false,
                     onClick: () => {
-                        navigate('/chatbot');
+                        navigate('/ai-assistant');
                     },
                 },
-                {
+                ...(libraryItems.length && [{
                     type: 'menu-dropdown',
                     text: 'Libraries',
                     onItemClick: (event) => {
                         event.preventDefault();
                         navigate(event.detail.href);
                     },
-                    items: [
-                        ...(configs?.configuration.enabledComponents?.showRagLibrary ? [{
-                            id: 'document-library',
-                            type: 'button',
-                            variant: 'link',
-                            text: 'Document Library',
-                            disableUtilityCollapse: false,
-                            external: false,
-                            href: '/document-library',
-                        } as ButtonDropdownProps.Item] : []),
-                        ...(configs?.configuration.enabledComponents?.showPromptTemplateLibrary ? [{
-                            id: 'prompt-template',
-                            type: 'button',
-                            variant: 'link',
-                            text: 'Prompt Library',
-                            disableUtilityCollapse: false,
-                            external: false,
-                            href: '/prompt-templates',
-                        } as ButtonDropdownProps.Item] : []),
-                    ]
-                } as TopNavigationProps.Utility,
+                    items: libraryItems
+                } as TopNavigationProps.Utility]),
                 ...((isUserAdmin
                     ? [{
                         type: 'menu-dropdown',

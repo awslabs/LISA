@@ -83,7 +83,7 @@ def _get_prompt_templates(
 
 
 @api_wrapper
-def get(event: dict, context: dict) -> Dict[str, Any]:
+def get(event: dict, context: dict) -> Any:
     """Retrieve a specific prompt template from DynamoDB."""
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)

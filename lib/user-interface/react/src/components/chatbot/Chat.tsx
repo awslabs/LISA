@@ -138,10 +138,13 @@ export default function Chat ({ sessionId }) {
                 const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
 
                 // Convert chat history to messages format
-                const messages = session.history.concat(params.message).map((msg) => ({
+                let messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
                     content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
-                })).slice(-chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2);
+                }));
+
+                const [systemMessage, ...remainingMessages] = messages;
+                messages = [systemMessage, ...remainingMessages.slice(-chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2)];
 
                 if (chatConfiguration.sessionConfiguration.streaming) {
                     setIsStreaming(true);

@@ -112,7 +112,7 @@ export function Sessions () {
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
     return (
-        <div className='p-5'>
+        <div className='p-9'>
             <Table
                 {...collectionProps}
                 variant='embedded'

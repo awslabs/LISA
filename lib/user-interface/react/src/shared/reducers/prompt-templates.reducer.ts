@@ -19,7 +19,7 @@ import { lisaBaseQuery } from './reducer.utils';
 import { normalizeError } from '../util/validationUtils';
 
 export type PromptTemplate = {
-    id: string | undefined;
+    id: string;
     created: string;
     owner: string;
     groups: string[];
@@ -82,7 +82,7 @@ export const promptTemplateApi = createApi({
         updatePromptTemplate: builder.mutation<PromptTemplate, PromptTemplate>({
             query: (promptTemplate) => ({
                 url: `/prompt-templates/${promptTemplate.id}`,
-                method: 'PUT', 
+                method: 'PUT',
                 data: promptTemplate
             }),
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Update Prompt Template', baseQueryReturnValue),

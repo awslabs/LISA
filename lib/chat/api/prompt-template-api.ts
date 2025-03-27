@@ -1,3 +1,19 @@
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
 import { Construct } from 'constructs';
 import { BaseProps } from '../../schema';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -10,6 +26,10 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Vpc } from '../../networking/vpc';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 
+/**
+ * Properties required to initialize the PromptTemplateApi construct,
+ * including AWS resources like API Gateway, VPC, and security configurations.
+ */
 type PromptTemplateApiProps = {
     authorizer: IAuthorizer;
     restApiId: string;
@@ -18,7 +38,9 @@ type PromptTemplateApiProps = {
     vpc: Vpc;
 } & BaseProps;
 
-// Construct for managing API endpoints related to prompt templates
+/**
+ * Constructs and manages API endpoints for handling prompt templates in the application.
+ */
 export class PromptTemplateApi extends Construct {
     constructor (scope: Construct, id: string, props: PromptTemplateApiProps) {
         super(scope, id);
@@ -97,7 +119,7 @@ export class PromptTemplateApi extends Construct {
             {
                 name: 'get',
                 resource: 'prompt_templates',
-                description: 'Creates or updates prompt template',
+                description: 'Retrieves specific prompt template by ID',
                 path: 'prompt-templates/{promptTemplateId}',
                 method: 'GET',
                 environment,
@@ -105,7 +127,7 @@ export class PromptTemplateApi extends Construct {
             {
                 name: 'list',
                 resource: 'prompt_templates',
-                description: 'Lists available prompt templates',
+                description: 'Lists all available prompt templates',
                 path: 'prompt-templates',
                 method: 'GET',
                 environment,
@@ -113,7 +135,7 @@ export class PromptTemplateApi extends Construct {
             {
                 name: 'update',
                 resource: 'prompt_templates',
-                description: 'Updates prompt template',
+                description: 'Updates an existing prompt template',
                 path: 'prompt-templates/{promptTemplateId}',
                 method: 'PUT',
                 environment,
@@ -121,7 +143,7 @@ export class PromptTemplateApi extends Construct {
             {
                 name: 'delete',
                 resource: 'prompt_templates',
-                description: 'Creates or updates prompt template',
+                description: 'Deletes a specific prompt template by ID',
                 path: 'prompt-templates/{promptTemplateId}',
                 method: 'DELETE',
                 environment,

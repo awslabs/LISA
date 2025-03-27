@@ -110,7 +110,7 @@ def is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
     if "lisa:public" in prompt_groups:
         return True
 
-    return set(user_groups) & set(prompt_groups)
+    return bool(set(user_groups) & set(prompt_groups))
 
 
 @api_wrapper

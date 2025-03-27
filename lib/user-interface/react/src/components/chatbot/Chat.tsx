@@ -459,11 +459,12 @@ export default function Chat ({ sessionId }) {
                     disabled={isRunning}
                     onClick={() => {
                         const element = document.createElement('a');
-                        const file = new Blob([JSON.stringify(session)], { type: 'application/json' });
+                        const file = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
                         element.href = URL.createObjectURL(file);
                         element.download = `${session.sessionId}.json`;
                         document.body.appendChild(element); // Required for this to work in FireFox
                         element.click();
+                        element.remove();
                     }}
                 >
                     Download Session

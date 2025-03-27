@@ -476,7 +476,7 @@ export default function Chat ({ sessionId }) {
                                 }}>
                                     <SpaceBetween direction='horizontal' size='xs'>
                                         <FontAwesomeIcon icon={faPenToSquare} />
-                                        <TextContent>Update Prompt</TextContent>
+                                        <TextContent>Select Persona</TextContent>
                                     </SpaceBetween>
                                 </Button>
                             )}
@@ -609,7 +609,7 @@ export default function Chat ({ sessionId }) {
                                                                 {
                                                                     id: 'edit-prompt-template',
                                                                     iconName: 'contact',
-                                                                    text: 'Edit Prompt Template'
+                                                                    text: 'Edit Persona'
                                                                 },
                                                             ]
                                                         }] as ButtonGroupProps.Item[] : [])

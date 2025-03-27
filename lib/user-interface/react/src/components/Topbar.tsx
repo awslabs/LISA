@@ -102,15 +102,17 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                         navigate('/ai-assistant');
                     },
                 },
-                ...(libraryItems.length && [{
-                    type: 'menu-dropdown',
-                    text: 'Libraries',
-                    onItemClick: (event) => {
-                        event.preventDefault();
-                        navigate(event.detail.href);
-                    },
-                    items: libraryItems
-                } as TopNavigationProps.Utility]),
+                ...(
+                    libraryItems.length ? [{
+                        type: 'menu-dropdown',
+                        text: 'Libraries',
+                        onItemClick: (event) => {
+                            event.preventDefault();
+                            navigate(event.detail.href);
+                        },
+                        items: libraryItems
+                    }] as TopNavigationProps.Utility[] : []
+                ),
                 ...((isUserAdmin
                     ? [{
                         type: 'menu-dropdown',

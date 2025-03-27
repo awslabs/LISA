@@ -18,6 +18,11 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { normalizeError } from '../util/validationUtils';
 
+export enum PromptTemplateType {
+    Persona = 'persona',
+    Directive = 'directive'
+}
+
 export type PromptTemplate = {
     id: string;
     created: string;
@@ -27,20 +32,21 @@ export type PromptTemplate = {
     revision: number;
     latest?: boolean;
     body: string;
+    type: PromptTemplateType;
     isOwner?: true;
 };
 
-export type NewPromptTemplate = Partial<PromptTemplate> & Pick<PromptTemplate, | 'groups' | 'title' | 'body'>;
+export type NewPromptTemplate = Partial<PromptTemplate> & Pick<PromptTemplate, | 'groups' | 'title' | 'body' | 'type'>;
 
 export const DefaultPromptTemplate: NewPromptTemplate = {
     groups: [],
     title: '',
-    body: ''
+    body: '',
+    type: PromptTemplateType.Persona
 };
 
 export type PromptTemplateListResponse = {
     Items: PromptTemplate[],
-    LastEvaluatedKey: string
 };
 
 export const promptTemplateApi = createApi({

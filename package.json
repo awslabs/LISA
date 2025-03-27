@@ -11,10 +11,7 @@
   "bugs": {
     "url": "https://github.com/awslabs/lisa/issues"
   },
-  "author": {
-    "name": "Amazon Web Services",
-    "url": "https://aws.amazon.com"
-  },
+  "author": "Amazon Web Services (https://aws.amazon.com)",
   "keywords": [
     "aws",
     "bedrock",
@@ -101,5 +98,10 @@
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"
+  },
+  "main": "jest.config.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
   }
 }

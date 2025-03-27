@@ -36,7 +36,6 @@ table = dynamodb.Table(os.environ["PROMPT_TEMPLATES_TABLE_NAME"])
 def _get_prompt_templates(
     user_id: Optional[str] = None,
     groups: Optional[List] = None,
-    cursor: Optional[str] = None,
     latest: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Helper function to retrieve prompt templates from DynamoDB."""
@@ -118,21 +117,20 @@ def is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
 def list(event: dict, context: dict) -> Dict[str, Any]:
     """List prompt templates for a user from DynamoDB."""
     query_params = event.get("queryStringParameters", {})
-    cursor = query_params.get("cursor", None)
     user_id = get_username(event)
 
     # Check whether to list public or private templates
     if query_params.get("public") == "true":
         if is_admin(event):
             logger.info(f"Listing all templates for user {user_id} (is_admin)")
-            return _get_prompt_templates(cursor=cursor, latest=True)
+            return _get_prompt_templates(latest=True)
         else:
             groups = get_groups(event)
             logger.info(f"Listing public templates for user {user_id} with groups {groups}")
-            return _get_prompt_templates(groups=groups, cursor=cursor, latest=True)
+            return _get_prompt_templates(groups=groups, latest=True)
     else:
         logger.info(f"Listing private templates for user {user_id}")
-        return _get_prompt_templates(user_id=user_id, cursor=cursor, latest=True)
+        return _get_prompt_templates(user_id=user_id, latest=True)
 
 
 @api_wrapper

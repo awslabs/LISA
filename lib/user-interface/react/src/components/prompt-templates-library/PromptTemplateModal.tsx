@@ -29,7 +29,7 @@ import { useMemo, useState } from 'react';
 import { IModel } from '../../shared/model/model-management.model';
 import { DEFAULT_PROMPT_TEMPLATE, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import FormField from '@cloudscape-design/components/form-field';
-import { PromptTemplate, useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
+import { useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { LisaChatSession } from '../types';
 
@@ -52,12 +52,11 @@ export function PromptTemplateModal ({
     setSelectedModel,
     chatConfiguration,
     setChatConfiguration,
-    config
+    config,
 }: PromptTemplateModalProps) {
     const [selectedOption, setSelectedOption] = useState<SelectProps.Option>({label: 'Owned by me', value: ''});
     const args = {showPublic: Boolean(selectedOption.value)};
     const { data: {Items: allItems} = {Items: []}, isFetching: isFetchingList } = useListPromptTemplatesQuery(args, {});
-    const [selectedItem, setSelectedItem] = useState<PromptTemplate>();
     const [suggestText, setSuggestText] = useState<string>('');
     const [promptTemplateText, setPromptTemplateText] = useState(chatConfiguration.promptConfiguration.promptTemplate);
     const disabled = session.history.length > 0;
@@ -75,13 +74,11 @@ export function PromptTemplateModal ({
         <Modal
             onDismiss={() => {
                 setShowModal(false);
-                setSelectedItem(undefined);
                 setUserPrompt('');
                 setSelectedModel(undefined);
-                setSelectedItem(undefined);
             }}
             visible={showModal}
-            header='Prompt Editor'
+            header={'Persona Editor'}
             size='large'
             footer={
                 <Box float='right'>
@@ -89,7 +86,6 @@ export function PromptTemplateModal ({
                         <Button
                             onClick={() => {
                                 setShowModal(false);
-                                setSelectedItem(undefined);
                                 setUserPrompt('');
                                 setSelectedModel(undefined);
                             }}
@@ -104,7 +100,7 @@ export function PromptTemplateModal ({
                                     ...chatConfiguration,
                                     promptConfiguration: {
                                         ...chatConfiguration.promptConfiguration,
-                                        promptTemplate: selectedItem.body
+                                        promptTemplate: promptTemplateText
                                     }
                                 });
 
@@ -113,7 +109,7 @@ export function PromptTemplateModal ({
                             disabled={disabled}
                             disabledReason={'The Prompt cannot be updated after session has started.'}
                         >
-                            Update Prompt
+                            Use Persona
                         </Button>
                     </SpaceBetween>
                 </Box>
@@ -121,7 +117,7 @@ export function PromptTemplateModal ({
         >
             <SpaceBetween direction='vertical' size='m'>
                 { !disabled && config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <SpaceBetween direction='horizontal' size='s'>
-                    <FormField label='Select existing Prompt'>
+                    <FormField label={'Select existing Persona'}>
                         <SpaceBetween direction='horizontal' size='s'>
                             <Autosuggest
                                 placeholder='Search by title'
@@ -131,13 +127,9 @@ export function PromptTemplateModal ({
                                 statusType={isFetchingList ? 'loading' : 'finished'}
                                 onChange={({detail}) => {
                                     setSuggestText(detail.value);
-                                    if (detail.value.length === 0) {
-                                        setSelectedItem(undefined);
-                                    }
                                 }}
                                 onSelect={({detail}) => {
                                     const item = allItems.find((item) => item.id === detail.selectedOption?.id);
-                                    setSelectedItem(item);
                                     setPromptTemplateText(item.body);
                                 }}
                                 loadingText={'Loading Prompts'}
@@ -158,13 +150,12 @@ export function PromptTemplateModal ({
 
                 <hr />
 
-                <FormField label='Prompt Template' description='Sets the initial system prompt to setup the conversation with an LLM.'>
+                <FormField label={'Persona Template'} description='Sets the initial system prompt to setup the conversation with an LLM.'>
                     <Textarea rows={10} value={promptTemplateText} placeholder='Enter prompt text' onChange={({detail}) => setPromptTemplateText(detail.value)} />
                 </FormField>
                 { !disabled && promptTemplateText !== DEFAULT_PROMPT_TEMPLATE && (
                     <Link onClick={() => {
                         setSuggestText('');
-                        setSelectedItem(undefined);
                         setPromptTemplateText(DEFAULT_PROMPT_TEMPLATE);
                     }}>Reset to default</Link>
                 )}

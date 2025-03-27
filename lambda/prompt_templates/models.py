@@ -14,9 +14,21 @@
 
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+class PromptTemplateType(str, Enum):
+    """Enum representing the prompt template type."""
+
+    def __str__(self) -> str:
+        """Represent the enum as a string."""
+        return str(self.value)
+
+    PERSONA = "persona"
+    DIRECTIVE = "directive"
 
 
 class PromptTemplateModel(BaseModel):
@@ -45,6 +57,8 @@ class PromptTemplateModel(BaseModel):
 
     # Flag indicating if this is the latest revision
     latest: Optional[bool] = Field(default=True)
+
+    type: PromptTemplateType = Field(default=PromptTemplateType.PERSONA)
 
     # The main body content of the prompt template
     body: str

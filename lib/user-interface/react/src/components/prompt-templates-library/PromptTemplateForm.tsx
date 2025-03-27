@@ -39,8 +39,8 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     const dispatch = useAppDispatch();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
 
-    const [createPromptTemplate, {isLoading: isCreating, isSuccess: isCreatingSuccess, isError: isCreatingError, error: createError}] = useCreatePromptTemplateMutation();
-    const [updatePromptTemplate, {isLoading: isUpdating, isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdatePromptTemplateMutation();
+    const [createPromptTemplate, {data: createData, isLoading: isCreating, isSuccess: isCreatingSuccess, isError: isCreatingError, error: createError}] = useCreatePromptTemplateMutation();
+    const [updatePromptTemplate, {data: updateData, isLoading: isUpdating, isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdatePromptTemplateMutation();
     const [getPromptTemplateQuery, {data, isSuccess, isUninitialized, isFetching}] = useLazyGetPromptTemplateQuery();
     const notificationService = useNotificationService(dispatch);
 
@@ -53,11 +53,6 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
         dispatch(setBreadcrumbs([
             { text: 'Prompt Templates', href: '/prompt-templates' },
             { text: data.title, href: '' }
-        ]));
-    } else {
-        dispatch(setBreadcrumbs([
-            { text: 'Prompt Templates', href: '/prompt-templates' },
-            { text: 'some other', href: '' }
         ]));
     }
 
@@ -122,9 +117,10 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     useEffect(() => {
         if (isCreatingSuccess || isUpdatingSuccess) {
             const verb = isCreatingSuccess ? 'created' : 'updated';
+            const data = isCreatingSuccess ? createData : updateData;
             notificationService.generateNotification(`Successfully ${verb} Prompt Template: ${data.title}`, 'success');
         }
-    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, data]);
+    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData]);
 
     // create failure notification
     useEffect(() => {
@@ -137,17 +133,20 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
 
     return (
         <Form
-            header={<Header variant='h1'>Prompt Template</Header>}
+            header={<Header variant='h1'>Persona Template</Header>}
             actions={
                 <SpaceBetween direction='horizontal' size='s'>
                     <Button onClick={() => navigate(-1)}>Cancel</Button>
-                    <Button variant='primary' disabled={disabled || !canEdit} onClick={() => submit(state.form)}>
+                    <Button variant='primary'
+                        disabled={disabled || !canEdit}
+                        disabledReason={!canEdit ? 'You can only edit prompts you created.' : undefined}
+                        onClick={() => submit(state.form)}>
                         { promptTemplateId ? 'Update' : 'Create'} Prompt Template
                     </Button>
                 </SpaceBetween>
             }
         >
-            <Container header={<Header>Prompt Details</Header>}>
+            <Container header={<Header>Details</Header>}>
                 <SpaceBetween direction='vertical' size='s'>
                     <FormField label='Title' errorText={errors?.title} description={'This will be used to identify your prompt template.'}>
                         <Input value={state.form.title} inputMode='text' onBlur={() => touchFields(['title'])} onChange={({ detail }) => {
@@ -167,7 +166,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                         disabled={disabled} />
                     </FormField>
 
-                    <FormField label='Share only with groups' errorText={tokenTextErrors?.groups} description={'Prompts are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
+                    <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Prompts are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
                         <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
                             setTokenText(detail.value);
                             if (detail.value.length === 0) {

@@ -15,7 +15,7 @@
 */
 
 import 'regenerator-runtime/runtime';
-import { ReactElement, useEffect, useMemo, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
@@ -31,7 +31,7 @@ import ModelManagement from './pages/ModelManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
-import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
+import { useLazyGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
 import RepositoryLibrary from './pages/RepositoryLibrary';
@@ -79,16 +79,14 @@ function App () {
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
-    const { data: fullConfig, refetch: refetchConfig } = useGetConfigurationQuery('global');
-    const config = useMemo(() => {
-        return fullConfig?.[0];
-    }, [fullConfig]);
+    const [ getConfigurationQuery, {data: fullConfig} ] = useLazyGetConfigurationQuery();
+    const config = fullConfig?.[0];
 
     useEffect(() => {
-        if (!auth.isLoading && auth.isAuthenticated) {
-            refetchConfig();
+        if (!auth.isLoading && auth.isAuthenticated && auth.user) {
+            getConfigurationQuery('global');
         }
-    }, [auth, refetchConfig]);
+    }, [auth, getConfigurationQuery]);
 
     useEffect(() => {
         if (nav) {

@@ -347,23 +347,19 @@ export default function Chat ({ sessionId }) {
         if (fileContext?.startsWith('File context: data:image')) {
             const imageData = fileContext.replace('File context: ', '');
             messageContent = [
+                { type: 'image_url', image_url: { url: `${imageData}` } },
                 { type: 'text', text: userPrompt },
-                { type: 'image_url', image_url: { url: `${imageData}` } }
             ];
         } else if (useRag){
             ragDocs =  await fetchRelevantDocuments(userPrompt);
-            const serialized = `${fileContext}\n${formatDocumentsAsString(ragDocs.data?.docs)}`;
-
-            messages.push(new LisaChatMessage({
-                type: 'system',
-                content: serialized,
-                metadata: {},
-            }));
-            messageContent = userPrompt;
+            messageContent = [
+                { type: 'text', text: 'File context: ' + formatDocumentsAsString(ragDocs.data?.docs)},
+                { type: 'text', text: userPrompt },
+            ];
         } else if (fileContext) {
             messageContent = [
+                { type: 'text', text: fileContext },
                 { type: 'text', text: userPrompt },
-                { type: 'text', text: fileContext }
             ];
         } else {
             messageContent = userPrompt;

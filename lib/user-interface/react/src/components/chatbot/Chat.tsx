@@ -144,7 +144,7 @@ export default function Chat ({ sessionId }) {
                 }));
 
                 const [systemMessage, ...remainingMessages] = messages;
-                messages = [systemMessage, ...remainingMessages.slice(-chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2)];
+                messages = [systemMessage, ...remainingMessages.slice(-(chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2) -1)];
 
                 if (chatConfiguration.sessionConfiguration.streaming) {
                     setIsStreaming(true);

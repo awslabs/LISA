@@ -43,7 +43,7 @@ export class LisaChatApplicationConstruct extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaChatProps} props - Properties for the Stack.
    */
-    constructor(scope: Stack, id: string, props: LisaChatProps) {
+    constructor (scope: Stack, id: string, props: LisaChatProps) {
         super(scope, id);
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;

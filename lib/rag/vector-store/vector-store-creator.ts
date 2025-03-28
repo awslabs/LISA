@@ -27,6 +27,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import path from 'node:path';
+import { EcrReplicatorConstruct } from '../../core/ecrReplicatorConstruct';
 
 const HERE = path.resolve(__dirname);
 
@@ -103,11 +104,17 @@ export class VectorStoreCreatorStack extends Construct {
                 'profile',
                 'vpcId',
             ]),
-            ...(vpc.vpc.vpcId && {vpcId: vpc.vpc.vpcId})
+            ...(vpc.vpc.vpcId && { vpcId: vpc.vpc.vpcId })
         };
 
         const vectorStoreDeployerPath = config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer');
         const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer']);
+        if (config.tagContainers) {
+            new EcrReplicatorConstruct(this, 'LisaVectorStoreDeployer', {
+                path: vectorStoreDeployerPath,
+                buildArgs: { BASE_IMAGE: config.nodejsImage }
+            });
+        }
         this.vectorStoreCreatorFn = new lambda.DockerImageFunction(this, functionId, {
             functionName: functionId,
             code: lambda.DockerImageCode.fromImageAsset(vectorStoreDeployerPath, {

@@ -50,6 +50,7 @@ import { Construct } from 'constructs';
 import { createCdkId } from '../core/utils';
 import { BaseProps, EcsSourceType, Ec2Metadata, ECSConfig } from '../schema';
 import { Vpc } from '../networking/vpc';
+import { EcrReplicatorConstruct } from '../core/ecrReplicatorConstruct';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -198,8 +199,8 @@ export class ECSCluster extends Construct {
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             volumes,
-            ...(taskRole && {taskRole}),
-            ...(executionRole && {executionRole}),
+            ...(taskRole && { taskRole }),
+            ...(executionRole && { executionRole }),
         });
 
         // Add container to task definition
@@ -213,11 +214,11 @@ export class ECSCluster extends Construct {
         };
 
         const linuxParameters =
-      ecsConfig.containerConfig.sharedMemorySize > 0
-          ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
-              sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
-          })
-          : undefined;
+            ecsConfig.containerConfig.sharedMemorySize > 0
+                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
+                    sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
+                })
+                : undefined;
 
         let image: ContainerImage;
         switch (ecsConfig.containerConfig.image.type) {
@@ -240,6 +241,13 @@ export class ECSCluster extends Construct {
             }
             default: {
                 image = ContainerImage.fromAsset(ecsConfig.containerConfig.image.path, { buildArgs: ecsConfig.buildArgs });
+                if (config.tagContainers) {
+                    new EcrReplicatorConstruct(this, ecsConfig.identifier, {
+                        path: ecsConfig.containerConfig.image.path,
+                        buildArgs: ecsConfig.buildArgs
+                    });
+                }
+
                 break;
             }
         }
@@ -336,9 +344,9 @@ export class ECSCluster extends Construct {
         });
 
         const domain =
-      ecsConfig.loadBalancerConfig.domainName !== null
-          ? ecsConfig.loadBalancerConfig.domainName
-          : loadBalancer.loadBalancerDnsName;
+            ecsConfig.loadBalancerConfig.domainName !== null
+                ? ecsConfig.loadBalancerConfig.domainName
+                : loadBalancer.loadBalancerDnsName;
         this.endpointUrl = `${protocol}://${domain}`;
 
         // Update

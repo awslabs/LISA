@@ -31,6 +31,7 @@ import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
 import { Vpc } from '../networking/vpc';
 import * as path from 'path';
+import { EcrReplicatorConstruct } from '../core/ecrReplicatorConstruct';
 
 const HERE = path.resolve(__dirname);
 
@@ -73,6 +74,12 @@ export class ECSModelDeployer extends Construct {
 
         const ecsModelDeployerPath = config.ecsModelDeployerPath || path.join(HERE, '..', '..', 'ecs_model_deployer');
         const functionId = createCdkId([stackName, 'ecs_model_deployer']);
+        if (config.tagContainers) {
+            new EcrReplicatorConstruct(this, 'LisaEcsModelDeployer', {
+                path: ecsModelDeployerPath,
+                buildArgs: { BASE_IMAGE: config.nodejsImage }
+            });
+        }
         this.ecsModelDeployerFn = new DockerImageFunction(this, functionId, {
             functionName: functionId,
             code: DockerImageCode.fromImageAsset(ecsModelDeployerPath, {

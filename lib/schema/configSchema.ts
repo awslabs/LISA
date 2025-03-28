@@ -704,6 +704,7 @@ export const RawConfigObject = z.object({
     privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
     s3BucketModels: z.string().describe('S3 bucket for models.'),
     mountS3DebUrl: z.string().describe('URL for S3-mounted Debian package.'),
+    imageBuilderVolumeSize: z.number().default(30).describe('EC2 volume size for image builder. Needs to be large enough for system plus inference container.'),
     accountNumbersEcr: z
         .array(z.union([z.number(), z.string()]))
         .transform((arr) => arr.map(String))

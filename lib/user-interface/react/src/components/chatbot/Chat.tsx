@@ -284,7 +284,7 @@ export default function Chat ({ sessionId }) {
             });
         }
 
-        if (selectedModel && selectedModel?.features.filter((feature) => feature.name === 'imageInput').length === 0 && fileContext.startsWith('File context: data:image')) {
+        if (selectedModel && selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length === 0 && fileContext.startsWith('File context: data:image')) {
             setFileContext('');
             notificationService.generateNotification('Removed file from context as new model doesn\'t support image input', 'info');
         }

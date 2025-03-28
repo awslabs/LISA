@@ -49,13 +49,6 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            {RepositoryActionButton(dispatch, notificationService, props)}
-            <Button iconName='add-plus' variant='primary' onClick={() => {
-                setEdit(false);
-                setNewRepositoryModalVisible(true);
-            }}>
-                New Repository
-            </Button>
             <Button
                 onClick={() => {
                     setSelectedItems([]);
@@ -64,6 +57,13 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
                 ariaLabel={'Refresh repository table'}
             >
                 <Icon name='refresh' />
+            </Button>
+            {RepositoryActionButton(dispatch, notificationService, props)}
+            <Button variant='primary' onClick={() => {
+                setEdit(false);
+                setNewRepositoryModalVisible(true);
+            }}>
+                Create Repository
             </Button>
         </SpaceBetween>
     );

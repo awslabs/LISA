@@ -183,7 +183,7 @@ export function ConfigurationComponent (): ReactElement {
             >
                 RAG Repository Configuration
             </Header>
-            <RepositoryTable></RepositoryTable>
+            <RepositoryTable />
         </SpaceBetween>
     );
 }

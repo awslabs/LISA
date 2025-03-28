@@ -41,13 +41,6 @@ function ModelActions (props: ModelActionProps): ReactElement {
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            {ModelActionButton(dispatch, notificationService, props)}
-            <Button iconName='add-plus' variant='primary' onClick={() => {
-                props.setEdit(false);
-                props.setNewModelModelVisible(true);
-            }}>
-                New Model
-            </Button>
             <Button
                 onClick={() => {
                     props.setSelectedItems([]);
@@ -56,6 +49,13 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 ariaLabel={'Refresh models cards'}
             >
                 <Icon name='refresh' />
+            </Button>
+            {ModelActionButton(dispatch, notificationService, props)}
+            <Button variant='primary' onClick={() => {
+                props.setEdit(false);
+                props.setNewModelModelVisible(true);
+            }}>
+                Create Model
             </Button>
         </SpaceBetween>
     );

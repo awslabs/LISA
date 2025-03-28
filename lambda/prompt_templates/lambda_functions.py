@@ -139,11 +139,11 @@ def create(event: dict, context: dict) -> Any:
     user_id = get_username(event)
     body = json.loads(event["body"], parse_float=Decimal)
     body["owner"] = user_id  # Set the owner of the prompt template
-    model = PromptTemplateModel(**body)
+    prompt_template_model = PromptTemplateModel(**body)
 
     # Insert the new prompt template item into the DynamoDB table
-    table.put_item(Item=model.model_dump(exclude_none=True))
-    return model.model_dump()
+    table.put_item(Item=prompt_template_model.model_dump(exclude_none=True))
+    return prompt_template_model.model_dump()
 
 
 @api_wrapper
@@ -152,10 +152,10 @@ def update(event: dict, context: dict) -> Any:
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)
     body = json.loads(event["body"], parse_float=Decimal)
-    model = PromptTemplateModel(**body)
+    prompt_template_model = PromptTemplateModel(**body)
 
-    if prompt_template_id != model.id:
-        raise ValueError(f"URL id {prompt_template_id} doesn't match body id {model.id}")
+    if prompt_template_id != prompt_template_model.id:
+        raise ValueError(f"URL id {prompt_template_id} doesn't match body id {prompt_template_model.id}")
 
     # Query for the latest prompt template revision
     response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
@@ -163,7 +163,7 @@ def update(event: dict, context: dict) -> Any:
     item = items[0] if items else None
 
     if item is None:
-        raise ValueError(f"Prompt template {model} not found.")
+        raise ValueError(f"Prompt template {prompt_template_model} not found.")
 
     # Check if the user is authorized to update the prompt template
     if is_admin(event) or item["owner"] == user_id:
@@ -179,10 +179,10 @@ def update(event: dict, context: dict) -> Any:
         )
 
         # Update the prompt template with a new revision
-        model = model.new_revision(update={"id": item["id"], "owner": item["owner"]})
-        logger.info(f"new model: {model.model_dump(exclude_none=True)}")
-        response = table.put_item(Item=model.model_dump(exclude_none=True))
-        return model.model_dump()
+        prompt_template_model = prompt_template_model.new_revision(update={"id": item["id"], "owner": item["owner"]})
+        logger.info(f"new model: {prompt_template_model.model_dump(exclude_none=True)}")
+        response = table.put_item(Item=prompt_template_model.model_dump(exclude_none=True))
+        return prompt_template_model.model_dump()
 
     raise ValueError(f"Not authorized to update {prompt_template_id}.")
 

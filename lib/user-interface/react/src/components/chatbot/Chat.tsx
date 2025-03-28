@@ -67,6 +67,7 @@ export default function Chat ({ sessionId }) {
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
     const notificationService = useNotificationService(dispatch);
+    const modelSelectRef = useRef<HTMLInputElement>(null);
 
     const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
     const {data: sessionHealth} = useGetSessionHealthQuery(undefined, {refetchOnMountOrArgChange: true});
@@ -477,7 +478,10 @@ export default function Chat ({ sessionId }) {
                             <Header variant='h1'>What would you like to do?</Header>
                         </div>
                         <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '1em', textAlign: 'center'}}>
-                            <Button variant='normal' onClick={() => navigate(`/ai-assistant/${uuidv4()}`)}>
+                            <Button variant='normal' onClick={() => {
+                                navigate(`/ai-assistant/${uuidv4()}`);
+                                modelSelectRef?.current?.focus();
+                            }}>
                                 <SpaceBetween direction='horizontal' size='xs'>
                                     <FontAwesomeIcon icon={faMessage} />
                                     <TextContent>Start chatting</TextContent>
@@ -544,6 +548,7 @@ export default function Chat ({ sessionId }) {
                                             }
                                         }}
                                         options={modelsOptions}
+                                        ref={modelSelectRef}
                                     />
                                     {window.env.RAG_ENABLED && (
                                         <RagControls

@@ -39,7 +39,7 @@ import { useNavigate } from 'react-router-dom';
 import { truncateText } from '../../shared/util/formats';
 import { getDisplayableMessage } from '@/components/utils';
 
-export function Sessions () {
+export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -150,8 +150,11 @@ export function Sessions () {
                         actions={
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
-                                    <Button iconName='add-plus' variant='inline-link'>
-                                        <Link onClick={() => navigate('ai-assistant')}>New</Link>
+                                    <Button iconName='add-plus' variant='inline-link' onClick={() => {
+                                        navigate('ai-assistant');
+                                        newSession();
+                                    }}>
+                                        New
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'

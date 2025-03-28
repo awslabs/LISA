@@ -173,14 +173,14 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         <Modal size={'large'} onDismiss={() => {
             dispatch(
                 setConfirmationModal({
-                    action: 'Abandon',
+                    action: 'Discard',
                     resourceName: 'Model Creation',
                     onConfirm: () => {
                         setVisible(false);
                         setIsEdit(false);
                         resetState();
                     },
-                    description: 'Are you sure you want to abandon your changes?',
+                    description: 'Are you sure you want to discard your changes?',
                 }));
         }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
             <Wizard
@@ -222,14 +222,14 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 onCancel={() => {
                     dispatch(
                         setConfirmationModal({
-                            action: 'Abandon',
+                            action: 'Discard',
                             resourceName: 'Repository Creation',
                             onConfirm: () => {
                                 setVisible(false);
                                 setIsEdit(false);
                                 resetState();
                             },
-                            description: 'Are you sure you want to abandon your changes?',
+                            description: 'Are you sure you want to discard your changes?',
                         }));
                 }}
                 onSubmit={() => handleSubmit()}

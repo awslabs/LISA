@@ -78,7 +78,7 @@ export const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string()
             .nonempty()
-            .regex(/^[a-z0-9-]{1,63}/, 'Only alphanumeric characters and \'-\' are supported.')
+            .regex(/^[a-z0-9-]{1,63}/, 'Only lowercase alphanumeric characters and \'-\' are supported.')
             .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
             .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
         repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),

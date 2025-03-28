@@ -86,7 +86,7 @@ export const ragApi = createApi({
             }),
             invalidatesTags: ['repositories'],
         }),
-        getRagStatus: builder.query<RagStatus[], void>({
+        getRagStatus: builder.query<RagStatus, void>({
             query: () => ({
                 url: '/repository/status',
             }),

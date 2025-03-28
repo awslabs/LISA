@@ -1,6 +1,6 @@
 {
   "name": "@awslabs/lisa",
-  "version": "4.0.3",
+  "version": "4.1.0",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "homepage": "https://awslabs.github.io/LISA/",
   "license": "Apache-2.0",
@@ -11,10 +11,7 @@
   "bugs": {
     "url": "https://github.com/awslabs/lisa/issues"
   },
-  "author": {
-    "name": "Amazon Web Services",
-    "url": "https://aws.amazon.com"
-  },
+  "author": "Amazon Web Services (https://aws.amazon.com)",
   "keywords": [
     "aws",
     "bedrock",
@@ -60,7 +57,7 @@
     "@types/readline-sync": "^1.4.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "aws-cdk": "^2.177.0",
+    "aws-cdk": "^2.184.0",
     "depcheck": "^1.4.7",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
@@ -77,7 +74,7 @@
     "zod2md": "^0.1.4"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.177.0",
+    "aws-cdk-lib": "^2.185.0",
     "aws-sdk": "^2.1692.0",
     "cdk-nag": "^2.35.5",
     "constructs": "^10.4.2",
@@ -101,5 +98,10 @@
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"
+  },
+  "main": "jest.config.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
   }
 }

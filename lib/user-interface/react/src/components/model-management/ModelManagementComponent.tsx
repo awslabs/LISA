@@ -26,11 +26,16 @@ import {
     VISIBLE_CONTENT_OPTIONS,
 } from './ModelManagementUtils';
 import { ModelActions } from './ModelManagementActions';
-import { IModel } from '../../shared/model/model-management.model';
+import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
+import { Duration } from 'luxon';
 
 export function ModelManagementComponent () : ReactElement {
-    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: true});
+    const [shouldPoll, setShouldPoll] = useState(true);
+    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+        pollingInterval: shouldPoll ? Duration.fromObject({seconds: 30}) : undefined
+    });
     const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);
@@ -41,6 +46,13 @@ export function ModelManagementComponent () : ReactElement {
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
     const [count, setCount] = useState('');
+
+    useEffect(() => {
+        const finalStatePredicate = (model) => [ModelStatus.InService, ModelStatus.Failed, ModelStatus.Stopped].includes(model.status);
+        if (allModels?.every(finalStatePredicate)) {
+            setShouldPoll(false);
+        }
+    }, [allModels, setShouldPoll]);
 
     useEffect(() => {
         let newPageCount = 0;
@@ -82,7 +94,7 @@ export function ModelManagementComponent () : ReactElement {
                 cardsPerRow={[{ cards: 3 }]}
                 header={
                     <Header
-                        counter={`(${count})` ?? ''}
+                        counter={`(${count})`}
                         actions={
                             <ModelActions
                                 selectedItems={selectedItems}

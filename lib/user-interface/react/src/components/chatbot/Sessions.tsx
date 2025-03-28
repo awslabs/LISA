@@ -23,7 +23,6 @@ import { Pagination } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { DateTime } from 'luxon';
 import { useCollection } from '@cloudscape-design/collection-hooks';
-import { v4 as uuidv4 } from 'uuid';
 import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     sessionApi,
@@ -38,12 +37,14 @@ import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { truncateText } from '../../shared/util/formats';
+import { getDisplayableMessage } from '@/components/utils';
 
-export function Sessions () {
+export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
     const navigate = useNavigate();
+
 
     const [deleteById, {
         isSuccess: isDeleteByIdSuccess,
@@ -111,7 +112,7 @@ export function Sessions () {
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
     return (
-        <div className='p-5'>
+        <div className='p-9'>
             <Table
                 {...collectionProps}
                 variant='embedded'
@@ -131,7 +132,7 @@ export function Sessions () {
                         id: 'title',
                         header: 'Title',
                         cell: (e) => <Link variant='primary'
-                            onClick={() => navigate(`chatbot/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(String(e.history?.[0]?.content || 'No Content'), 32, '')}</span></Link>,
+                            onClick={() => navigate(`ai-assistant/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(getDisplayableMessage(e.history?.find((hist) => hist.type === 'human')?.content) || 'No Content', 32, '')}</span></Link>,
                         isRowHeader: true,
                     },
                     {
@@ -149,8 +150,11 @@ export function Sessions () {
                         actions={
                             <div className='mr-10'>
                                 <SpaceBetween direction='horizontal' size='m'>
-                                    <Button iconName='add-plus' variant='inline-link'>
-                                        <Link onClick={() => navigate(`chatbot/${uuidv4()}`)}>New</Link>
+                                    <Button iconName='add-plus' variant='inline-link' onClick={() => {
+                                        navigate('ai-assistant');
+                                        newSession();
+                                    }}>
+                                        New
                                     </Button>
                                     <Button
                                         iconAlt='Refresh list'

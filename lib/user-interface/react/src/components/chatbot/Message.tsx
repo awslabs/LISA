@@ -26,6 +26,8 @@ import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
+import { MessageContent } from '@langchain/core/messages';
+import { getDisplayableMessage } from '@/components/utils';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -37,7 +39,24 @@ type MessageProps = {
 
 export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
+    const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
+
+    const renderContent = (content: MessageContent) => {
+        if (Array.isArray(content)) {
+            return content.map((item, index) => {
+                if (item.type === 'text') {
+                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{item.text}</div>;
+                } else if (item.type === 'image_url') {
+                    return <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
+                }
+                return null;
+            });
+        }
+        return <div>{content}</div>;
+    };
+
     return (
+        (message.type === 'human' || message.type === 'ai') &&
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             {isRunning && (
                 <ChatBubble
@@ -58,7 +77,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type !== 'human' && !isRunning && (
+            {message?.type === 'ai' && !isRunning && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
@@ -76,8 +95,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <div style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? <ReactMarkdown
                                 remarkPlugins={[remarkBreaks]}
-                                children={message.content}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{message.content}</div>}
+                                children={getDisplayableMessage(message.content, ragCitations)}
+                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, ragCitations)}</div>}
                         </div>
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />
@@ -88,7 +107,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(message.content)
+                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
                             }
                             ariaLabel='Chat actions'
                             dropdownExpandToViewport
@@ -123,7 +142,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     }
                 >
                     <div style={{ maxWidth: '60em' }}>
-                        <strong>{message.content}</strong>
+                        {renderContent(message.content)}
                     </div>
                 </ChatBubble>
             )}

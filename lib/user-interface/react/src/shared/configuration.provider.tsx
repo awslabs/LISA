@@ -14,23 +14,8 @@
   limitations under the License.
 */
 
-import { useParams } from 'react-router-dom';
+import { createContext } from 'react';
 
-import { useEffect, useState } from 'react';
+export const ConfigurationContext = createContext(null);
 
-import Chat from '../components/chatbot/Chat';
-import Sessions from '../components/chatbot/Sessions';
-
-export function Chatbot ({ setNav }) {
-    const { sessionId } = useParams();
-    const [key, setKey] = useState(new Date().toISOString());
-
-    useEffect(() => {
-        setNav(<Sessions newSession={() => {
-            setKey(new Date().toISOString());
-        }} />);
-    }, [setNav]);
-
-    return <Chat key={key} sessionId={sessionId} />;
-}
-export default Chatbot;
+export default ConfigurationContext;

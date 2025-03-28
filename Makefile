@@ -199,7 +199,7 @@ modelCheck:
 					then \
 						mkdir -p $$localModelDir; \
 						echo "What is your huggingface access token? "; \
-						read -s access_token; \
+						read access_token; \
 						echo "Converting and uploading safetensors for model: $(MODEL_ID)"; \
 						tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
 						echo $$tgiImage; \

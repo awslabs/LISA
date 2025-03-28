@@ -1,7 +1,48 @@
+# v4.1.0
+## Key Features
+### Image Processing
+- LISA now supports LLMs that offer image analysis/input! During the model creation process, Administrators designate if a model is compatible with image input.
+- Users are now able to incorporate images into their session context for supported image files. They can ask the compatible LLM questions about their images.
+- LISA's message interactions have been restructured from langchain to system-managed objects, enabling the support of advanced message types. This breaks down messages into unique multi-part elements instead of one large text based message that is sent to the model.
+
+### Prompt Management
+- Users can now create and modify personas for ongoing use across sessions. The visibility of these personas can be defined in the following ways:
+  - Personal use
+  - Specific Identity Provider (IDP) groups
+  - Public access (visible to all LISA users)
+- When a user initiates a session, they can import and update the personas they have access to.
+- Administrators can enable this functionality through the system configuration page.
+
+## User Interface Improvements
+- When a request includes RAG documents, citations are now displayed inline in the ChatUI. They were previously only visible in metadata.
+- A new landing page now has 'Quick Actions' that display if a user has yet to initiate a conversation.
+- Users can now download their session history as a JSON file.
+- The top menu options have been consolidated to minimize clutter.
+
+## System Improvements
+- Upgrading third-party dependencies to leverage the latest features from our dependencies.
+
+## Upcoming Features
+- We will be enhancing our Prompt Library to store user-defined prompt inputs in addition to persona definitions.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.0.3...v4.1.0
+
 # v4.0.3
 ## Bug Fixes
 - Resolved issue with subnets imports
 - Resolved issue with custom model deployment
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.0.2..v4.0.3
 
 # v4.0.2
 ## Enhancements

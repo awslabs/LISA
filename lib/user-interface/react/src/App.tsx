@@ -37,6 +37,8 @@ import DocumentLibrary from './pages/DocumentLibrary';
 import RepositoryLibrary from './pages/RepositoryLibrary';
 import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
+import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
+import { ConfigurationContext } from './shared/configuration.provider';
 
 
 export type RouteProps = {
@@ -77,18 +79,14 @@ function App () {
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
-    const [getConfiguration] = useLazyGetConfigurationQuery();
-    const [config, setConfig] = useState<IConfiguration>();
+    const [ getConfigurationQuery, {data: fullConfig} ] = useLazyGetConfigurationQuery();
+    const config = fullConfig?.[0];
 
     useEffect(() => {
-        if (!auth.isLoading && auth.isAuthenticated) {
-            getConfiguration('global').then((resp) => {
-                if (resp.data && resp.data.length > 0) {
-                    setConfig(resp.data[0]);
-                }
-            });
+        if (!auth.isLoading && auth.isAuthenticated && auth.user) {
+            getConfigurationQuery('global');
         }
-    }, [auth, getConfiguration]);
+    }, [auth, getConfigurationQuery]);
 
     useEffect(() => {
         if (nav) {
@@ -101,80 +99,90 @@ function App () {
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
     return (
         <HashRouter basename={baseHref}>
-            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
-            <div
-                id='h'
-                style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
-            >
-                <Topbar configs={config} />
-            </div>
-            <BreadcrumbsDefaultChangeListener />
-            <AppLayout
-                headerSelector='#h'
-                footerSelector='#f'
-                navigationHide={!showNavigation}
-                breadcrumbs={<Breadcrumbs />}
-                toolsHide={true}
-                notifications={<NotificationBanner />}
-                stickyNotifications={true}
-                navigation={nav}
-                navigationWidth={450}
-                content={
-                    <Routes>
-                        <Route index path='*' element={<Home setNav={setNav} />} />
-                        <Route
-                            path='chatbot'
-                            element={
-                                <PrivateRoute>
-                                    <Chatbot setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path='chatbot/:sessionId'
-                            element={
-                                <PrivateRoute>
-                                    <Chatbot setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path='model-management'
-                            element={
-                                <AdminRoute>
-                                    <ModelManagement setNav={setNav} />
-                                </AdminRoute>
-                            }
-                        />
-                        <Route
-                            path='document-library'
-                            element={
-                                <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                    <RepositoryLibrary setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path='document-library/:repoId'
-                            element={
-                                <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                    <DocumentLibrary setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path='configuration'
-                            element={
-                                <AdminRoute>
-                                    <Configuration setNav={setNav} />
-                                </AdminRoute>
-                            }
-                        />
-                    </Routes>
-                }
-            />
-            {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
+            <ConfigurationContext.Provider value={config}>
+                {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
+                <div
+                    id='h'
+                    style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
+                >
+                    <Topbar configs={config} />
+                </div>
+                <BreadcrumbsDefaultChangeListener />
+                <AppLayout
+                    headerSelector='#h'
+                    footerSelector='#f'
+                    navigationHide={!showNavigation}
+                    breadcrumbs={<Breadcrumbs />}
+                    toolsHide={true}
+                    notifications={<NotificationBanner />}
+                    stickyNotifications={true}
+                    navigation={nav}
+                    navigationWidth={450}
+                    content={
+                        <Routes>
+                            <Route index path='*' element={<Home setNav={setNav} />} />
+                            <Route
+                                path='ai-assistant'
+                                element={
+                                    <PrivateRoute>
+                                        <Chatbot setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='ai-assistant/:sessionId'
+                                element={
+                                    <PrivateRoute>
+                                        <Chatbot setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='model-management'
+                                element={
+                                    <AdminRoute>
+                                        <ModelManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path='document-library'
+                                element={
+                                    <PrivateRoute showConfig='showRagLibrary' configs={config}>
+                                        <RepositoryLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='document-library/:repoId'
+                                element={
+                                    <PrivateRoute showConfig='showRagLibrary' configs={config}>
+                                        <DocumentLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='prompt-templates/*'
+                                element={
+                                    <PrivateRoute showConfig='showPromptTemplates' configs={config}>
+                                        <PromptTemplatesLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='configuration'
+                                element={
+                                    <AdminRoute>
+                                        <Configuration setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
+                        </Routes>
+                    }
+                />
+                {confirmationModal && <ConfirmationModal {...confirmationModal} />}
+                {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
+            </ConfigurationContext.Provider>
         </HashRouter>
     );
 }

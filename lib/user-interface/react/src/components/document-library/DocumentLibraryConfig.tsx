@@ -28,7 +28,7 @@ export const TABLE_DEFINITION: {
     isRowHeader?: boolean,
     visible: boolean
 }[] = [
-    { id: 'document_name', header: 'Name', cell: (e) => e.document_name, sortingField: 'document_name', visible: true },
+    { id: 'document_name', header: 'Name', cell: (e) => e.document_name.replace(/^\d+?_/, ''), sortingField: 'document_name', visible: true },
     {
         id: 'document_id',
         header: 'Document ID',

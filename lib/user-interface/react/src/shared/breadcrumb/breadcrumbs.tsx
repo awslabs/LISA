@@ -24,7 +24,7 @@ export const Breadcrumbs: React.FC = () => {
     const navigate = useNavigate();
     const breadcrumbs: BreadcrumbGroupProps.Item[] = useAppSelector(selectBreadcrumbGroupItems);
 
-    return (
+    return breadcrumbs?.length ?
         <BreadcrumbGroup
             items={breadcrumbs}
             ariaLabel='Breadcrumbs'
@@ -33,6 +33,5 @@ export const Breadcrumbs: React.FC = () => {
                 event.preventDefault();
                 navigate(event.detail.href);
             }}
-        />
-    );
+        /> : <></>;
 };

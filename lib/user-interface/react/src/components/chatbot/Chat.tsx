@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Container from '@cloudscape-design/components/container';
@@ -23,9 +23,11 @@ import { v4 as uuidv4 } from 'uuid';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
     Autosuggest,
+    Button,
     ButtonGroup,
     ButtonGroupProps,
     Grid,
+    Header,
     PromptInput,
     TextContent,
 } from '@cloudscape-design/components';
@@ -40,7 +42,6 @@ import { ContextUploadModal, RagUploadModal } from './FileUploadModals';
 import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
@@ -49,17 +50,22 @@ import {
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import SessionConfiguration from './SessionConfiguration';
-import PromptTemplateEditor from './PromptTemplateEditor';
 import { baseConfig, GenerateLLMRequestParams, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '../../shared/reducers/rag.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { DocumentSummarizationModal } from './DocumentSummarizationModal';
 import { ChatMemory } from '../../shared/util/chat-memory';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
-import { truncateText } from '../../shared/util/formats';
+import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFileLines, faMessage, faPenToSquare } from '@fortawesome/free-regular-svg-icons';
+import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
+import ConfigurationContext from '../../shared/configuration.provider';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
+    const config: IConfiguration = useContext(ConfigurationContext);
     const notificationService = useNotificationService(dispatch);
 
     const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
@@ -71,18 +77,17 @@ export default function Chat ({ sessionId }) {
             isFetching: state.isFetching,
             data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
         })});
-    const [getConfiguration] = useLazyGetConfigurationQuery();
-    const [config, setConfig] = useState<IConfiguration>();
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
 
     const [userPrompt, setUserPrompt] = useState('');
     const [fileContext, setFileContext] = useState('');
 
     const [sessionConfigurationModalVisible, setSessionConfigurationModalVisible] = useState(false);
-    const [promptTemplateEditorVisible, setPromptTemplateEditorVisible] = useState(false);
+    const [promptTemplateKey, setPromptTemplateKey] = useState(new Date().toISOString());
     const [showContextUploadModal, setShowContextUploadModal] = useState(false);
     const [showRagUploadModal, setShowRagUploadModal] = useState(false);
     const [showDocumentSummarizationModal, setShowDocumentSummarizationModal] = useState(false);
+    const [showPromptTemplateModal, setShowPromptTemplateModal] = useState(false);
 
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId })), [allModels]);
     const [selectedModel, setSelectedModel] = useState<IModel>();
@@ -133,10 +138,13 @@ export default function Chat ({ sessionId }) {
                 const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
 
                 // Convert chat history to messages format
-                const messages = session.history.concat(params.message).map((msg) => ({
+                let messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
                     content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
-                })).slice(-chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2);
+                }));
+
+                const [systemMessage, ...remainingMessages] = messages;
+                messages = [systemMessage, ...remainingMessages.slice(-(chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2) - 1)];
 
                 if (chatConfiguration.sessionConfiguration.streaming) {
                     setIsStreaming(true);
@@ -204,16 +212,6 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (!auth.isLoading && auth.isAuthenticated) {
-            getConfiguration('global').then((resp) => {
-                if (resp.data && resp.data.length > 0) {
-                    setConfig(resp.data[0]);
-                }
-            });
-        }
-    }, [auth, getConfiguration]);
-
-    useEffect(() => {
         if (!isRunning && session.history.length && dirtySession) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
                 setDirtySession(false);
@@ -223,17 +221,13 @@ export default function Chat ({ sessionId }) {
     }, [isRunning, session, dirtySession, auth, updateSession]);
 
     useEffect(() => {
+        // always hide breadcrumbs
+        dispatch(setBreadcrumbs([]));
+
         if (sessionId) {
             setInternalSessionId(sessionId);
             setLoadingSession(true);
             setSession({...session, history: []});
-            dispatch(setBreadcrumbs([{
-                text: 'Chatbot',
-                href: ''
-            }, {
-                text: 'Loading session...',
-                href: ''
-            }]));
 
             getSessionById(sessionId).then((resp) => {
                 // session doesn't exist so we create it
@@ -247,16 +241,6 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
-                const firstHumanMessage = sess.history?.find((hist) => hist.type === 'human')?.content;
-
-                // override the default breadcrumbs
-                dispatch(setBreadcrumbs([{
-                    text: 'Chatbot',
-                    href: ''
-                }, {
-                    text: truncateText(Array.isArray(firstHumanMessage) ? firstHumanMessage.find((item) => item.type === 'text')?.text || '' : firstHumanMessage) || 'New Session',
-                    href: ''
-                }]));
                 setLoadingSession(false);
             });
         } else {
@@ -363,23 +347,19 @@ export default function Chat ({ sessionId }) {
         if (fileContext?.startsWith('File context: data:image')) {
             const imageData = fileContext.replace('File context: ', '');
             messageContent = [
+                { type: 'image_url', image_url: { url: `${imageData}` } },
                 { type: 'text', text: userPrompt },
-                { type: 'image_url', image_url: { url: `${imageData}` } }
             ];
         } else if (useRag){
             ragDocs =  await fetchRelevantDocuments(userPrompt);
-            const serialized = `${fileContext}\n${formatDocumentsAsString(ragDocs.data?.docs)}`;
-
-            messages.push(new LisaChatMessage({
-                type: 'system',
-                content: serialized,
-                metadata: {},
-            }));
-            messageContent = userPrompt;
+            messageContent = [
+                { type: 'text', text: 'File context: ' + formatDocumentsAsString(ragDocs.data?.docs)},
+                { type: 'text', text: userPrompt },
+            ];
         } else if (fileContext) {
             messageContent = [
+                { type: 'text', text: fileContext },
                 { type: 'text', text: userPrompt },
-                { type: 'text', text: fileContext }
             ];
         } else {
             messageContent = userPrompt;
@@ -418,12 +398,6 @@ export default function Chat ({ sessionId }) {
 
     return (
         <div className='h-[80vh]'>
-            <PromptTemplateEditor
-                chatConfiguration={chatConfiguration}
-                setChatConfiguration={setChatConfiguration}
-                setVisible={setPromptTemplateEditorVisible}
-                visible={promptTemplateEditorVisible}
-            />
             <DocumentSummarizationModal
                 showDocumentSummarizationModal={showDocumentSummarizationModal}
                 setShowDocumentSummarizationModal={setShowDocumentSummarizationModal}
@@ -462,12 +436,74 @@ export default function Chat ({ sessionId }) {
                 setFileContext={setFileContext}
                 selectedModel={selectedModel}
             />
+            <PromptTemplateModal
+                session={session}
+                showModal={showPromptTemplateModal}
+                setShowModal={setShowPromptTemplateModal}
+                setUserPrompt={setUserPrompt}
+                setSelectedModel={setSelectedModel}
+                chatConfiguration={chatConfiguration}
+                setChatConfiguration={setChatConfiguration}
+                key={promptTemplateKey}
+                config={config}
+            />
+            {session.history.length !== 0 && <SpaceBetween alignItems='end' size='l'>
+                <Button
+                    ariaLabel='Download Session'
+                    iconAlign='right'
+                    iconName='download'
+                    disabled={isRunning}
+                    onClick={() => {
+                        const element = document.createElement('a');
+                        const file = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+                        element.href = URL.createObjectURL(file);
+                        element.download = `${session.sessionId}.json`;
+                        document.body.appendChild(element); // Required for this to work in FireFox
+                        element.click();
+                        element.remove();
+                    }}
+                >
+                    Download Session
+                </Button>
+            </SpaceBetween>}
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
                         <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>
                     ))}
                     {isRunning && !isStreaming && <Message isRunning={isRunning} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay} message={new LisaChatMessage({type: 'ai', content: ''})}/>}
+                    { session.history.length === 0 && sessionId === undefined && <div style={{height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '2em', textAlign: 'center'}}>
+                        <div>
+                            <Header variant='h1'>What would you like to do?</Header>
+                        </div>
+                        <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '1em', textAlign: 'center'}}>
+                            <Button variant='normal' onClick={() => navigate(`/ai-assistant/${uuidv4()}`)}>
+                                <SpaceBetween direction='horizontal' size='xs'>
+                                    <FontAwesomeIcon icon={faMessage} />
+                                    <TextContent>Start chatting</TextContent>
+                                </SpaceBetween>
+                            </Button>
+
+                            { config?.configuration?.enabledComponents?.editPromptTemplate && (
+                                <Button variant='normal' onClick={() => {
+                                    setPromptTemplateKey(new Date().toISOString());
+                                    setShowPromptTemplateModal(true);
+                                }}>
+                                    <SpaceBetween direction='horizontal' size='xs'>
+                                        <FontAwesomeIcon icon={faPenToSquare} />
+                                        <TextContent>Select Persona</TextContent>
+                                    </SpaceBetween>
+                                </Button>
+                            )}
+
+                            <Button variant='normal' onClick={() => setShowDocumentSummarizationModal(true)}>
+                                <SpaceBetween direction='horizontal' size='xs'>
+                                    <FontAwesomeIcon icon={faFileLines} />
+                                    <TextContent>Summarize a doc</TextContent>
+                                </SpaceBetween>
+                            </Button>
+                        </div>
+                    </div>}
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
@@ -539,7 +575,8 @@ export default function Chat ({ sessionId }) {
                                                         setSessionConfigurationModalVisible(true);
                                                     }
                                                     if (detail.id === 'edit-prompt-template'){
-                                                        setPromptTemplateEditorVisible(true);
+                                                        setPromptTemplateKey(new Date().toISOString());
+                                                        setShowPromptTemplateModal(true);
                                                     }
                                                     if (detail.id === 'upload-to-rag'){
                                                         setShowRagUploadModal(true);
@@ -587,7 +624,7 @@ export default function Chat ({ sessionId }) {
                                                                 {
                                                                     id: 'edit-prompt-template',
                                                                     iconName: 'contact',
-                                                                    text: 'Edit Prompt Template'
+                                                                    text: 'Edit Persona'
                                                                 },
                                                             ]
                                                         }] as ButtonGroupProps.Item[] : [])

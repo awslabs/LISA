@@ -24,6 +24,7 @@ import { configurationApi } from './configuration.reducer';
 import { sessionApi } from './session.reducer';
 import breadcrumbGroup from './breadcrumbs.reducer';
 import { ragApi } from './rag.reducer';
+import { promptTemplateApi } from './prompt-templates.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
@@ -34,8 +35,9 @@ const rootReducer: ReducersMapObject = {
     [configurationApi.reducerPath]: configurationApi.reducer,
     [sessionApi.reducerPath]: sessionApi.reducer,
     [ragApi.reducerPath]: ragApi.reducer,
+    [promptTemplateApi.reducerPath]: promptTemplateApi.reducer
 };
 
-export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware, sessionApi.middleware, ragApi.middleware];
+export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware, sessionApi.middleware, ragApi.middleware, promptTemplateApi.middleware];
 
 export default rootReducer;

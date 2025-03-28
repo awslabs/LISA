@@ -35,6 +35,7 @@ const advancedOptions = {
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
+    showPromptTemplateLibrary: 'Show Prompt Template Library'
 };
 
 const configurableOperations = [{
@@ -72,8 +73,8 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                             </Header>
                             {Object.keys(operation.items).map((item) => {
                                 return (
-                                    <Box textAlign='center' key={operation}>
-                                        <SpaceBetween alignItems='left' size='xs'>
+                                    <Box textAlign='center' key={item}>
+                                        <SpaceBetween alignItems='start' size='xs'>
                                             <Toggle
                                                 onChange={({detail}) => {
                                                     const updatedField = {};

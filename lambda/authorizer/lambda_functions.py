@@ -127,7 +127,7 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[
         data: dict = jwt.decode(
             id_token,
             signing_key.key,
-            algorithms=["RS256"],
+            algorithms=["RS256", "RS512"],
             issuer=authority,
             audience=client_id,
             options={

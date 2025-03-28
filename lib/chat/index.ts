@@ -17,19 +17,10 @@ import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { SessionApi } from './api/session';
-import { BaseProps } from '../schema';
-import { Vpc } from '../networking/vpc';
 import { ConfigurationApi } from './api/configuration';
+import { LisaChatProps } from './chatConstruct';
 
-type CustomLisaChatStackProps = {
-    authorizer: IAuthorizer;
-    restApiId: string;
-    rootResourceId: string;
-    securityGroups: ISecurityGroup[];
-    vpc: Vpc;
-} & BaseProps;
-type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
-
+export * from './chatConstruct';
 /**
  * LisaChat Application stack.
  */

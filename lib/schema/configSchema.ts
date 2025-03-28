@@ -745,6 +745,7 @@ export const RawConfigObject = z.object({
         )
         .optional()
         .describe('Array of key-value pairs for tagging.'),
+    tagContainers: z.boolean().default(false).describe('Add repeatable container tags to each cdk deployed container'),
     deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
     webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
     ecsModelDeployerPath: z.string().optional().describe('Optional path to precompiled ecs model deployer. If not specified the ecs model deployer will be built at deploy time.'),

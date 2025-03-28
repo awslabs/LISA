@@ -76,6 +76,7 @@
   "dependencies": {
     "aws-cdk-lib": "^2.185.0",
     "aws-sdk": "^2.1692.0",
+    "cdk-ecr-deployment": "^4.0.1",
     "cdk-nag": "^2.35.5",
     "constructs": "^10.4.2",
     "js-yaml": "^4.1.0",
@@ -85,10 +86,10 @@
     "zod": "^3.24.1"
   },
   "peerDependencies": {
-    "micromark-core-commonmark": "2.0.1",
-    "micromark": "4.0.0",
+    "@cfworker/json-schema": "^4.1.0",
     "@types/lodash": "^4.17.14",
-    "@cfworker/json-schema": "^4.1.0"
+    "micromark": "4.0.0",
+    "micromark-core-commonmark": "2.0.1"
   },
   "lint-staged": {
     "*.ts": [

@@ -16,9 +16,7 @@
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-import { SessionApi } from './api/session';
-import { ConfigurationApi } from './api/configuration';
-import { LisaChatProps } from './chatConstruct';
+import { LisaChatApplicationConstruct, LisaChatProps } from './chatConstruct';
 
 export * from './chatConstruct';
 /**
@@ -33,25 +31,6 @@ export class LisaChatApplicationStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaChatProps) {
         super(scope, id, props);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
-
-        // Add REST API Lambdas to APIGW
-        new SessionApi(this, 'SessionApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
-
-        new ConfigurationApi(this, 'ConfigurationApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
+        new LisaChatApplicationConstruct(this, 'LisaChatApplication', props);
     }
 }

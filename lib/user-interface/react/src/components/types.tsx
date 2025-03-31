@@ -87,6 +87,7 @@ export type LisaChatSession = {
     userId: string;
     startTime: string;
     history: LisaChatMessage[];
+    firstHumanMessage: MessageContent;
 };
 
 /**

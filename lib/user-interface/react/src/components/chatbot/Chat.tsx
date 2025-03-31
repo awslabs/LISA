@@ -448,25 +448,6 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
             />
-            {session.history.length !== 0 && <SpaceBetween alignItems='end' size='l'>
-                <Button
-                    ariaLabel='Download Session'
-                    iconAlign='right'
-                    iconName='download'
-                    disabled={isRunning}
-                    onClick={() => {
-                        const element = document.createElement('a');
-                        const file = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-                        element.href = URL.createObjectURL(file);
-                        element.download = `${session.sessionId}.json`;
-                        document.body.appendChild(element); // Required for this to work in FireFox
-                        element.click();
-                        element.remove();
-                    }}
-                >
-                    Download Session
-                </Button>
-            </SpaceBetween>}
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (

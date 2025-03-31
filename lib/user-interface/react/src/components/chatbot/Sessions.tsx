@@ -14,20 +14,17 @@
   limitations under the License.
 */
 
-import Table from '@cloudscape-design/components/table';
-import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
-import { Pagination } from '@cloudscape-design/components';
+import { ButtonDropdown, Grid} from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
-import { DateTime } from 'luxon';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
 import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
-    useDeleteSessionByIdMutation,
+    useDeleteSessionByIdMutation, useLazyGetSessionByIdQuery,
     useListSessionsQuery,
 } from '../../shared/reducers/session.reducer';
 import { useAppDispatch } from '../../config/store';
@@ -38,12 +35,16 @@ import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { truncateText } from '../../shared/util/formats';
 import { getDisplayableMessage } from '@/components/utils';
+import { LisaChatSession } from '@/components/types';
+import Box from '@cloudscape-design/components/box';
 
 export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
     const navigate = useNavigate();
+    const [getSessionById] = useLazyGetSessionByIdQuery();
+    const currentSessionId = window.location.href.includes('ai-assistant/') ? window.location.href.split('ai-assistant/')[1] : undefined;
 
 
     const [deleteById, {
@@ -60,18 +61,8 @@ export function Sessions ({newSession}) {
     }] = useDeleteAllSessionsForUserMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
-    const { data: sessions, isLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
-    const { items, actions, collectionProps, paginationProps } = useCollection(sessions || [], {
-        filtering: {
-            empty: (
-                <Box margin={{ vertical: 'xs' }} textAlign='center'>
-                    <SpaceBetween size='m'>
-                        <b>No history</b>
-                    </SpaceBetween>
-                </Box>
-            ),
-        },
-        pagination: { pageSize: 20 },
+    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { items } = useCollection(sessions || [], {
         sorting: {
             defaultState: {
                 sortingColumn: {
@@ -80,7 +71,6 @@ export function Sessions ({newSession}) {
                 isDescending: true,
             },
         },
-        selection: { trackBy: 'sessionId' },
     });
 
     useEffect(() => {
@@ -96,6 +86,8 @@ export function Sessions ({newSession}) {
     useEffect(() => {
         if (!isDeleteByIdLoading && isDeleteByIdSuccess) {
             notificationService.generateNotification('Successfully deleted session', 'success');
+            navigate('ai-assistant');
+            newSession();
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
             notificationService.generateNotification(`Error deleting session: ${deleteByIdError.data?.message ?? deleteByIdError.data}`, 'error');
         }
@@ -113,82 +105,83 @@ export function Sessions ({newSession}) {
 
     return (
         <div className='p-9'>
-            <Table
-                {...collectionProps}
-                variant='embedded'
-                items={items}
-                pagination={<Pagination {...paginationProps} />}
-                loadingText='Loading history'
-                loading={isLoading || isDeleteByIdLoading || isDeleteUserSessionsLoading}
-                selectedItems={collectionProps.selectedItems}
-                onSelectionChange={({ detail }) =>
-                    actions.setSelectedItems(detail.selectedItems)
-                }
-                resizableColumns={true}
-                trackBy={(item) => item.sessionId}
-                selectionType='multi'
-                columnDefinitions={[
-                    {
-                        id: 'title',
-                        header: 'Title',
-                        cell: (e) => <Link variant='primary'
-                            onClick={() => navigate(`ai-assistant/${e.sessionId}`)}><span style={{textOverflow: 'ellipsis'}}>{truncateText(getDisplayableMessage(e.history?.find((hist) => hist.type === 'human')?.content) || 'No Content', 32, '')}</span></Link>,
-                        isRowHeader: true,
-                    },
-                    {
-                        id: 'StartTime',
-                        header: 'Last Updated',
-                        cell: (e) => DateTime.fromJSDate(new Date(e.startTime)).toFormat('DD T ZZZZ'),
-                        sortingField: 'StartTime',
-                        sortingComparator: (a, b) => {
-                            return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
-                        },
-                    },
-                ]}
-                header={
-                    <Header
-                        actions={
-                            <div className='mr-10'>
-                                <SpaceBetween direction='horizontal' size='m'>
-                                    <Button iconName='add-plus' variant='inline-link' onClick={() => {
-                                        navigate('ai-assistant');
-                                        newSession();
-                                    }}>
-                                        New
-                                    </Button>
-                                    <Button
-                                        iconAlt='Refresh list'
-                                        iconName='refresh'
-                                        variant='inline-link'
-                                        onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
-                                    >
-                                        Refresh
-                                    </Button>
-                                    {config?.configuration.enabledComponents.deleteSessionHistory &&
-                                        <Button
-                                            iconAlt='Delete session(s)'
-                                            iconName='delete-marker'
-                                            variant='inline-link'
-                                            onClick={() => {
-                                                if (collectionProps.selectedItems && collectionProps.selectedItems.length === 1) {
-                                                    actions.setSelectedItems([]);
-                                                    deleteById(collectionProps.selectedItems[0].sessionId);
-                                                } else {
-                                                    deleteUserSessions();
-                                                }
-                                            }}
-                                            disabled={collectionProps.selectedItems.length > 1 && (collectionProps.selectedItems.length > 1 && collectionProps.selectedItems.length !== items.length)}
-                                        >
-                                            {collectionProps.selectedItems && collectionProps.selectedItems.length === 1 ? 'Delete one' : 'Delete all'}
-                                        </Button>}
-                                </SpaceBetween>
-                            </div>
-                        }
-                    >
-                        History
-                    </Header>
-                }
-            />
+            <SpaceBetween size={'xl'} direction={'vertical'}>
+                <Header
+                    actions={
+                        <div className='mr-10'>
+                            <SpaceBetween direction='horizontal' size='m'>
+                                <Button iconName='add-plus' variant='inline-link' onClick={() => {
+                                    navigate('ai-assistant');
+                                    newSession();
+                                }}>
+                                    New
+                                </Button>
+                                <Button
+                                    iconAlt='Refresh list'
+                                    iconName='refresh'
+                                    variant='inline-link'
+                                    onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
+                                >
+                                    Refresh
+                                </Button>
+                                {config?.configuration.enabledComponents.deleteSessionHistory &&
+                                <Button
+                                    iconAlt='Delete sessions'
+                                    iconName='delete-marker'
+                                    variant='inline-link'
+                                    onClick={() => deleteUserSessions()}
+                                >
+                                    'Delete all
+                                </Button>}
+                            </SpaceBetween>
+                        </div>
+                    }
+                >
+                    History
+                </Header>
+            </SpaceBetween>
+            <div className={'pt-5'}>
+                <Grid gridDefinition={items.flatMap(() => [{ colspan: 10 }, { colspan: 2 }])}>
+                    {items.map((item) => (
+                        <>
+                            <SpaceBetween size={'s'} direction={'horizontal'} alignItems={'center'}>
+                                <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
+                                    <Box color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'} fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}>
+                                        {truncateText(getDisplayableMessage(item.firstHumanMessage ?? '') ?? '', 40, '...')}
+                                    </Box>
+                                </Link>
+                            </SpaceBetween>
+                            <SpaceBetween size={'s'} alignItems={'end'}>
+                                <ButtonDropdown
+                                    items={[
+                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker'},
+                                        { id: 'download-session', text: 'Download Session', iconName: 'download'},
+                                    ]}
+                                    ariaLabel='Control instance'
+                                    variant='icon'
+                                    onItemClick={(e) => {
+                                        if (e.detail.id === 'delete-session'){
+                                            deleteById(item.sessionId);
+                                        } else if (e.detail.id === 'download-session'){
+                                            getSessionById(item.sessionId).then((resp) => {
+                                                const sess: LisaChatSession = resp.data;
+                                                const element = document.createElement('a');
+                                                const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
+                                                element.href = URL.createObjectURL(file);
+                                                element.download = `${sess.sessionId}.json`;
+                                                document.body.appendChild(element); // Required for this to work in FireFox
+                                                element.click();
+                                                element.remove();
+                                            });
+                                        }
+
+                                    }}
+                                />
+                            </SpaceBetween>
+                        </>
+                    ))}
+                </Grid>
+            </div>
         </div>
     );
 }

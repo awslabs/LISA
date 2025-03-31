@@ -93,7 +93,20 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     user_id = get_username(event)
 
     logger.info(f"Listing sessions for user {user_id}")
-    return _get_all_user_sessions(user_id)
+    sessions = _get_all_user_sessions(user_id)
+    resp = []
+    for session in sessions:
+        resp.append(
+            {
+                "sessionId": session["sessionId"],
+                "firstHumanMessage": next(
+                    (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
+                ),
+                "startTime": session["startTime"],
+                "createTime": session["createTime"],
+            }
+        )
+    return resp
 
 
 @api_wrapper

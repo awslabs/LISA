@@ -55,6 +55,7 @@ export const sessionApi = createApi({
                         };
                         return message;
                     }),
+                    configuration: session.configuration
                 }
             }),
             transformErrorResponse: (baseQueryReturnValue) => {

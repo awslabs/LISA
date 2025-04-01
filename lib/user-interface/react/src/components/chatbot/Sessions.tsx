@@ -37,6 +37,7 @@ import { truncateText } from '../../shared/util/formats';
 import { getDisplayableMessage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
+import React from 'react';
 
 export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
@@ -143,17 +144,19 @@ export function Sessions ({newSession}) {
             <div className={'pt-5'}>
                 <Grid gridDefinition={items.flatMap(() => [{ colspan: 10 }, { colspan: 2 }])}>
                     {items.map((item) => (
-                        <>
+                        <React.Fragment key={item.sessionId}>
                             <SpaceBetween size={'s'} direction={'horizontal'} alignItems={'center'}>
                                 <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
-                                    <Box color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'} fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}>
-                                        {truncateText(getDisplayableMessage(item.firstHumanMessage ?? '') ?? '', 40, '...')}
+                                    <Box color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
+                                        fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}>
+                                        {truncateText(getDisplayableMessage(item.firstHumanMessage ?? ''), 40, '...')}
                                     </Box>
                                 </Link>
                             </SpaceBetween>
                             <SpaceBetween size={'s'} alignItems={'end'}>
                                 <ButtonDropdown
                                     items={[
+
                                         { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker'},
                                         { id: 'download-session', text: 'Download Session', iconName: 'download'},
                                     ]}
@@ -178,7 +181,7 @@ export function Sessions ({newSession}) {
                                     }}
                                 />
                             </SpaceBetween>
-                        </>
+                        </React.Fragment>
                     ))}
                 </Grid>
             </div>

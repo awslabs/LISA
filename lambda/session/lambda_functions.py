@@ -163,11 +163,17 @@ def put_session(event: dict, context: dict) -> None:
     try:
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
-            UpdateExpression="SET #history = :history, #startTime = :startTime, "
+            UpdateExpression="SET #history = :history, #configuration = :configuration, #startTime = :startTime, "
             + "#createTime = if_not_exists(#createTime, :createTime)",
-            ExpressionAttributeNames={"#history": "history", "#startTime": "startTime", "#createTime": "createTime"},
+            ExpressionAttributeNames={
+                "#history": "history",
+                "#configuration": "configuration",
+                "#startTime": "startTime",
+                "#createTime": "createTime",
+            },
             ExpressionAttributeValues={
                 ":history": messages,
+                ":configuration": body.get("configuration", None),
                 ":startTime": datetime.now().isoformat(),
                 ":createTime": datetime.now().isoformat(),
             },

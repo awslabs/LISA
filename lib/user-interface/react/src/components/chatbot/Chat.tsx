@@ -216,10 +216,10 @@ export default function Chat ({ sessionId }) {
         if (!isRunning && session.history.length && dirtySession) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
                 setDirtySession(false);
-                updateSession(session);
+                updateSession({...session, configuration: chatConfiguration});
             }
         }
-    }, [isRunning, session, dirtySession, auth, updateSession]);
+    }, [isRunning, session, dirtySession, auth, updateSession, chatConfiguration]);
 
     useEffect(() => {
         // always hide breadcrumbs
@@ -242,6 +242,7 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
+                setChatConfiguration(sess.configuration ?? baseConfig);
                 setLoadingSession(false);
             });
         } else {

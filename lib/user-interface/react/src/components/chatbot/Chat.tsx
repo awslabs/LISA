@@ -141,7 +141,7 @@ export default function Chat ({ sessionId }) {
                 // Convert chat history to messages format
                 let messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
-                    content: Array.isArray(msg.content) ? msg.content : selectedModel.modelId.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
+                    content: Array.isArray(msg.content) ? msg.content : selectedModel.modelName.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
                 }));
 
                 const [systemMessage, ...remainingMessages] = messages;

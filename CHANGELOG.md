@@ -1,3 +1,18 @@
+# v4.1.1
+## Bug Fixes
+- Upgraded LiteLLM so that SagemakerEndpoint hosted models will be supported again
+
+## User Interface Improvements
+- Updated sessions UI to be more condensed and match the rest of the UI theme
+- Save session configuration in DDB so when users re-opens session their settings persist
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.1.0..v4.1.1
+
 # v4.1.0
 ## Key Features
 ### Image Processing

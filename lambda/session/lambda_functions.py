@@ -102,8 +102,8 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
                 "firstHumanMessage": next(
                     (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
                 ),
-                "startTime": session["startTime"],
-                "createTime": session["createTime"],
+                "startTime": session.get("startTime", None),
+                "createTime": session.get("createTime", None),
             }
         )
     return resp

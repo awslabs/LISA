@@ -141,7 +141,7 @@ export default function Chat ({ sessionId }) {
                 // Convert chat history to messages format
                 let messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
-                    content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
+                    content: Array.isArray(msg.content) ? msg.content : selectedModel.modelId.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
                 }));
 
                 const [systemMessage, ...remainingMessages] = messages;
@@ -216,10 +216,10 @@ export default function Chat ({ sessionId }) {
         if (!isRunning && session.history.length && dirtySession) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
                 setDirtySession(false);
-                updateSession(session);
+                updateSession({...session, configuration: {...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig}});
             }
         }
-    }, [isRunning, session, dirtySession, auth, updateSession]);
+    }, [isRunning, session, dirtySession, auth, updateSession, chatConfiguration, ragConfig, selectedModel]);
 
     useEffect(() => {
         // always hide breadcrumbs
@@ -242,6 +242,9 @@ export default function Chat ({ sessionId }) {
                     };
                 }
                 setSession(sess);
+                setChatConfiguration(sess.configuration ?? baseConfig);
+                setSelectedModel(sess.configuration?.selectedModel ?? undefined);
+                setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
                 setLoadingSession(false);
             });
         } else {
@@ -448,25 +451,6 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
             />
-            {session.history.length !== 0 && <SpaceBetween alignItems='end' size='l'>
-                <Button
-                    ariaLabel='Download Session'
-                    iconAlign='right'
-                    iconName='download'
-                    disabled={isRunning}
-                    onClick={() => {
-                        const element = document.createElement('a');
-                        const file = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-                        element.href = URL.createObjectURL(file);
-                        element.download = `${session.sessionId}.json`;
-                        document.body.appendChild(element); // Required for this to work in FireFox
-                        element.click();
-                        element.remove();
-                    }}
-                >
-                    Download Session
-                </Button>
-            </SpaceBetween>}
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (

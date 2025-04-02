@@ -14,10 +14,17 @@
  limitations under the License.
  */
 import { LisaChatMessage } from '../../components/types';
+import { IModel } from '@/shared/model/model-management.model';
+import { RagConfig } from '@/components/chatbot/RagOptions';
 
 export type IChatConfiguration = {
     promptConfiguration: IPromptConfiguration,
     sessionConfiguration: ISessionConfiguration,
+};
+
+export type IModelConfiguration = {
+    selectedModel: IModel;
+    ragConfig: RagConfig;
 };
 
 export type IPromptConfiguration = {

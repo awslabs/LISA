@@ -15,7 +15,7 @@
 */
 
 import { BaseMessage, BaseMessageFields, MessageContent, MessageType } from '@langchain/core/messages';
-import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
+import { IChatConfiguration, IModelConfiguration } from '@/shared/model/chat.configurations.model';
 
 /**
  * Used to specify additional parameters to be passed into OpenAI LLM Model Calls
@@ -89,7 +89,7 @@ export type LisaChatSession = {
     startTime: string;
     history: LisaChatMessage[];
     firstHumanMessage?: MessageContent;
-    configuration?: IChatConfiguration;
+    configuration?: IChatConfiguration & IModelConfiguration;
 };
 
 /**

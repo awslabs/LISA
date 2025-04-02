@@ -141,7 +141,7 @@ export default function Chat ({ sessionId }) {
                 // Convert chat history to messages format
                 let messages = session.history.concat(params.message).map((msg) => ({
                     role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
-                    content: Array.isArray(msg.content) ? msg.content : [{ type: 'text', text: msg.content }]
+                    content: Array.isArray(msg.content) ? msg.content : selectedModel.modelId.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
                 }));
 
                 const [systemMessage, ...remainingMessages] = messages;
@@ -216,10 +216,10 @@ export default function Chat ({ sessionId }) {
         if (!isRunning && session.history.length && dirtySession) {
             if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
                 setDirtySession(false);
-                updateSession({...session, configuration: chatConfiguration});
+                updateSession({...session, configuration: {...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig}});
             }
         }
-    }, [isRunning, session, dirtySession, auth, updateSession, chatConfiguration]);
+    }, [isRunning, session, dirtySession, auth, updateSession, chatConfiguration, ragConfig, selectedModel]);
 
     useEffect(() => {
         // always hide breadcrumbs
@@ -243,6 +243,8 @@ export default function Chat ({ sessionId }) {
                 }
                 setSession(sess);
                 setChatConfiguration(sess.configuration ?? baseConfig);
+                setSelectedModel(sess.configuration?.selectedModel ?? undefined);
+                setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
                 setLoadingSession(false);
             });
         } else {

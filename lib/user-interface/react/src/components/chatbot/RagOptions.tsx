@@ -53,9 +53,9 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
     }, [selectedRepositoryOption, selectedEmbeddingOption]);
 
     useEffect(() => {
-        setSelectedEmbeddingOption(ragConfig?.embeddingModel?.modelId ?? undefined)
-        setSelectedRepositoryOption(ragConfig?.repositoryId ?? undefined)
-    }, [ragConfig])
+        setSelectedEmbeddingOption(ragConfig?.embeddingModel?.modelId ?? undefined);
+        setSelectedRepositoryOption(ragConfig?.repositoryId ?? undefined);
+    }, [ragConfig]);
 
     return (
         <SpaceBetween size='l' direction='vertical'>

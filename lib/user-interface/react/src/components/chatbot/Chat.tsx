@@ -539,6 +539,7 @@ export default function Chat ({ sessionId }) {
                                             isRunning={isRunning}
                                             setUseRag={setUseRag}
                                             setRagConfig={setRagConfig}
+                                            ragConfig={ragConfig}
                                         />
                                     )}
                                 </Grid>

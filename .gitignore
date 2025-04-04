@@ -34,3 +34,4 @@ coverage
 # Deployment configuration file
 config.yaml
 config-custom.yaml
+/.coverage

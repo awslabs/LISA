@@ -6,8 +6,18 @@ loguru==0.7.2
 mangum==0.17.0
 pre-commit==3.5.0
 pydantic==2.8.2
-pytest==8.3.2
 pytest-xdist==3.6.1
 pytest-asyncio==0.25
 uvicorn==0.22.0
 boto3==1.35.95
+
+# Testing
+pytest==8.3.2
+pytest-cov==4.1.0
+moto==5.0.3
+coverage==7.4.4
+
+# Development
+black==24.3.0
+flake8==7.0.0
+mypy==1.9.0

@@ -370,3 +370,12 @@ help:
 		printf "\n"; \
 	}' \
 	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
+
+## Run Python tests with coverage report
+test-coverage:
+	pytest --verbose \
+          --cov lambda \
+          --cov-report term-missing \
+          --cov-report html:build/coverage \
+          --cov-report xml:build/coverage/coverage.xml \
+          --cov-fail-under 7

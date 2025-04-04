@@ -29,6 +29,15 @@ from moto import mock_aws
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
+# Set up mock AWS credentials
+os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+os.environ["AWS_SECURITY_TOKEN"] = "testing"
+os.environ["AWS_SESSION_TOKEN"] = "testing"
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
+os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
+
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
@@ -38,10 +47,8 @@ def mock_api_wrapper(func):
     def wrapper(*args, **kwargs):
         try:
             result = func(*args, **kwargs)
-            # If result is already formatted, return it
             if isinstance(result, dict) and "statusCode" in result:
                 return result
-            # Format the result
             return {
                 "statusCode": 200,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
@@ -58,10 +65,45 @@ def mock_api_wrapper(func):
     return wrapper
 
 
-# Set up environment variables first
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
-os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
+@pytest.fixture(scope="function")
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
+
+@pytest.fixture(scope="function")
+def dynamodb(aws_credentials):
+    """Create a mock DynamoDB service."""
+    with mock_aws():
+        yield boto3.resource("dynamodb", region_name="us-east-1")
+
+
+@pytest.fixture(scope="function")
+def dynamodb_table(dynamodb):
+    """Create a mock DynamoDB table."""
+    table = dynamodb.create_table(
+        TableName="sessions-table",
+        KeySchema=[{"AttributeName": "sessionId", "KeyType": "HASH"}, {"AttributeName": "userId", "KeyType": "RANGE"}],
+        AttributeDefinitions=[
+            {"AttributeName": "sessionId", "AttributeType": "S"},
+            {"AttributeName": "userId", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "sessions-by-user-id-index",
+                "KeySchema": [{"AttributeName": "userId", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+                "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+            }
+        ],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+    return table
+
 
 # Create mock modules
 mock_common = MagicMock()
@@ -89,48 +131,6 @@ patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
 # Now import the lambda functions
 from session.lambda_functions import delete_session, delete_user_sessions, get_session, list_sessions, put_session
-
-
-@pytest.fixture(autouse=True)
-def setup_aws_credentials():
-    """Setup AWS credentials for each test."""
-    with mock_aws():
-        os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-        os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-        os.environ["AWS_SECURITY_TOKEN"] = "testing"
-        os.environ["AWS_SESSION_TOKEN"] = "testing"
-        yield
-
-
-@pytest.fixture
-def dynamodb_table(setup_aws_credentials):
-    """Create a DynamoDB table for testing."""
-    with mock_aws():
-        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-        table = dynamodb.create_table(
-            TableName="sessions-table",
-            KeySchema=[
-                {"AttributeName": "sessionId", "KeyType": "HASH"},
-                {"AttributeName": "userId", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "sessionId", "AttributeType": "S"},
-                {"AttributeName": "userId", "AttributeType": "S"},
-            ],
-            GlobalSecondaryIndexes=[
-                {
-                    "IndexName": "sessions-by-user-id-index",
-                    "KeySchema": [
-                        {"AttributeName": "userId", "KeyType": "HASH"},
-                        {"AttributeName": "sessionId", "KeyType": "RANGE"},
-                    ],
-                    "Projection": {"ProjectionType": "ALL"},
-                    "ProvisionedThroughput": {"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
-                }
-            ],
-            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
-        )
-        yield table
 
 
 @pytest.fixture

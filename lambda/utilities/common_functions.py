@@ -348,9 +348,11 @@ def get_rest_api_container_endpoint() -> str:
 
 
 def get_username(event: dict) -> str:
-    """Get username from event."""
-    username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
-    return username
+    """Get the username from the event."""
+    try:
+        return str(event["requestContext"]["authorizer"]["claims"]["username"])
+    except (KeyError, TypeError):
+        raise ValueError("Missing username in request context")
 
 
 def is_admin(event: dict) -> bool:
@@ -374,9 +376,11 @@ def admin_only(func: Callable) -> Callable:
 
 
 def get_session_id(event: dict) -> str:
-    """Get session_id from event."""
-    session_id: str = event.get("pathParameters", {}).get("sessionId")
-    return session_id
+    """Get the session ID from the event."""
+    try:
+        return str(event["pathParameters"]["sessionId"])
+    except (KeyError, TypeError):
+        raise ValueError("Missing sessionId in path parameters")
 
 
 def get_groups(event: Any) -> List[str]:

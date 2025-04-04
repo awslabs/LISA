@@ -110,21 +110,18 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
 
 
 @api_wrapper
-def get_session(event: dict, context: dict) -> Dict[str, Any]:
-    """Get session from DynamoDB."""
-    user_id = get_username(event)
-    session_id = get_session_id(event)
-
-    logger.info(f"Fetching session with ID {session_id} for user {user_id}")
-    response = {}
+def get_session(event: dict, context: dict) -> dict:
+    """Get a session from DynamoDB."""
     try:
+        user_id = get_username(event)
+        session_id = get_session_id(event)
+
+        logging.info(f"Fetching session with ID {session_id} for user {user_id}")
+
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
-    except ClientError as error:
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            logger.warning(f"No record found with session id: {session_id}")
-        else:
-            logger.exception("Error fetching session")
-    return response.get("Item", {})  # type: ignore [no-any-return]
+        return response.get("Item", {})  # type: ignore [no-any-return]
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
 @api_wrapper
@@ -150,17 +147,23 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     return {"deleted": True}
 
 
-# TODO: add validation for messages
 @api_wrapper
-def put_session(event: dict, context: dict) -> None:
+def put_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
-    user_id = get_username(event)
-    session_id = get_session_id(event)
-    # from https://stackoverflow.com/a/71446846
-    body = json.loads(event["body"], parse_float=Decimal)
-    messages = body["messages"]
-
     try:
+        user_id = get_username(event)
+        session_id = get_session_id(event)
+
+        try:
+            body = json.loads(event["body"], parse_float=Decimal)
+        except json.JSONDecodeError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
+
+        if "messages" not in body:
+            return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
+
+        messages = body["messages"]
+
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #history = :history, #configuration = :configuration, #startTime = :startTime, "
@@ -179,5 +182,6 @@ def put_session(event: dict, context: dict) -> None:
             },
             ReturnValues="UPDATED_NEW",
         )
-    except ClientError:
-        logger.exception("Error updating session in DynamoDB")
+        return {"statusCode": 200, "body": json.dumps({"message": "Session updated successfully"})}
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

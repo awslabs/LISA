@@ -109,38 +109,19 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     return resp
 
 
-def get_session_id(event: dict) -> str:
-    """Get the session ID from the event."""
-    try:
-        return event["pathParameters"]["sessionId"]
-    except (KeyError, TypeError):
-        raise ValueError("Missing sessionId in path parameters")
-
-
-def get_username(event: dict) -> str:
-    """Get the username from the event."""
-    try:
-        return event["requestContext"]["authorizer"]["claims"]["username"]
-    except (KeyError, TypeError):
-        raise ValueError("Missing username in request context")
-
-
 @api_wrapper
 def get_session(event: dict, context: dict) -> dict:
     """Get a session from DynamoDB."""
     try:
         user_id = get_username(event)
         session_id = get_session_id(event)
-        
+
         logging.info(f"Fetching session with ID {session_id} for user {user_id}")
-        
+
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
-        return response.get("Item", {})
+        return response.get("Item", {})  # type: ignore [no-any-return]
     except ValueError as e:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": str(e)})
-        }
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
 @api_wrapper
@@ -172,23 +153,17 @@ def put_session(event: dict, context: dict) -> dict:
     try:
         user_id = get_username(event)
         session_id = get_session_id(event)
-        
+
         try:
             body = json.loads(event["body"], parse_float=Decimal)
         except json.JSONDecodeError as e:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})
-            }
-            
+            return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
+
         if "messages" not in body:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Missing required fields: messages"})
-            }
-            
+            return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
+
         messages = body["messages"]
-        
+
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #history = :history, #configuration = :configuration, #startTime = :startTime, "
@@ -207,12 +182,6 @@ def put_session(event: dict, context: dict) -> dict:
             },
             ReturnValues="UPDATED_NEW",
         )
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"message": "Session updated successfully"})
-        }
+        return {"statusCode": 200, "body": json.dumps({"message": "Session updated successfully"})}
     except ValueError as e:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": str(e)})
-        }
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

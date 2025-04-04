@@ -59,13 +59,13 @@ jobs:
       with:
         python-version: "3.11"
     - name: Install dependencies
-      working-directory: ./backend
+      working-directory: /
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-      - name: Run tests
-        run: |
-          make test-coverage
+    - name: Run tests
+      run: |
+        make test-coverage
   pre-commit:
       name: Run All Pre-Commit
       needs: [send_starting_slack_notification]

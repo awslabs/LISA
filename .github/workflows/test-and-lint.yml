@@ -86,7 +86,7 @@ jobs:
         - uses: pre-commit/action@v3.0.1
   send_final_slack_notification:
     name: Send Final Slack Notification
-    needs: [cdk-build, pre-commit]
+    needs: [cdk-build, backend-build, pre-commit]
     runs-on: ubuntu-latest
     if: always()
     steps:

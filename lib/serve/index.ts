@@ -72,9 +72,9 @@ export class LisaServeApplicationStack extends Stack {
                 encryption: TableEncryption.AWS_MANAGED,
                 removalPolicy: config.removalPolicy,
             });
-
-            this.tokenTable = tokenTable;
         }
+
+        this.tokenTable = tokenTable;
 
         // Create REST API
         const restApi = new FastApiContainer(this, 'RestApi', {

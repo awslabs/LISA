@@ -18,7 +18,7 @@
 import path from 'node:path';
 
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -47,6 +47,7 @@ export class LisaServeApplicationStack extends Stack {
     public readonly restApi: FastApiContainer;
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
+    public readonly tokenTable: ITable | undefined;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -71,6 +72,8 @@ export class LisaServeApplicationStack extends Stack {
                 encryption: TableEncryption.AWS_MANAGED,
                 removalPolicy: config.removalPolicy,
             });
+
+            this.tokenTable = tokenTable;
         }
 
         // Create REST API

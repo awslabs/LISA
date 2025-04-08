@@ -28,6 +28,7 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from './utils';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -42,6 +43,7 @@ export type AuthorizerProps = {
     role?: IRole;
     vpc: Vpc;
     securityGroups: ISecurityGroup[];
+    tokenTable: ITable | undefined;
 } & BaseProps;
 
 /**
@@ -59,7 +61,7 @@ export class CustomAuthorizer extends Construct {
     constructor (scope: Construct, id: string, props: AuthorizerProps) {
         super(scope, id);
 
-        const { config, role, vpc, securityGroups } = props;
+        const { config, role, vpc, securityGroups, tokenTable } = props;
 
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
@@ -95,13 +97,18 @@ export class CustomAuthorizer extends Construct {
                 AUTHORITY: config.authConfig!.authority,
                 ADMIN_GROUP: config.authConfig!.adminGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-                MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue
+                MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue,
+                TOKEN_TABLE_NAME: tokenTable?.tableName ?? 'undefined',
             },
             role: role,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
             vpcSubnets: vpc.subnetSelection
         });
+
+        if (tokenTable){
+            tokenTable.grantReadData(authorizerLambda);
+        }
 
         const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);
         managementKeySecret.grantRead(authorizerLambda);

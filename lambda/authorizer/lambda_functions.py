@@ -68,7 +68,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         logger.debug(f"Generated policy: {allow_policy}")
         return allow_policy
 
-    if is_valid_api_token(id_token):
+    if os.environ.get("TOKEN_TABLE_NAME", None) and is_valid_api_token(id_token):
         username = "api-token"
         groups = json.dumps([])
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)

@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
-token_table = ddb_resource.Table(os.environ.get("TOKEN_TABLE_NAME", ""))
-TOKEN_EXPIRATION_NAME = "tokenExpiration"
+token_table = ddb_resource.Table(os.environ.get("TOKEN_TABLE_NAME", ""))  # nosec B105
+TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 
 
 @authorization_wrapper
@@ -117,9 +117,7 @@ def _get_token_info(token: str) -> Any:
     return ddb_response.get("Item", None)
 
 
-def is_valid_api_token(value: str) -> bool:
-    """Return if API Token from request headers is valid if found."""
-    token = value.removeprefix("Bearer").strip()
+def is_valid_api_token(token: str) -> bool:
     if token:
         token_info = _get_token_info(token)
         if token_info:

@@ -71,8 +71,14 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaNetworking'
         });
+        const serveStack = new LisaServeApplicationStack(app, 'LisaServe', {
+            ...baseStackProps,
+            stackName: 'LisaServe',
+            vpc: networkingStack.vpc,
+        });
         const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
+            tokenTable: serveStack.tokenTable,
             stackName: 'LisaApiBase',
             vpc: networkingStack.vpc,
         });
@@ -94,11 +100,6 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaIAM',
             config: config,
-        });
-        const serveStack = new LisaServeApplicationStack(app, 'LisaServe', {
-            ...baseStackProps,
-            stackName: 'LisaServe',
-            vpc: networkingStack.vpc,
         });
 
         const uiStack = new UserInterfaceStack(app, 'LisaUI', {

@@ -22,9 +22,11 @@ import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Role } from 'aws-cdk-lib/aws-iam';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 type LisaApiBaseStackProps = {
     vpc: Vpc;
+    tokenTable: ITable | undefined;
 } & BaseProps &
     StackProps;
 
@@ -38,7 +40,7 @@ export class LisaApiBaseStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaApiBaseStackProps) {
         super(scope, id, props);
 
-        const { config, vpc } = props;
+        const { config, vpc, tokenTable } = props;
 
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
@@ -63,6 +65,7 @@ export class LisaApiBaseStack extends Stack {
         const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
             config: config,
             securityGroups: [vpc.securityGroups.lambdaSg],
+            tokenTable,
             vpc,
             ...(config.roles &&
             {

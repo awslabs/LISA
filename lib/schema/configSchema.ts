@@ -783,14 +783,6 @@ export const RawConfigSchema = RawConfigObject
     )
     .refine(
         (config) => {
-            return !(config.deployRag && !config.deployUi);
-        },
-        {
-            message: 'UI Stack is needed for Rag stack. You must set deployUI to true if deployRag is true.',
-        },
-    )
-    .refine(
-        (config) => {
             return (
                 !(config.deployChat || config.deployRag || config.deployUi) ||
                 config.authConfig

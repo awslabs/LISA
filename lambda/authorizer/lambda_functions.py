@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import ssl
+from datetime import datetime
 from functools import cache
 from typing import Any, Dict, Optional
 
@@ -30,6 +31,9 @@ from utilities.common_functions import authorization_wrapper, get_id_token, retr
 logger = logging.getLogger(__name__)
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+token_table = ddb_resource.Table(os.environ.get("TOKEN_TABLE_NAME", ""))  # nosec B105
+TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 
 
 @authorization_wrapper
@@ -59,6 +63,14 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         username = "lisa-management-token"
         # Add management token to Admin groups
         groups = json.dumps([admin_group])
+        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
+        allow_policy["context"] = {"username": username, "groups": groups}
+        logger.debug(f"Generated policy: {allow_policy}")
+        return allow_policy
+
+    if os.environ.get("TOKEN_TABLE_NAME", None) and is_valid_api_token(id_token):
+        username = "api-token"
+        groups = json.dumps([])
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": groups}
         logger.debug(f"Generated policy: {allow_policy}")
@@ -97,6 +109,23 @@ def generate_policy(*, effect: str, resource: str, username: str = "username") -
         },
     }
     return policy
+
+
+def _get_token_info(token: str) -> Any:
+    """Return DDB entry for token if it exists."""
+    ddb_response = token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
+    return ddb_response.get("Item", None)
+
+
+def is_valid_api_token(token: str) -> bool:
+    if token:
+        token_info = _get_token_info(token)
+        if token_info:
+            token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
+            current_time = int(datetime.now().timestamp())
+            if current_time < token_expiration:  # token has not expired yet
+                return True
+    return False
 
 
 def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[str, Any] | None:

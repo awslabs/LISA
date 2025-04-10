@@ -45,13 +45,15 @@ os.environ["PROMPT_TEMPLATES_TABLE"] = "prompt-templates-table"
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
+
 # Define a mock API wrapper for testing
 def mock_api_wrapper(func):
     """Mock API wrapper that handles both success and error cases for testing.
-    
+
     For successful function calls, it wraps the result in an HTTP response format.
     For error cases, it allows exceptions to propagate.
     """
+
     def wrapper(event, context):
         try:
             # Call the function and wrap successful results in an HTTP response
@@ -59,10 +61,7 @@ def mock_api_wrapper(func):
             return {
                 "statusCode": 200,
                 "body": json.dumps(result, default=str),
-                "headers": {
-                    "Access-Control-Allow-Origin": "*",
-                    "Content-Type": "application/json"
-                }
+                "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
         except Exception as e:
             # For tests that expect to catch specific exceptions with pytest.raises,
@@ -74,12 +73,11 @@ def mock_api_wrapper(func):
             return {
                 "statusCode": 400,
                 "body": json.dumps(f"Bad Request: {str(e)}", default=str),
-                "headers": {
-                    "Access-Control-Allow-Origin": "*",
-                    "Content-Type": "application/json"
-                }
+                "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
+
     return wrapper
+
 
 # Create mock modules
 mock_common = MagicMock()
@@ -108,8 +106,8 @@ patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
 
 # Now import the lambda functions
-from prompt_templates.lambda_functions import create, delete, get, list, update, _get_prompt_templates
-from prompt_templates.models import PromptTemplateModel
+from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list, update
+
 
 @pytest.fixture
 def lambda_context():
@@ -124,6 +122,7 @@ def lambda_context():
         log_stream_name="2024/03/27/[$LATEST]test123",
     )
 
+
 @pytest.fixture
 def sample_prompt_template():
     return {
@@ -135,8 +134,9 @@ def sample_prompt_template():
         "revision": 1,
         "latest": True,
         "type": "persona",
-        "body": "Test prompt template body"
+        "body": "Test prompt template body",
     }
+
 
 @pytest.fixture(scope="function")
 def aws_credentials():
@@ -148,40 +148,40 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     os.environ["AWS_REGION"] = "us-east-1"
 
+
 @pytest.fixture(scope="function")
 def dynamodb():
     """Create a mock DynamoDB service."""
     with mock_aws():
         yield boto3.resource("dynamodb", region_name="us-east-1")
 
+
 @pytest.fixture(scope="function")
 def prompt_templates_table(dynamodb):
     """Create a mock DynamoDB table for prompt templates."""
     table = dynamodb.create_table(
         TableName="prompt-templates-table",
-        KeySchema=[
-            {"AttributeName": "id", "KeyType": "HASH"},
-            {"AttributeName": "created", "KeyType": "RANGE"}
-        ],
+        KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}, {"AttributeName": "created", "KeyType": "RANGE"}],
         AttributeDefinitions=[
             {"AttributeName": "id", "AttributeType": "S"},
             {"AttributeName": "created", "AttributeType": "S"},
-            {"AttributeName": "latest", "AttributeType": "BOOL"}
+            {"AttributeName": "latest", "AttributeType": "BOOL"},
         ],
         GlobalSecondaryIndexes=[
             {
                 "IndexName": "by-latest-index",
                 "KeySchema": [
                     {"AttributeName": "id", "KeyType": "HASH"},
-                    {"AttributeName": "latest", "KeyType": "RANGE"}
+                    {"AttributeName": "latest", "KeyType": "RANGE"},
                 ],
                 "Projection": {"ProjectionType": "ALL"},
-                "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5}
+                "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             }
         ],
-        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5}
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
     return table
+
 
 @pytest.fixture(scope="function")
 def mock_boto3_client():
@@ -189,30 +189,29 @@ def mock_boto3_client():
     with mock_aws():
         yield boto3.client
 
+
 @pytest.fixture
 def mock_is_admin():
     """Mocks the is_admin function."""
     # Save the original mock value
     original_return_value = mock_common.is_admin.return_value
-    
+
     # Update to return True (or other value as needed for specific tests)
     mock_common.is_admin.return_value = False
-    
+
     yield mock_common.is_admin
-    
+
     # Restore the original mock value after the test
     mock_common.is_admin.return_value = original_return_value
+
 
 def test_create_prompt_template(prompt_templates_table, lambda_context):
     """Test creating a new prompt template."""
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "body": json.dumps({
-            "title": "Test Template",
-            "groups": ["test-group"],
-            "type": "persona",
-            "body": "Test prompt template body"
-        })
+        "body": json.dumps(
+            {"title": "Test Template", "groups": ["test-group"], "type": "persona", "body": "Test prompt template body"}
+        ),
     }
 
     response = create(event, lambda_context)
@@ -224,20 +223,23 @@ def test_create_prompt_template(prompt_templates_table, lambda_context):
     assert body["type"] == "persona"
     assert body["body"] == "Test prompt template body"
 
+
 def test_update_prompt_template(prompt_templates_table, lambda_context):
     """Test updating a prompt template."""
     # Create initial template
     response = create(
         {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-            "body": json.dumps({
-                "title": "Test Template",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Test prompt template body"
-            })
+            "body": json.dumps(
+                {
+                    "title": "Test Template",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Test prompt template body",
+                }
+            ),
         },
-        lambda_context
+        lambda_context,
     )
     assert response["statusCode"] == 200
     data = json.loads(response["body"])
@@ -248,16 +250,18 @@ def test_update_prompt_template(prompt_templates_table, lambda_context):
         {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
             "pathParameters": {"promptTemplateId": template_id},
-            "body": json.dumps({
-                "id": template_id,
-                "title": "Updated Template",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Updated prompt template body",
-                "owner": "test-user"
-            })
+            "body": json.dumps(
+                {
+                    "id": template_id,
+                    "title": "Updated Template",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Updated prompt template body",
+                    "owner": "test-user",
+                }
+            ),
         },
-        lambda_context
+        lambda_context,
     )
 
     assert response["statusCode"] == 200
@@ -265,35 +269,40 @@ def test_update_prompt_template(prompt_templates_table, lambda_context):
     assert data["title"] == "Updated Template"
     assert data["body"] == "Updated prompt template body"
 
+
 @pytest.mark.asyncio
 async def test_get_prompt_template_not_found(mock_boto3_client, prompt_templates_table, lambda_context):
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "pathParameters": {"promptTemplateId": "non-existent"}
+        "pathParameters": {"promptTemplateId": "non-existent"},
     }
     with pytest.raises(ValueError, match="Prompt template non-existent not found."):
         get(event, lambda_context)
+
 
 @pytest.mark.asyncio
 async def test_delete_prompt_template_not_found(mock_boto3_client, prompt_templates_table, lambda_context):
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "pathParameters": {"promptTemplateId": "non-existent"}
+        "pathParameters": {"promptTemplateId": "non-existent"},
     }
     with pytest.raises(ValueError, match="Prompt template non-existent not found."):
         delete(event, lambda_context)
+
 
 def test_list_prompt_templates(prompt_templates_table, lambda_context, mock_is_admin):
     """Test listing prompt templates."""
     # Create a public template
     create_event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "body": json.dumps({
-            "title": "Public Template",
-            "groups": ["lisa:public"],
-            "type": "persona",
-            "body": "Public prompt template body"
-        })
+        "body": json.dumps(
+            {
+                "title": "Public Template",
+                "groups": ["lisa:public"],
+                "type": "persona",
+                "body": "Public prompt template body",
+            }
+        ),
     }
     response = create(create_event, lambda_context)
     assert response["statusCode"] == 200
@@ -301,7 +310,7 @@ def test_list_prompt_templates(prompt_templates_table, lambda_context, mock_is_a
     # List public templates
     list_event = {
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
-        "queryStringParameters": {"public": "true"}
+        "queryStringParameters": {"public": "true"},
     }
     mock_common.get_username.return_value = "different-user"
     mock_common.get_groups.return_value = ["different-group"]
@@ -323,12 +332,14 @@ def test_list_prompt_templates_admin(prompt_templates_table, lambda_context, moc
     # Create a public template
     create_event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "body": json.dumps({
-            "title": "Public Template",
-            "groups": ["lisa:public"],
-            "type": "persona",
-            "body": "Public prompt template body"
-        })
+        "body": json.dumps(
+            {
+                "title": "Public Template",
+                "groups": ["lisa:public"],
+                "type": "persona",
+                "body": "Public prompt template body",
+            }
+        ),
     }
     response = create(create_event, lambda_context)
     assert response["statusCode"] == 200
@@ -336,14 +347,14 @@ def test_list_prompt_templates_admin(prompt_templates_table, lambda_context, moc
     # List public templates
     list_event = {
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
-        "queryStringParameters": {"public": "true"}
+        "queryStringParameters": {"public": "true"},
     }
     mock_common.get_username.return_value = "different-user"
     mock_common.get_groups.return_value = ["different-group"]
 
     # Set admin to True for this test to increase coverage
     mock_is_admin.return_value = True
-    
+
     response = list(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
@@ -356,17 +367,20 @@ def test_list_prompt_templates_admin(prompt_templates_table, lambda_context, moc
     mock_common.get_groups.return_value = ["test-group"]
     mock_is_admin.return_value = False
 
+
 def test_list_prompt_templates_for_user(prompt_templates_table, lambda_context):
     """Test listing prompt templates."""
     # Create a public template
     create_event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "body": json.dumps({
-            "title": "Public Template",
-            "groups": ["lisa:public"],
-            "type": "persona",
-            "body": "Public prompt template body"
-        })
+        "body": json.dumps(
+            {
+                "title": "Public Template",
+                "groups": ["lisa:public"],
+                "type": "persona",
+                "body": "Public prompt template body",
+            }
+        ),
     }
     response = create(create_event, lambda_context)
     assert response["statusCode"] == 200
@@ -391,13 +405,14 @@ def test_delete_prompt_template(prompt_templates_table, sample_prompt_template, 
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "pathParameters": {"promptTemplateId": "test-template"}
+        "pathParameters": {"promptTemplateId": "test-template"},
     }
 
     response = delete(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["status"] == "ok"
+
 
 def test_get_prompt_template(prompt_templates_table, sample_prompt_template, lambda_context):
     """Test getting a specific prompt template."""
@@ -406,7 +421,7 @@ def test_get_prompt_template(prompt_templates_table, sample_prompt_template, lam
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "pathParameters": {"promptTemplateId": "test-template"}
+        "pathParameters": {"promptTemplateId": "test-template"},
     }
 
     response = get(event, lambda_context)
@@ -414,6 +429,7 @@ def test_get_prompt_template(prompt_templates_table, sample_prompt_template, lam
     body = json.loads(response["body"])
     assert body["id"] == "test-template"
     assert body["owner"] == "test-user"
+
 
 def test_get_prompt_template_public(prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin):
     """Test getting a specific prompt template."""
@@ -422,7 +438,7 @@ def test_get_prompt_template_public(prompt_templates_table, sample_prompt_templa
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "pathParameters": {"promptTemplateId": "test-template"}
+        "pathParameters": {"promptTemplateId": "test-template"},
     }
 
     mock_common.get_username.return_value = "different-user"
@@ -433,11 +449,14 @@ def test_get_prompt_template_public(prompt_templates_table, sample_prompt_templa
     body = json.loads(response["body"])
     assert body["id"] == "test-template"
     assert body["owner"] == "test-user"
-    
+
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
 
-def test_update_prompt_template_unauthorized(prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin):
+
+def test_update_prompt_template_unauthorized(
+    prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin
+):
     """Test updating a prompt template without authorization."""
     # Add the template to the table first
     prompt_templates_table.put_item(Item=sample_prompt_template)
@@ -445,24 +464,29 @@ def test_update_prompt_template_unauthorized(prompt_templates_table, sample_prom
     mock_common.get_username.return_value = "different-user"
     mock_is_admin.return_value = False
     event = {
-        'pathParameters': {'promptTemplateId': 'test-template'},
-        'body': json.dumps({
-            'id': 'test-template',
-            'title': 'Updated Template',
-            'owner': 'test-user',
-            'groups': ['test-group'],
-            'type': 'persona',
-            'body': 'Updated body'
-        }),
-        'requestContext': {'authorizer': {'claims': {'username': 'different-user'}}}
+        "pathParameters": {"promptTemplateId": "test-template"},
+        "body": json.dumps(
+            {
+                "id": "test-template",
+                "title": "Updated Template",
+                "owner": "test-user",
+                "groups": ["test-group"],
+                "type": "persona",
+                "body": "Updated body",
+            }
+        ),
+        "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
     }
     with pytest.raises(ValueError, match="Not authorized to update test-template."):
         update(event, lambda_context)
-    
+
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
 
-def test_delete_prompt_template_unauthorized(prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin):
+
+def test_delete_prompt_template_unauthorized(
+    prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin
+):
     """Test deleting a prompt template without authorization."""
     # Add the template to the table first
     prompt_templates_table.put_item(Item=sample_prompt_template)
@@ -470,16 +494,19 @@ def test_delete_prompt_template_unauthorized(prompt_templates_table, sample_prom
     mock_is_admin.return_value = False
     mock_common.get_username.return_value = "different-user"
     event = {
-        'pathParameters': {'promptTemplateId': 'test-template'},
-        'requestContext': {'authorizer': {'claims': {'username': 'different-user'}}}
+        "pathParameters": {"promptTemplateId": "test-template"},
+        "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
     }
     with pytest.raises(ValueError, match="Not authorized to delete test-template."):
         delete(event, lambda_context)
-    
+
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
 
-def test_get_prompt_template_unauthorized(prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin):
+
+def test_get_prompt_template_unauthorized(
+    prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin
+):
     """Test getting a specific prompt template."""
     # Add the template to the table
     sample_prompt = sample_prompt_template
@@ -488,7 +515,7 @@ def test_get_prompt_template_unauthorized(prompt_templates_table, sample_prompt_
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
-        "pathParameters": {"promptTemplateId": "test-template"}
+        "pathParameters": {"promptTemplateId": "test-template"},
     }
 
     mock_common.get_username.return_value = "different-user"
@@ -497,10 +524,11 @@ def test_get_prompt_template_unauthorized(prompt_templates_table, sample_prompt_
 
     with pytest.raises(ValueError, match="Not authorized to get test-template."):
         get(event, lambda_context)
-    
+
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
     mock_common.get_groups.return_value = ["test-group"]
+
 
 # Add a new test to test the admin path with increased coverage
 def test_admin_can_update_any_template(prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin):
@@ -511,30 +539,33 @@ def test_admin_can_update_any_template(prompt_templates_table, sample_prompt_tem
     # Set up admin user
     mock_common.get_username.return_value = "admin-user"
     mock_is_admin.return_value = True
-    
+
     event = {
-        'pathParameters': {'promptTemplateId': 'test-template'},
-        'body': json.dumps({
-            'id': 'test-template',
-            'title': 'Admin Updated Template',
-            'groups': ['test-group'],
-            'type': 'persona',
-            'body': 'Admin updated body',
-            'owner': 'test-user'
-        }),
-        'requestContext': {'authorizer': {'claims': {'username': 'admin-user'}}}
+        "pathParameters": {"promptTemplateId": "test-template"},
+        "body": json.dumps(
+            {
+                "id": "test-template",
+                "title": "Admin Updated Template",
+                "groups": ["test-group"],
+                "type": "persona",
+                "body": "Admin updated body",
+                "owner": "test-user",
+            }
+        ),
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
     }
-    
+
     # Admin should be able to update the template despite not being the owner
     response = update(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["title"] == "Admin Updated Template"
     assert body["body"] == "Admin updated body"
-    
+
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
     mock_is_admin.return_value = False
+
 
 def test_admin_can_delete_any_template(prompt_templates_table, sample_prompt_template, lambda_context, mock_is_admin):
     """Test that an admin can delete any template."""
@@ -544,79 +575,86 @@ def test_admin_can_delete_any_template(prompt_templates_table, sample_prompt_tem
     # Set up admin user
     mock_common.get_username.return_value = "admin-user"
     mock_is_admin.return_value = True
-    
+
     event = {
-        'pathParameters': {'promptTemplateId': 'test-template'},
-        'requestContext': {'authorizer': {'claims': {'username': 'admin-user'}}}
+        "pathParameters": {"promptTemplateId": "test-template"},
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
     }
-    
+
     # Admin should be able to delete the template despite not being the owner
     response = delete(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["status"] == "ok"
-    
+
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
     mock_is_admin.return_value = False
+
 
 def test_update_template_url_id_mismatch(prompt_templates_table, sample_prompt_template, lambda_context):
     """Test update with mismatched IDs between URL and body."""
     # Add the template to the table first
     prompt_templates_table.put_item(Item=sample_prompt_template)
-    
+
     event = {
-        'pathParameters': {'promptTemplateId': 'test-template'},
-        'body': json.dumps({
-            'id': 'different-template-id',  # Different from URL ID
-            'title': 'Mismatched Template',
-            'groups': ['test-group'],
-            'type': 'persona',
-            'body': 'Test body',
-            'owner': 'test-user'  # Include owner to avoid validation error
-        }),
-        'requestContext': {'authorizer': {'claims': {'username': 'test-user'}}}
+        "pathParameters": {"promptTemplateId": "test-template"},
+        "body": json.dumps(
+            {
+                "id": "different-template-id",  # Different from URL ID
+                "title": "Mismatched Template",
+                "groups": ["test-group"],
+                "type": "persona",
+                "body": "Test body",
+                "owner": "test-user",  # Include owner to avoid validation error
+            }
+        ),
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
     }
-    
+
     # Should return an error response because IDs don't match
     with pytest.raises(ValueError, match="URL id test-template doesn't match body id different-template-id"):
         update(event, lambda_context)
 
+
 def test_update_template_not_found(prompt_templates_table, lambda_context):
     """Test updating a non-existent template."""
     event = {
-        'pathParameters': {'promptTemplateId': 'non-existent-template'},
-        'body': json.dumps({
-            'id': 'non-existent-template',
-            'title': 'Not Found Template',
-            'groups': ['test-group'],
-            'type': 'persona',
-            'body': 'Test body',
-            'owner': 'test-user'  # Include owner to avoid validation error
-        }),
-        'requestContext': {'authorizer': {'claims': {'username': 'test-user'}}}
+        "pathParameters": {"promptTemplateId": "non-existent-template"},
+        "body": json.dumps(
+            {
+                "id": "non-existent-template",
+                "title": "Not Found Template",
+                "groups": ["test-group"],
+                "type": "persona",
+                "body": "Test body",
+                "owner": "test-user",  # Include owner to avoid validation error
+            }
+        ),
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
     }
-    
+
     # Should raise an error because template doesn't exist
     # Use a more flexible pattern since the error message includes the full template object
     with pytest.raises(ValueError, match="Prompt template .* not found"):
         update(event, lambda_context)
 
+
 def test_get_prompt_templates_helper(prompt_templates_table, sample_prompt_template):
     """Test the _get_prompt_templates helper function with different parameters."""
     # Add a template to the table
     prompt_templates_table.put_item(Item=sample_prompt_template)
-    
+
     # Test getting templates for a specific user
     result = _get_prompt_templates(user_id="test-user", latest=True)
     assert len(result["Items"]) == 1
     assert result["Items"][0]["id"] == "test-template"
-    
+
     # Test getting templates for a specific group
     result = _get_prompt_templates(groups=["lisa:public"], latest=True)
     assert len(result["Items"]) == 1
     assert result["Items"][0]["id"] == "test-template"
-    
+
     # Test getting templates with no filters
     result = _get_prompt_templates()
     assert len(result["Items"]) == 1

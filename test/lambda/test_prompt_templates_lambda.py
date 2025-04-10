@@ -51,7 +51,7 @@ def mock_api_wrapper(func):
     """Mock API wrapper that handles both success and error cases for testing.
 
     For successful function calls, it wraps the result in an HTTP response format.
-    For error cases, it allows exceptions to propagate.
+    For error cases, it returns an appropriate error response with proper status code.
     """
 
     def wrapper(event, context):
@@ -63,16 +63,29 @@ def mock_api_wrapper(func):
                 "body": json.dumps(result, default=str),
                 "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
-        except Exception as e:
-            # For tests that expect to catch specific exceptions with pytest.raises,
-            # allow these error patterns to propagate
-            error_patterns = ["not found", "Not authorized", "URL id", "doesn't match"]
-            if any(pattern in str(e) for pattern in error_patterns):
+        except ValueError as e:
+            error_msg = str(e)
+            # For tests that need to assert specific errors with pytest.raises, re-raise
+            if "test" in event.get("raise_errors", ""):
                 raise
-            # For other errors, wrap them in an HTTP response
+
+            # Handle specific error patterns with appropriate status codes
+            status_code = 400
+            if "not found" in error_msg.lower():
+                status_code = 404
+            elif "Not authorized" in error_msg:
+                status_code = 403
+
+            return {
+                "statusCode": status_code,
+                "body": json.dumps({"error": error_msg}, default=str),
+                "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
+            }
+        except Exception as e:
+            # For other errors, return a general 400 response
             return {
                 "statusCode": 400,
-                "body": json.dumps(f"Bad Request: {str(e)}", default=str),
+                "body": json.dumps({"error": f"Bad Request: {str(e)}"}, default=str),
                 "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
 
@@ -276,8 +289,11 @@ async def test_get_prompt_template_not_found(mock_boto3_client, prompt_templates
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"promptTemplateId": "non-existent"},
     }
-    with pytest.raises(ValueError, match="Prompt template non-existent not found."):
-        get(event, lambda_context)
+
+    response = get(event, lambda_context)
+    assert response["statusCode"] == 404
+    body = json.loads(response["body"])
+    assert "Prompt template non-existent not found" in body.get("error", "")
 
 
 @pytest.mark.asyncio
@@ -286,8 +302,11 @@ async def test_delete_prompt_template_not_found(mock_boto3_client, prompt_templa
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"promptTemplateId": "non-existent"},
     }
-    with pytest.raises(ValueError, match="Prompt template non-existent not found."):
-        delete(event, lambda_context)
+
+    response = delete(event, lambda_context)
+    assert response["statusCode"] == 404
+    body = json.loads(response["body"])
+    assert "Prompt template non-existent not found" in body.get("error", "")
 
 
 def test_list_prompt_templates(prompt_templates_table, lambda_context, mock_is_admin):
@@ -477,8 +496,11 @@ def test_update_prompt_template_unauthorized(
         ),
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
     }
-    with pytest.raises(ValueError, match="Not authorized to update test-template."):
-        update(event, lambda_context)
+
+    response = update(event, lambda_context)
+    assert response["statusCode"] == 403
+    body = json.loads(response["body"])
+    assert "Not authorized to update test-template" in body.get("error", "")
 
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
@@ -497,8 +519,11 @@ def test_delete_prompt_template_unauthorized(
         "pathParameters": {"promptTemplateId": "test-template"},
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
     }
-    with pytest.raises(ValueError, match="Not authorized to delete test-template."):
-        delete(event, lambda_context)
+
+    response = delete(event, lambda_context)
+    assert response["statusCode"] == 403
+    body = json.loads(response["body"])
+    assert "Not authorized to delete test-template" in body.get("error", "")
 
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
@@ -522,8 +547,10 @@ def test_get_prompt_template_unauthorized(
     mock_common.get_groups.return_value = []
     mock_is_admin.return_value = False
 
-    with pytest.raises(ValueError, match="Not authorized to get test-template."):
-        get(event, lambda_context)
+    response = get(event, lambda_context)
+    assert response["statusCode"] == 403
+    body = json.loads(response["body"])
+    assert "Not authorized to get test-template" in body.get("error", "")
 
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
@@ -601,43 +628,44 @@ def test_update_template_url_id_mismatch(prompt_templates_table, sample_prompt_t
         "pathParameters": {"promptTemplateId": "test-template"},
         "body": json.dumps(
             {
-                "id": "different-template-id",  # Different from URL ID
-                "title": "Mismatched Template",
+                "id": "different-id",
+                "title": "Updated Template",
+                "owner": "test-user",
                 "groups": ["test-group"],
                 "type": "persona",
-                "body": "Test body",
-                "owner": "test-user",  # Include owner to avoid validation error
+                "body": "Updated body",
             }
         ),
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
     }
 
-    # Should return an error response because IDs don't match
-    with pytest.raises(ValueError, match="URL id test-template doesn't match body id different-template-id"):
-        update(event, lambda_context)
+    response = update(event, lambda_context)
+    assert response["statusCode"] == 400
+    body = json.loads(response["body"])
+    assert "URL id test-template doesn't match body id different-id" in body.get("error", "")
 
 
 def test_update_template_not_found(prompt_templates_table, lambda_context):
     """Test updating a non-existent template."""
     event = {
-        "pathParameters": {"promptTemplateId": "non-existent-template"},
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "pathParameters": {"promptTemplateId": "non-existent"},
         "body": json.dumps(
             {
-                "id": "non-existent-template",
-                "title": "Not Found Template",
+                "id": "non-existent",
+                "title": "Updated Template",
+                "owner": "test-user",
                 "groups": ["test-group"],
                 "type": "persona",
-                "body": "Test body",
-                "owner": "test-user",  # Include owner to avoid validation error
+                "body": "Updated body",
             }
         ),
-        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
     }
 
-    # Should raise an error because template doesn't exist
-    # Use a more flexible pattern since the error message includes the full template object
-    with pytest.raises(ValueError, match="Prompt template .* not found"):
-        update(event, lambda_context)
+    response = update(event, lambda_context)
+    assert response["statusCode"] == 404
+    body = json.loads(response["body"])
+    assert "not found" in body.get("error", "")
 
 
 def test_get_prompt_templates_helper(prompt_templates_table, sample_prompt_template):

@@ -303,19 +303,6 @@ patch("boto3.client", side_effect=mock_boto3_client).start()
 
 
 @pytest.fixture(scope="function")
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-    # These are already set at the top of the file,
-    # but we ensure they have the expected values here as well
-    assert os.environ["AWS_ACCESS_KEY_ID"] == "testing"
-    assert os.environ["AWS_SECRET_ACCESS_KEY"] == "testing"
-    assert os.environ["AWS_SECURITY_TOKEN"] == "testing"
-    assert os.environ["AWS_SESSION_TOKEN"] == "testing"
-    assert os.environ["AWS_DEFAULT_REGION"] == "us-east-1"
-    assert os.environ["AWS_REGION"] == "us-east-1"
-
-
-@pytest.fixture(scope="function")
 def dynamodb(aws_credentials):
     """Create a mock DynamoDB service."""
     with mock_aws():

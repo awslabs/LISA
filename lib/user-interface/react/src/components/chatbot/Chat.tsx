@@ -249,6 +249,7 @@ export default function Chat ({ sessionId }) {
             });
         } else {
             const newSessionId = uuidv4();
+            setChatConfiguration(baseConfig);
             setInternalSessionId(newSessionId);
             const newSession = {
                 history: [],

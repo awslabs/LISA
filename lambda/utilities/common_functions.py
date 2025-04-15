@@ -20,6 +20,7 @@ import logging
 import os
 import tempfile
 from contextvars import ContextVar
+from decimal import Decimal
 from functools import cache, wraps
 from typing import Any, Callable, Dict, List, TypeVar, Union
 
@@ -209,6 +210,13 @@ def authorization_wrapper(f: F) -> F:
     return wrapper  # type: ignore [return-value]
 
 
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
+
+
 def generate_html_response(status_code: int, response_body: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
     """Generate a response for an API call.
 
@@ -226,7 +234,7 @@ def generate_html_response(status_code: int, response_body: dict) -> Dict[str, U
     """
     return {
         "statusCode": status_code,
-        "body": json.dumps(response_body, default=str),
+        "body": json.dumps(response_body, cls=DecimalEncoder),
         "headers": {
             "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
@@ -348,7 +356,7 @@ def get_rest_api_container_endpoint() -> str:
 
 
 def get_username(event: dict) -> str:
-    """Get username from event."""
+    """Get the username from the event."""
     username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
     return username
 
@@ -374,7 +382,7 @@ def admin_only(func: Callable) -> Callable:
 
 
 def get_session_id(event: dict) -> str:
-    """Get session_id from event."""
+    """Get the session ID from the event."""
     session_id: str = event.get("pathParameters", {}).get("sessionId")
     return session_id
 

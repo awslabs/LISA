@@ -132,7 +132,7 @@ export function Sessions ({newSession}) {
                                     variant='inline-link'
                                     onClick={() => deleteUserSessions()}
                                 >
-                                    'Delete all
+                                    Delete all
                                 </Button>}
                             </SpaceBetween>
                         </div>

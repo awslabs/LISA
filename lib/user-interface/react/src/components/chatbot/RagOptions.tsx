@@ -30,9 +30,10 @@ type RagControlProps = {
     isRunning: boolean;
     setUseRag: React.Dispatch<React.SetStateAction<boolean>>;
     setRagConfig: React.Dispatch<React.SetStateAction<RagConfig>>;
+    ragConfig: RagConfig;
 };
 
-export default function RagControls ({isRunning, setUseRag, setRagConfig }: RagControlProps) {
+export default function RagControls ({isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
     const { data: repositories, isFetching: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {refetchOnMountOrArgChange: true});
     const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<string>(undefined);
     const [selectedRepositoryOption, setSelectedRepositoryOption] = useState<string>(undefined);
@@ -50,6 +51,11 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig }: RagC
     // setUseRag is never going to change as it's just a setState function
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRepositoryOption, selectedEmbeddingOption]);
+
+    useEffect(() => {
+        setSelectedEmbeddingOption(ragConfig?.embeddingModel?.modelId ?? undefined);
+        setSelectedRepositoryOption(ragConfig?.repositoryId ?? undefined);
+    }, [ragConfig]);
 
     return (
         <SpaceBetween size='l' direction='vertical'>

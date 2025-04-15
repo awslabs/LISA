@@ -192,6 +192,7 @@ export class LisaServeApplicationStage extends Stage {
 
         const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {
             ...baseStackProps,
+            tokenTable: serveStack.tokenTable,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
             vpc: networkingStack.vpc

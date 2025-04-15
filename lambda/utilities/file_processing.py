@@ -154,7 +154,11 @@ def process_record(
         s3_uri = _get_s3_uri(bucket=bucket, key=key)
         extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
         docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=s3_uri, name=key))]
-        doc_chunks = _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap) if chunk_size > 0 else docs
+        doc_chunks = (
+            _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+            if chunk_size and chunk_size > 0
+            else docs
+        )
         # Update part number of doc metadata
         for i, doc in enumerate(doc_chunks):
             doc.metadata["part"] = i + 1

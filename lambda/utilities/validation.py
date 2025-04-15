@@ -123,7 +123,7 @@ def validate_chunk_params(chunk_size: Optional[int], chunk_overlap: Optional[int
         if not isinstance(chunk_size, int):
             raise ValidationError("Chunk size must be an integer")
 
-        if chunk_size < 100 or chunk_size > 10000:
+        if 100 > chunk_size > 0 or chunk_size > 10000:
             raise ValidationError("Chunk size must be between 100 and 10000")
 
     if chunk_overlap is not None:

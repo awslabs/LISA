@@ -357,10 +357,8 @@ def get_rest_api_container_endpoint() -> str:
 
 def get_username(event: dict) -> str:
     """Get the username from the event."""
-    try:
-        return str(event["requestContext"]["authorizer"]["username"])
-    except (KeyError, TypeError):
-        raise ValueError("Missing username in request context")
+    username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
+    return username
 
 
 def is_admin(event: dict) -> bool:

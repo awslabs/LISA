@@ -1,10 +1,10 @@
 # v4.2.0
 ## Key Features
 ### RAG Updates
-- LISA’s RAG stack can now be deployed without also deploying LISA’s UI.
+- LISA's RAG stack can now be deployed without also deploying LISA's UI. This expands LISA's modularity to better support our customers using custom UIs.
 - RAG ingestion and similarity search functionalities now support user tokens in addition to bearer tokens.
   - *Note:* Administrators must deploy a Model and Vector Store via API using an Admin token before utilizing ingestion or search functionalities.
-- Vector Store Ingestion Pipelines can now be configured with a `0` chunk size. This enables users to upload entire documents into a vector store as a single ‘chunk.’ This allows customers to set up custom parsing outside of LISA
+- Vector Store Ingestion Pipelines can now be configured with a `0` chunk size. This enables users to upload entire documents into a vector store as a single 'chunk.' This allows customers to set up custom parsing outside of LISA
 
 ## System Improvements
 - Started building out our Python Unit Testing framework to enhance system reliability and performance.

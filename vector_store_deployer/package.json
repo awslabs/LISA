@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && npm run copy-dist && npm run pack:prod",
+    "build": "node esbuild.js && npm run copy-dist && npm run pack:prod",
     "copy-dist": "cp Dockerfile package.json ./src/cdk*json ../VERSION ./dist",
     "pack:prod": "cd ./dist && npm i --omit dev",
     "clean": "rm -rf ./dist ./node_modules",
@@ -14,12 +14,13 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@aws-sdk/client-iam": "^3.490.0",
-    "@cdklabs/cdk-enterprise-iac": "^0.0.512",
     "aws-cdk": "^2.153.0",
-    "aws-cdk-lib": "^2.185.0",
+    "aws-cdk-lib": "^2.153.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "esbuild": "^0.25.1",
+    "@cdklabs/cdk-enterprise-iac": "^0.0.512",
     "@types/aws-lambda": "8.10.147",
     "@types/node": "^22.4.1"
   }

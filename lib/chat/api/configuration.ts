@@ -149,7 +149,7 @@ export class ConfigurationApi extends Construct {
                 },
             },
         ];
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,

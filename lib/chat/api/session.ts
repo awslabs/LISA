@@ -156,7 +156,7 @@ export class SessionApi extends Construct {
         ];
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'SessionApi', sessionTable.tableArn, config.roles?.LambdaExecutionRole);
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,

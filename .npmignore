@@ -12,7 +12,7 @@ node_modules/
 /vector_store_deployer
 lib/**/dist/
 !/dist/
-
+!/dist/**/node_modules
 
 # Non-source files
 .eslintrc.json

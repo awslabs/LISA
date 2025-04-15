@@ -142,7 +142,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             });
             policyStatements.push(certPolicyStatement);
         }
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {

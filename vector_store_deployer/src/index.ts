@@ -69,13 +69,14 @@ export const handler = async (event: any) => {
 
     createWritableEnv();
 
+    const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'vector-store', ragConfig.repositoryId].join('-');
+    process.env['LISA_STACK_NAME'] = stackName;
+
     const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out'], {stdio: 'inherit'});
     if ( ret.status !== 0 ) {
         throw new Error('Stack failed to synthesize');
     }
 
-    const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'vector-store', ragConfig.repositoryId].join('-');
-    process.env['LISA_STACK_NAME'] = stackName;
     const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
         const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
             env: {...process.env},

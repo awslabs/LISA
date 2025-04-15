@@ -58,7 +58,7 @@ export class LisaServeApplicationConstruct extends Construct {
         let tokenTable;
         if (config.restApiConfig.internetFacing) {
             // Create DynamoDB Table for enabling API token usage
-            tokenTable = new Table(this, 'TokenTable', {
+            tokenTable = new Table(scope, 'TokenTable', {
                 tableName: `${config.deploymentName}-LISAApiTokenTable`,
                 partitionKey: {
                     name: 'token',
@@ -183,6 +183,14 @@ export class LisaServeApplicationConstruct extends Construct {
         litellmDbPasswordSecret.grantRead(restApi.taskRole);
         litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
         restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+        if (config.region.includes('iso')){
+            const ca_bundle = config.certificateAuthorityBundle ?? '';
+            restApi.container.addEnvironment('SSL_CERT_DIR', '/etc/pki/tls/certs');
+            restApi.container.addEnvironment('SSL_CERT_FILE', ca_bundle);
+            restApi.container.addEnvironment('REQUESTS_CA_BUNDLE', ca_bundle);
+            restApi.container.addEnvironment('CURL_CA_BUNDLE', ca_bundle);
+            restApi.container.addEnvironment('AWS_CA_BUNDLE', ca_bundle);
+        }
 
         // Create Parameter Store entry with RestAPI URI
         this.endpointUrl = new StringParameter(scope, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {

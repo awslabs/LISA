@@ -80,7 +80,7 @@ export class CustomAuthorizer extends Construct {
         const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
 
         // Create Lambda authorizer
-        const lambdaPath = path.join(HERE, '..', '..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..', 'lambda');
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
             deadLetterQueueEnabled: true,
             deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {

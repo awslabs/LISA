@@ -66,6 +66,7 @@ export class RepositoryApi extends Construct {
             rootResourceId,
             securityGroups,
             vpc,
+            config
         } = props;
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
@@ -177,7 +178,7 @@ export class RepositoryApi extends Construct {
                 },
             }
         ];
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
 
         apis.forEach((f) => {
             registerAPIEndpoint(

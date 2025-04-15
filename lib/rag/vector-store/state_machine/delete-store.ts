@@ -126,7 +126,7 @@ export class DeleteStoreStateMachine extends Construct {
             },
             resultPath: '$.updateDynamoDbResult',
         });
-        const lambdaPath = path.join(HERE, '..', '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..', '..','..', 'lambda');
 
         const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
             runtime: getDefaultRuntime(),

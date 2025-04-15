@@ -41,7 +41,6 @@ function setup_python_dist(){
     layers_path="../lib/core/layers"
     layers_output="${DIST}/lambdaLayer"
     for layer in "${layers[@]}"; do
-        # ./package-lambda-layer --src="${layers_path}/${layer}" --build="./dist/$layer" --output="${layers_output}/${layer}"
         layer_path="${layers_path}/${layer}"
         layer_output="${layers_output}/${layer}/${OUTPUT_DIR}"
         install_python_deps $layer_path $layer_output $layer
@@ -59,6 +58,18 @@ function setup_python_dist(){
     sdk_package="lisa-sdk"
     install_python_deps $sdk_path $sdk_output $sdk_package
 
+    # Install rest-api for lisa-serve
+    rest_path="../lib/serve/rest-api/src"
+    rest_output="${DIST}/rest-api/${OUTPUT_DIR}"
+    rest_package="rest-api"
+    install_python_deps $rest_path $rest_output $rest_package
+
+    # Install instructor embedding
+    instructor_path="../lib/serve/instructor/src"
+    instructor_output="${DIST}/instructor/${OUTPUT_DIR}"
+    instructor_package="instructor"
+    install_python_deps $instructor_path $instructor_output $instructor_package
+
     # Deactivate virtual environment
     deactivate
     rm -rf .venv
@@ -67,8 +78,8 @@ function setup_python_dist(){
 }
 
 function copy_dist() {
-    mkdir -p dist/ecs_model_deployer && rsync -av ecs_model_deployer/dist/ dist/ecs_model_deployer/ && cp ecs_model_deployer/Dockerfile dist/ecs_model_deployer/
-    mkdir -p dist/vector_store_deployer && rsync -av vector_store_deployer/dist/ dist/vector_store_deployer/ && cp vector_store_deployer/Dockerfile dist/vector_store_deployer/
+    mkdir -p dist/ecs_model_deployer && rsync -av ecs_model_deployer/dist dist/ecs_model_deployer/ && cp ecs_model_deployer/Dockerfile dist/ecs_model_deployer/
+    mkdir -p dist/vector_store_deployer && rsync -av vector_store_deployer/dist dist/vector_store_deployer/ && cp vector_store_deployer/Dockerfile dist/vector_store_deployer/
     mkdir -p dist/lisa-web && rsync -av lib/user-interface/react/dist/ dist/lisa-web
     mkdir -p dist/docs && rsync -av lib/docs/dist/ dist/docs
     cp VERSION dist/

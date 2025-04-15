@@ -77,7 +77,7 @@ export class DeletePipelineStateMachine extends Construct {
                 'pipelineConfig.$': '$.detail.pipelineConfig'
             },
         });
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
 
         // Create the ingest documents function with S3 permissions
         const deleteDocumentsFunction = new Function(this, 'pipelineDeleteDocumentFunc', {

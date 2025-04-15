@@ -15,10 +15,10 @@
 */
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-
 import { LisaChatApplicationConstruct, LisaChatProps } from './chatConstruct';
 
 export * from './chatConstruct';
+
 /**
  * LisaChat Application stack.
  */
@@ -31,6 +31,6 @@ export class LisaChatApplicationStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaChatProps) {
         super(scope, id, props);
 
-        new LisaChatApplicationConstruct(this, 'LisaChatApplication', props);
+        (new LisaChatApplicationConstruct(this, id + 'Resources', props)).node.addMetadata('aws:cdk:path', this.node.path);
     }
 }

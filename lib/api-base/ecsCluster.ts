@@ -19,12 +19,10 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
     Cluster,
     ContainerDefinition,
-    ContainerImage,
     ContainerInsights,
     Ec2Service,
     Ec2ServiceProps,
@@ -48,9 +46,9 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, EcsSourceType, Ec2Metadata, ECSConfig } from '../schema';
+import { BaseProps, Ec2Metadata, ECSConfig } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { EcrReplicatorConstruct } from '../core/ecrReplicatorConstruct';
+import { CodeFactory } from '../util';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -181,6 +179,9 @@ export class ECSCluster extends Construct {
             // Requires mount point /etc/pki from host
             environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
+            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
         }
 
         // Retrieve execution role if it has been overridden
@@ -220,37 +221,7 @@ export class ECSCluster extends Construct {
                 })
                 : undefined;
 
-        let image: ContainerImage;
-        switch (ecsConfig.containerConfig.image.type) {
-            case EcsSourceType.ECR: {
-                const repository = Repository.fromRepositoryArn(
-                    this,
-                    createCdkId([ecsConfig.identifier, 'Repo']),
-                    ecsConfig.containerConfig.image.repositoryArn,
-                );
-                image = ContainerImage.fromEcrRepository(repository, ecsConfig.containerConfig.image.tag);
-                break;
-            }
-            case EcsSourceType.REGISTRY: {
-                image = ContainerImage.fromRegistry(ecsConfig.containerConfig.image.registry);
-                break;
-            }
-            case EcsSourceType.TARBALL: {
-                image = ContainerImage.fromTarball(ecsConfig.containerConfig.image.path);
-                break;
-            }
-            default: {
-                image = ContainerImage.fromAsset(ecsConfig.containerConfig.image.path, { buildArgs: ecsConfig.buildArgs });
-                if (config.tagContainers) {
-                    new EcrReplicatorConstruct(this, ecsConfig.identifier, {
-                        path: ecsConfig.containerConfig.image.path,
-                        buildArgs: ecsConfig.buildArgs
-                    });
-                }
-
-                break;
-            }
-        }
+        const image = CodeFactory.createImage(ecsConfig.containerConfig.image, this, ecsConfig.identifier, ecsConfig.buildArgs);
 
         const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
             containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),

@@ -25,9 +25,11 @@ import { DeleteStoreStateMachine } from './state_machine/delete-store';
 import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import path from 'node:path';
 import { EcrReplicatorConstruct } from '../../core/ecrReplicatorConstruct';
+import { CodeFactory } from '../../util';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 const HERE = path.resolve(__dirname);
 
@@ -115,15 +117,14 @@ export class VectorStoreCreatorStack extends Construct {
                 buildArgs: { BASE_IMAGE: config.nodejsImage }
             });
         }
-        this.vectorStoreCreatorFn = new lambda.DockerImageFunction(this, functionId, {
+        const vectorStoreDeployer = config.vectorStoreDeployerImage || config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer/dist');
+        this.vectorStoreCreatorFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
-            code: lambda.DockerImageCode.fromImageAsset(vectorStoreDeployerPath, {
-                buildArgs: {
-                    BASE_IMAGE: config.nodejsImage
-                }
-            }),
+            code: CodeFactory.createCode(vectorStoreDeployer),
             timeout: Duration.minutes(15),
             ephemeralStorageSize: Size.mebibytes(2048),
+            runtime: Runtime.NODEJS_18_X,
+            handler: 'index.handler',
             memorySize: 1024,
             role: cdkRole,
             environment: {

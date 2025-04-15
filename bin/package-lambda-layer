@@ -1,0 +1,79 @@
+#!/bin/bash
+set -e
+
+SRC=src
+OUTPUT=Lambda.zip
+EXCLUDE_PACKAGES=""
+SRC_ROOT=$PWD
+BUILD_DIR=$SRC_ROOT/build
+
+# Parse named parameters
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --src=*)
+            SRC="${1#*=}"
+            ;;
+        --output=*)
+            OUTPUT="${1#*=}"
+            ;;
+        --build=*)
+            BUILD_DIR="${1#*=}"
+            ;;
+        --exclude=*)
+            EXCLUDE_PACKAGES="${1#*=}"
+            ;;
+        *)
+            echo "Unknown parameter: $1"
+            echo "Usage: $0 --src=<source_dir> --output=<output_file> --exclude=<packages>"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+install_requirements() {
+    echo "installing requirements"
+    rm -rf "$BUILD_DIR"
+    mkdir -p "$BUILD_DIR/python"
+    python3 -m pip install "$SRC_ROOT" --target "${BUILD_DIR}/python"
+}
+
+
+build_package() {
+    echo "building package"
+    if [ -d "$SRC" ]; then
+        cp -r "$SRC"/* "${BUILD_DIR}/python/"
+    fi
+}
+
+copy_configuration() {
+    echo "copying configuration"
+    if [ -d "configuration/Packaging" ]; then
+        cp -a configuration/Packaging "$BUILD_DIR"
+    fi
+}
+
+package_artifacts() {
+    echo "packaging"
+    if [ -n "$EXCLUDE_PACKAGES" ]; then
+        echo "Removing excluded packages: $EXCLUDE_PACKAGES"
+        for pkg in ${EXCLUDE_PACKAGES//,/ }; do
+            echo "Removing $pkg"
+            rm -rf ${BUILD_DIR}/python/${pkg}
+            rm -rf ${BUILD_DIR}/python/${pkg}-*
+            # Also remove egg-info directories
+            find "${BUILD_DIR}/python" -type d -name "${pkg}*egg-info" -exec rm -rf {} +
+        done
+    fi
+
+    # AWS Lambda recommends to exclude __pycache__: https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-pycache
+    find "${BUILD_DIR}/python" -depth -name __pycache__ -exec rm -rf {} \;
+    cd "${BUILD_DIR}"
+    zip "${BUILD_DIR}/${OUTPUT}" ./python -r
+    rm -rf "${BUILD_DIR}/python"
+}
+
+install_requirements
+build_package
+copy_configuration
+package_artifacts

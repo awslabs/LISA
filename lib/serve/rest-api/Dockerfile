@@ -1,11 +1,5 @@
-ARG BASE_IMAGE=public.ecr.aws/ubuntu/ubuntu
+ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
-
-# Install Python 3
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -y \
-    && apt-get install -y python3 python3-pip rsync wget \
-    && ln -s /bin/python3 /bin/python
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG
@@ -22,7 +16,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY src/requirements.txt .
-RUN pip install --no-cache-dir --upgrade --break-system-packages -r requirements.txt
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy LiteLLM config directly to container, it will be updated at runtime
 # with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify

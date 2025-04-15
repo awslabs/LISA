@@ -46,7 +46,7 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly endpointUrl: StringParameter;
     public readonly tokenTable?: ITable;
 
-   /**
+    /**
    * @param {Stack} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {LisaServeApplicationProps} props - Properties for the Stack.

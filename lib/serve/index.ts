@@ -38,7 +38,7 @@ export class LisaServeApplicationStack extends Stack {
     * @param {string} id - The unique identifier for the construct within its scope.
     * @param {LisaServeApplicationProps} props - Properties for the Stack.
     */
-    constructor(scope: Construct, id: string, props: LisaServeApplicationProps) {
+    constructor (scope: Construct, id: string, props: LisaServeApplicationProps) {
         super(scope, id, props);
 
         const app = new LisaServeApplicationConstruct(this, id + 'Resources', props);
@@ -49,4 +49,3 @@ export class LisaServeApplicationStack extends Stack {
         this.tokenTable = app.tokenTable;
     }
 }
-

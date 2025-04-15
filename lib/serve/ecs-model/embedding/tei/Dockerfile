@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=public.ecr.aws/ubuntu/ubuntu
+ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 ##### DOWNLOAD MOUNTPOINTS S3

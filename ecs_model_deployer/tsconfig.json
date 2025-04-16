@@ -32,6 +32,6 @@
     "outDir": "dist",
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "test/**/*", "../lib/core", "**/*.json", "**/Dockerfile"],
+  "include": ["src/**/*", "test/**/*", "../lib/core", "**/*.json"],
   "exclude": ["node_modules", "dist", ".git"]
 }

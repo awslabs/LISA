@@ -78,8 +78,8 @@ function setup_python_dist(){
 }
 
 function copy_dist() {
-    mkdir -p dist/ecs_model_deployer && rsync -av ecs_model_deployer/dist dist/ecs_model_deployer/ && cp ecs_model_deployer/Dockerfile dist/ecs_model_deployer/
-    mkdir -p dist/vector_store_deployer && rsync -av vector_store_deployer/dist dist/vector_store_deployer/ && cp vector_store_deployer/Dockerfile dist/vector_store_deployer/
+    mkdir -p dist/ecs_model_deployer && rsync -av ecs_model_deployer/dist dist/ecs_model_deployer/
+    mkdir -p dist/vector_store_deployer && rsync -av vector_store_deployer/dist dist/vector_store_deployer/
     mkdir -p dist/lisa-web && rsync -av lib/user-interface/react/dist/ dist/lisa-web
     mkdir -p dist/docs && rsync -av lib/docs/dist/ dist/docs
     cp VERSION dist/

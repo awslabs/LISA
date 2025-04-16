@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node esbuild.js && npm run copy-dist && npm run pack:prod",
-    "copy-dist": "cp Dockerfile package.json ./src/cdk*json ../VERSION ./dist",
+    "copy-dist": "cp package.json ./src/cdk*json ../VERSION ./dist",
     "pack:prod": "cd ./dist && npm i --omit dev",
     "clean": "rm -rf ./dist ./node_modules",
     "test": "echo \"Error: no test specified\""
@@ -15,7 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-iam": "^3.490.0",
     "aws-cdk": "^2.153.0",
-    "aws-cdk-lib": "^2.153.0",
+    "aws-cdk-lib": "^2.185.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

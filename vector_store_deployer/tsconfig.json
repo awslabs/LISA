@@ -32,6 +32,6 @@
     ],
     "outDir": "dist"
   },
-  "include": ["src/**/*", "test/**/*", "**/*.json", "../lib/core", "../lib/api-base", "../lib/utils", "../lib/schema.ts", "**/Dockerfile", "../VERSION"],
+  "include": ["src/**/*", "test/**/*", "**/*.json", "../lib/core", "../lib/api-base", "../lib/utils", "../lib/schema.ts", "../VERSION"],
   "exclude": ["node_modules", "dist", ".git"]
 }

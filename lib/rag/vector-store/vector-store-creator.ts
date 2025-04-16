@@ -27,7 +27,6 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import path from 'node:path';
-import { EcrReplicatorConstruct } from '../../core/ecrReplicatorConstruct';
 import { CodeFactory } from '../../util';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
@@ -109,15 +108,8 @@ export class VectorStoreCreatorStack extends Construct {
             ...(vpc.vpc.vpcId && { vpcId: vpc.vpc.vpcId })
         };
 
-        const vectorStoreDeployerPath = config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer');
-        const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer']);
-        if (config.tagContainers) {
-            new EcrReplicatorConstruct(this, 'LisaVectorStoreDeployer', {
-                path: vectorStoreDeployerPath,
-                buildArgs: { BASE_IMAGE: config.nodejsImage }
-            });
-        }
-        const vectorStoreDeployer = config.vectorStoreDeployerImage || config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer/dist');
+        const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer', 'Fn']);
+        const vectorStoreDeployer = config.vectorStoreDeployerImage || config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer', 'dist');
         this.vectorStoreCreatorFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
             code: CodeFactory.createCode(vectorStoreDeployer),

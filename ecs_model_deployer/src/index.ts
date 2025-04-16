@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { ChildProcess, spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 import { readdirSync, rmSync, symlinkSync } from 'node:fs';
 
@@ -76,37 +76,46 @@ export const handler = async (event: any) => {
         throw new Error('Stack failed to synthesize');
     }
 
-
     const stackName = `${config.deploymentName}-${modelConfig.modelId}`;
-    const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
-        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out']);
-
-        cp.on('close', (code) => {
-            console.log(`cdk deploy exited early, code ${code}`);
-            resolve(cp);
+    const deploy_promise: Promise<number> = new Promise( (resolve, reject) => {
+        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
+            env: {...process.env},
+            stdio: 'inherit'
         });
 
-        cp.stdout.on('data', (data) => {
+        cp.stdout!.on('data', (data) => {
             console.log(`${data}`);
         });
 
         // cdk std out is also placed on stderr
-        cp.stderr.on('data', (data) => {
+        cp.stderr!.on('data', (data) => {
             console.info(`${data}`);
         });
 
+        cp.on('exit', (code, signal) => {
+            console.log(`Process exited with code: ${code}, signal: ${signal}`);
+            if (code === 0) {
+                resolve(code!);
+            } else {
+                reject(new Error(`CDK deploy failed with code ${code}`));
+            }
+        });
+
+        cp.on('error', (err) => {
+            console.error(`Failed to start process: ${err.message}`);
+            reject(err);
+        });
+
         setTimeout(() => {
-            console.log('180 second timeout');
-            resolve(undefined);
+            reject(new Error('CDK deploy timed out after 180 seconds'));
         }, 180 * 1000);
     });
 
-    const cp = await deploy_promise;
-    if ( cp ) {
-        if ( cp.exitCode !== 0 ) {
-            throw new Error('Stack failed to deploy');
-        }
+    try {
+        await deploy_promise;
+        return { stackName: stackName };
+    } catch (error) {
+        console.error('Deployment failed:', error);
+        throw error;
     }
-
-    return {stackName: stackName};
 };

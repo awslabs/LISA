@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { ChildProcess, spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 
 /*
@@ -77,7 +77,7 @@ export const handler = async (event: any) => {
         throw new Error('Stack failed to synthesize');
     }
 
-    const deploy_promise: Promise<ChildProcess | undefined> = new Promise( (resolve) => {
+    const deploy_promise: Promise<number> = new Promise( (resolve, reject) => {
         const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
             env: {...process.env},
             stdio: 'inherit'
@@ -85,28 +85,28 @@ export const handler = async (event: any) => {
 
         cp.on('exit', (code, signal) => {
             console.log(`Process exited with code: ${code}, signal: ${signal}`);
-        });
-
-        cp.on('close', (code, signal) => {
-            console.log(`Process closed with code: ${code}, signal: ${signal}`);
+            if (code === 0) {
+                resolve(code!);
+            } else {
+                reject(new Error(`CDK deploy failed with code ${code}`));
+            }
         });
 
         cp.on('error', (err) => {
             console.error(`Failed to start process: ${err.message}`);
+            reject(err);
         });
 
         setTimeout(() => {
-            console.warn('14 minute timeout');
-            resolve(undefined);
+            reject(new Error('CDK deploy timed out after 14 minutes'));
         }, 840 * 1000);
     });
 
-    const cp = await deploy_promise;
-    if ( cp ) {
-        if ( cp.exitCode !== 0 ) {
-            throw new Error('Stack failed to deploy');
-        }
+    try {
+        await deploy_promise;
+        return { stackName: stackName };
+    } catch (error) {
+        console.error('Deployment failed:', error);
+        throw error;
     }
-
-    return {stackName: stackName};
 };

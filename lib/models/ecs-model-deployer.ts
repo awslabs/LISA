@@ -15,7 +15,7 @@
  */
 
 import { Construct } from 'constructs';
-import { DockerImageCode, DockerImageFunction, IFunction } from 'aws-cdk-lib/aws-lambda';
+import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import {
     Effect,
     IRole,
@@ -31,7 +31,8 @@ import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
 import { Vpc } from '../networking/vpc';
 import * as path from 'path';
-import { EcrReplicatorConstruct } from '../core/ecrReplicatorConstruct';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { CodeFactory } from '../util';
 
 const HERE = path.resolve(__dirname);
 
@@ -72,23 +73,15 @@ export class ECSModelDeployer extends Construct {
             'condaUrl': props.config.condaUrl
         };
 
-        const ecsModelDeployerPath = config.ecsModelDeployerPath || path.join(HERE, '..', '..', 'ecs_model_deployer');
-        const functionId = createCdkId([stackName, 'ecs_model_deployer']);
-        if (config.tagContainers) {
-            new EcrReplicatorConstruct(this, 'LisaEcsModelDeployer', {
-                path: ecsModelDeployerPath,
-                buildArgs: { BASE_IMAGE: config.nodejsImage }
-            });
-        }
-        this.ecsModelDeployerFn = new DockerImageFunction(this, functionId, {
+        const functionId = createCdkId([stackName, 'ecs_model_deployer', 'Fn']);
+        const ecsModelDeployerPath = config.ecsModelDeployerPath || path.join(HERE, '..', '..', 'ecs_model_deployer', 'dist');
+        this.ecsModelDeployerFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
-            code: DockerImageCode.fromImageAsset(ecsModelDeployerPath, {
-                buildArgs: {
-                    BASE_IMAGE: config.nodejsImage
-                }
-            }),
+            code: CodeFactory.createCode(ecsModelDeployerPath),
             timeout: Duration.minutes(10),
             ephemeralStorageSize: Size.mebibytes(2048),
+            runtime: Runtime.NODEJS_18_X,
+            handler: 'index.handler',
             memorySize: 1024,
             role,
             environment: {

@@ -20,7 +20,7 @@ import { LisaApiBaseStack } from '../../../lib/core/api_base';
 import { LisaChatApplicationStack } from '../../../lib/chat/index';
 import { ARCHITECTURE, CoreStack } from '../../../lib/core/index';
 import { LisaApiDeploymentStack } from '../../../lib/core/api_deployment';
-import { LisaServeIAMStack } from '../../../lib/iam_stack';
+import { LisaServeIAMStack } from '../../../lib/iam/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
 import ConfigParser from './ConfigParser';
@@ -70,8 +70,14 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaNetworking'
         });
+        const serveStack = new LisaServeApplicationStack(app, 'LisaServe', {
+            ...baseStackProps,
+            stackName: 'LisaServe',
+            vpc: networkingStack.vpc,
+        });
         const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
+            tokenTable: serveStack.tokenTable,
             stackName: 'LisaApiBase',
             vpc: networkingStack.vpc,
         });
@@ -93,11 +99,6 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaIAM',
             config: config,
-        });
-        const serveStack = new LisaServeApplicationStack(app, 'LisaServe', {
-            ...baseStackProps,
-            stackName: 'LisaServe',
-            vpc: networkingStack.vpc,
         });
 
         const uiStack = new UserInterfaceStack(app, 'LisaUI', {

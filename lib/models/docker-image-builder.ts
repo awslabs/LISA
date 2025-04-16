@@ -33,7 +33,6 @@ import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../api-base/utils';
 
 export type DockerImageBuilderProps = BaseProps & {
@@ -83,11 +82,6 @@ export class DockerImageBuilder extends Construct {
 
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
-            deadLetterQueueEnabled: true,
-            deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
-                queueName: `${stackName}-docker-image-builderDLQ`,
-                enforceSSL: true,
-            }),
             functionName: functionId,
             runtime: getDefaultRuntime(),
             handler: 'dockerimagebuilder.handler',

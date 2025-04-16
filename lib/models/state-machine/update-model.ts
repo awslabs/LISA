@@ -34,9 +34,7 @@ import {
     WaitTime,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../../api-base/utils';
-import * as cdk from 'aws-cdk-lib';
 
 
 type UpdateModelStateMachineProps = BaseProps & {
@@ -82,11 +80,6 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'HandleJobIntakeDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandleJobIntakeDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_job_intake',
                 code: Code.fromAsset('./lambda'),
@@ -104,11 +97,6 @@ export class UpdateModelStateMachine extends Construct {
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'HandlePollCapacityDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandlePollCapacityDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
                 code: Code.fromAsset('./lambda'),
@@ -126,11 +114,6 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'HandleFinishUpdateDLQ', {
-                    queueName: `${cdk.Stack.of(this).stackName}-HandleFinishUpdateDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_finish_update',
                 code: Code.fromAsset('./lambda'),

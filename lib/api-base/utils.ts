@@ -39,7 +39,6 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 
 /**
  * Type representing python lambda function
@@ -106,11 +105,6 @@ export function registerAPIEndpoint (
         });
     } else {
         handler = new Function(scope, functionId, {
-            deadLetterQueueEnabled: true,
-            deadLetterQueue: new Queue(scope, `${functionId}DLQ`, {
-                queueName: `${functionId}DLQ`,
-                enforceSSL: true,
-            }),
             functionName: functionId,
             runtime: pythonRuntime,
             handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,

@@ -28,6 +28,8 @@ import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
 import { LisaModelsApiStack } from '../../../lib/models';
 import { LisaRagStack } from '../../../lib/rag';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export default class MockApp {
 
@@ -65,6 +67,9 @@ export default class MockApp {
             },
             config,
         };
+        const HERE: string = path.resolve(__dirname);
+        fs.mkdirSync(path.join(HERE, '..','..','..','vector_store_deployer', 'dist'), { recursive: true });
+        fs.mkdirSync(path.join(HERE, '..','..','..','ecs_model_deployer', 'dist'), { recursive: true });
 
         const networkingStack = new LisaNetworkingStack(app, 'LisaNetworking', {
             ...baseStackProps,

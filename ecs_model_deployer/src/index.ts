@@ -83,15 +83,6 @@ export const handler = async (event: any) => {
             stdio: 'inherit'
         });
 
-        cp.stdout!.on('data', (data) => {
-            console.log(`${data}`);
-        });
-
-        // cdk std out is also placed on stderr
-        cp.stderr!.on('data', (data) => {
-            console.info(`${data}`);
-        });
-
         cp.on('exit', (code, signal) => {
             console.log(`Process exited with code: ${code}, signal: ${signal}`);
             if (code === 0) {

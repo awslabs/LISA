@@ -166,6 +166,10 @@ export default class MockApp {
                         id: 'NIST.800.53.R5-LambdaConcurrency',
                         reason: 'Not applying lambda concurrency limits',
                     },
+                    {
+                        id: 'NIST.800.53.R5-LambdaDLQ',
+                        reason: 'Not creating lambda DLQs',
+                    },
                 ],
             );
         });

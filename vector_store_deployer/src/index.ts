@@ -98,8 +98,9 @@ export const handler = async (event: any) => {
         });
 
         setTimeout(() => {
-            reject(new Error('CDK deploy timed out after 14 minutes'));
-        }, 840 * 1000);
+            console.log(`180s timeout - Disconnecting from CloudFormation ${stackName} stack monitoring from Lambda`);
+            resolve(0);
+        }, 180 * 1000);
     });
 
     try {

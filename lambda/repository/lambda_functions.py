@@ -505,7 +505,8 @@ def ingest_documents(event: dict, context: dict) -> dict:
         doc_repo.save(doc_entity)
         doc_entities.append(doc_entity)
 
-    doc_ids = (doc.document_id for doc in doc_entities)
+    doc_ids = [doc.document_id for doc in doc_entities]
+
     subdoc_ids = [sub_id for doc in doc_entities for sub_id in doc.subdocs]
     return {
         "documentIds": doc_ids,

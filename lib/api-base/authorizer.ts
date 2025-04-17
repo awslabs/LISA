@@ -26,7 +26,6 @@ import { BaseProps } from '../schema';
 import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from './utils';
 import path from 'node:path';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
@@ -82,11 +81,7 @@ export class CustomAuthorizer extends Construct {
         // Create Lambda authorizer
         const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..', 'lambda');
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-            deadLetterQueueEnabled: true,
-            deadLetterQueue: new Queue(this, 'AuthorizerLambdaDLQ', {
-                queueName: `${cdk.Stack.of(this).stackName}-AuthorizerLambdaDLQ`,
-                enforceSSL: true,
-            }),
+
             runtime: getDefaultRuntime(),
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,

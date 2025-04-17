@@ -35,7 +35,6 @@ import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../../api-base/utils';
 import * as path from 'path';
 
@@ -80,11 +79,6 @@ export class CreateModelStateMachine extends Construct {
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'SetModelToCreatingDLQ', {
-                    queueName: `${Stack.of(this).stackName}-SetModelToCreatingDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
                 code: Code.fromAsset(lambdaPath),
@@ -104,11 +98,6 @@ export class CreateModelStateMachine extends Construct {
 
         const startCopyDockerImage = new LambdaInvoke(this, 'StartCopyDockerImage', {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'StartCopyDockerImageDLQ', {
-                    queueName: `${Stack.of(this).stackName}-StartCopyDockerImageDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
                 code: Code.fromAsset(lambdaPath),
@@ -126,11 +115,6 @@ export class CreateModelStateMachine extends Construct {
 
         const pollDockerImageAvailable = new LambdaInvoke(this, 'PollDockerImageAvailable', {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'PollDockerImageAvailableDLQ', {
-                    queueName: `${Stack.of(this).stackName}-PollDockerImageAvailableDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
                 code: Code.fromAsset(lambdaPath),
@@ -148,11 +132,6 @@ export class CreateModelStateMachine extends Construct {
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'HandleFailureDLQ', {
-                    queueName: `${Stack.of(this).stackName}-HandleFailureDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_failure',
                 code: Code.fromAsset(lambdaPath),
@@ -176,11 +155,6 @@ export class CreateModelStateMachine extends Construct {
 
         const startCreateStack = new LambdaInvoke(this, 'StartCreateStack', {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'StartCreateStackDLQ', {
-                    queueName: `${Stack.of(this).stackName}-StartCreateStackDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
                 code: Code.fromAsset(lambdaPath),
@@ -198,11 +172,6 @@ export class CreateModelStateMachine extends Construct {
 
         const pollCreateStack = new LambdaInvoke(this, 'PollCreateStack', {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'PollCreateStackDLQ', {
-                    queueName: `${Stack.of(this).stackName}-PollCreateStackDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
                 code: Code.fromAsset(lambdaPath),
@@ -226,11 +195,6 @@ export class CreateModelStateMachine extends Construct {
 
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
-                deadLetterQueueEnabled: true,
-                deadLetterQueue: new Queue(this, 'AddModelToLitellmDLQ', {
-                    queueName: `${Stack.of(this).stackName}-AddModelToLitellmDLQ`,
-                    enforceSSL: true,
-                }),
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
                 code: Code.fromAsset(lambdaPath),

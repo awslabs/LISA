@@ -67,9 +67,13 @@ export default class MockApp {
             },
             config,
         };
+
+        // Create dist folders to not break tests
         const HERE: string = path.resolve(__dirname);
-        fs.mkdirSync(path.join(HERE, '..','..','..','vector_store_deployer', 'dist'), { recursive: true });
-        fs.mkdirSync(path.join(HERE, '..','..','..','ecs_model_deployer', 'dist'), { recursive: true });
+        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'vector_store_deployer', 'dist'), { recursive: true });
+        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'ecs_model_deployer', 'dist'), { recursive: true });
+        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'lib', 'docs', 'dist'), { recursive: true });
+        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'lib', 'user-interface','react', 'dist'), { recursive: true });
 
         const networkingStack = new LisaNetworkingStack(app, 'LisaNetworking', {
             ...baseStackProps,
@@ -114,7 +118,7 @@ export default class MockApp {
             rootResourceId: apiBaseStack.rootResourceId,
         });
 
-        const docStack = new LisaDocsStack(app, 'LisaDocs',{
+        const docStack = new LisaDocsStack(app, 'LisaDocs', {
             ...baseStackProps,
             stackName: 'LisaDocs'
         });

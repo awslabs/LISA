@@ -35,7 +35,6 @@ import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { getDefaultRuntime } from '../../api-base/utils';
 import * as path from 'path';
-import { Stack } from 'aws-cdk-lib';
 
 const HERE = path.resolve(__dirname);
 type DeleteModelStateMachineProps = BaseProps & {

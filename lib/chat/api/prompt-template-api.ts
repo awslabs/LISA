@@ -161,13 +161,13 @@ export class PromptTemplateApi extends Construct {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
                 './lambda',
                 [commonLambdaLayer, fastapiLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaRole,
             );
 

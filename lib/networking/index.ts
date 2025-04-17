@@ -14,37 +14,33 @@
   limitations under the License.
 */
 
-import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { Vpc } from './vpc';
-import { BaseProps } from '../schema';
+import { Stack } from 'aws-cdk-lib';
+import { LisaNetworkingConstruct, LisaNetworkingProps } from './networkingConstruct';
 
-/**
- * Lisa Networking stack.
- */
-type LisaNetworkingStackProps = {} & BaseProps & cdk.StackProps;
+export * from  './networkingConstruct';
 
 /**
  * Lisa Networking stack. Defines a VPC for LISA
  */
-export class LisaNetworkingStack extends cdk.Stack {
+export class LisaNetworkingStack extends Stack {
+
     /** Virtual private cloud. */
     public readonly vpc: Vpc;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaNetworkingStackProps} props - Properties for the Stack.
+   * @param {LisaNetworkingProps} props - Properties for the Stack.
    */
-    constructor (scope: Construct, id: string, props: LisaNetworkingStackProps) {
+    constructor (scope: Construct, id: string, props: LisaNetworkingProps) {
         super(scope, id, props);
 
-        const { config } = props;
+        const networking = new LisaNetworkingConstruct(this, id + 'Resources', props);
+        networking.node.addMetadata('aws:cdk:path', this.node.path);
 
-        // Create VPC
-        this.vpc = new Vpc(this, 'Vpc', {
-            config: config,
-        });
+        this.vpc = networking.vpc;
     }
 }

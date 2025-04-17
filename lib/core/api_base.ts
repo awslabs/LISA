@@ -13,70 +13,30 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-
-import { Stack, StackProps } from 'aws-cdk-lib';
-import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
+import { Stack } from 'aws-cdk-lib';
+import { Authorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
+import { LisaApiBaseConstruct, LisaApiBaseProps } from './apiBaseConstruct';
 
-import { CustomAuthorizer } from '../api-base/authorizer';
-import { BaseProps } from '../schema';
-import { Vpc } from '../networking/vpc';
-import { Role } from 'aws-cdk-lib/aws-iam';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-
-type LisaApiBaseStackProps = {
-    vpc: Vpc;
-    tokenTable: ITable | undefined;
-} & BaseProps &
-    StackProps;
-
+/**
+ * LisaApiBase Stack
+ */
 export class LisaApiBaseStack extends Stack {
     public readonly restApi: RestApi;
-    public readonly authorizer: Authorizer;
+    public readonly authorizer?: Authorizer;
     public readonly restApiId: string;
     public readonly rootResourceId: string;
     public readonly restApiUrl: string;
 
-    constructor (scope: Construct, id: string, props: LisaApiBaseStackProps) {
+    constructor (scope: Construct, id: string, props: LisaApiBaseProps) {
         super(scope, id, props);
 
-        const { config, vpc, tokenTable } = props;
-
-        const deployOptions: StageOptions = {
-            stageName: config.deploymentStage,
-            throttlingRateLimit: 100,
-            throttlingBurstLimit: 100,
-        };
-
-        const restApi = new RestApi(this, `${id}-RestApi`, {
-            description: 'Base API Gateway for LISA.',
-            endpointConfiguration: { types: [config.privateEndpoints ? EndpointType.PRIVATE : EndpointType.REGIONAL] },
-            deploy: true,
-            deployOptions,
-            defaultCorsPreflightOptions: {
-                allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: [...Cors.DEFAULT_HEADERS],
-            },
-            // Support binary media types used for documentation images and fonts
-            binaryMediaTypes: ['font/*', 'image/*'],
-        });
-
-        // Create the authorizer Lambda for APIGW
-        const authorizer = new CustomAuthorizer(this, 'LisaApiAuthorizer', {
-            config: config,
-            securityGroups: [vpc.securityGroups.lambdaSg],
-            tokenTable,
-            vpc,
-            ...(config.roles &&
-            {
-                role: Role.fromRoleName(this, 'AuthorizerRole', config.roles.RestApiAuthorizerRole),
-            })
-        });
-
-        this.restApi = restApi;
-        this.restApiId = restApi.restApiId;
-        this.rootResourceId = restApi.restApiRootResourceId;
-        this.authorizer = authorizer.authorizer;
-        this.restApiUrl = restApi.url;
+        const api = new LisaApiBaseConstruct(this, id + 'Resources', props);
+        api.node.addMetadata('aws:cdk:path', this.node.path);
+        this.authorizer = api.authorizer;
+        this.restApi = api.restApi;
+        this.restApiId = api.restApi.restApiId;
+        this.rootResourceId = api.restApi.restApiRootResourceId;
+        this.restApiUrl = api.restApi.url;
     }
 }

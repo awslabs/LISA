@@ -27,7 +27,7 @@ import {
     RagRepositoryType,
     RdsInstanceConfig,
 } from '#root/lib/schema';
-import { getDefaults } from '../../../shared/util/zodUtil';
+import { getDefaults } from '#root/lib/schema/zodUtil';
 import { ArrayInputField } from '../../../shared/form/array-input';
 import { RdsConfigForm } from './RdsConfigForm';
 import { OpenSearchConfigForm } from './OpenSearchConfigForm';

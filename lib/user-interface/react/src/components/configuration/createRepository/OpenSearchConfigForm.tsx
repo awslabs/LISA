@@ -28,7 +28,7 @@ import {
     EbsDeviceVolumeType } from '#root/lib/schema';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { getDefaults } from '../../../shared/util/zodUtil';
+import { getDefaults } from '#root/lib/schema/zodUtil';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 type OpenSearchConfigProps = {

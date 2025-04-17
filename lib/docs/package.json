@@ -8,14 +8,12 @@
     "build": "npm run docs:build",
     "docs:dev": "vitepress dev .",
     "docs:build": "vitepress build .",
-    "docs:preview": "vitepress preview ."
+    "docs:preview": "vitepress preview .",
+    "clean": "rm -rf ./dist ./node_modules"
   },
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
     "vitepress": "^1.6.3"
-  },
-  "dependencies": {
-    "vite": "6.2.3"
   }
 }

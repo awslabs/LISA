@@ -24,6 +24,7 @@ export enum EcsSourceType {
     ECR = 'ecr',
     REGISTRY = 'registry',
     TARBALL = 'tarball',
+    EXTERNAL = 'external' // Use provided without modification
 }
 
 export enum RemovalPolicy {
@@ -50,11 +51,11 @@ export enum EbsDeviceVolumeType {
     MAGNETIC = 'standard'
 }
 
-
 export enum AmiHardwareType {
     STANDARD = 'Standard',
     GPU = 'GPU',
     ARM = 'ARM64',
     NEURON = 'Neuron'
 }
+
 /* eslint-enable @typescript-eslint/no-duplicate-enum-values */

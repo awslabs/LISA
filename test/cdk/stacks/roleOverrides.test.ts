@@ -43,7 +43,7 @@ const stackRoles: Record<string, number> = {
 };
 
 describe('Verify role overrides', () => {
-    const config = ConfigParser.parseConfig(['config.yaml', 'roles.yaml']);
+    const config = ConfigParser.parseConfig(['config-test.yaml', 'roles.yaml']);
     expect(Object.keys(config.roles || {}).length).toBe(Object.keys(Roles).length);
 
     const { stacks } = MockApp.create(config);

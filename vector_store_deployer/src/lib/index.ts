@@ -13,7 +13,8 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { App } from 'aws-cdk-lib/core';
+import { App, Aspects } from 'aws-cdk-lib/core';
+import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
 import { OpenSearchVectorStoreStack } from './opensearch';
 import { PGVectorStoreStack } from './pgvector';
 import { RagRepositoryConfigSchema, RagRepositoryType,PartialConfigSchema } from '../../../lib/schema';
@@ -24,6 +25,8 @@ console.log(`LISA_RAG_CONFIG = ${process.env['LISA_RAG_CONFIG']}`);
 const ragConfig = RagRepositoryConfigSchema.parse(JSON.parse(process.env['LISA_RAG_CONFIG']!));
 console.log(`LISA_CONFIG = ${process.env['LISA_CONFIG']}`);
 const config = PartialConfigSchema.parse(JSON.parse(process.env['LISA_CONFIG']!));
+const stackName = process.env['LISA_STACK_NAME'];
+console.log(`Using stack name: ${stackName}`);
 
 const vectorStoreProps = {
     config,
@@ -34,20 +37,23 @@ const vectorStoreProps = {
     },
 };
 
-const stackName = process.env['LISA_STACK_NAME']!;
-console.log(`Using stack name: ${stackName}`);
-
+let stack;
 if  (ragConfig.type === RagRepositoryType.OPENSEARCH) {
-    new OpenSearchVectorStoreStack(app, stackName, {
+    stack = new OpenSearchVectorStoreStack(app, stackName, {
         ...vectorStoreProps,
     });
 } else if (ragConfig.type === RagRepositoryType.PGVECTOR) {
-    new PGVectorStoreStack(app, stackName, {
+    stack = new PGVectorStoreStack(app, stackName, {
         ...vectorStoreProps,
     });
 } else {
     console.error(`Unsupported repository type: ${ragConfig.type}`);
     throw new Error(`Unsupported repository type: ${ragConfig.type}`);
+}
+
+
+if (config.permissionsBoundaryAspect) {
+    Aspects.of(stack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
 }
 
 app.synth();

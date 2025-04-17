@@ -383,10 +383,8 @@ def admin_only(func: Callable) -> Callable:
 
 def get_session_id(event: dict) -> str:
     """Get the session ID from the event."""
-    try:
-        return str(event["pathParameters"]["sessionId"])
-    except (KeyError, TypeError):
-        raise ValueError("Missing sessionId in path parameters")
+    session_id: str = event.get("pathParameters", {}).get("sessionId")
+    return session_id
 
 
 def get_groups(event: Any) -> List[str]:

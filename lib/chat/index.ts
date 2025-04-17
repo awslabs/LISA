@@ -13,27 +13,11 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-
-// LisaChat Stack.
-import { Stack, StackProps } from 'aws-cdk-lib';
-import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { LisaChatApplicationConstruct, LisaChatProps } from './chatConstruct';
 
-import { SessionApi } from './api/session';
-import { BaseProps } from '../schema';
-import { Vpc } from '../networking/vpc';
-import { ConfigurationApi } from './api/configuration';
-import { PromptTemplateApi } from './api/prompt-template-api';
-
-type CustomLisaChatStackProps = {
-    authorizer: IAuthorizer;
-    restApiId: string;
-    rootResourceId: string;
-    securityGroups: ISecurityGroup[];
-    vpc: Vpc;
-} & BaseProps;
-type LisaChatStackProps = CustomLisaChatStackProps & StackProps;
+export * from './chatConstruct';
 
 /**
  * LisaChat Application stack.
@@ -42,39 +26,11 @@ export class LisaChatApplicationStack extends Stack {
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaChatStackProps} props - Properties for the Stack.
+   * @param {LisaChatProps} props - Properties for the Stack.
    */
-    constructor (scope: Construct, id: string, props: LisaChatStackProps) {
+    constructor (scope: Construct, id: string, props: LisaChatProps) {
         super(scope, id, props);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
-
-        // Add REST API Lambdas to APIGW
-        new SessionApi(this, 'SessionApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
-
-        new ConfigurationApi(this, 'ConfigurationApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
-        });
-
-        new PromptTemplateApi(this, 'PromptTemplateApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc
-        });
+        (new LisaChatApplicationConstruct(this, id + 'Resources', props)).node.addMetadata('aws:cdk:path', this.node.path);
     }
 }

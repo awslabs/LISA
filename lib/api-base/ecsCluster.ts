@@ -19,12 +19,10 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     AmiHardwareType,
     Cluster,
     ContainerDefinition,
-    ContainerImage,
     ContainerInsights,
     Ec2Service,
     Ec2ServiceProps,
@@ -48,8 +46,9 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, EcsSourceType, Ec2Metadata, ECSConfig } from '../schema';
+import { BaseProps, Ec2Metadata, ECSConfig } from '../schema';
 import { Vpc } from '../networking/vpc';
+import { CodeFactory } from '../util';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -198,8 +197,8 @@ export class ECSCluster extends Construct {
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             volumes,
-            ...(taskRole && {taskRole}),
-            ...(executionRole && {executionRole}),
+            ...(taskRole && { taskRole }),
+            ...(executionRole && { executionRole }),
         });
 
         // Add container to task definition
@@ -213,36 +212,13 @@ export class ECSCluster extends Construct {
         };
 
         const linuxParameters =
-      ecsConfig.containerConfig.sharedMemorySize > 0
-          ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
-              sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
-          })
-          : undefined;
+            ecsConfig.containerConfig.sharedMemorySize > 0
+                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
+                    sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
+                })
+                : undefined;
 
-        let image: ContainerImage;
-        switch (ecsConfig.containerConfig.image.type) {
-            case EcsSourceType.ECR: {
-                const repository = Repository.fromRepositoryArn(
-                    this,
-                    createCdkId([ecsConfig.identifier, 'Repo']),
-                    ecsConfig.containerConfig.image.repositoryArn,
-                );
-                image = ContainerImage.fromEcrRepository(repository, ecsConfig.containerConfig.image.tag);
-                break;
-            }
-            case EcsSourceType.REGISTRY: {
-                image = ContainerImage.fromRegistry(ecsConfig.containerConfig.image.registry);
-                break;
-            }
-            case EcsSourceType.TARBALL: {
-                image = ContainerImage.fromTarball(ecsConfig.containerConfig.image.path);
-                break;
-            }
-            default: {
-                image = ContainerImage.fromAsset(ecsConfig.containerConfig.image.path, { buildArgs: ecsConfig.buildArgs });
-                break;
-            }
-        }
+        const image = CodeFactory.createImage(ecsConfig.containerConfig.image, this, ecsConfig.identifier, ecsConfig.buildArgs);
 
         const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
             containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
@@ -336,9 +312,9 @@ export class ECSCluster extends Construct {
         });
 
         const domain =
-      ecsConfig.loadBalancerConfig.domainName !== null
-          ? ecsConfig.loadBalancerConfig.domainName
-          : loadBalancer.loadBalancerDnsName;
+            ecsConfig.loadBalancerConfig.domainName !== null
+                ? ecsConfig.loadBalancerConfig.domainName
+                : loadBalancer.loadBalancerDnsName;
         this.endpointUrl = `${protocol}://${domain}`;
 
         // Update

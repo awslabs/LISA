@@ -179,13 +179,13 @@ export class RepositoryApi extends Construct {
             registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
                 './lambda',
                 commonLayers,
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaExecutionRole,
             );
         });

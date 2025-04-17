@@ -159,13 +159,13 @@ export class SessionApi extends Construct {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
                 './lambda',
                 [commonLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {

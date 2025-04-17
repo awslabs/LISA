@@ -24,6 +24,7 @@ export enum EcsSourceType {
     ECR = 'ecr',
     REGISTRY = 'registry',
     TARBALL = 'tarball',
+    EXTERNAL = 'external' // Use provided without modification
 }
 
 export enum RemovalPolicy {
@@ -49,7 +50,6 @@ export enum EbsDeviceVolumeType {
     COLD_HDD = 'sc1',
     MAGNETIC = 'standard'
 }
-
 
 export enum AmiHardwareType {
     STANDARD = 'Standard',

@@ -147,18 +147,17 @@ export class ConfigurationApi extends Construct {
                 },
             },
         ];
-
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
                 './lambda',
                 [commonLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {

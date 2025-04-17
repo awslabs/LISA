@@ -72,11 +72,7 @@ async def lifespan(app: FastAPI):  # type: ignore
         "endpointUrls": {},
     }
     try:
-        verify_path = (
-            None
-            if ("SSL_CERT_DIR" not in os.environ) or ("SSL_CERT_FILE" not in os.environ)
-            else f"{os.getenv('SSL_CERT_DIR')}/{os.getenv('SSL_CERT_FILE')}"
-        )
+        verify_path = os.getenv("SSL_CERT_FILE") or None
         session = get_session()
         async with session.create_client("ssm", region_name=os.environ["AWS_REGION"], verify=verify_path) as client:
             response = await client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])

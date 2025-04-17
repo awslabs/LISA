@@ -1,0 +1,102 @@
+env: dev
+
+dev:
+  appName: lisa
+  profile:
+  deploymentName: test-lisa
+  accountNumber: '012345678901'
+  region: us-iso-east-1
+  pypiConfig:
+    indexUrl: localhost:8080
+    trustedHost: localhost
+  deploymentStage: dev
+  removalPolicy: destroy
+  runCdkNag: false
+  webAppAssetsPath: './test/cdk/mocks/ui/'
+  # lambdaLayerAssets:
+  #   authorizerLayerPath: /path/to/authorizer_layer.zip
+  #   commonLayerPath: /path/to/common_layer.zip
+  #   ragLayerPath: /path/to/rag_layer.zip
+  #   sdkLayerPath: /path/to/sdk_layer.zip
+  # stackSynthesizer: CliCredentialsStackSynthesizer
+  # permissionsBoundaryAspect:
+  #   permissionsBoundaryPolicyName: CustomPermissionBoundary
+  #   rolePrefix: CustomPrefix
+  #   policyPrefix: CustomPrefix
+  #   instanceProfilePrefix: CustomPrefix
+  s3BucketModels: hf-models-gaiic
+  # aws partition mountS3 package location
+  mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+  # aws-iso partition mountS3 package location
+  # mountS3DebUrl: https://mountpoint-s3-release-us-iso-east-1.s3.us-iso-east-1.c2s.ic.gov/latest/x86_64/mount-s3.deb
+  # aws-iso-b partition mountS3 package location
+  # mountS3DebUrl: https://mountpoint-s3-release-us-isob-east-1.s3.us-isob-east-1.sc2s.sgov.gov/latest/x86_64/mount-s3.deb
+  accountNumbersEcr:
+    - '012345678901'
+  deployRag: true
+  deployUI: true
+  deployDocs: true
+  authConfig:
+    authority: test
+    clientId: test
+  logLevel: DEBUG
+  restApiConfig:
+    sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
+  ragRepositories:
+    - repositoryId: pgvector-rag
+      repositoryName: "PGVector"
+      type: pgvector
+      rdsConfig:
+        username: postgres
+    - repositoryId: pgvector-rag2
+      repositoryName: "PGVector 2"
+      type: pgvector
+      rdsConfig:
+        username: postgres
+        allowedGroups:
+          - group1
+    - repositoryId: opensearch-rag
+      type: opensearch
+      repositoryName: "Opensearch 2"
+      opensearchConfig:
+        dataNodes: 2
+        dataNodeInstanceType: r7g.large.search
+        masterNodes: 0
+        masterNodeInstanceType: r7g.large.search
+        volumeSize: 20
+        multiAzWithStandby: false
+    # - repositoryId: default
+    #   type: opensearch
+    #   opensearchConfig:
+    #     dataNodes: 2
+    #     dataNodeInstanceType: r6g.large.search
+    #     masterNodes: 0
+    #     masterNodeInstanceType: r6g.large.search
+    #     volumeSize: 300
+    # If adding an existing PGVector database, this configurations assumes:
+    # 1. The database has been configured to have pgvector installed and enabled: https://aws.amazon.com/about-aws/whats-new/2023/05/amazon-rds-postgresql-pgvector-ml-model-integration/
+    # 2. The database is accessible by RAG-related lambda functions (add inbound PostgreSQL access on the database's security group for all Lambda RAG security groups)
+    # 3. A secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'. This is the same format that RDS natively provides a password in SecretsManager.
+    # If the passwordSecretId or dbHost are not provided, then a sample database will be created for you. Only the username is required.
+    # - repositoryId: pgvector-rag
+    #  type: pgvector
+    #  rdsConfig:
+    #    username: postgres
+    #    passwordSecretId: # password ID as stored in SecretsManager. Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
+    #    dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
+    #    dbName: postgres
+  ragFileProcessingConfig:
+    chunkSize: 512
+    chunkOverlap: 51
+  ecsModels:
+    - modelName: mistralai/Mistral-7B-Instruct-v0.2
+      inferenceContainer: tgi
+      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+    - modelName: intfloat/e5-large-v2
+      inferenceContainer: tei
+      baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
+    # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
+    #   inferenceContainer: tgi
+    #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+  litellmConfig:
+    db_key: sk-012345 #pragma: allowlist secret

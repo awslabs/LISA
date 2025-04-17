@@ -71,11 +71,11 @@ def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
 
 def get_jwks_client() -> jwt.PyJWKClient:
     """Get JWK Client for JWT signing operations."""
-    if ("SSL_CERT_DIR" not in os.environ) or ("SSL_CERT_FILE" not in os.environ):
+    if "SSL_CERT_FILE" not in os.environ:
         cert_path = None
         logger.info("Using default certificate for SSL verification.")
     else:
-        cert_path = str(Path(os.environ["SSL_CERT_DIR"], os.environ["SSL_CERT_FILE"]).absolute())
+        cert_path = str(Path(os.environ["SSL_CERT_FILE"]).absolute())
         logger.info("Using self-signed certificate for SSL verification.")
     ssl_context = ssl.create_default_context()
     if cert_path:

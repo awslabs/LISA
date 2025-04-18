@@ -13,9 +13,6 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-
-import * as path from 'node:path';
-
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -27,13 +24,7 @@ import { createCdkId } from './utils';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { getDefaultRuntime } from '../api-base/utils';
 import { Stack, StackProps } from 'aws-cdk-lib';
-
-const HERE: string = path.resolve(__dirname);
-
-const COMMON_LAYER_PATH = path.join(HERE, 'layers', 'common');
-const FASTAPI_LAYER_PATH = path.join(HERE, 'layers', 'fastapi');
-const AUTHORIZER_LAYER_PATH = path.join(HERE, 'layers', 'authorizer');
-const SDK_PATH: string = path.resolve(HERE, '..', '..', 'lisa-sdk');
+import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, SDK_PATH } from '../util';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;

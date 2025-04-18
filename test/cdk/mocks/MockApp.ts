@@ -29,7 +29,7 @@ import { LisaDocsStack } from '../../../lib/docs';
 import { LisaModelsApiStack } from '../../../lib/models';
 import { LisaRagStack } from '../../../lib/rag';
 import fs from 'node:fs';
-import path from 'node:path';
+import { DOCS_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH, WEBAPP_DIST_PATH } from '../../../lib/util';
 
 export default class MockApp {
 
@@ -67,11 +67,11 @@ export default class MockApp {
             },
             config,
         };
-        const HERE: string = path.resolve(__dirname);
-        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'vector_store_deployer', 'dist'), { recursive: true });
-        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'ecs_model_deployer', 'dist'), { recursive: true });
-        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'lib', 'docs', 'dist'), { recursive: true });
-        fs.mkdirSync(path.join(HERE, '..', '..', '..', 'lib', 'user-interface','react', 'dist'), { recursive: true });
+
+        // Create dist folders to ensure stack creation
+        [VECTOR_STORE_DEPLOYER_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, DOCS_DIST_PATH, WEBAPP_DIST_PATH].forEach((distFolder) =>
+            fs.mkdirSync(distFolder, { recursive: true })
+        );
 
         const networkingStack = new LisaNetworkingStack(app, 'LisaNetworking', {
             ...baseStackProps,
@@ -116,7 +116,7 @@ export default class MockApp {
             rootResourceId: apiBaseStack.rootResourceId,
         });
 
-        const docStack = new LisaDocsStack(app, 'LisaDocs',{
+        const docStack = new LisaDocsStack(app, 'LisaDocs', {
             ...baseStackProps,
             stackName: 'LisaDocs'
         });

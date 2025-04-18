@@ -18,15 +18,15 @@ import path from 'node:path';
 import * as yaml from 'js-yaml';
 import fs from 'node:fs';
 import { Config, ConfigFile, ConfigSchema } from '../../../lib/schema';
+import { ROOT_PATH } from '../../../lib/util';
 
-const HERE: string = path.resolve(__dirname);
-
+const MOCK_PATH = path.join(ROOT_PATH, 'test', 'cdk', 'mocks');
 export default class ConfigParser {
 
     static parseConfig (configPaths = ['config-test.yaml']): Config {
         // Read configuration file
         const configData = configPaths.map((configPath) => {
-            const configFilePath = path.join(HERE, `../mocks/${configPath}`);
+            const configFilePath = path.join(MOCK_PATH, configPath);
             const configFile = yaml.load(fs.readFileSync(configFilePath, 'utf8')) as ConfigFile;
             const configEnv = configFile.env || 'dev';
             if (!configFile[configEnv]) {
@@ -34,7 +34,7 @@ export default class ConfigParser {
             }
             return configFile[configEnv];
         })
-            .reduce((result, obj) => ({...result, ...obj}));
+            .reduce((result, obj) => ({ ...result, ...obj }));
 
         // Validate and parse configuration
         let config;

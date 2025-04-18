@@ -13,8 +13,6 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import path from 'node:path';
-
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -47,10 +45,7 @@ import { LegacyIngestPipelineStateMachine } from './state_machine/legacy-ingest-
 import * as customResources from 'aws-cdk-lib/custom-resources';
 import DynamoDB from 'aws-sdk/clients/dynamodb';
 import * as readlineSync from 'readline-sync';
-
-const HERE: string = path.resolve(__dirname);
-
-const RAG_LAYER_PATH = path.join(HERE, 'layer');
+import { RAG_LAYER_PATH } from '../util';
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;

@@ -26,6 +26,9 @@ export type LisaApiDeploymentProps = {
 } & BaseProps &
   StackProps;
 
+/**
+ * Create LISA API Deployment stack resources
+ */
 export class LisaApiDeploymentConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaApiDeploymentProps) {
         super(scope, id);

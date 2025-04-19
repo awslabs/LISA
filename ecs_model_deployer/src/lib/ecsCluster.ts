@@ -19,11 +19,9 @@ import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
-import { Repository } from 'aws-cdk-lib/aws-ecr';
 import {
     Cluster,
     ContainerDefinition,
-    ContainerImage,
     ContainerInsights,
     Ec2Service,
     Ec2ServiceProps,
@@ -43,8 +41,9 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../../../lib/core/utils';
-import { AmiHardwareType, EcsSourceType, PartialConfig } from '../../../lib/schema';
+import { AmiHardwareType, PartialConfig } from '../../../lib/schema';
 import { Ec2Metadata, ECSConfig } from '../../../lib/schema';
+import { CodeFactory } from '../../../lib/util';
 
 /**
  * Properties for the ECSCluster Construct.
@@ -186,6 +185,9 @@ export class ECSCluster extends Construct {
             // Requires mount point /etc/pki from host
             environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle ?? '';
+            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
+            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
+            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
         }
 
         const roleId = ecsConfig.identifier;
@@ -212,37 +214,13 @@ export class ECSCluster extends Construct {
         };
 
         const linuxParameters =
-      ecsConfig.containerConfig.sharedMemorySize > 0
-          ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
-              sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
-          })
-          : undefined;
+            ecsConfig.containerConfig.sharedMemorySize > 0
+                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
+                    sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
+                })
+                : undefined;
 
-        let image: ContainerImage;
-        switch (ecsConfig.containerConfig.image.type) {
-            case EcsSourceType.ECR: {
-                const repository = Repository.fromRepositoryArn(
-                    this,
-                    createCdkId([ecsConfig.identifier, 'Repo']),
-                    ecsConfig.containerConfig.image.repositoryArn,
-                );
-                image = ContainerImage.fromEcrRepository(repository, ecsConfig.containerConfig.image.tag);
-                break;
-            }
-            case EcsSourceType.REGISTRY: {
-                image = ContainerImage.fromRegistry(ecsConfig.containerConfig.image.registry);
-                break;
-            }
-            case EcsSourceType.TARBALL: {
-                image = ContainerImage.fromTarball(ecsConfig.containerConfig.image.path);
-                break;
-            }
-            default: {
-                image = ContainerImage.fromAsset(ecsConfig.containerConfig.image.path, { buildArgs: ecsConfig.buildArgs });
-                break;
-            }
-        }
-
+        const image = CodeFactory.createImage(ecsConfig.containerConfig.image, this, ecsConfig.identifier, ecsConfig.buildArgs);
         const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
             containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             image,

@@ -20,7 +20,7 @@ import { LisaApiBaseStack } from '../../../lib/core/api_base';
 import { LisaChatApplicationStack } from '../../../lib/chat/index';
 import { ARCHITECTURE, CoreStack } from '../../../lib/core/index';
 import { LisaApiDeploymentStack } from '../../../lib/core/api_deployment';
-import { LisaServeIAMStack } from '../../../lib/iam_stack';
+import { LisaServeIAMStack } from '../../../lib/iam/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
 import ConfigParser from './ConfigParser';
@@ -28,7 +28,8 @@ import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
 import { LisaModelsApiStack } from '../../../lib/models';
 import { LisaRagStack } from '../../../lib/rag';
-import { NagSuppressions } from 'cdk-nag';
+import fs from 'node:fs';
+import { DOCS_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH, WEBAPP_DIST_PATH } from '../../../lib/util';
 
 export default class MockApp {
 
@@ -67,6 +68,11 @@ export default class MockApp {
             config,
         };
 
+        // Create dist folders to ensure stack creation
+        [VECTOR_STORE_DEPLOYER_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, DOCS_DIST_PATH, WEBAPP_DIST_PATH].forEach((distFolder) =>
+            fs.mkdirSync(distFolder, { recursive: true })
+        );
+
         const networkingStack = new LisaNetworkingStack(app, 'LisaNetworking', {
             ...baseStackProps,
             stackName: 'LisaNetworking'
@@ -84,7 +90,7 @@ export default class MockApp {
         });
         const chatStack = new LisaChatApplicationStack(app, 'LisaChat', {
             ...baseStackProps,
-            authorizer: apiBaseStack.authorizer,
+            authorizer: apiBaseStack.authorizer!,
             stackName: 'LisaChat',
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
@@ -110,7 +116,7 @@ export default class MockApp {
             rootResourceId: apiBaseStack.rootResourceId,
         });
 
-        const docStack = new LisaDocsStack(app, 'LisaDocs',{
+        const docStack = new LisaDocsStack(app, 'LisaDocs', {
             ...baseStackProps,
             stackName: 'LisaDocs'
         });
@@ -123,7 +129,7 @@ export default class MockApp {
         const ragStack = new LisaRagStack(app, 'LisaRAG', {
             ...baseStackProps,
             stackName: 'LisaRAG',
-            authorizer: apiBaseStack.authorizer,
+            authorizer: apiBaseStack.authorizer!,
             endpointUrl: serveStack.endpointUrl,
             modelsPs: serveStack.modelsPs,
             restApiId: apiBaseStack.restApiId,
@@ -157,22 +163,6 @@ export default class MockApp {
             ragStack,
         ];
 
-
-        stacks.forEach((lisaStack) => {
-            NagSuppressions.addStackSuppressions(
-                lisaStack,
-                [
-                    {
-                        id: 'NIST.800.53.R5-LambdaConcurrency',
-                        reason: 'Not applying lambda concurrency limits',
-                    },
-                    {
-                        id: 'NIST.800.53.R5-LambdaDLQ',
-                        reason: 'Not creating lambda DLQs',
-                    },
-                ],
-            );
-        });
         return { app, stacks };
     }
 }

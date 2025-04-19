@@ -33,7 +33,7 @@ const RESOURCE = 'AWS::EC2::SecurityGroup';
 
 describe('Verify security group overrides', () => {
     describe('Number of Security Groups created with overrides', () => {
-        const config = ConfigParser.parseConfig(['config.yaml', 'security-groups.yaml']);
+        const config = ConfigParser.parseConfig(['config-test.yaml', 'security-groups.yaml']);
 
         const {stacks} = MockApp.create(config);
 

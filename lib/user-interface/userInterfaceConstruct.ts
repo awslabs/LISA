@@ -16,7 +16,6 @@
 
 import { execSync, ExecSyncOptionsWithBufferEncoding } from 'node:child_process';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
@@ -30,8 +29,7 @@ import { Construct } from 'constructs';
 import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
-
-const HERE: string = path.resolve(__dirname);
+import { ROOT_PATH, WEBAPP_DIST_PATH } from '../util';
 
 /**
  * Properties for UserInterface Construct.
@@ -60,9 +58,6 @@ export class UserInterfaceConstruct extends Construct {
         this.scope = scope;
 
         const { architecture, config, restApiId, rootResourceId } = props;
-        const appPath = path.join(HERE, '.', 'react');
-        const rootPath = path.join(HERE, '..', '..');
-        const distPath = path.join(appPath, 'dist');
 
         // Create website S3 bucket
         const websiteBucket = new Bucket(scope, 'Bucket', {
@@ -186,7 +181,7 @@ export class UserInterfaceConstruct extends Construct {
         const uriSuffix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
         let webappAssets;
         if (!config.webAppAssetsPath) {
-            webappAssets = Source.asset(rootPath, {
+            webappAssets = Source.asset(ROOT_PATH, {
                 bundling: {
                     image: Runtime.NODEJS_18_X.bundlingImage,
                     platform: architecture.dockerPlatform,
@@ -209,10 +204,9 @@ export class UserInterfaceConstruct extends Construct {
                                         ...process.env,
                                     },
                                 };
-
-                                execSync(`npm --silent --prefix "${rootPath}" ci`, options);
-                                execSync(`npm --silent --prefix "${rootPath}" run build -w lisa-web -- --base="/${uriSuffix}"`, options);
-                                copyDirRecursive(distPath, outputDir);
+                                execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);
+                                execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web -- --base="/${uriSuffix}"`, options);
+                                fs.cpSync(WEBAPP_DIST_PATH, outputDir, {recursive: true});
                             } catch (e) {
                                 return false;
                             }
@@ -248,30 +242,5 @@ export class UserInterfaceConstruct extends Construct {
             managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AmazonS3ReadOnlyAccess')],
             description: 'Allows API gateway to proxy static website assets',
         });
-    }
-}
-
-/**
- * Copy files recursively from source directory to destination directory.
- * @param {string} sourceDir - Source directory to copy from.
- * @param {string} targetDir - Target directory to copy to.
- */
-function copyDirRecursive (sourceDir: string, targetDir: string): void {
-    if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir);
-    }
-
-    const files = fs.readdirSync(sourceDir);
-
-    for (const file of files) {
-        const sourceFilePath = path.join(sourceDir, file);
-        const targetFilePath = path.join(targetDir, file);
-        const stats = fs.statSync(sourceFilePath);
-
-        if (stats.isDirectory()) {
-            copyDirRecursive(sourceFilePath, targetFilePath);
-        } else {
-            fs.copyFileSync(sourceFilePath, targetFilePath);
-        }
     }
 }

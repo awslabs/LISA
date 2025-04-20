@@ -30,6 +30,9 @@ export type LisaApiBaseProps = {
 } & BaseProps &
     StackProps;
 
+/**
+ * Base stack resources for LISA REST API
+ */
 export class LisaApiBaseConstruct extends Construct {
     public readonly restApi: RestApi;
     public readonly authorizer?: Authorizer;
@@ -48,19 +51,6 @@ export class LisaApiBaseConstruct extends Construct {
             throttlingBurstLimit: 100,
         };
 
-        const restApi = new RestApi(scope, `${scope.node.id}-RestApi`, {
-            description: 'Base API Gateway for LISA.',
-            endpointConfiguration: { types: [config.privateEndpoints ? EndpointType.PRIVATE : EndpointType.REGIONAL] },
-            deploy: true,
-            deployOptions,
-            defaultCorsPreflightOptions: {
-                allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: [...Cors.DEFAULT_HEADERS],
-            },
-            // Support binary media types used for documentation images and fonts
-            binaryMediaTypes: ['font/*', 'image/*'],
-        });
-
         if (config.authConfig) {
             // Create the authorizer Lambda for APIGW
             const authorizer = new CustomAuthorizer(scope, 'LisaApiAuthorizer', {
@@ -75,6 +65,19 @@ export class LisaApiBaseConstruct extends Construct {
             });
             this.authorizer = authorizer.authorizer;
         }
+
+        const restApi = new RestApi(scope, `${scope.node.id}-RestApi`, {
+            description: 'Base API Gateway for LISA.',
+            endpointConfiguration: { types: [config.privateEndpoints ? EndpointType.PRIVATE : EndpointType.REGIONAL] },
+            deploy: true,
+            deployOptions,
+            defaultCorsPreflightOptions: {
+                allowOrigins: Cors.ALL_ORIGINS,
+                allowHeaders: [...Cors.DEFAULT_HEADERS],
+            },
+            // Support binary media types used for documentation images and fonts
+            binaryMediaTypes: ['font/*', 'image/*'],
+        });
 
         this.restApi = restApi;
         this.restApiId = restApi.restApiId;

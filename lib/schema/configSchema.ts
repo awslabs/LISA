@@ -357,7 +357,7 @@ export const ImageExternalAsset = z.object({
     .describe('Container image from external source. Use provided image without modification.');
 
 export const ImageAssetSchema = z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset, ImageExternalAsset]);
-export type ImageAsset =  z.infer<typeof ImageAssetSchema>;
+export type ImageAsset = z.infer<typeof ImageAssetSchema>;
 
 export const ContainerConfigSchema = z.object({
     image: ImageAssetSchema.describe('Base image for the container.'),

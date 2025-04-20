@@ -13,10 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-
-import * as path from 'node:path';
-import * as fs from 'node:fs';
-
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, EndpointType, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { IRole, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
@@ -26,7 +22,7 @@ import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
 
-const HERE: string = path.resolve(__dirname);
+import { DOCS_DIST_PATH } from '../util';
 
 /**
  * Properties for DocsStack Construct.
@@ -61,10 +57,7 @@ export class LisaDocsConstruct extends Construct {
         });
 
         // Ensure dist folder is created (for tests)
-        const docsPath = config.documentsPath || path.join(HERE, 'dist');
-        if (!fs.existsSync(docsPath)) {
-            fs.mkdirSync(docsPath);
-        }
+        const docsPath = config.documentsPath || DOCS_DIST_PATH;
 
         // Deploy local folder to S3
         new BucketDeployment(scope, 'DeployDocsWebsite', {

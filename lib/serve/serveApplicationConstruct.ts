@@ -13,8 +13,6 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  */
-import path from 'node:path';
-
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
@@ -29,8 +27,7 @@ import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
-
-const HERE: string = path.resolve(__dirname);
+import { REST_API_PATH } from '../util';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -75,7 +72,7 @@ export class LisaServeApplicationConstruct extends Construct {
         const restApi = new FastApiContainer(scope, 'RestApi', {
             apiName: 'REST',
             config: config,
-            resourcePath: path.join(HERE, 'rest-api'),
+            resourcePath: REST_API_PATH,
             securityGroup: vpc.securityGroups.restApiAlbSg,
             tokenTable: tokenTable,
             vpc: vpc,

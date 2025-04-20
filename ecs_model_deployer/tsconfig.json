@@ -32,10 +32,6 @@
     "outDir": "dist",
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "test/**/*", "../lib/core"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    ".git"
-  ]
+  "include": ["src/**/*", "test/**/*", "../lib/core", "**/*.json"],
+  "exclude": ["node_modules", "dist", ".git"]
 }

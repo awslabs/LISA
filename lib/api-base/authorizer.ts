@@ -27,10 +27,9 @@ import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
 import { getDefaultRuntime } from './utils';
-import path from 'node:path';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { LAMBDA_PATH } from '../util';
 
-const HERE = path.resolve(__dirname);
 /**
  * Properties for RestApiGateway Construct.
  *
@@ -79,7 +78,7 @@ export class CustomAuthorizer extends Construct {
         const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
 
         // Create Lambda authorizer
-        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
 
             runtime: getDefaultRuntime(),

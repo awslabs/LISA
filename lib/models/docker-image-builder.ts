@@ -34,9 +34,7 @@ import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
 import { getDefaultRuntime } from '../api-base/utils';
-import * as path from 'path';
-
-const HERE = path.resolve(__dirname);
+import { ECS_MODEL_PATH, LAMBDA_PATH } from '../util';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
@@ -56,7 +54,7 @@ export class DockerImageBuilder extends Construct {
         const { config } = props;
 
         const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']));
-        const ecsModelPath = path.join(HERE, '..', 'serve', 'ecs-model');
+        const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {
             sources: [Source.asset(ecsModelPath)],
             destinationBucket: ec2DockerBucket,
@@ -83,7 +81,7 @@ export class DockerImageBuilder extends Construct {
             role: ec2InstanceProfileRole,
         });
 
-        const lambdaPath = path.join(HERE, '..', '..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
             functionName: functionId,

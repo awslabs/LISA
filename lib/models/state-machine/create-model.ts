@@ -36,9 +36,7 @@ import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { getDefaultRuntime } from '../../api-base/utils';
-import * as path from 'path';
-
-const HERE = path.resolve(__dirname);
+import { LAMBDA_PATH } from '../../util';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -64,7 +62,7 @@ export class CreateModelStateMachine extends Construct {
         super(scope, id);
 
         const { config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
             ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,

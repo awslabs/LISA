@@ -27,9 +27,8 @@ import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import path from 'node:path';
+import { LAMBDA_PATH } from '../../util';
 
-const HERE = path.resolve(__dirname);
 /**
  * Props for the ConfigurationApi construct
  * Extends BaseProps to include authorizer, restApiId, rootResourceId, securityGroups, and vpc
@@ -150,7 +149,7 @@ export class ConfigurationApi extends Construct {
             },
         ];
 
-        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,

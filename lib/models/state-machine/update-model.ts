@@ -35,9 +35,7 @@ import {
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
 import { getDefaultRuntime } from '../../api-base/utils';
-import * as path from 'path';
-
-const HERE = path.resolve(__dirname);
+import { LAMBDA_PATH } from '../../util';
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -79,7 +77,7 @@ export class UpdateModelStateMachine extends Construct {
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
-        const lambdaPath = path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
                 runtime: getDefaultRuntime(),

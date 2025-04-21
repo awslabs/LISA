@@ -13,9 +13,6 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-
-import * as path from 'node:path';
-
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';

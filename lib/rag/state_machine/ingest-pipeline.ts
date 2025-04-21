@@ -38,9 +38,8 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import path from 'node:path';
+import { LAMBDA_PATH } from '../../util';
 
-const HERE = path.resolve(__dirname);
 type IngestPipelineStateMachineProps = BaseProps & {
     baseEnvironment:  Record<string, string>,
     vpc?: Vpc;
@@ -155,7 +154,7 @@ export class IngestPipelineStateMachine extends Construct {
         }));
 
         policyStatements.map((policyStatement) => ingestPipelineRole.addToPolicy(policyStatement));
-        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {

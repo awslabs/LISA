@@ -40,9 +40,8 @@ import * as kms from 'aws-cdk-lib/aws-kms';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PipelineConfig, RagRepositoryType, RdsConfig } from '../../schema';
-import path from 'node:path';
+import { LAMBDA_PATH } from '../../util';
 
-const HERE = path.resolve(__dirname);
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;
     pipelineConfig: PipelineConfig;
@@ -142,7 +141,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             });
             policyStatements.push(certPolicyStatement);
         }
-        const lambdaPath = config.lambdaPath || path.join(HERE, '..', '..','..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // Function to list objects modified in last 24 hours
         const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {

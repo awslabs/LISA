@@ -34,10 +34,13 @@
   "scripts": {
     "build": "tsc && npm run build -ws",
     "deploy": "tsx ./bin/lisa.ts",
+    "copy-dist": "cp VERSION ./dist/",
+    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "prepare": "husky install",
+    "prepare": "husky",
+    "prepublishOnly": "npm run build && npm run copy-dist",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },

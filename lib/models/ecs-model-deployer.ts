@@ -30,11 +30,8 @@ import { Duration, Size, Stack } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
 import { Vpc } from '../networking/vpc';
-import * as path from 'path';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { CodeFactory } from '../util';
-
-const HERE = path.resolve(__dirname);
+import { CodeFactory, ECS_MODEL_DEPLOYER_DIST_PATH } from '../util';
 
 export type ECSModelDeployerProps = {
     securityGroupId: string;
@@ -74,7 +71,7 @@ export class ECSModelDeployer extends Construct {
         };
 
         const functionId = createCdkId([stackName, 'ecs_model_deployer', 'Fn']);
-        const ecsModelDeployerPath = config.ecsModelDeployerPath || path.join(HERE, '..', '..', 'ecs_model_deployer', 'dist');
+        const ecsModelDeployerPath = config.ecsModelDeployerPath || ECS_MODEL_DEPLOYER_DIST_PATH;
         this.ecsModelDeployerFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
             code: CodeFactory.createCode(ecsModelDeployerPath),

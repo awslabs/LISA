@@ -31,7 +31,6 @@ import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
 import { ROOT_PATH, WEBAPP_DIST_PATH } from '../util';
 
-
 /**
  * Properties for UserInterface Construct.
  *
@@ -205,7 +204,6 @@ export class UserInterfaceConstruct extends Construct {
                                         ...process.env,
                                     },
                                 };
-
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web -- --base="/${uriSuffix}"`, options);
                                 fs.cpSync(WEBAPP_DIST_PATH, outputDir, {recursive: true});

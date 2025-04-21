@@ -46,9 +46,8 @@ import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
-import * as path from 'path';
+import { LAMBDA_PATH } from '../util';
 
-const HERE = path.resolve(__dirname);
 /**
  * Properties for ModelsApi Construct.
  *
@@ -190,7 +189,7 @@ export class ModelsApi extends Construct {
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
-        const lambdaPath = path.join(HERE, '..', '..', 'lambda');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,

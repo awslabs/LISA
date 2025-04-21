@@ -29,19 +29,20 @@ import { createCdkId } from '../../../core/utils';
 import { getDefaultRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
+import { LAMBDA_PATH } from '../../../util';
 
- type DeleteStoreStateMachineProps = BaseProps & {
-     ragVectorStoreTable: ITable,
-     lambdaLayers: ILayerVersion[];
-     vectorStoreDeployerFnArn: string;
-     vpc: Vpc,
-     role?: iam.IRole,
-     executionRole: iam.IRole;
-     parameterName: string,
-     environment: {
-         [key: string]: string;
-     };
- };
+type DeleteStoreStateMachineProps = BaseProps & {
+    ragVectorStoreTable: ITable,
+    lambdaLayers: ILayerVersion[];
+    vectorStoreDeployerFnArn: string;
+    vpc: Vpc,
+    role?: iam.IRole,
+    executionRole: iam.IRole;
+    parameterName: string,
+    environment: {
+        [key: string]: string;
+    };
+};
 
 
 export class DeleteStoreStateMachine extends Construct {
@@ -117,17 +118,18 @@ export class DeleteStoreStateMachine extends Construct {
             table: ragVectorStoreTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
             updateExpression: 'SET #status = :status',
-            expressionAttributeNames: { '#status': 'status'},
+            expressionAttributeNames: { '#status': 'status' },
             expressionAttributeValues: {
                 ':status': tasks.DynamoAttributeValue.fromString('DELETE_IN_PROGRESS'),
             },
             resultPath: '$.updateDynamoDbResult',
         });
 
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
             runtime: getDefaultRuntime(),
             handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
-            code: Code.fromAsset('./lambda'),
+            code: Code.fromAsset(lambdaPath),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc.vpc,

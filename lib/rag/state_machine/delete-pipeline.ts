@@ -28,6 +28,7 @@ import * as cdk from 'aws-cdk-lib';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Key } from 'aws-cdk-lib/aws-kms';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { LAMBDA_PATH } from '../../util';
 
 type DeletePipelineStateMachineProps = BaseProps & {
     baseEnvironment:  Record<string, string>,
@@ -75,12 +76,13 @@ export class DeletePipelineStateMachine extends Construct {
                 'pipelineConfig.$': '$.detail.pipelineConfig'
             },
         });
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // Create the ingest documents function with S3 permissions
         const deleteDocumentsFunction = new Function(this, 'pipelineDeleteDocumentFunc', {
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_delete_document.lambda_handler',
-            code: Code.fromAsset('./lambda'),
+            code: Code.fromAsset(lambdaPath),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc!.vpc,

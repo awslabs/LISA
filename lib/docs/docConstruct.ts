@@ -21,6 +21,7 @@ import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
+
 import { DOCS_DIST_PATH } from '../util';
 
 /**

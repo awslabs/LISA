@@ -57,4 +57,5 @@ export enum AmiHardwareType {
     ARM = 'ARM64',
     NEURON = 'Neuron'
 }
+
 /* eslint-enable @typescript-eslint/no-duplicate-enum-values */

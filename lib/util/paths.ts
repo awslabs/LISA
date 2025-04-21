@@ -19,6 +19,7 @@ import * as path from 'node:path';
 export const ROOT_PATH = path.resolve(path.join(__dirname, '..', '..'));
 export const VERSION_PATH = path.join(ROOT_PATH, 'VERSION');
 
+export const LAMBDA_PATH = path.join(ROOT_PATH, 'lambda');
 export const COMMON_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'common');
 export const FASTAPI_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'fastapi');
 export const AUTHORIZER_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'authorizer');
@@ -26,6 +27,7 @@ export const SDK_PATH = path.join(ROOT_PATH, 'lisa-sdk');
 export const RAG_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'rag', 'layer');
 
 export const REST_API_PATH = path.join(ROOT_PATH, 'lib', 'serve', 'rest-api');
+export const ECS_MODEL_PATH = path.join(ROOT_PATH, 'lib', 'serve', 'ecs-model');
 
 export const WEBAPP_PATH = path.join(ROOT_PATH, 'lib', 'user-interface', 'react');
 export const WEBAPP_DIST_PATH = path.join(WEBAPP_PATH, 'dist');

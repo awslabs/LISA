@@ -36,6 +36,7 @@ import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { getDefaultRuntime } from '../../api-base/utils';
+import { LAMBDA_PATH } from '../../util';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -61,7 +62,7 @@ export class CreateModelStateMachine extends Construct {
         super(scope, id);
 
         const { config, modelTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
-
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
             ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,
@@ -78,7 +79,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -97,7 +98,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -114,7 +115,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -131,7 +132,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_failure',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -154,7 +155,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: Duration.minutes(8),
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -171,7 +172,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -194,7 +195,7 @@ export class CreateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

@@ -35,7 +35,7 @@ import {
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
 import { getDefaultRuntime } from '../../api-base/utils';
-
+import { LAMBDA_PATH } from '../../util';
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -77,12 +77,12 @@ export class UpdateModelStateMachine extends Construct {
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
-
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_job_intake',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -99,7 +99,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -116,7 +116,7 @@ export class UpdateModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.update_model.handle_finish_update',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

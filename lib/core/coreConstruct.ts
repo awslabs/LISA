@@ -24,6 +24,7 @@ import { createCdkId } from './utils';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { getDefaultRuntime } from '../api-base/utils';
 import { Stack, StackProps } from 'aws-cdk-lib';
+
 import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, SDK_PATH } from '../util';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;

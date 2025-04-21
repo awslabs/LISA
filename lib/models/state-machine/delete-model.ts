@@ -34,6 +34,7 @@ import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './c
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
 import { getDefaultRuntime } from '../../api-base/utils';
+import { LAMBDA_PATH } from '../../util';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -65,14 +66,14 @@ export class DeleteModelStateMachine extends Construct {
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
-
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.
         // Input payload to state machine contains the model name that we want to delete.
         const setModelToDeleting = new LambdaInvoke(this, 'SetModelToDeleting', {
             lambdaFunction: new Function(this, 'SetModelToDeletingFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -89,7 +90,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteFromLitellmFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -106,7 +107,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteStackFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -123,7 +124,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'MonitorDeleteStackFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,
@@ -140,7 +141,7 @@ export class DeleteModelStateMachine extends Construct {
             lambdaFunction: new Function(this, 'DeleteFromDdbFunc', {
                 runtime: getDefaultRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
-                code: Code.fromAsset('./lambda'),
+                code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
                 role: role,

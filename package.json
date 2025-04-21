@@ -40,7 +40,7 @@
     "test": "jest",
     "cdk": "cdk",
     "prepare": "husky",
-    "prepublishOnly": "npm run build && npm run copy-dist",
+    "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },
@@ -75,6 +75,7 @@
     "zod2md": "^0.1.4"
   },
   "dependencies": {
+    "18": "^0.0.0",
     "aws-cdk-lib": "^2.185.0",
     "aws-sdk": "^2.1692.0",
     "cdk-ecr-deployment": "^4.0.1",

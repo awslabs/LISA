@@ -26,6 +26,9 @@ RUN echo "$LITELLM_CONFIG" > litellm_config.yaml
 # Copy the source code into the container
 COPY src/ ./src
 
+# Generate the prisma binary
+RUN prisma generate
+
 # Make entrypoint.sh executable
 RUN chmod +x src/entrypoint.sh
 

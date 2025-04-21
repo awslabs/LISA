@@ -26,11 +26,8 @@ import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
-import path from 'node:path';
-import { CodeFactory } from '../../util';
+import { CodeFactory, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-
-const HERE = path.resolve(__dirname);
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput;
@@ -109,7 +106,7 @@ export class VectorStoreCreatorStack extends Construct {
         };
 
         const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer', 'Fn']);
-        const vectorStoreDeployer = config.vectorStoreDeployerImage || config.vectorStoreDeployerPath || path.join(HERE, '..', '..', '..', 'vector_store_deployer', 'dist');
+        const vectorStoreDeployer = config.vectorStoreDeployerPath || VECTOR_STORE_DEPLOYER_DIST_PATH;
         this.vectorStoreCreatorFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
             code: CodeFactory.createCode(vectorStoreDeployer),

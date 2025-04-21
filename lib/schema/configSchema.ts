@@ -759,9 +759,7 @@ export const RawConfigObject = z.object({
     deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
     webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
     ecsModelDeployerPath: z.string().optional().describe('Optional path to precompiled ecs model deployer. If not specified the ecs model deployer will be built at deploy time.'),
-    ecsModelDeployerImage: ImageAssetSchema.optional().describe('Override image configuration for ECS model deployer'),
     vectorStoreDeployerPath: z.string().optional().describe('Optional path to precompiled vector store deployer. If not specified the vector store deployer will be built at deploy time.'),
-    vectorStoreDeployerImage: ImageAssetSchema.optional().describe('Override image configuration for Vector Store Deployer'),
     documentsPath: z.string().optional().describe('Optional path to precompiled LISA documents. If not specified the LISA docs will be built at deploy time.'),
     lambdaPath: z.any().optional().describe('Optional path to precompiled LISA lambda. If not specified the LISA lambda will be built at deploy time.'),
     lambdaLayerAssets: z

@@ -61,6 +61,13 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         return new Blob(byteArrays, { type: mimeType });
     }
 
+    function messageContainsImage(content: MessageContent): boolean {
+        if (Array.isArray(content)) {
+            return !!content.find(item => item.type === 'image_url');
+        }
+        return false;
+    }
+
     const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
@@ -153,7 +160,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             <JsonView data={message.metadata} style={darkStyles} />
                         </ExpandableSection>}
                     </ChatBubble>
-                    {!isStreaming && <div
+                    {!isStreaming  && !messageContainsImage(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                         <ButtonGroup
                             onItemClick={({ detail }) =>

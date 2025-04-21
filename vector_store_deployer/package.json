@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "node esbuild.js && npm run copy-assets && npm run pack:prod && npm run copy-dist",
+    "build": "node esbuild.js && npm run copy-assets && npm run pack:prod",
     "copy-assets": "cp package.json ./src/cdk*json ../VERSION ./dist",
     "pack:prod": "cd ./dist && npm i --omit dev",
     "copy-dist": "mkdir -p ../dist/vector_store_deployer && cp -r ./dist/* ../dist/vector_store_deployer/",

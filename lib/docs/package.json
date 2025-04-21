@@ -5,7 +5,7 @@
   "description": "Documentation of LISA",
   "scripts": {
     "prebuild": "(cd ../../ && npm run generateSchemaDocs)",
-    "build": "npm run docs:build && npm run copy-dist",
+    "build": "npm run docs:build",
     "copy-dist": "mkdir -p ../../dist/docs && cp -r ./dist/* ../../dist/docs/",
     "docs:dev": "vitepress dev .",
     "docs:build": "vitepress build .",

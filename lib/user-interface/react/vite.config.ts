@@ -21,7 +21,6 @@ import { resolve } from 'node:path';
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react(), splitVendorChunkPlugin()],
-    base: '/prod/',
     server: {
         port: 3000,
     },

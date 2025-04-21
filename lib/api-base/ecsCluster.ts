@@ -179,6 +179,9 @@ export class ECSCluster extends Construct {
             // Requires mount point /etc/pki from host
             environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
             environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
+            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
         }
 
         // Retrieve execution role if it has been overridden

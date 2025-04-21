@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "node esbuild.js && npm run copy-dist && npm run pack:prod",
-    "copy-dist": "cp package.json ./src/cdk*json ../VERSION ./dist",
+    "build": "node esbuild.js && npm run copy-assets && npm run pack:prod && npm run copy-dist",
+    "copy-assets": "cp package.json ./src/cdk*json ../VERSION ./dist",
     "pack:prod": "cd ./dist && npm i --omit dev",
+    "copy-dist": "mkdir -p ../dist/ecs_model_deployer && cp -r ./dist/* ../dist/ecs_model_deployer/",
     "clean": "rm -rf ./dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

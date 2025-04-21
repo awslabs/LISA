@@ -17,7 +17,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
-import Container from '@cloudscape-design/components/container';
 import Box from '@cloudscape-design/components/box';
 import { v4 as uuidv4 } from 'uuid';
 import SpaceBetween from '@cloudscape-design/components/space-between';
@@ -61,6 +60,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileLines, faMessage, faPenToSquare } from '@fortawesome/free-regular-svg-icons';
 import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
 import ConfigurationContext from '../../shared/configuration.provider';
+import Select from '@cloudscape-design/components/select';
+import FormField from '@cloudscape-design/components/form-field';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -76,7 +77,7 @@ export default function Chat ({ sessionId }) {
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
-            data: (state.data || []).filter((model) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService),
+            data: (state.data || []).filter((model) => (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) && model.status === ModelStatus.InService),
         })});
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
 
@@ -117,6 +118,8 @@ export default function Chat ({ sessionId }) {
     const bottomRef = useRef(null);
     const auth = useAuth();
 
+    const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
+
     const fetchRelevantDocuments = async (query: string) => {
         const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
 
@@ -136,60 +139,119 @@ export default function Chat ({ sessionId }) {
         const generateResponse = async (params: GenerateLLMRequestParams) => {
             setIsRunning(true);
             try {
-                const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
-
-                // Convert chat history to messages format
-                let messages = session.history.concat(params.message).map((msg) => ({
-                    role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
-                    content: Array.isArray(msg.content) ? msg.content : selectedModel.modelName.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
-                }));
-
-                const [systemMessage, ...remainingMessages] = messages;
-                messages = [systemMessage, ...remainingMessages.slice(-(chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2) - 1)];
-
-                if (chatConfiguration.sessionConfiguration.streaming) {
-                    setIsStreaming(true);
-                    setSession((prev) => ({
-                        ...prev,
-                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content: '', metadata: { ...metadata, ...params.message[params.message.length - 1].metadata }})],
-                    }));
-
+                // Handle image generation mode specifically
+                if (isImageGenerationMode) {
                     try {
-                        const stream = await llmClient.stream(messages);
-                        const resp: string[] = [];
-                        for await (const chunk of stream) {
-                            const content = chunk.content as string;
-                            setSession((prev) => {
-                                const lastMessage = prev.history[prev.history.length - 1];
-                                return {
-                                    ...prev,
-                                    history: [...prev.history.slice(0, -1),
-                                        new LisaChatMessage({
-                                            ...lastMessage,
-                                            content: lastMessage.content + content
-                                        })
-                                    ],
-                                };
-                            });
-                            resp.push(content);
+                        // Create image generation request
+                        const imageGenParams = {
+                            prompt: params.input,
+                            model: selectedModel.modelId,
+                            n: chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages,
+                            size: `${chatConfiguration.sessionConfiguration.imageGenerationArgs.width}x${chatConfiguration.sessionConfiguration.imageGenerationArgs.height}`,
+                            quality: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality,
+                            response_format: 'url',
+                        };
+
+                        // Make API call to generate images
+                        const response = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/images/generations`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${auth.user?.id_token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(imageGenParams),
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(`Image generation failed: ${JSON.stringify(data.error.message)}`);
                         }
-                        await memory.saveContext({ input: params.input }, { output: resp.join('') });
-                        setIsStreaming(false);
-                    } catch (exception) {
+
+                        // Create markdown for displaying images
+                        const imageContent = data.data.map((img) => ({
+                            image_url: {
+                                url: `data:image/png;base64,${img.b64_json}`
+                            },
+                            type: 'image_url'
+                        }));
+
+                        // Save the response to the chat history
                         setSession((prev) => ({
                             ...prev,
-                            history: prev.history.slice(0, -1),
+                            history: [...prev.history, new LisaChatMessage({
+                                type: 'ai',
+                                content: imageContent,
+                                metadata: {
+                                    ...metadata,
+                                    imageGeneration: true,
+                                    imageGenerationParams: imageGenParams
+                                }
+                            })],
                         }));
-                        throw exception;
+
+                        await memory.saveContext({ input: params.input }, { output: imageContent });
+                    } catch (error) {
+                        notificationService.generateNotification('Image generation failed', 'error', undefined, error.message ? <p>{error.message}</p> : undefined);
+                        setIsRunning(false);
                     }
                 } else {
-                    const response = await llmClient.invoke(messages);
-                    const content = response.content as string;
-                    await memory.saveContext({ input: params.input }, { output: content });
-                    setSession((prev) => ({
-                        ...prev,
-                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata })],
+                    // Existing text generation code
+                    const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
+
+                    // Convert chat history to messages format
+                    let messages = session.history.concat(params.message).map((msg) => ({
+                        role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
+                        content: Array.isArray(msg.content) ? msg.content : selectedModel.modelName.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
                     }));
+
+                    const [systemMessage, ...remainingMessages] = messages;
+                    messages = [systemMessage, ...remainingMessages.slice(-(chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2) - 1)];
+
+                    if (chatConfiguration.sessionConfiguration.streaming) {
+                        setIsStreaming(true);
+                        setSession((prev) => ({
+                            ...prev,
+                            history: [...prev.history, new LisaChatMessage({ type: 'ai', content: '', metadata: { ...metadata, ...params.message[params.message.length - 1].metadata }})],
+                        }));
+
+                        try {
+                            const stream = await llmClient.stream(messages);
+                            const resp: string[] = [];
+                            for await (const chunk of stream) {
+                                const content = chunk.content as string;
+                                setSession((prev) => {
+                                    const lastMessage = prev.history[prev.history.length - 1];
+                                    return {
+                                        ...prev,
+                                        history: [...prev.history.slice(0, -1),
+                                            new LisaChatMessage({
+                                                ...lastMessage,
+                                                content: lastMessage.content + content
+                                            })
+                                        ],
+                                    };
+                                });
+                                resp.push(content);
+                            }
+                            await memory.saveContext({ input: params.input }, { output: resp.join('') });
+                            setIsStreaming(false);
+                        } catch (exception) {
+                            setSession((prev) => ({
+                                ...prev,
+                                history: prev.history.slice(0, -1),
+                            }));
+                            throw exception;
+                        }
+                    } else {
+                        const response = await llmClient.invoke(messages);
+                        const content = response.content as string;
+                        await memory.saveContext({ input: params.input }, { output: content });
+                        setSession((prev) => ({
+                            ...prev,
+                            history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata })],
+                        }));
+                    }
                 }
             } catch (error) {
                 notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, error.error?.message ? <p>{JSON.stringify(error.error.message)}</p> : undefined);
@@ -333,13 +395,13 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
-                metadata: {},
+                metadata: isImageGenerationMode ? { imageGenerationPrompt: true } : {},
             }))
         }));
 
         const messages = [];
 
-        if (session.history.length === 0){
+        if (session.history.length === 0 && !isImageGenerationMode ){
             messages.push(new LisaChatMessage({
                 type: 'system',
                 content: chatConfiguration.promptConfiguration.promptTemplate,
@@ -349,7 +411,9 @@ export default function Chat ({ sessionId }) {
 
         let messageContent, ragDocs;
 
-        if (fileContext?.startsWith('File context: data:image')) {
+        if (isImageGenerationMode) {
+            messageContent = userPrompt;
+        } else if (fileContext?.startsWith('File context: data:image')) {
             const imageData = fileContext.replace('File context: ', '');
             messageContent = [
                 { type: 'image_url', image_url: { url: `${imageData}` } },
@@ -374,10 +438,14 @@ export default function Chat ({ sessionId }) {
             type: 'human',
             content: messageContent,
             metadata: {
-                ...useRag ? {
+                ...(isImageGenerationMode ? {
+                    imageGenerationPrompt: true,
+                    imageGenerationSettings: chatConfiguration.sessionConfiguration.imageGenerationArgs
+                } : {}),
+                ...(useRag && !isImageGenerationMode ? {
                     ragContext: formatDocumentsAsString(ragDocs.data?.docs, true),
                     ragDocuments: formatDocumentTitlesAsString(ragDocs.data?.docs)
-                } : {}
+                } : {})
             },
         }));
 
@@ -399,7 +467,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.promptTemplate, generateResponse]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration.promptConfiguration.promptTemplate, generateResponse, isImageGenerationMode]);
 
     return (
         <div className='h-[80vh]'>
@@ -496,16 +564,18 @@ export default function Chat ({ sessionId }) {
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
-            <div className='sticky bottom-8'>
+            <div className='sticky bottom-8 mt-2'>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>
-                        <Container>
-                            <SpaceBetween size='m' direction='vertical'>
-                                <Grid
-                                    gridDefinition={[
-                                        { colspan: { default: 4 } },
-                                        { colspan: { default: 8} },
-                                    ]}
+                        <SpaceBetween size='m' direction='vertical'>
+                            <Grid
+                                gridDefinition={[
+                                    { colspan: { default: 4 } },
+                                    { colspan: { default: 8} },
+                                ]}
+                            >
+                                <FormField
+                                    label={selectedModel?.modelType === ModelType.imagegen ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
                                         disabled={isRunning}
@@ -535,114 +605,193 @@ export default function Chat ({ sessionId }) {
                                         options={modelsOptions}
                                         ref={modelSelectRef}
                                     />
-                                    {window.env.RAG_ENABLED && (
-                                        <RagControls
-                                            isRunning={isRunning}
-                                            setUseRag={setUseRag}
-                                            setRagConfig={setRagConfig}
-                                            ragConfig={ragConfig}
-                                        />
-                                    )}
-                                </Grid>
-                                <PromptInput
-                                    value={userPrompt}
-                                    actionButtonAriaLabel='Send message'
-                                    actionButtonIconName='send'
-                                    maxRows={4}
-                                    minRows={2}
-                                    spellcheck={true}
-                                    placeholder={
-                                        !selectedModel ? 'You must select a model before sending a message' : 'Send a message'
-                                    }
-                                    disabled={!selectedModel || loadingSession}
-                                    onChange={({ detail }) => setUserPrompt(detail.value)}
-                                    onAction={userPrompt.length > 0 && !isRunning && !loadingSession && handleSendGenerateRequest}
-                                    secondaryActions={
-                                        <Box padding={{ left: 'xxs', top: 'xs' }}>
-                                            <ButtonGroup
-                                                ariaLabel='Chat actions'
-                                                onItemClick={({detail}) => {
-                                                    if (detail.id === 'settings'){
-                                                        setSessionConfigurationModalVisible(true);
-                                                    }
-                                                    if (detail.id === 'edit-prompt-template'){
-                                                        setPromptTemplateKey(new Date().toISOString());
-                                                        setShowPromptTemplateModal(true);
-                                                    }
-                                                    if (detail.id === 'upload-to-rag'){
-                                                        setShowRagUploadModal(true);
-                                                    }
-                                                    if (detail.id === 'add-file-to-context'){
-                                                        setShowContextUploadModal(true);
-                                                    }
-                                                    if ( detail.id === 'summarize-document') {
-                                                        setShowDocumentSummarizationModal(true);
-                                                    }
+                                </FormField>
+                                {window.env.RAG_ENABLED && !isImageGenerationMode && (
+                                    <RagControls
+                                        isRunning={isRunning}
+                                        setUseRag={setUseRag}
+                                        setRagConfig={setRagConfig}
+                                        ragConfig={ragConfig}
+                                    />
+                                )}
+                                {isImageGenerationMode && (
+                                    <Grid
+                                        gridDefinition={[
+                                            { colspan: { default: 4 } },
+                                            { colspan: { default: 4 } },
+                                            { colspan: { default: 4 } },
+                                        ]}
+                                    >
+                                        <FormField label='Image Size'>
+                                            <Select
+                                                selectedOption={{value: `${chatConfiguration.sessionConfiguration.imageGenerationArgs.width}x${chatConfiguration.sessionConfiguration.imageGenerationArgs.height}`}}
+                                                onChange={({ detail }) => {
+                                                    const [width, height] = detail.selectedOption.value.split('x').map(Number);
+                                                    setChatConfiguration((prev) => ({
+                                                        ...prev,
+                                                        sessionConfiguration: {
+                                                            ...prev.sessionConfiguration,
+                                                            imageGenerationArgs: {
+                                                                ...prev.sessionConfiguration.imageGenerationArgs,
+                                                                width,
+                                                                height
+                                                            }
+                                                        }
+                                                    }));
                                                 }}
-                                                items={[
-                                                    {
-                                                        type: 'icon-button',
-                                                        id: 'settings',
-                                                        iconName: 'settings',
-                                                        text: 'Session configuration'
-                                                    },
-                                                    ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
-                                                        [{
-                                                            type: 'icon-button',
-                                                            id: 'upload-to-rag',
-                                                            iconName: 'upload',
-                                                            text: 'Upload to RAG'
-                                                        }] as ButtonGroupProps.Item[] : []),
-                                                    ...(config?.configuration.enabledComponents.uploadContextDocs ?
-                                                        [{
-                                                            type: 'icon-button',
-                                                            id: 'add-file-to-context',
-                                                            iconName: 'insert-row',
-                                                            text: 'Add file to context'
-                                                        }] as ButtonGroupProps.Item[] : []),
-                                                    ...(config?.configuration.enabledComponents.documentSummarization ? [{
-                                                        type: 'icon-button',
-                                                        id: 'summarize-document',
-                                                        iconName: 'transcript',
-                                                        text: 'Summarize Document'
-                                                    }] as ButtonGroupProps.Item[] : []),
-                                                    ...(config?.configuration.enabledComponents.editPromptTemplate ?
-                                                        [{
-                                                            type: 'menu-dropdown',
-                                                            id: 'more-actions',
-                                                            text: 'Additional Configuration',
-                                                            items: [
-                                                                {
-                                                                    id: 'edit-prompt-template',
-                                                                    iconName: 'contact',
-                                                                    text: 'Edit Persona'
-                                                                },
-                                                            ]
-                                                        }] as ButtonGroupProps.Item[] : [])
+                                                options={[
+                                                    { label: '1024x1024 (Square)', value: '1024x1024'},
+                                                    { label: '1024x1792 (Portrait)', value: '1024x1792' },
+                                                    { label: '1792x1024 (Landscape)', value: '1792x1024' },
                                                 ]}
-                                                variant='icon'
                                             />
-                                        </Box>
-                                    }
-                                />
-                                <SpaceBetween direction='vertical' size='xs'>
-                                    <Grid gridDefinition={[{ colspan:6 }, { colspan:6 }]}>
-                                        <Box float='left' variant='div'>
-                                            <TextContent>
-                                                <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
-                                                    Session ID: {internalSessionId}
-                                                </div>
-                                            </TextContent>
-                                        </Box>
-                                        <Box float='right' variant='div'>
-                                            <StatusIndicator type={isConnected ? 'success' : 'error'}>
-                                                {isConnected ? 'Connected' : 'Disconnected'}
-                                            </StatusIndicator>
-                                        </Box>
+                                        </FormField>
+                                        <FormField label='Image Quality'>
+                                            <Select
+                                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality}}
+                                                onChange={({ detail }) => {
+                                                    setChatConfiguration((prev) => ({
+                                                        ...prev,
+                                                        sessionConfiguration: {
+                                                            ...prev.sessionConfiguration,
+                                                            imageGenerationArgs: {
+                                                                ...prev.sessionConfiguration.imageGenerationArgs,
+                                                                quality: detail.selectedOption.value
+                                                            }
+                                                        }
+                                                    }));
+                                                }}
+                                                options={[
+                                                    { label: 'Standard', value: 'standard'},
+                                                    { label: 'HD', value: 'hd' },
+                                                ]}
+                                            />
+                                        </FormField>
+                                        <FormField label='Number of Images'>
+                                            <Select
+                                                selectedOption={{value: String(chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages)}}
+                                                onChange={({ detail }) => {
+                                                    setChatConfiguration((prev) => ({
+                                                        ...prev,
+                                                        sessionConfiguration: {
+                                                            ...prev.sessionConfiguration,
+                                                            imageGenerationArgs: {
+                                                                ...prev.sessionConfiguration.imageGenerationArgs,
+                                                                numberOfImages: Number(detail.selectedOption.value)
+                                                            }
+                                                        }
+                                                    }));
+                                                }}
+                                                options={
+                                                    Array.from({ length: 5 }, (_, i) => i + 1).map((i) => {
+                                                        return {label: String(i), value: String(i)};
+                                                    })
+                                                }
+                                            />
+                                        </FormField>
                                     </Grid>
-                                </SpaceBetween>
+                                )}
+                            </Grid>
+                            <PromptInput
+                                value={userPrompt}
+                                actionButtonAriaLabel='Send message'
+                                actionButtonIconName='send'
+                                maxRows={4}
+                                minRows={2}
+                                spellcheck={true}
+                                placeholder={
+                                    !selectedModel ? 'You must select a model before sending a message' :
+                                        isImageGenerationMode ? 'Describe the image you want to generate...' :
+                                            'Send a message'
+                                }
+                                disabled={!selectedModel || loadingSession}
+                                onChange={({ detail }) => setUserPrompt(detail.value)}
+                                onAction={userPrompt.length > 0 && !isRunning && !loadingSession && handleSendGenerateRequest}
+                                secondaryActions={
+                                    <Box padding={{ left: 'xxs', top: 'xs' }}>
+                                        <ButtonGroup
+                                            ariaLabel='Chat actions'
+                                            onItemClick={({detail}) => {
+                                                if (detail.id === 'settings'){
+                                                    setSessionConfigurationModalVisible(true);
+                                                }
+                                                if (detail.id === 'edit-prompt-template'){
+                                                    setPromptTemplateKey(new Date().toISOString());
+                                                    setShowPromptTemplateModal(true);
+                                                }
+                                                if (detail.id === 'upload-to-rag'){
+                                                    setShowRagUploadModal(true);
+                                                }
+                                                if (detail.id === 'add-file-to-context'){
+                                                    setShowContextUploadModal(true);
+                                                }
+                                                if ( detail.id === 'summarize-document') {
+                                                    setShowDocumentSummarizationModal(true);
+                                                }
+                                            }}
+                                            items={[
+                                                {
+                                                    type: 'icon-button',
+                                                    id: 'settings',
+                                                    iconName: 'settings',
+                                                    text: 'Session configuration'
+                                                },
+                                                ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
+                                                    [{
+                                                        type: 'icon-button',
+                                                        id: 'upload-to-rag',
+                                                        iconName: 'upload',
+                                                        text: 'Upload to RAG'
+                                                    }] as ButtonGroupProps.Item[] : []),
+                                                ...(config?.configuration.enabledComponents.uploadContextDocs ?
+                                                    [{
+                                                        type: 'icon-button',
+                                                        id: 'add-file-to-context',
+                                                        iconName: 'insert-row',
+                                                        text: 'Add file to context'
+                                                    }] as ButtonGroupProps.Item[] : []),
+                                                ...(config?.configuration.enabledComponents.documentSummarization ? [{
+                                                    type: 'icon-button',
+                                                    id: 'summarize-document',
+                                                    iconName: 'transcript',
+                                                    text: 'Summarize Document'
+                                                }] as ButtonGroupProps.Item[] : []),
+                                                ...(config?.configuration.enabledComponents.editPromptTemplate ?
+                                                    [{
+                                                        type: 'menu-dropdown',
+                                                        id: 'more-actions',
+                                                        text: 'Additional Configuration',
+                                                        items: [
+                                                            {
+                                                                id: 'edit-prompt-template',
+                                                                iconName: 'contact',
+                                                                text: 'Edit Persona'
+                                                            },
+                                                        ]
+                                                    }] as ButtonGroupProps.Item[] : [])
+                                            ]}
+                                            variant='icon'
+                                        />
+                                    </Box>
+                                }
+                            />
+                            <SpaceBetween direction='vertical' size='xs'>
+                                <Grid gridDefinition={[{ colspan:6 }, { colspan:6 }]}>
+                                    <Box float='left' variant='div'>
+                                        <TextContent>
+                                            <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
+                                                Session ID: {internalSessionId}
+                                            </div>
+                                        </TextContent>
+                                    </Box>
+                                    <Box float='right' variant='div'>
+                                        <StatusIndicator type={isConnected ? 'success' : 'error'}>
+                                            {isConnected ? 'Connected' : 'Disconnected'}
+                                        </StatusIndicator>
+                                    </Box>
+                                </Grid>
                             </SpaceBetween>
-                        </Container>
+                        </SpaceBetween>
                     </Form>
                 </form>
             </div>

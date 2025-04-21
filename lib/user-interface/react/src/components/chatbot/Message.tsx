@@ -17,10 +17,10 @@
 import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonGroup, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
+import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { LisaChatMessage } from '../types';
+import { LisaChatMessage, LisaChatMessageMetadata } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
@@ -28,6 +28,7 @@ import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
 import { getDisplayableMessage } from '@/components/utils';
+import React from 'react';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -41,18 +42,73 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
 
-    const renderContent = (content: MessageContent) => {
+    function base64ToBlob (base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteArrays = [];
+
+        for (let i = 0; i < byteCharacters.length; i += 512) {
+            const slice = byteCharacters.slice(i, i + 512);
+            const byteNumbers = new Array(slice.length);
+
+            for (let j = 0; j < slice.length; j++) {
+                byteNumbers[j] = slice.charCodeAt(j);
+            }
+
+            const byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+
+        return new Blob(byteArrays, { type: mimeType });
+    }
+
+    const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
                 if (item.type === 'text') {
-                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{item.text}</div>;
+                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{getDisplayableMessage(item.text, message.type === 'ai' ? ragCitations : undefined)}</div>;
                 } else if (item.type === 'image_url') {
-                    return <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
+                    return message.type === 'human' ?
+                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '50%',  maxHeight: '30em', marginTop: '8px' }} /> :
+                        <Grid gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                            <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '100%',  maxHeight: '30em', marginTop: '8px' }} />
+                            <SpaceBetween size={'s'} alignItems={'end'} direction={'vertical'}>
+                                <ButtonDropdown
+                                    items={[
+                                        { id: 'download-image', text: 'Download Image', iconName: 'download'},
+                                        { id: 'copy-image', text: 'Copy Image', iconName: 'copy'}
+                                    ]}
+                                    ariaLabel='Control instance'
+                                    variant='icon'
+                                    onItemClick={(e) => {
+                                        if (e.detail.id === 'download-image'){
+                                            const element = document.createElement('a');
+                                            const file = base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
+                                            element.href = URL.createObjectURL(file);
+                                            element.download = `${metadata?.imageGenerationParams?.prompt}.png`;
+                                            document.body.appendChild(element);
+                                            element.click();
+                                            element.remove();
+                                        } else if (e.detail.id === 'copy-image') {
+                                            const copy = new ClipboardItem({ 'image/png': base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });
+                                            navigator.clipboard.write([copy]);
+                                        }
+                                    }}
+                                />
+                            </SpaceBetween>
+                        </Grid>;
                 }
                 return null;
             });
         }
-        return <div>{content}</div>;
+        return message.type === 'human' ?
+            <div>{content}</div> :
+            <div style={{ maxWidth: '60em' }}>
+                {markdownDisplay ? <ReactMarkdown
+                    remarkPlugins={[remarkBreaks]}
+                    children={content}
+                /> : <div style={{ whiteSpace: 'pre-line' }}>{content}</div>}
+            </div>
+        ;
     };
 
     return (
@@ -92,12 +148,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             />
                         }
                     >
-                        <div style={{ maxWidth: '60em' }}>
-                            {markdownDisplay ? <ReactMarkdown
-                                remarkPlugins={[remarkBreaks]}
-                                children={getDisplayableMessage(message.content, ragCitations)}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, ragCitations)}</div>}
-                        </div>
+                        {renderContent(message.type, message.content, message.metadata)}
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />
                         </ExpandableSection>}
@@ -142,7 +193,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     }
                 >
                     <div style={{ maxWidth: '60em' }}>
-                        {renderContent(message.content)}
+                        {renderContent(message.type, message.content)}
                     </div>
                 </ChatBubble>
             )}

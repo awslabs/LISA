@@ -114,7 +114,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                             element.remove();
                                         } else if (e.detail.id === 'copy-image') {
                                             const copy = new ClipboardItem({ 'image/png':item.image_url.url.startsWith('https://') ?
-                                                    await fetchImage(item.image_url.url) : base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });
+                                                await fetchImage(item.image_url.url) : base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });
                                             await navigator.clipboard.write([copy]);
                                         }
                                     }}

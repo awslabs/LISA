@@ -61,6 +61,22 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         return new Blob(byteArrays, { type: mimeType });
     }
 
+    const fetchImage = async (url: string) => {
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                credentials: 'omit'
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.blob();
+        } catch (error) {
+            console.error('Error fetching image:', error);
+            throw error;
+        }
+    };
+
     function messageContainsImage (content: MessageContent): boolean {
         if (Array.isArray(content)) {
             return !!content.find((item) => item.type === 'image_url');
@@ -86,10 +102,12 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                     ]}
                                     ariaLabel='Control instance'
                                     variant='icon'
-                                    onItemClick={(e) => {
+                                    onItemClick={async (e) => {
                                         if (e.detail.id === 'download-image'){
                                             const element = document.createElement('a');
-                                            const file = base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
+                                            const file = item.image_url.url.startsWith('https://') ?
+                                                await fetchImage(item.image_url.url)
+                                                : base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
                                             element.href = URL.createObjectURL(file);
                                             element.download = `${metadata?.imageGenerationParams?.prompt}.png`;
                                             document.body.appendChild(element);

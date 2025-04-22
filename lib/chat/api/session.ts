@@ -27,7 +27,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
@@ -101,6 +101,16 @@ export class SessionApi extends Construct {
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             websiteIndexDocument: 'index.html',
             websiteErrorDocument: '404.html',
+            cors: [{
+                allowedHeaders: ['*'],
+                allowedMethods: [
+                    HttpMethods.GET,
+                    HttpMethods.HEAD,
+                ],
+                allowedOrigins: ['*'],  // Consider restricting this to your specific domains in production
+                exposedHeaders: ['ETag'],
+                maxAge: 3000
+            }]
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {

@@ -13,9 +13,11 @@
 #   limitations under the License.
 
 """Lambda functions for managing sessions."""
+import base64
 import json
 import logging
 import os
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List
@@ -24,8 +26,6 @@ import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
 from utilities.common_functions import api_wrapper, get_session_id, get_username, retry_config
-import uuid
-import base64
 
 logger = logging.getLogger(__name__)
 
@@ -124,20 +124,20 @@ def get_session(event: dict, context: dict) -> dict:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         resp = response.get("Item", {})
 
-        for message in resp.get('history', None):
-            if isinstance(message.get('content', None), List):
-                for item in message.get('content', None):
-                    if item.get('type', None) == "image_url":
+        for message in resp.get("history", None):
+            if isinstance(message.get("content", None), List):
+                for item in message.get("content", None):
+                    if item.get("type", None) == "image_url":
                         try:
                             image_url = s3.generate_presigned_url(
-                                'get_object',
+                                "get_object",
                                 Params={
-                                    'Bucket': 'evmann-test-images',
-                                    'Key': item.get('image_url', {}).get('url', None)
+                                    "Bucket": "evmann-test-images",
+                                    "Key": item.get("image_url", {}).get("url", None),
                                 },
-                                ExpiresIn=3600
+                                ExpiresIn=3600,
                             )
-                            item['image_url']['url'] = image_url
+                            item["image_url"]["url"] = image_url
                         except Exception as e:
                             print(f"Error uploading to S3: {e}")
 
@@ -187,26 +187,25 @@ def put_session(event: dict, context: dict) -> dict:
         messages = body["messages"]
 
         for message in messages:
-            if isinstance(message.get('content', None), List):
-                for item in message.get('content', None):
-                    if item.get('type', None) == "image_url":
+            if isinstance(message.get("content", None), List):
+                for item in message.get("content", None):
+                    if item.get("type", None) == "image_url":
                         try:
-                            image_content = item.get('image_url', {}).get('url', None)
+                            image_content = item.get("image_url", {}).get("url", None)
                             # Generate a unique key for the S3 object
                             file_name = f"{uuid.uuid4()}.png"  # Gets the last part of the URL as filename
                             s3_key = f"images/{session_id}/{file_name}"  # Organize files in an images/ prefix
 
                             # Upload to S3
                             s3.put_object(
-                                Bucket='evmann-test-images',  # Replace with your bucket name
+                                Bucket="evmann-test-images",  # Replace with your bucket name
                                 Key=s3_key,
-                                Body=base64.b64decode(image_content.split(',')[1]),
-                                ContentType= 'image/png'
+                                Body=base64.b64decode(image_content.split(",")[1]),
+                                ContentType="image/png",
                             )
-                            item['image_url']['url'] = s3_key
+                            item["image_url"]["url"] = s3_key
                         except Exception as e:
                             print(f"Error uploading to S3: {e}")
-
 
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},

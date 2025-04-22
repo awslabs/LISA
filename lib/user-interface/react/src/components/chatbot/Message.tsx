@@ -61,9 +61,9 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         return new Blob(byteArrays, { type: mimeType });
     }
 
-    function messageContainsImage(content: MessageContent): boolean {
+    function messageContainsImage (content: MessageContent): boolean {
         if (Array.isArray(content)) {
-            return !!content.find(item => item.type === 'image_url');
+            return !!content.find((item) => item.type === 'image_url');
         }
         return false;
     }

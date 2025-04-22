@@ -27,6 +27,8 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
+import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties for SessionApi Construct.
@@ -88,6 +90,17 @@ export class SessionApi extends Construct {
             indexName: byUserIdIndexSorted,
             partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
             sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
+        });
+
+        // Create Images S3 bucket
+        const imagesBucket = new Bucket(scope, 'GeneratedImagesBucket', {
+            removalPolicy: RemovalPolicy.DESTROY,
+            autoDeleteObjects: true,
+            encryption: BucketEncryption.S3_MANAGED,
+            enforceSSL: true,
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            websiteIndexDocument: 'index.html',
+            websiteErrorDocument: '404.html',
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
@@ -171,8 +184,10 @@ export class SessionApi extends Construct {
             );
             if (f.method === 'POST' || f.method === 'PUT') {
                 sessionTable.grantWriteData(lambdaFunction);
+                imagesBucket.grantReadWrite(lambdaFunction);
             } else if (f.method === 'GET') {
                 sessionTable.grantReadData(lambdaFunction);
+                imagesBucket.grantRead(lambdaFunction);
             } else if (f.method === 'DELETE') {
                 sessionTable.grantReadWriteData(lambdaFunction);
             }

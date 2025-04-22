@@ -24,10 +24,13 @@ import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
 from utilities.common_functions import api_wrapper, get_session_id, get_username, retry_config
+import uuid
+import base64
 
 logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
 
 
@@ -119,6 +122,25 @@ def get_session(event: dict, context: dict) -> dict:
         logging.info(f"Fetching session with ID {session_id} for user {user_id}")
 
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        resp = response.get("Item", {})
+
+        for message in resp.get('history', None):
+            if isinstance(message.get('content', None), List):
+                for item in message.get('content', None):
+                    if item.get('type', None) == "image_url":
+                        try:
+                            image_url = s3.generate_presigned_url(
+                                'get_object',
+                                Params={
+                                    'Bucket': 'evmann-test-images',
+                                    'Key': item.get('image_url', {}).get('url', None)
+                                },
+                                ExpiresIn=3600
+                            )
+                            item['image_url']['url'] = image_url
+                        except Exception as e:
+                            print(f"Error uploading to S3: {e}")
+
         return response.get("Item", {})  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
@@ -163,6 +185,28 @@ def put_session(event: dict, context: dict) -> dict:
             return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
 
         messages = body["messages"]
+
+        for message in messages:
+            if isinstance(message.get('content', None), List):
+                for item in message.get('content', None):
+                    if item.get('type', None) == "image_url":
+                        try:
+                            image_content = item.get('image_url', {}).get('url', None)
+                            # Generate a unique key for the S3 object
+                            file_name = f"{uuid.uuid4()}.png"  # Gets the last part of the URL as filename
+                            s3_key = f"images/{session_id}/{file_name}"  # Organize files in an images/ prefix
+
+                            # Upload to S3
+                            s3.put_object(
+                                Bucket='evmann-test-images',  # Replace with your bucket name
+                                Key=s3_key,
+                                Body=base64.b64decode(image_content.split(',')[1]),
+                                ContentType= 'image/png'
+                            )
+                            item['image_url']['url'] = s3_key
+                        except Exception as e:
+                            print(f"Error uploading to S3: {e}")
+
 
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},

@@ -77,7 +77,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     return message.type === 'human' ?
                         <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '50%',  maxHeight: '30em', marginTop: '8px' }} /> :
                         <Grid gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
-                            <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '100%',  maxHeight: '30em', marginTop: '8px' }} />
+                            <img key={index} src={item.image_url.url} alt='AI Generated' style={{ maxWidth:  '100%',  maxHeight: '30em', marginTop: '8px' }} />
                             <SpaceBetween size={'s'} alignItems={'end'} direction={'vertical'}>
                                 <ButtonDropdown
                                     items={[

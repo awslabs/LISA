@@ -119,6 +119,7 @@ export class SessionApi extends Construct {
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
                     SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndexSorted,
+                    GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
                 },
             },
             {

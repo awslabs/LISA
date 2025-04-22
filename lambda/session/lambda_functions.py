@@ -135,6 +135,9 @@ def get_session(event: dict, context: dict) -> dict:
                                 Params={
                                     "Bucket": s3_bucket_name,
                                     "Key": item.get("image_url", {}).get("url", None),
+                                    "ResponseContentType": "image/png",
+                                    "ResponseCacheControl": "no-cache",
+                                    "ResponseContentDisposition": "inline",
                                 },
                                 ExpiresIn=3600,
                             )

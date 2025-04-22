@@ -130,6 +130,7 @@ export class SessionApi extends Construct {
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
                     SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                    GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
                 },
             },
             {
@@ -141,6 +142,7 @@ export class SessionApi extends Construct {
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
                     SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                    GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
                 },
             },
             {
@@ -152,6 +154,7 @@ export class SessionApi extends Construct {
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
                     SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                    GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
                 },
             },
             {
@@ -163,6 +166,7 @@ export class SessionApi extends Construct {
                 environment: {
                     SESSIONS_TABLE_NAME: sessionTable.tableName,
                     SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                    GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
                 },
             },
         ];
@@ -190,6 +194,7 @@ export class SessionApi extends Construct {
                 imagesBucket.grantRead(lambdaFunction);
             } else if (f.method === 'DELETE') {
                 sessionTable.grantReadWriteData(lambdaFunction);
+                imagesBucket.grantDelete(lambdaFunction);
             }
         });
     }

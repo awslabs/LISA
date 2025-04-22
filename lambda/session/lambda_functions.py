@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
+s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
 
 
 def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
@@ -132,7 +133,7 @@ def get_session(event: dict, context: dict) -> dict:
                             image_url = s3.generate_presigned_url(
                                 "get_object",
                                 Params={
-                                    "Bucket": "evmann-test-images",
+                                    "Bucket": s3_bucket_name,
                                     "Key": item.get("image_url", {}).get("url", None),
                                 },
                                 ExpiresIn=3600,
@@ -198,7 +199,7 @@ def put_session(event: dict, context: dict) -> dict:
 
                             # Upload to S3
                             s3.put_object(
-                                Bucket="evmann-test-images",  # Replace with your bucket name
+                                Bucket=s3_bucket_name,
                                 Key=s3_key,
                                 Body=base64.b64decode(image_content.split(",")[1]),
                                 ContentType="image/png",

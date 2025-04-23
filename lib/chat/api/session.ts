@@ -180,6 +180,18 @@ export class SessionApi extends Construct {
                     GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
                 },
             },
+            {
+                name: 'attach_image_to_session',
+                resource: 'session',
+                description: 'Attaches image to session',
+                path: 'session/{sessionId}/attachImage',
+                method: 'PUT',
+                environment: {
+                    SESSIONS_TABLE_NAME: sessionTable.tableName,
+                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+                    GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
+                },
+            },
         ];
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'SessionApi', sessionTable.tableArn, config.roles?.LambdaExecutionRole);

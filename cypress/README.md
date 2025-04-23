@@ -59,7 +59,7 @@ DevTools listening on ws://127.0.0.1:51352/devtools/browser/2f804c68-414e-4004-9
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-                                                                                                    
+
   Running:  administration.e2e.spec.ts                                                    (1 of 1)
 
 
@@ -97,11 +97,11 @@ DevTools listening on ws://127.0.0.1:51352/devtools/browser/2f804c68-414e-4004-9
   (Run Finished)
 
 
-       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+       Spec                                              Tests  Passing  Failing  Pending  Skipped
   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
   │ ✔  administration.e2e.spec.ts               00:05        3        3        -        -        - │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
-    ✔  All specs passed!                        00:05        3        3        -        -        -  
+    ✔  All specs passed!                        00:05        3        3        -        -        -
 
 
 ```

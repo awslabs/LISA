@@ -34,6 +34,6 @@ export default defineConfig({
         fixturesFolder: `${PROJECT_ROOT}/src/smoke/fixtures`,
         setupNodeEvents () {
         },
-        baseUrl: 'https://5bma74uv9c.execute-api.us-east-1.amazonaws.com/dev',
+        baseUrl: 'http://localhost:3000',
     },
 });

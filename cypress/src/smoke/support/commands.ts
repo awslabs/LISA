@@ -40,9 +40,11 @@ const API_STUBS = [
 Cypress.Commands.add('loginAs', (role = 'user') => {
     const isAdmin = role === 'admin';
 
+    let apiBase: string = '/dev/';
     // --- Stub env.js so window.env is correct ---
     cy.fixture('env.json').then((env) => {
         const script = `window.env = ${JSON.stringify(env)};`;
+        apiBase = env.API_BASE_URL.replace(/\/+$/, '');
         cy.intercept('GET', '**/env.js', {
             body: script,
             headers: { 'Content-Type': 'application/javascript' },
@@ -52,7 +54,7 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
     // --- Stub all API endpoints ---
     API_STUBS.forEach((name) => {
         const alias = `stub${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-        cy.intercept('GET', `**/${name}*`, { fixture: `${name}.json` }).as(alias);
+        cy.intercept('GET', `**/${apiBase}/${name}*`, { fixture: `${name}.json` }).as(alias);
     });
 
     // --- Stub the OIDC /token endpoint with a fresh, valid-looking JWT ---

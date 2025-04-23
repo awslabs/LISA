@@ -25,6 +25,9 @@ jobs:
       - name: Install Cypress deps
         run: npm ci --prefix cypress
 
+      - name: Host LISA UI
+        run: npm run --prefix lib/user-interface/react dev
+
       - name: Run Cypress Smoke Suite
         run: npx cypress run --config-file cypress/cypress.smoke.config.ts
 

@@ -1,6 +1,5 @@
 name: Smoke Tests
 
-# Trigger on every push to any branch
 on:
   push:
 
@@ -19,17 +18,35 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
+      # -------------------------------------------------------
+      # Cache the downloaded Cypress binary between runs
+      # -------------------------------------------------------
+      - name: Cache Cypress binary
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress-${{ hashFiles('cypress/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
+
       - name: Install base dependencies
         run: npm ci
 
       - name: Install Cypress deps
         run: npm ci --prefix cypress
 
+      # -------------------------------------------------------
+      # Ensure the native Cypress binary is installed
+      # -------------------------------------------------------
+      - name: Install Cypress binary
+        working-directory: cypress
+        run: npx cypress install
+
       - name: Run Cypress Smoke Suite
         run: npx cypress run --config-file cypress/cypress.smoke.config.ts
 
       - name: Archive Cypress videos & screenshots
-        if: failure() || always()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cypress-smoke-artifacts

@@ -1,0 +1,58 @@
+name: Nightly E2E Tests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  notify_e2e_start:
+    name: 🔔 Starting E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send “E2E Tests Starting” to Slack
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_TITLE: 'E2E Tests Starting'
+          MSG_MINIMAL: true
+          SLACK_MESSAGE: 'E2E tests have started…'
+
+  e2e:
+    name: 🏃‍♀️ Run E2E Tests
+    runs-on: ubuntu-latest
+    needs: notify_e2e_start
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Cypress E2E Suite
+        env:
+          TEST_ACCOUNT_PASSWORD: ${{ secrets.TEST_ACCOUNT_PASSWORD }}
+        run: npx cypress run --config-file cypress.e2e.config.ts
+
+  notify_e2e_end:
+    name: 🔔 E2E Tests Finished
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: always()
+    steps:
+      - name: Notify E2E results to Slack
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_COLOR: ${{ needs.e2e.result == 'success' && 'good' || 'danger' }}
+          SLACK_TITLE: 'E2E Tests Finished'
+          MSG_MINIMAL: false
+          SLACK_MESSAGE_ON_SUCCESS: '✅ E2E tests passed on branch `${{ github.ref_name }}`.'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> ❌ E2E tests failed on branch `${{ github.ref_name }}`.'
+          SLACK_MESSAGE: 'E2E tests completed with status `${{ job.status }}`.'

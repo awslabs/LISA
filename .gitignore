@@ -33,7 +33,11 @@ coverage
 
 # Model Cache Folders
 /models
-
 # Deployment configuration file
 config.yaml
 config-custom.yaml
+/.coverage
+
+# Test Artifacts
+/cypress/videos
+/cypress/screenshots

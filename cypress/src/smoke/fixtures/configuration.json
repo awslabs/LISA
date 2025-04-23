@@ -1,0 +1,28 @@
+[
+  {
+    "versionId": "0",
+    "createdAt": "0",
+    "configuration": {
+      "systemBanner": {
+        "backgroundColor": "",
+        "text": "",
+        "textColor": "",
+        "isEnabled": false
+      },
+      "enabledComponents": {
+        "uploadRagDocs": true,
+        "uploadContextDocs": true,
+        "documentSummarization": true,
+        "viewMetaData": true,
+        "editChatHistoryBuffer": true,
+        "editPromptTemplate": true,
+        "editNumOfRagDocument": true,
+        "editKwargs": true,
+        "deleteSessionHistory": true
+      }
+    },
+    "changedBy": "System",
+    "configScope": "global",
+    "changeReason": "Initial deployment default config"
+  }
+]

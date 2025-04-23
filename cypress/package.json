@@ -1,0 +1,25 @@
+{
+    "name": "@awslabs/lisae2e",
+    "description": "E2E tests for LISA",
+    "version": "1.0.0",
+    "devDependencies": {
+        "cypress": "^14.3.0",
+        "lint-staged": "^15.5.1",
+        "lodash": "^4.17.21",
+        "@types/node": "^22.14.1"
+    },
+    "scripts": {
+        "cypress:e2e:open": "cypress open --config-file cypress.e2e.config.ts",
+        "cypress:smoke:open": "cypress open --config-file cypress.smoke.config.ts",
+        "cypress:e2e:run": "cypress run --config-file cypress.e2e.config.ts",
+        "cypress:smoke:run": "cypress run --config-file cypress.smoke.config.ts",
+        "clean": "rm -rf node_modules/",
+        "lint:fix": "eslint --fix src/",
+        "format": "eslint --fix src/"
+    },
+    "lint-staged": {
+        "**/*.{js,jsx,ts,tsx}": [
+            "npx eslint --fix ./"
+        ]
+    }
+}

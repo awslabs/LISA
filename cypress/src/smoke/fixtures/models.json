@@ -1,0 +1,87 @@
+{
+  "models": [
+    {
+      "autoScalingConfig": {
+        "blockDeviceVolumeSize": 30,
+        "minCapacity": 1,
+        "maxCapacity": 1,
+        "cooldown": 420,
+        "defaultInstanceWarmup": 180,
+        "metricConfig": {
+          "albMetricName": "RequestCountPerTarget",
+          "targetValue": 30,
+          "duration": 60,
+          "estimatedInstanceWarmup": 330
+        }
+      },
+      "containerConfig": {
+        "image": {
+          "baseImage": "vllm/vllm-openai:v0.6.5",
+          "type": "asset"
+        },
+        "sharedMemorySize": 2048,
+        "healthCheckConfig": {
+          "command": [
+            "CMD-SHELL",
+            "exit 0"
+          ],
+          "interval": 10,
+          "startPeriod": 30,
+          "timeout": 5,
+          "retries": 3
+        },
+        "environment": {
+          "MAX_TOTAL_TOKENS": "2048",
+          "MAX_CONCURRENT_REQUESTS": "128",
+          "MAX_INPUT_LENGTH": "1024"
+        }
+      },
+      "inferenceContainer": "vllm",
+      "instanceType": "g5.xlarge",
+      "loadBalancerConfig": {
+        "healthCheckConfig": {
+          "path": "/health",
+          "interval": 60,
+          "timeout": 30,
+          "healthyThresholdCount": 2,
+          "unhealthyThresholdCount": 10
+        }
+      },
+      "modelId": "mistral-vllm",
+      "modelName": "mistralai/Mistral-7B-Instruct-v0.2",
+      "modelType": "textgen",
+      "modelUrl": "http://internal-lisa-mistralvllm-570061384.us-east-1.elb.amazonaws.com/v1",
+      "status": "InService",
+      "streaming": true,
+      "features": [
+        {
+          "name": "summarization",
+          "overview": ""
+        }
+      ]
+    },
+    {
+      "autoScalingConfig": null,
+      "containerConfig": null,
+      "inferenceContainer": null,
+      "instanceType": null,
+      "loadBalancerConfig": null,
+      "modelId": "claude-3-7",
+      "modelName": "bedrock/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+      "modelType": "textgen",
+      "modelUrl": "",
+      "status": "InService",
+      "streaming": true,
+      "features": [
+        {
+          "name": "imageInput",
+          "overview": ""
+        },
+        {
+          "name": "summarization",
+          "overview": ""
+        }
+      ]
+    }
+  ]
+}

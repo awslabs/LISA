@@ -28,7 +28,8 @@ import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
 import { getDisplayableMessage } from '@/components/utils';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -36,11 +37,16 @@ type MessageProps = {
     showMetadata?: boolean;
     isStreaming?: boolean;
     markdownDisplay?: boolean;
+    setChatConfiguration: (state: IChatConfiguration) => void;
+    handleSendGenerateRequest: () => void;
+    setUserPrompt: (state: string) => void;
+    chatConfiguration: IChatConfiguration;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
+    const [resend, setResend] = useState(false);
 
     function base64ToBlob (base64, mimeType) {
         const byteCharacters = atob(base64);
@@ -83,6 +89,13 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         return false;
     }
 
+    useEffect(() => {
+        if (resend){
+            handleSendGenerateRequest();
+            setResend(false);
+        }
+    }, [resend, handleSendGenerateRequest]);
+
     const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
@@ -97,7 +110,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                 <ButtonDropdown
                                     items={[
                                         { id: 'download-image', text: 'Download Image', iconName: 'download'},
-                                        { id: 'copy-image', text: 'Copy Image', iconName: 'copy'}
+                                        { id: 'copy-image', text: 'Copy Image', iconName: 'copy'},
+                                        { id: 'regenerate', text: 'Regenerate Image(s)', iconName: 'refresh'}
                                     ]}
                                     ariaLabel='Control instance'
                                     variant='icon'
@@ -116,6 +130,21 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                             const copy = new ClipboardItem({ 'image/png':item.image_url.url.startsWith('https://') ?
                                                 await fetchImage(item.image_url.url) : base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });
                                             await navigator.clipboard.write([copy]);
+                                        } else if (e.detail.id === 'regenerate') {
+                                            setChatConfiguration({
+                                                ...chatConfiguration,
+                                                sessionConfiguration: {
+                                                    ...chatConfiguration.sessionConfiguration,
+                                                    imageGenerationArgs: {
+                                                        width: metadata?.imageGenerationParams?.size.split('x')[0],
+                                                        height: metadata?.imageGenerationParams?.size.split('x')[1],
+                                                        numberOfImages: metadata?.imageGenerationParams?.n,
+                                                        quality: metadata?.imageGenerationParams?.quality
+                                                    }
+                                                }
+                                            });
+                                            setUserPrompt(metadata?.imageGenerationParams?.prompt ?? '');
+                                            setResend(true);
                                         }
                                     }}
                                 />

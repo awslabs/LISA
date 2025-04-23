@@ -220,7 +220,7 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
             except Exception as e:
                 print(f"Error uploading to S3: {e}")
 
-        return {"statusCode": 200, "body": json.dumps({"message": message})}
+        return {"statusCode": 200, "body": message}
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 

@@ -33,7 +33,7 @@ import {
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
+import { LisaAttachImageResponse, LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
 import { formatDocumentsAsString, formatDocumentTitlesAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import RagControls, { RagConfig } from './RagOptions';
@@ -42,6 +42,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
 import {
+    useAttachImageToSessionMutation,
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
     useUpdateSessionMutation,
@@ -74,6 +75,7 @@ export default function Chat ({ sessionId }) {
     const {data: sessionHealth} = useGetSessionHealthQuery(undefined, {refetchOnMountOrArgChange: true});
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
+    const [attachImageToSession] = useAttachImageToSessionMutation();
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
@@ -274,14 +276,42 @@ export default function Chat ({ sessionId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionHealth]);
 
+    const handleUpdateSession = async () => {
+        if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
+            setDirtySession(false);
+            const message = session.history.at(-1);
+            if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)){
+                await Promise.all(
+                    message.content.map(async (content) => {
+                        if (content.type === 'image_url') {
+                            const resp = await attachImageToSession({
+                                sessionId: session.sessionId,
+                                message: content
+                            });
+                            const image: LisaAttachImageResponse = resp.data;
+                            content.image_url.url = image.body.image_url.url;
+                            content.image_url.s3_key = image.body.image_url.s3_key;
+                        }
+                    })
+                );
+            }
+            const updatedHistory = [...session.history.slice(0, -1), message];
+
+            updateSession({
+                ...session,
+                history: updatedHistory,
+                configuration: {...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig}
+            });
+        }
+    };
+
+
     useEffect(() => {
         if (!isRunning && session.history.length && dirtySession) {
-            if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
-                setDirtySession(false);
-                updateSession({...session, configuration: {...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig}});
-            }
+            handleUpdateSession();
         }
-    }, [isRunning, session, dirtySession, auth, updateSession, chatConfiguration, ragConfig, selectedModel]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isRunning, session, dirtySession]);
 
     useEffect(() => {
         // always hide breadcrumbs
@@ -523,9 +553,27 @@ export default function Chat ({ sessionId }) {
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
-                        <Message key={idx} message={message} showMetadata={chatConfiguration.sessionConfiguration.showMetadata} isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}/>
+                        <Message
+                            key={idx}
+                            message={message}
+                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                            isRunning={false} isStreaming={isStreaming && idx === session.history.length - 1}
+                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                            setChatConfiguration={setChatConfiguration}
+                            handleSendGenerateRequest={handleSendGenerateRequest}
+                            chatConfiguration={chatConfiguration}
+                            setUserPrompt={setUserPrompt}
+                        />
                     ))}
-                    {isRunning && !isStreaming && <Message isRunning={isRunning} markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay} message={new LisaChatMessage({type: 'ai', content: ''})}/>}
+                    {isRunning && !isStreaming && <Message
+                        isRunning={isRunning}
+                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                        message={new LisaChatMessage({type: 'ai', content: ''})}
+                        setChatConfiguration={setChatConfiguration}
+                        handleSendGenerateRequest={handleSendGenerateRequest}
+                        chatConfiguration={chatConfiguration}
+                        setUserPrompt={setUserPrompt}
+                    />}
                     { session.history.length === 0 && sessionId === undefined && <div style={{height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '2em', textAlign: 'center'}}>
                         <div>
                             <Header variant='h1'>What would you like to do?</Header>

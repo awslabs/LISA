@@ -94,7 +94,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
             handleSendGenerateRequest();
             setResend(false);
         }
-    }, [resend, handleSendGenerateRequest]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resend]);
 
     const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {

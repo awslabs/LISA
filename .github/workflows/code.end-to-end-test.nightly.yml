@@ -34,12 +34,22 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-      - name: Install dependencies
+      - name: Install base dependencies
         run: npm ci
+      - name: Install Cypress deps
+        run: npm ci --prefix cypress
       - name: Run Cypress E2E Suite
         env:
           TEST_ACCOUNT_PASSWORD: ${{ secrets.TEST_ACCOUNT_PASSWORD }}
-        run: npx cypress run --config-file cypress.e2e.config.ts
+        run: npx cypress run --config-file cypress/cypress.e2e.config.ts
+      - name: Archive Cypress videos & screenshots
+        if: failure() || always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-e2e-artifacts
+          path: |
+            cypress/e2e/videos
+            cypress/e2e/screenshots
 
   notify_e2e_end:
     name: 🔔 E2E Tests Finished

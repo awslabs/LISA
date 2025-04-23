@@ -23,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Run Cypress Smoke Suite
-        run: npx cypress run --config-file cypress.smoke.config.ts
+        run: npx cypress run --config-file cypress/cypress.smoke.config.ts
 
       - name: Archive Cypress videos & screenshots
         if: failure() || always()

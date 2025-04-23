@@ -1,10 +1,12 @@
 name: Smoke Tests
 
+# Trigger on every push to any branch
 on:
   push:
 
 jobs:
   smoke:
+    name: Run Cypress Smoke Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -14,33 +16,23 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: npm
+          node-version: '18'
+          cache: 'npm'
 
-      # → Cache the *Cypress binary* (not just node_modules)
-      - name: Cache Cypress binary
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/Cypress
-          key: ${{ runner.os }}-cypress-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-cypress-
-
-      - name: Install dependencies
+      - name: Install base dependencies
         run: npm ci
 
-      # → Ensure Cypress binary is installed (no working-dir required)
-      - name: Install Cypress binary
-        run: npx cypress install
+      - name: Install Cypress deps
+        run: npm ci --prefix cypress
 
       - name: Run Cypress Smoke Suite
         run: npx cypress run --config-file cypress/cypress.smoke.config.ts
 
-      - name: Archive artifacts
-        if: always()
+      - name: Archive Cypress videos & screenshots
+        if: failure() || always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-artifacts
+          name: cypress-smoke-artifacts
           path: |
             cypress/smoke/videos
             cypress/smoke/screenshots

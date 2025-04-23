@@ -27,7 +27,7 @@ jobs:
 
       - name: Archive Cypress videos & screenshots
         if: failure() || always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cypress-smoke-artifacts
           path: |

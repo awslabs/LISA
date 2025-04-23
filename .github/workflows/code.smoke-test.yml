@@ -5,7 +5,6 @@ on:
 
 jobs:
   smoke:
-    name: Run Cypress Smoke Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -15,41 +14,33 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: 18
+          cache: npm
 
-      # -------------------------------------------------------
-      # Cache the downloaded Cypress binary between runs
-      # -------------------------------------------------------
+      # → Cache the *Cypress binary* (not just node_modules)
       - name: Cache Cypress binary
         uses: actions/cache@v3
         with:
           path: ~/.cache/Cypress
-          key: ${{ runner.os }}-cypress-${{ hashFiles('cypress/package-lock.json') }}
+          key: ${{ runner.os }}-cypress-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-cypress-
 
-      - name: Install base dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Install Cypress deps
-        run: npm ci --prefix cypress
-
-      # -------------------------------------------------------
-      # Ensure the native Cypress binary is installed
-      # -------------------------------------------------------
+      # → Ensure Cypress binary is installed (no working-dir required)
       - name: Install Cypress binary
-        working-directory: cypress
         run: npx cypress install
 
       - name: Run Cypress Smoke Suite
         run: npx cypress run --config-file cypress/cypress.smoke.config.ts
 
-      - name: Archive Cypress videos & screenshots
+      - name: Archive artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cypress-smoke-artifacts
+          name: smoke-artifacts
           path: |
             cypress/smoke/videos
             cypress/smoke/screenshots

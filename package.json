@@ -29,7 +29,8 @@
     "lib/user-interface/react",
     "lib/docs",
     "ecs_model_deployer",
-    "vector_store_deployer"
+    "vector_store_deployer",
+    "cypress"
   ],
   "scripts": {
     "build": "tsc && npm run build -ws",
@@ -72,6 +73,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "~5.1.6",
+    "wait-on": "^8.0.3",
     "zod2md": "^0.1.4"
   },
   "dependencies": {

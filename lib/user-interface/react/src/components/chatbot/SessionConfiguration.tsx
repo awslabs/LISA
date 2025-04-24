@@ -29,7 +29,7 @@ import {
 
 import Toggle from '@cloudscape-design/components/toggle';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
-import { IModel } from '../../shared/model/model-management.model';
+import { IModel, ModelType } from '../../shared/model/model-management.model';
 import { IConfiguration } from '../../shared/model/configuration.model';
 
 export type SessionConfigurationProps = {
@@ -100,7 +100,7 @@ export default function SessionConfiguration ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && selectedModel?.modelType !== ModelType.imagegen &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -117,7 +117,7 @@ export default function SessionConfiguration ({
                                 options={oneThroughTenOptions}
                             />
                         </SpaceBetween>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && selectedModel?.modelType !== ModelType.imagegen &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -135,7 +135,7 @@ export default function SessionConfiguration ({
                             />
                         </SpaceBetween>}
                 </Grid>
-                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && selectedModel?.modelType !== ModelType.imagegen &&
                     <Container
                         header={
                             <Header

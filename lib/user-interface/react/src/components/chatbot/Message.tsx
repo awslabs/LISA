@@ -105,9 +105,9 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 } else if (item.type === 'image_url') {
                     return message.type === 'human' ?
                         <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '50%',  maxHeight: '30em', marginTop: '8px' }} /> :
-                        <Grid gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
-                            <img key={index} src={item.image_url.url} alt='AI Generated' style={{ maxWidth:  '100%',  maxHeight: '30em', marginTop: '8px' }} />
-                            <SpaceBetween size={'s'} alignItems={'end'} direction={'vertical'}>
+                        <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                            <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth:  '100%',  maxHeight: '30em', marginTop: '8px' }} />
+                            <SpaceBetween key={`${index}-Image-Options`} size={'s'} alignItems={'end'} direction={'vertical'}>
                                 <ButtonDropdown
                                     items={[
                                         { id: 'download-image', text: 'Download Image', iconName: 'download'},
@@ -137,8 +137,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                                 sessionConfiguration: {
                                                     ...chatConfiguration.sessionConfiguration,
                                                     imageGenerationArgs: {
-                                                        width: metadata?.imageGenerationParams?.size.split('x')[0],
-                                                        height: metadata?.imageGenerationParams?.size.split('x')[1],
+                                                        width: parseInt(metadata?.imageGenerationParams?.size.split('x')[0]),
+                                                        height: parseInt(metadata?.imageGenerationParams?.size.split('x')[1]),
                                                         numberOfImages: metadata?.imageGenerationParams?.n,
                                                         quality: metadata?.imageGenerationParams?.quality
                                                     }

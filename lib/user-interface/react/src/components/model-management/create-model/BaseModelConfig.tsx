@@ -138,7 +138,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'imageInput')});
                             }
                         }}
-                        disabled={props.item.modelType === ModelType.embedding}
+                        disabled={props.item.modelType === ModelType.embedding || props.item.modelType === ModelType.imagegen}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === 'imageInput') !== undefined}
                     />

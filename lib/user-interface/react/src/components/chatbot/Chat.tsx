@@ -425,7 +425,7 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
-                metadata: isImageGenerationMode ? { imageGenerationPrompt: true } : {},
+                metadata: isImageGenerationMode ? { imageGeneration: true } : {},
             }))
         }));
 
@@ -784,14 +784,14 @@ export default function Chat ({ sessionId }) {
                                                     iconName: 'settings',
                                                     text: 'Session configuration'
                                                 },
-                                                ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED ?
+                                                ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED && selectedModel?.modelType !== ModelType.imagegen ?
                                                     [{
                                                         type: 'icon-button',
                                                         id: 'upload-to-rag',
                                                         iconName: 'upload',
                                                         text: 'Upload to RAG'
                                                     }] as ButtonGroupProps.Item[] : []),
-                                                ...(config?.configuration.enabledComponents.uploadContextDocs ?
+                                                ...(config?.configuration.enabledComponents.uploadContextDocs && selectedModel?.modelType !== ModelType.imagegen ?
                                                     [{
                                                         type: 'icon-button',
                                                         id: 'add-file-to-context',

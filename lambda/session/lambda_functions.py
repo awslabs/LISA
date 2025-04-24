@@ -143,7 +143,7 @@ def get_session(event: dict, context: dict) -> dict:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         resp = response.get("Item", {})
 
-        for message in resp.get("history", None):
+        for message in resp.get("history", []):
             if isinstance(message.get("content", None), List):
                 for item in message.get("content", None):
                     if item.get("type", None) == "image_url":

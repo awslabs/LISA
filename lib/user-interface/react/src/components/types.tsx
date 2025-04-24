@@ -39,6 +39,14 @@ export type ModelArgs = {
     seed?: number | null;
 };
 
+
+export type ImageGenerationParams = {
+    size?: string;
+    n?: number;
+    quality?: string;
+    prompt: string;
+};
+
 /**
  * Stores metadata for messages returned from LISA
  */
@@ -49,6 +57,8 @@ export type LisaChatMessageMetadata = {
     messages?: string;
     ragContext?: string;
     ragDocuments?: string;
+    imageGeneration?: boolean;
+    imageGenerationParams?: ImageGenerationParams;
 };
 /**
  * Interface for storing data for messages

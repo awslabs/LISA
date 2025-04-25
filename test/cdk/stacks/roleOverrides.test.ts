@@ -26,6 +26,7 @@ const stackRolesOverrides: Record<string, number> = {
     'LisaUI': 1,
     'LisaDocs': 2,
     'LisaRAG': 7,
+    'LisaChat': 1,
 };
 
 const stackRoles: Record<string, number> = {
@@ -33,7 +34,7 @@ const stackRoles: Record<string, number> = {
     'LisaServe': 4,
     'LisaUI': 3,
     'LisaNetworking': 0,
-    'LisaChat': 3,
+    'LisaChat': 4,
     'LisaCore': 0,
     'LisaApiDeployment': 0,
     'LisaIAM': 2,

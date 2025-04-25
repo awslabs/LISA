@@ -77,7 +77,6 @@
     "zod2md": "^0.1.4"
   },
   "dependencies": {
-    "18": "^0.0.0",
     "aws-cdk-lib": "^2.185.0",
     "aws-sdk": "^2.1692.0",
     "cdk-ecr-deployment": "^4.0.1",

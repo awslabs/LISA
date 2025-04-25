@@ -27,7 +27,7 @@ import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
-import { getDisplayableMessage } from '@/components/utils';
+import { fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import React, { useEffect, useState } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 
@@ -65,28 +65,6 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         }
 
         return new Blob(byteArrays, { type: mimeType });
-    }
-
-    const fetchImage = async (url: string) => {
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return await response.blob();
-        } catch (error) {
-            console.error('Error fetching image:', error);
-            throw error;
-        }
-    };
-
-    function messageContainsImage (content: MessageContent): boolean {
-        if (Array.isArray(content)) {
-            return !!content.find((item) => item.type === 'image_url');
-        }
-        return false;
     }
 
     useEffect(() => {

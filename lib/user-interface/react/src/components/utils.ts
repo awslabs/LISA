@@ -78,3 +78,25 @@ export const getDisplayableMessage = (content: MessageContent, ragCitations?: st
     }
     return content + (ragCitations ?? '');
 };
+
+export const fetchImage = async (url: string) => {
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.blob();
+    } catch (error) {
+        console.error('Error fetching image:', error);
+        throw error;
+    }
+};
+
+export function messageContainsImage (content: MessageContent): boolean {
+    if (Array.isArray(content)) {
+        return !!content.find((item) => item.type === 'image_url');
+    }
+    return false;
+}

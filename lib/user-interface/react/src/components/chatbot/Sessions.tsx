@@ -34,10 +34,11 @@ import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { truncateText } from '../../shared/util/formats';
-import { getDisplayableMessage } from '@/components/utils';
+import { fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import React from 'react';
+import JSZip from 'jszip';
 
 export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
@@ -159,6 +160,7 @@ export function Sessions ({newSession}) {
 
                                         { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker'},
                                         { id: 'download-session', text: 'Download Session', iconName: 'download'},
+                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder'},
                                     ]}
                                     ariaLabel='Control instance'
                                     variant='icon'
@@ -176,8 +178,44 @@ export function Sessions ({newSession}) {
                                                 element.click();
                                                 element.remove();
                                             });
-                                        }
+                                        } else if (e.detail.id === 'export-images') {
+                                            getSessionById(item.sessionId).then(async (resp) => {
+                                                const sess: LisaChatSession = resp.data;
+                                                const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
+                                                    .flatMap((msg) => {
+                                                        return msg.content.map((contentItem) => {
+                                                            if (contentItem.type === 'image_url') {
+                                                                return contentItem.image_url.url;
+                                                            }
+                                                        });
+                                                    });
 
+                                                if (images.length === 0) {
+                                                    notificationService.generateNotification('No images found to export', 'info');
+                                                } else {
+                                                    const zip = new JSZip();
+                                                    const imagePromises = images.map(async (imageUrl, index) => {
+                                                        try {
+                                                            const blob = await fetchImage(imageUrl);
+                                                            zip.file(`image_${index + 1}.png`, blob, {binary: true});
+                                                        } catch (error) {
+                                                            console.error(`Error processing image ${index + 1}:`, error);
+                                                        }
+                                                    });
+
+                                                    // Wait for all images to be processed
+                                                    await Promise.all(imagePromises);
+                                                    const content = await zip.generateAsync({type: 'blob'});
+                                                    const downloadUrl = URL.createObjectURL(content);
+                                                    const link = document.createElement('a');
+                                                    link.href = downloadUrl;
+                                                    link.download = 'images.zip';
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    document.body.removeChild(link);
+                                                }
+                                            });
+                                        }
                                     }}
                                 />
                             </SpaceBetween>

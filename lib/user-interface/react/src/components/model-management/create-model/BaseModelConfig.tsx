@@ -57,13 +57,13 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         };
 
                         // turn off streaming for embedded models
-                        if (fields.modelType === ModelType.embedding || props.item.modelType === ModelType.imagegen) {
+                        if (fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen) {
                             fields['streaming'] = false;
                         }
 
-                        // turn off summarization for embedded models
-                        if ((fields.modelType === ModelType.embedding || props.item.modelType === ModelType.imagegen) && props.item.features.find((feature) => feature.name === 'summarization') !== undefined) {
-                            fields['features'] = props.item.features.filter((feature) => feature.name !== 'summarization');
+                        // turn off summarization and image input for embedded and imagegen models
+                        if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen)) {
+                            fields['features'] = props.item.features.filter((feature) => feature.name !== 'summarization' && feature.name !== 'imageInput');
                         }
 
                         props.setFields(fields);

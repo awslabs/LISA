@@ -18,9 +18,10 @@ import json
 import logging
 import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -104,7 +105,6 @@ def _generate_presigned_image_url(key: str) -> str:
             "ResponseCacheControl": "no-cache",
             "ResponseContentDisposition": "inline",
         },
-        ExpiresIn=3600,
     )
     return url
 
@@ -117,17 +117,23 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
     resp = []
-    for session in sessions:
-        resp.append(
-            {
-                "sessionId": session["sessionId"],
-                "firstHumanMessage": next(
-                    (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
-                ),
-                "startTime": session.get("startTime", None),
-                "createTime": session.get("createTime", None),
-            }
-        )
+
+    with ThreadPoolExecutor() as executor:
+
+        def map_session(session: dict) -> None:
+            resp.append(
+                {
+                    "sessionId": session["sessionId"],
+                    "firstHumanMessage": next(
+                        (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
+                    ),
+                    "startTime": session.get("startTime", None),
+                    "createTime": session.get("createTime", None),
+                }
+            )
+
+        list(executor.map(map_session, sessions))
+
     return resp
 
 
@@ -143,15 +149,27 @@ def get_session(event: dict, context: dict) -> dict:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         resp = response.get("Item", {})
 
+        # Create a list of tasks for parallel processing
+        tasks = []
         for message in resp.get("history", []):
             if isinstance(message.get("content", None), List):
                 for item in message.get("content", None):
                     if item.get("type", None) == "image_url":
-                        try:
-                            image_url = _generate_presigned_image_url(item.get("image_url", {}).get("s3_key", None))
-                            item["image_url"]["url"] = image_url
-                        except Exception as e:
-                            print(f"Error uploading to S3: {e}")
+                        s3_key = item.get("image_url", {}).get("s3_key", None)
+                        if s3_key:
+                            tasks.append((item, s3_key))
+
+        with ThreadPoolExecutor() as executor:
+
+            def process_image(task: Tuple[dict, str]) -> None:
+                msg, key = task
+                try:
+                    image_url = _generate_presigned_image_url(key)
+                    msg["image_url"]["url"] = image_url
+                except Exception as e:
+                    print(f"Error uploading to S3: {e}")
+
+            list(executor.map(process_image, tasks))
 
         return response.get("Item", {})  # type: ignore [no-any-return]
     except ValueError as e:
@@ -176,8 +194,18 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     logger.info(f"Deleting all sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
     logger.debug(f"Found user sessions: {sessions}")
-    for session in sessions:
-        _delete_user_session(session["sessionId"], user_id)
+
+    with ThreadPoolExecutor() as executor:
+
+        def delete_session_process(session: dict) -> None:
+            try:
+                session_id = session["sessionId"]
+                logger.info(f"Deleting session with ID {session_id} for user {user_id}")
+                _delete_user_session(session_id, user_id)
+            except Exception as e:
+                print(f"Error deleting session: {e}")
+
+        list(executor.map(delete_session_process, sessions))
     return {"deleted": True}
 
 
@@ -205,8 +233,8 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
             try:
                 image_content = message.get("image_url", {}).get("url", None)
                 # Generate a unique key for the S3 object
-                file_name = f"{uuid.uuid4()}.png"  # Gets the last part of the URL as filename
-                s3_key = f"images/{session_id}/{file_name}"  # Organize files in an images/ prefix
+                file_name = f"{uuid.uuid4()}.png"
+                s3_key = f"images/{session_id}/{file_name}"  # Organize files in an images/sessionId prefix
 
                 # Upload to S3
                 s3_client.put_object(

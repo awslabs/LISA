@@ -94,23 +94,17 @@ export class SessionApi extends Construct {
 
         // Create Images S3 bucket
         const imagesBucket = new Bucket(scope, 'GeneratedImagesBucket', {
-            removalPolicy: RemovalPolicy.DESTROY,
-            autoDeleteObjects: true,
-            encryption: BucketEncryption.S3_MANAGED,
+            removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             enforceSSL: true,
-            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-            websiteIndexDocument: 'index.html',
-            websiteErrorDocument: '404.html',
-            cors: [{
-                allowedHeaders: ['*'],
-                allowedMethods: [
-                    HttpMethods.GET,
-                    HttpMethods.HEAD,
-                ],
-                allowedOrigins: ['*'],  // Consider restricting this to your specific domains in production
-                exposedHeaders: ['ETag'],
-                maxAge: 3000
-            }]
+            cors: [
+                {
+                    allowedMethods: [HttpMethods.GET, HttpMethods.POST],
+                    allowedHeaders: ['*'],
+                    allowedOrigins: ['*'],
+                    exposedHeaders: ['Access-Control-Allow-Origin'],
+                },
+            ],
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {

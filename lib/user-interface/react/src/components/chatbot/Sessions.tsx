@@ -39,6 +39,7 @@ import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import React from 'react';
 import JSZip from 'jszip';
+import { downloadFile } from '@/shared/util/downloader';
 
 export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
@@ -170,13 +171,8 @@ export function Sessions ({newSession}) {
                                         } else if (e.detail.id === 'download-session'){
                                             getSessionById(item.sessionId).then((resp) => {
                                                 const sess: LisaChatSession = resp.data;
-                                                const element = document.createElement('a');
                                                 const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
-                                                element.href = URL.createObjectURL(file);
-                                                element.download = `${sess.sessionId}.json`;
-                                                document.body.appendChild(element); // Required for this to work in FireFox
-                                                element.click();
-                                                element.remove();
+                                                downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
                                             });
                                         } else if (e.detail.id === 'export-images') {
                                             getSessionById(item.sessionId).then(async (resp) => {
@@ -206,13 +202,7 @@ export function Sessions ({newSession}) {
                                                     // Wait for all images to be processed
                                                     await Promise.all(imagePromises);
                                                     const content = await zip.generateAsync({type: 'blob'});
-                                                    const downloadUrl = URL.createObjectURL(content);
-                                                    const link = document.createElement('a');
-                                                    link.href = downloadUrl;
-                                                    link.download = 'images.zip';
-                                                    document.body.appendChild(link);
-                                                    link.click();
-                                                    document.body.removeChild(link);
+                                                    downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
                                                 }
                                             });
                                         }

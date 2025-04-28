@@ -48,8 +48,7 @@ export type ISessionConfiguration = {
         stop: string[];
     },
     imageGenerationArgs: {
-        width: number,
-        height: number,
+        size: string,
         numberOfImages: number,
         quality: string,
     }
@@ -83,8 +82,7 @@ export const baseConfig: IChatConfiguration = {
             stop: ['\nUser:', '\n User:', 'User:', 'User'],
         },
         imageGenerationArgs: {
-            width: 1024,
-            height: 1024,
+            size: '1024x1024',
             numberOfImages: 1,
             quality: 'standard',
         }

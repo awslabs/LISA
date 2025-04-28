@@ -69,6 +69,8 @@ export default function SessionConfiguration ({
         };
     });
 
+    const isImageModel = selectedModel?.modelType === ModelType.imagegen;
+
     return (
         <Modal
             onDismiss={() => setVisible(false)}
@@ -100,7 +102,7 @@ export default function SessionConfiguration ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && selectedModel?.modelType !== ModelType.imagegen &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -117,7 +119,7 @@ export default function SessionConfiguration ({
                                 options={oneThroughTenOptions}
                             />
                         </SpaceBetween>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && selectedModel?.modelType !== ModelType.imagegen &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -135,7 +137,7 @@ export default function SessionConfiguration ({
                             />
                         </SpaceBetween>}
                 </Grid>
-                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && selectedModel?.modelType !== ModelType.imagegen &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
                     <Container
                         header={
                             <Header

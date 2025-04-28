@@ -149,7 +149,7 @@ export default function Chat ({ sessionId }) {
                             prompt: params.input,
                             model: selectedModel.modelId,
                             n: chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages,
-                            size: `${chatConfiguration.sessionConfiguration.imageGenerationArgs.width}x${chatConfiguration.sessionConfiguration.imageGenerationArgs.height}`,
+                            size: chatConfiguration.sessionConfiguration.imageGenerationArgs.size,
                             quality: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality,
                             response_format: 'url',
                         };
@@ -170,7 +170,6 @@ export default function Chat ({ sessionId }) {
                             throw new Error(`Image generation failed: ${JSON.stringify(data.error.message)}`);
                         }
 
-                        // Create markdown for displaying images
                         const imageContent = data.data.map((img) => ({
                             image_url: {
                                 url: `data:image/png;base64,${img.b64_json}`
@@ -281,6 +280,7 @@ export default function Chat ({ sessionId }) {
             setDirtySession(false);
             const message = session.history.at(-1);
             if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)){
+                // Session was updated and response contained images that need to be attached to the session
                 await Promise.all(
                     message.content.map(async (content) => {
                         if (content.type === 'image_url') {
@@ -623,7 +623,7 @@ export default function Chat ({ sessionId }) {
                                 ]}
                             >
                                 <FormField
-                                    label={selectedModel?.modelType === ModelType.imagegen ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
+                                    label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
                                         disabled={isRunning}
@@ -672,17 +672,15 @@ export default function Chat ({ sessionId }) {
                                     >
                                         <FormField label='Image Size'>
                                             <Select
-                                                selectedOption={{value: `${chatConfiguration.sessionConfiguration.imageGenerationArgs.width}x${chatConfiguration.sessionConfiguration.imageGenerationArgs.height}`}}
+                                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.size}}
                                                 onChange={({ detail }) => {
-                                                    const [width, height] = detail.selectedOption.value.split('x').map(Number);
                                                     setChatConfiguration((prev) => ({
                                                         ...prev,
                                                         sessionConfiguration: {
                                                             ...prev.sessionConfiguration,
                                                             imageGenerationArgs: {
                                                                 ...prev.sessionConfiguration.imageGenerationArgs,
-                                                                width,
-                                                                height
+                                                                size: detail.selectedOption.value
                                                             }
                                                         }
                                                     }));
@@ -784,14 +782,14 @@ export default function Chat ({ sessionId }) {
                                                     iconName: 'settings',
                                                     text: 'Session configuration'
                                                 },
-                                                ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED && selectedModel?.modelType !== ModelType.imagegen ?
+                                                ...(config?.configuration.enabledComponents.uploadRagDocs && window.env.RAG_ENABLED && !isImageGenerationMode ?
                                                     [{
                                                         type: 'icon-button',
                                                         id: 'upload-to-rag',
                                                         iconName: 'upload',
                                                         text: 'Upload to RAG'
                                                     }] as ButtonGroupProps.Item[] : []),
-                                                ...(config?.configuration.enabledComponents.uploadContextDocs && selectedModel?.modelType !== ModelType.imagegen ?
+                                                ...(config?.configuration.enabledComponents.uploadContextDocs && !isImageGenerationMode ?
                                                     [{
                                                         type: 'icon-button',
                                                         id: 'add-file-to-context',

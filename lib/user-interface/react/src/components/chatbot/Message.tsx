@@ -27,9 +27,10 @@ import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
-import { fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import React, { useEffect, useState } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
+import { downloadFile } from '@/shared/util/downloader';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -47,25 +48,6 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
-
-    function base64ToBlob (base64, mimeType) {
-        const byteCharacters = atob(base64);
-        const byteArrays = [];
-
-        for (let i = 0; i < byteCharacters.length; i += 512) {
-            const slice = byteCharacters.slice(i, i + 512);
-            const byteNumbers = new Array(slice.length);
-
-            for (let j = 0; j < slice.length; j++) {
-                byteNumbers[j] = slice.charCodeAt(j);
-            }
-
-            const byteArray = new Uint8Array(byteNumbers);
-            byteArrays.push(byteArray);
-        }
-
-        return new Blob(byteArrays, { type: mimeType });
-    }
 
     useEffect(() => {
         if (resend){
@@ -96,15 +78,10 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                     variant='icon'
                                     onItemClick={async (e) => {
                                         if (e.detail.id === 'download-image'){
-                                            const element = document.createElement('a');
                                             const file = item.image_url.url.startsWith('https://') ?
                                                 await fetchImage(item.image_url.url)
                                                 : base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
-                                            element.href = URL.createObjectURL(file);
-                                            element.download = `${metadata?.imageGenerationParams?.prompt}.png`;
-                                            document.body.appendChild(element);
-                                            element.click();
-                                            element.remove();
+                                            downloadFile(URL.createObjectURL(file), `${metadata?.imageGenerationParams?.prompt}.png`);
                                         } else if (e.detail.id === 'copy-image') {
                                             const copy = new ClipboardItem({ 'image/png':item.image_url.url.startsWith('https://') ?
                                                 await fetchImage(item.image_url.url) : base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });

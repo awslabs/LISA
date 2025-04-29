@@ -267,18 +267,6 @@ patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).sta
 
 # Patch utility functions
 patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
-patch(
-    "utilities.file_processing.process_record",
-    MagicMock(
-        return_value=[
-            [
-                MagicMock(
-                    page_content="Test content", metadata={"name": "test-doc", "source": "s3://test-bucket/test-key"}
-                )
-            ]
-        ]
-    ),
-).start()
 
 
 # Mock boto3 client function

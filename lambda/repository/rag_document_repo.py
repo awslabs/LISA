@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import logging
-from typing import Optional, TypeAlias
+from typing import Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -23,9 +23,6 @@ from repository.vector_store_repo import VectorStoreRepository
 logger = logging.getLogger(__name__)
 
 MAX_SUBDOCS = 1000
-
-RagDocumentDict: TypeAlias = RagDocument.model_dump
-RagSubDocumentDict: TypeAlias = RagSubDocument.model_dump
 
 
 class RagDocumentRepository:
@@ -38,7 +35,7 @@ class RagDocumentRepository:
         self.s3_client = boto3.client("s3")
         self.vs_repo = VectorStoreRepository()
 
-    def delete_by_id(self, repository_id: str, document_id: str) -> None:
+    def delete_by_id(self, document_id: str) -> None:
         """Delete a document using partition key and sort key.
 
         Args:
@@ -51,16 +48,16 @@ class RagDocumentRepository:
         Raises:
             ClientError: If deletion fails
         """
-        logging.info(f"Removing document {repository_id}:{document_id}")
+        logging.info(f"Removing document {document_id}")
         try:
-            document = self.find_by_id(repository_id=repository_id, document_id=document_id)
+            document = self.find_by_id(document_id)
             subdocs = self.find_subdocs_by_id(document_id)
 
             with self.subdoc_table.batch_writer() as batch:
                 for doc in subdocs:
-                    batch.delete_item(Key={"document_id": doc["document_id"], "sk": doc["sk"]})
+                    batch.delete_item(Key={"document_id": doc.document_id, "sk": doc.sk})
 
-            self.doc_table.delete_item(Key={"pk": document["pk"], "document_id": document["document_id"]})
+            self.doc_table.delete_item(Key={"pk": document.pk, "document_id": document.document_id})
         except ClientError as e:
             logging.error(f"Error deleting document: {e.response['Error']['Message']}")
             raise
@@ -90,12 +87,11 @@ class RagDocumentRepository:
             logging.error(f"Error saving document: {e.response['Error']['Message']}")
             raise
 
-    def find_by_id(self, repository_id: str, document_id: str, join_docs: bool = False) -> RagDocumentDict:
+    def find_by_id(self, document_id: str, join_docs: bool = False) -> Optional[RagDocument]:
         """Query documents using GSI.
 
         Args:
             document_id: Document ID to query
-            index_name: Name of the GSI
             join_docs: Join document entries together if record is chunked
         Returns:
             List of matching documents
@@ -107,33 +103,28 @@ class RagDocumentRepository:
             response = self.doc_table.query(
                 IndexName="document_index",
                 KeyConditionExpression="document_id = :document_id",
-                FilterExpression="repository_id = :repository_id",
-                ExpressionAttributeValues={":document_id": document_id, ":repository_id": repository_id},
+                ExpressionAttributeValues={":document_id": document_id},
             )
-            docs: list[RagDocumentDict] = response.get("Items", [])
-            # Handle paginated Dynamo results
-            while "LastEvaluatedKey" in response:
-                response = self.doc_table.query(
-                    IndexName="document_index",
-                    KeyConditionExpression="document_id = :document_id",
-                    FilterExpression="repository_id = :repository_id",
-                    ExpressionAttributeValues={":document_id": document_id, ":repository_id": repository_id},
-                    ExclusiveStartKey=response["LastEvaluatedKey"],
-                )
-                docs.extend(response["Items"])
+            docs: list[RagDocument] = response.get("Items", [])
+
             if not docs:
-                raise ValueError(f"Document not found for document_id {document_id}")
+                logging.warning(f"Document not found for document_id {document_id}")
+                return None
+
             if join_docs:
-                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(document_id))
+                subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(document_id))
                 docs[0]["subdocs"] = subdocs
-            return docs[0]
+
+            doc = RagDocument(**docs[0])
+            print(f"find_by_id({document_id}, {join_docs}) = {doc.model_dump()}")
+            return doc
         except ClientError as e:
             logging.error(f"Error querying document: {e.response['Error']['Message']}")
             raise
 
     def find_by_name(
         self, repository_id: str, collection_id: str, document_name: str, join_docs: bool = False
-    ) -> list[RagDocumentDict]:
+    ) -> list[RagDocument]:
         """Get a list of documents from the RagDocTable by name.
 
         Args:
@@ -151,7 +142,7 @@ class RagDocumentRepository:
         response = self.doc_table.query(
             KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("document_name").eq(document_name)
         )
-        docs: list[RagDocumentDict] = response["Items"]
+        docs: list[RagDocument] = response["Items"]
 
         # Handle paginated Dynamo results
         while "LastEvaluatedKey" in response:
@@ -164,13 +155,13 @@ class RagDocumentRepository:
 
         if join_docs:
             for doc in docs:
-                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
                 doc["subdocs"] = subdocs
         return docs
 
     def find_by_source(
         self, repository_id: str, collection_id: str, document_source: str, join_docs: bool = False
-    ) -> list[RagDocumentDict]:
+    ) -> list[RagDocument]:
         """Get a list of documents from the RagDocTable by source.
 
         Args:
@@ -187,7 +178,7 @@ class RagDocumentRepository:
         response = self.doc_table.query(
             KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("source").eq(document_source)
         )
-        docs: list[RagDocumentDict] = response["Items"]
+        docs: list[RagDocument] = response["Items"]
 
         # Handle paginated Dynamo results
         while "LastEvaluatedKey" in response:
@@ -200,7 +191,7 @@ class RagDocumentRepository:
 
         if join_docs:
             for doc in docs:
-                subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
                 doc["subdocs"] = subdocs
         return docs
 
@@ -211,7 +202,7 @@ class RagDocumentRepository:
         last_evaluated_key: Optional[dict] = None,
         limit: int = 100,
         join_docs: bool = False,
-    ) -> tuple[list[RagDocumentDict], Optional[dict]]:
+    ) -> tuple[list[RagDocument], Optional[dict]]:
         """List all documents in a collection.
 
         Args:
@@ -243,12 +234,12 @@ class RagDocumentRepository:
                     query_params["ExclusiveStartKey"] = last_evaluated_key
                 response = self.doc_table.query(**query_params)
 
-            docs: list[RagDocumentDict] = response.get("Items", [])
+            docs: list[RagDocument] = response.get("Items", [])
             next_key = response.get("LastEvaluatedKey", None)
 
             if join_docs:
                 for doc in docs:
-                    subdocs = RagDocumentRepository._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                    subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
                     doc["subdocs"] = subdocs
 
             return docs, next_key
@@ -257,7 +248,7 @@ class RagDocumentRepository:
             logging.error(f"Error listing documents: {e.response['Error']['Message']}")
             raise
 
-    def find_subdocs_by_id(self, document_id: str) -> list[RagSubDocumentDict]:
+    def find_subdocs_by_id(self, document_id: str) -> list[RagSubDocument]:
         """Query subdocuments using GSI.
 
         Args:
@@ -273,7 +264,7 @@ class RagDocumentRepository:
             response = self.subdoc_table.query(
                 KeyConditionExpression=Key("document_id").eq(document_id),
             )
-            entries: list[RagDocumentDict] = response.get("Items", [])
+            entries: list[RagSubDocument] = response.get("Items", [])
             # Handle paginated Dynamo results
             while "LastEvaluatedKey" in response:
                 response = self.subdoc_table.query(
@@ -281,13 +272,14 @@ class RagDocumentRepository:
                     ExclusiveStartKey=response["LastEvaluatedKey"],
                 )
                 entries.extend(response["Items"])
-            return entries
+
+            [print(entry) for entry in entries]
+            return [RagSubDocument(**entry) for entry in entries]
         except ClientError as e:
             logging.error(f"Error querying subdocuments: {e.response['Error']['Message']}")
             raise
 
-    @staticmethod
-    def _get_subdoc_ids(entries: RagSubDocumentDict) -> list[str]:
+    def _get_subdoc_ids(self, entries: list[RagSubDocument]) -> list[str]:
         """Map subdocuments from a document object.
 
         Args:
@@ -296,7 +288,7 @@ class RagDocumentRepository:
         Returns:
             List of subdocument dictionaries
         """
-        return [doc for entry in entries for doc in entry["subdocs"]]
+        return [doc for entry in entries for doc in entry.subdocs]
 
     def delete_s3_object(self, uri: str) -> None:
         """Delete an object from S3.

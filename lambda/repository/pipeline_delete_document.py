@@ -14,119 +14,102 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, Dict
+from urllib.parse import urlparse
 
+import boto3
 from langchain_core.vectorstores import VectorStore
-from utilities.validation import ValidationError
+from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
+from repository.ingestion_job_repo import IngestionJobRepository
+from repository.pipeline_ingest_documents import extract_chunk_strategy
+from utilities.common_functions import retry_config
 
-from .lambda_functions import get_embeddings_pipeline, get_vector_store_client, RagDocument, RagDocumentRepository
+from .lambda_functions import (
+    DocumentIngestionService,
+    get_embeddings_pipeline,
+    get_vector_store_client,
+    RagDocumentRepository,
+)
+
+ingestion_service = DocumentIngestionService()
+ingestion_job_repository = IngestionJobRepository()
 
 logger = logging.getLogger(__name__)
 
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
-
-"""
-Pipeline Delete Document Lambda Handler
-
-This module provides functionality to delete documents from a RAG (Retrieval-Augmented Generation)
-repository and its associated vector store. It handles the cleanup of both the document metadata
-and its vector embeddings.
-
-Environment Variables Required:
-    RAG_DOCUMENT_TABLE: DynamoDB table name for storing document metadata
-    RAG_SUB_DOCUMENT_TABLE: DynamoDB table name for storing sub-document metadata
-
-Dependencies:
-    - langchain_core.vectorstores
-    - utilities.validation
-    - lambda_functions (local module)
-"""
+s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
+rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
-def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    AWS Lambda handler for processing document deletion requests.
+def pipeline_delete(job: IngestionJob) -> None:
+    print(f"{job.model_dump()}")
 
-    This function:
-    1. Extracts document location information from the event
-    2. Finds the document in the repository
-    3. Removes the document's vectors from the vector store
-    4. Deletes the document metadata from the repository
+    logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
 
-    Args:
-        event (dict[str, Any]): Lambda event containing:
-            - bucket: S3 bucket name
-            - key: Object key in the bucket
-            - prefix: (optional) S3 key prefix, defaults to "/"
-        context (Any): Lambda context object
+    # Delete from the Vector Store
+    vector_store = _get_vector_store(job.repository_id, job.collection_id)
+    rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
+    vector_store.delete(rag_document.subdocs)
 
-    Returns:
-        dict[str, Any]: Response object containing:
-            - statusCode: HTTP status code
-            - body: Message indicating success or failure
+    # Delete RagDocument (and RagSubDocuments)
+    rag_document_repository.delete_by_id(rag_document.document_id)
 
-    Raises:
-        Exception: If validation fails or processing encounters an error
-    """
-    logger.info(f"Lambda function started. Event: {event}")
+    # Parse the S3 path to get bucket and key
+    parsed = urlparse(job.s3_path)
+    bucket = parsed.netloc
+    key = parsed.path.lstrip("/")
 
+    # Delete from S3 and update IngestionJob.status
     try:
-        bucket = event.get("bucket")
-        key = event.get("key")
-
-        # Get document location from event
-        if "bucket" not in event or "key" not in event:
-            raise ValidationError(f"Missing required fields - bucket: {bucket} and key: {key}")
-
-        prefix = event.get("prefix", "/")
-        s3_key = f"s3://{bucket}{prefix}{key}"
-
-        pipelineConfig = event.get("pipelineConfig", {})
-        collection_id = pipelineConfig.get("embeddingModel")
-        repository_id = pipelineConfig.get("repositoryId")
-
-        logger.info(f"Deleting document {s3_key} for repository {repository_id}")
-        docs: list[RagDocument.model_dump] = doc_repo.find_by_source(
-            repository_id=repository_id, collection_id=collection_id, document_source=s3_key
-        )
-        if len(docs) == 0:
-            msg = f"Document {s3_key} not found in repository {repository_id}/{collection_id}. Ignoring deletion"
-            logging.error(msg)
-            return {
-                "statusCode": 404,
-                "body": {"message": msg},
-            }
-
-        vs = _get_vs(repository_id=repository_id, collection_id=collection_id)
-
-        for doc in docs:
-            logging.info(
-                f"Removing {doc.get('chunks')} chunks for document: {doc.get('document_name')}({doc.get('source')})"
-            )
-            vs.delete(ids=doc.get("subdocs"))
-
-        for doc in docs:
-            doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
-
-        logger.info(f"Successfully removed {s3_key} from vector store {repository_id}/{collection_id}")
-
-        return {
-            "statusCode": 200,
-            "body": {"message": f"Successfully removed {s3_key} from vector store {repository_id}/{collection_id}"},
-        }
-    except ValidationError as e:
-        # For validation errors, raise with clear message
-        error_msg = f"Validation error: {str(e)}"
-        logger.error(error_msg)
-        raise Exception(error_msg)
+        s3.delete_object(Bucket=bucket, Key=key)
+        ingestion_job_repository.update_status(job, IngestionStatus.DELETED)
+        logger.info(f"Successfully deleted {job.s3_path} from S3")
     except Exception as e:
-        # For all other errors, log and re-raise to signal failure
-        error_msg = f"Failed to delete document: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise Exception(error_msg)
+        ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
+        logger.error(f"Error deleting {job.s3_path} from S3: {str(e)}")
 
 
-def _get_vs(repository_id: str, collection_id: str) -> VectorStore:
+def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
+    """Handle pipeline document ingestion."""
+    # Extract and validate inputs
+    logger.debug(f"Received event: {event}")
+
+    detail = event.get("detail", {})
+    bucket = detail.get("bucket", None)
+    # prefix = detail.get("prefix", "")
+    key = detail.get("key", None)
+    repository_id = detail.get("repositoryId", None)
+    pipeline_config = detail.get("pipelineConfig", None)
+    embedding_model = pipeline_config.get("embeddingModel", None)
+    s3_key = f"s3://{bucket}{key}"
+
+    logger.info(f"Deleting object {s3_key} for repository {repository_id}/{embedding_model}")
+
+    # Currently there could be RagDocuments without a corresponding IngestionJob, so lookup by RagDocument first
+    # and then find or create the corresponding IngestionJob. In the future it should be possible to lookup
+    # directly by IngestionJob
+    docs = rag_document_repository.find_by_source(
+        repository_id=repository_id, collection_id=embedding_model, document_source=s3_key
+    )
+    for doc in docs:
+        job = ingestion_job_repository.find_by_document(doc.document_id)
+        if job is None:
+            chunk_strategy = extract_chunk_strategy(pipeline_config)
+            job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=embedding_model,
+                chunk_strategy=chunk_strategy,
+                s3_path=doc.source,
+                username=doc.username,
+                ingestion_type=IngestionType.AUTO,
+                status=IngestionStatus.COMPLETED,
+            )
+
+        ingestion_service.delete(job)
+
+    logger.info(f"Deleting document {s3_key} for repository {job.repository_id}")
+
+
+def _get_vector_store(repository_id: str, collection_id: str) -> VectorStore:
     """
     Helper function to initialize and return a vector store client.
 

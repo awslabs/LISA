@@ -22,9 +22,10 @@ import boto3
 import requests
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
-from langchain_core.vectorstores import VectorStore
 from lisapy.langchain import LisaOpenAIEmbeddings
-from models.domain_objects import ChunkStrategyType, IngestionType, RagDocument
+from models.domain_objects import FixedChunkingStrategy, IngestionJob, RagDocument
+from repository.ingestion_job_repo import IngestionJobRepository
+from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.common_functions import (
@@ -38,8 +39,7 @@ from utilities.common_functions import (
     retry_config,
 )
 from utilities.exceptions import HTTPException
-from utilities.file_processing import process_record
-from utilities.validation import validate_model_name, ValidationError
+from utilities.validation import ValidationError
 from utilities.vector_store import get_vector_store_client
 
 logger = logging.getLogger(__name__)
@@ -64,6 +64,8 @@ s3 = session.client(
 lisa_api_endpoint = ""
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 vs_repo = VectorStoreRepository()
+ingestion_service = DocumentIngestionService()
+ingestion_job_repository = IngestionJobRepository()
 
 
 def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
@@ -226,7 +228,6 @@ def get_embeddings_pipeline(model_name: str) -> Any:
         Exception: If API request fails
     """
     logger.info("Starting pipeline embeddings request")
-    validate_model_name(model_name)
 
     return PipelineEmbeddings(model_name=model_name)
 
@@ -368,65 +369,28 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     collection_id = query_string_params.get("collectionId", None)
     body = json.loads(event.get("body", ""))
     document_ids = body.get("documentIds", None)
-    document_name = query_string_params.get("documentName")
 
-    if not document_ids and not document_name:
-        raise ValidationError("No 'documentIds' or 'documentName' parameter supplied")
-    if document_ids and document_name:
-        raise ValidationError("Only one of documentIds or documentName must be specified")
-    if not collection_id and document_name:
-        raise ValidationError("A 'collectionId' must be included to delete a document by name")
+    if not document_ids:
+        raise ValidationError("No 'documentIds' parameter supplied")
 
     _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
 
-    docs: list[RagDocument.model_dump] = []
+    docs: list[RagDocument] = []
     if document_ids:
-        docs = [
-            doc_repo.find_by_id(repository_id=repository_id, document_id=doc_id, join_docs=True)
-            for doc_id in document_ids
-        ]
-    elif document_name:
-        docs = doc_repo.find_by_name(
-            repository_id=repository_id, collection_id=collection_id, document_name=document_name, join_docs=True
-        )
+        docs = [doc_repo.find_by_id(document_id=doc_id, join_docs=True) for doc_id in document_ids]
 
     if not docs:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
 
     _ensure_document_ownership(event, docs)
 
-    id_token = get_id_token(event)
-    vs_collection_map: dict[str, VectorStore] = {}
+    document_ids = []
     for doc in docs:
-        # Get vector store for document collection
-        collection_id = doc.get("collection_id")
-        vs = vs_collection_map.get(collection_id)
-        if not vs:
-            embeddings = _get_embeddings(model_name=collection_id, id_token=id_token)
-            vs = get_vector_store_client(repository_id=repository_id, index=collection_id, embeddings=embeddings)
-            vs_collection_map[collection_id] = vs
-        # Delete all document chunks from vector store collection
-        vs.delete(ids=doc.get("subdocs"))
+        if doc is not None:
+            document_ids.append(doc.document_id)
+            ingestion_service.delete(doc.document_id)
 
-    for doc in docs:
-        doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
-
-    # Collect all document parts for summary of deletion
-    doc_ids = {doc.get("document_id") for doc in docs}
-    subdoc_ids = []
-    for doc in docs:
-        subdoc_ids.extend(doc.get("subdocs"))
-
-    removedS3 = doc_repo.delete_s3_docs(repository_id, docs)
-
-    doc_names = [f"{doc.get('repository_id')}/{doc.get('collection_id')}/{doc.get('document_name')}" for doc in docs]
-
-    return {
-        "documents": doc_names,
-        "removedDocuments": len(doc_ids),
-        "removedDocumentChunks": len(subdoc_ids),
-        "removedS3Documents": removedS3,
-    }
+    return {"documentIds": document_ids}
 
 
 @api_wrapper
@@ -467,51 +431,20 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository = vs_repo.find_repository_by_id(repository_id)
     _ensure_repository_access(event, repository)
 
-    keys = body["keys"]
-    docs = process_record(s3_keys=keys, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-
-    texts = []  # list of strings
-    metadatas = []  # list of dicts
-    doc_entities = []
-    id_token = get_id_token(event)
-    embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
-
-    # Batch document ingestion one parent document at a time
-    for doc_list in docs:
-        document_name = doc_list[0].metadata.get("name")
-        doc_source = doc_list[0].metadata.get("source")
-        for doc in doc_list:
-            texts.append(doc.page_content)
-            metadatas.append(doc.metadata)
-        # Ingest document into vector store
-        ids = vs.add_texts(texts=texts, metadatas=metadatas)
-
-        # Add document to RagDocTable
-        doc_entity = RagDocument(
+    ingestion_document_ids = []
+    for key in body["keys"]:
+        job = IngestionJob(
             repository_id=repository_id,
             collection_id=model_name,
-            document_name=document_name,
-            source=doc_source,
-            subdocs=ids,
+            chunk_strategy=FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap)),
+            s3_path=key,
             username=username,
-            chunk_strategy={
-                "type": ChunkStrategyType.FIXED.value,
-                "size": str(chunk_size),
-                "overlap": str(chunk_overlap),
-            },
-            ingestion_type=IngestionType.MANUAL,
         )
-        doc_repo.save(doc_entity)
-        doc_entities.append(doc_entity)
+        ingestion_job_repository.save(job)
+        ingestion_service.ingest(job)
+        ingestion_document_ids.append(job.id)
 
-    doc_ids = [doc.document_id for doc in doc_entities]
-
-    subdoc_ids = [sub_id for doc in doc_entities for sub_id in doc.subdocs]
-    return {
-        "documentIds": doc_ids,
-        "chunkCount": len(subdoc_ids),
-    }
+    return {"documentIds": ingestion_document_ids}
 
 
 @api_wrapper

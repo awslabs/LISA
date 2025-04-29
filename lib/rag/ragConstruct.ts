@@ -33,8 +33,6 @@ import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
 import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/vector-store-creator';
-import { IngestPipelineStateMachine } from './state_machine/ingest-pipeline';
-import { DeletePipelineStateMachine } from './state_machine/delete-pipeline';
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { RagRepositoryConfig, RagRepositoryType } from '../schema';
@@ -46,6 +44,7 @@ import * as customResources from 'aws-cdk-lib/custom-resources';
 import DynamoDB from 'aws-sdk/clients/dynamodb';
 import * as readlineSync from 'readline-sync';
 import { RAG_LAYER_PATH } from '../util';
+import { IngestionStack } from './ingestion/ingestion-stack';
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
@@ -131,19 +130,23 @@ export class LisaRagConstruct extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
+        const modelTableNameStringParameter = StringParameter.fromStringParameterName(this, 'ModelTableNameStringParameter', `${config.deploymentPrefix}/modelTableName`);
+
         const baseEnvironment: Record<string, string> = {
-            REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
+            ADMIN_GROUP: config.authConfig!.adminGroup,
             BUCKET_NAME: bucket.bucketName,
-            CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
+            CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
-            REST_API_VERSION: 'v2',
+            LOG_LEVEL: config.logLevel,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
+            MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
-            ADMIN_GROUP: config.authConfig!.adminGroup,
+            REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
-            LOG_LEVEL: config.logLevel,
+            REST_API_VERSION: 'v2',
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -255,24 +258,14 @@ export class LisaRagConstruct extends Construct {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
-        baseEnvironment['MANAGEMENT_KEY_SECRET_NAME_PS'] = `${config.deploymentPrefix}/managementKeySecretName`;
 
-        new IngestPipelineStateMachine(scope, 'IngestPipelineStateMachine', {
-            config,
-            baseEnvironment,
-            ragDocumentTable: docMetaTable,
-            ragSubDocumentTable: subDocTable,
-            layers,
-            vpc
-        });
-
-        new DeletePipelineStateMachine(scope, 'DeletePipelineStateMachine', {
+        // this modifies baseEnvironment and adds necessary environment variables
+        new IngestionStack(this, 'IngestionStack', {
             baseEnvironment,
             config,
-            vpc,
+            vpc: vpc,
+            lambdaRole,
             layers,
-            ragDocumentTable: docMetaTable,
-            ragSubDocumentTable: subDocTable,
         });
 
         new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {

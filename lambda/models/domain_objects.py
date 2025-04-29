@@ -17,8 +17,10 @@
 import logging
 import time
 import uuid
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
@@ -310,7 +312,7 @@ class DeleteModelResponse(ApiResponseBase):
     pass
 
 
-class IngestionType(Enum):
+class IngestionType(str, Enum):
     AUTO = "auto"
     MANUAL = "manual"
 
@@ -318,10 +320,31 @@ class IngestionType(Enum):
 RagDocumentDict: TypeAlias = Dict[str, Any]
 
 
-class ChunkStrategyType(Enum):
+class ChunkingStrategyType(str, Enum):
     """Enum for different types of chunking strategies."""
 
     FIXED = "fixed"
+
+
+class IngestionStatus(str, Enum):
+    """Status of Ingestion"""
+
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    DELETING = "DELETING"
+    DELETED = "DELETED"
+    DELETE_FAILED = "DELETE_FAILED"
+
+
+class FixedChunkingStrategy(BaseModel):
+    type: ChunkingStrategyType = ChunkingStrategyType.FIXED
+    size: int
+    overlap: int
+
+
+ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
 
 
 class RagSubDocument(BaseModel):
@@ -329,7 +352,7 @@ class RagSubDocument(BaseModel):
 
     document_id: str
     subdocs: list[str] = Field(default_factory=lambda: [])
-    index: int = Field(exclude=True)
+    index: Optional[int] = Field(exclude=True, default=None)
     sk: Optional[str] = None
 
     def __init__(self, **data: Any) -> None:
@@ -348,7 +371,7 @@ class RagDocument(BaseModel):
     source: str
     username: str
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
-    chunk_strategy: dict[str, str] = {}
+    chunk_strategy: ChunkingStrategy
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: int(time.time() * 1000))
     chunks: Optional[int] = 0
@@ -391,3 +414,18 @@ class RagDocument(BaseModel):
             joined_docs.append(joined_doc)
 
         return joined_docs
+
+
+class IngestionJob(BaseModel):
+    """IngestionJob entity for storing in DynamoDB."""
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    s3_path: str
+    collection_id: str
+    document_id: Optional[str] = Field(default=None)
+    repository_id: str
+    chunk_strategy: ChunkingStrategy
+    username: Optional[str] = None
+    status: IngestionStatus = IngestionStatus.PENDING
+    created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    error_message: Optional[str] = None

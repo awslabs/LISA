@@ -52,7 +52,11 @@ export const RagRepositoryPipeline = z.object({
     chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
     embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
     s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
-    s3Prefix: z.string().describe('The prefix within the S3 bucket monitored for document processing.'),
+    s3Prefix: z.string()
+        .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')
+        .regex(/^([a-zA-Z0-9!_.*'()/=-]+\/)*[a-zA-Z0-9!_.*'()/=-]*$/, 'Prefix must be a valid S3 prefix.')
+        .transform((value) => `/${value.replace(/^\/+|\/+$/g, '')}`)
+        .default('/').describe('The prefix within the S3 bucket monitored for document processing.'),
     trigger: z.union([triggerSchema.shape.daily, triggerSchema.shape.event])
         .default('event').describe('The event type that triggers document ingestion.'),
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),

@@ -31,6 +31,7 @@ os.environ["REGISTERED_REPOSITORIES_PS"] = "test-repositories"
 os.environ["LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER"] = "test-state-machine-arn"
 os.environ["REST_API_VERSION"] = "v1"
 os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"] = "test-create-state-machine-arn"
+os.environ["LISA_INGESTION_JOB_TABLE_NAME"] = "testing-ingestion-table"
 
 # Now import other modules
 import functools

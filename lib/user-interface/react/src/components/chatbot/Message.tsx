@@ -92,8 +92,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                                 sessionConfiguration: {
                                                     ...chatConfiguration.sessionConfiguration,
                                                     imageGenerationArgs: {
-                                                        width: parseInt(metadata?.imageGenerationParams?.size.split('x')[0]),
-                                                        height: parseInt(metadata?.imageGenerationParams?.size.split('x')[1]),
+                                                        size: metadata?.imageGenerationParams?.size,
                                                         numberOfImages: metadata?.imageGenerationParams?.n,
                                                         quality: metadata?.imageGenerationParams?.quality
                                                     }

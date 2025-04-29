@@ -20,14 +20,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import boto3
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType
+from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.lambda_functions import RagDocumentRepository
 from utilities.common_functions import get_username, retry_config
 from utilities.file_processing import generate_chunks
 from utilities.vector_store import get_vector_store_client
 
-from .lambda_functions import DocumentIngestionService, get_embeddings_pipeline, RagDocument
+from .lambda_functions import DocumentIngestionService, get_embeddings_pipeline
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 session = boto3.Session()
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
@@ -47,6 +47,20 @@ def pipeline_ingest(job: IngestionJob) -> None:
         documents = generate_chunks(job)
         texts, metadatas = prepare_chunks(documents, job.repository_id)
         all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
+
+        # remove old
+        for rag_document in rag_document_repository.find_by_source(
+            job.repository_id, job.collection_id, job.s3_path, join_docs=True
+        ):
+            prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+
+            if prev_job:
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETING)
+            remove_document_from_vectorstore(rag_document)
+            rag_document_repository.delete_by_id(rag_document.document_id)
+
+            if prev_job:
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETED)
 
         # save to dynamodb
         rag_document = RagDocument(
@@ -59,12 +73,13 @@ def pipeline_ingest(job: IngestionJob) -> None:
             username=job.username,
             ingestion_type=IngestionType.AUTO,
         )
-        doc_repo.save(rag_document)
+        rag_document_repository.save(rag_document)
 
         # update IngstionJob
         job.status = IngestionStatus.COMPLETED
         job.document_id = rag_document.document_id
         ingestion_job_repository.save(job)
+
         logging.info(f"Successfully ingested document {job.s3_path} ({len(all_ids)} chunks) into {job.collection_id}")
     except Exception as e:
         ingestion_job_repository.update_status(job, IngestionStatus.FAILED)
@@ -72,6 +87,17 @@ def pipeline_ingest(job: IngestionJob) -> None:
         error_msg = f"Failed to process document: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
+
+
+def remove_document_from_vectorstore(doc: RagDocument):
+    # Delete from the Vector Store
+    embeddings = get_embeddings_pipeline(model_name=doc.collection_id)
+    vector_store = get_vector_store_client(
+        doc.repository_id,
+        index=doc.collection_id,
+        embeddings=embeddings,
+    )
+    vector_store.delete(doc.subdocs)
 
 
 def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
@@ -103,7 +129,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         ingestion_type=IngestionType.MANUAL,
     )
     ingestion_job_repository.save(job)
-    ingestion_service.ingest(job)
+    ingestion_service.create_ingest_job(job)
 
     logger.info(f"Ingesting document {s3_path} for repository {repository_id}")
 
@@ -173,15 +199,16 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
 
         # create an IngestionJob for every object created/modified
         for key in modified_keys:
-            document = IngestionJob(
+            job = IngestionJob(
                 repository_id=repository_id,
                 collection_id=embedding_model,
                 chunk_strategy=chunk_strategy,
                 s3_path=f"s3://{bucket}/{key}",
                 username=username,
-                ingestion_type=IngestionType.MANUAL,
+                ingestion_type=IngestionType.AUTO,
             )
-            ingestion_service.ingest(job=document)
+            ingestion_job_repository.save(job)
+            ingestion_service.create_ingest_job(job)
 
         logger.info(f"Found {len(modified_keys)} modified files in {bucket}{prefix}")
     except Exception as e:

@@ -15,13 +15,12 @@
 import logging
 import os
 from typing import Any, Dict
-from urllib.parse import urlparse
 
 import boto3
 from langchain_core.vectorstores import VectorStore
 from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
 from repository.ingestion_job_repo import IngestionJobRepository
-from repository.pipeline_ingest_documents import extract_chunk_strategy
+from repository.pipeline_ingest_documents import remove_document_from_vectorstore
 from utilities.common_functions import retry_config
 
 from .lambda_functions import (
@@ -41,31 +40,26 @@ rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"]
 
 
 def pipeline_delete(job: IngestionJob) -> None:
-    print(f"{job.model_dump()}")
-
-    logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
-
-    # Delete from the Vector Store
-    vector_store = _get_vector_store(job.repository_id, job.collection_id)
-    rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
-    vector_store.delete(rag_document.subdocs)
-
-    # Delete RagDocument (and RagSubDocuments)
-    rag_document_repository.delete_by_id(rag_document.document_id)
-
-    # Parse the S3 path to get bucket and key
-    parsed = urlparse(job.s3_path)
-    bucket = parsed.netloc
-    key = parsed.path.lstrip("/")
-
-    # Delete from S3 and update IngestionJob.status
     try:
-        s3.delete_object(Bucket=bucket, Key=key)
+        print(f"{job.model_dump()}")
+
+        logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
+
+        # Delete from the Vector Store
+        rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
+
+        remove_document_from_vectorstore(rag_document)
+        rag_document_repository.delete_by_id(rag_document.document_id)
+
+        # Delete from S3 and update IngestionJob.status
         ingestion_job_repository.update_status(job, IngestionStatus.DELETED)
         logger.info(f"Successfully deleted {job.s3_path} from S3")
     except Exception as e:
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
-        logger.error(f"Error deleting {job.s3_path} from S3: {str(e)}")
+
+        error_msg = f"Failed to delete document: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise Exception(error_msg)
 
 
 def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
@@ -80,33 +74,31 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
     embedding_model = pipeline_config.get("embeddingModel", None)
-    s3_key = f"s3://{bucket}{key}"
+    s3_key = f"s3://{bucket}/{key}"
 
     logger.info(f"Deleting object {s3_key} for repository {repository_id}/{embedding_model}")
 
     # Currently there could be RagDocuments without a corresponding IngestionJob, so lookup by RagDocument first
     # and then find or create the corresponding IngestionJob. In the future it should be possible to lookup
     # directly by IngestionJob
-    docs = rag_document_repository.find_by_source(
-        repository_id=repository_id, collection_id=embedding_model, document_source=s3_key
-    )
-    for doc in docs:
-        job = ingestion_job_repository.find_by_document(doc.document_id)
-        if job is None:
-            chunk_strategy = extract_chunk_strategy(pipeline_config)
-            job = IngestionJob(
+    for rag_document in rag_document_repository.find_by_source(
+        repository_id=repository_id, collection_id=embedding_model, document_source=s3_key, join_docs=True
+    ):
+        logger.info(f"deleting doc {rag_document.model_dump()}")
+        prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+        if prev_job is None:
+            prev_job = IngestionJob(
                 repository_id=repository_id,
                 collection_id=embedding_model,
-                chunk_strategy=chunk_strategy,
-                s3_path=doc.source,
-                username=doc.username,
+                chunk_strategy=None,
+                s3_path=rag_document.source,
+                username=rag_document.username,
                 ingestion_type=IngestionType.AUTO,
-                status=IngestionStatus.COMPLETED,
+                status=IngestionStatus.PENDING_DELETE,
             )
 
-        ingestion_service.delete(job)
-
-    logger.info(f"Deleting document {s3_key} for repository {job.repository_id}")
+        ingestion_service.create_delete_job(prev_job)
+        logger.info(f"Deleting document {s3_key} for repository {prev_job.repository_id}")
 
 
 def _get_vector_store(repository_id: str, collection_id: str) -> VectorStore:

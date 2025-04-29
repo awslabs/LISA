@@ -23,7 +23,7 @@ import requests
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, RagDocument
+from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, RagDocument
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
@@ -375,20 +375,36 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
     _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
 
-    docs: list[RagDocument] = []
+    rag_documents: list[RagDocument] = []
     if document_ids:
-        docs = [doc_repo.find_by_id(document_id=doc_id, join_docs=True) for doc_id in document_ids]
+        rag_documents = [doc_repo.find_by_id(document_id=document_id) for document_id in document_ids]
 
-    if not docs:
+    if not rag_documents:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
 
-    _ensure_document_ownership(event, docs)
+    _ensure_document_ownership(event, rag_documents)
+
+    for rag_document in rag_documents:
+        logger.info(f"deleting doc {rag_document.model_dump()}")
+        prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+        if prev_job is None:
+            prev_job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=collection_id,
+                chunk_strategy=None,
+                s3_path=rag_document.source,
+                username=rag_document.username,
+                status=IngestionStatus.PENDING_DELETE,
+            )
+
+        ingestion_service.create_delete_job(prev_job)
+        logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
 
     document_ids = []
-    for doc in docs:
+    for doc in rag_documents:
         if doc is not None:
             document_ids.append(doc.document_id)
-            ingestion_service.delete(doc.document_id)
+            ingestion_service.create_delete_job(doc.document_id)
 
     return {"documentIds": document_ids}
 
@@ -418,6 +434,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     body = json.loads(event["body"])
     embedding_model = body["embeddingModel"]
     model_name = embedding_model["modelName"]
+    bucket = os.environ["BUCKET_NAME"]
 
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
@@ -437,14 +454,14 @@ def ingest_documents(event: dict, context: dict) -> dict:
             repository_id=repository_id,
             collection_id=model_name,
             chunk_strategy=FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap)),
-            s3_path=key,
+            s3_path=f"s3://{bucket}/{key}",
             username=username,
         )
         ingestion_job_repository.save(job)
-        ingestion_service.ingest(job)
+        ingestion_service.create_ingest_job(job)
         ingestion_document_ids.append(job.id)
 
-    return {"documentIds": ingestion_document_ids}
+    return {"ingestionJobIds": ingestion_document_ids}
 
 
 @api_wrapper

@@ -16,10 +16,28 @@ from typing import Optional
 
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
-from models.lambda_functions import retry_config
+from utilities.common_functions import retry_config
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
+
+
+class IngestionJobListResponse:
+    def __init__(self, jobs: list[IngestionJob], continuation_token: Optional[str]):
+        self.jobs = jobs
+        self.continuation_token = continuation_token
+
+
+class RepositoryError(Exception):
+    """Exception raised for errors that occur during repository operations.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
 
 
 class IngestionJobRepository:
@@ -32,7 +50,7 @@ class IngestionJobRepository:
         if not response.get("Item"):
             raise Exception(f"Ingestion job with id {id} not found")
 
-        IngestionJob(**response.get("Item"))
+        return IngestionJob(**response.get("Item"))
 
     def find_by_path(self, s3_path: str) -> list[IngestionJob]:
         response = ingestion_job_table.query(

@@ -16,8 +16,9 @@ import os
 
 from models.domain_objects import IngestionJob, IngestionStatus
 from repository.ingestion_job_repo import IngestionJobRepository
-from repository.pipeline_delete_document import pipeline_delete
-from repository.pipeline_ingest_documents import pipeline_ingest, RagDocumentRepository
+from repository.pipeline_delete_documents import pipeline_delete
+from repository.pipeline_ingest_documents import pipeline_ingest
+from repository.rag_document_repo import RagDocumentRepository
 
 ingestion_job_repository = IngestionJobRepository()
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
@@ -38,6 +39,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 2:
         job = ingestion_job_repository.find_by_id(sys.argv[2])
+        print(f"job {job.model_dump()}")
 
         if sys.argv[1] == "ingest" and len(sys.argv) > 2:
             ingest(job)

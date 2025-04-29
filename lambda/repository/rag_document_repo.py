@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import logging
-from typing import Optional
+from typing import Generator, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -161,7 +161,7 @@ class RagDocumentRepository:
 
     def find_by_source(
         self, repository_id: str, collection_id: str, document_source: str, join_docs: bool = False
-    ) -> list[RagDocument]:
+    ) -> Generator[RagDocument, None, None]:
         """Get a list of documents from the RagDocTable by source.
 
         Args:
@@ -178,7 +178,10 @@ class RagDocumentRepository:
         response = self.doc_table.query(
             KeyConditionExpression=Key("pk").eq(pk), FilterExpression=Key("source").eq(document_source)
         )
-        docs: list[RagDocument] = response["Items"]
+
+        items = response["Items"]
+        logging.info(f"response items: {items}")
+        yield from self._yield_documents(response["Items"], join_docs=join_docs)
 
         # Handle paginated Dynamo results
         while "LastEvaluatedKey" in response:
@@ -187,13 +190,15 @@ class RagDocumentRepository:
                 FilterExpression=Key("document_name").eq(document_source),
                 ExclusiveStartKey=response["LastEvaluatedKey"],
             )
-            docs.extend(response["Items"])
 
-        if join_docs:
-            for doc in docs:
-                subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
-                doc["subdocs"] = subdocs
-        return docs
+            yield from self._yield_documents(response["Items"], join_docs=join_docs)
+
+    def _yield_documents(self, items, join_docs):
+        for item in items:
+            document = RagDocument(**item)
+            if join_docs:
+                document.subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(document.document_id))
+            yield document
 
     def list_all(
         self,

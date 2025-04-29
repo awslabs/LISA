@@ -13,6 +13,13 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
+/**
+ * IngestionJobConstruct creates AWS infrastructure for document ingestion pipeline
+ * This includes:
+ * - DynamoDB table for tracking ingestion jobs
+ * - AWS Batch compute environment and job queue for processing documents
+ * - Lambda functions for handling scheduled ingestion and S3 events
+ */
 import { Duration, Size, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { BaseProps } from '../../schema';
@@ -30,21 +37,22 @@ import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 
+// Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
     vpc: Vpc,
     lambdaRole: iam.IRole,
-    baseEnvironment:  Record<string, string>,
+    baseEnvironment: Record<string, string>,
     layers?: ILayerVersion[];
-    ragDocumentTable: dynamodb.ITable;
-    ragSubDocumentTable: dynamodb.ITable;
 };
 
 export class IngestionJobConstruct extends Construct {
     constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
-        const {config, vpc, lambdaRole, layers, baseEnvironment} = props;
-        // Create DynamoDB table with uuid hash key and date sort key
+        const { config, vpc, lambdaRole, layers, baseEnvironment } = props;
+
+        // DynamoDB table for tracking ingestion jobs
+        // Uses id as partition key with additional GSIs for querying by created date, s3 path and document id
         const ingestionJobTable = new dynamodb.Table(this, 'IngestionJobTable', {
             partitionKey: {
                 name: 'id',
@@ -56,28 +64,7 @@ export class IngestionJobConstruct extends Construct {
         ingestionJobTable.grantReadWriteData(props.lambdaRole);
         baseEnvironment['LISA_INGESTION_JOB_TABLE_NAME'] = ingestionJobTable.tableName;
 
-        ingestionJobTable.addGlobalSecondaryIndex({
-            indexName: 'createdAt',
-            partitionKey: {
-                name: 'id',
-                type: dynamodb.AttributeType.STRING
-            },
-            sortKey: {
-                name: 'created_date',
-                type: dynamodb.AttributeType.STRING
-            },
-            projectionType: dynamodb.ProjectionType.ALL
-        });
-
-        ingestionJobTable.addGlobalSecondaryIndex({
-            indexName: 's3Path',
-            partitionKey: {
-                name: 's3_path',
-                type: dynamodb.AttributeType.STRING
-            },
-            projectionType: dynamodb.ProjectionType.ALL
-        });
-
+        // GSI for querying by document ID
         ingestionJobTable.addGlobalSecondaryIndex({
             indexName: 'documentId',
             partitionKey: {
@@ -87,19 +74,20 @@ export class IngestionJobConstruct extends Construct {
             projectionType: dynamodb.ProjectionType.ALL
         });
 
-        // Log group for container logs
+        // CloudWatch log group for batch job container logs
         const logGroup = new logs.LogGroup(this, 'IngestionJobLogGroup', {
             retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: config.removalPolicy
         });
 
-        // Compute environment (Fargate)
+        // AWS Batch Fargate compute environment for running ingestion jobs
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
             computeEnvironmentName: 'IngestionJobMyFargateEnv',
             vpc: vpc.vpc,
 
         });
 
-        // Job queue
+        // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
             computeEnvironments: [
                 {
@@ -110,23 +98,23 @@ export class IngestionJobConstruct extends Construct {
         });
         baseEnvironment['LISA_INGESTION_JOB_QUEUE_NAME'] = jobQueue.jobQueueName;
 
-        // fs.rmdirSync(path.join(__dirname, 'ingestion-image/build'), {recursive: true});
+        // Set up build directory for Docker image
         fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
-        fs.cpSync(path.join(__dirname, '../../../lambda'), path.join(__dirname, 'ingestion-image/build'), {recursive: true, force: true});
-        fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(__dirname, 'ingestion-image/build/lisapy'), {recursive: true, force: true});
+        fs.cpSync(path.join(__dirname, '../../../lambda'), path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
+        fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(__dirname, 'ingestion-image/build/lisapy'), { recursive: true, force: true });
 
-        // ✅ Build Docker image from local directory
+        // Build Docker image for batch jobs
         const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
             directory: path.join(__dirname, 'ingestion-image'),
         });
 
-        fs.rmdirSync(path.join(__dirname, 'ingestion-image/build'), {recursive: true});
+        // Cleanup build directory
+        fs.rmdirSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true });
 
-        // Create a container job definition
+        // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
-                // environment: {...baseEnvironment, 'PYTHONPATH': '/workdir/lambda;/workdir/lisa-sdk'},
                 image: ecs.ContainerImage.fromDockerImageAsset(dockerImageAsset),
                 memory: Size.mebibytes(4096),
                 cpu: 2,
@@ -141,6 +129,8 @@ export class IngestionJobConstruct extends Construct {
             timeout: Duration.hours(4),
         });
         baseEnvironment['LISA_INGESTION_JOB_DEFINITION_NAME'] = jobDefinition.jobDefinitionName;
+
+        // Grant permissions for submitting batch jobs
         jobDefinition.grantSubmitJob(lambdaRole, jobQueue);
         lambdaRole.addToPrincipalPolicy(new iam.PolicyStatement({
             actions: ['batch:SubmitJob'],
@@ -148,7 +138,7 @@ export class IngestionJobConstruct extends Construct {
             resources: ['*']
         }));
 
-        // function to ingest documents on a schedule
+        // Lambda function for handling scheduled document ingestion
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
@@ -165,7 +155,7 @@ export class IngestionJobConstruct extends Construct {
             stringValue: handlePipelineIngestScheduleLambda.functionArn
         });
 
-        // function to ingest documents on s3 events
+        // Lambda function for handling S3 event-based document ingestion
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
@@ -182,7 +172,7 @@ export class IngestionJobConstruct extends Construct {
             stringValue: handlePipelineIngestEvent.functionArn
         });
 
-        // function to ingest documents on s3 events
+        // Lambda function for handling document deletion events
         const handlePipelineDeleteScheduleEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_delete_documents.handle_pipeline_delete_event',

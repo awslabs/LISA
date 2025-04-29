@@ -17,6 +17,7 @@ import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PipelineConfig, RagRepositoryConfig, PartialConfig } from '../../../lib/schema';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
@@ -69,13 +70,21 @@ export abstract class PipelineStack extends Stack {
                 case 'daily': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionScheduleLambda', ingestionLambdaArn.stringValue);
-                    this.createDailyLambdaRule(ingestionLambda, ragConfig, pipelineConfig, index);
+                    const rule = this.createDailyLambdaRule(ingestionLambda, ragConfig, pipelineConfig, index);
+                    ingestionLambda.addPermission('AllowEventBridgeInvoke', {
+                        principal: new iam.ServicePrincipal('events.amazonaws.com'),
+                        sourceArn: rule.ruleArn,
+                    });
                     break;
                 }
                 case 'event': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionIngestEventLambda', ingestionLambdaArn.stringValue);
-                    this.createEventLambdaRule(ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
+                    const rule = this.createEventLambdaRule(ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
+                    ingestionLambda.addPermission('AllowEventBridgeInvoke', {
+                        principal: new iam.ServicePrincipal('events.amazonaws.com'),
+                        sourceArn: rule.ruleArn,
+                    });
                     break;
                 }
                 default:
@@ -96,11 +105,15 @@ export abstract class PipelineStack extends Stack {
                     effect: Effect.ALLOW,
                     actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
                     resources: [
-                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}${pipelineConfig.s3Prefix}`,
-                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}${pipelineConfig.s3Prefix}*`
+                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
+                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
                     ]
                 }));
-                this.createEventLambdaRule(deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
+                const rule = this.createEventLambdaRule(deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
+                deletionLambda.addPermission('AllowEventBridgeInvoke', {
+                    principal: new iam.ServicePrincipal('events.amazonaws.com'),
+                    sourceArn: rule.ruleArn,
+                });
             }
         });
     }
@@ -118,7 +131,7 @@ export abstract class PipelineStack extends Stack {
         // Add prefix filter if specified and not root
         // Add object key prefix filter if specified in the configuration
         // Add prefix filter if not root
-        if (pipelineConfig.s3Prefix !== '/') {
+        if (pipelineConfig.s3Prefix !== '') {
             detail.object = {
                 key: [{
                     prefix: pipelineConfig.s3Prefix

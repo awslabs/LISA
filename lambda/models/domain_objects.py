@@ -333,6 +333,7 @@ class IngestionStatus(str, Enum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    PENDING_DELETE = "PENDING_DELETE"
     DELETING = "DELETING"
     DELETED = "DELETED"
     DELETE_FAILED = "DELETE_FAILED"
@@ -424,7 +425,7 @@ class IngestionJob(BaseModel):
     collection_id: str
     document_id: Optional[str] = Field(default=None)
     repository_id: str
-    chunk_strategy: ChunkingStrategy
+    chunk_strategy: Optional[ChunkingStrategy]
     username: Optional[str] = None
     status: IngestionStatus = IngestionStatus.PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

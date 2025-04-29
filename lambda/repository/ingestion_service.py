@@ -30,15 +30,15 @@ class DocumentIngestionService:
         # Submit AWS Batch job
         batch_client = boto3.client("batch")
         response = batch_client.submit_job(
-            jobName=f"document-{action}-{job.id}",
+            jobName=f"document-{action.value}-{job.id}",
             jobQueue=os.environ["LISA_INGESTION_JOB_QUEUE_NAME"],
             jobDefinition=os.environ["LISA_INGESTION_JOB_DEFINITION_NAME"],
             parameters={"DOCUMENT_ID": job.id, "ACTION": action},
         )
         logger.info(f"Submitted {action} job for document {job.id}: {response['jobId']}")
 
-    def ingest(self, job: IngestionJob) -> None:
+    def create_ingest_job(self, job: IngestionJob) -> None:
         self._submit_job(job, IngestionAction("ingest"))
 
-    def delete(self, job: IngestionJob) -> None:
+    def create_delete_job(self, job: IngestionJob) -> None:
         self._submit_job(job, IngestionAction("delete"))

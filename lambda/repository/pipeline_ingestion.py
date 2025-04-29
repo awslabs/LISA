@@ -39,7 +39,6 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 2:
         job = ingestion_job_repository.find_by_id(sys.argv[2])
-        print(f"job {job.model_dump()}")
 
         if sys.argv[1] == "ingest" and len(sys.argv) > 2:
             ingest(job)

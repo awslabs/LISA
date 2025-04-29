@@ -41,8 +41,6 @@ rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"]
 
 def pipeline_delete(job: IngestionJob) -> None:
     try:
-        print(f"{job.model_dump()}")
-
         logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
 
         # Delete from the Vector Store

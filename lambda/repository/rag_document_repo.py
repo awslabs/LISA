@@ -116,7 +116,6 @@ class RagDocumentRepository:
                 docs[0]["subdocs"] = subdocs
 
             doc = RagDocument(**docs[0])
-            print(f"find_by_id({document_id}, {join_docs}) = {doc.model_dump()}")
             return doc
         except ClientError as e:
             logging.error(f"Error querying document: {e.response['Error']['Message']}")
@@ -278,7 +277,6 @@ class RagDocumentRepository:
                 )
                 entries.extend(response["Items"])
 
-            [print(entry) for entry in entries]
             return [RagSubDocument(**entry) for entry in entries]
         except ClientError as e:
             logging.error(f"Error querying subdocuments: {e.response['Error']['Message']}")

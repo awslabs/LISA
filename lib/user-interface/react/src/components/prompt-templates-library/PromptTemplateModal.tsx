@@ -71,7 +71,7 @@ export function PromptTemplateModal ({
             labelTags: [item.id],
             id: item.id
         }));
-    }, [allItems, isFetchingList]);
+    }, [allItems, isFetchingList, type]);
 
     const keyWord = isPersona ? 'Persona' : 'Prompt';
 
@@ -152,9 +152,6 @@ export function PromptTemplateModal ({
                             }} />
                         </SpaceBetween>
                     </FormField>
-                    <FormField>
-                    </FormField>
-
                 </SpaceBetween>}
 
                 <hr />

@@ -108,7 +108,6 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     detail = event.get("detail", {})
     bucket = detail.get("bucket", None)
     username = get_username(event)
-    # prefix = detail.get("prefix", "")
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)

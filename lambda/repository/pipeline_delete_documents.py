@@ -43,13 +43,16 @@ def pipeline_delete(job: IngestionJob) -> None:
     try:
         logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
 
-        # Delete from the Vector Store
+        # Find associated RagDocument
         rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
 
+        # Actually remove from vector store
         remove_document_from_vectorstore(rag_document)
+
+        # Remove from DDB
         rag_document_repository.delete_by_id(rag_document.document_id)
 
-        # Delete from S3 and update IngestionJob.status
+        # Update status
         ingestion_job_repository.update_status(job, IngestionStatus.DELETED)
         logger.info(f"Successfully deleted {job.s3_path} from S3")
     except Exception as e:
@@ -62,12 +65,12 @@ def pipeline_delete(job: IngestionJob) -> None:
 
 def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
     """Handle pipeline document ingestion."""
+
     # Extract and validate inputs
     logger.debug(f"Received event: {event}")
 
     detail = event.get("detail", {})
     bucket = detail.get("bucket", None)
-    # prefix = detail.get("prefix", "")
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
@@ -83,9 +86,9 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
         repository_id=repository_id, collection_id=embedding_model, document_source=s3_key, join_docs=True
     ):
         logger.info(f"deleting doc {rag_document.model_dump()}")
-        prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
-        if prev_job is None:
-            prev_job = IngestionJob(
+        ingestion_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+        if ingestion_job is None:
+            ingestion_job = IngestionJob(
                 repository_id=repository_id,
                 collection_id=embedding_model,
                 chunk_strategy=None,
@@ -95,28 +98,5 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
                 status=IngestionStatus.PENDING_DELETE,
             )
 
-        ingestion_service.create_delete_job(prev_job)
-        logger.info(f"Deleting document {s3_key} for repository {prev_job.repository_id}")
-
-
-def _get_vector_store(repository_id: str, collection_id: str) -> VectorStore:
-    """
-    Helper function to initialize and return a vector store client.
-
-    Args:
-        repository_id (str): Identifier for the repository
-        collection_id (str): Identifier for the collection/model
-
-    Returns:
-        VectorStore: Initialized vector store client
-    """
-    embeddings = get_embeddings_pipeline(model_name=collection_id)
-
-    # Initialize vector store using model name as index, matching lambda_functions.py pattern
-    vs = get_vector_store_client(
-        repository_id,
-        index=collection_id,
-        embeddings=embeddings,
-    )
-
-    return vs
+        ingestion_service.create_delete_job(ingestion_job)
+        logger.info(f"Deleting document {s3_key} for repository {ingestion_job.repository_id}")

@@ -155,7 +155,7 @@ export class LisaRagConstruct extends Construct {
         }
 
         const lambdaRole = Role.fromRoleArn(
-            scope,
+            this,
             Roles.RAG_LAMBDA_EXECUTION_ROLE,
             StringParameter.valueForStringParameter(
                 scope,
@@ -260,7 +260,7 @@ export class LisaRagConstruct extends Construct {
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
 
         // this modifies baseEnvironment and adds necessary environment variables
-        new IngestionStack(this, 'IngestionStack', {
+        new IngestionStack(scope, 'IngestionStack', {
             baseEnvironment,
             config,
             vpc: vpc,

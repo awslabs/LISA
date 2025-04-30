@@ -385,10 +385,12 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     _ensure_document_ownership(event, rag_documents)
 
     for rag_document in rag_documents:
-        logger.info(f"deleting doc {rag_document.model_dump()}")
-        prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
-        if prev_job is None:
-            prev_job = IngestionJob(
+        logger.info(f"Deleting document {rag_document.model_dump()}")
+
+        # lookup previous ingestion job, or create one (if document was ingested before batch was implemented)
+        ingestion_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+        if ingestion_job is None:
+            ingestion_job = IngestionJob(
                 repository_id=repository_id,
                 collection_id=collection_id,
                 chunk_strategy=None,
@@ -397,7 +399,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
                 status=IngestionStatus.PENDING_DELETE,
             )
 
-        ingestion_service.create_delete_job(prev_job)
+        ingestion_service.create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
 
     document_ids = []

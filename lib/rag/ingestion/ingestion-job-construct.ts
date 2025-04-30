@@ -154,6 +154,10 @@ export class IngestionJobConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/ingestion/ingest/schedule`,
             stringValue: handlePipelineIngestScheduleLambda.functionArn
         });
+        handlePipelineIngestScheduleLambda.addPermission('AllowEventBridgeInvoke', {
+            principal: new iam.ServicePrincipal('events.amazonaws.com'),
+            action: 'lambda:InvokeFunction'
+        });
 
         // Lambda function for handling S3 event-based document ingestion
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
@@ -171,9 +175,13 @@ export class IngestionJobConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/ingestion/ingest/event`,
             stringValue: handlePipelineIngestEvent.functionArn
         });
+        handlePipelineIngestEvent.addPermission('AllowEventBridgeInvoke', {
+            principal: new iam.ServicePrincipal('events.amazonaws.com'),
+            action: 'lambda:InvokeFunction'
+        });
 
         // Lambda function for handling document deletion events
-        const handlePipelineDeleteScheduleEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
+        const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_delete_documents.handle_pipeline_delete_event',
             code: lambda.Code.fromAsset('./lambda'),
@@ -186,7 +194,12 @@ export class IngestionJobConstruct extends Construct {
         });
         new StringParameter(this, 'DeletionJobEventLambdaArn', {
             parameterName: `${config.deploymentPrefix}/ingestion/delete/event`,
-            stringValue: handlePipelineDeleteScheduleEvent.functionArn
+            stringValue: handlePipelineDeleteEvent.functionArn
+        });
+
+        handlePipelineDeleteEvent.addPermission('AllowEventBridgeInvoke', {
+            principal: new iam.ServicePrincipal('events.amazonaws.com'),
+            action: 'lambda:InvokeFunction'
         });
     }
 }

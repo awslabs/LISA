@@ -70,21 +70,13 @@ export abstract class PipelineStack extends Stack {
                 case 'daily': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionScheduleLambda', ingestionLambdaArn.stringValue);
-                    const rule = this.createDailyLambdaRule(ingestionLambda, ragConfig, pipelineConfig, index);
-                    ingestionLambda.addPermission('AllowEventBridgeInvoke', {
-                        principal: new iam.ServicePrincipal('events.amazonaws.com'),
-                        sourceArn: rule.ruleArn,
-                    });
+                    this.createDailyLambdaRule(ingestionLambda, ragConfig, pipelineConfig, index);
                     break;
                 }
                 case 'event': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionIngestEventLambda', ingestionLambdaArn.stringValue);
-                    const rule = this.createEventLambdaRule(ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
-                    ingestionLambda.addPermission('AllowEventBridgeInvoke', {
-                        principal: new iam.ServicePrincipal('events.amazonaws.com'),
-                        sourceArn: rule.ruleArn,
-                    });
+                    this.createEventLambdaRule(ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
                     break;
                 }
                 default:
@@ -109,11 +101,7 @@ export abstract class PipelineStack extends Stack {
                         `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
                     ]
                 }));
-                const rule = this.createEventLambdaRule(deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
-                deletionLambda.addPermission('AllowEventBridgeInvoke', {
-                    principal: new iam.ServicePrincipal('events.amazonaws.com'),
-                    sourceArn: rule.ruleArn,
-                });
+                this.createEventLambdaRule(deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
             }
         });
     }

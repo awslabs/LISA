@@ -58,11 +58,12 @@ import { ChatMemory } from '../../shared/util/chat-memory';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFileLines, faMessage, faPenToSquare } from '@fortawesome/free-regular-svg-icons';
+import { faFileLines, faMessage, faPenToSquare, faComment } from '@fortawesome/free-regular-svg-icons';
 import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
 import ConfigurationContext from '../../shared/configuration.provider';
 import Select from '@cloudscape-design/components/select';
 import FormField from '@cloudscape-design/components/form-field';
+import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -104,6 +105,7 @@ export default function Chat ({ sessionId }) {
     });
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
     const [loadingSession, setLoadingSession] = useState(false);
+    const [filterPromptTemplateType, setFilterPromptTemplateType] = useState(undefined);
 
     const [isConnected, setIsConnected] = useState(false);
     const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
@@ -549,6 +551,7 @@ export default function Chat ({ sessionId }) {
                 setChatConfiguration={setChatConfiguration}
                 key={promptTemplateKey}
                 config={config}
+                type={filterPromptTemplateType}
             />
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
@@ -590,15 +593,28 @@ export default function Chat ({ sessionId }) {
                             </Button>
 
                             { config?.configuration?.enabledComponents?.editPromptTemplate && (
-                                <Button variant='normal' onClick={() => {
-                                    setPromptTemplateKey(new Date().toISOString());
-                                    setShowPromptTemplateModal(true);
-                                }}>
-                                    <SpaceBetween direction='horizontal' size='xs'>
-                                        <FontAwesomeIcon icon={faPenToSquare} />
-                                        <TextContent>Select Persona</TextContent>
-                                    </SpaceBetween>
-                                </Button>
+                                <>
+                                    <Button variant='normal' onClick={() => {
+                                        setPromptTemplateKey(new Date().toISOString());
+                                        setFilterPromptTemplateType(PromptTemplateType.Persona);
+                                        setShowPromptTemplateModal(true);
+                                    }}>
+                                        <SpaceBetween direction='horizontal' size='xs'>
+                                            <FontAwesomeIcon icon={faPenToSquare} />
+                                            <TextContent>Select Persona</TextContent>
+                                        </SpaceBetween>
+                                    </Button>
+                                    <Button variant='normal' onClick={() => {
+                                        setPromptTemplateKey(new Date().toISOString());
+                                        setFilterPromptTemplateType(PromptTemplateType.Directive);
+                                        setShowPromptTemplateModal(true);
+                                    }}>
+                                        <SpaceBetween direction='horizontal' size='xs'>
+                                            <FontAwesomeIcon icon={faComment} />
+                                            <TextContent>Select Directive</TextContent>
+                                        </SpaceBetween>
+                                    </Button>
+                                </>
                             )}
 
                             <Button variant='normal' onClick={() => setShowDocumentSummarizationModal(true)}>
@@ -771,8 +787,13 @@ export default function Chat ({ sessionId }) {
                                                 if (detail.id === 'add-file-to-context'){
                                                     setShowContextUploadModal(true);
                                                 }
-                                                if ( detail.id === 'summarize-document') {
+                                                if (detail.id === 'summarize-document') {
                                                     setShowDocumentSummarizationModal(true);
+                                                }
+                                                if (detail.id === 'insert-prompt-template') {
+                                                    setPromptTemplateKey(new Date().toISOString());
+                                                    setFilterPromptTemplateType(PromptTemplateType.Directive);
+                                                    setShowPromptTemplateModal(true);
                                                 }
                                             }}
                                             items={[
@@ -796,13 +817,19 @@ export default function Chat ({ sessionId }) {
                                                         iconName: 'insert-row',
                                                         text: 'Add file to context'
                                                     }] as ButtonGroupProps.Item[] : []),
+                                                ...(config?.configuration.enabledComponents.editPromptTemplate ? [{
+                                                    type: 'icon-button',
+                                                    id: 'insert-prompt-template',
+                                                    iconName: 'contact',
+                                                    text: 'Insert Prompt Template'
+                                                }] as ButtonGroupProps.Item[] : []),
                                                 ...(config?.configuration.enabledComponents.documentSummarization ? [{
                                                     type: 'icon-button',
                                                     id: 'summarize-document',
                                                     iconName: 'transcript',
                                                     text: 'Summarize Document'
                                                 }] as ButtonGroupProps.Item[] : []),
-                                                ...(config?.configuration.enabledComponents.editPromptTemplate ?
+                                                ...(config?.configuration.enabledComponents.editPromptTemplate  && !isImageGenerationMode ?
                                                     [{
                                                         type: 'menu-dropdown',
                                                         id: 'more-actions',

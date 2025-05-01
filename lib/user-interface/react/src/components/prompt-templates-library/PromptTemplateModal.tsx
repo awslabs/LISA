@@ -62,7 +62,7 @@ export function PromptTemplateModal ({
     const { data: {Items: allItems} = {Items: []}, isFetching: isFetchingList } = useListPromptTemplatesQuery(args, {});
     const [suggestText, setSuggestText] = useState<string>('');
     const [promptTemplateText, setPromptTemplateText] = useState(isPersona ? chatConfiguration.promptConfiguration.promptTemplate : '');
-    const disabled = session.history.length > 0;
+    const disabled = isPersona && session.history.length > 0;
 
     const options: SelectProps.Option[] = useMemo(() => {
         return isFetchingList ? [] : allItems.filter((item) => item.type === type || !type).map((item) => ({

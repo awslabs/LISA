@@ -86,6 +86,7 @@ export class LisaServeApplicationConstruct extends Construct {
                 excludePunctuation: true,
                 passwordLength: 16
             },
+            removalPolicy: config.removalPolicy
         });
 
         // const commonLambdaLayer = LayerVersion.fromLayerVersionArn(

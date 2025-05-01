@@ -149,7 +149,7 @@ export class LisaServeIAMSConstruct extends Construct {
         });
 
         const ecsTaskExecutionRolePolicy = ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy');
-        const role = new Role(this, Roles.RAG_LAMBDA_EXECUTION_ROLE, {
+        const role = new Role(this.scope, Roles.RAG_LAMBDA_EXECUTION_ROLE, {
             roleName,
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             description: 'Role used by RAG API lambdas to access AWS resources',

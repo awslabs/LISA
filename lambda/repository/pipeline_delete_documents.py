@@ -17,7 +17,6 @@ import os
 from typing import Any, Dict
 
 import boto3
-from langchain_core.vectorstores import VectorStore
 from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore

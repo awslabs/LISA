@@ -263,7 +263,7 @@ export class LisaRagConstruct extends Construct {
         new IngestionStack(scope, 'IngestionStack', {
             baseEnvironment,
             config,
-            vpc: vpc,
+            vpc,
             lambdaRole,
             layers,
         });

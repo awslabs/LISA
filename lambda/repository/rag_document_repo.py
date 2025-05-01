@@ -52,6 +52,7 @@ class RagDocumentRepository:
         try:
             document = self.find_by_id(document_id)
             subdocs = self.find_subdocs_by_id(document_id)
+            print(f"delete_by_id({document_id}) - {document}[subdocs={subdocs}]")
 
             with self.subdoc_table.batch_writer() as batch:
                 for doc in subdocs:
@@ -238,13 +239,13 @@ class RagDocumentRepository:
                     query_params["ExclusiveStartKey"] = last_evaluated_key
                 response = self.doc_table.query(**query_params)
 
-            docs: list[RagDocument] = response.get("Items", [])
+            docs: list[RagDocument] = [RagDocument(**item) for item in response.get("Items", [])]
             next_key = response.get("LastEvaluatedKey", None)
 
             if join_docs:
                 for doc in docs:
                     subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
-                    doc["subdocs"] = subdocs
+                    doc.subdocs = subdocs
 
             return docs, next_key
 
@@ -307,7 +308,7 @@ class RagDocumentRepository:
             logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
             raise
 
-    def delete_s3_docs(self, repository_id: str, docs: list[dict]) -> list[str]:
+    def delete_s3_docs(self, repository_id: str, docs: list[RagDocument]) -> list[str]:
         """Remove documents from S3"""
         repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
         pipelines = {
@@ -315,9 +316,9 @@ class RagDocumentRepository:
             for pipeline in repo.get("pipelines", [])
         }
         removed_source: list[str] = [
-            doc.get("source", "")
+            doc.source
             for doc in docs
-            if doc.get("ingestion_type") != IngestionType.AUTO or pipelines.get(doc.get("collection_id"))
+            if doc.ingestion_type != IngestionType.AUTO or pipelines.get(doc.collection_id)
         ]
         for source in removed_source:
             logging.info(f"Removing S3 doc: {source}")

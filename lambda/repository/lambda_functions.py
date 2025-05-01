@@ -384,6 +384,10 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
     _ensure_document_ownership(event, rag_documents)
 
+    # todo don't delete object from s3 if still referenced by another repository/collection
+    # delete s3 files if 
+    doc_repo.delete_s3_docs(repository_id, rag_documents)  
+
     for rag_document in rag_documents:
         logger.info(f"Deleting document {rag_document.model_dump()}")
 
@@ -543,7 +547,7 @@ def presigned_url(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_dump] | str | None]:
+def list_docs(event: dict, context: dict) -> dict[str, list[dict] | str | None]:
     """List all documents for a given repository/collection.
 
     Args:
@@ -570,7 +574,7 @@ def list_docs(event: dict, context: dict) -> dict[str, list[RagDocument.model_du
     docs, last_evaluated = doc_repo.list_all(
         repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated
     )
-    return {"documents": docs, "lastEvaluated": last_evaluated}
+    return {"documents": [doc.model_dump() for doc in docs], "lastEvaluated": last_evaluated}
 
 
 @api_wrapper

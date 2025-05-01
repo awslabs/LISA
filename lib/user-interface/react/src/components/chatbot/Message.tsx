@@ -124,7 +124,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     remarkPlugins={[remarkBreaks]}
                     children={content}
                 /> : <div style={{ whiteSpace: 'pre-line' }}>{content}</div>}
-            </div>)
+            </div>);
     };
 
     return (

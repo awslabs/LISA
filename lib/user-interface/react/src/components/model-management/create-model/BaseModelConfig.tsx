@@ -30,6 +30,8 @@ export type BaseModelConfigCustomProps = {
 
 export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConfigCustomProps) : ReactElement {
     const {data: instances, isLoading: isLoadingInstances} = useGetInstancesQuery();
+    const isEmbeddingModel = props.item.modelType === ModelType.embedding;
+    const isImageModel = props.item.modelType === ModelType.imagegen;
 
     return (
         <SpaceBetween size={'s'}>
@@ -125,7 +127,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             props.setFields({'streaming': detail.checked})
                         }
                         onBlur={() => props.touchFields(['streaming'])}
-                        disabled={props.item.modelType === ModelType.embedding || props.item.modelType === ModelType.imagegen}
+                        disabled={isEmbeddingModel || isImageModel}
                         checked={props.item.streaming}
                     />
                 </FormField>
@@ -138,7 +140,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'imageInput')});
                             }
                         }}
-                        disabled={props.item.modelType === ModelType.embedding || props.item.modelType === ModelType.imagegen}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === 'imageInput') !== undefined}
                     />
@@ -153,7 +155,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'summarization')});
                             }
                         }}
-                        disabled={props.item.modelType === ModelType.embedding || props.item.modelType === ModelType.imagegen}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === 'summarization') !== undefined}
                     />

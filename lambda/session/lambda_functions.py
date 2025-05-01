@@ -36,6 +36,8 @@ s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"])
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
 s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
 
+executor = ThreadPoolExecutor(max_workers=10)
+
 
 def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
     """Get all sessions for a user from DynamoDB.
@@ -109,6 +111,17 @@ def _generate_presigned_image_url(key: str) -> str:
     return url
 
 
+def _map_session(session: dict) -> Dict[str, Any]:
+    return {
+        "sessionId": session["sessionId"],
+        "firstHumanMessage": next(
+            (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
+        ),
+        "startTime": session.get("startTime", None),
+        "createTime": session.get("createTime", None),
+    }
+
+
 @api_wrapper
 def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     """List sessions by user ID from DynamoDB."""
@@ -116,25 +129,17 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
 
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
-    resp = []
 
-    with ThreadPoolExecutor() as executor:
+    return list(executor.map(_map_session, sessions))
 
-        def map_session(session: dict) -> None:
-            resp.append(
-                {
-                    "sessionId": session["sessionId"],
-                    "firstHumanMessage": next(
-                        (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
-                    ),
-                    "startTime": session.get("startTime", None),
-                    "createTime": session.get("createTime", None),
-                }
-            )
 
-        list(executor.map(map_session, sessions))
-
-    return resp
+def _process_image(task: Tuple[dict, str]) -> None:
+    msg, key = task
+    try:
+        image_url = _generate_presigned_image_url(key)
+        msg["image_url"]["url"] = image_url
+    except Exception as e:
+        print(f"Error uploading to S3: {e}")
 
 
 @api_wrapper
@@ -159,18 +164,7 @@ def get_session(event: dict, context: dict) -> dict:
                         if s3_key:
                             tasks.append((item, s3_key))
 
-        with ThreadPoolExecutor() as executor:
-
-            def process_image(task: Tuple[dict, str]) -> None:
-                msg, key = task
-                try:
-                    image_url = _generate_presigned_image_url(key)
-                    msg["image_url"]["url"] = image_url
-                except Exception as e:
-                    print(f"Error uploading to S3: {e}")
-
-            list(executor.map(process_image, tasks))
-
+        list(executor.map(_process_image, tasks))
         return response.get("Item", {})  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
@@ -195,17 +189,7 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     sessions = _get_all_user_sessions(user_id)
     logger.debug(f"Found user sessions: {sessions}")
 
-    with ThreadPoolExecutor() as executor:
-
-        def delete_session_process(session: dict) -> None:
-            try:
-                session_id = session["sessionId"]
-                logger.info(f"Deleting session with ID {session_id} for user {user_id}")
-                _delete_user_session(session_id, user_id)
-            except Exception as e:
-                print(f"Error deleting session: {e}")
-
-        list(executor.map(delete_session_process, sessions))
+    list(executor.map(lambda session: _delete_user_session(session["sessionId"], user_id), sessions))
     return {"deleted": True}
 
 
@@ -224,14 +208,14 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
             return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
 
         message = body["message"]
+        image_content = message.get("image_url", {}).get("url", None)
 
         if (
             message.get("type", None) == "image_url"
-            and message.get("image_url", {}).get("url", None) is not None
-            and not message.get("image_url", {}).get("url", None).startswith("https://")
+            and image_content is not None
+            and not image_content.startswith("https://")
         ):
             try:
-                image_content = message.get("image_url", {}).get("url", None)
                 # Generate a unique key for the S3 object
                 file_name = f"{uuid.uuid4()}.png"
                 s3_key = f"images/{session_id}/{file_name}"  # Organize files in an images/sessionId prefix

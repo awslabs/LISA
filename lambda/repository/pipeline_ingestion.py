@@ -25,12 +25,12 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 
 
 def ingest(job: IngestionJob) -> None:
-    ingestion_job_repository.update_status(job, IngestionStatus.IN_PROGRESS)
+    ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_IN_PROGRESS)
     pipeline_ingest(job)
 
 
 def delete(job: IngestionJob) -> None:
-    ingestion_job_repository.update_status(job, IngestionStatus.DELETING)
+    ingestion_job_repository.update_status(job, IngestionStatus.DELETE_IN_PROGRESS)
     pipeline_delete(job)
 
 

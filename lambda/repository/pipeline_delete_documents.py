@@ -22,12 +22,7 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore
 from utilities.common_functions import retry_config
 
-from .lambda_functions import (
-    DocumentIngestionService,
-    get_embeddings_pipeline,
-    get_vector_store_client,
-    RagDocumentRepository,
-)
+from .lambda_functions import DocumentIngestionService, RagDocumentRepository
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
@@ -45,15 +40,16 @@ def pipeline_delete(job: IngestionJob) -> None:
         # Find associated RagDocument
         rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
 
-        # Actually remove from vector store
-        remove_document_from_vectorstore(rag_document)
+        if rag_document:
+            # Actually remove from vector store
+            remove_document_from_vectorstore(rag_document)
 
-        # Remove from DDB
-        rag_document_repository.delete_by_id(rag_document.document_id)
+            # Remove from DDB
+            rag_document_repository.delete_by_id(rag_document.document_id)
 
-        # Update status
-        ingestion_job_repository.update_status(job, IngestionStatus.DELETED)
-        logger.info(f"Successfully deleted {job.s3_path} from S3")
+            # Update status
+            ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)
+            logger.info(f"Successfully deleted {job.s3_path} from S3")
     except Exception as e:
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
 
@@ -94,7 +90,7 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
                 s3_path=rag_document.source,
                 username=rag_document.username,
                 ingestion_type=IngestionType.AUTO,
-                status=IngestionStatus.PENDING_DELETE,
+                status=IngestionStatus.DELETE_PENDING,
             )
 
         ingestion_service.create_delete_job(ingestion_job)

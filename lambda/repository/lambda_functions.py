@@ -385,8 +385,8 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     _ensure_document_ownership(event, rag_documents)
 
     # todo don't delete object from s3 if still referenced by another repository/collection
-    # delete s3 files if 
-    doc_repo.delete_s3_docs(repository_id, rag_documents)  
+    # delete s3 files if
+    doc_repo.delete_s3_docs(repository_id, rag_documents)
 
     for rag_document in rag_documents:
         logger.info(f"Deleting document {rag_document.model_dump()}")
@@ -400,17 +400,11 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
                 chunk_strategy=None,
                 s3_path=rag_document.source,
                 username=rag_document.username,
-                status=IngestionStatus.PENDING_DELETE,
+                status=IngestionStatus.DELETE_PENDING,
             )
 
         ingestion_service.create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
-
-    document_ids = []
-    for doc in rag_documents:
-        if doc is not None:
-            document_ids.append(doc.document_id)
-            ingestion_service.create_delete_job(doc.document_id)
 
     return {"documentIds": document_ids}
 

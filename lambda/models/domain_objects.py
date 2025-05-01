@@ -329,13 +329,14 @@ class ChunkingStrategyType(str, Enum):
 class IngestionStatus(str, Enum):
     """Status of Ingestion"""
 
-    PENDING = "PENDING"
-    IN_PROGRESS = "IN_PROGRESS"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
-    PENDING_DELETE = "PENDING_DELETE"
-    DELETING = "DELETING"
-    DELETED = "DELETED"
+    INGESTION_PENDING = "INGESTION_PENDING"
+    INGESTION_IN_PROGRESS = "INGESTION_IN_PROGRESS"
+    INGESTION_COMPLETED = "INGESTION_COMPLETED"
+    INGESTION_FAILED = "INGESTION_FAILED"
+
+    DELETE_PENDING = "DELETE_PENDING"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_COMPLETED = "DELETE_COMPLETED"
     DELETE_FAILED = "DELETE_FAILED"
 
 
@@ -353,7 +354,7 @@ class RagSubDocument(BaseModel):
 
     document_id: str
     subdocs: list[str] = Field(default_factory=lambda: [])
-    index: Optional[int] = Field(exclude=True, default=None)
+    index: Optional[int] = Field(default=None)
     sk: Optional[str] = None
 
     def __init__(self, **data: Any) -> None:
@@ -427,6 +428,6 @@ class IngestionJob(BaseModel):
     repository_id: str
     chunk_strategy: Optional[ChunkingStrategy]
     username: Optional[str] = None
-    status: IngestionStatus = IngestionStatus.PENDING
+    status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error_message: Optional[str] = None

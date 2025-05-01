@@ -55,12 +55,12 @@ def pipeline_ingest(job: IngestionJob) -> None:
             prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
             if prev_job:
-                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETING)
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
             remove_document_from_vectorstore(rag_document)
             rag_document_repository.delete_by_id(rag_document.document_id)
 
             if prev_job:
-                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETED)
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
 
         # save to dynamodb
         rag_document = RagDocument(
@@ -76,20 +76,20 @@ def pipeline_ingest(job: IngestionJob) -> None:
         rag_document_repository.save(rag_document)
 
         # update IngstionJob
-        job.status = IngestionStatus.COMPLETED
+        job.status = IngestionStatus.INGESTION_COMPLETED
         job.document_id = rag_document.document_id
         ingestion_job_repository.save(job)
 
         logging.info(f"Successfully ingested document {job.s3_path} ({len(all_ids)} chunks) into {job.collection_id}")
     except Exception as e:
-        ingestion_job_repository.update_status(job, IngestionStatus.FAILED)
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
 
         error_msg = f"Failed to process document: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
 
 
-def remove_document_from_vectorstore(doc: RagDocument):
+def remove_document_from_vectorstore(doc: RagDocument) -> None:
     # Delete from the Vector Store
     embeddings = get_embeddings_pipeline(model_name=doc.collection_id)
     vector_store = get_vector_store_client(

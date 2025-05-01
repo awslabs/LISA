@@ -15,10 +15,9 @@
 */
 
 import { Construct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Vpc } from '../../networking/vpc';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
@@ -26,6 +25,8 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PipelineConfig, RagRepositoryType, RdsConfig } from '../../schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { Roles } from '../../core/iam/roles';
+import { createCdkId } from '../../core/utils';
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;
@@ -55,8 +56,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             effect: Effect.ALLOW,
             actions: ['s3:GetObject', 's3:ListBucket'],
             resources: [
-                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}`,
-                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
+                `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
+                `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
             ]
         });
         // Allow DynamoDB Read/Write to RAG Document Table
@@ -81,6 +82,16 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
         // Create array of policy statements
         const policyStatements = [s3PolicyStatement, dynamoPolicyStatement];
+
+        // Get the Lambda execution role from SSM parameter
+        const lambdaExecutionRole = Role.fromRoleArn(
+            this,
+            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
+            ),
+        );
 
         // Create IAM certificate policy if certificate ARN is provided
         let certPolicyStatement;
@@ -151,6 +162,67 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             new Rule(this, 'S3EventIngestRule', {
                 eventPattern,
                 targets: [new LambdaFunction(ingestionLambda, {
+                    event: RuleTargetInput.fromObject({
+                        version: '0',
+                        id: EventField.eventId,
+                        'detail-type': EventField.detailType,
+                        source: EventField.source,
+                        time: EventField.time,
+                        region: EventField.region,
+                        detail: {
+                            repositoryId,
+                            bucket: pipelineConfig.s3Bucket,
+                            prefix: pipelineConfig.s3Prefix,
+                            key: EventField.fromPath('$.detail.object.key'),
+                            trigger: 'event',
+                            pipelineConfig,
+                        }
+                    })
+                })]
+            });
+        }
+
+        if (pipelineConfig.autoRemove) {
+            const deletionLambdaArn = StringParameter.fromStringParameterName(this, 'IngestionDeleteEventLambdaStringParameter', `${config.deploymentPrefix}/ingestion/delete/event`);
+            const deletionLambda = lambda.Function.fromFunctionArn(this, 'IngestionDeleteEventLambda', deletionLambdaArn.stringValue);
+            console.log('Creating autodelete rule...');
+
+            // Grant the execution role permissions to delete from specified S3 bucket/prefix
+            // Grant S3 delete permissions
+            lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
+                resources: [
+                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
+                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+                ]
+            }));
+
+            // Create S3 event trigger with complete event pattern and transform input
+            const detail: any = {
+                bucket: {
+                    name: [pipelineConfig.s3Bucket]
+                }
+            };
+
+            // Add prefix filter if specified and not root
+            if (pipelineConfig.s3Prefix !== '') {
+                detail.object = {
+                    key: [{
+                        prefix: pipelineConfig.s3Prefix
+                    }]
+                };
+            }
+
+            const eventPattern: EventPattern = {
+                source: ['aws.s3'],
+                detailType: ['Object Deleted'],
+                detail
+            };
+
+            new Rule(this, 'S3EventDeleteRule', {
+                eventPattern,
+                targets: [new LambdaFunction(deletionLambda, {
                     event: RuleTargetInput.fromObject({
                         version: '0',
                         id: EventField.eventId,

@@ -99,7 +99,12 @@ export class IngestionJobConstruct extends Construct {
         baseEnvironment['LISA_INGESTION_JOB_QUEUE_NAME'] = jobQueue.jobQueueName;
 
         // Set up build directory for Docker image
-        fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
+        try {
+            fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
+        } catch (e) {
+            fs.rmdirSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true });
+            fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
+        }
         fs.cpSync(path.join(__dirname, '../../../lambda'), path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
         fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(__dirname, 'ingestion-image/build/lisapy'), { recursive: true, force: true });
 

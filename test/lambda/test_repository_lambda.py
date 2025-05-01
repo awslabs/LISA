@@ -47,7 +47,7 @@ import requests
 from botocore.config import Config
 from moto import mock_aws
 from utilities.exceptions import HTTPException
-from utilities.validation import ValidationError
+from utilities.validation import ValidationError, validate_model_name
 
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
@@ -152,7 +152,7 @@ patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).sta
 patch("utilities.common_functions.admin_only", mock_admin_only).start()
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
-from repository.lambda_functions import presigned_url
+from repository.lambda_functions import presigned_url, _ensure_document_ownership, _ensure_repository_access
 
 # Create mock modules
 mock_create_env = MagicMock()
@@ -951,8 +951,6 @@ def test_ensure_repository_access_unauthorized():
 
 def test_document_ownership_validation():
     """Test document ownership validation logic"""
-    # Import the function to test
-    from repository.lambda_functions import _ensure_document_ownership
 
     # Test case 1: User is admin
     event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
@@ -993,8 +991,6 @@ def test_document_ownership_validation():
 
 def test_validate_model_name():
     """Test validate_model_name function"""
-    # Import the function to test
-    from repository.lambda_functions import validate_model_name
 
     # Test valid model name
     assert validate_model_name("embedding-model") is True
@@ -1009,8 +1005,6 @@ def test_validate_model_name():
 
 def test_repository_access_validation():
     """Test repository access validation logic"""
-    # Import the function to test
-    from repository.lambda_functions import _ensure_repository_access
 
     # Test case 1: User is admin
     event = {

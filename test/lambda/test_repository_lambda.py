@@ -47,7 +47,7 @@ import requests
 from botocore.config import Config
 from moto import mock_aws
 from utilities.exceptions import HTTPException
-from utilities.validation import ValidationError, validate_model_name
+from utilities.validation import validate_model_name, ValidationError
 
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
@@ -152,7 +152,7 @@ patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).sta
 patch("utilities.common_functions.admin_only", mock_admin_only).start()
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
-from repository.lambda_functions import presigned_url, _ensure_document_ownership, _ensure_repository_access
+from repository.lambda_functions import _ensure_document_ownership, _ensure_repository_access, presigned_url
 
 # Create mock modules
 mock_create_env = MagicMock()

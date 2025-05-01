@@ -316,9 +316,7 @@ class RagDocumentRepository:
             for pipeline in repo.get("pipelines", [])
         }
         removed_source: list[str] = [
-            doc.source
-            for doc in docs
-            if doc.ingestion_type != IngestionType.AUTO or pipelines.get(doc.collection_id)
+            doc.source for doc in docs if doc.ingestion_type != IngestionType.AUTO or pipelines.get(doc.collection_id)
         ]
         for source in removed_source:
             logging.info(f"Removing S3 doc: {source}")

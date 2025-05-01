@@ -102,7 +102,7 @@ export class IngestionJobConstruct extends Construct {
         try {
             fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
         } catch (e) {
-            fs.rmdirSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true });
+            fs.rmSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
             fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
         }
         fs.cpSync(path.join(__dirname, '../../../lambda'), path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
@@ -114,7 +114,7 @@ export class IngestionJobConstruct extends Construct {
         });
 
         // Cleanup build directory
-        fs.rmdirSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true });
+        fs.rmSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
 
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {

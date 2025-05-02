@@ -40,7 +40,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         job = ingestion_job_repository.find_by_id(sys.argv[2])
 
-        if sys.argv[1] == "ingest" and len(sys.argv) > 2:
+        if sys.argv[1] == "ingest":
             ingest(job)
-        elif sys.argv[1] == "delete" and len(sys.argv) > 2:
+        elif sys.argv[1] == "delete":
             delete(job)

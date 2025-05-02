@@ -216,7 +216,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             };
 
             new Rule(this, 'S3EventDeleteRule', {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule`,
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule`,
                 eventPattern,
                 targets: [new LambdaFunction(deletionLambda, {
                     event: RuleTargetInput.fromObject({

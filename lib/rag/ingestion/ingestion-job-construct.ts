@@ -36,7 +36,6 @@ import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
-import crypto from 'crypto';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -108,13 +107,23 @@ export class IngestionJobConstruct extends Construct {
         } catch (e) {
             console.warn(e);
         }
-        fs.cpSync(path.join(__dirname, '../../../lambda'), buildDir, { recursive: true, force: true });
-        fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(buildDir, 'lisapy'), { recursive: true, force: true });
+
+        const copyOptions = {
+            recursive: true,
+            force: true,
+            filter: (srcPath: string) => !srcPath.includes('__pycache__')
+        };
+
+        fs.cpSync(path.join(__dirname, '../../../lambda'), buildDir, copyOptions);
+        fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(buildDir, 'lisapy'), copyOptions);
 
         // Build Docker image for batch jobs
         const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
             directory: ingestionImageRoot,
         });
+
+        deleteWithRetry(buildDir, 3);
+        // fs.rmSync(buildDir, { recursive: true, force: true });
 
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
@@ -208,3 +217,15 @@ export class IngestionJobConstruct extends Construct {
         });
     }
 }
+
+const deleteWithRetry = (dir: string, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            fs.rmSync(dir, { recursive: true, force: true });
+            return;
+        } catch (err) {
+            if (i === retries - 1) throw err;
+            console.warn(`Retrying fs.rmSync: ${err}`);
+        }
+    }
+};

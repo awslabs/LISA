@@ -55,7 +55,7 @@ export const RagRepositoryPipeline = z.object({
     s3Prefix: z.string()
         .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')
         .regex(/^([a-zA-Z0-9!_.*'()/=-]+\/)*[a-zA-Z0-9!_.*'()/=-]*$/, 'Prefix must be a valid S3 prefix.')
-        .regex(/^[^/]/, 'Prefix must not start with /')
+        .regex(/^(?!\/).*/, 'Prefix must not start with /')
         .default('').describe('The prefix within the S3 bucket monitored for document processing.'),
     trigger: z.union([triggerSchema.shape.daily, triggerSchema.shape.event])
         .default('event').describe('The event type that triggers document ingestion.'),

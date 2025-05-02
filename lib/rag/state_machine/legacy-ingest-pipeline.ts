@@ -51,15 +51,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
         const { config, pipelineConfig, repositoryId, ragDocumentTable, ragSubDocumentTable } = props;
 
-        // Create S3 policy statement for both functions
-        const s3PolicyStatement = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['s3:GetObject', 's3:ListBucket'],
-            resources: [
-                `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
-                `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
-            ]
-        });
+        const bucketActions = ['s3:GetObject'];
+
         // Allow DynamoDB Read/Write to RAG Document Table
         const dynamoPolicyStatement = new PolicyStatement({
             effect: Effect.ALLOW,
@@ -81,7 +74,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         });
 
         // Create array of policy statements
-        const policyStatements = [s3PolicyStatement, dynamoPolicyStatement];
+        const policyStatements = [dynamoPolicyStatement];
 
         // Get the Lambda execution role from SSM parameter
         const lambdaExecutionRole = Role.fromRoleArn(
@@ -187,14 +180,14 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             const deletionLambda = lambda.Function.fromFunctionArn(this, 'IngestionDeleteEventLambda', deletionLambdaArn.stringValue);
             console.log('Creating autodelete rule...');
 
-            // Grant the execution role permissions to delete from specified S3 bucket/prefix
-            // Grant S3 delete permissions
+            bucketActions.push('s3:DeleteObject');
+
+            // Grant the execution role permissions to list contents of the S3 bucket
             lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
                 effect: Effect.ALLOW,
-                actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
+                actions: ['s3:ListBucket'],
                 resources: [
-                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
-                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}`,
                 ]
             }));
 
@@ -242,5 +235,14 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 })]
             });
         }
+
+        // Grant the execution role permissions to access specified S3 bucket/prefix
+        lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: bucketActions,
+            resources: [
+                `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+            ]
+        }));
     }
 }

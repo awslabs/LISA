@@ -52,16 +52,7 @@ export abstract class PipelineStack extends Stack {
         // setup EventBridge Rules for any pipelines
         // Process each pipeline configuration
         ragConfig.pipelines?.forEach((pipelineConfig, index) => {
-            // Grant the execution role permissions to access specified S3 bucket/prefix
-            // Grant S3 read permissions to the execution role
-            lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: ['s3:GetObject', 's3:ListBucket'],
-                resources: [
-                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
-                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
-                ]
-            }));
+            const bucketActions = ['s3:GetObject'];
 
             // Add EventBridge Rules based on trigger type specified in the pipeline configuration
             // Create rules based on trigger type
@@ -90,18 +81,28 @@ export abstract class PipelineStack extends Stack {
                 const deletionLambda = lambda.Function.fromFunctionArn(this, 'IngestionDeleteEventLambda', deletionLambdaArn.stringValue);
                 console.log('Creating autodelete rule...');
 
-                // Grant the execution role permissions to delete from specified S3 bucket/prefix
-                // Grant S3 delete permissions
+                bucketActions.push('s3:DeleteObject');
+
+                // Grant the execution role permissions to list contents of the S3 bucket
                 lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
+                    actions: ['s3:ListBucket'],
                     resources: [
-                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}`,
-                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}`,
                     ]
                 }));
+
                 this.createEventLambdaRule(deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
             }
+
+            // Grant the execution role permissions to access specified S3 bucket/prefix
+            lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: bucketActions,
+                resources: [
+                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+                ]
+            }));
         });
     }
 

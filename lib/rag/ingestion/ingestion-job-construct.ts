@@ -36,6 +36,7 @@ import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
+import crypto from 'crypto';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -99,22 +100,24 @@ export class IngestionJobConstruct extends Construct {
         baseEnvironment['LISA_INGESTION_JOB_QUEUE_NAME'] = jobQueue.jobQueueName;
 
         // Set up build directory for Docker image
+        const ingestionImageRoot = path.join(__dirname, 'ingestion-image');
+        const buildDir = path.join(ingestionImageRoot, 'build');
+
         try {
-            fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
+            fs.mkdirSync(buildDir);
         } catch (e) {
-            fs.rmSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
-            fs.mkdirSync(path.join(__dirname, 'ingestion-image/build'));
+            console.warn(e);
         }
-        fs.cpSync(path.join(__dirname, '../../../lambda'), path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
-        fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(__dirname, 'ingestion-image/build/lisapy'), { recursive: true, force: true });
+        fs.cpSync(path.join(__dirname, '../../../lambda'), buildDir, { recursive: true, force: true });
+        fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(buildDir, 'lisapy'), { recursive: true, force: true });
 
         // Build Docker image for batch jobs
         const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
-            directory: path.join(__dirname, 'ingestion-image'),
+            directory: ingestionImageRoot,
         });
 
-        // Cleanup build directory
-        fs.rmSync(path.join(__dirname, 'ingestion-image/build'), { recursive: true, force: true });
+        // // Cleanup build directory
+        // fs.rmSync(buildDir, { recursive: true, force: true });
 
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {

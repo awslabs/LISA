@@ -36,6 +36,7 @@ import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -54,6 +55,7 @@ export class IngestionJobConstruct extends Construct {
         // DynamoDB table for tracking ingestion jobs
         // Uses id as partition key with additional GSIs for querying by created date, s3 path and document id
         const ingestionJobTable = new dynamodb.Table(this, 'IngestionJobTable', {
+            tableName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             partitionKey: {
                 name: 'id',
                 type: dynamodb.AttributeType.STRING
@@ -82,13 +84,14 @@ export class IngestionJobConstruct extends Construct {
 
         // AWS Batch Fargate compute environment for running ingestion jobs
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
-            computeEnvironmentName: 'IngestionJobMyFargateEnv',
+            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             vpc: vpc.vpc,
 
         });
 
         // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
+            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,
@@ -100,13 +103,10 @@ export class IngestionJobConstruct extends Construct {
 
         // Set up build directory for Docker image
         const ingestionImageRoot = path.join(__dirname, 'ingestion-image');
-        const buildDir = path.join(ingestionImageRoot, 'build');
+        const buildDirName = `build-${crypto.randomBytes(6).toString('hex')}`;
+        const buildDir = path.join(ingestionImageRoot, buildDirName);
 
-        try {
-            fs.mkdirSync(buildDir);
-        } catch (e) {
-            console.warn(e);
-        }
+        fs.mkdirSync(buildDir, {recursive: true});
 
         const copyOptions = {
             recursive: true,
@@ -120,13 +120,16 @@ export class IngestionJobConstruct extends Construct {
         // Build Docker image for batch jobs
         const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
             directory: ingestionImageRoot,
+            buildArgs: {
+                'BUILD_DIR': buildDirName
+            },
         });
 
-        deleteWithRetry(buildDir, 3);
-        // fs.rmSync(buildDir, { recursive: true, force: true });
+        fs.rmSync(buildDir, { recursive: true, force: true });
 
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
+            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
                 image: ecs.ContainerImage.fromDockerImageAsset(dockerImageAsset),
@@ -154,6 +157,7 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling scheduled document ingestion
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule`,
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
             code: lambda.Code.fromAsset('./lambda'),
@@ -175,6 +179,7 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling S3 event-based document ingestion
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event`,
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
             code: lambda.Code.fromAsset('./lambda'),
@@ -196,6 +201,7 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling document deletion events
         const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event`,
             runtime: getDefaultRuntime(),
             handler: 'repository.pipeline_delete_documents.handle_pipeline_delete_event',
             code: lambda.Code.fromAsset('./lambda'),

@@ -104,6 +104,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
             // Create daily cron trigger with input template
             new Rule(this, 'DailyIngestRule', {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule`,
                 schedule: Schedule.cron({
                     minute: '0',
                     hour: '0'
@@ -153,6 +154,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             };
 
             new Rule(this, 'S3EventIngestRule', {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-S3EventIngestRule`,
                 eventPattern,
                 targets: [new LambdaFunction(ingestionLambda, {
                     event: RuleTargetInput.fromObject({
@@ -214,6 +216,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             };
 
             new Rule(this, 'S3EventDeleteRule', {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-S3EventIngestRule`,
                 eventPattern,
                 targets: [new LambdaFunction(deletionLambda, {
                     event: RuleTargetInput.fromObject({

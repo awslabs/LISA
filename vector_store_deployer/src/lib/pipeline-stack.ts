@@ -60,13 +60,13 @@ export abstract class PipelineStack extends Stack {
                 case 'daily': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionScheduleLambda', ingestionLambdaArn.stringValue);
-                    this.createDailyLambdaRule(ingestionLambda, ragConfig, pipelineConfig, index);
+                    this.createDailyLambdaRule(config, ingestionLambda, ragConfig, pipelineConfig, index);
                     break;
                 }
                 case 'event': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionIngestEventLambda', ingestionLambdaArn.stringValue);
-                    this.createEventLambdaRule(ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
+                    this.createEventLambdaRule(config, ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
                     break;
                 }
                 default:
@@ -92,7 +92,7 @@ export abstract class PipelineStack extends Stack {
                     ]
                 }));
 
-                this.createEventLambdaRule(deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
+                this.createEventLambdaRule(config, deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
             }
 
             // Grant the execution role permissions to access specified S3 bucket/prefix
@@ -109,7 +109,7 @@ export abstract class PipelineStack extends Stack {
     /**
      * Creates an EventBridge rule for S3 event-based triggers
      */
-    private createEventLambdaRule (ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, disambiguator: number): Rule {
+    private createEventLambdaRule (config: PartialConfig, ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, disambiguator: number): Rule {
         const detail: any = {
             bucket: {
                 name: [pipelineConfig.s3Bucket]
@@ -136,6 +136,7 @@ export abstract class PipelineStack extends Stack {
 
         // Create a new EventBridge rule for the S3 event pattern
         return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-S3Event${eventName}Rule-${disambiguator}`,
             eventPattern,
             // Define the state machine target with input transformation
             targets: [new LambdaFunction(ingestionLambda, {
@@ -162,8 +163,9 @@ export abstract class PipelineStack extends Stack {
     /**
      * Creates an EventBridge rule for daily scheduled triggers
      */
-    private createDailyLambdaRule (ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: number): Rule {
+    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: number): Rule {
         return new Rule(this, `DailyIngestRule-${disambiguator}`, {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({
                 minute: '0',

@@ -116,9 +116,6 @@ export class IngestionJobConstruct extends Construct {
             directory: ingestionImageRoot,
         });
 
-        // // Cleanup build directory
-        // fs.rmSync(buildDir, { recursive: true, force: true });
-
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {

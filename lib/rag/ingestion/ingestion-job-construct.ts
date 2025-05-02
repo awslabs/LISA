@@ -223,15 +223,3 @@ export class IngestionJobConstruct extends Construct {
         });
     }
 }
-
-const deleteWithRetry = (dir: string, retries = 3) => {
-    for (let i = 0; i < retries; i++) {
-        try {
-            fs.rmSync(dir, { recursive: true, force: true });
-            return;
-        } catch (err) {
-            if (i === retries - 1) throw err;
-            console.warn(`Retrying fs.rmSync: ${err}`);
-        }
-    }
-};

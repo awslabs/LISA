@@ -1,0 +1,50 @@
+name: Smoke Tests
+
+# Trigger on every push to any branch
+on:
+  push:
+
+jobs:
+  smoke:
+    name: Run Cypress Smoke Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install base dependencies
+        run: npm ci
+
+      - name: Install Cypress deps
+        run: npm ci --prefix cypress
+
+      # ────────────────────────────────────────────────────
+      # Start LISA UI in background & wait until it’s ready
+      # ────────────────────────────────────────────────────
+      - name: Start LISA UI server
+        run: npm run --prefix lib/user-interface/react dev &
+
+      - name: Wait for UI to respond
+        run: npx wait-on http://localhost:3000
+
+      # ────────────────────────────────────────────────────
+      # Execute Cypress tests
+      # ────────────────────────────────────────────────────
+      - name: Run Cypress Smoke Suite
+        run: npx cypress run --config-file cypress/cypress.smoke.config.ts
+
+      - name: Archive Cypress videos & screenshots
+        if: failure() || always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-smoke-artifacts
+          path: |
+            cypress/smoke/videos
+            cypress/smoke/screenshots

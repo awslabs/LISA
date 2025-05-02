@@ -15,7 +15,7 @@
  */
 
 import { Construct } from 'constructs';
-import { DockerImageCode, DockerImageFunction, IFunction } from 'aws-cdk-lib/aws-lambda';
+import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import {
     Effect,
     IRole,
@@ -30,6 +30,8 @@ import { Duration, Size, Stack } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
 import { Vpc } from '../networking/vpc';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { CodeFactory, ECS_MODEL_DEPLOYER_DIST_PATH } from '../util';
 
 export type ECSModelDeployerProps = {
     securityGroupId: string;
@@ -68,12 +70,15 @@ export class ECSModelDeployer extends Construct {
             'condaUrl': props.config.condaUrl
         };
 
-        const functionId = createCdkId([stackName, 'ecs_model_deployer']);
-        this.ecsModelDeployerFn = new DockerImageFunction(this, functionId, {
+        const functionId = createCdkId([stackName, 'ecs_model_deployer', 'Fn']);
+        const ecsModelDeployerPath = config.ecsModelDeployerPath || ECS_MODEL_DEPLOYER_DIST_PATH;
+        this.ecsModelDeployerFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
-            code: DockerImageCode.fromImageAsset('./ecs_model_deployer/'),
+            code: CodeFactory.createCode(ecsModelDeployerPath),
             timeout: Duration.minutes(10),
             ephemeralStorageSize: Size.mebibytes(2048),
+            runtime: Runtime.NODEJS_18_X,
+            handler: 'index.handler',
             memorySize: 1024,
             role,
             environment: {

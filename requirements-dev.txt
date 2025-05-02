@@ -20,6 +20,7 @@ python-docx==1.1.2
 pypdf==5.4.0
 opensearch-py==2.8.0
 requests_aws4auth==1.3.1
+PyJWT==2.8.0
 
 # Development
 black==24.3.0

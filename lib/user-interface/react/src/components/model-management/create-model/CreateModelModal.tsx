@@ -30,7 +30,7 @@ import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
-import { getDefaults } from '../../../shared/util/zodUtil';
+import { getDefaults } from '#root/lib/schema/zodUtil';
 
 export type CreateModelModalProps = {
     visible: boolean;

@@ -1,0 +1,24 @@
+{
+  "id_token": "",
+  "session_state": null,
+  "access_token": "",
+  "refresh_token": "",
+  "token_type": "Bearer",
+  "scope": "openid profile email ",
+  "profile": {
+    "sub": "",
+    "cognito:groups": [""],
+    "iss": "",
+    "cognito:username": "",
+    "preferred_username": "",
+    "origin_jti": "",
+    "aud": "",
+    "event_id": "",
+    "token_use": "id",
+    "name": "",
+    "exp": 0,
+    "iat": 0,
+    "email": ""
+  },
+  "expires_at": 0
+}

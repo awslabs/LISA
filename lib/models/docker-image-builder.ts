@@ -33,8 +33,8 @@ import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
-import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { getDefaultRuntime } from '../api-base/utils';
+import { ECS_MODEL_PATH, LAMBDA_PATH } from '../util';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
@@ -54,9 +54,9 @@ export class DockerImageBuilder extends Construct {
         const { config } = props;
 
         const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']));
-
+        const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {
-            sources: [Source.asset('./lib/serve/ecs-model/')],
+            sources: [Source.asset(ecsModelPath)],
             destinationBucket: ec2DockerBucket,
             ...(config.roles &&
               {
@@ -81,17 +81,13 @@ export class DockerImageBuilder extends Construct {
             role: ec2InstanceProfileRole,
         });
 
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
-            deadLetterQueueEnabled: true,
-            deadLetterQueue: new Queue(this, 'docker-image-builderDLQ', {
-                queueName: `${stackName}-docker-image-builderDLQ`,
-                enforceSSL: true,
-            }),
             functionName: functionId,
             runtime: getDefaultRuntime(),
             handler: 'dockerimagebuilder.handler',
-            code: Code.fromAsset('./lambda/'),
+            code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(1),
             memorySize: 1024,
             role: ec2BuilderRole,

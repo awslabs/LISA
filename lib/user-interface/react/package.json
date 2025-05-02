@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "node ./scripts/set-revision-info.mjs && tsc && vite build",
+    "copy-dist": "mkdir -p ../../../dist/lisa-web && cp -r ./dist/* ../../../dist/lisa-web/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "format": "prettier --ignore-path .gitignore --write \"**/*.+(tsx|js|ts|json)\""
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(tsx|js|ts|json)\"",
+    "clean": "rm -rf ./dist ./node_modules"
   },
   "dependencies": {
     "@cloudscape-design/chat-components": "^1.0.22",

@@ -25,6 +25,7 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
+import { REST_API_PATH } from '../util';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -66,9 +67,8 @@ export class FastApiContainer extends Construct {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
-        config.authConfig;
         const buildArgs: Record<string, string> | undefined = {
-            BASE_IMAGE: 'python:3.11',
+            BASE_IMAGE: config.baseImage,
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
             PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
@@ -94,7 +94,11 @@ export class FastApiContainer extends Construct {
         if (tokenTable) {
             environment.TOKEN_TABLE_NAME = tokenTable.tableName;
         }
-
+        const image = config.restApiConfig.imageConfig || {
+            baseImage: config.baseImage,
+            path: REST_API_PATH,
+            type: EcsSourceType.ASSET
+        };
         const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
             config,
             ecsConfig: {
@@ -114,11 +118,7 @@ export class FastApiContainer extends Construct {
                 },
                 buildArgs,
                 containerConfig: {
-                    image: {
-                        baseImage: 'python:3.11',
-                        path: 'lib/serve/rest-api',
-                        type: EcsSourceType.ASSET
-                    },
+                    image,
                     healthCheckConfig: {
                         command: ['CMD-SHELL', 'exit 0'],
                         interval: 10,

@@ -36,7 +36,6 @@ import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
-import * as crypto from 'crypto';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -103,7 +102,7 @@ export class IngestionJobConstruct extends Construct {
 
         // Set up build directory for Docker image
         const ingestionImageRoot = path.join(__dirname, 'ingestion-image');
-        const buildDirName = `build-${crypto.randomBytes(6).toString('hex')}`;
+        const buildDirName = 'build';
         const buildDir = path.join(ingestionImageRoot, buildDirName);
 
         fs.mkdirSync(buildDir, {recursive: true});
@@ -123,9 +122,8 @@ export class IngestionJobConstruct extends Construct {
             buildArgs: {
                 'BUILD_DIR': buildDirName
             },
+            cacheDisabled: true
         });
-
-        fs.rmSync(buildDir, { recursive: true, force: true });
 
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {

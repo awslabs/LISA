@@ -15,9 +15,7 @@
  */
 
 import { Duration } from 'aws-cdk-lib';
-import { WaitTime } from 'aws-cdk-lib/aws-stepfunctions';
 
 export const LAMBDA_MEMORY: number = 2048;
 export const LAMBDA_TIMEOUT: Duration = Duration.minutes(15);
 export const OUTPUT_PATH: string = '$.Payload';
-export const POLLING_TIMEOUT: WaitTime = WaitTime.duration(Duration.seconds(60));

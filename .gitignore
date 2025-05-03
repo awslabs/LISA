@@ -19,6 +19,7 @@ __pycache__/
 .cdk.staging
 cdk.out/
 cdk.context.json
+lib/rag/ingestion/ingestion-image/build
 
 # Misc
 .idea

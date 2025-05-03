@@ -14,7 +14,7 @@
   limitations under the License.
  */
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { IManagedPolicy, IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, IManagedPolicy, IRole, ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -148,12 +148,23 @@ export class LisaServeIAMSConstruct extends Construct {
             statements: lambdaPolicyStatements,
         });
 
-        return new Role(this.scope, Roles.RAG_LAMBDA_EXECUTION_ROLE, {
+        const ecsTaskExecutionRolePolicy = ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy');
+        const role = new Role(this.scope, Roles.RAG_LAMBDA_EXECUTION_ROLE, {
             roleName,
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             description: 'Role used by RAG API lambdas to access AWS resources',
-            managedPolicies: [lambdaRagPolicy],
+            managedPolicies: [lambdaRagPolicy, ecsTaskExecutionRolePolicy],
         });
+
+        role.assumeRolePolicy?.addStatements(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['sts:AssumeRole'],
+                principals: [new ServicePrincipal('ecs-tasks.amazonaws.com')],
+            })
+        );
+
+        return role;
     }
 
     private createEcsTaskRole (role: ECSRole, roleId: string, roleName: string, taskPolicy: IManagedPolicy): IRole {

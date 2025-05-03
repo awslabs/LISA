@@ -12,13 +12,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Domain objects for interacting with the model endpoints."""
+"""Defines domain objects for model endpoint interactions."""
 
 import logging
 import time
 import uuid
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
@@ -29,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class InferenceContainer(str, Enum):
-    """Enum representing the interface container type."""
+    """Defines supported inference container types."""
 
     def __str__(self) -> str:
-        """Represent the enum as a string."""
+        """Returns string representation of the enum value."""
         return str(self.value)
 
     TGI = "tgi"
@@ -41,10 +43,10 @@ class InferenceContainer(str, Enum):
 
 
 class ModelStatus(str, Enum):
-    """Enum representing a model status."""
+    """Defines possible model deployment states."""
 
     def __str__(self) -> str:
-        """Represent the enum as a string."""
+        """Returns string representation of the enum value."""
         return str(self.value)
 
     CREATING = "Creating"
@@ -58,10 +60,10 @@ class ModelStatus(str, Enum):
 
 
 class ModelType(str, Enum):
-    """Enum representing a model type."""
+    """Defines supported model categories."""
 
     def __str__(self) -> str:
-        """Represent the enum as a string."""
+        """Returns string representation of the enum value."""
         return str(self.value)
 
     TEXTGEN = "textgen"
@@ -69,7 +71,7 @@ class ModelType(str, Enum):
 
 
 class MetricConfig(BaseModel):
-    """Metric configuration for autoscaling."""
+    """Defines metrics configuration for auto-scaling policies."""
 
     albMetricName: str = Field(min_length=1)
     targetValue: NonNegativeInt
@@ -78,7 +80,7 @@ class MetricConfig(BaseModel):
 
 
 class LoadBalancerHealthCheckConfig(BaseModel):
-    """Health check configuration for a load balancer."""
+    """Specifies health check parameters for load balancer configuration."""
 
     path: str = Field(min_length=1)
     interval: PositiveInt
@@ -88,13 +90,13 @@ class LoadBalancerHealthCheckConfig(BaseModel):
 
 
 class LoadBalancerConfig(BaseModel):
-    """Load balancer configuration."""
+    """Defines load balancer settings."""
 
     healthCheckConfig: LoadBalancerHealthCheckConfig
 
 
 class AutoScalingConfig(BaseModel):
-    """Autoscaling configuration upon model creation."""
+    """Specifies auto-scaling parameters for model deployment."""
 
     blockDeviceVolumeSize: Optional[NonNegativeInt] = 30
     minCapacity: NonNegativeInt
@@ -105,7 +107,7 @@ class AutoScalingConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_auto_scaling_config(self) -> Self:
-        """Validate autoScalingConfig values."""
+        """Validates auto-scaling configuration parameters."""
         if self.minCapacity > self.maxCapacity:
             raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
         if self.blockDeviceVolumeSize is not None and self.blockDeviceVolumeSize < 30:
@@ -114,7 +116,7 @@ class AutoScalingConfig(BaseModel):
 
 
 class AutoScalingInstanceConfig(BaseModel):
-    """Autoscaling instance count configuration upon model update."""
+    """Defines instance count parameters for auto-scaling updates."""
 
     minCapacity: Optional[PositiveInt] = None
     maxCapacity: Optional[PositiveInt] = None
@@ -122,21 +124,19 @@ class AutoScalingInstanceConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
-        """Validate autoScalingInstanceConfig values."""
+        """Validates auto-scaling instance configuration parameters."""
         config_fields = [self.minCapacity, self.maxCapacity, self.desiredCapacity]
         if not validate_any_fields_defined(config_fields):
             raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
-        # if desired and max are greater than 1, and desired is greater than requested max, throw error
         if self.desiredCapacity and self.maxCapacity and self.desiredCapacity > self.maxCapacity:
             raise ValueError("Desired capacity must be less than or equal to max capacity.")
-        # if desired and min are 1 or more, and desired is less than requested min, throw error
         if self.desiredCapacity and self.minCapacity and self.desiredCapacity < self.minCapacity:
             raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
         return self
 
 
 class ContainerHealthCheckConfig(BaseModel):
-    """Health check configuration for a container."""
+    """Specifies container health check parameters."""
 
     command: Union[str, List[str]]
     interval: PositiveInt
@@ -146,14 +146,14 @@ class ContainerHealthCheckConfig(BaseModel):
 
 
 class ContainerConfigImage(BaseModel):
-    """Image image configuration for a container."""
+    """Defines container image configuration."""
 
     baseImage: str = Field(min_length=1)
     type: str = Field(min_length=1)
 
 
 class ContainerConfig(BaseModel):
-    """Container configuration."""
+    """Specifies container deployment settings."""
 
     image: ContainerConfigImage
     sharedMemorySize: PositiveInt
@@ -163,7 +163,7 @@ class ContainerConfig(BaseModel):
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
-        """Validate that all keys in Dict are not empty."""
+        """Validates environment variable key names."""
         if environment:
             if not all((key for key in environment.keys())):
                 raise ValueError("Empty strings are not allowed for environment variable key names.")
@@ -171,6 +171,8 @@ class ContainerConfig(BaseModel):
 
 
 class ModelFeature(BaseModel):
+    """Defines model feature attributes."""
+
     __exceptions: List[Any] = []
     name: str
     overview: str
@@ -180,7 +182,7 @@ class ModelFeature(BaseModel):
 
 
 class LISAModel(BaseModel):
-    """Core model definition fields."""
+    """Defines core model attributes and configuration."""
 
     autoScalingConfig: Optional[AutoScalingConfig] = None
     containerConfig: Optional[ContainerConfig] = None
@@ -197,13 +199,13 @@ class LISAModel(BaseModel):
 
 
 class ApiResponseBase(BaseModel):
-    """Common API response definition for most API calls."""
+    """Defines base structure for API responses."""
 
     model: LISAModel
 
 
 class CreateModelRequest(BaseModel):
-    """Request object when creating a new model."""
+    """Specifies parameters for model creation requests."""
 
     autoScalingConfig: Optional[AutoScalingConfig] = None
     containerConfig: Optional[ContainerConfig] = None
@@ -219,8 +221,7 @@ class CreateModelRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
-        """Validate whole request object."""
-        # Validate that an embedding model cannot be set as streaming-enabled
+        """Validates model creation request parameters."""
         if self.modelType == ModelType.EMBEDDING and self.streaming:
             raise ValueError("Embedding model cannot be set with streaming enabled.")
 
@@ -231,7 +232,6 @@ class CreateModelRequest(BaseModel):
             self.instanceType,
             self.loadBalancerConfig,
         ]
-        # If any of these fields are defined, assume LISA-hosted model. If LISA-hosted model, then ALL fields required.
         if validate_any_fields_defined(required_hosting_fields):
             if not validate_all_fields_defined(required_hosting_fields):
                 raise ValueError(
@@ -243,25 +243,25 @@ class CreateModelRequest(BaseModel):
 
 
 class CreateModelResponse(ApiResponseBase):
-    """Response object when creating a model."""
+    """Defines response structure for model creation."""
 
     pass
 
 
 class ListModelsResponse(BaseModel):
-    """Response object when listing models."""
+    """Defines response structure for model listing."""
 
     models: List[LISAModel]
 
 
 class GetModelResponse(ApiResponseBase):
-    """Response object when getting a model."""
+    """Defines response structure for model retrieval."""
 
     pass
 
 
 class UpdateModelRequest(BaseModel):
-    """Request object when updating a model."""
+    """Specifies parameters for model update requests."""
 
     autoScalingInstanceConfig: Optional[AutoScalingInstanceConfig] = None
     enabled: Optional[bool] = None
@@ -270,21 +270,19 @@ class UpdateModelRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
-        """Validate whole request object."""
+        """Validates model update request parameters."""
         fields = [
             self.autoScalingInstanceConfig,
             self.enabled,
             self.modelType,
             self.streaming,
         ]
-        # Validate that at minimum one field is defined, otherwise there's no action to take in this update
         if not validate_any_fields_defined(fields):
             raise ValueError(
                 "At least one field out of autoScalingInstanceConfig, enabled, modelType, or "
                 "streaming must be defined in request payload."
             )
 
-        # Validate that an embedding model cannot be set as streaming-enabled
         if self.modelType == ModelType.EMBEDDING and self.streaming:
             raise ValueError("Embedding model cannot be set with streaming enabled.")
         return self
@@ -292,25 +290,27 @@ class UpdateModelRequest(BaseModel):
     @field_validator("autoScalingInstanceConfig")
     @classmethod
     def validate_autoscaling_instance_config(cls, config: AutoScalingInstanceConfig) -> AutoScalingInstanceConfig:
-        """Validate that the AutoScaling instance config has at least one positive value."""
+        """Validates auto-scaling instance configuration."""
         if not config:
             raise ValueError("The autoScalingInstanceConfig must not be null if defined in request payload.")
         return config
 
 
 class UpdateModelResponse(ApiResponseBase):
-    """Response object when updating a model."""
+    """Defines response structure for model updates."""
 
     pass
 
 
 class DeleteModelResponse(ApiResponseBase):
-    """Response object when deleting a model."""
+    """Defines response structure for model deletion."""
 
     pass
 
 
-class IngestionType(Enum):
+class IngestionType(str, Enum):
+    """Specifies whether ingestion was automatic or manual."""
+
     AUTO = "auto"
     MANUAL = "manual"
 
@@ -318,18 +318,43 @@ class IngestionType(Enum):
 RagDocumentDict: TypeAlias = Dict[str, Any]
 
 
-class ChunkStrategyType(Enum):
-    """Enum for different types of chunking strategies."""
+class ChunkingStrategyType(str, Enum):
+    """Defines supported document chunking strategies."""
 
     FIXED = "fixed"
 
 
+class IngestionStatus(str, Enum):
+    """Defines possible states for document ingestion process."""
+
+    INGESTION_PENDING = "INGESTION_PENDING"
+    INGESTION_IN_PROGRESS = "INGESTION_IN_PROGRESS"
+    INGESTION_COMPLETED = "INGESTION_COMPLETED"
+    INGESTION_FAILED = "INGESTION_FAILED"
+
+    DELETE_PENDING = "DELETE_PENDING"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_COMPLETED = "DELETE_COMPLETED"
+    DELETE_FAILED = "DELETE_FAILED"
+
+
+class FixedChunkingStrategy(BaseModel):
+    """Defines parameters for fixed-size document chunking."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.FIXED
+    size: int
+    overlap: int
+
+
+ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
+
+
 class RagSubDocument(BaseModel):
-    """Rag Sub-Document Entity for storing in DynamoDB."""
+    """Represents a sub-document entity for DynamoDB storage."""
 
     document_id: str
     subdocs: list[str] = Field(default_factory=lambda: [])
-    index: int = Field(exclude=True)
+    index: Optional[int] = Field(default=None)
     sk: Optional[str] = None
 
     def __init__(self, **data: Any) -> None:
@@ -338,7 +363,7 @@ class RagSubDocument(BaseModel):
 
 
 class RagDocument(BaseModel):
-    """Rag Document Entity for storing in DynamoDB."""
+    """Represents a RAG document entity for DynamoDB storage."""
 
     pk: Optional[str] = None
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -348,7 +373,7 @@ class RagDocument(BaseModel):
     source: str
     username: str
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
-    chunk_strategy: dict[str, str] = {}
+    chunk_strategy: ChunkingStrategy
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: int(time.time() * 1000))
     chunks: Optional[int] = 0
@@ -361,10 +386,11 @@ class RagDocument(BaseModel):
 
     @staticmethod
     def createPartitionKey(repository_id: str, collection_id: str) -> str:
+        """Generates a partition key from repository and collection IDs."""
         return f"{repository_id}#{collection_id}"
 
     def chunk_doc(self, chunk_size: int = 1000) -> Generator[RagSubDocument, None, None]:
-        """Chunk the document into smaller sub-documents."""
+        """Segments document into smaller sub-documents."""
         total_subdocs = len(self.subdocs)
         for start_index in range(0, total_subdocs, chunk_size):
             end_index = min(start_index + chunk_size, total_subdocs)
@@ -374,8 +400,7 @@ class RagDocument(BaseModel):
 
     @staticmethod
     def join_docs(documents: List[RagDocumentDict]) -> List[RagDocumentDict]:
-        """Join the multiple sub-documents into a single document."""
-        # Group documents by document_id
+        """Combines multiple sub-documents into a single document."""
         grouped_docs: dict[str, List[RagDocumentDict]] = {}
         for doc in documents:
             doc_id = doc.get("document_id", "")
@@ -383,7 +408,6 @@ class RagDocument(BaseModel):
                 grouped_docs[doc_id] = []
             grouped_docs[doc_id].append(doc)
 
-        # Join same document_id into single RagDocument
         joined_docs: List[RagDocumentDict] = []
         for docs in grouped_docs.values():
             joined_doc = docs[0]
@@ -391,3 +415,18 @@ class RagDocument(BaseModel):
             joined_docs.append(joined_doc)
 
         return joined_docs
+
+
+class IngestionJob(BaseModel):
+    """Represents an ingestion job entity for DynamoDB storage."""
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    s3_path: str
+    collection_id: str
+    document_id: Optional[str] = Field(default=None)
+    repository_id: str
+    chunk_strategy: Optional[ChunkingStrategy]
+    username: Optional[str] = None
+    status: IngestionStatus = IngestionStatus.INGESTION_PENDING
+    created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    error_message: Optional[str] = None

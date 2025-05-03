@@ -112,6 +112,12 @@ export class ModelsApi extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
+        // Create SSM parameter for model table name
+        new StringParameter(this, 'ModelTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/modelTableName`,
+            stringValue: modelTable.tableName,
+        });
+
         const ecsModelBuildRepo = new Repository(this, 'ecs-model-build-repo');
 
         const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {

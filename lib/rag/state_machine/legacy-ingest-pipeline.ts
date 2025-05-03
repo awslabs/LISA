@@ -51,6 +51,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
         const { config, pipelineConfig, repositoryId, ragDocumentTable, ragSubDocumentTable } = props;
 
+        const disambiguator = createCdkId([repositoryId, pipelineConfig.embeddingModel]);
+
         const bucketActions = ['s3:GetObject'];
 
         // Allow DynamoDB Read/Write to RAG Document Table
@@ -79,7 +81,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         // Get the Lambda execution role from SSM parameter
         const lambdaExecutionRole = Role.fromRoleArn(
             this,
-            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            createCdkId([Roles.RAG_LAMBDA_EXECUTION_ROLE, disambiguator]),
             StringParameter.valueForStringParameter(
                 this,
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
@@ -99,12 +101,12 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
         // Add EventBridge Rules based on pipeline configuration
         if (pipelineConfig.trigger === 'daily') {
-            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, 'IngestionScheduleLambdaStringParameter', `${config.deploymentPrefix}/ingestion/ingest/schedule`);
-            const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionScheduleLambda', ingestionLambdaArn.stringValue);
+            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionScheduleLambdaStringParameter', disambiguator]), `${config.deploymentPrefix}/ingestion/ingest/schedule`);
+            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionScheduleLambda', disambiguator]), ingestionLambdaArn.stringValue);
 
             // Create daily cron trigger with input template
-            new Rule(this, 'DailyIngestRule', {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyDailyIngestRule`,
+            new Rule(this, createCdkId(['DailyIngestRule', disambiguator]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyDailyIngestRule-${disambiguator}`,
                 schedule: Schedule.cron({
                     minute: '0',
                     hour: '0'
@@ -128,8 +130,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 })]
             });
         } else if (pipelineConfig.trigger === 'event') {
-            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, 'IngestionChangeEventLambdaStringParameter', `${config.deploymentPrefix}/ingestion/ingest/event`);
-            const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionIngestEventLambda', ingestionLambdaArn.stringValue);
+            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionChangeEventLambdaStringParameter', disambiguator]), `${config.deploymentPrefix}/ingestion/ingest/event`);
+            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionIngestEventLambda', disambiguator]), ingestionLambdaArn.stringValue);
 
             // Create S3 event trigger with complete event pattern and transform input
             const detail: any = {
@@ -153,8 +155,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, 'S3EventIngestRule', {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule`,
+            new Rule(this, createCdkId(['S3EventIngestRule', disambiguator]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule-${disambiguator}`,
                 eventPattern,
                 targets: [new LambdaFunction(ingestionLambda, {
                     event: RuleTargetInput.fromObject({
@@ -178,8 +180,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         }
 
         if (pipelineConfig.autoRemove) {
-            const deletionLambdaArn = StringParameter.fromStringParameterName(this, 'IngestionDeleteEventLambdaStringParameter', `${config.deploymentPrefix}/ingestion/delete/event`);
-            const deletionLambda = lambda.Function.fromFunctionArn(this, 'IngestionDeleteEventLambda', deletionLambdaArn.stringValue);
+            const deletionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionDeleteEventLambdaStringParameter', disambiguator]), `${config.deploymentPrefix}/ingestion/delete/event`);
+            const deletionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionDeleteEventLambda', disambiguator]), deletionLambdaArn.stringValue);
             console.log('Creating autodelete rule...');
 
             bucketActions.push('s3:DeleteObject');
@@ -215,8 +217,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, 'S3EventDeleteRule', {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule`,
+            new Rule(this, createCdkId(['S3EventDeleteRule', disambiguator]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule-${disambiguator}`,
                 eventPattern,
                 targets: [new LambdaFunction(deletionLambda, {
                     event: RuleTargetInput.fromObject({

@@ -59,13 +59,13 @@ export abstract class PipelineStack extends Stack {
             switch (pipelineConfig.trigger) {
                 case 'daily': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
-                    const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionScheduleLambda', ingestionLambdaArn.stringValue);
+                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionScheduleLambda-${index}`, ingestionLambdaArn.stringValue);
                     this.createDailyLambdaRule(config, ingestionLambda, ragConfig, pipelineConfig, index);
                     break;
                 }
                 case 'event': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
-                    const ingestionLambda = lambda.Function.fromFunctionArn(this, 'IngestionIngestEventLambda', ingestionLambdaArn.stringValue);
+                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionIngestEventLambda-${index}`, ingestionLambdaArn.stringValue);
                     this.createEventLambdaRule(config, ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
                     break;
                 }
@@ -78,7 +78,7 @@ export abstract class PipelineStack extends Stack {
             // Setup auto-removal of objects if enabled
             if (pipelineConfig.autoRemove) {
                 const deletionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionDeleteEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/delete/event`);
-                const deletionLambda = lambda.Function.fromFunctionArn(this, 'IngestionDeleteEventLambda', deletionLambdaArn.stringValue);
+                const deletionLambda = lambda.Function.fromFunctionArn(this, `IngestionDeleteEventLambda-${index}`, deletionLambdaArn.stringValue);
                 console.log('Creating autodelete rule...');
 
                 bucketActions.push('s3:DeleteObject');
@@ -164,7 +164,7 @@ export abstract class PipelineStack extends Stack {
      * Creates an EventBridge rule for daily scheduled triggers
      */
     private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: number): Rule {
-        return new Rule(this, `DailyIngestRule-${disambiguator}`, {
+        return new Rule(this, `${ragConfig.repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
             ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({

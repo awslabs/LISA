@@ -38,7 +38,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
 
     docs, last_evaluated = doc_repo.list_all(repository_id=repository_id, last_evaluated_key=last_evaluated)
     for doc in docs:
-        doc_repo.delete_by_id(repository_id=repository_id, document_id=doc.get("document_id"))
+        doc_repo.delete_by_id(doc.document_id)
 
     doc_repo.delete_s3_docs(repository_id=repository_id, docs=docs)
 

@@ -25,7 +25,7 @@ const stackRolesOverrides: Record<string, number> = {
     'LisaServe': 3,
     'LisaUI': 1,
     'LisaDocs': 2,
-    'LisaRAG': 7,
+    'LisaRAG': 4,
 };
 
 const stackRoles: Record<string, number> = {
@@ -39,11 +39,11 @@ const stackRoles: Record<string, number> = {
     'LisaIAM': 2,
     'LisaDocs': 4,
     'LisaModels': 9,
-    'LisaRAG': 7,
+    'LisaRAG': 4,
 };
 
 describe('Verify role overrides', () => {
-    const config = ConfigParser.parseConfig(['config.yaml', 'roles.yaml']);
+    const config = ConfigParser.parseConfig(['config-test.yaml', 'roles.yaml']);
     expect(Object.keys(config.roles || {}).length).toBe(Object.keys(Roles).length);
 
     const { stacks } = MockApp.create(config);

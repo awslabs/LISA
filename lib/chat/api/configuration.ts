@@ -27,6 +27,7 @@ import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { IRole } from 'aws-cdk-lib/aws-iam';
+import { LAMBDA_PATH } from '../../util';
 
 /**
  * Props for the ConfigurationApi construct
@@ -148,17 +149,18 @@ export class ConfigurationApi extends Construct {
             },
         ];
 
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
-                './lambda',
+                lambdaPath,
                 [commonLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {

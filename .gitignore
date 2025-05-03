@@ -2,9 +2,11 @@
 !tailwind.config.js
 !postcss.config.js
 !jest.config.js
+!esbuild.js
 *.d.ts
-dist/
 node_modules/
+/build
+/dist
 __pycache__/
 .ruff_cache/
 .husky/
@@ -17,6 +19,7 @@ __pycache__/
 .cdk.staging
 cdk.out/
 cdk.context.json
+lib/rag/ingestion/ingestion-image/build
 
 # Misc
 .idea
@@ -35,3 +38,7 @@ coverage
 config.yaml
 config-custom.yaml
 /.coverage
+
+# Test Artifacts
+/cypress/videos
+/cypress/screenshots

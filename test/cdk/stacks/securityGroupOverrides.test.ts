@@ -21,19 +21,19 @@ import { Stack } from 'aws-cdk-lib';
 
 const stackGroupOverrides: Record<string, number> = {
     LisaServe: 1,
-    LisaRAG: 4,
+    LisaRAG: 5,
 };
 
 const stackGroups: Record<string, number> = {
     LisaServe: 2,
     LisaNetworking: 3,
-    LisaRAG: 6,
+    LisaRAG: 7,
 };
 const RESOURCE = 'AWS::EC2::SecurityGroup';
 
 describe('Verify security group overrides', () => {
     describe('Number of Security Groups created with overrides', () => {
-        const config = ConfigParser.parseConfig(['config.yaml', 'security-groups.yaml']);
+        const config = ConfigParser.parseConfig(['config-test.yaml', 'security-groups.yaml']);
 
         const {stacks} = MockApp.create(config);
 

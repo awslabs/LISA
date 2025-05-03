@@ -1,6 +1,6 @@
 {
   "name": "@awslabs/lisa",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "homepage": "https://awslabs.github.io/LISA/",
   "license": "Apache-2.0",
@@ -25,22 +25,23 @@
     "rag",
     "retrieval-augmented-generation"
   ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "workspaces": [
     "lib/user-interface/react",
     "lib/docs",
     "ecs_model_deployer",
-    "vector_store_deployer"
+    "vector_store_deployer",
+    "cypress"
   ],
   "scripts": {
     "build": "tsc && npm run build -ws",
     "deploy": "tsx ./bin/lisa.ts",
+    "copy-dist": "cp VERSION ./dist/",
+    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "prepare": "husky install",
+    "prepare": "husky",
+    "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },
@@ -59,6 +60,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "aws-cdk": "^2.184.0",
     "depcheck": "^1.4.7",
+    "esbuild": "^0.25.1",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^4.6.2",
@@ -71,11 +73,13 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "~5.1.6",
+    "wait-on": "^8.0.3",
     "zod2md": "^0.1.4"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.185.0",
     "aws-sdk": "^2.1692.0",
+    "cdk-ecr-deployment": "^4.0.1",
     "cdk-nag": "^2.35.5",
     "constructs": "^10.4.2",
     "js-yaml": "^4.1.0",
@@ -83,6 +87,12 @@
     "source-map-support": "^0.5.21",
     "util": "^0.12.5",
     "zod": "^3.24.1"
+  },
+  "peerDependencies": {
+    "@cfworker/json-schema": "^4.1.0",
+    "@types/lodash": "^4.17.14",
+    "micromark": "4.0.0",
+    "micromark-core-commonmark": "2.0.1"
   },
   "lint-staged": {
     "*.ts": [

@@ -1,5 +1,5 @@
 {
-  "app": "node ./vector_store_deployer/src/lib/index.js",
+  "app": "node ./lib/index.js",
   "requireApproval": "never",
   "watch": {
     "include": ["**"],

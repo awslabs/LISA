@@ -46,6 +46,7 @@ import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
+import { LAMBDA_PATH } from '../util';
 
 /**
  * Properties for ModelsApi Construct.
@@ -56,7 +57,7 @@ import { Roles } from '../core/iam/roles';
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  */
 type ModelsApiProps = BaseProps & {
-    authorizer: IAuthorizer;
+    authorizer?: IAuthorizer;
     lisaServeEndpointUrlPs: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -109,6 +110,12 @@ export class ModelsApi extends Construct {
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+        });
+
+        // Create SSM parameter for model table name
+        new StringParameter(this, 'ModelTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/modelTableName`,
+            stringValue: modelTable.tableName,
         });
 
         const ecsModelBuildRepo = new Repository(this, 'ecs-model-build-repo');
@@ -188,12 +195,12 @@ export class ModelsApi extends Construct {
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
             restApi,
-            authorizer,
-            './lambda',
+            lambdaPath,
             lambdaLayers,
             {
                 name: 'handler',
@@ -206,6 +213,7 @@ export class ModelsApi extends Construct {
             getDefaultRuntime(),
             vpc,
             securityGroups,
+            authorizer,
             lambdaRole,
         );
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
@@ -271,13 +279,13 @@ export class ModelsApi extends Construct {
             registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
-                './lambda',
+                lambdaPath,
                 lambdaLayers,
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaRole,
             );
         });

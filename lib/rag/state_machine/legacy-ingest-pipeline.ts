@@ -14,32 +14,20 @@
   limitations under the License.
 */
 
-import {
-    Chain,
-    Choice,
-    Condition,
-    DefinitionBody,
-    Fail,
-    Map,
-    Pass,
-    StateMachine,
-    Succeed,
-} from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
-import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Vpc } from '../../networking/vpc';
-import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
-import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
-import * as kms from 'aws-cdk-lib/aws-kms';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PipelineConfig, RagRepositoryType, RdsConfig } from '../../schema';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { Roles } from '../../core/iam/roles';
+import { createCdkId } from '../../core/utils';
+import * as crypto from 'crypto';
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;
@@ -62,51 +50,12 @@ export class LegacyIngestPipelineStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: IngestPipelineStateMachineProps) {
         super(scope, id);
 
-        const {config, vpc, pipelineConfig, rdsConfig, repositoryId, type, layers, registeredRepositoriesParamName, ragDocumentTable, ragSubDocumentTable} = props;
+        const { config, pipelineConfig, repositoryId, ragDocumentTable, ragSubDocumentTable } = props;
 
-        // Create KMS key for environment variable encryption
-        const kmsKey = new kms.Key(this, 'EnvironmentEncryptionKey', {
-            enableKeyRotation: true,
-            description: 'Key for encrypting Lambda environment variables'
-        });
+        const hash = crypto.randomBytes(6).toString('hex');
 
-        const environment = {
-            CHUNK_OVERLAP: pipelineConfig.chunkOverlap.toString(),
-            CHUNK_SIZE: pipelineConfig.chunkSize.toString(),
-            EMBEDDING_MODEL: pipelineConfig.embeddingModel,
-            S3_BUCKET: pipelineConfig.s3Bucket,
-            S3_PREFIX: pipelineConfig.s3Prefix,
-            REPOSITORY_ID: repositoryId,
-            REPOSITORY_TYPE: type,
-            REST_API_VERSION: 'v2',
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
-            RDS_CONNECTION_INFO_PS_NAME: `${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-            OPENSEARCH_ENDPOINT_PS_NAME: `${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-            LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
-            RAG_DOCUMENT_TABLE: ragDocumentTable.tableName,
-            RAG_SUB_DOCUMENT_TABLE: ragSubDocumentTable.tableName,
-            LOG_LEVEL: config.logLevel,
-            REGISTERED_REPOSITORIES_PS_NAME: registeredRepositoriesParamName,
-            REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
-            RESTAPI_SSL_CERT_ARN: config.restApiConfig.sslCertIamArn || '',
-            ...(rdsConfig && {
-                RDS_USERNAME: rdsConfig.username,
-                RDS_HOST: rdsConfig.dbHost || '',
-                RDS_DATABASE: rdsConfig.dbName,
-                RDS_PORT: rdsConfig.dbPort.toString(),
-                RDS_PASSWORD_SECRET_ID: rdsConfig.passwordSecretId || ''
-            })
-        };
+        const bucketActions = ['s3:GetObject'];
 
-        // Create S3 policy statement for both functions
-        const s3PolicyStatement = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['s3:GetObject', 's3:ListBucket'],
-            resources: [
-                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}`,
-                `arn:${cdk.Aws.PARTITION}:s3:::${pipelineConfig.s3Bucket}/*`
-            ]
-        });
         // Allow DynamoDB Read/Write to RAG Document Table
         const dynamoPolicyStatement = new PolicyStatement({
             effect: Effect.ALLOW,
@@ -128,7 +77,17 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         });
 
         // Create array of policy statements
-        const policyStatements = [s3PolicyStatement, dynamoPolicyStatement];
+        const policyStatements = [dynamoPolicyStatement];
+
+        // Get the Lambda execution role from SSM parameter
+        const lambdaExecutionRole = Role.fromRoleArn(
+            this,
+            createCdkId([Roles.RAG_LAMBDA_EXECUTION_ROLE, hash]),
+            StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
+            ),
+        );
 
         // Create IAM certificate policy if certificate ARN is provided
         let certPolicyStatement;
@@ -141,125 +100,20 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             policyStatements.push(certPolicyStatement);
         }
 
-        // Function to list objects modified in last 24 hours
-        const listModifiedObjectsFunction = new Function(this, 'listModifiedObjectsFunc', {
-            runtime: getDefaultRuntime(),
-            handler: 'repository.state_machine.list_modified_objects.handle_list_modified_objects',
-            code: Code.fromAsset('./lambda'),
-            timeout: LAMBDA_TIMEOUT,
-            memorySize: LAMBDA_MEMORY,
-            vpc: vpc!.vpc,
-            environment: environment,
-            environmentEncryption: kmsKey,
-            layers: layers,
-            initialPolicy: policyStatements
-        });
-
-        const listModifiedObjects = new LambdaInvoke(this, 'listModifiedObjects', {
-            lambdaFunction: listModifiedObjectsFunction,
-            outputPath: OUTPUT_PATH,
-        });
-
-        // Create a Pass state to normalize event structure for single file processing
-        const prepareSingleFile = new Pass(this, 'PrepareSingleFile', {
-            parameters: {
-                'files': [{
-                    'bucket': pipelineConfig.s3Bucket,
-                    'key.$': '$.detail.object.key'
-                }]
-            }
-        });
-
-        // Create the ingest documents function with S3 permissions
-        const pipelineIngestDocumentsFunction = new Function(this, 'pipelineIngestDocumentsMapFunc', {
-            runtime: getDefaultRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_documents',
-            code: Code.fromAsset('./lambda'),
-            timeout: LAMBDA_TIMEOUT,
-            memorySize: LAMBDA_MEMORY,
-            vpc: vpc!.vpc,
-            environment: environment,
-            environmentEncryption: kmsKey,
-            layers: layers,
-            initialPolicy: [
-                ...policyStatements, // Include all base policies including certificate policy
-                new PolicyStatement({
-                    effect: Effect.ALLOW,
-                    actions: ['ssm:GetParameter'],
-                    resources: [
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagPGVectorConnectionInfo`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRagRepositoryEndpoint`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/managementKeySecretName`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/registeredRepositories`,
-                        `arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter${config.deploymentPrefix}/LisaServeRagConnectionInfo/*`
-                    ]
-                }),
-                new PolicyStatement({
-                    effect: Effect.ALLOW,
-                    actions: ['secretsmanager:GetSecretValue'],
-                    resources: ['*']
-                })
-            ]
-        });
-
-        const pipelineIngestDocumentsMap = new LambdaInvoke(this, 'pipelineIngestDocumentsMap', {
-            lambdaFunction: pipelineIngestDocumentsFunction,
-            retryOnServiceExceptions: true, // Enable retries for service exceptions
-            resultPath: '$.taskResult' // Store the entire result
-        });
-
-        const failState = new Fail(this, 'CreateFailed', {
-            cause: 'Pipeline execution failed',
-            error: 'States.TaskFailed'
-        });
-
-        const successState = new Succeed(this, 'CreateSuccess');
-
-        // Map state for distributed processing with rate limiting
-        const processFiles = new Map(this, 'ProcessFiles', {
-            maxConcurrency: 5,
-            itemsPath: '$.files',
-            resultPath: '$.mapResults' // Store map results in mapResults field
-        });
-
-        // Configure the iterator without error handling (will be handled at Map level)
-        processFiles.iterator(pipelineIngestDocumentsMap);
-
-        // Add error handling at Map level
-        processFiles.addCatch(failState, {
-            errors: ['States.ALL'],
-            resultPath: '$.error'
-        });
-
-        // Choice state to determine trigger type
-        const triggerChoice = new Choice(this, 'DetermineTriggerType')
-            .when(Condition.stringEquals('$.detail.trigger', 'daily'), listModifiedObjects)
-            .otherwise(prepareSingleFile);
-
-        // Build the chain
-        const definition = Chain
-            .start(triggerChoice);
-
-        listModifiedObjects.next(processFiles);
-        prepareSingleFile.next(processFiles);
-        processFiles.next(successState);
-
-        const stateMachine = new StateMachine(this, 'IngestPipeline', {
-            definitionBody: DefinitionBody.fromChainable(definition),
-            timeout: Duration.hours(2),
-        });
-
         // Add EventBridge Rules based on pipeline configuration
         if (pipelineConfig.trigger === 'daily') {
+            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionScheduleLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/ingest/schedule`);
+            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionScheduleLambda', hash]), ingestionLambdaArn.stringValue);
+
             // Create daily cron trigger with input template
-            new Rule(this, 'DailyIngestRule', {
+            new Rule(this, createCdkId(['DailyIngestRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyDailyIngestRule-${hash}`,
                 schedule: Schedule.cron({
                     minute: '0',
                     hour: '0'
                 }),
-                targets: [new SfnStateMachine(stateMachine, {
-                    input: RuleTargetInput.fromObject({
+                targets: [new LambdaFunction(ingestionLambda, {
+                    event: RuleTargetInput.fromObject({
                         version: '0',
                         id: EventField.eventId,
                         'detail-type': 'Scheduled Event',
@@ -267,14 +121,19 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                         time: EventField.time,
                         region: EventField.region,
                         detail: {
+                            repositoryId,
                             bucket: pipelineConfig.s3Bucket,
                             prefix: pipelineConfig.s3Prefix,
-                            trigger: 'daily'
+                            trigger: 'daily',
+                            pipelineConfig
                         }
                     })
                 })]
             });
         } else if (pipelineConfig.trigger === 'event') {
+            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionChangeEventLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/ingest/event`);
+            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionIngestEventLambda', hash]), ingestionLambdaArn.stringValue);
+
             // Create S3 event trigger with complete event pattern and transform input
             const detail: any = {
                 bucket: {
@@ -283,7 +142,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             };
 
             // Add prefix filter if specified and not root
-            if (pipelineConfig.s3Prefix && pipelineConfig.s3Prefix !== '/') {
+            if (pipelineConfig.s3Prefix !== '') {
                 detail.object = {
                     key: [{
                         prefix: pipelineConfig.s3Prefix
@@ -297,27 +156,99 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, 'S3EventIngestRule', {
+            new Rule(this, createCdkId(['S3EventIngestRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule-${hash}`,
                 eventPattern,
-                targets: [new SfnStateMachine(stateMachine, {
-                    input: RuleTargetInput.fromObject({
+                targets: [new LambdaFunction(ingestionLambda, {
+                    event: RuleTargetInput.fromObject({
+                        version: '0',
+                        id: EventField.eventId,
                         'detail-type': EventField.detailType,
                         source: EventField.source,
                         time: EventField.time,
                         region: EventField.region,
                         detail: {
+                            repositoryId,
                             bucket: pipelineConfig.s3Bucket,
                             prefix: pipelineConfig.s3Prefix,
-                            object: {
-                                key: EventField.fromPath('$.detail.object.key')
-                            },
-                            trigger: 'event'
+                            key: EventField.fromPath('$.detail.object.key'),
+                            trigger: 'event',
+                            pipelineConfig,
                         }
                     })
                 })]
             });
         }
 
-        this.stateMachineArn = stateMachine.stateMachineArn;
+        if (pipelineConfig.autoRemove) {
+            const deletionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionDeleteEventLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/delete/event`);
+            const deletionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionDeleteEventLambda', hash]), deletionLambdaArn.stringValue);
+            console.log('Creating autodelete rule...');
+
+            bucketActions.push('s3:DeleteObject');
+
+            // Grant the execution role permissions to list contents of the S3 bucket
+            lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['s3:ListBucket'],
+                resources: [
+                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}`,
+                ]
+            }));
+
+            // Create S3 event trigger with complete event pattern and transform input
+            const detail: any = {
+                bucket: {
+                    name: [pipelineConfig.s3Bucket]
+                }
+            };
+
+            // Add prefix filter if specified and not root
+            if (pipelineConfig.s3Prefix !== '') {
+                detail.object = {
+                    key: [{
+                        prefix: pipelineConfig.s3Prefix
+                    }]
+                };
+            }
+
+            const eventPattern: EventPattern = {
+                source: ['aws.s3'],
+                detailType: ['Object Deleted'],
+                detail
+            };
+
+            new Rule(this, createCdkId(['S3EventDeleteRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule-${hash}`,
+                eventPattern,
+                targets: [new LambdaFunction(deletionLambda, {
+                    event: RuleTargetInput.fromObject({
+                        version: '0',
+                        id: EventField.eventId,
+                        'detail-type': EventField.detailType,
+                        source: EventField.source,
+                        time: EventField.time,
+                        region: EventField.region,
+                        detail: {
+                            repositoryId,
+                            bucket: pipelineConfig.s3Bucket,
+                            prefix: pipelineConfig.s3Prefix,
+                            key: EventField.fromPath('$.detail.object.key'),
+                            trigger: 'event',
+                            pipelineConfig,
+                        }
+                    })
+                })]
+            });
+        }
+
+        // Grant the execution role permissions to access specified S3 bucket/prefix
+        lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: bucketActions,
+            resources: [
+                `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+            ]
+        }));
     }
 }

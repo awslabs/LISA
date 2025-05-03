@@ -23,6 +23,7 @@ import {
     DefaultStackSynthesizer,
     IAspect,
     IStackSynthesizer,
+    Stack,
     Stage,
     StageProps,
     Tags,
@@ -35,7 +36,7 @@ import { ARCHITECTURE, CoreStack } from './core';
 import { LisaApiBaseStack } from './core/api_base';
 import { LisaApiDeploymentStack } from './core/api_deployment';
 import { createCdkId } from './core/utils';
-import { LisaServeIAMStack } from './iam_stack';
+import { LisaServeIAMStack } from './iam';
 import { LisaModelsApiStack } from './models';
 import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
@@ -44,11 +45,10 @@ import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
 
-import path from 'node:path';
 import fs from 'node:fs';
+import { VERSION_PATH } from './util';
 
-const HERE: string = path.resolve(__dirname);
-const VERSION_PATH: string = path.resolve(HERE, '..', 'VERSION');
+
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
 
@@ -120,7 +120,7 @@ class RemoveSecurityGroupAspect implements IAspect {
     }
 }
 
-type CommonStackProps = {
+export type CommonStackProps = {
     synthesizer?: IStackSynthesizer;
 } & BaseProps;
 
@@ -128,6 +128,8 @@ type CommonStackProps = {
  * LISA-serve Application Stage.
  */
 export class LisaServeApplicationStage extends Stage {
+    readonly stacks: Stack[] = [];
+
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -157,28 +159,27 @@ export class LisaServeApplicationStage extends Stage {
             }
         }
 
-        const stacks = [];
         // Stacks
         const iamStack = new LisaServeIAMStack(this, 'LisaServeIAMStack', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'IAM', config.deploymentStage]),
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage} IAM`,
         });
-        stacks.push(iamStack);
+        this.stacks.push(iamStack);
 
         const networkingStack = new LisaNetworkingStack(this, 'LisaNetworking', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'networking', config.deploymentStage]),
             description: `LISA-networking: ${config.deploymentName}-${config.deploymentStage}`,
         });
-        stacks.push(networkingStack);
+        this.stacks.push(networkingStack);
 
         const coreStack = new CoreStack(this, 'LisaCore', {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'core', config.deploymentStage]),
             description: `LISA-core: ${config.deploymentName}-${config.deploymentStage}`,
         });
-        stacks.push(coreStack);
+        this.stacks.push(coreStack);
 
         const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
             ...baseStackProps,
@@ -186,7 +187,7 @@ export class LisaServeApplicationStage extends Stage {
             stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
             vpc: networkingStack.vpc,
         });
-        stacks.push(serveStack);
+        this.stacks.push(serveStack);
 
         serveStack.addDependency(iamStack);
 
@@ -199,7 +200,7 @@ export class LisaServeApplicationStage extends Stage {
         });
         apiBaseStack.addDependency(coreStack);
         apiBaseStack.addDependency(serveStack);
-        stacks.push(apiBaseStack);
+        this.stacks.push(apiBaseStack);
 
         const apiDeploymentStack = new LisaApiDeploymentStack(this, 'LisaApiDeployment', {
             ...baseStackProps,
@@ -222,12 +223,12 @@ export class LisaServeApplicationStage extends Stage {
         });
         modelsApiDeploymentStack.addDependency(serveStack);
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
-        stacks.push(modelsApiDeploymentStack);
+        this.stacks.push(modelsApiDeploymentStack);
 
         if (config.deployRag) {
             const ragStack = new LisaRagStack(this, 'LisaRAG', {
                 ...baseStackProps,
-                authorizer: apiBaseStack.authorizer,
+                authorizer: apiBaseStack.authorizer!,
                 description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
                 endpointUrl: serveStack.endpointUrl,
                 modelsPs: serveStack.modelsPs,
@@ -237,18 +238,17 @@ export class LisaServeApplicationStage extends Stage {
                 securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                 vpc: networkingStack.vpc,
             });
-            ragStack.linkServiceRole(); // Ignore async response
             ragStack.addDependency(coreStack);
             ragStack.addDependency(iamStack);
             ragStack.addDependency(apiBaseStack);
-            stacks.push(ragStack);
+            this.stacks.push(ragStack);
             apiDeploymentStack.addDependency(ragStack);
         }
 
         if (config.deployChat) {
             const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
-                authorizer: apiBaseStack.authorizer,
+                authorizer: apiBaseStack.authorizer!,
                 stackName: createCdkId([config.deploymentName, config.appName, 'chat', config.deploymentStage]),
                 description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,
@@ -259,7 +259,7 @@ export class LisaServeApplicationStage extends Stage {
             chatStack.addDependency(apiBaseStack);
             chatStack.addDependency(coreStack);
             apiDeploymentStack.addDependency(chatStack);
-            stacks.push(chatStack);
+            this.stacks.push(chatStack);
 
             if (config.deployUi) {
                 const uiStack = new UserInterfaceStack(this, 'LisaUserInterface', {
@@ -274,7 +274,7 @@ export class LisaServeApplicationStage extends Stage {
                 uiStack.addDependency(serveStack);
                 uiStack.addDependency(apiBaseStack);
                 apiDeploymentStack.addDependency(uiStack);
-                stacks.push(uiStack);
+                this.stacks.push(uiStack);
             }
         }
 
@@ -282,10 +282,10 @@ export class LisaServeApplicationStage extends Stage {
             const docsStack = new LisaDocsStack(this, 'LisaDocs', {
                 ...baseStackProps
             });
-            stacks.push(docsStack);
+            this.stacks.push(docsStack);
         }
 
-        stacks.push(apiDeploymentStack);
+        this.stacks.push(apiDeploymentStack);
 
         // Set resource tags
         if (!config.region.includes('iso')) {
@@ -298,18 +298,18 @@ export class LisaServeApplicationStage extends Stage {
         // Apply permissions boundary aspect to all stacks if the boundary is defined in
         // config.yaml
         if (config.permissionsBoundaryAspect) {
-            stacks.forEach((lisaStack) => {
+            this.stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
             });
         }
 
         if (config.convertInlinePoliciesToManaged) {
-            stacks.forEach((lisaStack) => {
+            this.stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new ConvertInlinePoliciesToManaged());
             });
         }
         // Nag Suppressions
-        stacks.forEach((lisaStack) => {
+        this.stacks.forEach((lisaStack) => {
             NagSuppressions.addStackSuppressions(
                 lisaStack,
                 [
@@ -317,20 +317,24 @@ export class LisaServeApplicationStage extends Stage {
                         id: 'NIST.800.53.R5-LambdaConcurrency',
                         reason: 'Not applying lambda concurrency limits',
                     },
+                    {
+                        id: 'NIST.800.53.R5-LambdaDLQ',
+                        reason: 'Not creating lambda DLQs',
+                    },
                 ],
             );
         });
 
         // Run CDK-nag on app if specified
         if (config.runCdkNag) {
-            stacks.forEach((lisaStack) => {
+            this.stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
                 Aspects.of(lisaStack).add(new NIST80053R5Checks({ reports: true, verbose: true }));
             });
         }
 
         if (config.securityGroupConfig) {
-            stacks.forEach((lisaStack) => {
+            this.stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
             });
         }

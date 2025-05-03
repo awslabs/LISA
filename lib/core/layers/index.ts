@@ -14,14 +14,13 @@
   limitations under the License.
 */
 
-import { BundlingOutput } from 'aws-cdk-lib';
 import { Architecture, Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { Construct } from 'constructs';
-
+import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { BaseProps } from '../../schema';
 import { getDefaultRuntime } from '../../api-base/utils';
-
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 /**
  * Properties for Layer Construct.
  * @property {string} path - The path to the directory containing relevant files.
@@ -46,7 +45,7 @@ type LayerProps = {
  */
 export class Layer extends Construct {
     /** The Lambda LayerVersion to use across Lambda functions. */
-    public layer: LayerVersion;
+    public layer!: LayerVersion;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -56,53 +55,47 @@ export class Layer extends Construct {
     constructor (scope: Construct, id: string, props: LayerProps) {
         super(scope, id);
 
-        const { assetPath, config, path, description, architecture, autoUpgrade, slimDeployment, removePackages } = props;
+        const { assetPath, config, path: layerPath, description, architecture } = props;
 
-        let layerCode: Code;
-        if (assetPath) {
-            layerCode = Code.fromAsset(assetPath);
-        } else {
-            const outputDirectory = '/asset-output/python';
-            const args = [`mkdir -p ${outputDirectory} && cp -R . ${outputDirectory}`];
-            args.push(`&& pip install -r requirements.txt -t ${outputDirectory}`);
-            if (config.region.includes('iso')) {
-                args.push(`-i ${config.pypiConfig.indexUrl} --trusted-host ${config.pypiConfig.trustedHost}`);
-            }
-            if (autoUpgrade) {
-                args.push('--upgrade');
-            }
-            if (slimDeployment) {
-                args.push(`&& find ${outputDirectory} -name "*__pycache__*" -type d -exec rm -r {} +`);
-                // Be careful here, some libraries will fail if we use the + sign so we iterate one by one instead
-                args.push(`&& find ${outputDirectory} -name "test*" -type d -exec rm -r {} \\; || true`);
-            }
-            if (removePackages) {
-                for (const pkg of removePackages) {
-                    args.push(`&& rm -rf ${outputDirectory}/${pkg}`);
-                }
-            }
-
-            const layerAsset = new Asset(this, 'LayerAsset', {
-                path,
-                bundling: {
-                    image: getDefaultRuntime().bundlingImage,
-                    platform: architecture.dockerPlatform,
-                    command: ['bash', '-c', `set -e ${args.join(' ')}`],
-                    outputType: BundlingOutput.AUTO_DISCOVER,
-                    securityOpt: 'no-new-privileges:true',
-                    network: 'host',
-                },
-            });
-            layerCode = Code.fromBucket(layerAsset.bucket, layerAsset.s3ObjectKey);
+        if (!fs.existsSync(`${layerPath}/requirements.txt`)) {
+            throw new Error(`requirements.txt not found in ${layerPath}`);
         }
+        const packagesExists = fs.existsSync(path.join(layerPath, 'packages'));
 
-        const layer = new LayerVersion(this, 'Layer', {
-            code: layerCode,
-            compatibleRuntimes: [getDefaultRuntime()],
-            removalPolicy: config.removalPolicy,
-            description: description,
-        });
-
-        this.layer = layer;
+        try {
+            if (assetPath) {
+                this.layer = new LayerVersion(this, 'Layer', {
+                    code: Code.fromAsset(assetPath),
+                    description,
+                    compatibleRuntimes: [getDefaultRuntime()],
+                    removalPolicy: config.removalPolicy,
+                });
+            } else {
+                console.error(`Building layer: ${id} path:${layerPath}`);
+                // Use PythonLayerVersion with bundling as before
+                this.layer = new PythonLayerVersion(this, 'Layer', {
+                    entry: layerPath,
+                    description,
+                    compatibleRuntimes: [getDefaultRuntime()],
+                    removalPolicy: config.removalPolicy,
+                    bundling: {
+                        platform: architecture.dockerPlatform,
+                        commandHooks: packagesExists ? {
+                            beforeBundling (inputDir: string, outputDir: string): string[] {
+                                return [`touch ${outputDir}/requirements.txt`];
+                            },
+                            afterBundling (inputDir: string, outputDir: string): string[] {
+                                return [`cp -r ${inputDir}/packages/* ${outputDir}/python/`];
+                            },
+                        } : undefined
+                    },
+                });
+            }
+        } catch (error) {
+            console.error('Layer bundling failed:', error);
+            console.error('Asset path:', layerPath);
+            console.error('Current working directory:', process.cwd());
+            throw error;
+        }
     }
 }

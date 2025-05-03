@@ -26,6 +26,7 @@ import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '..
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
+import { LAMBDA_PATH } from '../../util';
 
 /**
  * Properties for SessionApi Construct.
@@ -154,18 +155,18 @@ export class SessionApi extends Construct {
         ];
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'SessionApi', sessionTable.tableArn, config.roles?.LambdaExecutionRole);
-
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                authorizer,
-                './lambda',
+                lambdaPath,
                 [commonLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,
                 securityGroups,
+                authorizer,
                 lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {

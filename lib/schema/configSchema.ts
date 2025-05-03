@@ -279,6 +279,62 @@ export class Ec2Metadata {
             maxThroughput: 100,
             vCpus: 192,
         },
+        'g6e.xlarge': {
+            memory: 32 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 20,
+            vCpus: 4,
+        },
+        'g6e.2xlarge': {
+            memory: 64 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 20,
+            vCpus: 8,
+        },
+        'g6e.4xlarge': {
+            memory: 128 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 20,
+            vCpus: 16,
+        },
+        'g6e.8xlarge': {
+            memory: 256 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 25,
+            vCpus: 32,
+        },
+        'g6e.16xlarge': {
+            memory: 512 * 1000,
+            gpuCount: 1,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 35,
+            vCpus: 64,
+        },
+        'g6e.12xlarge': {
+            memory: 384 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 100,
+            vCpus: 48,
+        },
+        'g6e.24xlarge': {
+            memory: 768 * 1000,
+            gpuCount: 4,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 200,
+            vCpus: 96,
+        },
+        'g6e.48xlarge': {
+            memory: 1536 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 400,
+            vCpus: 192,
+        },
         'p4d.24xlarge': {
             memory: 1152 * 1000,
             gpuCount: 8,
@@ -324,34 +380,43 @@ const ContainerHealthCheckConfigSchema = z.object({
 })
     .describe('Configuration for container health checks');
 
-const ImageTarballAsset = z.object({
+export const ImageTarballAsset = z.object({
     path: z.string(),
-    type: z.literal(EcsSourceType.TARBALL),
+    type: z.literal(EcsSourceType.TARBALL)
 })
     .describe('Container image that will use tarball on disk');
 
-const ImageSourceAsset = z.object({
+export const ImageSourceAsset = z.object({
     baseImage: z.string(),
     path: z.string(),
     type: z.literal(EcsSourceType.ASSET),
 })
     .describe('Container image that will be built based on Dockerfile and assets at the supplied path');
 
-const ImageECRAsset = z.object({
+export const ImageECRAsset = z.object({
     repositoryArn: z.string(),
     tag: z.string().optional(),
     type: z.literal(EcsSourceType.ECR),
 })
     .describe('Container image that will be pulled from the specified ECR repository');
 
-const ImageRegistryAsset = z.object({
+export const ImageRegistryAsset = z.object({
     registry: z.string(),
     type: z.literal(EcsSourceType.REGISTRY),
 })
     .describe('Container image that will be pulled from the specified public registry');
 
+export const ImageExternalAsset = z.object({
+    type: z.literal(EcsSourceType.EXTERNAL),
+    code: z.any()
+})
+    .describe('Container image from external source. Use provided image without modification.');
+
+export const ImageAssetSchema = z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset, ImageExternalAsset]);
+export type ImageAsset = z.infer<typeof ImageAssetSchema>;
+
 export const ContainerConfigSchema = z.object({
-    image: z.union([ImageTarballAsset, ImageSourceAsset, ImageECRAsset, ImageRegistryAsset]).describe('Base image for the container.'),
+    image: ImageAssetSchema.describe('Base image for the container.'),
     environment: z
         .record(z.any())
         .transform((obj) => {
@@ -586,6 +651,7 @@ const FastApiContainerConfigSchema = z.object({
     internetFacing: z.boolean().default(true).describe('Whether the REST API ALB will be configured as internet facing.'),
     domainName: z.string().nullish().default(null),
     sslCertIamArn: z.string().nullish().default(null).describe('ARN of the self-signed cert to be used throughout the system'),
+    imageConfig: ImageAssetSchema.optional().describe('Override image configuration for ECS FastAPI Containers'),
     rdsConfig: RdsInstanceConfig
         .default({
             dbName: 'postgres',
@@ -726,6 +792,8 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
+    baseImage: z.string().default('python:3.11').describe('Base image used for LISA serve components'),
+    nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:18').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
     ragRepositories: z.array(RagRepositoryConfigSchema).describe('Rag Repository configuration.'),
@@ -743,8 +811,13 @@ export const RawConfigObject = z.object({
         )
         .optional()
         .describe('Array of key-value pairs for tagging.'),
+    tagContainers: z.boolean().default(false).describe('Add repeatable container tags to each cdk deployed container'),
     deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
     webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
+    ecsModelDeployerPath: z.string().optional().describe('Optional path to precompiled ecs model deployer. If not specified the ecs model deployer will be built at deploy time.'),
+    vectorStoreDeployerPath: z.string().optional().describe('Optional path to precompiled vector store deployer. If not specified the vector store deployer will be built at deploy time.'),
+    documentsPath: z.string().optional().describe('Optional path to precompiled LISA documents. If not specified the LISA docs will be built at deploy time.'),
+    lambdaPath: z.any().optional().describe('Optional path to precompiled LISA lambda. If not specified the LISA lambda will be built at deploy time.'),
     lambdaLayerAssets: z
         .object({
             authorizerLayerPath: z.string().optional().describe('Lambda Authorizer code path'),

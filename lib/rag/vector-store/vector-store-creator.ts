@@ -25,7 +25,9 @@ import { DeleteStoreStateMachine } from './state_machine/delete-store';
 import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { CodeFactory, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput;
@@ -37,7 +39,6 @@ export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
 // Main stack that contains the Lambda function
 export class VectorStoreCreatorStack extends Construct {
     readonly vectorStoreCreatorFn: lambda.IFunction;
-    readonly ragRepositoryConfigTable: dynamodb.ITable;
 
     constructor (scope: Construct, id: string, props: VectorStoreCreatorStackProps) {
         super(scope, id);
@@ -57,7 +58,7 @@ export class VectorStoreCreatorStack extends Construct {
 
         const lambdaExecutionRole = iam.Role.fromRoleArn(
             this,
-            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            `${Roles.RAG_LAMBDA_EXECUTION_ROLE}-VectorStore`,
             ssm.StringParameter.valueForStringParameter(
                 this,
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
@@ -101,15 +102,18 @@ export class VectorStoreCreatorStack extends Construct {
                 'profile',
                 'vpcId',
             ]),
-            ...(vpc.vpc.vpcId && {vpcId: vpc.vpc.vpcId})
+            ...(vpc.vpc.vpcId && { vpcId: vpc.vpc.vpcId })
         };
 
-        const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer']);
-        this.vectorStoreCreatorFn = new lambda.DockerImageFunction(this, functionId, {
+        const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer', 'Fn']);
+        const vectorStoreDeployer = config.vectorStoreDeployerPath || VECTOR_STORE_DEPLOYER_DIST_PATH;
+        this.vectorStoreCreatorFn = new NodejsFunction(this, functionId, {
             functionName: functionId,
-            code: lambda.DockerImageCode.fromImageAsset('./vector_store_deployer/'),
+            code: CodeFactory.createCode(vectorStoreDeployer),
             timeout: Duration.minutes(15),
             ephemeralStorageSize: Size.mebibytes(2048),
+            runtime: Runtime.NODEJS_18_X,
+            handler: 'index.handler',
             memorySize: 1024,
             role: cdkRole,
             environment: {

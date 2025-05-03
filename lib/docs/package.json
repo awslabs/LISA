@@ -6,16 +6,15 @@
   "scripts": {
     "prebuild": "(cd ../../ && npm run generateSchemaDocs)",
     "build": "npm run docs:build",
+    "copy-dist": "mkdir -p ../../dist/docs && cp -r ./dist/* ../../dist/docs/",
     "docs:dev": "vitepress dev .",
     "docs:build": "vitepress build .",
-    "docs:preview": "vitepress preview ."
+    "docs:preview": "vitepress preview .",
+    "clean": "rm -rf ./dist ./node_modules"
   },
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
     "vitepress": "^1.6.3"
-  },
-  "dependencies": {
-    "vite": "6.2.3"
   }
 }

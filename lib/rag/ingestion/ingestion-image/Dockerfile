@@ -1,5 +1,6 @@
-ARG BUILD_DIR=build
 FROM public.ecr.aws/lambda/python:3.11
+
+ARG BUILD_DIR=build
 
 WORKDIR /workdir
 

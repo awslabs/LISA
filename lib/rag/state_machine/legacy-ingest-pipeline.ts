@@ -53,7 +53,6 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         const { config, pipelineConfig, repositoryId, ragDocumentTable, ragSubDocumentTable } = props;
 
         const hash = crypto.randomBytes(6).toString('hex');
-        const disambiguator = createCdkId([repositoryId, pipelineConfig.embeddingModel]);
 
         const bucketActions = ['s3:GetObject'];
 

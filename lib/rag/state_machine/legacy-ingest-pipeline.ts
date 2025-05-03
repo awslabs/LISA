@@ -27,6 +27,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Roles } from '../../core/iam/roles';
 import { createCdkId } from '../../core/utils';
+import * as crypto from 'crypto';
 
 type IngestPipelineStateMachineProps = BaseProps & {
     vpc?: Vpc;
@@ -51,6 +52,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
         const { config, pipelineConfig, repositoryId, ragDocumentTable, ragSubDocumentTable } = props;
 
+        const hash = crypto.randomBytes(6).toString('hex');
         const disambiguator = createCdkId([repositoryId, pipelineConfig.embeddingModel]);
 
         const bucketActions = ['s3:GetObject'];
@@ -81,7 +83,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         // Get the Lambda execution role from SSM parameter
         const lambdaExecutionRole = Role.fromRoleArn(
             this,
-            createCdkId([Roles.RAG_LAMBDA_EXECUTION_ROLE, disambiguator]),
+            createCdkId([Roles.RAG_LAMBDA_EXECUTION_ROLE, hash]),
             StringParameter.valueForStringParameter(
                 this,
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
@@ -101,12 +103,12 @@ export class LegacyIngestPipelineStateMachine extends Construct {
 
         // Add EventBridge Rules based on pipeline configuration
         if (pipelineConfig.trigger === 'daily') {
-            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionScheduleLambdaStringParameter', disambiguator]), `${config.deploymentPrefix}/ingestion/ingest/schedule`);
-            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionScheduleLambda', disambiguator]), ingestionLambdaArn.stringValue);
+            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionScheduleLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/ingest/schedule`);
+            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionScheduleLambda', hash]), ingestionLambdaArn.stringValue);
 
             // Create daily cron trigger with input template
-            new Rule(this, createCdkId(['DailyIngestRule', disambiguator]), {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyDailyIngestRule-${disambiguator}`,
+            new Rule(this, createCdkId(['DailyIngestRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyDailyIngestRule-${hash}`,
                 schedule: Schedule.cron({
                     minute: '0',
                     hour: '0'
@@ -130,8 +132,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 })]
             });
         } else if (pipelineConfig.trigger === 'event') {
-            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionChangeEventLambdaStringParameter', disambiguator]), `${config.deploymentPrefix}/ingestion/ingest/event`);
-            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionIngestEventLambda', disambiguator]), ingestionLambdaArn.stringValue);
+            const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionChangeEventLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/ingest/event`);
+            const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionIngestEventLambda', hash]), ingestionLambdaArn.stringValue);
 
             // Create S3 event trigger with complete event pattern and transform input
             const detail: any = {
@@ -155,8 +157,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, createCdkId(['S3EventIngestRule', disambiguator]), {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule-${disambiguator}`,
+            new Rule(this, createCdkId(['S3EventIngestRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule-${hash}`,
                 eventPattern,
                 targets: [new LambdaFunction(ingestionLambda, {
                     event: RuleTargetInput.fromObject({
@@ -180,8 +182,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         }
 
         if (pipelineConfig.autoRemove) {
-            const deletionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionDeleteEventLambdaStringParameter', disambiguator]), `${config.deploymentPrefix}/ingestion/delete/event`);
-            const deletionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionDeleteEventLambda', disambiguator]), deletionLambdaArn.stringValue);
+            const deletionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionDeleteEventLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/delete/event`);
+            const deletionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionDeleteEventLambda', hash]), deletionLambdaArn.stringValue);
             console.log('Creating autodelete rule...');
 
             bucketActions.push('s3:DeleteObject');
@@ -217,8 +219,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, createCdkId(['S3EventDeleteRule', disambiguator]), {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule-${disambiguator}`,
+            new Rule(this, createCdkId(['S3EventDeleteRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule-${hash}`,
                 eventPattern,
                 targets: [new LambdaFunction(deletionLambda, {
                     event: RuleTargetInput.fromObject({

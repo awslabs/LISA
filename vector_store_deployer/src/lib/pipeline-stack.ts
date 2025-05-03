@@ -164,7 +164,7 @@ export abstract class PipelineStack extends Stack {
      * Creates an EventBridge rule for daily scheduled triggers
      */
     private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: number): Rule {
-        return new Rule(this, `${ragConfig.repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
+        return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${disambiguator}`, {
             ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({

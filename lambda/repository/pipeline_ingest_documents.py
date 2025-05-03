@@ -62,6 +62,10 @@ def pipeline_ingest(job: IngestionJob) -> None:
             if prev_job:
                 ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
 
+        ingestion_type = IngestionType.AUTO
+        if job.username != 'system':
+            ingestion_type = IngestionType.MANUAL
+
         # save to dynamodb
         rag_document = RagDocument(
             repository_id=job.repository_id,
@@ -71,7 +75,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
             subdocs=all_ids,
             chunk_strategy=job.chunk_strategy,
             username=job.username,
-            ingestion_type=IngestionType.AUTO,
+            ingestion_type=ingestion_type
         )
         rag_document_repository.save(rag_document)
 

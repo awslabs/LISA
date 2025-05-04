@@ -1,3 +1,22 @@
+# v4.3.0
+## Key Features
+### RAG Ingestion Backend Overhaul
+
+- **Ingestion Job Tracking:** Introduced a new DynamoDB table for tracking ingestion jobs using UUIDs. This enables real-time status queries and establishes a foundation for future monitoring and analytics.
+- **Execution Migration to AWS Batch:** RAG ingestion workflows now run on AWS Batch with Fargate, removing the 15-minute timeout limitation of Lambda and enabling the reliable execution of large or complex ingestion tasks. This change also unlocks support for event-driven monitoring and job orchestration.
+
+### Benefits:
+
+- Improved scalability and reliability of ingestion processes.
+- Lays the groundwork for future enhancements such as parallelized embeddings and multi-step ingestion workflows.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.2.0...v4.3.0
+
 # v4.2.0
 ## Key Features
 ### RAG Updates

@@ -16,60 +16,207 @@
 
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import boto3
+from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
+from repository.ingestion_job_repo import IngestionJobRepository
 from repository.lambda_functions import RagDocumentRepository
 from utilities.common_functions import get_username, retry_config
-from utilities.file_processing import process_record
-from utilities.validation import validate_chunk_params, validate_model_name, ValidationError
+from utilities.file_processing import generate_chunks
 from utilities.vector_store import get_vector_store_client
 
-from .lambda_functions import ChunkStrategyType, get_embeddings_pipeline, IngestionType, RagDocument
+from .lambda_functions import DocumentIngestionService, get_embeddings_pipeline
+
+dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
+ingestion_service = DocumentIngestionService()
+ingestion_job_repository = IngestionJobRepository()
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
+s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
-def handle_pipeline_ingest_documents(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Handle pipeline document ingestion."""
+def pipeline_ingest(job: IngestionJob) -> None:
     try:
-        # Extract and validate inputs
-        bucket, key, repository_id, pipeline_config = validate_event(event)
-        chunk_size, chunk_overlap, embedding_model = extract_and_validate_config(pipeline_config)
+        # chunk and save chunks in vector store
+        documents = generate_chunks(job)
+        texts, metadatas = prepare_chunks(documents, job.repository_id)
+        all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
 
-        logger.info(f"Processing document s3://{bucket}/{key} for repository {repository_id}")
+        # remove old
+        for rag_document in rag_document_repository.find_by_source(
+            job.repository_id, job.collection_id, job.s3_path, join_docs=True
+        ):
+            prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
-        # Process document
-        docs = process_document(bucket, key, chunk_size, chunk_overlap)
+            if prev_job:
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
+            remove_document_from_vectorstore(rag_document)
+            rag_document_repository.delete_by_id(rag_document.document_id)
 
-        # Prepare chunks
-        texts, metadatas = prepare_chunks(docs, repository_id)
+            if prev_job:
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
 
-        # Store in vector store
-        all_ids = store_chunks_in_vectorstore(texts, metadatas, repository_id, embedding_model)
+        ingestion_type = IngestionType.AUTO
+        if job.username != "system":
+            ingestion_type = IngestionType.MANUAL
 
-        # Create RAG document
-        username = get_username(event)
-        create_rag_document(repository_id, embedding_model, key, docs, all_ids, chunk_size, chunk_overlap, username)
+        # save to dynamodb
+        rag_document = RagDocument(
+            repository_id=job.repository_id,
+            collection_id=job.collection_id,
+            document_name=os.path.basename(job.s3_path),
+            source=job.s3_path,
+            subdocs=all_ids,
+            chunk_strategy=job.chunk_strategy,
+            username=job.username,
+            ingestion_type=ingestion_type,
+        )
+        rag_document_repository.save(rag_document)
 
-        return {
-            "message": f"Successfully processed document s3://{bucket}/{key}",
-            "repository_id": repository_id,
-            "chunks_processed": len(all_ids),
-            "document_ids": all_ids,
-        }
+        # update IngstionJob
+        job.status = IngestionStatus.INGESTION_COMPLETED
+        job.document_id = rag_document.document_id
+        ingestion_job_repository.save(job)
 
-    except ValidationError as e:
-        error_msg = f"Validation error: {str(e)}"
-        logger.error(error_msg)
-        raise Exception(error_msg)
+        logging.info(f"Successfully ingested document {job.s3_path} ({len(all_ids)} chunks) into {job.collection_id}")
     except Exception as e:
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+
         error_msg = f"Failed to process document: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
+
+
+def remove_document_from_vectorstore(doc: RagDocument) -> None:
+    # Delete from the Vector Store
+    embeddings = get_embeddings_pipeline(model_name=doc.collection_id)
+    vector_store = get_vector_store_client(
+        doc.repository_id,
+        index=doc.collection_id,
+        embeddings=embeddings,
+    )
+    vector_store.delete(doc.subdocs)
+
+
+def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
+    """Handle pipeline document ingestion."""
+    # Extract and validate inputs
+    logger.debug(f"Received event: {event}")
+
+    detail = event.get("detail", {})
+    bucket = detail.get("bucket", None)
+    username = get_username(event)
+    key = detail.get("key", None)
+    repository_id = detail.get("repositoryId", None)
+    pipeline_config = detail.get("pipelineConfig", None)
+    embedding_model = pipeline_config.get("embeddingModel", None)
+    s3_path = f"s3://{bucket}/{key}"
+
+    logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
+
+    chunk_strategy = extract_chunk_strategy(pipeline_config)
+
+    # create ingestion job and save it to dynamodb
+    job = IngestionJob(
+        repository_id=repository_id,
+        collection_id=embedding_model,
+        chunk_strategy=chunk_strategy,
+        s3_path=s3_path,
+        username=username,
+        ingestion_type=IngestionType.MANUAL,
+    )
+    ingestion_job_repository.save(job)
+    ingestion_service.create_ingest_job(job)
+
+    logger.info(f"Ingesting document {s3_path} for repository {repository_id}")
+
+
+def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
+    """
+    Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
+
+    Args:
+        event: Event data containing bucket and prefix information
+        context: Lambda context
+
+    Returns:
+        Dictionary containing array of files with their bucket and key
+    """
+    # Log the full event for debugging
+    logger.debug(f"Received event: {event}")
+
+    detail = event.get("detail", {})
+    bucket = detail.get("bucket", None)
+    username = get_username(event)
+    prefix = detail.get("prefix", None)
+    repository_id = detail.get("repositoryId", None)
+    pipeline_config = detail.get("pipelineConfig", None)
+    embedding_model = pipeline_config.get("embeddingModel", None)
+
+    # hard code fixed length chunking until more strategies are implemented
+    chunk_strategy = extract_chunk_strategy(pipeline_config)
+
+    try:
+        # Add debug logging
+        logger.info(f"Processing request for bucket: {bucket}, prefix: {prefix}")
+
+        # Calculate timestamp for 24 hours ago
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+
+        # List to store matching objects
+        modified_keys = []
+
+        # Use paginator to handle case where there are more than 1000 objects
+        paginator = s3.get_paginator("list_objects_v2")
+
+        # Add debug logging for S3 list operation
+        logger.info(f"Listing objects in {bucket}{prefix} modified after {twenty_four_hours_ago}")
+
+        # Iterate through all objects in the bucket/prefix
+        try:
+            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                if "Contents" not in page:
+                    logger.info(f"No contents found in page for {bucket}{prefix}")
+                    continue
+
+                # Check each object's last modified time
+                for obj in page["Contents"]:
+                    last_modified = obj["LastModified"]
+                    if last_modified >= twenty_four_hours_ago:
+                        logger.info(f"Found modified file: {obj['Key']} (Last Modified: {last_modified})")
+                        modified_keys.append(obj["Key"])
+                    else:
+                        logger.debug(
+                            f"Skipping file {obj['Key']} - Last modified {last_modified} before cutoff "
+                            f"{twenty_four_hours_ago}"
+                        )
+        except Exception as e:
+            logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
+            raise
+
+        # create an IngestionJob for every object created/modified
+        for key in modified_keys:
+            job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=embedding_model,
+                chunk_strategy=chunk_strategy,
+                s3_path=f"s3://{bucket}/{key}",
+                username=username,
+                ingestion_type=IngestionType.AUTO,
+            )
+            ingestion_job_repository.save(job)
+            ingestion_service.create_ingest_job(job)
+
+        logger.info(f"Found {len(modified_keys)} modified files in {bucket}{prefix}")
+    except Exception as e:
+        logger.error(f"Error listing objects: {str(e)}", exc_info=True)
+        raise e
 
 
 def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
@@ -91,44 +238,12 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     return batches
 
 
-def validate_event(event: Dict[str, Any]) -> tuple[str, str, str, Dict]:
-    """Validate and extract required fields from the event."""
-    if "bucket" not in event or "key" not in event:
-        raise ValidationError("Missing required fields: bucket and key")
-
-    bucket = event["bucket"]
-    key = event["key"]
-    repository_id = event["repositoryId"]
-    pipeline_config = event["pipelineConfig"]
-
-    return bucket, key, repository_id, pipeline_config
-
-
-def extract_and_validate_config(pipeline_config: Dict) -> tuple[int, int, str]:
+def extract_chunk_strategy(pipeline_config: Dict) -> FixedChunkingStrategy:
     """Extract and validate configuration parameters."""
     chunk_size = int(pipeline_config["chunkSize"])
     chunk_overlap = int(pipeline_config["chunkOverlap"])
-    embedding_model = pipeline_config["embeddingModel"]
 
-    validate_model_name(embedding_model)
-    validate_chunk_params(chunk_size, chunk_overlap)
-
-    return chunk_size, chunk_overlap, embedding_model
-
-
-def process_document(bucket: str, key: str, chunk_size: int, chunk_overlap: int) -> List:
-    """Process the document and return chunks."""
-    docs: list = process_record(
-        s3_keys=[key],
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        bucket=bucket,
-    )
-
-    if not docs or not docs[0]:
-        raise ValidationError(f"No content extracted from document s3://{bucket}/{key}")
-
-    return docs
+    return FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap))
 
 
 def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict]]:
@@ -136,11 +251,10 @@ def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict
     texts = []
     metadatas = []
 
-    for doc_list in docs:
-        for doc in doc_list:
-            texts.append(doc.page_content)
-            doc.metadata["repository_id"] = repository_id
-            metadatas.append(doc.metadata)
+    for doc in docs:
+        texts.append(doc.page_content)
+        doc.metadata["repository_id"] = repository_id
+        metadatas.append(doc.metadata)
 
     return texts, metadatas
 
@@ -174,31 +288,3 @@ def store_chunks_in_vectorstore(
         raise Exception("Failed to store any documents in vector store")
 
     return all_ids
-
-
-def create_rag_document(
-    repository_id: str,
-    embedding_model: str,
-    key: str,
-    docs: List,
-    all_ids: List[str],
-    chunk_size: int,
-    chunk_overlap: int,
-    username: str,
-) -> None:
-    """Create and save RAG document entry."""
-    doc_entity = RagDocument(
-        repository_id=repository_id,
-        collection_id=embedding_model,
-        document_name=key,
-        source=docs[0][0].metadata.get("source"),
-        subdocs=all_ids,
-        chunk_strategy={
-            "type": ChunkStrategyType.FIXED.value,
-            "size": str(chunk_size),
-            "overlap": str(chunk_overlap),
-        },
-        username=username,
-        ingestion_type=IngestionType.AUTO,
-    )
-    doc_repo.save(doc_entity)

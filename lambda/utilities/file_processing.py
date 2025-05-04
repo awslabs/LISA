@@ -16,13 +16,15 @@
 import logging
 import os
 from io import BytesIO
-from typing import List, Optional
+from typing import Any, List, Optional
+from urllib.parse import urlparse
 
 import boto3
 import docx
 from botocore.exceptions import ClientError
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from models.domain_objects import ChunkingStrategyType, IngestionJob
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE
@@ -124,44 +126,56 @@ def _extract_docx_content(s3_object: dict) -> str:
     return output
 
 
-def process_record(
-    s3_keys: List[str], chunk_size: Optional[int], chunk_overlap: Optional[int], bucket: Optional[str] = None
-) -> List[List[Document]]:
-    """Process a single file from S3.
+def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
+    """Generate chunks from an ingestion job.
 
     Parameters
     ----------
-    s3_keys (List[str]): List of S3 keys to process
-    chunk_size (Optional[int]): Size of chunks to split text into
-    chunk_overlap (Optional[int]): Number of characters to overlap between chunks
-    bucket (Optional[str]): S3 bucket name. If not provided, uses os.environ["BUCKET_NAME"]
+    ingestion_job (IngestionJob): Ingestion job containing file information and chunking strategy
 
     Returns
     -------
-    List[List[Document]]: List of document chunks for each processed file
+    List[Document]: List of document chunks for the processed file
     """
-    if bucket is None:
-        bucket = os.environ["BUCKET_NAME"]
+    # Parse S3 URI using urlparse
+    parsed_uri = urlparse(ingestion_job.s3_path)
+    if not parsed_uri.netloc or not parsed_uri.path:
+        logger.error(f"Invalid S3 path format: {ingestion_job.s3_path}")
+        raise RagUploadException("Invalid S3 path format")
 
-    chunks = []
-    for key in s3_keys:
-        content_type = key.split(".")[-1]
-        try:
-            s3_object = s3.get_object(Bucket=bucket, Key=key)
-        except ClientError as e:
-            logger.error(f"Error getting object from S3: {key}")
-            raise e
-        s3_uri = _get_s3_uri(bucket=bucket, key=key)
-        extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
-        docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=s3_uri, name=key))]
-        doc_chunks = (
-            _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-            if chunk_size and chunk_size > 0
-            else docs
-        )
-        # Update part number of doc metadata
-        for i, doc in enumerate(doc_chunks):
-            doc.metadata["part"] = i + 1
-        chunks.append(doc_chunks)
+    bucket = parsed_uri.netloc
+    key = parsed_uri.path.lstrip("/")
 
-    return chunks
+    content_type = key.split(".")[-1]
+    try:
+        s3_object = s3.get_object(Bucket=bucket, Key=key)
+    except ClientError as e:
+        logger.error(f"Error getting object from S3: {key}")
+        raise e
+
+    chunk_strategy = ingestion_job.chunk_strategy
+    if chunk_strategy.type == ChunkingStrategyType.FIXED:
+        return generate_fixed_chunks(ingestion_job, content_type, s3_object)
+
+    logger.error(f"Unrecognized chunk strategy {chunk_strategy.type}")
+    raise Exception("Unrecognized chunk strategy")
+
+
+def generate_fixed_chunks(ingestion_job: IngestionJob, content_type: str, s3_object: Any) -> list[Document]:
+    # Get chunk parameters from chunking strategy
+    chunk_size = ingestion_job.chunk_strategy.size if ingestion_job.chunk_strategy.size else None
+    chunk_overlap = ingestion_job.chunk_strategy.overlap if ingestion_job.chunk_strategy.overlap else None
+
+    # Extract text and create initial document
+    extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
+    basename = os.path.basename(ingestion_job.s3_path)
+    docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=ingestion_job.s3_path, name=basename))]
+
+    # Generate chunks using existing helper function
+    doc_chunks = _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+    # Update part number of doc metadata
+    for i, doc in enumerate(doc_chunks):
+        doc.metadata["part"] = i + 1
+
+    return doc_chunks

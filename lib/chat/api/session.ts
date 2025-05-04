@@ -27,6 +27,8 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
+import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties for SessionApi Construct.
@@ -90,10 +92,31 @@ export class SessionApi extends Construct {
             sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
         });
 
+        // Create Images S3 bucket
+        const imagesBucket = new Bucket(scope, 'GeneratedImagesBucket', {
+            removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
+            enforceSSL: true,
+            cors: [
+                {
+                    allowedMethods: [HttpMethods.GET, HttpMethods.POST],
+                    allowedHeaders: ['*'],
+                    allowedOrigins: ['*'],
+                    exposedHeaders: ['Access-Control-Allow-Origin'],
+                },
+            ],
+        });
+
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
         });
+
+        const env = {
+            SESSIONS_TABLE_NAME: sessionTable.tableName,
+            SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
+            GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
+        };
 
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
@@ -103,10 +126,7 @@ export class SessionApi extends Construct {
                 description: 'Lists available sessions for user',
                 path: 'session',
                 method: 'GET',
-                environment: {
-                    SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndexSorted,
-                },
+                environment: env,
             },
             {
                 name: 'get_session',
@@ -114,10 +134,7 @@ export class SessionApi extends Construct {
                 description: 'Returns the selected session',
                 path: 'session/{sessionId}',
                 method: 'GET',
-                environment: {
-                    SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                environment: env,
             },
             {
                 name: 'delete_session',
@@ -125,10 +142,7 @@ export class SessionApi extends Construct {
                 description: 'Deletes selected session',
                 path: 'session/{sessionId}',
                 method: 'DELETE',
-                environment: {
-                    SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                environment: env,
             },
             {
                 name: 'delete_user_sessions',
@@ -136,10 +150,7 @@ export class SessionApi extends Construct {
                 description: 'Deletes all sessions for selected user',
                 path: 'session',
                 method: 'DELETE',
-                environment: {
-                    SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                environment: env,
             },
             {
                 name: 'put_session',
@@ -147,10 +158,15 @@ export class SessionApi extends Construct {
                 description: 'Creates or updates selected session',
                 path: 'session/{sessionId}',
                 method: 'PUT',
-                environment: {
-                    SESSIONS_TABLE_NAME: sessionTable.tableName,
-                    SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-                },
+                environment: env,
+            },
+            {
+                name: 'attach_image_to_session',
+                resource: 'session',
+                description: 'Attaches image to session',
+                path: 'session/{sessionId}/attachImage',
+                method: 'PUT',
+                environment: env,
             },
         ];
 
@@ -171,10 +187,13 @@ export class SessionApi extends Construct {
             );
             if (f.method === 'POST' || f.method === 'PUT') {
                 sessionTable.grantWriteData(lambdaFunction);
+                imagesBucket.grantReadWrite(lambdaFunction);
             } else if (f.method === 'GET') {
                 sessionTable.grantReadData(lambdaFunction);
+                imagesBucket.grantRead(lambdaFunction);
             } else if (f.method === 'DELETE') {
                 sessionTable.grantReadWriteData(lambdaFunction);
+                imagesBucket.grantDelete(lambdaFunction);
             }
         });
     }

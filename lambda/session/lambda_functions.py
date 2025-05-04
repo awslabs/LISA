@@ -13,12 +13,15 @@
 #   limitations under the License.
 
 """Lambda functions for managing sessions."""
+import base64
 import json
 import logging
 import os
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -28,7 +31,12 @@ from utilities.common_functions import api_wrapper, get_session_id, get_username
 logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
+s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"])
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
+s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
+
+executor = ThreadPoolExecutor(max_workers=10)
 
 
 def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
@@ -78,6 +86,8 @@ def _delete_user_session(session_id: str, user_id: str) -> Dict[str, bool]:
     deleted = False
     try:
         table.delete_item(Key={"sessionId": session_id, "userId": user_id})
+        bucket = s3_resource.Bucket(s3_bucket_name)
+        bucket.objects.filter(Prefix=f"images/{session_id}").delete()
         deleted = True
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
@@ -87,6 +97,31 @@ def _delete_user_session(session_id: str, user_id: str) -> Dict[str, bool]:
     return {"deleted": deleted}
 
 
+def _generate_presigned_image_url(key: str) -> str:
+    url: str = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": s3_bucket_name,
+            "Key": key,
+            "ResponseContentType": "image/png",
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+    )
+    return url
+
+
+def _map_session(session: dict) -> Dict[str, Any]:
+    return {
+        "sessionId": session["sessionId"],
+        "firstHumanMessage": next(
+            (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
+        ),
+        "startTime": session.get("startTime", None),
+        "createTime": session.get("createTime", None),
+    }
+
+
 @api_wrapper
 def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     """List sessions by user ID from DynamoDB."""
@@ -94,19 +129,17 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
 
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
-    resp = []
-    for session in sessions:
-        resp.append(
-            {
-                "sessionId": session["sessionId"],
-                "firstHumanMessage": next(
-                    (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
-                ),
-                "startTime": session.get("startTime", None),
-                "createTime": session.get("createTime", None),
-            }
-        )
-    return resp
+
+    return list(executor.map(_map_session, sessions))
+
+
+def _process_image(task: Tuple[dict, str]) -> None:
+    msg, key = task
+    try:
+        image_url = _generate_presigned_image_url(key)
+        msg["image_url"]["url"] = image_url
+    except Exception as e:
+        print(f"Error uploading to S3: {e}")
 
 
 @api_wrapper
@@ -119,6 +152,19 @@ def get_session(event: dict, context: dict) -> dict:
         logging.info(f"Fetching session with ID {session_id} for user {user_id}")
 
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        resp = response.get("Item", {})
+
+        # Create a list of tasks for parallel processing
+        tasks = []
+        for message in resp.get("history", []):
+            if isinstance(message.get("content", None), List):
+                for item in message.get("content", None):
+                    if item.get("type", None) == "image_url":
+                        s3_key = item.get("image_url", {}).get("s3_key", None)
+                        if s3_key:
+                            tasks.append((item, s3_key))
+
+        list(executor.map(_process_image, tasks))
         return response.get("Item", {})  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
@@ -142,9 +188,53 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     logger.info(f"Deleting all sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
     logger.debug(f"Found user sessions: {sessions}")
-    for session in sessions:
-        _delete_user_session(session["sessionId"], user_id)
+
+    list(executor.map(lambda session: _delete_user_session(session["sessionId"], user_id), sessions))
     return {"deleted": True}
+
+
+@api_wrapper
+def attach_image_to_session(event: dict, context: dict) -> dict:
+    """Append the message to the record in DynamoDB."""
+    try:
+        session_id = get_session_id(event)
+
+        try:
+            body = json.loads(event["body"], parse_float=Decimal)
+        except json.JSONDecodeError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
+
+        if "message" not in body:
+            return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
+
+        message = body["message"]
+        image_content = message.get("image_url", {}).get("url", None)
+
+        if (
+            message.get("type", None) == "image_url"
+            and image_content is not None
+            and not image_content.startswith("https://")
+        ):
+            try:
+                # Generate a unique key for the S3 object
+                file_name = f"{uuid.uuid4()}.png"
+                s3_key = f"images/{session_id}/{file_name}"  # Organize files in an images/sessionId prefix
+
+                # Upload to S3
+                s3_client.put_object(
+                    Bucket=s3_bucket_name,
+                    Key=s3_key,
+                    Body=base64.b64decode(image_content.split(",")[1]),
+                    ContentType="image/png",
+                )
+                message["image_url"]["url"] = _generate_presigned_image_url(s3_key)
+                message["image_url"]["s3_key"] = s3_key
+            except Exception as e:
+                print(f"Error uploading to S3: {e}")
+
+        return {"statusCode": 200, "body": message}
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
 @api_wrapper

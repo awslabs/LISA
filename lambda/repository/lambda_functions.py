@@ -395,14 +395,16 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
         ingestion_job = ingestion_job_repository.find_by_document(rag_document.document_id)
         if ingestion_job is None:
             ingestion_job = IngestionJob(
-                repository_id=repository_id,
-                collection_id=collection_id,
+                document_id=rag_document.document_id,
+                repository_id=rag_document.repository_id,
+                collection_id=rag_document.collection_id,
                 chunk_strategy=None,
                 s3_path=rag_document.source,
                 username=rag_document.username,
                 status=IngestionStatus.DELETE_PENDING,
             )
 
+        ingestion_job_repository.save(ingestion_job)
         ingestion_service.create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
 

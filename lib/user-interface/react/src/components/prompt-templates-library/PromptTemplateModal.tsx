@@ -29,7 +29,7 @@ import { useMemo, useState } from 'react';
 import { IModel } from '../../shared/model/model-management.model';
 import { DEFAULT_PROMPT_TEMPLATE, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import FormField from '@cloudscape-design/components/form-field';
-import { useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
+import { PromptTemplateType, useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { LisaChatSession } from '../types';
 
@@ -42,6 +42,7 @@ export type PromptTemplateModalProps = {
     chatConfiguration: IChatConfiguration;
     setChatConfiguration: (state: IChatConfiguration) => void;
     config: IConfiguration;
+    type ?: PromptTemplateType;
 };
 
 export function PromptTemplateModal ({
@@ -53,22 +54,26 @@ export function PromptTemplateModal ({
     chatConfiguration,
     setChatConfiguration,
     config,
+    type,
 }: PromptTemplateModalProps) {
+    const isPersona = type === PromptTemplateType.Persona;
     const [selectedOption, setSelectedOption] = useState<SelectProps.Option>({label: 'Owned by me', value: ''});
     const args = {showPublic: Boolean(selectedOption.value)};
     const { data: {Items: allItems} = {Items: []}, isFetching: isFetchingList } = useListPromptTemplatesQuery(args, {});
     const [suggestText, setSuggestText] = useState<string>('');
-    const [promptTemplateText, setPromptTemplateText] = useState(chatConfiguration.promptConfiguration.promptTemplate);
-    const disabled = session.history.length > 0;
+    const [promptTemplateText, setPromptTemplateText] = useState(isPersona ? chatConfiguration.promptConfiguration.promptTemplate : '');
+    const disabled = isPersona && session.history.length > 0;
 
     const options: SelectProps.Option[] = useMemo(() => {
-        return isFetchingList ? [] : allItems.map((item) => ({
+        return isFetchingList ? [] : allItems.filter((item) => item.type === type || !type).map((item) => ({
             value: item.title,
             label: item.title,
             labelTags: [item.id],
             id: item.id
         }));
-    }, [allItems, isFetchingList]);
+    }, [allItems, isFetchingList, type]);
+
+    const keyWord = isPersona ? 'Persona' : 'Prompt';
 
     return (
         <Modal
@@ -78,7 +83,7 @@ export function PromptTemplateModal ({
                 setSelectedModel(undefined);
             }}
             visible={showModal}
-            header={'Persona Editor'}
+            header={`${keyWord} Editor`}
             size='large'
             footer={
                 <Box float='right'>
@@ -96,20 +101,24 @@ export function PromptTemplateModal ({
                         <Button
                             variant='primary'
                             onClick={() => {
-                                setChatConfiguration({
-                                    ...chatConfiguration,
-                                    promptConfiguration: {
-                                        ...chatConfiguration.promptConfiguration,
-                                        promptTemplate: promptTemplateText
-                                    }
-                                });
+                                if (isPersona) {
+                                    setChatConfiguration({
+                                        ...chatConfiguration,
+                                        promptConfiguration: {
+                                            ...chatConfiguration.promptConfiguration,
+                                            promptTemplate: promptTemplateText
+                                        }
+                                    });
+                                } else if (type === PromptTemplateType.Directive) {
+                                    setUserPrompt(promptTemplateText);
+                                }
 
                                 setShowModal(false);
                             }}
                             disabled={disabled}
                             disabledReason={'The Prompt cannot be updated after session has started.'}
                         >
-                            Use Persona
+                            Use {keyWord}
                         </Button>
                     </SpaceBetween>
                 </Box>
@@ -117,7 +126,7 @@ export function PromptTemplateModal ({
         >
             <SpaceBetween direction='vertical' size='m'>
                 { !disabled && config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <SpaceBetween direction='horizontal' size='s'>
-                    <FormField label={'Select existing Persona'}>
+                    <FormField label={`Select existing ${keyWord}`}>
                         <SpaceBetween direction='horizontal' size='s'>
                             <Autosuggest
                                 placeholder='Search by title'
@@ -143,14 +152,11 @@ export function PromptTemplateModal ({
                             }} />
                         </SpaceBetween>
                     </FormField>
-                    <FormField>
-                    </FormField>
-
                 </SpaceBetween>}
 
                 <hr />
 
-                <FormField label={'Persona Template'} description='Sets the initial system prompt to setup the conversation with an LLM.'>
+                <FormField label={`${keyWord} Template`} description={`${isPersona ? 'Sets the initial system prompt to setup the conversation with an LLM.' : 'Sets the prompt to start a conversation with the LLM.'}`}>
                     <Textarea rows={10} value={promptTemplateText} placeholder='Enter prompt text' onChange={({detail}) => setPromptTemplateText(detail.value)} />
                 </FormField>
                 { !disabled && promptTemplateText !== DEFAULT_PROMPT_TEMPLATE && (

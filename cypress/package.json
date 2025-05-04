@@ -10,6 +10,7 @@
     },
     "scripts": {
         "build": "echo \"Nothing to build\"",
+        "copy-dist": "echo \"Nothing to copy\"",
         "cypress:e2e:open": "cypress open --config-file cypress.e2e.config.ts",
         "cypress:smoke:open": "cypress open --config-file cypress.smoke.config.ts",
         "cypress:e2e:run": "cypress run --config-file cypress.e2e.config.ts",

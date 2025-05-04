@@ -58,7 +58,7 @@ export class VectorStoreCreatorStack extends Construct {
 
         const lambdaExecutionRole = iam.Role.fromRoleArn(
             this,
-            Roles.RAG_LAMBDA_EXECUTION_ROLE,
+            `${Roles.RAG_LAMBDA_EXECUTION_ROLE}-VectorStore`,
             ssm.StringParameter.valueForStringParameter(
                 this,
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,

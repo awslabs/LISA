@@ -17,25 +17,30 @@ import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { PipelineConfig, RagRepositoryConfig, PartialConfig } from '../../../lib/schema';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
-import { SfnStateMachine } from 'aws-cdk-lib/aws-events-targets';
-import { IStateMachine, StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Roles } from '../../../lib/core/iam/roles';
 import { createCdkId } from '../../../lib/core/utils';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as crypto from 'crypto';
 
-// Abstract class representing a general pipeline stack
+/**
+ * Abstract base class for pipeline infrastructure stacks
+ * Provides common functionality for setting up event-driven and scheduled pipelines
+ */
 export abstract class PipelineStack extends Stack {
     constructor (scope: Construct, id: string, props: any) {
         super(scope, id, props);
     }
 
-    // Method to create EventBridge rules for triggering state machine executions based on configuration
+    /**
+     * Creates EventBridge rules for pipeline triggers based on configuration
+     * Supports both event-based (S3 events) and scheduled (daily) triggers
+     */
     createPipelineRules (config: PartialConfig, ragConfig: RagRepositoryConfig) {
-
-        // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
-        const { stateMachine, stateMachineRole } = this.getStateMachine(config, 'Ingest');
-        const { stateMachine: deleteStateMachine } = this.getStateMachine(config, 'Delete');
+        // Get the Lambda execution role from SSM parameter
         const lambdaExecutionRole = Role.fromRoleArn(
             this,
             Roles.RAG_LAMBDA_EXECUTION_ROLE,
@@ -44,58 +49,69 @@ export abstract class PipelineStack extends Stack {
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
             ),
         );
-        // Check if pipelines configuration exists
-        if (ragConfig.pipelines) {
-            ragConfig.pipelines.forEach((pipelineConfig) => {
-                // Create S3 policy statement for both functions
-                // Grant the state machine role permissions to access specified S3 bucket
-                stateMachineRole.addToPrincipalPolicy(new PolicyStatement({
+
+        // setup EventBridge Rules for any pipelines
+        // Process each pipeline configuration
+        ragConfig.pipelines?.forEach((pipelineConfig, index) => {
+            const bucketActions = ['s3:GetObject'];
+            const hash = crypto.randomBytes(6).toString('hex');
+
+            // Add EventBridge Rules based on trigger type specified in the pipeline configuration
+            // Create rules based on trigger type
+            switch (pipelineConfig.trigger) {
+                case 'daily': {
+                    const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
+                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionScheduleLambda-${index}`, ingestionLambdaArn.stringValue);
+                    this.createDailyLambdaRule(config, ingestionLambda, ragConfig, pipelineConfig, hash);
+                    break;
+                }
+                case 'event': {
+                    const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
+                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionIngestEventLambda-${index}`, ingestionLambdaArn.stringValue);
+                    this.createEventLambdaRule(config, ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', hash);
+                    break;
+                }
+                default:
+                    // Log warning for unrecognized triggers
+                    console.warn(`Unrecognized trigger ${pipelineConfig.trigger}`);
+            }
+
+            // Add EventBridge Rule for when objects are removed from S3
+            // Setup auto-removal of objects if enabled
+            if (pipelineConfig.autoRemove) {
+                const deletionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionDeleteEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/delete/event`);
+                const deletionLambda = lambda.Function.fromFunctionArn(this, `IngestionDeleteEventLambda-${index}`, deletionLambdaArn.stringValue);
+                console.log('Creating autodelete rule...');
+
+                bucketActions.push('s3:DeleteObject');
+
+                // Grant the execution role permissions to list contents of the S3 bucket
+                lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: ['s3:GetObject', 's3:ListBucket'],
+                    actions: ['s3:ListBucket'],
                     resources: [
                         `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}`,
-                        `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/*`
                     ]
                 }));
 
-                // Add EventBridge Rules based on pipeline configuration
-                // Add EventBridge Rules based on trigger type specified in the pipeline configuration
-                switch (pipelineConfig.trigger) {
-                    case 'daily': {
-                        // Create daily cron trigger with input template
-                        // Create a daily scheduled rule
-                        this.createDailyRule(ragConfig, stateMachine, pipelineConfig);
-                        break;
-                    }
-                    case 'event': {
-                        // Create S3 event trigger with complete event pattern and transform input
-                        // Create an event rule triggered by S3 object creation or modification
-                        this.createEventRule(ragConfig.repositoryId, stateMachine, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest');
-                        break;
-                    }
-                    default:
-                        // Log warning for unrecognized triggers
-                        console.warn(`Unrecognized trigger ${pipelineConfig.trigger}`);
-                }
+                this.createEventLambdaRule(config, deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', hash);
+            }
 
-                if (pipelineConfig.autoRemove) {
-                    console.log('Creating autodelete rule...');
-                    lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
-                        effect: Effect.ALLOW,
-                        actions: ['s3:GetObject', 's3:ListBucket', 's3:DeleteObject'],
-                        resources: [
-                            `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}`,
-                            `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/*`
-                        ]
-                    }));
-                    this.createEventRule(ragConfig.repositoryId, deleteStateMachine, pipelineConfig, ['Object Deleted'], 'Delete');
-                }
-            });
-        }
+            // Grant the execution role permissions to access specified S3 bucket/prefix
+            lambdaExecutionRole.addToPrincipalPolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: bucketActions,
+                resources: [
+                    `arn:${config.partition}:s3:::${pipelineConfig.s3Bucket}/${pipelineConfig.s3Prefix}*`
+                ]
+            }));
+        });
     }
 
-    // Method to create an EventBridge rule triggered by S3 events
-    private createEventRule (repositoryId:string, stateMachine: IStateMachine, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string): Rule {
+    /**
+     * Creates an EventBridge rule for S3 event-based triggers
+     */
+    private createEventLambdaRule (config: PartialConfig, ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, disambiguator: string): Rule {
         const detail: any = {
             bucket: {
                 name: [pipelineConfig.s3Bucket]
@@ -104,7 +120,8 @@ export abstract class PipelineStack extends Stack {
 
         // Add prefix filter if specified and not root
         // Add object key prefix filter if specified in the configuration
-        if (pipelineConfig.s3Prefix && pipelineConfig.s3Prefix !== '/') {
+        // Add prefix filter if not root
+        if (pipelineConfig.s3Prefix !== '') {
             detail.object = {
                 key: [{
                     prefix: pipelineConfig.s3Prefix
@@ -120,12 +137,14 @@ export abstract class PipelineStack extends Stack {
         };
 
         // Create a new EventBridge rule for the S3 event pattern
-        const ruleName = `${repositoryId}-S3Event${eventName}Rule`;
-        return new Rule(this, ruleName, {
+        return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-S3Event${eventName}Rule-${disambiguator}`,
             eventPattern,
             // Define the state machine target with input transformation
-            targets: [new SfnStateMachine(stateMachine, {
-                input: RuleTargetInput.fromObject({
+            targets: [new LambdaFunction(ingestionLambda, {
+                event: RuleTargetInput.fromObject({
+                    version: '0',
+                    id: EventField.eventId,
                     'detail-type': EventField.detailType,
                     source: EventField.source,
                     time: EventField.time,
@@ -134,28 +153,28 @@ export abstract class PipelineStack extends Stack {
                         repositoryId,
                         bucket: pipelineConfig.s3Bucket,
                         prefix: pipelineConfig.s3Prefix,
-                        object: {
-                            key: EventField.fromPath('$.detail.object.key')
-                        },
+                        key: EventField.fromPath('$.detail.object.key'),
                         trigger: 'event',
-                        pipelineConfig
+                        pipelineConfig,
                     }
                 })
             })]
         });
     }
 
-    // Method to create a daily scheduled EventBridge rule
-    private createDailyRule (ragConfig: RagRepositoryConfig, stateMachine: IStateMachine, pipelineConfig: PipelineConfig): Rule {
-        return new Rule(this, 'DailyIngestRule', {
+    /**
+     * Creates an EventBridge rule for daily scheduled triggers
+     */
+    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: string): Rule {
+        return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${disambiguator}`, {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({
                 minute: '0',
                 hour: '0'
             }),
-            // Define the state machine target with a specific input configuration
-            targets: [new SfnStateMachine(stateMachine, {
-                input: RuleTargetInput.fromObject({
+            targets: [new LambdaFunction(ingestionLambda, {
+                event: RuleTargetInput.fromObject({
                     version: '0',
                     id: EventField.eventId,
                     'detail-type': 'Scheduled Event',
@@ -172,13 +191,5 @@ export abstract class PipelineStack extends Stack {
                 })
             })]
         });
-    }
-
-    private getStateMachine (config: PartialConfig, resource: string){
-        // Retrieve State Machine and IAM Role ARNs from SSM Parameter Store
-        console.log(`looking for ${config.deploymentPrefix}/${resource}PipelineStateMachineArn`);
-        const stateMachine = StateMachine.fromStateMachineArn(this, `${resource}PipelineStateMachine`, StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${resource}PipelineStateMachineArn`));
-        const stateMachineRole = Role.fromRoleArn(this, `${resource}PipelineRoleArn`, StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${resource}PipelineRoleArn`));
-        return {stateMachine, stateMachineRole};
     }
 }

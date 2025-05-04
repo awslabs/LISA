@@ -114,6 +114,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                 encryptionAtRest: {
                     enabled: true
                 },
+                // todo: validate if this should use the config removal policy
                 removalPolicy: RemovalPolicy.DESTROY,
                 securityGroups: [openSearchSecurityGroup],
             });

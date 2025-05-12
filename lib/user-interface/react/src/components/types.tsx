@@ -208,3 +208,21 @@ export enum StatusTypes {
     SUCCESS = 'success',
     ERROR = 'error',
 }
+
+/**
+ * Message Types
+ */
+export enum MessageTypes {
+    HUMAN = 'human',
+    SYSTEM = 'system',
+    AI = 'ai'
+}
+
+
+/**
+ * Model Features
+ */
+export enum ModelFeatures {
+    SUMMARIZATION = 'summarization',
+    IMAGE_INPUT = 'imageInput'
+}

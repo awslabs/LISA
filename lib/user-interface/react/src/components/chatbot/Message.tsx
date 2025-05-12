@@ -20,7 +20,7 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { LisaChatMessage, LisaChatMessageMetadata } from '../types';
+import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
@@ -33,6 +33,7 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
 import ImageViewer from '@/components/chatbot/ImageViewer';
+import { merge } from 'lodash';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -66,9 +67,9 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         if (Array.isArray(content)) {
             return content.map((item, index) => {
                 if (item.type === 'text') {
-                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{getDisplayableMessage(item.text, message.type === 'ai' ? ragCitations : undefined)}</div>;
+                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>;
                 } else if (item.type === 'image_url') {
-                    return message.type === 'human' ?
+                    return message.type === MessageTypes.HUMAN ?
                         <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '50%',  maxHeight: '30em', marginTop: '8px' }} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
                             <Link onClick={() => {
@@ -97,17 +98,17 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                             await fetchImage(item.image_url.url) : base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });
                                         await navigator.clipboard.write([copy]);
                                     } else if (e.detail.id === 'regenerate') {
-                                        setChatConfiguration({
-                                            ...chatConfiguration,
-                                            sessionConfiguration: {
-                                                ...chatConfiguration.sessionConfiguration,
-                                                imageGenerationArgs: {
-                                                    size: metadata?.imageGenerationParams?.size,
-                                                    numberOfImages: metadata?.imageGenerationParams?.n,
-                                                    quality: metadata?.imageGenerationParams?.quality
+                                        setChatConfiguration(
+                                            merge({}, chatConfiguration, {
+                                                sessionConfiguration: {
+                                                    imageGenerationArgs: {
+                                                        size: metadata?.imageGenerationParams?.size,
+                                                        numberOfImages: metadata?.imageGenerationParams?.n,
+                                                        quality: metadata?.imageGenerationParams?.quality
+                                                    }
                                                 }
-                                            }
-                                        });
+                                            })
+                                        );
                                         setUserPrompt(metadata?.imageGenerationParams?.prompt ?? '');
                                         setResend(true);
                                     }
@@ -130,7 +131,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
     };
 
     return (
-        (message.type === 'human' || message.type === 'ai') &&
+        (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI) &&
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {isRunning && (

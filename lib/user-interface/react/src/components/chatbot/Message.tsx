@@ -119,15 +119,13 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 return null;
             });
         }
-        return message.type === 'human' ?
-            <div>{content}</div> :
+        return (
             <div style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? <ReactMarkdown
                     remarkPlugins={[remarkBreaks]}
                     children={content}
                 /> : <div style={{ whiteSpace: 'pre-line' }}>{content}</div>}
-            </div>
-        ;
+            </div>);
     };
 
     return (

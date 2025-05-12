@@ -14,10 +14,29 @@
  limitations under the License.
  */
 
-import { Button, Container, Form, FormField, Header, Input, SpaceBetween, Textarea, Toggle, TokenGroup } from '@cloudscape-design/components';
+import {
+    Button,
+    Container,
+    Form,
+    FormField,
+    Header,
+    Input,
+    Select,
+    SpaceBetween,
+    Textarea,
+    Toggle,
+    TokenGroup
+} from '@cloudscape-design/components';
 import 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { DefaultPromptTemplate, NewPromptTemplate, useCreatePromptTemplateMutation, useLazyGetPromptTemplateQuery, useUpdatePromptTemplateMutation } from '../../shared/reducers/prompt-templates.reducer';
+import {
+    DefaultPromptTemplate,
+    NewPromptTemplate,
+    PromptTemplateType,
+    useCreatePromptTemplateMutation,
+    useLazyGetPromptTemplateQuery,
+    useUpdatePromptTemplateMutation
+} from '../../shared/reducers/prompt-templates.reducer';
 import { issuesToErrors, scrollToInvalid, useValidationReducer } from '../../shared/validation';
 import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
@@ -27,6 +46,7 @@ import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { ModifyMethod } from '../../shared/validation/modify-method';
 import { selectCurrentUserIsAdmin } from '../../shared/reducers/user.reducer';
+import { findKey } from 'lodash';
 
 export type PromptTemplateFormProps = {
     isEdit?: boolean
@@ -154,6 +174,16 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                         }}
                         disabled={disabled}
                         placeholder='Enter prompt template title' />
+                    </FormField>
+
+                    <FormField label='Type' errorText={errors?.type} description={'The type of prompt template you are creating.'}>
+                        <Select
+                            selectedOption={{label: findKey(PromptTemplateType, (type) => type === state.form.type), value: state.form.type}}
+                            onChange={({detail}) => {
+                                setFields({'type': detail.selectedOption.value});
+                            }}
+                            options={Object.entries(PromptTemplateType).map(([key, value]) => ({label: key, value}))}
+                        />
                     </FormField>
 
                     <FormField label='Share with everyone'>

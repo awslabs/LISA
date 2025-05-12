@@ -16,7 +16,12 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { LisaChatMessageFields, LisaChatSession } from '../../components/types';
+import {
+    LisaAttachImageRequest,
+    LisaAttachImageResponse,
+    LisaChatMessageFields,
+    LisaChatSession
+} from '../../components/types';
 import { RESTAPI_URI } from '../../components/utils';
 
 export const sessionApi = createApi({
@@ -67,6 +72,23 @@ export const sessionApi = createApi({
             },
             invalidatesTags: ['sessions'],
         }),
+        attachImageToSession: builder.mutation<LisaAttachImageResponse, LisaAttachImageRequest>({
+            query: (attachImageRequest) => ({
+                url: `/session/${attachImageRequest.sessionId}/attachImage`,
+                method: 'PUT',
+                data: {
+                    message: attachImageRequest.message
+                }
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Attach Image to Session Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['sessions'],
+        }),
         deleteSessionById: builder.mutation<LisaChatSession, String>({
             query: (sessionId: String) => ({
                 url: `/session/${sessionId}`,
@@ -104,5 +126,6 @@ export const {
     useDeleteAllSessionsForUserMutation,
     useUpdateSessionMutation,
     useLazyGetSessionByIdQuery,
-    useGetSessionHealthQuery
+    useGetSessionHealthQuery,
+    useAttachImageToSessionMutation
 } = sessionApi;

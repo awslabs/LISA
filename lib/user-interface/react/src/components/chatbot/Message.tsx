@@ -17,17 +17,23 @@
 import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonGroup, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
+import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { LisaChatMessage } from '../types';
+import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
-import { getDisplayableMessage } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import React, { useEffect, useState } from 'react';
+import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
+import { downloadFile } from '@/shared/util/downloader';
+import Link from '@cloudscape-design/components/link';
+import ImageViewer from '@/components/chatbot/ImageViewer';
+import { merge } from 'lodash';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -35,29 +41,97 @@ type MessageProps = {
     showMetadata?: boolean;
     isStreaming?: boolean;
     markdownDisplay?: boolean;
+    setChatConfiguration: (state: IChatConfiguration) => void;
+    handleSendGenerateRequest: () => void;
+    setUserPrompt: (state: string) => void;
+    chatConfiguration: IChatConfiguration;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
+    const [resend, setResend] = useState(false);
+    const [showImageViewer, setShowImageViewer] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(undefined);
+    const [selectedMetadata, setSelectedMetadata] = useState(undefined);
 
-    const renderContent = (content: MessageContent) => {
+    useEffect(() => {
+        if (resend){
+            handleSendGenerateRequest();
+            setResend(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resend]);
+
+    const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
                 if (item.type === 'text') {
-                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{item.text}</div>;
+                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>;
                 } else if (item.type === 'image_url') {
-                    return <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%',  maxHeight: '30em', marginTop: '8px' }} />;
+                    return message.type === MessageTypes.HUMAN ?
+                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth:  '50%',  maxHeight: '30em', marginTop: '8px' }} /> :
+                        <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                            <Link onClick={() => {
+                                setSelectedImage(item);
+                                setSelectedMetadata(metadata);
+                                setShowImageViewer(true);
+                            }}>
+                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth:  '100%',  maxHeight: '30em', marginTop: '8px' }} />
+                            </Link>
+                            <ButtonDropdown
+                                items={[
+                                    { id: 'download-image', text: 'Download Image', iconName: 'download'},
+                                    { id: 'copy-image', text: 'Copy Image', iconName: 'copy'},
+                                    { id: 'regenerate', text: 'Regenerate Image(s)', iconName: 'refresh'}
+                                ]}
+                                ariaLabel='Control instance'
+                                variant='icon'
+                                onItemClick={async (e) => {
+                                    if (e.detail.id === 'download-image'){
+                                        const file = item.image_url.url.startsWith('https://') ?
+                                            await fetchImage(item.image_url.url)
+                                            : base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
+                                        downloadFile(URL.createObjectURL(file), `${metadata?.imageGenerationParams?.prompt}.png`);
+                                    } else if (e.detail.id === 'copy-image') {
+                                        const copy = new ClipboardItem({ 'image/png':item.image_url.url.startsWith('https://') ?
+                                            await fetchImage(item.image_url.url) : base64ToBlob(item.image_url.url.split(',')[1], 'image/png') });
+                                        await navigator.clipboard.write([copy]);
+                                    } else if (e.detail.id === 'regenerate') {
+                                        setChatConfiguration(
+                                            merge({}, chatConfiguration, {
+                                                sessionConfiguration: {
+                                                    imageGenerationArgs: {
+                                                        size: metadata?.imageGenerationParams?.size,
+                                                        numberOfImages: metadata?.imageGenerationParams?.n,
+                                                        quality: metadata?.imageGenerationParams?.quality
+                                                    }
+                                                }
+                                            })
+                                        );
+                                        setUserPrompt(metadata?.imageGenerationParams?.prompt ?? '');
+                                        setResend(true);
+                                    }
+                                }}
+                            />
+                        </Grid>;
                 }
                 return null;
             });
         }
-        return <div>{content}</div>;
+        return (
+            <div style={{ maxWidth: '60em' }}>
+                {markdownDisplay ? <ReactMarkdown
+                    remarkPlugins={[remarkBreaks]}
+                    children={content}
+                /> : <div style={{ whiteSpace: 'pre-line' }}>{content}</div>}
+            </div>);
     };
 
     return (
-        (message.type === 'human' || message.type === 'ai') &&
+        (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI) &&
         <div className='mt-2' style={{ overflow: 'hidden' }}>
+            <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {isRunning && (
                 <ChatBubble
                     ariaLabel='Generative AI assistant'
@@ -92,17 +166,12 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             />
                         }
                     >
-                        <div style={{ maxWidth: '60em' }}>
-                            {markdownDisplay ? <ReactMarkdown
-                                remarkPlugins={[remarkBreaks]}
-                                children={getDisplayableMessage(message.content, ragCitations)}
-                            /> : <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(message.content, ragCitations)}</div>}
-                        </div>
+                        {renderContent(message.type, message.content, message.metadata)}
                         {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
                             <JsonView data={message.metadata} style={darkStyles} />
                         </ExpandableSection>}
                     </ChatBubble>
-                    {!isStreaming && <div
+                    {!isStreaming  && !messageContainsImage(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                         <ButtonGroup
                             onItemClick={({ detail }) =>
@@ -142,7 +211,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     }
                 >
                     <div style={{ maxWidth: '60em' }}>
-                        {renderContent(message.content)}
+                        {renderContent(message.type, message.content)}
                     </div>
                 </ChatBubble>
             )}

@@ -1,3 +1,45 @@
+# v4.4.0
+## Key Features
+### Image Generation
+LISA now supports Image Generation capabilities!
+#### Administrative Features
+- Administrators can now configure and deploy models with the new IMAGEGEN classification type
+#### User Experience Enhancements
+- Users can customize image generation parameters including:
+  - Output quantity: Specify the number of images to generate per prompt
+  - Quality settings: Select between Standard and High Definition (HD) resolution
+  - Aspect ratio options: Choose from Square, Portrait, or Landscape formats
+#### Image Management Functionality
+- Comprehensive image handling options:
+  - Preview generated images directly in the interface
+  - Download individual images to local storage
+  - Copy images directly to clipboard for immediate use
+  - Perform bulk downloads of all images from a session to a zip file
+  - Regenerate variations using identical parameters
+#### Persistent Storage Solution
+- All generated images are automatically preserved in session-specific S3 storage
+- Seamless retrieval of previously generated images when returning to a session
+
+### Directive Prompt Templates
+LISA’s prompt library now supports directive prompt templates
+#### User Template Management
+- Users can now create and implement specialized directive prompt templates, complementing the existing persona prompt template functionality
+- Seamless import capabilities allow for integration of directive templates into both active and newly created sessions
+#### Flexible Access Control Options
+Extended the existing permission settings enable users to designate directive templates as:
+- Private resources for individual use
+- Global assets accessible organization-wide
+- Restricted resources with access limited to specific IDP groups
+#### Workflow Integration
+- Directive templates enhance structured interactions and standardized workflows across the platform
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.3.0...v4.4.0
+
 # v4.3.0
 ## Key Features
 ### RAG Ingestion Backend Overhaul

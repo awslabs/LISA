@@ -67,6 +67,7 @@ class ModelType(str, Enum):
         return str(self.value)
 
     TEXTGEN = "textgen"
+    IMAGEGEN = "imagegen"
     EMBEDDING = "embedding"
 
 

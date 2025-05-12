@@ -29,7 +29,7 @@ import {
 
 import Toggle from '@cloudscape-design/components/toggle';
 import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
-import { IModel } from '../../shared/model/model-management.model';
+import { IModel, ModelType } from '../../shared/model/model-management.model';
 import { IConfiguration } from '../../shared/model/configuration.model';
 
 export type SessionConfigurationProps = {
@@ -69,6 +69,8 @@ export default function SessionConfiguration ({
         };
     });
 
+    const isImageModel = selectedModel?.modelType === ModelType.imagegen;
+
     return (
         <Modal
             onDismiss={() => setVisible(false)}
@@ -100,7 +102,7 @@ export default function SessionConfiguration ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -117,7 +119,7 @@ export default function SessionConfiguration ({
                                 options={oneThroughTenOptions}
                             />
                         </SpaceBetween>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -135,7 +137,7 @@ export default function SessionConfiguration ({
                             />
                         </SpaceBetween>}
                 </Grid>
-                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
                     <Container
                         header={
                             <Header
@@ -392,6 +394,65 @@ export default function SessionConfiguration ({
                             />
                         </FormField>
                     </Container>}
+                {isImageModel && (
+                    <Container
+                        header={
+                            <Header
+                                variant='h2'
+                            >
+                                Image Generation Model Args
+                            </Header>
+                        }
+                    >
+                        <FormField label='Image Size'>
+                            <Select
+                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.size}}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('imageGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
+                                        size: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '1024x1024 (Square)', value: '1024x1024'},
+                                    { label: '1024x1792 (Portrait)', value: '1024x1792' },
+                                    { label: '1792x1024 (Landscape)', value: '1792x1024' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Image Quality'>
+                            <Select
+                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality}}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('imageGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
+                                        quality: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: 'Standard', value: 'standard'},
+                                    { label: 'HD', value: 'hd' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Number of Images'>
+                            <Select
+                                selectedOption={{value: String(chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages)}}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('imageGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
+                                        numberOfImages: Number(detail.selectedOption.value),
+                                    });
+                                }}
+                                options={
+                                    Array.from({ length: 5 }, (_, i) => i + 1).map((i) => {
+                                        return {label: String(i), value: String(i)};
+                                    })
+                                }
+                            />
+                        </FormField>
+                    </Container>
+                )}
             </SpaceBetween>
         </Modal>
     );

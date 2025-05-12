@@ -46,6 +46,11 @@ export type ISessionConfiguration = {
         temperature: number;
         seed: number;
         stop: string[];
+    },
+    imageGenerationArgs: {
+        size: string,
+        numberOfImages: number,
+        quality: string,
     }
 };
 
@@ -75,6 +80,11 @@ export const baseConfig: IChatConfiguration = {
             temperature: null,
             seed: null,
             stop: ['\nUser:', '\n User:', 'User:', 'User'],
+        },
+        imageGenerationArgs: {
+            size: '1024x1024',
+            numberOfImages: 1,
+            quality: 'standard',
         }
     }
 };

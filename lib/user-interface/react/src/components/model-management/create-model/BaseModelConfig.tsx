@@ -23,6 +23,7 @@ import Select from '@cloudscape-design/components/select';
 import { IModelRequest, InferenceContainer, ModelType } from '../../../shared/model/model-management.model';
 import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
+import { ModelFeatures } from '@/components/types';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
@@ -30,6 +31,8 @@ export type BaseModelConfigCustomProps = {
 
 export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConfigCustomProps) : ReactElement {
     const {data: instances, isLoading: isLoadingInstances} = useGetInstancesQuery();
+    const isEmbeddingModel = props.item.modelType === ModelType.embedding;
+    const isImageModel = props.item.modelType === ModelType.imagegen;
 
     return (
         <SpaceBetween size={'s'}>
@@ -57,13 +60,13 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         };
 
                         // turn off streaming for embedded models
-                        if (fields.modelType === ModelType.embedding) {
+                        if (fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen) {
                             fields['streaming'] = false;
                         }
 
-                        // turn off summarization for embedded models
-                        if (fields.modelType === ModelType.embedding && props.item.features.includes('summarization')) {
-                            fields['features'] = props.item.features.filter((feature) => feature !== 'summarization');
+                        // turn off summarization and image input for embedded and imagegen models
+                        if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen)) {
+                            fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT);
                         }
 
                         props.setFields(fields);
@@ -71,6 +74,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     onBlur={() => props.touchFields(['modelType'])}
                     options={[
                         { label: 'TEXTGEN', value: ModelType.textgen },
+                        { label: 'IMAGEGEN', value: ModelType.imagegen },
                         { label: 'EMBEDDING', value: ModelType.embedding },
                     ]}
                 />
@@ -124,44 +128,44 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             props.setFields({'streaming': detail.checked})
                         }
                         onBlur={() => props.touchFields(['streaming'])}
-                        disabled={props.item.modelType === ModelType.embedding}
+                        disabled={isEmbeddingModel || isImageModel}
                         checked={props.item.streaming}
                     />
                 </FormField>
-                <FormField label='Image Input' errorText={props.formErrors?.imageInput}>
+                <FormField label='Image Input' errorText={props.formErrors?.features}>
                     <Toggle
                         onChange={({ detail }) => {
-                            if (detail.checked && props.item.features.find((feature) => feature.name === 'imageInput') === undefined) {
-                                props.setFields({'features': props.item.features.concat({name: 'imageInput', overview: ''})});
-                            } else if (!detail.checked && props.item.features.find((feature) => feature.name === 'imageInput') !== undefined) {
-                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'imageInput')});
+                            if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) === undefined) {
+                                props.setFields({'features': props.item.features.concat({name: ModelFeatures.IMAGE_INPUT, overview: ''})});
+                            } else if (!detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.IMAGE_INPUT)});
                             }
                         }}
-                        disabled={props.item.modelType === ModelType.embedding}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
-                        checked={props.item.features.find((feature) => feature.name === 'imageInput') !== undefined}
+                        checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
                 </FormField>
                 <FormField label='Summarization' errorText={props.formErrors?.features}
-                    warningText={props.item.features.find((feature) => feature.name === 'summarization') !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}>
+                    warningText={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}>
                     <Toggle
                         onChange={({ detail }) => {
-                            if (detail.checked && props.item.features.find((feature) => feature.name === 'summarization') === undefined) {
-                                props.setFields({'features': props.item.features.concat({name: 'summarization', overview: ''})});
-                            } else if (!detail.checked && props.item.features.find((feature) => feature.name === 'summarization') !== undefined) {
-                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== 'summarization')});
+                            if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) === undefined) {
+                                props.setFields({'features': props.item.features.concat({name: ModelFeatures.SUMMARIZATION, overview: ''})});
+                            } else if (!detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION)});
                             }
                         }}
-                        disabled={props.item.modelType === ModelType.embedding}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
-                        checked={props.item.features.find((feature) => feature.name === 'summarization') !== undefined}
+                        checked={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined}
                     />
                 </FormField>
             </Grid>
             <FormField label='Summarization Capabilities' errorText={props.formErrors?.summarizationCapabilities}>
-                <Input value={props.item.features.find((feature) => feature.name === 'summarization') !== undefined ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
-                    props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== 'summarization'), {name: 'summarization', overview: detail.value}] });
-                }} disabled={props.isEdit || !props.item.features.find((feature) => feature.name === 'summarization')} placeholder='Optional overview of Summarization for Model'/>
+                <Input value={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
+                    props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
+                }} disabled={props.isEdit || !props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Optional overview of Summarization for Model'/>
             </FormField>
         </SpaceBetween>
     );

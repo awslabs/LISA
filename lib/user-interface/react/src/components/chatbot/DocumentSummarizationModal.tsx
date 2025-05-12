@@ -172,8 +172,6 @@ export function DocumentSummarizationModal ({
                                             returnMessages: false,
                                             memoryKey: 'history',
                                             k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-                                            aiPrefix: chatConfiguration.promptConfiguration.aiPrefix,
-                                            humanPrefix: chatConfiguration.promptConfiguration.humanPrefix,
                                         }));
                                     }
 

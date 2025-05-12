@@ -394,6 +394,65 @@ export default function SessionConfiguration ({
                             />
                         </FormField>
                     </Container>}
+                {isImageModel && (
+                    <Container
+                        header={
+                            <Header
+                                variant='h2'
+                            >
+                                Image Generation Model Args
+                            </Header>
+                        }
+                    >
+                        <FormField label='Image Size'>
+                            <Select
+                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.size}}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('imageGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
+                                        size: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '1024x1024 (Square)', value: '1024x1024'},
+                                    { label: '1024x1792 (Portrait)', value: '1024x1792' },
+                                    { label: '1792x1024 (Landscape)', value: '1792x1024' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Image Quality'>
+                            <Select
+                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality}}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('imageGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
+                                        quality: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: 'Standard', value: 'standard'},
+                                    { label: 'HD', value: 'hd' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Number of Images'>
+                            <Select
+                                selectedOption={{value: String(chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages)}}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('imageGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
+                                        numberOfImages: Number(detail.selectedOption.value),
+                                    });
+                                }}
+                                options={
+                                    Array.from({ length: 5 }, (_, i) => i + 1).map((i) => {
+                                        return {label: String(i), value: String(i)};
+                                    })
+                                }
+                            />
+                        </FormField>
+                    </Container>
+                )}
             </SpaceBetween>
         </Modal>
     );

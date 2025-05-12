@@ -33,7 +33,13 @@ import {
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 import Message from './Message';
-import { LisaAttachImageResponse, LisaChatMessage, LisaChatMessageMetadata, LisaChatSession } from '../types';
+import {
+    LisaAttachImageResponse,
+    LisaChatMessage,
+    LisaChatMessageMetadata,
+    LisaChatSession,
+    MessageTypes
+} from '../types';
 import { formatDocumentsAsString, formatDocumentTitlesAsString, RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
 import RagControls, { RagConfig } from './RagOptions';
@@ -61,7 +67,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileLines, faMessage, faPenToSquare, faComment } from '@fortawesome/free-regular-svg-icons';
 import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
 import ConfigurationContext from '../../shared/configuration.provider';
-import Select from '@cloudscape-design/components/select';
 import FormField from '@cloudscape-design/components/form-field';
 import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 
@@ -204,7 +209,7 @@ export default function Chat ({ sessionId }) {
 
                     // Convert chat history to messages format
                     let messages = session.history.concat(params.message).map((msg) => ({
-                        role: msg.type === 'human' ? 'user' : msg.type === 'ai' ? 'assistant' : 'system',
+                        role: msg.type === MessageTypes.HUMAN ? 'user' : msg.type === MessageTypes.AI ? 'assistant' : 'system',
                         content: Array.isArray(msg.content) ? msg.content : selectedModel.modelName.startsWith('sagemaker') ? msg.content :  [{ type: 'text', text: msg.content }]
                     }));
 
@@ -278,7 +283,7 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     const handleUpdateSession = async () => {
-        if (session.history.at(-1).type === 'ai' && !auth.isLoading) {
+        if (session.history.at(-1).type === MessageTypes.AI && !auth.isLoading) {
             setDirtySession(false);
             const message = session.history.at(-1);
             if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)){
@@ -642,7 +647,7 @@ export default function Chat ({ sessionId }) {
                                     label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
-                                        disabled={isRunning}
+                                        disabled={isRunning || session.history.length > 0}
                                         statusType={isFetchingModels ? 'loading' : 'finished'}
                                         loadingText='Loading models (might take few seconds)...'
                                         placeholder='Select a model'
@@ -677,81 +682,6 @@ export default function Chat ({ sessionId }) {
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
                                     />
-                                )}
-                                {isImageGenerationMode && (
-                                    <Grid
-                                        gridDefinition={[
-                                            { colspan: { default: 4 } },
-                                            { colspan: { default: 4 } },
-                                            { colspan: { default: 4 } },
-                                        ]}
-                                    >
-                                        <FormField label='Image Size'>
-                                            <Select
-                                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.size}}
-                                                onChange={({ detail }) => {
-                                                    setChatConfiguration((prev) => ({
-                                                        ...prev,
-                                                        sessionConfiguration: {
-                                                            ...prev.sessionConfiguration,
-                                                            imageGenerationArgs: {
-                                                                ...prev.sessionConfiguration.imageGenerationArgs,
-                                                                size: detail.selectedOption.value
-                                                            }
-                                                        }
-                                                    }));
-                                                }}
-                                                options={[
-                                                    { label: '1024x1024 (Square)', value: '1024x1024'},
-                                                    { label: '1024x1792 (Portrait)', value: '1024x1792' },
-                                                    { label: '1792x1024 (Landscape)', value: '1792x1024' },
-                                                ]}
-                                            />
-                                        </FormField>
-                                        <FormField label='Image Quality'>
-                                            <Select
-                                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality}}
-                                                onChange={({ detail }) => {
-                                                    setChatConfiguration((prev) => ({
-                                                        ...prev,
-                                                        sessionConfiguration: {
-                                                            ...prev.sessionConfiguration,
-                                                            imageGenerationArgs: {
-                                                                ...prev.sessionConfiguration.imageGenerationArgs,
-                                                                quality: detail.selectedOption.value
-                                                            }
-                                                        }
-                                                    }));
-                                                }}
-                                                options={[
-                                                    { label: 'Standard', value: 'standard'},
-                                                    { label: 'HD', value: 'hd' },
-                                                ]}
-                                            />
-                                        </FormField>
-                                        <FormField label='Number of Images'>
-                                            <Select
-                                                selectedOption={{value: String(chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages)}}
-                                                onChange={({ detail }) => {
-                                                    setChatConfiguration((prev) => ({
-                                                        ...prev,
-                                                        sessionConfiguration: {
-                                                            ...prev.sessionConfiguration,
-                                                            imageGenerationArgs: {
-                                                                ...prev.sessionConfiguration.imageGenerationArgs,
-                                                                numberOfImages: Number(detail.selectedOption.value)
-                                                            }
-                                                        }
-                                                    }));
-                                                }}
-                                                options={
-                                                    Array.from({ length: 5 }, (_, i) => i + 1).map((i) => {
-                                                        return {label: String(i), value: String(i)};
-                                                    })
-                                                }
-                                            />
-                                        </FormField>
-                                    </Grid>
                                 )}
                             </Grid>
                             <PromptInput

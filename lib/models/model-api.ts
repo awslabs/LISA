@@ -44,7 +44,7 @@ import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { createLambdaRole } from '../core/utils';
+import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
 
@@ -58,7 +58,6 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
-    lisaServeEndpointUrlPs: StringParameter;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -72,7 +71,13 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+
+        const lisaServeEndpointUrlPs = StringParameter.fromStringParameterName(
+            scope,
+            createCdkId(['LisaRestApiUri', 'StringParameter']),
+            `${config.deploymentPrefix}/lisaServeRestApiUri`,
+        );
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(

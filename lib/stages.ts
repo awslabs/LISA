@@ -229,7 +229,6 @@ export class LisaServeApplicationStage extends Stage {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer!,
                 description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
-                modelsPs: serveStack.modelsPs,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
                 stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),

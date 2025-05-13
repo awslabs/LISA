@@ -80,7 +80,7 @@ export class LisaRagConstruct extends Construct {
 
         const modelsPs = StringParameter.fromStringParameterName(
             scope,
-            createCdkId(['LisaRestApiUri', 'StringParameter']),
+            createCdkId(['RegisteredModels', 'StringParameter']),
             `${config.deploymentPrefix}/registeredModels`,
         );
 

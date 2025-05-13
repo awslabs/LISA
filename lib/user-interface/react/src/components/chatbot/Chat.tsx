@@ -738,7 +738,8 @@ export default function Chat ({ sessionId }) {
                                                         type: 'icon-button',
                                                         id: 'upload-to-rag',
                                                         iconName: 'upload',
-                                                        text: 'Upload to RAG'
+                                                        text: 'Upload to RAG',
+                                                        disabled: !useRag
                                                     }] as ButtonGroupProps.Item[] : []),
                                                 ...(config?.configuration.enabledComponents.uploadContextDocs && !isImageGenerationMode ?
                                                     [{

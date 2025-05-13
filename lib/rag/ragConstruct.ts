@@ -48,6 +48,8 @@ import { IngestionStack } from './ingestion/ingestion-stack';
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
+    endpointUrl?: StringParameter;
+    modelsPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -72,13 +74,13 @@ export class LisaRagConstruct extends Construct {
         this.scope = scope;
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        const endpointUrl = StringParameter.fromStringParameterName(
+        const endpointUrl = props.endpointUrl ?? StringParameter.fromStringParameterName(
             scope,
             createCdkId(['LisaRestApiUri', 'StringParameter']),
             `${config.deploymentPrefix}/lisaServeRestApiUri`,
         );
 
-        const modelsPs = StringParameter.fromStringParameterName(
+        const modelsPs = props.modelsPs ?? StringParameter.fromStringParameterName(
             scope,
             createCdkId(['RegisteredModels', 'StringParameter']),
             `${config.deploymentPrefix}/registeredModels`,

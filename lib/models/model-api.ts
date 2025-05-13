@@ -58,6 +58,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -73,7 +74,7 @@ export class ModelsApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        const lisaServeEndpointUrlPs = StringParameter.fromStringParameterName(
+        const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,
             createCdkId(['LisaRestApiUri', 'StringParameter']),
             `${config.deploymentPrefix}/lisaServeRestApiUri`,

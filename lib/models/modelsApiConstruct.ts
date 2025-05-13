@@ -23,9 +23,12 @@ import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 import { ModelsApi } from './model-api';
 import { BaseProps } from '../schema';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+
 export type LisaModelsApiProps = BaseProps &
   StackProps & {
       authorizer?: IAuthorizer;
+      lisaServeEndpointUrlPs?: StringParameter;
       restApiId: string;
       rootResourceId: string;
       securityGroups: ISecurityGroup[];

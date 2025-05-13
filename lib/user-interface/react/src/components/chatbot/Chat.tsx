@@ -551,7 +551,6 @@ export default function Chat ({ sessionId }) {
                 showModal={showPromptTemplateModal}
                 setShowModal={setShowPromptTemplateModal}
                 setUserPrompt={setUserPrompt}
-                setSelectedModel={setSelectedModel}
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}
                 key={promptTemplateKey}
@@ -709,6 +708,7 @@ export default function Chat ({ sessionId }) {
                                                 }
                                                 if (detail.id === 'edit-prompt-template'){
                                                     setPromptTemplateKey(new Date().toISOString());
+                                                    setFilterPromptTemplateType(PromptTemplateType.Persona);
                                                     setShowPromptTemplateModal(true);
                                                 }
                                                 if (detail.id === 'upload-to-rag'){

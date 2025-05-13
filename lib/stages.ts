@@ -214,7 +214,6 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             authorizer: apiBaseStack.authorizer,
             description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
-            lisaServeEndpointUrlPs: serveStack.endpointUrl,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),

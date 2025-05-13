@@ -134,12 +134,12 @@ ifdef PROFILE
 		--profile $(PROFILE) \
 		aws://$(ACCOUNT_NUMBER)/$(REGION) \
 		--partition $(PARTITION) \
-		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+		--cloudformation-execution-policies arn:$(PARTITION):iam::aws:policy/AdministratorAccess
 else
 	@npx cdk bootstrap \
 		aws://$(ACCOUNT_NUMBER)/$(REGION) \
 		--partition $(PARTITION) \
-		--cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+		--cloudformation-execution-policies arn:$(PARTITION):iam::aws:policy/AdministratorAccess
 endif
 
 

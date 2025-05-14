@@ -345,6 +345,7 @@ export default function Chat ({ sessionId }) {
                 setSelectedModel(sess.configuration?.selectedModel ?? undefined);
                 setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
                 setLoadingSession(false);
+                setUserPrompt('');
             });
         } else {
             const newSessionId = uuidv4();

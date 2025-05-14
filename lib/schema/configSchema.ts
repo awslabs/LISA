@@ -760,6 +760,7 @@ export const RawConfigObject = z.object({
     subnets: z.array(z.object({
         subnetId: z.string().startsWith('subnet-'),
         ipv4CidrBlock: z.string(),
+        availabilityZone: z.string().describe('Specify the availability zone for the subnet in the format <region><letter> (e.g., us-east-1a).'),
     })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
     securityGroupConfig: SecurityGroupConfigSchema.optional(),
     deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),

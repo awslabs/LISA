@@ -25,20 +25,19 @@ import {
     SpaceBetween,
     Textarea,
 } from '@cloudscape-design/components';
-import { useMemo, useState } from 'react';
-import { IModel } from '../../shared/model/model-management.model';
+import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_PROMPT_TEMPLATE, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import FormField from '@cloudscape-design/components/form-field';
-import { PromptTemplateType, useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
+import { PromptTemplateType, useListPromptTemplatesQuery, promptTemplateApi } from '../../shared/reducers/prompt-templates.reducer';
 import { IConfiguration } from '../../shared/model/configuration.model';
 import { LisaChatSession } from '../types';
+import { useAppDispatch } from '@/config/store';
 
 export type PromptTemplateModalProps = {
     session: LisaChatSession,
     showModal: boolean;
     setShowModal: (state: boolean) => void;
     setUserPrompt: (state: string) => void;
-    setSelectedModel: (state: IModel) => void;
     chatConfiguration: IChatConfiguration;
     setChatConfiguration: (state: IChatConfiguration) => void;
     config: IConfiguration;
@@ -50,7 +49,6 @@ export function PromptTemplateModal ({
     showModal,
     setShowModal,
     setUserPrompt,
-    setSelectedModel,
     chatConfiguration,
     setChatConfiguration,
     config,
@@ -63,6 +61,8 @@ export function PromptTemplateModal ({
     const [suggestText, setSuggestText] = useState<string>('');
     const [promptTemplateText, setPromptTemplateText] = useState(isPersona ? chatConfiguration.promptConfiguration.promptTemplate : '');
     const disabled = isPersona && session.history.length > 0;
+    const dispatch = useAppDispatch();
+    const [startingPrompt, setStartingPrompt] = useState<string>(null);
 
     const options: SelectProps.Option[] = useMemo(() => {
         return isFetchingList ? [] : allItems.filter((item) => item.type === type || !type).map((item) => ({
@@ -75,12 +75,18 @@ export function PromptTemplateModal ({
 
     const keyWord = isPersona ? 'Persona' : 'Prompt';
 
+    useEffect(() => {
+        if (showModal){
+            // refresh prompt templates
+            dispatch(promptTemplateApi.util.invalidateTags(['promptTemplates']));
+        }
+    }, [showModal, dispatch]);
+
     return (
         <Modal
             onDismiss={() => {
                 setShowModal(false);
                 setUserPrompt('');
-                setSelectedModel(undefined);
             }}
             visible={showModal}
             header={`${keyWord} Editor`}
@@ -92,7 +98,6 @@ export function PromptTemplateModal ({
                             onClick={() => {
                                 setShowModal(false);
                                 setUserPrompt('');
-                                setSelectedModel(undefined);
                             }}
                             variant={'link'}
                         >
@@ -140,6 +145,7 @@ export function PromptTemplateModal ({
                                 onSelect={({detail}) => {
                                     const item = allItems.find((item) => item.id === detail.selectedOption?.id);
                                     setPromptTemplateText(item.body);
+                                    setStartingPrompt(item.body);
                                 }}
                                 loadingText={'Loading Prompts'}
                                 options={options}
@@ -156,13 +162,13 @@ export function PromptTemplateModal ({
 
                 <hr />
 
-                <FormField label={`${keyWord} Template`} description={`${isPersona ? 'Sets the initial system prompt to setup the conversation with an LLM.' : 'Sets the prompt to start a conversation with the LLM.'}`}>
+                <FormField label={`${keyWord} Template`} description={`${isPersona ? 'Sets the initial system prompt to setup the conversation with an LLM.' : 'Sets the prompt for use in conversation with the LLM.'}`}>
                     <Textarea rows={10} value={promptTemplateText} placeholder='Enter prompt text' onChange={({detail}) => setPromptTemplateText(detail.value)} />
                 </FormField>
                 { !disabled && promptTemplateText !== DEFAULT_PROMPT_TEMPLATE && (
                     <Link onClick={() => {
-                        setSuggestText('');
-                        setPromptTemplateText(DEFAULT_PROMPT_TEMPLATE);
+                        setSuggestText(isPersona ? '' : suggestText);
+                        setPromptTemplateText(isPersona ? DEFAULT_PROMPT_TEMPLATE : startingPrompt);
                     }}>Reset to default</Link>
                 )}
             </SpaceBetween>

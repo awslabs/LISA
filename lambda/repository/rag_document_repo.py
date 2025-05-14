@@ -58,7 +58,11 @@ class RagDocumentRepository:
                 for doc in subdocs:
                     batch.delete_item(Key={"document_id": doc.document_id, "sk": doc.sk})
 
-            self.doc_table.delete_item(Key={"pk": document.pk, "document_id": document.document_id})
+            # Check if document exists before trying to delete it
+            if document is not None:
+                self.doc_table.delete_item(Key={"pk": document.pk, "document_id": document.document_id})
+            else:
+                logging.warning(f"Document with ID {document_id} not found, skipping deletion from doc table")
         except ClientError as e:
             logging.error(f"Error deleting document: {e.response['Error']['Message']}")
             raise
@@ -193,7 +197,7 @@ class RagDocumentRepository:
 
             yield from self._yield_documents(response["Items"], join_docs=join_docs)
 
-    def _yield_documents(self, items, join_docs):
+    def _yield_documents(self, items: list[dict], join_docs: bool) -> Generator[RagDocument, None, None]:
         for item in items:
             document = RagDocument(**item)
             if join_docs:

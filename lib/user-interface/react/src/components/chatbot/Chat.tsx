@@ -345,6 +345,7 @@ export default function Chat ({ sessionId }) {
                 setSelectedModel(sess.configuration?.selectedModel ?? undefined);
                 setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
                 setLoadingSession(false);
+                setUserPrompt('');
             });
         } else {
             const newSessionId = uuidv4();
@@ -551,7 +552,6 @@ export default function Chat ({ sessionId }) {
                 showModal={showPromptTemplateModal}
                 setShowModal={setShowPromptTemplateModal}
                 setUserPrompt={setUserPrompt}
-                setSelectedModel={setSelectedModel}
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}
                 key={promptTemplateKey}
@@ -709,6 +709,7 @@ export default function Chat ({ sessionId }) {
                                                 }
                                                 if (detail.id === 'edit-prompt-template'){
                                                     setPromptTemplateKey(new Date().toISOString());
+                                                    setFilterPromptTemplateType(PromptTemplateType.Persona);
                                                     setShowPromptTemplateModal(true);
                                                 }
                                                 if (detail.id === 'upload-to-rag'){
@@ -738,7 +739,8 @@ export default function Chat ({ sessionId }) {
                                                         type: 'icon-button',
                                                         id: 'upload-to-rag',
                                                         iconName: 'upload',
-                                                        text: 'Upload to RAG'
+                                                        text: 'Upload to RAG',
+                                                        disabled: !useRag
                                                     }] as ButtonGroupProps.Item[] : []),
                                                 ...(config?.configuration.enabledComponents.uploadContextDocs && !isImageGenerationMode ?
                                                     [{

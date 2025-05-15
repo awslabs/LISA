@@ -58,7 +58,8 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
             subnetSelection = {
                 subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetAttributes(this, index.toString(), {
                     subnetId: subnet.subnetId,
-                    ipv4CidrBlock: subnet.ipv4CidrBlock
+                    ipv4CidrBlock: subnet.ipv4CidrBlock,
+                    availabilityZone: subnet.availabilityZone
                 }))
             };
         }

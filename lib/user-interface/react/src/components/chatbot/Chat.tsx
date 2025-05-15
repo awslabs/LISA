@@ -597,7 +597,7 @@ export default function Chat ({ sessionId }) {
                                 </SpaceBetween>
                             </Button>
 
-                            { config?.configuration?.enabledComponents?.editPromptTemplate && (
+                            { config?.configuration?.enabledComponents?.showPromptTemplateLibrary && (
                                 <>
                                     <Button variant='normal' onClick={() => {
                                         setPromptTemplateKey(new Date().toISOString());
@@ -749,7 +749,7 @@ export default function Chat ({ sessionId }) {
                                                         iconName: 'insert-row',
                                                         text: 'Add file to context'
                                                     }] as ButtonGroupProps.Item[] : []),
-                                                ...(config?.configuration.enabledComponents.editPromptTemplate ? [{
+                                                ...(config?.configuration.enabledComponents.showPromptTemplateLibrary ? [{
                                                     type: 'icon-button',
                                                     id: 'insert-prompt-template',
                                                     iconName: 'contact',

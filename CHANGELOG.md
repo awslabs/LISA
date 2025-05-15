@@ -1,3 +1,17 @@
+# v4.4.1
+## Bug Fixes
+- Updated OpenSearch vector store creation to support private VPCs
+
+## System Improvements
+- LISA now supports P5 Instances!
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.4.0...v4.4.1
+
 # v4.4.0
 ## Key Features
 ### Image Generation

@@ -113,5 +113,16 @@
   "directories": {
     "lib": "lib",
     "test": "test"
-  }
+  },
+  "files": [
+    "VERSION",
+    "bin",
+    "lib",
+    "lisa-sdk",
+    "lambda",
+    "scripts",
+    "ecs_model_deployer",
+    "vector_store_deployer",
+    "dist"
+  ]
 }

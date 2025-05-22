@@ -1,5 +1,4 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM dkr.acr.builder-tools.aws.dev/buildertools/python:al2023-python3.11
 
 ##### DOWNLOAD MOUNTPOINTS S3
 ARG MOUNTS3_DEB_URL

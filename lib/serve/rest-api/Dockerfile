@@ -1,4 +1,4 @@
-FROM dkr.acr.builder-tools.aws.dev/buildertools/python:al2023-python3.11
+FROM public.ecr.aws/sam/build-python3.11:latest
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG

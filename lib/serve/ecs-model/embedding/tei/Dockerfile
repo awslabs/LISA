@@ -1,4 +1,4 @@
-FROM dkr.acr.builder-tools.aws.dev/buildertools/python:al2023-python3.11
+FROM public.ecr.aws/sam/build-python3.11:latest
 
 ##### DOWNLOAD MOUNTPOINTS S3
 ARG MOUNTS3_DEB_URL

@@ -35,6 +35,7 @@ while [ 1 ]; do
 done &
 
 function buildTagPush() {
+    sed -iE 's/^FROM.*/FROM {{BASE_IMAGE}}/' Dockerfile
     docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} . && \
     docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}} && \
     aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin {{ECR_URI}} && \

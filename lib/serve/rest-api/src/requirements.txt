@@ -7,7 +7,7 @@ cryptography==43.0.3
 fastapi==0.115.11
 fastapi_utils==0.7.0
 gunicorn==23.0.0
-litellm[proxy]==1.65.1
+litellm[proxy]==1.72.0
 loguru==0.7.2
 pydantic==2.8.2
 PyJWT==2.9.0

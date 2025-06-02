@@ -1,4 +1,5 @@
-FROM public.ecr.aws/sam/build-python3.11:latest
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG
@@ -16,6 +17,7 @@ WORKDIR /app
 # Install dependencies
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
+RUN pip install mcp_weather_server
 
 # Copy LiteLLM config directly to container, it will be updated at runtime
 # with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify

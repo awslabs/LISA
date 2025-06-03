@@ -1,0 +1,26 @@
+'brazil_package_spec@1.0'
+
+common::{
+  name : "LISA-ADC",
+  major_version : "1.0",
+
+  dependencies : {
+    default_closure : run,
+    closures : {
+      run : public::{ include : [ self ] }
+    },
+  },
+
+  build : {
+    command : "run-npm",
+    env: {
+      PATH: [
+        (farm "PeruNPM" "bin"),
+        (env PATH)
+      ]
+    },
+    outputs : {
+      public_dir : "dist"
+    }
+  },
+}

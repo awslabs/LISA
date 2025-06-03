@@ -1,0 +1,13 @@
+/* This is a config file for Updatabot */
+
+// Updatabot works to keep your third-party dependencies up-to-date automatically
+// by sending weekly code reviews with any updates to package lock files
+
+// Lock files will be generated automatically for packages without them on first build
+// Python packages currently have support for Poetry only.
+
+// An empty updatabot-config.ion allows Ubot to discover package configuration automatically
+// learn more in the Updatabot docs: https://builderhub.corp.amazon.com/docs/brazil/peru-user-guide/updatabot.html
+{
+   autoPushChanges: true
+}

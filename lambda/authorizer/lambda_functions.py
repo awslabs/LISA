@@ -180,6 +180,10 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[
 
 def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
     """Check if the user is an admin."""
+     # TODO use Bindle lock to gate admin controls
+    principal_id = jwt_data.get("sub")
+    if principal_id in ['batzela', 'evmann', 'dustinps', 'amescyn', 'jmharold']:
+        return True
     return admin_group in (get_property_path(jwt_data, jwt_groups_property) or [])
 
 

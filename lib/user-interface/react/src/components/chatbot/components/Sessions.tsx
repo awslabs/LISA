@@ -142,7 +142,7 @@ export function Sessions ({ newSession }) {
                 }
             });
         }
-    }, [auth, getConfiguration]);
+    }, [auth.isLoading, auth.isAuthenticated, getConfiguration]);
 
     useEffect(() => {
         if (!isDeleteByIdLoading && isDeleteByIdSuccess) {

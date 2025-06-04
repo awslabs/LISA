@@ -19,7 +19,7 @@ import { ReactElement, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from './auth/useAuthWithMidway';
 
 import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';

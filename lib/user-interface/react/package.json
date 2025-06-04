@@ -13,6 +13,8 @@
     "clean": "rm -rf ./dist ./node_modules"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "^3.321.1",
+    "@aws-sdk/signature-v4": "^3.310.0",
     "@cloudscape-design/chat-components": "^1.0.61",
     "@cloudscape-design/collection-hooks": "^1.0.74",
     "@cloudscape-design/component-toolkit": "^1.0.0-beta.114",

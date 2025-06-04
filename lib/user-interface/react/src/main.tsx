@@ -37,6 +37,8 @@ declare global {
             RESTAPI_VERSION: string;
             RAG_ENABLED: boolean;
             API_BASE_URL: string;
+            MIDWAY_AUTH_ENABLED: boolean;
+            OPEN_ID_CONNECT_ROLE: string;
         };
         gitInfo?: {
             revisionTag?: string;

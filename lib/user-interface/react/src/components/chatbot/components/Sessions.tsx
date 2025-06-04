@@ -32,9 +32,9 @@ import {
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
-import { useEffect, useState, useMemo } from 'react';
-import { useAuth } from 'react-oidc-context';
-import { IConfiguration } from '@/shared/model/configuration.model';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../auth/useAuthWithMidway';
+import { IConfiguration } from '../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';

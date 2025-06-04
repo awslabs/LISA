@@ -15,7 +15,7 @@
 */
 
 import { ReactElement, useEffect, useState } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuthWithMidway';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
@@ -213,7 +213,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             </svg>
                         )
                         },
-                        auth.isAuthenticated ? { id: 'signout', text: 'Sign out' } : { id: 'signin', text: 'Sign in' },
+                        ...(!window.env.MIDWAY_AUTH_ENABLED ? [auth.isAuthenticated ? { id: 'signout', text: 'Sign out' } : { id: 'signin', text: 'Sign in' }] : []),
                     ],
                 }
             ]}

@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuthWithMidway';
 
 import chatImg from '../assets/chat.png';
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';

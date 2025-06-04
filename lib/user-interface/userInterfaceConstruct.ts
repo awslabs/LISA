@@ -202,14 +202,12 @@ export class UserInterfaceConstruct extends Construct {
             RESTAPI_VERSION: 'v2',
             RAG_ENABLED: config.deployRag,
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
-            OPEN_ID_CONNECT_ROLE: StringParameter.fromStringParameterName(
-                scope,
-                createCdkId(['FederatedRoleArn', 'StringParameter']),
-                '/lisa/federated-role-arn'
-            ).stringValue,
-            // BRASS Bindle Lock Configuration
-            APP_ACCESS_BINDLE: config.authConfig!.appBindleGuid,
-            ADMIN_ACCESS_BINDLE: config.authConfig!.adminBindleGuid,
+            MIDWAY_AUTH_ENABLED: true,
+             OPEN_ID_CONNECT_ROLE: StringParameter.fromStringParameterName(
+                 scope,
+                 createCdkId(['FederatedRoleArn', 'StringParameter']),
+                 '/lisa/federated-role-arn'
+             ).stringValue
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

@@ -96,6 +96,12 @@ function App () {
     const config = fullConfig?.[0];
 
     useEffect(() => {
+        if (!auth.isLoading && auth.isAuthenticated && auth.user) {
+            getConfigurationQuery('global');
+        }
+    }, [auth, getConfigurationQuery]);
+
+    useEffect(() => {
         if (nav) {
             setShowNavigation(true);
         } else {

@@ -103,7 +103,7 @@ export class FastApiContainer extends Construct {
             const cache_dir = path.join(REST_API_PATH, 'TIKTOKEN_CACHE');
             child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
         }
-        
+
         const image = config.restApiConfig.imageConfig || {
             baseImage: config.baseImage,
             path: REST_API_PATH,

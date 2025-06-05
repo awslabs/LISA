@@ -1,4 +1,4 @@
-FROM public.ecr.aws/sam/build-python3.11:latest
+FROM public.ecr.aws/sam/build-python3.12:latest
 
 ##### DOWNLOAD MOUNTPOINTS S3
 ARG MOUNTS3_DEB_URL

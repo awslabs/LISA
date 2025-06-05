@@ -1,4 +1,4 @@
-FROM public.ecr.aws/sam/build-python3.11:latest
+FROM public.ecr.aws/sam/build-python3.12:latest
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG

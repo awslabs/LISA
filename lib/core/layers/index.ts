@@ -82,7 +82,10 @@ export class Layer extends Construct {
                         platform: architecture.dockerPlatform,
                         commandHooks: packagesExists ? {
                             beforeBundling (inputDir: string, outputDir: string): string[] {
-                                return [`touch ${outputDir}/requirements.txt`];
+                                return [
+                                    `touch ${outputDir}/requirements.txt`,
+                                    `python3 scripts/cache-tiktoken-for-offline.py ${outputDir}/TIKTOKEN_CACHE`
+                                ];
                             },
                             afterBundling (inputDir: string, outputDir: string): string[] {
                                 return [`cp -r ${inputDir}/packages/* ${outputDir}/python/`];

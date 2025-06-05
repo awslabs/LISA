@@ -270,6 +270,7 @@ export class LisaRagConstruct extends Construct {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
+        baseEnvironment['TIKTOKEN_CACHE_DIR'] = 'TIKTOKEN_CACHE';
 
         // this modifies baseEnvironment and adds necessary environment variables
         new IngestionStack(scope, 'IngestionStack', {

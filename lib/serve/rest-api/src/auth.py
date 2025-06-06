@@ -73,7 +73,7 @@ if not jwt.algorithms.has_crypto:
 def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
     """Get OIDC endpoints and metadata from authority."""
     authority = os.environ.get("AUTHORITY")
-    resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
+    resp = requests.get(f"https://{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
     return resp.json()  # type: ignore
 

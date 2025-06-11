@@ -17,7 +17,9 @@
 from typing import Any, Dict, List, Union
 
 import requests
+import os
 from starlette.datastructures import Headers
+
 
 from ..exception import ModelNotFoundError
 
@@ -29,7 +31,8 @@ class LiteLLMClient:
         self._base_uri = base_uri
         self._headers = headers
         self._timeout = timeout
-        self._verify = verify
+        # TODO: Remove region check when onboarded to Stratosphere
+        self._verify = False if "iso" in os.environ.get("AWS_REGION", "") else verify,
 
     def list_models(self) -> List[Dict[str, Any]]:
         """

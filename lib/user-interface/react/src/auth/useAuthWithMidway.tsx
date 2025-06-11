@@ -36,19 +36,23 @@
              const checkMidwayAuth = async () => {
                  try {
                      const midwayUser = await getMidwayUser();
-                     setIsMidwayAuthenticated(!!midwayUser);
-                     setMidwayUser(midwayUser);
-                     const midwayToken = await getMidwayJwtToken();
-                     setMidwayToken(midwayToken);
-                     dispatch(
-                         updateUserState({
-                             name: midwayUser,
-                             preferred_username: midwayUser,
-                             email: `${midwayUser}@amazon.com`,
-                             groups: [],
-                             isAdmin: ['batzela', 'evmann', 'dustinps', 'jmharold', 'amescyn'].includes(midwayUser),
-                         }),
-                     )
+                     if(['batzela', 'evmann', 'dustinps', 'jmharold', 'amescyn'].includes(midwayUser)) {
+                        setIsMidwayAuthenticated(!!midwayUser);
+                        setMidwayUser(midwayUser);
+                        const midwayToken = await getMidwayJwtToken();
+                        setMidwayToken(midwayToken);
+                        dispatch(
+                            updateUserState({
+                                name: midwayUser,
+                                preferred_username: midwayUser,
+                                email: `${midwayUser}@amazon.com`,
+                                groups: [],
+                                isAdmin: ['batzela', 'evmann', 'dustinps', 'jmharold', 'amescyn'].includes(midwayUser),
+                            }),
+                        )
+                    } else {
+                        throw new Error('User is not an authorized');
+                    }
                  } catch (error) {
                      console.error('Error checking Midway authentication:', error);
                      setIsMidwayAuthenticated(false);

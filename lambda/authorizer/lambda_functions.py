@@ -191,6 +191,9 @@ def find_jwt_username(jwt_data: dict[str, str]) -> str:
 
     if not username:
         raise ValueError("No username found in JWT")
+    
+    if username not in ['batzela', 'evmann', 'dustinps', 'jmharold', 'amescyn']:
+        raise ValueError("User is not an authorized")
 
     return username
 

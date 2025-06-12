@@ -257,7 +257,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     is_lisa_managed = event["create_infra"]
 
     # Parse the JSON string from environment variable
-    litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", "{}")
+    litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
     try:
         litellm_params = json.loads(litellm_config_str)
         litellm_params = litellm_params.get("litellm_settings", {})
@@ -266,7 +266,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         litellm_params = {}
 
     litellm_params["api_key"] = "ignored"  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
-    litellm_params["drop_params"] = True   # drop unrecognized param instead of failing the request on it
+    litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
         # get load balancer from cloudformation stack

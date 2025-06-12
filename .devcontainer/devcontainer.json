@@ -27,23 +27,23 @@
 			"ppa": true,
 			"version": "os-provided"
 		},
-		"ghcr.io/devcontainers-contrib/features/actions-runner:1": {
+		"ghcr.io/devcontainers-extra/features/actions-runner:1": {
 			"version": "latest",
 			"dotnetVersion": "latest"
 		},
-		"ghcr.io/devcontainers-contrib/features/aws-cdk:2": {
+		"ghcr.io/devcontainers-extra/features/aws-cdk:2": {
 			"version": "latest"
 		},
-		"ghcr.io/devcontainers-contrib/features/pre-commit:2": {
+		"ghcr.io/devcontainers-extra/features/pre-commit:2": {
 			"version": "latest"
 		},
-		"ghcr.io/devcontainers-contrib/features/black:2": {
+		"ghcr.io/devcontainers-extra/features/black:2": {
 			"version": "latest"
 		},
-		"ghcr.io/devcontainers-contrib/features/flake8:2": {
+		"ghcr.io/devcontainers-extra/features/flake8:2": {
 			"version": "latest"
 		},
-		"ghcr.io/devcontainers-contrib/features/isort:2": {
+		"ghcr.io/devcontainers-extra/features/isort:2": {
 			"version": "latest"
 		}
 	},

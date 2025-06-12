@@ -92,6 +92,10 @@ export class SessionApi extends Construct {
             sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
         });
 
+        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        );
+
         // Create Images S3 bucket
         const imagesBucket = new Bucket(scope, 'GeneratedImagesBucket', {
             removalPolicy: config.removalPolicy,
@@ -105,6 +109,8 @@ export class SessionApi extends Construct {
                     exposedHeaders: ['Access-Control-Allow-Origin'],
                 },
             ],
+            serverAccessLogsBucket: bucketAccessLogsBucket,
+            serverAccessLogsPrefix: 'logs/generated-images-bucket/'
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {

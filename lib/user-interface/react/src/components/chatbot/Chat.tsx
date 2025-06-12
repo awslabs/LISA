@@ -394,7 +394,7 @@ export default function Chat ({ sessionId }) {
             notificationService.generateNotification('Removed file from context as new model doesn\'t support image input', 'info');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedModel, chatConfiguration.sessionConfiguration.modelArgs, auth, userPrompt]);
+    }, [selectedModel, chatConfiguration.sessionConfiguration.modelArgs, auth.isAuthenticated, userPrompt]);
 
     useEffect(() => {
         if (bottomRef) {

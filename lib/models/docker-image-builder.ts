@@ -53,7 +53,9 @@ export class DockerImageBuilder extends Construct {
 
         const { config } = props;
 
-        const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']));
+        const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']), {
+            enforceSSL: true
+        });
         const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {
             sources: [Source.asset(ecsModelPath)],

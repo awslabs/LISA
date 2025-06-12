@@ -25,6 +25,7 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Vpc } from '../../networking/vpc';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { LAMBDA_PATH } from '../../util';
 
 /**
  * Properties required to initialize the PromptTemplateApi construct,
@@ -157,11 +158,12 @@ export class PromptTemplateApi extends Construct {
             rootResourceId: rootResourceId,
         });
 
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                './lambda',
+                lambdaPath,
                 [commonLambdaLayer, fastapiLambdaLayer],
                 f,
                 getDefaultRuntime(),

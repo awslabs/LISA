@@ -16,6 +16,7 @@
 
 import logging
 import os
+import json
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict
@@ -246,11 +247,20 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         ConsistentRead=True,
     )["Item"]
     model_url = ddb_item["model_url"]
-    litellm_params = {
-        "model": f"openai/{ddb_item['model_config']['modelName']}",
-        "api_base": model_url,
-        "api_key": "ignored",  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
-    }
+    
+    # Parse the JSON string from environment variable
+    litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", "{}")
+    try:
+        litellm_params = json.loads(litellm_config_str)
+        litellm_params = litellm_params.get("litellm_settings", {})
+    except json.JSONDecodeError:
+        # Fallback to default if JSON parsing fails
+        litellm_params = {}
+    
+    litellm_params["model"] = f"openai/{ddb_item['model_config']['modelName']}"
+    litellm_params["api_base"] = model_url
+    litellm_params["api_key"] = "ignored"  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
+
 
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
     ddb_update_values: Dict[str, Any] = {

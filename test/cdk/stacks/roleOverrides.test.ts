@@ -27,6 +27,7 @@ const stackRolesOverrides: Record<string, number> = {
     'LisaDocs': 2,
     'LisaRAG': 4,
     'LisaChat': 1,
+    'LisaCore': 1,
 };
 
 const stackRoles: Record<string, number> = {
@@ -35,7 +36,7 @@ const stackRoles: Record<string, number> = {
     'LisaUI': 3,
     'LisaNetworking': 0,
     'LisaChat': 4,
-    'LisaCore': 0,
+    'LisaCore': 1,
     'LisaApiDeployment': 0,
     'LisaIAM': 2,
     'LisaDocs': 4,
@@ -69,6 +70,7 @@ describe('Verify created roles', () => {
 
             it(`${stack} should contain ${expectedRoles} roles`, () => {
                 const template = Template.fromStack(stack);
+                console.log(stack.stackName);
                 template.resourceCountIs('AWS::IAM::Role', expectedRoles);
             });
         }

@@ -88,6 +88,10 @@ export class LisaRagConstruct extends Construct {
             `${config.deploymentPrefix}/registeredModels`,
         );
 
+        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        );
+
         const bucket = new Bucket(scope, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
@@ -100,6 +104,8 @@ export class LisaRagConstruct extends Construct {
                     exposedHeaders: ['Access-Control-Allow-Origin'],
                 },
             ],
+            serverAccessLogsBucket: bucketAccessLogsBucket,
+            serverAccessLogsPrefix: 'logs/rag-bucket/'
         });
 
         const ragTableName = createCdkId([config.deploymentName, 'RagDocumentTable']);

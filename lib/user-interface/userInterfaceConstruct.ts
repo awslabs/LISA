@@ -59,6 +59,10 @@ export class UserInterfaceConstruct extends Construct {
 
         const { architecture, config, restApiId, rootResourceId } = props;
 
+        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        );
+
         // Create website S3 bucket
         const websiteBucket = new Bucket(scope, 'Bucket', {
             removalPolicy: RemovalPolicy.DESTROY,
@@ -69,6 +73,8 @@ export class UserInterfaceConstruct extends Construct {
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED,
             enforceSSL: true,
+            serverAccessLogsPrefix: 'logs/website-bucket/',
+            serverAccessLogsBucket: bucketAccessLogsBucket,
         });
 
         // REST APIGW config

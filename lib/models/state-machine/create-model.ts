@@ -73,6 +73,7 @@ export class CreateModelStateMachine extends Construct {
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+            LITELLM_CONFIG_OBJ: JSON.stringify(config.litellmConfig),
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {

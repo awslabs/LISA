@@ -48,7 +48,7 @@ export class CoreConstruct extends Construct {
         const loggingBucket = new Bucket(scope, 'BucketAccessLogsBucket', {
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
-            bucketName: ([config.deploymentName, config.deploymentStage, 'bucket', 'access', 'logs'].join('-')).toLowerCase(),
+            bucketName: ([config.deploymentName, config.accountNumber, config.deploymentStage, 'bucket', 'access', 'logs'].join('-')).toLowerCase(),
             enforceSSL: true,
         });
 

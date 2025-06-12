@@ -33,15 +33,15 @@ enum NagType {
 const nagResults: NagResult = {
     LisaApiBase: [1,7,0,7],
     LisaApiDeployment: [0,0,0,0],
-    LisaChat: [2,42,0,46],
-    LisaCore: [0,0,0,0],
-    LisaDocs: [1,23,0,13],
+    LisaChat: [2,41,0,45],
+    LisaCore: [0,1,0,6],
+    LisaDocs: [1,22,0,12],
     LisaIAM: [0,14,0,0],
     LisaModels: [1,74,0,61],
     LisaNetworking: [1,2,3,5],
-    LisaRAG: [3,54,0,51],
+    LisaRAG: [3,53,0,50],
     LisaServe: [1,21,0,31],
-    LisaUI: [0,16,0,8],
+    LisaUI: [0,15,0,7],
 };
 
 describe('Nag Pack Tests', () => {
@@ -64,6 +64,7 @@ describe('Nag Pack Tests', () => {
     describe('AwsSolutions CDK NAG Errors', () => {
         test.each(stacks)('AwsSolutions CDK NAG Errors for $_stackName', (stack) => {
             const errors = Annotations.fromStack(stack).findError('*', Match.stringLikeRegexp('AwsSolutions-.*'));
+            console.log(stack.stackName);
             expect(errors.length).toBe(nagResults[stack.stackName][NagType.AWSNAGERROR] || 0);
         });
     });

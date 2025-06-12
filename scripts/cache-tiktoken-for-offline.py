@@ -18,7 +18,7 @@ import sys
 import tiktoken_ext.openai_public  # Assuming this is the correct import
 
 
-def main():
+def main() -> None:
     # Ensure the script gets a valid argument for 'TIKTOKEN_CACHE_DIR'
     if len(sys.argv) < 2:
         print("Error: You must provide the 'TIKTOKEN_CACHE_DIR' as the first argument.")

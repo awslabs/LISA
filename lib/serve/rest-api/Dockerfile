@@ -1,4 +1,5 @@
-FROM public.ecr.aws/sam/build-python3.11:latest
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG
@@ -24,6 +25,8 @@ RUN echo "$LITELLM_CONFIG" > litellm_config.yaml
 
 # Copy the source code into the container
 COPY src/ ./src
+
+COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
 
 # Generate the prisma binary
 RUN prisma generate

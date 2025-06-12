@@ -19,3 +19,5 @@ make installTypeScriptRequirements
 
 git config --unset-all core.hooksPath
 pre-commit install
+
+alias deploylisa="make clean && npm ci && make deploy HEADLESS=true"

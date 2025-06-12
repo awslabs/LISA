@@ -45,6 +45,8 @@ import DynamoDB from 'aws-sdk/clients/dynamodb';
 import * as readlineSync from 'readline-sync';
 import { RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
+import * as child_process from 'child_process';
+import * as path from 'path';
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
@@ -191,6 +193,21 @@ export class LisaRagConstruct extends Construct {
             'rag-sdk-lambda-layer',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/lisa-sdk`),
         );
+
+        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
+        if (config.restApiConfig.imageConfig === undefined) {
+            const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
+            // Skip tiktoken cache generation in test environment
+            if (process.env.NODE_ENV !== 'test') {
+                try {
+                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
+                } catch (error) {
+                    console.warn('Failed to generate tiktoken cache:', error);
+                    // Continue execution even if cache generation fails
+                }
+            }
+        }
+
         // Build RAG Lambda layer
         const ragLambdaLayer = new Layer(scope, 'RagLayer', {
             config: config,
@@ -270,6 +287,7 @@ export class LisaRagConstruct extends Construct {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
+        baseEnvironment['TIKTOKEN_CACHE_DIR'] = '/opt/python/TIKTOKEN_CACHE';
 
         // this modifies baseEnvironment and adds necessary environment variables
         new IngestionStack(scope, 'IngestionStack', {

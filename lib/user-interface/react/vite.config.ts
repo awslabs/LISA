@@ -29,5 +29,6 @@ export default defineConfig({
             '@': resolve(__dirname, 'src'),
             '#root': resolve(__dirname, '..', '..', '..'),
         },
-    }
+    },
+    base: process.env.BASE_URL || '/',
 });

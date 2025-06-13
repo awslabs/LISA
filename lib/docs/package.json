@@ -15,6 +15,9 @@
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "vitepress": "^1.6.3"
+    "vitepress": "^0.1.1"
+  },
+  "dependencies": {
+    "react-syntax-highlighter": "^5.8.0"
   }
 }

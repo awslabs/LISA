@@ -47,7 +47,8 @@
     "remark-breaks": "^4.0.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.1.6",
-    "unraw": "^3.0.0"
+    "unraw": "^3.0.0",
+    "vitepress": "^1.6.3"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",

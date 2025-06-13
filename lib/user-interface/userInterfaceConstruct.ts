@@ -184,7 +184,7 @@ export class UserInterfaceConstruct extends Construct {
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);
-        const uriSuffix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
+        const uriPrefix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
         let webappAssets;
         if (!config.webAppAssetsPath) {
             webappAssets = Source.asset(ROOT_PATH, {
@@ -197,10 +197,13 @@ export class UserInterfaceConstruct extends Construct {
                         [
                             'set -x',
                             'npm --cache /tmp/.npm install',
-                            `npm --cache /tmp/.npm run build -w lisa-web -- --base="/${uriSuffix}"`,
+                            `npm --cache /tmp/.npm run build -w lisa-web`,
                             'cp -aur /asset-input/lib/user-interface/react/dist/* /asset-output/',
                         ].join(' && '),
                     ],
+                    environment: {
+                        BASE_URL: `${uriPrefix}`
+                    },
                     local: {
                         tryBundle (outputDir: string) {
                             try {
@@ -208,10 +211,11 @@ export class UserInterfaceConstruct extends Construct {
                                     stdio: 'inherit',
                                     env: {
                                         ...process.env,
+                                        BASE_URL: `${uriPrefix}`
                                     },
                                 };
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);
-                                execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web -- --base="/${uriSuffix}"`, options);
+                                execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web`, options);
                                 fs.cpSync(WEBAPP_DIST_PATH, outputDir, {recursive: true});
                             } catch (e) {
                                 return false;

@@ -20,6 +20,8 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../types';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
@@ -121,10 +123,87 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         }
         return (
             <div style={{ maxWidth: '60em' }}>
-                {markdownDisplay ? <ReactMarkdown
-                    remarkPlugins={[remarkBreaks]}
-                    children={content}
-                /> : <div style={{ whiteSpace: 'pre-line' }}>{content}</div>}
+                {markdownDisplay ? (
+                    <ReactMarkdown
+                        remarkPlugins={[remarkBreaks]}
+                        children={content}
+                        components={{
+                            code ({className, children, ...props}: any) {
+                                const match = /language-(\w+)/.exec(className || '');
+                                const codeString = String(children).replace(/\n$/, '');
+
+                                const CodeBlockWithCopyButton = ({ language, code }: { language: string, code: string }) => {
+
+
+                                    return (
+                                        <div style={{ position: 'relative' }}>
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '5px',
+                                                    right: '5px',
+                                                    zIndex: 10
+                                                }}
+                                            >
+                                                <ButtonGroup
+                                                    onItemClick={( ) =>
+                                                        navigator.clipboard.writeText(code)
+                                                    }
+                                                    ariaLabel='Chat actions'
+                                                    dropdownExpandToViewport
+                                                    items={[
+                                                        {
+                                                            type: 'icon-button',
+                                                            id: 'copy code',
+                                                            iconName: 'copy',
+                                                            text: 'Copy Code',
+                                                            popoverFeedback: (
+                                                                <StatusIndicator type='success'>
+                                                                    Code copied
+                                                                </StatusIndicator>
+                                                            )
+                                                        }
+                                                    ]}
+                                                    variant='icon'
+                                                />
+                                            </div>
+                                            <SyntaxHighlighter
+                                                style={vscDarkPlus}
+                                                language={language}
+                                                PreTag='div'
+                                                {...props}
+                                            >
+                                                {code}
+                                            </SyntaxHighlighter>
+                                        </div>
+                                    );
+                                };
+
+                                return match ? (
+                                    <CodeBlockWithCopyButton
+                                        language={match[1]}
+                                        code={codeString}
+                                    />
+                                ) : (
+                                    <code className={className} {...props}>
+                                        {children}
+                                    </code>
+                                );
+                            },
+                            ul ({...props}: any) {
+                                return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
+                            },
+                            ol ({...props}: any) {
+                                return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
+                            },
+                            li ({...props}: any) {
+                                return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
+                            },
+                        }}
+                    />
+                ) : (
+                    <div style={{ whiteSpace: 'pre-line' }}>{content}</div>
+                )}
             </div>);
     };
 
@@ -185,7 +264,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                     type: 'icon-button',
                                     id: 'copy',
                                     iconName: 'copy',
-                                    text: 'Copy',
+                                    text: 'Copy Message',
                                     popoverFeedback: (
                                         <StatusIndicator type='success'>
                                             Message copied

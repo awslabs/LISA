@@ -185,8 +185,11 @@ export class UserInterfaceConstruct extends Construct {
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);
         const uriPrefix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
+        console.log(`assets: deploymentStage=${config.deploymentStage}`);
+        console.log(`uriSuffix=${uriPrefix}`);
         let webappAssets;
         if (!config.webAppAssetsPath) {
+            console.log('generating web assets...');
             webappAssets = Source.asset(ROOT_PATH, {
                 bundling: {
                     image: Runtime.NODEJS_18_X.bundlingImage,
@@ -197,7 +200,7 @@ export class UserInterfaceConstruct extends Construct {
                         [
                             'set -x',
                             'npm --cache /tmp/.npm install',
-                            `npm --cache /tmp/.npm run build -w lisa-web`,
+                            'npm --cache /tmp/.npm run build -w lisa-web',
                             'cp -aur /asset-input/lib/user-interface/react/dist/* /asset-output/',
                         ].join(' && '),
                     ],
@@ -226,6 +229,7 @@ export class UserInterfaceConstruct extends Construct {
                 },
             });
         } else {
+            console.log(`Using existing web assets from ${config.webAppAssetsPath}`);
             webappAssets = Source.asset(config.webAppAssetsPath);
         }
 

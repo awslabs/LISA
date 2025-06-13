@@ -32,7 +32,7 @@ class LiteLLMClient:
         self._headers = headers
         self._timeout = timeout
         # TODO: Remove region check when onboarded to Stratosphere
-        self._verify = False if "iso" in os.environ.get("AWS_REGION", "") else verify,
+        self._verify = False if "iso" in os.environ.get("AWS_REGION", "") else verify
 
     def list_models(self) -> List[Dict[str, Any]]:
         """

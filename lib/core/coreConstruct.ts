@@ -23,9 +23,10 @@ import { BaseProps } from '../schema';
 import { createCdkId } from './utils';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { getDefaultRuntime } from '../api-base/utils';
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
 import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, SDK_PATH } from '../util';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
@@ -43,6 +44,19 @@ export class CoreConstruct extends Construct {
     constructor (scope: Stack, id: string, props: CoreStackProps) {
         super(scope, id);
         const { config } = props;
+
+        const loggingBucket = new Bucket(scope, 'BucketAccessLogsBucket', {
+            removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
+            bucketName: ([config.deploymentName, config.accountNumber, config.deploymentStage, 'bucket', 'access', 'logs'].join('-')).toLowerCase(),
+            enforceSSL: true,
+        });
+
+        new StringParameter(scope, 'LISABucketAccessLogsBucket', {
+            parameterName: `${config.deploymentPrefix}/bucket/bucket-access-logs`,
+            stringValue: loggingBucket.bucketArn,
+            description: 'A bucket for access logs from other buckets to be written to.',
+        });
 
         // Create Lambda Layers
         // Build common Lambda layer

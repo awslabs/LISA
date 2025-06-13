@@ -59,6 +59,10 @@ export class UserInterfaceConstruct extends Construct {
 
         const { architecture, config, restApiId, rootResourceId } = props;
 
+        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        );
+
         // Create website S3 bucket
         const websiteBucket = new Bucket(scope, 'Bucket', {
             removalPolicy: RemovalPolicy.DESTROY,
@@ -69,6 +73,8 @@ export class UserInterfaceConstruct extends Construct {
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED,
             enforceSSL: true,
+            serverAccessLogsPrefix: 'logs/website-bucket/',
+            serverAccessLogsBucket: bucketAccessLogsBucket,
         });
 
         // REST APIGW config
@@ -178,9 +184,12 @@ export class UserInterfaceConstruct extends Construct {
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);
-        const uriSuffix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
+        const uriPrefix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
+        console.log(`assets: deploymentStage=${config.deploymentStage}`);
+        console.log(`uriSuffix=${uriPrefix}`);
         let webappAssets;
         if (!config.webAppAssetsPath) {
+            console.log('generating web assets...');
             webappAssets = Source.asset(ROOT_PATH, {
                 bundling: {
                     image: Runtime.NODEJS_18_X.bundlingImage,
@@ -191,10 +200,13 @@ export class UserInterfaceConstruct extends Construct {
                         [
                             'set -x',
                             'npm --cache /tmp/.npm install',
-                            `npm --cache /tmp/.npm run build -w lisa-web -- --base="/${uriSuffix}"`,
+                            'npm --cache /tmp/.npm run build -w lisa-web',
                             'cp -aur /asset-input/lib/user-interface/react/dist/* /asset-output/',
                         ].join(' && '),
                     ],
+                    environment: {
+                        BASE_URL: `${uriPrefix}`
+                    },
                     local: {
                         tryBundle (outputDir: string) {
                             try {
@@ -202,10 +214,11 @@ export class UserInterfaceConstruct extends Construct {
                                     stdio: 'inherit',
                                     env: {
                                         ...process.env,
+                                        BASE_URL: `${uriPrefix}`
                                     },
                                 };
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);
-                                execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web -- --base="/${uriSuffix}"`, options);
+                                execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web`, options);
                                 fs.cpSync(WEBAPP_DIST_PATH, outputDir, {recursive: true});
                             } catch (e) {
                                 return false;
@@ -216,6 +229,7 @@ export class UserInterfaceConstruct extends Construct {
                 },
             });
         } else {
+            console.log(`Using existing web assets from ${config.webAppAssetsPath}`);
             webappAssets = Source.asset(config.webAppAssetsPath);
         }
 

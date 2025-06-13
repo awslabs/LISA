@@ -282,7 +282,7 @@ define print_config
 endef
 
 ## Deploy all infrastructure
-deploy: dockerCheck dockerLogin cleanMisc modelCheck buildNpmModules
+deploy: installPythonRequirements dockerCheck dockerLogin cleanMisc modelCheck buildNpmModules
 	$(call print_config)
 ifneq (,$(findstring true, $(HEADLESS)))
 	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';
@@ -378,4 +378,4 @@ test-coverage:
           --cov-report term-missing \
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
-          --cov-fail-under 33
+          --cov-fail-under 42

@@ -26,6 +26,8 @@ RUN echo "$LITELLM_CONFIG" > litellm_config.yaml
 # Copy the source code into the container
 COPY src/ ./src
 
+COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
+
 # Generate the prisma binary
 RUN prisma generate
 

@@ -1,3 +1,21 @@
+# v4.4.2
+## System Improvements
+- Updated configuration items to make ADC region deployments easier
+- Updated markdown rendering to properly display code blocks and unordered lists
+
+## Security Enhancements
+- Enforce SSL access to EC2 docker bucket
+- Enable Access Logging with New Log Destination Bucket
+- Updated 3rd party dependencies
+
+## Acknowledgements
+* @bedanley
+* @jmharold
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.4.1...v4.4.2
+
 # v4.4.1
 ## Bug Fixes
 - Updated OpenSearch vector store creation to support private VPCs

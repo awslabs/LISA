@@ -18,13 +18,14 @@ import logging
 import os
 
 import boto3
+from utilities.rds_auth import generate_auth_token
 from langchain_community.vectorstores.opensearch_vector_search import OpenSearchVectorSearch
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
-from utilities.common_functions import retry_config
+from utilities.common_functions import get_lambda_role_name, retry_config
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -69,15 +70,22 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
         )
 
     elif connection_info.get("type") == "pgvector":
-        secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
-        password = json.loads(secrets_response.get("SecretString")).get("password")
+        if "passwordSecretId" in connection_info:
+            # provides backwards compatibility to non-iam authenticated vector stores
+            secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
+            user = connection_info.get("username")
+            password = json.loads(secrets_response.get("SecretString")).get("password")
+        else:
+            # use IAM auth token to connect
+            user = get_lambda_role_name()
+            password = generate_auth_token(connection_info.get("dbHost"), connection_info.get("dbPort"), user)
 
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",
             host=connection_info.get("dbHost"),
             port=connection_info.get("dbPort"),
             database=connection_info.get("dbName"),
-            user=connection_info.get("username"),
+            user=user,
             password=password,
         )
         return PGVector(

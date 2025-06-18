@@ -445,3 +445,29 @@ def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
                 target[field] = source[field]
 
     return target
+
+
+def get_lambda_role_arn() -> str:
+    """Get the ARN of the Lambda execution role.
+    
+    Returns
+    -------
+    str
+        The full ARN of the Lambda execution role
+    """
+    sts = boto3.client('sts')
+    identity = sts.get_caller_identity()
+    return identity['Arn']  # This will include the role name
+
+
+def get_lambda_role_name() -> str:
+    """Extract the role name from the Lambda execution role ARN.
+    
+    Returns
+    -------
+    str
+        The name of the Lambda execution role without the full ARN
+    """
+    arn = get_lambda_role_arn()
+    parts = arn.split(':assumed-role/')[1].split('/')
+    return parts[0]  # This is the role name

@@ -20,10 +20,10 @@ import os
 import boto3
 import click
 import yaml
+from infra_lambdas.rds_auth import generate_auth_token
 
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
-
 
 @click.command()
 @click.option("-f", "--filepath", type=click.Path(exists=True, file_okay=True, dir_okay=False, writable=True))
@@ -62,10 +62,9 @@ def generate_config(filepath: str) -> None:
     # Get database connection info
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
-    secrets_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
-    password = json.loads(secrets_response["SecretString"])["password"]
+    auth_token = generate_auth_token(db_params['dbHost'], db_params['dbPort'], db_params['username'])
     connection_str = (
-        f"postgresql://{db_params['username']}:{password}@{db_params['dbHost']}:{db_params['dbPort']}"
+        f"postgresql://{db_params['username']}:{auth_token}@{db_params['dbHost']}:{db_params['dbPort']}"
         f"/{db_params['dbName']}"
     )
 

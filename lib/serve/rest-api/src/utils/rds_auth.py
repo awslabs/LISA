@@ -19,3 +19,29 @@ def generate_auth_token(host, port, user):
     rds = boto3.client('rds', region_name=os.environ["AWS_REGION"])
     token = rds.generate_db_auth_token(DBHostname=host, Port=port, DBUsername=user)
     return quote_plus(token)
+
+
+def get_lambda_role_arn() -> str:
+    """Get the ARN of the Lambda execution role.
+    
+    Returns
+    -------
+    str
+        The full ARN of the Lambda execution role
+    """
+    sts = boto3.client('sts')
+    identity = sts.get_caller_identity()
+    return identity['Arn']  # This will include the role name
+
+
+def get_lambda_role_name() -> str:
+    """Extract the role name from the Lambda execution role ARN.
+    
+    Returns
+    -------
+    str
+        The name of the Lambda execution role without the full ARN
+    """
+    arn = get_lambda_role_arn()
+    parts = arn.split(':assumed-role/')[1].split('/')
+    return parts[0]  # This is the role name

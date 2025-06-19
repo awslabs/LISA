@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  */
-import { CustomResource, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -23,14 +23,14 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config } from '../schema';
-import { Effect, Policy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
-import { REST_API_PATH, ROOT_PATH } from '../util';
-import { Provider } from 'aws-cdk-lib/custom-resources';
+import { LAMBDA_PATH, REST_API_PATH } from '../util';
+import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { getDefaultRuntime } from '../api-base/utils';
-import path from 'path';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -179,29 +179,48 @@ export class LisaServeApplicationConstruct extends Construct {
                 dbHost: litellmDb.dbInstanceEndpointAddress,
                 dbName: config.restApiConfig.rdsConfig.dbName,
                 dbPort: config.restApiConfig.rdsConfig.dbPort,
+                // only include passwordSecretId if authenticating with username/password
+                ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
             }),
         });
-        litellmDb.grantConnect(restApi.taskRole);
-        litellmDbPasswordSecret.grantRead(restApi.taskRole);
+
+        
         litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
 
         // update teh rdsConfig with the endpoint address
         config.restApiConfig.rdsConfig.dbHost = litellmDb.dbInstanceEndpointAddress;
 
-        // Create the lambda for generating DB users for IAM auth
-        const createDbUserLambda = this.getIAMAuthLambda(config, litellmDbPasswordSecret, restApi.taskRole.roleName);
+        if (config.iamRdsAuth) {
+            litellmDb.grantConnect(restApi.taskRole, restApi.taskRole.roleName);
 
-        // Create a custom resource that triggers the Lambda function
-        const customResource = new Provider(this, 'LISAServeCreateDbUserCustomResource', {
-            onEventHandler: createDbUserLambda
-        });
+            // Create the lambda for generating DB users for IAM auth
+            const createDbUserLambda = this.getIAMAuthLambda(scope, config, litellmDbPasswordSecret, restApi.taskRole.roleName, vpc, [litellmDbSg]);
 
-        // Create the Custom Resource
-        new CustomResource(this, 'LISAServeCreateDbUserResource', {
-            serviceToken: customResource.serviceToken,
-        });
+            const customResourceRole = new Role(scope, 'LISAServeCustomResourceRole', {
+                assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            });
+            createDbUserLambda.grantInvoke(customResourceRole);
+
+            // run updateInstanceKmsConditionsLambda every deploy
+            new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
+                onCreate: {
+                    service: 'Lambda',
+                    action: 'invoke',
+                    physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
+                    parameters: {
+                        FunctionName: createDbUserLambda.functionName,
+                        Payload: '{}'
+                    }, 
+                },
+                role: customResourceRole
+            });
+        } else {
+            litellmDb.grantConnect(restApi.taskRole);
+            litellmDbPasswordSecret.grantRead(restApi.taskRole);
+        }
 
         restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+        
         if (config.region.includes('iso')) {
             const ca_bundle = config.certificateAuthorityBundle ?? '';
             restApi.container.addEnvironment('SSL_CERT_DIR', '/etc/pki/tls/certs');
@@ -261,39 +280,55 @@ export class LisaServeApplicationConstruct extends Construct {
         this.restApi = restApi;
     }
 
-    getIAMAuthLambda (config: Config, secret: ISecret, user: string): IFunction {
+    getIAMAuthLambda (scope: Stack, config: Config, secret: ISecret, user: string, vpc: Vpc, securityGroups: ISecurityGroup[]): IFunction {
         // Create the IAM role for updating the database to allow IAM authentication
-        const iamAuthLambdaRole = new Role(this, createCdkId(['LISAServe', 'IAMAuthLambdaRole']), {
+        const iamAuthLambdaRole = new Role(scope, createCdkId(['LISAServe', 'IAMAuthLambdaRole']), {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            inlinePolicies: {
+                'EC2NetworkInterfaces': new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface'],
+                            resources: ['*'],
+                        }),
+                    ],
+                }),
+            }
         });
 
         secret.grantRead(iamAuthLambdaRole);
 
-        const commonLayer = this.getLambdaLayer(config);
+        const commonLayer = this.getLambdaLayer(scope, config);
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // Create the Lambda function that will create the database user
-        return new Function(this, 'LISAServeCreateDbUserLambda', {
+        return new Function(scope, 'LISAServeCreateDbUserLambda', {
             runtime: getDefaultRuntime(),
-            handler: 'db_setup_iam_auth.handler',
-            code: Code.fromAsset(path.join(ROOT_PATH, 'lib', 'infra-lambdas')), // Path to Lambda function code
+            handler: 'utilities.db_setup_iam_auth.handler',
+            code: Code.fromAsset(lambdaPath),
+            timeout: Duration.minutes(2),
             environment: {
                 SECRET_ARN: secret.secretArn, // ARN of the RDS secret
                 DB_HOST: config.restApiConfig.rdsConfig.dbHost!,
                 DB_PORT: String(config.restApiConfig.rdsConfig.dbPort), // Default PostgreSQL port
                 DB_NAME: config.restApiConfig.rdsConfig.dbName, // Database name
                 DB_USER: config.restApiConfig.rdsConfig.username, // Admin user for RDS
-                IAM_USER: user, // IAM role for Lambda execution
+                IAM_NAME: user, // IAM role for Lambda execution
             },
             role: iamAuthLambdaRole, // Lambda execution role
-            layers: [commonLayer]
+            layers: [commonLayer],
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: securityGroups,
         });
     }
 
-    getLambdaLayer (config: Config): ILayerVersion {
+    getLambdaLayer (scope: Stack, config: Config): ILayerVersion {
         return LayerVersion.fromLayerVersionArn(
-            this,
+            scope,
             'LISAServeCommonLayerVersion',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
     }
 }

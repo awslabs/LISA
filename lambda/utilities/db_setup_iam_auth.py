@@ -31,7 +31,7 @@ def get_db_credentials(secret_arn: str) -> Dict[str, str]:
     return secret_dict
 
 def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, 
-                   secret_arn: str, iam_role: str) -> None:
+                   secret_arn: str, iam_name: str) -> None:
     """Create a PostgreSQL user for IAM authentication"""
     # Get credentials from Secrets Manager
     credentials = get_db_credentials(secret_arn)
@@ -44,19 +44,35 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str,
         host=db_host,
         port=db_port
     )
-
     cursor = conn.cursor()
 
-    # Create the database user for IAM authentication (matching IAM role name)
-    iam_role_name = os.environ['IAM_ROLE']  # Use the DB_USER as the IAM role name
-    create_user_sql = f'CREATE USER "{iam_role_name}"'
-    grant_user_sql = f'GRANT rds_iam to "{iam_role_name}"'
+    # Attempt to create the database user for IAM authentication
     try:
-        cursor.execute(create_user_sql)
-        cursor.execute(grant_user_sql)
+        cursor.execute(f'CREATE USER "{iam_name}"')
         conn.commit()
     except psycopg2.Error as e:
-        raise Exception(f"Error creating user: {e}")
+        # Log but ignore the error if the user already exists
+        if e.pgcode != '23505':  # Unique violation error code
+            raise Exception(f"Error creating user: {e}")
+
+    # Other SQL commands to configure user privileges
+    sql_commands = [
+        f'GRANT rds_iam to "{iam_name}"',
+        f'GRANT USAGE, CREATE ON SCHEMA public TO "{iam_name}"',
+        f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "{iam_name}"',
+        f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "{iam_name}"',
+        f'GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO "{iam_name}"',
+        f'GRANT ALL PRIVILEGES ON ALL PROCEDURES IN SCHEMA public TO "{iam_name}"',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "{iam_name}"'
+        f'GRANT CONNECT ON DATABASE "{db_name}" TO "{iam_name}"'
+        f'GRANT ALL PRIVILEGES ON DATABASE "{db_name}" TO "{iam_name}"'
+    ]
+    try:
+        for command in sql_commands:
+            cursor.execute(command)
+        conn.commit()
+    except psycopg2.Error as e:
+        raise Exception(f"Error granting privileges to user: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -69,10 +85,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     db_port = os.environ['DB_PORT']
     db_name = os.environ['DB_NAME']
     db_user = os.environ['DB_USER']
-    iam_role = os.environ['IAM_ROLE']
+    iam_name = os.environ['IAM_NAME']
     
     # Call function to create DB user
-    create_db_user(db_host, db_port, db_name, db_user, secret_arn, iam_role)
+    create_db_user(db_host, db_port, db_name, db_user, secret_arn, iam_name)
 
     return {
         'statusCode': 200,

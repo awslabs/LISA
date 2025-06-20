@@ -128,7 +128,7 @@ export class PGVectorStoreStack extends PipelineStack {
                     // grant the role permissions to connect as the IAM role itself
                     pgvectorDb.grantConnect(lambdaRole, lambdaRole.roleName);
                 } else {
-                    // grant the role permissions to connect as the postgres user 
+                    // grant the role permissions to connect as the postgres user
                     pgvectorDb.grantConnect(lambdaRole);
                     rdsConfig.passwordSecretId = rdsPasswordSecret.secretName;
                 }
@@ -181,12 +181,12 @@ export class PGVectorStoreStack extends PipelineStack {
                         parameters: {
                             FunctionName: createDbUserLambda.functionName,
                             Payload: '{}'
-                        }, 
+                        },
                     },
                     role: customResourceRole
                 });
             } else {
-                rdsPasswordSecret.grantRead(lambdaRole);                
+                rdsPasswordSecret.grantRead(lambdaRole);
             }
 
             // Grant read permissions for secrets to Lambda role

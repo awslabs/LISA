@@ -184,10 +184,10 @@ export class LisaServeApplicationConstruct extends Construct {
             }),
         });
 
-        
+
         litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
 
-        // update teh rdsConfig with the endpoint address
+        // update the rdsConfig with the endpoint address
         config.restApiConfig.rdsConfig.dbHost = litellmDb.dbInstanceEndpointAddress;
 
         if (config.iamRdsAuth) {
@@ -210,7 +210,7 @@ export class LisaServeApplicationConstruct extends Construct {
                     parameters: {
                         FunctionName: createDbUserLambda.functionName,
                         Payload: '{}'
-                    }, 
+                    },
                 },
                 role: customResourceRole
             });
@@ -220,7 +220,7 @@ export class LisaServeApplicationConstruct extends Construct {
         }
 
         restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
-        
+
         if (config.region.includes('iso')) {
             const ca_bundle = config.certificateAuthorityBundle ?? '';
             restApi.container.addEnvironment('SSL_CERT_DIR', '/etc/pki/tls/certs');

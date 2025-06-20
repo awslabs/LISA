@@ -494,10 +494,8 @@ export class LisaRagConstruct extends Construct {
                             dbName: ragConfig.rdsConfig.dbName,
                             dbPort: ragConfig.rdsConfig.dbPort,
                             type: RagRepositoryType.PGVECTOR,
-
-                            // todo remove after IAM auth working
                             username: username,
-                            passwordSecretId: rdsPasswordSecret.secretName
+                            ...(config.iamRdsAuth ? {} : { passwordSecretId: rdsPasswordSecret.secretName }),
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
                     });
@@ -506,7 +504,7 @@ export class LisaRagConstruct extends Construct {
                         // grant the role permissions to connect as the IAM role itself
                         pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);
                     } else {
-                        // grant the role permissions to connect as the postgres user 
+                        // grant the role permissions to connect as the postgres user
                         pgvector_db.grantConnect(lambdaRole);
                     }
                 }
@@ -529,7 +527,7 @@ export class LisaRagConstruct extends Construct {
                             parameters: {
                                 FunctionName: createDbUserLambda.functionName,
                                 Payload: '{}'
-                            }, 
+                            },
                         },
                         onUpdate: {
                             service: 'Lambda',
@@ -538,7 +536,7 @@ export class LisaRagConstruct extends Construct {
                             parameters: {
                                 FunctionName: createDbUserLambda.functionName,
                                 Payload: '{}'
-                            }, 
+                            },
                         },
                         role: customResourceRole
                     });
@@ -673,7 +671,7 @@ export class LisaRagConstruct extends Construct {
                 IAM_NAME: user, // IAM role for Lambda execution
             },
             role: iamAuthLambdaRole, // Lambda execution role
-            layers: [commonLayer], 
+            layers: [commonLayer],
             vpc,
             securityGroups,
             vpcSubnets

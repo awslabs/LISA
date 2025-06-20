@@ -11,11 +11,13 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-import boto3
 import os
 from urllib.parse import quote_plus
 
-def generate_auth_token(host, port, user):
-    rds = boto3.client('rds', region_name=os.environ["AWS_REGION"])
+import boto3
+
+
+def generate_auth_token(host: str, port: str, user: str) -> str:
+    rds = boto3.client("rds", region_name=os.environ["AWS_REGION"])
     token = rds.generate_db_auth_token(DBHostname=host, Port=port, DBUsername=user)
     return quote_plus(token)

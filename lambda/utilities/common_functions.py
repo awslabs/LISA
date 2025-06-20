@@ -22,7 +22,7 @@ import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
 from functools import cache, wraps
-from typing import Any, Callable, Dict, List, TypeVar, Union
+from typing import Any, Callable, cast, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
@@ -447,27 +447,27 @@ def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
     return target
 
 
-def get_lambda_role_arn() -> str:
+def _get_lambda_role_arn() -> str:
     """Get the ARN of the Lambda execution role.
-    
+
     Returns
     -------
     str
         The full ARN of the Lambda execution role
     """
-    sts = boto3.client('sts')
+    sts = boto3.client("sts")
     identity = sts.get_caller_identity()
-    return identity['Arn']  # This will include the role name
+    return cast(str, identity["Arn"])  # This will include the role name
 
 
 def get_lambda_role_name() -> str:
     """Extract the role name from the Lambda execution role ARN.
-    
+
     Returns
     -------
     str
         The name of the Lambda execution role without the full ARN
     """
-    arn = get_lambda_role_arn()
-    parts = arn.split(':assumed-role/')[1].split('/')
+    arn = _get_lambda_role_arn()
+    parts = arn.split(":assumed-role/")[1].split("/")
     return parts[0]  # This is the role name

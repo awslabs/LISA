@@ -20,7 +20,7 @@ import psycopg2
 from botocore.exceptions import ClientError
 
 
-def get_db_credentials(secret_arn: str) -> dict[str, str]:
+def get_db_credentials(secret_arn: str) -> Any:
     """Retrieve database credentials from Secrets Manager"""
     client = boto3.client("secretsmanager")
 

@@ -18,7 +18,6 @@ import logging
 import os
 
 import boto3
-from utilities.rds_auth import generate_auth_token
 from langchain_community.vectorstores.opensearch_vector_search import OpenSearchVectorSearch
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_core.embeddings import Embeddings
@@ -26,6 +25,7 @@ from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from utilities.common_functions import get_lambda_role_name, retry_config
+from utilities.rds_auth import generate_auth_token
 
 from . import create_env_variables  # noqa type: ignore
 

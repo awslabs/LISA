@@ -13,14 +13,14 @@
 #   limitations under the License.
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 import psycopg2
 from botocore.exceptions import ClientError
 
 
-def get_db_credentials(secret_arn: str) -> Dict[str, str]:
+def get_db_credentials(secret_arn: str) -> dict[str, str]:
     """Retrieve database credentials from Secrets Manager"""
     client = boto3.client("secretsmanager")
 
@@ -75,7 +75,7 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
         conn.close()
 
 
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda handler"""
     # Extract parameters from the environment and event
     secret_arn = os.environ["SECRET_ARN"]

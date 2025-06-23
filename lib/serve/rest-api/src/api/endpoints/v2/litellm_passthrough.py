@@ -20,12 +20,16 @@ from collections.abc import Iterator
 from typing import Union
 
 import boto3
+import json
 import requests
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from ....auth import get_authorization_token, get_jwks_client, id_token_is_valid, is_admin, is_idp_used
+
+import litellm
+from litellm import experimental_mcp_client
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
 # port was changed as part of the LiteLLM startup in entrypoint.sh
@@ -62,6 +66,11 @@ OPENAI_ROUTES = (
     "health",
     "health/readiness",
     "health/liveliness",
+    # MCP
+    "mcp/enabled",
+    "mcp/tools/list",
+    "mcp/tools/call",
+    "v1/mcp/server",
 )
 
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a
@@ -131,6 +140,10 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     http_method = request.method
     if http_method == "GET":
         response = requests.request(method=http_method, url=litellm_path, headers=headers)
+        if api_path == "mcp/tools/list":
+            tools = await experimental_mcp_client.load_mcp_tools(session=None, format="openai")
+            print("MCP TOOLS: ", tools)
+            return JSONResponse(json.dumps(tools), status_code=200)
         return JSONResponse(response.json(), status_code=response.status_code)
     # not a GET request, so expect a JSON payload as part of the request
     params = await request.json()

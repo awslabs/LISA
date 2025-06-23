@@ -69,21 +69,31 @@ def mock_psycopg2_connection():
     return mock_conn, mock_cursor
 
 
-@mock_aws
-def test_get_db_credentials_success(secretsmanager_client):
+def test_get_db_credentials_success():
     """Test successful retrieval of database credentials."""
-    # Create a test secret in the mock Secrets Manager
-    secret_name = "test-secret"
-    secret_arn = f"arn:aws:secretsmanager:us-east-1:123456789012:secret:{secret_name}"
+    # Create a test secret ARN
+    secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
     secret_value = {"username": "test-user", "password": "test-password"}
 
-    secretsmanager_client.create_secret(Name=secret_name, SecretString=json.dumps(secret_value))
+    # Mock the secrets manager client directly
+    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+        mock_secretsmanager = MagicMock()
+        mock_client.return_value = mock_secretsmanager
+        
+        # Configure the mock to return the expected secret
+        mock_secretsmanager.get_secret_value.return_value = {
+            "SecretString": json.dumps(secret_value)
+        }
 
-    # Call the function with the test ARN
-    result = get_db_credentials(secret_arn)
+        # Call the function with the test ARN
+        result = get_db_credentials(secret_arn)
 
-    # Assert the result
-    assert result == secret_value
+        # Assert the result
+        assert result == secret_value
+        
+        # Verify the client was called correctly
+        mock_client.assert_called_once_with("secretsmanager")
+        mock_secretsmanager.get_secret_value.assert_called_once_with(SecretId=secret_arn)
 
 
 def test_get_db_credentials_error():

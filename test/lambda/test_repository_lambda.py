@@ -52,12 +52,6 @@ from utilities.validation import validate_model_name, ValidationError
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
-# Create mock modules needed for imports
-mock_create_env = MagicMock()
-mock_vs_repo = MagicMock()
-mock_doc_repo = MagicMock()
-mock_common = MagicMock()
-
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
@@ -108,16 +102,6 @@ def mock_api_wrapper(func):
     return wrapper
 
 
-# Set up common mock values
-mock_common.get_username.return_value = "test-user"
-mock_common.retry_config = retry_config
-mock_common.get_groups.return_value = ["test-group"]
-mock_common.is_admin.return_value = False
-mock_common.api_wrapper = mock_api_wrapper
-mock_common.get_id_token.return_value = "test-token"
-mock_common.get_cert_path.return_value = None
-
-
 # Mock the admin_only decorator to just call the function
 def mock_admin_only(func):
     @functools.wraps(func)
@@ -128,6 +112,20 @@ def mock_admin_only(func):
     return wrapper
 
 
+# Create mock modules - SINGLE INSTANCE OF EACH
+mock_create_env = MagicMock()
+mock_vs_repo = MagicMock()
+mock_doc_repo = MagicMock()
+mock_common = MagicMock()
+
+# Set up common mock values - SINGLE CONFIGURATION
+mock_common.get_username.return_value = "test-user"
+mock_common.retry_config = retry_config
+mock_common.get_groups.return_value = ["test-group"]
+mock_common.is_admin.return_value = False
+mock_common.api_wrapper = mock_api_wrapper
+mock_common.get_id_token.return_value = "test-token"
+mock_common.get_cert_path.return_value = None
 mock_common.admin_only = mock_admin_only
 
 # Create mock modules for missing dependencies
@@ -137,72 +135,6 @@ mock_langchain_community = MagicMock()
 mock_langchain_core = MagicMock()
 mock_opensearchpy = MagicMock()
 mock_requests_aws4auth = MagicMock()
-
-# Patch sys.modules to provide mock modules needed for imports BEFORE importing the lambda functions
-patch.dict(
-    "sys.modules",
-    {
-        "create_env_variables": mock_create_env,
-        "repository.vector_store_repo": mock_vs_repo,
-        "repository.rag_document_repo": mock_doc_repo,
-        "utilities.common_functions": mock_common,
-        "lisapy": mock_lisapy,
-        "lisapy.langchain": mock_lisapy_langchain,
-        "langchain_community": mock_langchain_community,
-        "langchain_community.vectorstores": mock_langchain_community,
-        "langchain_community.vectorstores.opensearch_vector_search": mock_langchain_community,
-        "langchain_community.vectorstores.pgvector": mock_langchain_community,
-        "langchain_core": mock_langchain_core,
-        "langchain_core.embeddings": mock_langchain_core,
-        "langchain_core.vectorstores": mock_langchain_core,
-        "opensearchpy": mock_opensearchpy,
-        "requests_aws4auth": mock_requests_aws4auth,
-    },
-).start()
-
-# Now patch specific functions from utilities.common_functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
-patch("utilities.common_functions.get_groups", mock_common.get_groups).start()
-patch("utilities.common_functions.is_admin", mock_common.is_admin).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
-patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.common_functions.admin_only", mock_admin_only).start()
-
-# Only now import the lambda functions to ensure they use our mocked dependencies
-from repository.lambda_functions import _ensure_document_ownership, _ensure_repository_access, presigned_url
-
-# Create mock modules
-mock_create_env = MagicMock()
-mock_vs_repo = MagicMock()
-mock_doc_repo = MagicMock()
-
-# Patch sys.modules to provide mock modules needed for imports
-patch.dict(
-    "sys.modules",
-    {
-        "create_env_variables": mock_create_env,
-        "repository.vector_store_repo": mock_vs_repo,
-        "repository.rag_document_repo": mock_doc_repo,
-    },
-).start()
-
-# Create a real retry config
-retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-
-# Create mock modules
-mock_create_env = MagicMock()
-mock_vs_repo = MagicMock()
-mock_doc_repo = MagicMock()
-mock_common = MagicMock()
-mock_common.get_username.return_value = "test-user"
-mock_common.retry_config = retry_config
-mock_common.get_groups.return_value = ["test-group"]
-mock_common.is_admin.return_value = False
-mock_common.api_wrapper = mock_api_wrapper
-mock_common.get_id_token.return_value = "test-token"
-mock_common.get_cert_path.return_value = None
 
 # Create mock SSM client
 mock_ssm = MagicMock()
@@ -264,29 +196,6 @@ mock_doc_repo.save.return_value = {"document_id": "test-doc", "subdocs": ["subdo
 # Mock get_vector_store_client
 mock_get_vector_store_client = MagicMock(return_value=mock_vector_store)
 
-# Patch sys.modules to provide mock modules needed for imports BEFORE importing the lambda functions
-patch.dict(
-    "sys.modules",
-    {
-        "create_env_variables": mock_create_env,
-        "repository.vector_store_repo": mock_vs_repo,
-        "repository.rag_document_repo": mock_doc_repo,
-        "utilities.common_functions": mock_common,
-    },
-).start()
-
-# Now patch specific functions from utilities.common_functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
-patch("utilities.common_functions.get_groups", mock_common.get_groups).start()
-patch("utilities.common_functions.is_admin", mock_common.is_admin).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
-patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-
-# Patch utility functions
-patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
-
 
 # Mock boto3 client function
 def mock_boto3_client(service_name, region_name=None, config=None):
@@ -306,8 +215,56 @@ def mock_boto3_client(service_name, region_name=None, config=None):
         return MagicMock()  # Return a generic MagicMock for other services
 
 
+# Set up all patches at module level - SINGLE SETUP
+# Patch sys.modules to provide mock modules needed for imports
+patch.dict(
+    "sys.modules",
+    {
+        "create_env_variables": mock_create_env,
+        "repository.vector_store_repo": mock_vs_repo,
+        "repository.rag_document_repo": mock_doc_repo,
+        "utilities.common_functions": mock_common,
+        "lisapy": mock_lisapy,
+        "lisapy.langchain": mock_lisapy_langchain,
+        "langchain_community": mock_langchain_community,
+        "langchain_community.vectorstores": mock_langchain_community,
+        "langchain_community.vectorstores.opensearch_vector_search": mock_langchain_community,
+        "langchain_community.vectorstores.pgvector": mock_langchain_community,
+        "langchain_core": mock_langchain_core,
+        "langchain_core.embeddings": mock_langchain_core,
+        "langchain_core.vectorstores": mock_langchain_core,
+        "opensearchpy": mock_opensearchpy,
+        "requests_aws4auth": mock_requests_aws4auth,
+    },
+).start()
+
+# Patch specific functions from utilities.common_functions
+patch("utilities.common_functions.get_username", mock_common.get_username).start()
+patch("utilities.common_functions.get_groups", mock_common.get_groups).start()
+patch("utilities.common_functions.is_admin", mock_common.is_admin).start()
+patch("utilities.common_functions.retry_config", retry_config).start()
+patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
+patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
+patch("utilities.common_functions.admin_only", mock_admin_only).start()
+
+# Patch utility functions
+patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
+
 # Ensure mock_boto3_client is used for all boto3.client calls
 patch("boto3.client", side_effect=mock_boto3_client).start()
+
+# Only now import the lambda functions to ensure they use our mocked dependencies
+from repository.lambda_functions import _ensure_document_ownership, _ensure_repository_access, presigned_url
+
+
+@pytest.fixture
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
 @pytest.fixture(scope="function")

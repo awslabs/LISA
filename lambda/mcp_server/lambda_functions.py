@@ -17,7 +17,7 @@ import json
 import logging
 import os
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
@@ -33,7 +33,7 @@ table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 
 
 def _get_mcp_servers(
-        user_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
@@ -103,13 +103,12 @@ def list(event: dict) -> Dict[str, Any]:
     return _get_mcp_servers(user_id=user_id)
 
 
-
 @api_wrapper
 def create(event: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id = get_username(event)
     body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) is None else body["owner"] # Set the owner of the mcp server
+    body["owner"] = user_id if body.get("owner", None) is None else body["owner"]  # Set the owner of the mcp server
     mcp_server_model = McpServerModel(**body)
 
     # Insert the new mcp server item into the DynamoDB table

@@ -27,8 +27,6 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
-import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
-import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties for McpApi Construct.

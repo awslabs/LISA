@@ -66,7 +66,7 @@ export const mcpServerApi = createApi({
         listMcpServers: builder.query<McpServerListResponse, {showPublic: boolean}>({
             query () {
                 return {
-                    url: '/mcp-server}',
+                    url: '/mcp-server',
                     method: 'GET'
                 };
             },

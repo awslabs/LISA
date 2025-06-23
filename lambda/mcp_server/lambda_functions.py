@@ -40,7 +40,7 @@ def _get_mcp_servers(
 
     # Filter by user_id if provided
     if user_id:
-        condition = Attr("owner").eq(user_id) & Attr("owner").eq("global")
+        condition = Attr("owner").eq(user_id) | Attr("owner").eq("global")
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     scan_arguments = {
@@ -162,7 +162,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
     # Check if the user is authorized to delete the mcp server
     if is_admin(event) or item["owner"] == user_id:
         logger.info(f"Deleting mcp server {mcp_server_id} for user {user_id}")
-        table.table.delete_item(Key={"id": mcp_server_id, "owner": item.owner})
+        table.delete_item(Key={"id": mcp_server_id})
         return {"status": "ok"}
 
     raise ValueError(f"Not authorized to delete {mcp_server_id}.")

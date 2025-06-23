@@ -49,7 +49,7 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
         conn.commit()
     except psycopg2.Error as e:
         # Log but ignore the error if the user already exists
-        if e.pgcode != "23505":  # Unique violation error code
+        if e.pgcode not in ["23505", "42710"]:  # Unique violation error code
             raise Exception(f"Error creating user: {e}")
 
     # Other SQL commands to configure user privileges
@@ -60,8 +60,8 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
         f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON ALL PROCEDURES IN SCHEMA public TO "{iam_name}"',
-        f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "{iam_name}"'
-        f'GRANT CONNECT ON DATABASE "{db_name}" TO "{iam_name}"'
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "{iam_name}"',
+        f'GRANT CONNECT ON DATABASE "{db_name}" TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON DATABASE "{db_name}" TO "{iam_name}"',
     ]
     try:

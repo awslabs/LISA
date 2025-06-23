@@ -40,7 +40,7 @@ def _get_mcp_servers(
 
     # Filter by user_id if provided
     if user_id:
-        condition = Attr("owner").eq(user_id) | Attr("owner").eq("global")
+        condition = Attr("owner").eq(user_id) | Attr("owner").eq("lisa:public")
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     scan_arguments = {
@@ -80,7 +80,7 @@ def get(event: dict, context: dict) -> Any:
         raise ValueError(f"MCP Server {mcp_server_id} not found.")
 
     # Check if the user is authorized to get the mcp server
-    is_owner = item["owner"] == user_id or item["owner"] == "global"
+    is_owner = item["owner"] == user_id or item["owner"] == "lisa:public"
     if is_owner or is_admin(event):
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
@@ -91,7 +91,7 @@ def get(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def list(event: dict) -> Dict[str, Any]:
+def list(event: dict, context: dict) -> Dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id = get_username(event)
 
@@ -104,7 +104,7 @@ def list(event: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def create(event: dict) -> Any:
+def create(event: dict, context: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id = get_username(event)
     body = json.loads(event["body"], parse_float=Decimal)

@@ -109,7 +109,7 @@ export class McpApi extends Construct {
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
-                name: 'list_mcp_servers',
+                name: 'list',
                 resource: 'mcp_server',
                 description: 'Lists available mcp servers for user',
                 path: 'mcp-server',
@@ -117,7 +117,7 @@ export class McpApi extends Construct {
                 environment: env,
             },
             {
-                name: 'get_mcp_server',
+                name: 'get',
                 resource: 'mcp_server',
                 description: 'Returns the selected mcp server',
                 path: 'mcp-server/{serverId}',
@@ -125,7 +125,7 @@ export class McpApi extends Construct {
                 environment: env,
             },
             {
-                name: 'create_mcp_server',
+                name: 'create',
                 resource: 'mcp_server',
                 description: 'Creates the mcp server',
                 path: 'mcp-server',
@@ -133,7 +133,7 @@ export class McpApi extends Construct {
                 environment: env,
             },
             {
-                name: 'delete_mcp_server',
+                name: 'delete',
                 resource: 'mcp_server',
                 description: 'Deletes selected mcp server',
                 path: 'mcp-server/{serverId}',
@@ -141,7 +141,7 @@ export class McpApi extends Construct {
                 environment: env,
             },
             {
-                name: 'put_mcp_server',
+                name: 'update',
                 resource: 'mcp_server',
                 description: 'Creates or updates selected mcp server',
                 path: 'mcp-server/{serverId}',

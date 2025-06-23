@@ -130,6 +130,14 @@ def mock_admin_only(func):
 
 mock_common.admin_only = mock_admin_only
 
+# Create mock modules for missing dependencies
+mock_lisapy = MagicMock()
+mock_lisapy_langchain = MagicMock()
+mock_langchain_community = MagicMock()
+mock_langchain_core = MagicMock()
+mock_opensearchpy = MagicMock()
+mock_requests_aws4auth = MagicMock()
+
 # Patch sys.modules to provide mock modules needed for imports BEFORE importing the lambda functions
 patch.dict(
     "sys.modules",
@@ -138,6 +146,17 @@ patch.dict(
         "repository.vector_store_repo": mock_vs_repo,
         "repository.rag_document_repo": mock_doc_repo,
         "utilities.common_functions": mock_common,
+        "lisapy": mock_lisapy,
+        "lisapy.langchain": mock_lisapy_langchain,
+        "langchain_community": mock_langchain_community,
+        "langchain_community.vectorstores": mock_langchain_community,
+        "langchain_community.vectorstores.opensearch_vector_search": mock_langchain_community,
+        "langchain_community.vectorstores.pgvector": mock_langchain_community,
+        "langchain_core": mock_langchain_core,
+        "langchain_core.embeddings": mock_langchain_core,
+        "langchain_core.vectorstores": mock_langchain_core,
+        "opensearchpy": mock_opensearchpy,
+        "requests_aws4auth": mock_requests_aws4auth,
     },
 ).start()
 

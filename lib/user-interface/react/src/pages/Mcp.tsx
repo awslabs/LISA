@@ -18,6 +18,7 @@ import { ReactElement, useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import McpServerManagementComponent from '@/components/mcp/McpServerManagementComponent';
 import { McpServerForm } from '@/components/mcp/McpServerForm';
+import McpServerDetails from '@/components/mcp/McpServerDetails';
 
 export function McpServers ({ setNav }): ReactElement {
     useEffect(() => {
@@ -28,7 +29,8 @@ export function McpServers ({ setNav }): ReactElement {
         <Routes>
             <Route index path='*' element={<McpServerManagementComponent />} />
             <Route index path='/new' element={<McpServerForm />} />
-            <Route index path='/:mcpServerId' element={<McpServerForm isEdit={true} />} />
+            <Route index path='/edit/:mcpServerId' element={<McpServerForm isEdit={true} />} />
+            <Route index path='/:mcpServerId' element={<McpServerDetails />} />
         </Routes>
     );
 }

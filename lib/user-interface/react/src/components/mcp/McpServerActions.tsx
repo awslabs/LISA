@@ -119,7 +119,7 @@ const ModelActionHandler = (
 ) => {
     switch (e.detail.id) {
         case 'editMcpServer':
-            navigate(`./${selectedItem.id}`);
+            navigate(`./edit/${selectedItem.id}`);
             break;
         case 'deleteMcpServer':
             dispatch(

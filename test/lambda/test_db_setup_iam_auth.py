@@ -79,18 +79,16 @@ def test_get_db_credentials_success():
     with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
-        
+
         # Configure the mock to return the expected secret
-        mock_secretsmanager.get_secret_value.return_value = {
-            "SecretString": json.dumps(secret_value)
-        }
+        mock_secretsmanager.get_secret_value.return_value = {"SecretString": json.dumps(secret_value)}
 
         # Call the function with the test ARN
         result = get_db_credentials(secret_arn)
 
         # Assert the result
         assert result == secret_value
-        
+
         # Verify the client was called correctly
         mock_client.assert_called_once_with("secretsmanager")
         mock_secretsmanager.get_secret_value.assert_called_once_with(SecretId=secret_arn)

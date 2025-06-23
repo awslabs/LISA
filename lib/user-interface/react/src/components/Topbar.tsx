@@ -80,6 +80,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
+        {
+            id: 'mcp-server',
+            type: 'button',
+            variant: 'link',
+            text: 'MCP Servers',
+            disableUtilityCollapse: false,
+            external: false,
+            href: '/mcp-servers',
+        },
     ];
 
     return (

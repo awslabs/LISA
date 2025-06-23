@@ -162,7 +162,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
     # Check if the user is authorized to delete the mcp server
     if is_admin(event) or item["owner"] == user_id:
         logger.info(f"Deleting mcp server {mcp_server_id} for user {user_id}")
-        table.delete_item(Key={"id": mcp_server_id})
+        table.delete_item(Key={"id": mcp_server_id, "owner": item.get("owner")})
         return {"status": "ok"}
 
     raise ValueError(f"Not authorized to delete {mcp_server_id}.")

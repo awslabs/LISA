@@ -189,7 +189,7 @@ def sample_global_mcp_server():
     return {
         "id": "global-server-id",
         "created": datetime.now().isoformat(),
-        "owner": "global",
+        "owner": "lisa:public",
         "url": "https://example.com/global-mcp-server",
         "name": "Global MCP Server",
     }
@@ -253,7 +253,7 @@ def test_get_global_mcp_server_success(mcp_servers_table, sample_global_mcp_serv
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["id"] == "global-server-id"
-    assert body["owner"] == "global"
+    assert body["owner"] == "lisa:public"
     assert body["isOwner"] is True
 
     # Reset mock
@@ -323,7 +323,7 @@ def test_list_mcp_servers_regular_user(mcp_servers_table, sample_mcp_server, lam
 
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
-    response = list(event)
+    response = list(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert "Items" in body
@@ -338,7 +338,7 @@ def test_list_mcp_servers_admin(mcp_servers_table, sample_mcp_server, lambda_con
     mock_common.get_username.return_value = "admin-user"
     mock_common.is_admin.return_value = True
 
-    response = list(event)
+    response = list(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert "Items" in body
@@ -360,7 +360,7 @@ def test_create_mcp_server_success(mcp_servers_table, lambda_context):
         ),
     }
 
-    response = create(event)
+    response = create(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["name"] == "Test MCP Server"
@@ -383,7 +383,7 @@ def test_create_mcp_server_with_owner(mcp_servers_table, lambda_context):
         ),
     }
 
-    response = create(event)
+    response = create(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["owner"] == "custom-owner"
@@ -627,7 +627,7 @@ def test_create_mcp_server_invalid_json(lambda_context):
         "body": "invalid-json",
     }
 
-    response = create(event)
+    response = create(event, lambda_context)
     assert response["statusCode"] == 500
     body = json.loads(response["body"])
     assert "error" in body
@@ -645,7 +645,7 @@ def test_create_mcp_server_missing_fields(lambda_context):
         ),
     }
 
-    response = create(event)
+    response = create(event, lambda_context)
     assert response["statusCode"] == 500
     body = json.loads(response["body"])
     assert "error" in body
@@ -700,7 +700,7 @@ def test_get_mcp_server_global_non_owner_access(mcp_servers_table, sample_global
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["id"] == "global-server-id"
-    assert body["owner"] == "global"
+    assert body["owner"] == "lisa:public"
     assert body["isOwner"] is True  # Global servers are accessible to everyone
 
     # Reset mock

@@ -1,0 +1,171 @@
+/**
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+import {
+    Button,
+    Container,
+    Form,
+    FormField,
+    Header,
+    Input,
+    SpaceBetween,
+    Toggle,
+} from '@cloudscape-design/components';
+import 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { scrollToInvalid, useValidationReducer } from '../../shared/validation';
+import { z } from 'zod';
+import { useEffect, useState } from 'react';
+import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
+import { useAppDispatch, useAppSelector } from '../../config/store';
+import { useNotificationService } from '../../shared/util/hooks';
+import { ModifyMethod } from '../../shared/validation/modify-method';
+import { selectCurrentUserIsAdmin } from '../../shared/reducers/user.reducer';
+import {
+    DefaultMcpServer, NewMcpServer,
+    useCreateMcpServerMutation, useLazyGetMcpServerQuery,
+    useUpdateMcpServerMutation
+} from '@/shared/reducers/mcp-server.reducer';
+
+export type McpServerFormProps = {
+    isEdit?: boolean
+};
+
+export function McpServerForm (props: McpServerFormProps) {
+    const { isEdit } = props;
+    const { mcpServerId } = useParams();
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+
+    const [createMcpServer, {data: createData, isLoading: isCreating, isSuccess: isCreatingSuccess, isError: isCreatingError, error: createError}] = useCreateMcpServerMutation();
+    const [updateMcpSever, {data: updateData, isLoading: isUpdating, isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateMcpServerMutation();
+    const [getMcpServerQuery, {data, isSuccess, isUninitialized, isFetching}] = useLazyGetMcpServerQuery();
+    const notificationService = useNotificationService(dispatch);
+
+    // if create/update was successful, redirect back to list
+    if (isCreatingSuccess || isUpdatingSuccess) {
+        navigate('/mcp-servers');
+    }
+
+    if (isSuccess) {
+        dispatch(setBreadcrumbs([
+            { text: 'MCP Servers', href: '/mcp-servers' },
+            { text: data.name, href: '' }
+        ]));
+    }
+
+    const schema = z.object({
+        name: z.string().trim().min(1, 'String cannot be empty.'),
+        url: z.string().trim().min(1, 'String cannot be empty.'),
+    });
+
+    const { errors, touchFields, setFields, isValid, state, setState } = useValidationReducer(schema, {
+        form: DefaultMcpServer,
+        formSubmitting: false,
+        touched: {},
+        validateAll: false
+    });
+
+    const canEdit = mcpServerId ? (isUserAdmin || data?.isOwner) : true;
+    const disabled = isFetching || isCreating || isUpdating;
+
+    if (isEdit && isUninitialized && mcpServerId) {
+        getMcpServerQuery(mcpServerId).then((response) => {
+            if (response.isSuccess) {
+                setFields(response.data);
+            }
+        });
+    }
+
+    const submit = (mcpServer: NewMcpServer) => {
+        if (isValid) {
+            if (mcpServer.id) {
+                updateMcpSever(mcpServer);
+            } else {
+                createMcpServer(mcpServer);
+            }
+        } else {
+            setState({validateAll: true});
+            scrollToInvalid();
+        }
+    };
+
+    const [sharePublic, setSharePublic] = useState(false);
+
+    // create success notification
+    useEffect(() => {
+        if (isCreatingSuccess || isUpdatingSuccess) {
+            const verb = isCreatingSuccess ? 'created' : 'updated';
+            const data = isCreatingSuccess ? createData : updateData;
+            notificationService.generateNotification(`Successfully ${verb} MCP Server: ${data.name}`, 'success');
+        }
+    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData]);
+
+    // create failure notification
+    useEffect(() => {
+        if (isCreatingError || isUpdatingError) {
+            const verb = isCreatingError ? 'created' : 'updated';
+            const error = createError || updateError;
+            notificationService.generateNotification(`Error ${verb} MCP Server: ${error.data?.message ?? error.data}`, 'error');
+        }
+    }, [isCreatingError, isUpdatingError, createError, updateError, notificationService]);
+
+    return (
+        <Form
+            header={<Header variant='h1'>Server</Header>}
+            actions={
+                <SpaceBetween direction='horizontal' size='s'>
+                    <Button onClick={() => navigate(-1)}>Cancel</Button>
+                    <Button variant='primary'
+                        disabled={disabled || !canEdit}
+                        disabledReason={!canEdit ? 'You can only edit servers you created.' : undefined}
+                        onClick={() => submit(state.form)}>
+                        { mcpServerId ? 'Update' : 'Create'} Server
+                    </Button>
+                </SpaceBetween>
+            }
+        >
+            <Container header={<Header>Details</Header>}>
+                <SpaceBetween direction='vertical' size='s'>
+                    <FormField label='Name' errorText={errors?.name} description={'This will be used to identify your server.'}>
+                        <Input value={state.form.name} inputMode='text' onBlur={() => touchFields(['name'])} onChange={({ detail }) => {
+                            setFields({ 'name': detail.value });
+                        }}
+                        disabled={disabled}
+                        placeholder='Enter MCP server name' />
+                    </FormField>
+                    <FormField label='URL' errorText={errors?.url} description={'The URL for your MCP server.'}>
+                        <Input value={state.form.url} inputMode='text' onBlur={() => touchFields(['url'])} onChange={({ detail }) => {
+                            setFields({ 'url': detail.value });
+                        }}
+                        disabled={disabled}
+                        placeholder='Enter MCP server URL' />
+                    </FormField>
+
+                    {isUserAdmin && <FormField label='Share with everyone'>
+                        <Toggle checked={sharePublic} onChange={({detail}) => {
+                            setSharePublic(detail.checked);
+                            setFields({owner: detail.checked ? 'lisa:public' : undefined});
+                            touchFields(['owner'], ModifyMethod.Unset);
+                        }}
+                        disabled={disabled} />
+                    </FormField>}
+                </SpaceBetween>
+            </Container>
+        </Form>
+    );
+}

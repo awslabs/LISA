@@ -20,6 +20,7 @@ import os
 import boto3
 import click
 import yaml
+from rds_auth import generate_auth_token, get_lambda_role_name
 
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
@@ -62,11 +63,10 @@ def generate_config(filepath: str) -> None:
     # Get database connection info
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
-    secrets_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
-    password = json.loads(secrets_response["SecretString"])["password"]
+    iam_name = get_lambda_role_name()
+    auth_token = generate_auth_token(db_params["dbHost"], db_params["dbPort"], iam_name)
     connection_str = (
-        f"postgresql://{db_params['username']}:{password}@{db_params['dbHost']}:{db_params['dbPort']}"
-        f"/{db_params['dbName']}"
+        f"postgresql://{iam_name}:{auth_token}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
     )
 
     if "general_settings" not in config_contents:

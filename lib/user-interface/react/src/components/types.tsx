@@ -67,6 +67,7 @@ export type LisaChatMessageFields = {
     type: MessageType;
     content: MessageContent;
     metadata?: LisaChatMessageMetadata;
+    toolCalls?: any[];
 } & BaseMessageFields;
 
 /**
@@ -75,11 +76,13 @@ export type LisaChatMessageFields = {
 export class LisaChatMessage extends BaseMessage implements LisaChatMessageFields {
     type: MessageType;
     metadata?: LisaChatMessageMetadata;
+    toolCalls?: any[];
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
+        this.toolCalls = fields.toolCalls ?? [];
     }
 
     static lc_name () {

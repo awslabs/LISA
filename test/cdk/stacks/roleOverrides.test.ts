@@ -35,7 +35,7 @@ const stackRoles: Record<string, number> = {
     'LisaServe': 5,
     'LisaUI': 3,
     'LisaNetworking': 0,
-    'LisaChat': 4,
+    'LisaChat': 5,
     'LisaCore': 1,
     'LisaApiDeployment': 0,
     'LisaIAM': 2,

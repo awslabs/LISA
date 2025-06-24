@@ -26,6 +26,7 @@ import { FormProps } from './form-props';
 import { duplicateAttributeRefinement } from '../validation';
 import { z } from 'zod';
 import { ModifyMethod } from '../validation/modify-method';
+import _ from 'lodash';
 
 export const AttributeEditorSchema = z
     .array(
@@ -60,7 +61,7 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
         <ExpandableSection
             headerText={
                 <Fragment>
-                    Environment variables <i>- optional</i>
+                    {_.startCase(propertyPath.at(-1))} <i>- optional</i>
                 </Fragment>
             }
             headingTagOverride='h3'
@@ -70,7 +71,7 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
                 <FormField label='' description=''>
                     <AttributeEditor
                         onAddButtonClick={() => {
-                            setFields({ [property]: (item.environment || []).concat({
+                            setFields({ [property]: (item[propertyPath.at(-1)] || []).concat({
                                 key: '',
                                 value: '',
                             })});
@@ -80,8 +81,8 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
                             toRemove[`${property}[${itemIndex}]`] = true;
                             setFields(toRemove, ModifyMethod.Unset);
                         }}
-                        items={item.environment}
-                        addButtonText='Add environment variable'
+                        items={item[propertyPath.at(-1)]}
+                        addButtonText={`Add ${_.startCase(propertyPath.at(-1))}`}
                         definition={[
                             {
                                 label: 'Key',

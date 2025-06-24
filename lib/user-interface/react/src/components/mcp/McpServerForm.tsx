@@ -128,7 +128,7 @@ export function McpServerForm (props: McpServerFormProps) {
         if (isCreatingError || isUpdatingError) {
             const verb = isCreatingError ? 'created' : 'updated';
             const error = createError || updateError;
-            notificationService.generateNotification(`Error ${verb} MCP Server: ${error.data?.message ?? error.data}`, 'error');
+            notificationService.generateNotification(`Error ${verb} MCP Connection: ${error.data?.message ?? error.data}`, 'error');
         }
     }, [isCreatingError, isUpdatingError, createError, updateError, notificationService]);
 

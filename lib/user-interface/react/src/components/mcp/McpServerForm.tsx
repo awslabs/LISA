@@ -154,7 +154,7 @@ export function McpServerForm (props: McpServerFormProps) {
                             setFields({ 'name': detail.value });
                         }}
                         disabled={disabled}
-                        placeholder='Enter MCP server name' />
+                        placeholder='Enter MCP connection name' />
                     </FormField>
                     <FormField label='URL' errorText={errors?.url} description={'The URL for your MCP server.'}>
                         <Input value={state.form.url} inputMode='text' onBlur={() => touchFields(['url'])} onChange={({ detail }) => {

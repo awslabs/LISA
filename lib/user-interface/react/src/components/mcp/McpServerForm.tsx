@@ -57,11 +57,6 @@ export function McpServerForm (props: McpServerFormProps) {
     const [getMcpServerQuery, {data, isSuccess, isUninitialized, isFetching}] = useLazyGetMcpServerQuery();
     const notificationService = useNotificationService(dispatch);
 
-    // if create/update was successful, redirect back to list
-    if (isCreatingSuccess || isUpdatingSuccess) {
-        navigate('/mcp-servers');
-    }
-
     if (isSuccess) {
         dispatch(setBreadcrumbs([
             { text: 'MCP Servers', href: '/mcp-servers' },
@@ -92,7 +87,8 @@ export function McpServerForm (props: McpServerFormProps) {
     if (isEdit && isUninitialized && mcpServerId) {
         getMcpServerQuery(mcpServerId).then((response) => {
             if (response.isSuccess) {
-                setFields(response.data);
+                setFields({ ...response.data,
+                    customHeaders: response.data.customHeaders ? Object.entries(response.data.customHeaders).map(([key, value]) => ({ key, value })) : [],});
                 setSharePublic(response.data.owner === 'lisa:public');
             }
         });
@@ -100,10 +96,14 @@ export function McpServerForm (props: McpServerFormProps) {
 
     const submit = (mcpServer: NewMcpServer) => {
         if (isValid) {
+            const toSubmit = {
+                ...mcpServer,
+                customHeaders: mcpServer.customHeaders?.reduce((r,{key,value}) => (r[key] = value,r), {}),
+            };
             if (mcpServer.id) {
-                updateMcpSever(mcpServer);
+                updateMcpSever(toSubmit);
             } else {
-                createMcpServer(mcpServer);
+                createMcpServer(toSubmit);
             }
         } else {
             setState({validateAll: true});
@@ -119,8 +119,9 @@ export function McpServerForm (props: McpServerFormProps) {
             const verb = isCreatingSuccess ? 'created' : 'updated';
             const data = isCreatingSuccess ? createData : updateData;
             notificationService.generateNotification(`Successfully ${verb} MCP Server: ${data.name}`, 'success');
+            navigate('/mcp-servers');
         }
-    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData]);
+    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate]);
 
     // create failure notification
     useEffect(() => {

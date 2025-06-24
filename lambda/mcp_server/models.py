@@ -41,7 +41,7 @@ class McpServerModel(BaseModel):
     name: str
 
     # Custom headers for the MCP client
-    customHeaders: dict
+    customHeaders: Optional[dict]
 
     # Custom client properties for the MCP client
-    clientConfig: dict
+    clientConfig: Optional[dict]

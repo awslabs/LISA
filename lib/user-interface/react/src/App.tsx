@@ -39,6 +39,7 @@ import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 import { ConfigurationContext } from './shared/configuration.provider';
+import McpServers from '@/pages/Mcp';
 
 
 export type RouteProps = {
@@ -175,6 +176,14 @@ function App () {
                                     <AdminRoute>
                                         <Configuration setNav={setNav} />
                                     </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path='mcp-connections/*'
+                                element={
+                                    <PrivateRoute showConfig='showMcpServers' configs={config}>
+                                        <McpServers setNav={setNav} />
+                                    </PrivateRoute>
                                 }
                             />
                         </Routes>

@@ -41,7 +41,7 @@ class McpServerModel(BaseModel):
     name: str
 
     # Custom headers for the MCP client
-    customHeaders: Optional[dict]
+    customHeaders: Optional[dict] = Field(default_factory=lambda: None)
 
     # Custom client properties for the MCP client
-    clientConfig: Optional[dict]
+    clientConfig: Optional[dict] = Field(default_factory=lambda: None)

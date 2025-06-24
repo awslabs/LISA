@@ -28,7 +28,7 @@ import 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { scrollToInvalid, useValidationReducer } from '../../shared/validation';
 import { z } from 'zod';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
@@ -39,6 +39,7 @@ import {
     useCreateMcpServerMutation, useLazyGetMcpServerQuery,
     useUpdateMcpServerMutation
 } from '@/shared/reducers/mcp-server.reducer';
+import { AttributeEditorSchema, EnvironmentVariables } from '@/shared/form/environment-variables';
 
 export type McpServerFormProps = {
     isEdit?: boolean
@@ -71,6 +72,11 @@ export function McpServerForm (props: McpServerFormProps) {
     const schema = z.object({
         name: z.string().trim().min(1, 'String cannot be empty.'),
         url: z.string().trim().min(1, 'String cannot be empty.'),
+        clientConfig: z.object({
+            name: z.string().trim(),
+            version: z.string().trim()
+        }),
+        customHeaders: AttributeEditorSchema
     });
 
     const { errors, touchFields, setFields, isValid, state, setState } = useValidationReducer(schema, {
@@ -87,6 +93,7 @@ export function McpServerForm (props: McpServerFormProps) {
         getMcpServerQuery(mcpServerId).then((response) => {
             if (response.isSuccess) {
                 setFields(response.data);
+                setSharePublic(response.data.owner === 'lisa:public');
             }
         });
     }
@@ -164,6 +171,36 @@ export function McpServerForm (props: McpServerFormProps) {
                         }}
                         disabled={disabled} />
                     </FormField>}
+                    <hr />
+                    <Container
+                        header={
+                            <Header variant='h2'>Client Configuration</Header>
+                        }
+                    >
+                        <FormField label={<span>Name <i>- optional</i>{' '}</span>} errorText={errors?.url} description={'Custom MCP client name.'}>
+                            <Input value={state.form.clientConfig.name} inputMode='text' onBlur={() => touchFields(['clientConfig.name'])} onChange={({ detail }) => {
+                                setFields({ 'clientConfig.name': detail.value });
+                            }}
+                            disabled={disabled}
+                            placeholder='Enter custom MCP client name' />
+                        </FormField>
+                        <FormField label={<span>Version <i>- optional</i>{' '}</span>} errorText={errors?.url} description={'Custom MCP client version.'}>
+                            <Input value={state.form.clientConfig.version} inputMode='text' onBlur={() => touchFields(['clientConfig.version'])} onChange={({ detail }) => {
+                                setFields({ 'clientConfig.version': detail.value });
+                            }}
+                            disabled={disabled}
+                            placeholder='Enter custom MCP client version' />
+                        </FormField>
+                    </Container>
+                    <Container
+                        header={
+                            <Header variant='h2'>Custom Headers</Header>
+                        }
+                    >
+                        <SpaceBetween size={'s'}>
+                            <EnvironmentVariables item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} propertyPath={['customHeaders']}/>
+                        </SpaceBetween>
+                    </Container>
                 </SpaceBetween>
             </Container>
         </Form>

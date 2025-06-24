@@ -31,11 +31,17 @@ class McpServerModel(BaseModel):
     # Timestamp of when the mcp server was created
     created: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
 
-    # owner of the MCP user
+    # Owner of the MCP user
     owner: str
 
-    # URL of the mcp server
+    # URL of the MCP server
     url: str
 
-    # Name of the mcp server
+    # Name of the MCP server
     name: str
+
+    # Custom headers for the MCP client
+    customHeaders: dict
+
+    # Custom client properties for the MCP client
+    clientConfig: dict

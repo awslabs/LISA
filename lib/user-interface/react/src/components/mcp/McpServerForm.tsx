@@ -59,7 +59,7 @@ export function McpServerForm (props: McpServerFormProps) {
 
     if (isSuccess) {
         dispatch(setBreadcrumbs([
-            { text: 'MCP Servers', href: '/mcp-servers' },
+            { text: 'MCP Connections', href: '/mcp-connections' },
             { text: data.name, href: '' }
         ]));
     }
@@ -118,8 +118,8 @@ export function McpServerForm (props: McpServerFormProps) {
         if (isCreatingSuccess || isUpdatingSuccess) {
             const verb = isCreatingSuccess ? 'created' : 'updated';
             const data = isCreatingSuccess ? createData : updateData;
-            notificationService.generateNotification(`Successfully ${verb} MCP Server: ${data.name}`, 'success');
-            navigate('/mcp-servers');
+            notificationService.generateNotification(`Successfully ${verb} MCP Connection: ${data.name}`, 'success');
+            navigate('/mcp-connections');
         }
     }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate]);
 
@@ -134,22 +134,22 @@ export function McpServerForm (props: McpServerFormProps) {
 
     return (
         <Form
-            header={<Header variant='h1'>Server</Header>}
+            header={<Header variant='h1'>Connection</Header>}
             actions={
                 <SpaceBetween direction='horizontal' size='s'>
                     <Button onClick={() => navigate(-1)}>Cancel</Button>
                     <Button variant='primary'
                         disabled={disabled || !canEdit}
-                        disabledReason={!canEdit ? 'You can only edit servers you created.' : undefined}
+                        disabledReason={!canEdit ? 'You can only edit connections you created.' : undefined}
                         onClick={() => submit(state.form)}>
-                        { mcpServerId ? 'Update' : 'Create'} Server
+                        { mcpServerId ? 'Update' : 'Create'} Connection
                     </Button>
                 </SpaceBetween>
             }
         >
             <Container header={<Header>Details</Header>}>
                 <SpaceBetween direction='vertical' size='s'>
-                    <FormField label='Name' errorText={errors?.name} description={'This will be used to identify your server.'}>
+                    <FormField label='Name' errorText={errors?.name} description={'This will be used to identify your connection.'}>
                         <Input value={state.form.name} inputMode='text' onBlur={() => touchFields(['name'])} onChange={({ detail }) => {
                             setFields({ 'name': detail.value });
                         }}

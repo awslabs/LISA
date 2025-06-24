@@ -40,7 +40,7 @@ export function McpServerDetails () {
 
     if (isSuccess) {
         dispatch(setBreadcrumbs([
-            { text: 'MCP Servers', href: '/mcp-servers' },
+            { text: 'MCP Servers', href: '/mcp-connections' },
             { text: data.name, href: '' }
         ]));
     }
@@ -58,7 +58,7 @@ export function McpServerDetails () {
         autoReconnect: true,
     });
 
-    const { paginationProps, items, collectionProps, filteredItemsCount } = useCollection(tools, {
+    const { paginationProps, items, collectionProps } = useCollection(tools, {
         selection: {
             defaultSelectedItems: [],
             trackBy: 'name',
@@ -66,7 +66,7 @@ export function McpServerDetails () {
         },
         pagination: {
             defaultPage: 1,
-            pageSize: 10
+            pageSize: 20
         }
     });
 
@@ -75,7 +75,7 @@ export function McpServerDetails () {
             {...collectionProps}
             header={
                 <Grid gridDefinition={[{ colspan:6 }, { colspan:6 }]}>
-                    <Header counter={filteredItemsCount ? `(${filteredItemsCount})` : undefined}>
+                    <Header counter={`(${tools.length.toString() ?? undefined})`}>
                         {data?.name} Tool Details
 
                     </Header>

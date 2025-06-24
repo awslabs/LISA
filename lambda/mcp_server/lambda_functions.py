@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
-from utilities.common_functions import api_wrapper, get_username, is_admin, retry_config
+from utilities.common_functions import api_wrapper, get_item, get_username, is_admin, retry_config
 
 from .models import McpServerModel
 
@@ -73,8 +73,7 @@ def get(event: dict, context: dict) -> Any:
 
     # Query for the mcp server
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
-    items = response.get("Items", [])
-    item = items[0] if items else None
+    item = get_item(response)
 
     if item is None:
         raise ValueError(f"MCP Server {mcp_server_id} not found.")
@@ -129,8 +128,7 @@ def update(event: dict, context: dict) -> Any:
 
     # Query for the latest mcp server revision
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
-    items = response.get("Items", [])
-    item = items[0] if items else None
+    item = get_item(response)
 
     if item is None:
         raise ValueError(f"MCP Server {mcp_server_model} not found.")
@@ -153,8 +151,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
 
     # Query for the mcp server
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
-    items = response.get("Items", [])
-    item = items[0] if items else None
+    item = get_item(response)
 
     if item is None:
         raise ValueError(f"MCP Server {mcp_server_id} not found.")

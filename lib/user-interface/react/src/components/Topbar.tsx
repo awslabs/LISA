@@ -81,13 +81,13 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
         {
-            id: 'mcp-server',
+            id: 'mcp-connection',
             type: 'button',
             variant: 'link',
-            text: 'MCP Servers',
+            text: 'MCP Connections',
             disableUtilityCollapse: false,
             external: false,
-            href: '/mcp-servers',
+            href: '/mcp-connections',
         },
     ];
 

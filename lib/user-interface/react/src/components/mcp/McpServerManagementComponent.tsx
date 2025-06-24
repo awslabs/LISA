@@ -57,18 +57,18 @@ export function McpServerManagementComponent () {
                     selectedItems={collectionProps.selectedItems || []}
                     setSelectedItems={actions.setSelectedItems}
                 />}>
-                    MCP Servers
+                    MCP Connections
                 </Header>
             }
             sortingDisabled={false}
             selectionType='single'
             selectedItems={collectionProps.selectedItems}
             loading={isFetching}
-            loadingText='Loading MCP Servers'
+            loadingText='Loading MCP Connections'
             empty={(
                 <SpaceBetween direction='vertical' size='s' alignItems='center'>
-                    <TextContent><small>No MCP Servers found.</small></TextContent>
-                    <Button variant='inline-link' onClick={() => navigate('./new')}>Create MCP Server</Button>
+                    <TextContent><small>No MCP Connections found.</small></TextContent>
+                    <Button variant='inline-link' onClick={() => navigate('./new')}>Create MCP Connection</Button>
                 </SpaceBetween>
             )}
             variant='full-page'

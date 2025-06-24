@@ -45,7 +45,7 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
                     props.setSelectedItems([]);
                     dispatch(mcpServerApi.util.invalidateTags(['mcpServers']));
                 }}
-                ariaLabel={'Refresh MCP Servers'}
+                ariaLabel={'Refresh MCP Connections'}
             >
                 <Icon name='refresh' />
             </Button>
@@ -53,7 +53,7 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
             <Button variant='primary' onClick={() => {
                 navigate('./new');
             }}>
-                Create MCP Server
+                Create MCP Connection
             </Button>
         </SpaceBetween>
     );
@@ -69,10 +69,10 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
 
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedMcpServer) {
-            notificationService.generateNotification(`Successfully deleted MCP Server: ${selectedMcpServer.name}`, 'success');
+            notificationService.generateNotification(`Successfully deleted MCP Connection: ${selectedMcpServer.name}`, 'success');
             props.setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedMcpServer) {
-            notificationService.generateNotification(`Error deleting MCP Server: ${deleteError.data?.message ?? deleteError.data}`, 'error');
+            notificationService.generateNotification(`Error deleting MCP Connection: ${deleteError.data?.message ?? deleteError.data}`, 'error');
             props.setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,14 +84,14 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
             text: 'Edit',
             id: 'editMcpServer',
             disabled: !user.isUserAdmin && !(selectedMcpServer.owner === user.username),
-            disabledReason: 'You cannot edit a MCP Server you don\'t own.',
+            disabledReason: 'You cannot edit a MCP Connection you don\'t own.',
         });
 
         items.push({
             text: 'Delete',
             id: 'deleteMcpServer',
             disabled: !user.isUserAdmin && !(selectedMcpServer.owner === user.username),
-            disabledReason: 'You cannot delete a MCP Server you don\'t own.',
+            disabledReason: 'You cannot delete a MCP Connection you don\'t own.',
         });
     }
 
@@ -125,9 +125,9 @@ const ModelActionHandler = (
             dispatch(
                 setConfirmationModal({
                     action: 'Delete',
-                    resourceName: 'MCP Server',
+                    resourceName: 'MCP Connection',
                     onConfirm: () => deleteMutation(selectedItem.id),
-                    description: `This will delete the following MCP Server: ${selectedItem.name}.`
+                    description: `This will delete the following MCP Connection: ${selectedItem.name}.`
                 })
             );
             break;

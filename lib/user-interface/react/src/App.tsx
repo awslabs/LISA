@@ -179,7 +179,7 @@ function App () {
                                 }
                             />
                             <Route
-                                path='mcp-servers/*'
+                                path='mcp-connections/*'
                                 element={
                                     <PrivateRoute showConfig='showMcpServers' configs={config}>
                                         <McpServers setNav={setNav} />

@@ -102,6 +102,7 @@ export class McpApi extends Construct {
         });
 
         const env = {
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName,
             MCP_SERVERS_BY_OWNER_INDEX_NAME: byOwnerIndex,
         };

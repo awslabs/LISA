@@ -183,6 +183,14 @@ export class LisaServeApplicationConstruct extends Construct {
                 ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
             }),
         });
+        console.log('storing llmdbconninfop', JSON.stringify({
+            username: username,
+            dbHost: litellmDb.dbInstanceEndpointAddress,
+            dbName: config.restApiConfig.rdsConfig.dbName,
+            dbPort: config.restApiConfig.rdsConfig.dbPort,
+            // only include passwordSecretId if authenticating with username/password
+            ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
+        }));
 
 
         litellmDbConnectionInfoPs.grantRead(restApi.taskRole);

@@ -87,6 +87,10 @@ def generate_config(filepath: str) -> None:
 
 def get_database_credentials(db_params: dict[str, str]) -> Tuple:
     """Get database password from Secrets Manager or using IAM auth."""
+    
+    print(f"DEBUG: db_params = {db_params}")
+    print(f"DEBUG: db_params keys = {list(db_params.keys())}")
+    print(f"DEBUG: 'passwordSecretId' in db_params = {'passwordSecretId' in db_params}")
 
     if "passwordSecretId" in db_params:
         secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])

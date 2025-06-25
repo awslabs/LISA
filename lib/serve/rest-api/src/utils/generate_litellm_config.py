@@ -16,6 +16,7 @@
 
 import json
 import os
+from typing import Tuple
 
 import boto3
 import click
@@ -63,7 +64,7 @@ def generate_config(filepath: str) -> None:
     # Get database connection info
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
-    
+
     username, password = get_database_credentials(db_params)
     connection_str = (
         f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
@@ -87,13 +88,13 @@ def generate_config(filepath: str) -> None:
         yaml.safe_dump(config_contents, fp)
 
 
-def get_database_credentials(db_params: dict[str, str]):
+def get_database_credentials(db_params: dict[str, str]) -> Tuple:
     """Get database password from Secrets Manager or using IAM auth."""
 
     if "passwordSecretId" in db_params:
         secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
         secret = json.loads(secret_response["SecretString"])
-        return (db_params['username'], secret["password"])
+        return (db_params["username"], secret["password"])
     else:
         iam_name = get_lambda_role_name()
         return (iam_name, generate_auth_token(db_params["dbHost"], db_params["dbPort"], iam_name))

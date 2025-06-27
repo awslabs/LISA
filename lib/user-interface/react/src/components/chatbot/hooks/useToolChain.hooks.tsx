@@ -109,7 +109,8 @@ export const useToolChain = ({
                     metadata: {
                         toolCallId: tr.toolCallId,
                         toolName: tr.toolName,
-                        isToolResult: true
+                        isToolResult: true,
+                        args: toolCalls.find(tool => tool.toolCallId === tool.toolCallId).args,
                     } as any
                 }));
 

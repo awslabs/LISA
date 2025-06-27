@@ -29,7 +29,7 @@ export type McpServer = {
     url: string;
     name: string;
     isOwner?: true;
-    customHeaders?: Array<any>;
+    customHeaders?: Record<string, string>;
     clientConfig?: McpClientConfig;
 };
 

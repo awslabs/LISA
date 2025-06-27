@@ -22,9 +22,9 @@ import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../types';
-import { useAppSelector } from '../../config/store';
-import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
+import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
+import { useAppSelector } from '@/config/store';
+import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
@@ -34,12 +34,13 @@ import React, { useEffect, useState } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
-import ImageViewer from '@/components/chatbot/ImageViewer';
+import ImageViewer from '@/components/chatbot/components/ImageViewer';
 import { merge } from 'lodash';
 
 type MessageProps = {
     message?: LisaChatMessage;
     isRunning: boolean;
+    callingToolName: string;
     showMetadata?: boolean;
     isStreaming?: boolean;
     markdownDisplay?: boolean;
@@ -49,7 +50,7 @@ type MessageProps = {
     chatConfiguration: IChatConfiguration;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -126,7 +127,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 {markdownDisplay ? (
                     <ReactMarkdown
                         remarkPlugins={[remarkBreaks]}
-                        children={content}
+                        children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={{
                             code ({className, children, ...props}: any) {
                                 const match = /language-(\w+)/.exec(className || '');
@@ -202,7 +203,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         }}
                     />
                 ) : (
-                    <div style={{ whiteSpace: 'pre-line' }}>{content}</div>
+                    <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>
                 )}
             </div>);
     };
@@ -211,7 +212,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI) &&
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
-            {isRunning && (
+            {(isRunning && !callingToolName) && (
                 <ChatBubble
                     ariaLabel='Generative AI assistant'
                     type='incoming'
@@ -230,7 +231,26 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type === 'ai' && !isRunning && (
+            {callingToolName && (
+                <ChatBubble
+                    ariaLabel='Generative AI assistant'
+                    type='incoming'
+                    avatar={
+                        <Avatar
+                            loading={true}
+                            color='gen-ai'
+                            iconName='gen-ai'
+                            ariaLabel='Generative AI assistant'
+                            tooltipText='Generative AI assistant'
+                        />
+                    }
+                >
+                    <Box color='text-status-inactive'>
+                        🔨Calling {callingToolName} tool 🔨
+                    </Box>
+                </ChatBubble>
+            )}
+            {message?.type === 'ai' && !isRunning && !callingToolName && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'

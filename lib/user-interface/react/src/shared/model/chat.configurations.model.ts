@@ -15,7 +15,7 @@
  */
 import { LisaChatMessage } from '../../components/types';
 import { IModel } from '@/shared/model/model-management.model';
-import { RagConfig } from '@/components/chatbot/RagOptions';
+import { RagConfig } from '@/components/chatbot/components/RagOptions';
 
 export type IChatConfiguration = {
     promptConfiguration: IPromptConfiguration,

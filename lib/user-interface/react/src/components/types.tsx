@@ -218,7 +218,8 @@ export enum StatusTypes {
 export enum MessageTypes {
     HUMAN = 'human',
     SYSTEM = 'system',
-    AI = 'ai'
+    AI = 'ai',
+    TOOL = 'tool',
 }
 
 
@@ -227,5 +228,6 @@ export enum MessageTypes {
  */
 export enum ModelFeatures {
     SUMMARIZATION = 'summarization',
-    IMAGE_INPUT = 'imageInput'
+    IMAGE_INPUT = 'imageInput',
+    TOOL_CALLS = 'toolCalls',
 }

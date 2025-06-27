@@ -28,9 +28,9 @@ import {
 } from '@cloudscape-design/components';
 
 import Toggle from '@cloudscape-design/components/toggle';
-import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
-import { IModel, ModelType } from '../../shared/model/model-management.model';
-import { IConfiguration } from '../../shared/model/configuration.model';
+import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
+import { IModel, ModelType } from '@/shared/model/model-management.model';
+import { IConfiguration } from '@/shared/model/configuration.model';
 
 export type SessionConfigurationProps = {
     chatConfiguration: IChatConfiguration;

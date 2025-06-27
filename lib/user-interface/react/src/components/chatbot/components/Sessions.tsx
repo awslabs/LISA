@@ -20,26 +20,27 @@ import Header from '@cloudscape-design/components/header';
 import { ButtonDropdown, Grid} from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { useCollection } from '@cloudscape-design/collection-hooks';
-import { useLazyGetConfigurationQuery } from '../../shared/reducers/configuration.reducer';
+import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
     useDeleteSessionByIdMutation, useLazyGetSessionByIdQuery,
     useListSessionsQuery,
-} from '../../shared/reducers/session.reducer';
-import { useAppDispatch } from '../../config/store';
-import { useNotificationService } from '../../shared/util/hooks';
+} from '@/shared/reducers/session.reducer';
+import { useAppDispatch } from '@/config/store';
+import { useNotificationService } from '@/shared/util/hooks';
 import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
-import { IConfiguration } from '../../shared/model/configuration.model';
+import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { truncateText } from '../../shared/util/formats';
+import { truncateText } from '@/shared/util/formats';
 import { fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import React from 'react';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
 export function Sessions ({newSession}) {
     const dispatch = useAppDispatch();
@@ -132,7 +133,15 @@ export function Sessions ({newSession}) {
                                     iconAlt='Delete sessions'
                                     iconName='delete-marker'
                                     variant='inline-link'
-                                    onClick={() => deleteUserSessions()}
+                                    onClick={() =>
+                                        dispatch(
+                                            setConfirmationModal({
+                                                action: 'Delete',
+                                                resourceName: 'All Sessions',
+                                                onConfirm: () => deleteUserSessions(),
+                                                description: 'This will delete all of your user sessions.'
+                                            })
+                                        )}
                                 >
                                     Delete all
                                 </Button>}
@@ -167,7 +176,14 @@ export function Sessions ({newSession}) {
                                     variant='icon'
                                     onItemClick={(e) => {
                                         if (e.detail.id === 'delete-session'){
-                                            deleteById(item.sessionId);
+                                            dispatch(
+                                                setConfirmationModal({
+                                                    action: 'Delete',
+                                                    resourceName: 'Session',
+                                                    onConfirm: () => deleteById(item.sessionId),
+                                                    description: `This will delete the Session: ${item.sessionId}.`
+                                                })
+                                            );
                                         } else if (e.detail.id === 'download-session'){
                                             getSessionById(item.sessionId).then((resp) => {
                                                 const sess: LisaChatSession = resp.data;

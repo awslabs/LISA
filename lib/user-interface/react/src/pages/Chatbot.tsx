@@ -19,7 +19,7 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 import Chat from '../components/chatbot/Chat';
-import Sessions from '../components/chatbot/Sessions';
+import Sessions from '../components/chatbot/components/Sessions';
 
 export function Chatbot ({ setNav }) {
     const { sessionId } = useParams();

@@ -13,10 +13,10 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
+import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
@@ -28,12 +28,12 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config } from '../schema';
+import { BaseProps, Config, RDSConfig } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
 import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/vector-store-creator';
-import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { RagRepositoryConfig, RagRepositoryType } from '../schema';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
@@ -43,10 +43,12 @@ import { LegacyIngestPipelineStateMachine } from './state_machine/legacy-ingest-
 import * as customResources from 'aws-cdk-lib/custom-resources';
 import DynamoDB from 'aws-sdk/clients/dynamodb';
 import * as readlineSync from 'readline-sync';
-import { RAG_LAYER_PATH } from '../util';
+import { LAMBDA_PATH, RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
 import * as child_process from 'child_process';
 import * as path from 'path';
+import { getDefaultRuntime } from '../api-base/utils';
+import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
@@ -456,7 +458,13 @@ export class LisaRagConstruct extends Construct {
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
                         parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
                         stringValue: JSON.stringify({
-                            ...ragConfig.rdsConfig,
+                            ...(config.iamRdsAuth ? {} : {
+                                passwordSecretId: ragConfig.rdsConfig?.passwordSecretId
+                            }),
+                            username: ragConfig.rdsConfig?.username,
+                            dbHost: ragConfig.rdsConfig?.dbHost,
+                            dbName: ragConfig.rdsConfig?.dbName,
+                            dbPort: ragConfig.rdsConfig?.dbPort,
                             type: RagRepositoryType.PGVECTOR
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
@@ -474,6 +482,7 @@ export class LisaRagConstruct extends Construct {
                         vpc: vpc.vpc,
                         subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
+                        iamAuthentication: true,
                         securityGroups: [securityGroups.pgvector],
                         removalPolicy: RemovalPolicy.DESTROY,
                     });
@@ -481,17 +490,60 @@ export class LisaRagConstruct extends Construct {
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
                         parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
                         stringValue: JSON.stringify({
-                            username: username,
-                            passwordSecretId: rdsPasswordSecret.secretName,
                             dbHost: pgvector_db.dbInstanceEndpointAddress,
                             dbName: ragConfig.rdsConfig.dbName,
                             dbPort: ragConfig.rdsConfig.dbPort,
-                            type: RagRepositoryType.PGVECTOR
+                            type: RagRepositoryType.PGVECTOR,
+                            username: username,
+                            ...(config.iamRdsAuth ? {} : { passwordSecretId: rdsPasswordSecret.secretName }),
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
                     });
+
+                    if (config.iamRdsAuth) {
+                        // grant the role permissions to connect as the IAM role itself
+                        pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);
+                    } else {
+                        // grant the role permissions to connect as the postgres user
+                        pgvector_db.grantConnect(lambdaRole);
+                    }
                 }
-                rdsPasswordSecret.grantRead(lambdaRole);
+
+                if (config.iamRdsAuth) {
+                    // Create the lambda for generating DB users for IAM auth
+                    const createDbUserLambda = this.getIAMAuthLambda(config, ragConfig.repositoryId, ragConfig.rdsConfig!, rdsPasswordSecret, lambdaRole.roleName, vpc.vpc, [securityGroups.pgvector], vpc.subnetSelection);
+
+                    const customResourceRole = new Role(this.scope, createCdkId(['CustomResourceRole', ragConfig.repositoryId]), {
+                        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+                    });
+                    createDbUserLambda.grantInvoke(customResourceRole);
+
+                    // run updateInstanceKmsConditionsLambda every deploy
+                    new AwsCustomResource(this.scope, createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource']), {
+                        onCreate: {
+                            service: 'Lambda',
+                            action: 'invoke',
+                            physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
+                            parameters: {
+                                FunctionName: createDbUserLambda.functionName,
+                                Payload: '{}'
+                            },
+                        },
+                        onUpdate: {
+                            service: 'Lambda',
+                            action: 'invoke',
+                            physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
+                            parameters: {
+                                FunctionName: createDbUserLambda.functionName,
+                                Payload: '{}'
+                            },
+                        },
+                        role: customResourceRole
+                    });
+                } else {
+                    rdsPasswordSecret.grantRead(lambdaRole);
+                }
+
                 rdsConnectionInfoPs.grantRead(lambdaRole);
             } else {
                 const error = `[ERROR] Invalid RAG configuratio for ${ragConfig.repositoryId}`;
@@ -581,6 +633,57 @@ export class LisaRagConstruct extends Construct {
             repositoriesParameter.grantRead(lambdaRole);
             repositoriesParameter.grantWrite(lambdaRole);
         }
+    }
+
+    getIAMAuthLambda (config: Config, repositoryId: string, rdsConfig: NonNullable<RDSConfig>, secret: ISecret, user: string, vpc: IVpc, securityGroups: ISecurityGroup[], vpcSubnets?: SubnetSelection): IFunction {
+        // Create the IAM role for updating the database to allow IAM authentication
+        const iamAuthLambdaRole = new Role(this.scope, createCdkId([repositoryId, 'IAMAuthLambdaRole']), {
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            inlinePolicies: {
+                'EC2NetworkInterfaces': new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface'],
+                            resources: ['*'],
+                        }),
+                    ],
+                }),
+            },
+        });
+
+        secret.grantRead(iamAuthLambdaRole);
+
+        const commonLayer = this.getLambdaLayer(repositoryId, config);
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
+
+        return new Function(this.scope, createCdkId([repositoryId, 'CreateDbUserLambda']), {
+            runtime: getDefaultRuntime(),
+            handler: 'utilities.db_setup_iam_auth.handler',
+            code: Code.fromAsset(lambdaPath),
+            timeout: Duration.minutes(2),
+            environment: {
+                SECRET_ARN: secret.secretArn, // ARN of the RDS secret
+                DB_HOST: rdsConfig.dbHost!,
+                DB_PORT: String(rdsConfig.dbPort), // Default PostgreSQL port
+                DB_NAME: rdsConfig.dbName, // Database name
+                DB_USER: rdsConfig.username, // Admin user for RDS
+                IAM_NAME: user, // IAM role for Lambda execution
+            },
+            role: iamAuthLambdaRole, // Lambda execution role
+            layers: [commonLayer],
+            vpc,
+            securityGroups,
+            vpcSubnets
+        });
+    }
+
+    getLambdaLayer (repositoryId: string, config: Config): ILayerVersion {
+        return LayerVersion.fromLayerVersionArn(
+            this.scope,
+            createCdkId([repositoryId, 'CommonLayerVersion']),
+            StringParameter.valueForStringParameter(this.scope, `${config.deploymentPrefix}/layerVersion/common`),
+        );
     }
 
     toDynamoDBItem (obj: Record<string, any>): DynamoDB.PutItemInputAttributeMap {

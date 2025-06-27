@@ -99,3 +99,4 @@ export const RagRepositoryConfigSchema = z
     .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
 export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
+export type RDSConfig = RagRepositoryConfig['rdsConfig'];

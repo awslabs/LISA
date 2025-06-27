@@ -16,10 +16,12 @@
 
 import json
 import os
+from typing import Tuple
 
 import boto3
 import click
 import yaml
+from rds_auth import generate_auth_token, get_lambda_role_name
 
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
@@ -62,11 +64,10 @@ def generate_config(filepath: str) -> None:
     # Get database connection info
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
-    secrets_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
-    password = json.loads(secrets_response["SecretString"])["password"]
+
+    username, password = get_database_credentials(db_params)
     connection_str = (
-        f"postgresql://{db_params['username']}:{password}@{db_params['dbHost']}:{db_params['dbPort']}"
-        f"/{db_params['dbName']}"
+        f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
     )
 
     if "general_settings" not in config_contents:
@@ -85,6 +86,18 @@ def generate_config(filepath: str) -> None:
     # Write updated config back to original path
     with open(filepath, "w") as fp:
         yaml.safe_dump(config_contents, fp)
+
+
+def get_database_credentials(db_params: dict[str, str]) -> Tuple:
+    """Get database password from Secrets Manager or using IAM auth."""
+
+    if "passwordSecretId" in db_params:
+        secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
+        secret = json.loads(secret_response["SecretString"])
+        return (db_params["username"], secret["password"])
+    else:
+        iam_name = get_lambda_role_name()
+        return (iam_name, generate_auth_token(db_params["dbHost"], db_params["dbPort"], iam_name))
 
 
 if __name__ == "__main__":

@@ -140,6 +140,7 @@ export function McpServerForm (props: McpServerFormProps) {
                     <Button onClick={() => navigate(-1)}>Cancel</Button>
                     <Button variant='primary'
                         disabled={disabled || !canEdit}
+                        loading={isCreating || isUpdating}
                         disabledReason={!canEdit ? 'You can only edit connections you created.' : undefined}
                         onClick={() => submit(state.form)}>
                         { mcpServerId ? 'Update' : 'Create'} Connection

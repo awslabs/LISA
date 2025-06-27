@@ -27,17 +27,17 @@ import {
     StatusIndicator,
     TextContent,
 } from '@cloudscape-design/components';
-import {FileTypes, StatusTypes} from '../types';
+import {FileTypes, StatusTypes} from '../../types';
 import {useState} from 'react';
 import {RagConfig} from './RagOptions';
-import {useAppDispatch} from '../../config/store';
-import {useNotificationService} from '../../shared/util/hooks';
+import {useAppDispatch} from '@/config/store';
+import {useNotificationService} from '@/shared/util/hooks';
 import {
     useIngestDocumentsMutation,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
-} from '../../shared/reducers/rag.reducer';
-import {uploadToS3Request} from '../utils';
+} from '@/shared/reducers/rag.reducer';
+import {uploadToS3Request} from '../../utils';
 import {RagRepositoryPipeline} from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
 

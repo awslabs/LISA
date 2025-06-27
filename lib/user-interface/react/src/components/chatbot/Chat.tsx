@@ -54,7 +54,7 @@ import { IConfiguration } from '@/shared/model/configuration.model';
 import { DocumentSummarizationModal } from './components/DocumentSummarizationModal';
 import { useNavigate } from 'react-router-dom';
 import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
-import ConfigurationContext from '../../shared/configuration.provider';
+import ConfigurationContext from '@/shared/configuration.provider';
 import FormField from '@cloudscape-design/components/form-field';
 import { useMultipleMcp } from './hooks/mcp.hooks';
 import { useChatGeneration } from './hooks/chat.hooks';
@@ -507,7 +507,7 @@ export default function Chat ({ sessionId }) {
                                 }
                                 disabled={!selectedModel || loadingSession}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
-                                onAction={userPrompt.length > 0 && !isRunning && !loadingSession && handleSendGenerateRequest}
+                                onAction={userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession && handleSendGenerateRequest}
                                 secondaryActions={
                                     <Box padding={{ left: 'xxs', top: 'xs' }}>
                                         <ButtonGroup

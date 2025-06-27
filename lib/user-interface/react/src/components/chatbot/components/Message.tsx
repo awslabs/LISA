@@ -209,7 +209,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
     };
 
     return (
-        (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI) &&
+        (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
         <div className='mt-2' style={{ overflow: 'hidden' }}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName) && (
@@ -311,6 +311,23 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 >
                     <div style={{ maxWidth: '60em' }}>
                         {renderContent(message.type, message.content)}
+                    </div>
+                </ChatBubble>
+            )}
+            {message?.type === MessageTypes.TOOL && (
+                <ChatBubble
+                    ariaLabel={currentUser}
+                    type='incoming'
+                    avatar={
+                        <Avatar
+                            ariaLabel={currentUser}
+                            tooltipText={currentUser}
+                            initials={currentUser?.charAt(0).toUpperCase()}
+                        />
+                    }
+                >
+                    <div style={{ maxWidth: '60em' }}>
+                        {JSON.stringify(message)}
                     </div>
                 </ChatBubble>
             )}

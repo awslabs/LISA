@@ -53,7 +53,7 @@ export function McpServerDetails () {
         state,          // Connection state: 'discovering' | 'authenticating' | 'connecting' | 'loading' | 'ready' | 'failed'
         tools,          // Available tools from MCP server
     } = useMcp({
-        url: data?.url,
+        url: data?.url ?? ' ',
         clientName: data?.name,
         autoReconnect: true,
         clientConfig: data?.clientConfig ?? undefined,

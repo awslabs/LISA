@@ -74,12 +74,30 @@ export const getIamPolicyStatements = (serviceName: string): PolicyStatement[] =
     return extractPolicyStatementsFromJson(serviceName);
 };
 
-export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '', roleOverride?: string): IRole => {
+export const createLambdaRole = (
+    construct: Construct, 
+    deploymentName: string, 
+    lambdaName: string, 
+    primaryTableArn: string = '', 
+    roleOverride?: string,
+    additionalTableArns?: string[],
+): IRole => {
     const roleId = `Lisa${lambdaName}LambdaExecutionRole`;
     if (roleOverride) {
         return Role.fromRoleName(construct, roleId, roleOverride);
     }
 
+    const tableArns: string[] = [];
+    if (primaryTableArn) {
+        tableArns.push(primaryTableArn, `${primaryTableArn}/*`);
+    }
+    
+    if (additionalTableArns) {
+            additionalTableArns.forEach(arn => {
+            tableArns.push(arn, `${arn}/*`);
+        });
+    }
+    
     return new Role(construct, roleId, {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         roleName: createCdkId([deploymentName, roleId]),
@@ -89,7 +107,7 @@ export const createLambdaRole = (construct: Construct, deploymentName: string, l
         ],
         inlinePolicies: {
             lambdaPermissions: new PolicyDocument({
-                statements: [...(tableArn ? [
+                statements: [...(tableArns.length > 0 ? [
                     new PolicyStatement({
                         effect: Effect.ALLOW,
                         actions: [
@@ -100,12 +118,13 @@ export const createLambdaRole = (construct: Construct, deploymentName: string, l
                             'dynamodb:GetRecords',
                             'dynamodb:GetShardIterator',
                             'dynamodb:Query',
-                            'dynamodb:Scan'
+                            'dynamodb:Scan',
+                            'dynamodb:BatchWriteItem',
+                            'dynamodb:DeleteItem',
+                            'dynamodb:PutItem',
+                            'dynamodb:UpdateItem'
                         ],
-                        resources: [
-                            tableArn,
-                            `${tableArn}/*`,
-                        ]
+                        resources: tableArns
                     })
                 ] : []),
                 ]

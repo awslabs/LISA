@@ -28,7 +28,8 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
         url: server.url,
         clientName: server.name,
         autoReconnect: true,
-        debug: true
+        clientConfig: server.clientConfig ?? undefined,
+        customHeaders: server.customHeaders ?? undefined,
     });
 
     // Use refs to track previous values and avoid unnecessary updates
@@ -114,10 +115,7 @@ export const useMultipleMcp = (servers: McpServer[]) => {
         }
 
         try {
-            console.log(`Calling tool "${toolName}" on server "${serverName}" with args:`, args);
-            const result = await connection.callTool(toolName, args);
-            console.log(`Tool "${toolName}" result:`, result);
-            return result;
+            return await connection.callTool(toolName, args);
         } catch (error) {
             console.error(`Error calling tool "${toolName}" on server "${serverName}":`, error);
             throw error;

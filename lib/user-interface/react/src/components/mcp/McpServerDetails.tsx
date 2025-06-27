@@ -53,9 +53,11 @@ export function McpServerDetails () {
         state,          // Connection state: 'discovering' | 'authenticating' | 'connecting' | 'loading' | 'ready' | 'failed'
         tools,          // Available tools from MCP server
     } = useMcp({
-        url: data?.url ?? '',
-        clientName: 'LISA-MCP-Client',
+        url: data?.url,
+        clientName: data?.name,
         autoReconnect: true,
+        clientConfig: data?.clientConfig ?? undefined,
+        customHeaders: data?.customHeaders ?? undefined,
     });
 
     const { paginationProps, items, collectionProps } = useCollection(tools, {

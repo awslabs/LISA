@@ -85,7 +85,6 @@ export const useToolChain = ({
                         content: formattedContent
                     });
                 } catch (error) {
-                    console.error(`Failed to execute tool "${tool.name}":`, error);
                     notificationService.generateNotification(
                         `Tool execution failed: ${tool.name}`,
                         'error',

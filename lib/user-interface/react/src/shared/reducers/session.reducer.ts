@@ -57,6 +57,7 @@ export const sessionApi = createApi({
                             content: elem.content,
                             type: elem.type,
                             metadata: elem.metadata,
+                            toolCalls: elem.toolCalls,
                         };
                         return message;
                     }),

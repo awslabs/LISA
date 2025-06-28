@@ -186,9 +186,10 @@ export class LisaServeApplicationStage extends Stage {
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
             stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
             vpc: networkingStack.vpc,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
         this.stacks.push(serveStack);
-
+        serveStack.addDependency(networkingStack);
         serveStack.addDependency(iamStack);
 
         const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {

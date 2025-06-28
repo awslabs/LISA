@@ -1,17 +1,17 @@
 /**
-  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-  Licensed under the Apache License, Version 2.0 (the "License").
-  You may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
 
-      http://www.apache.org/licenses/LICENSE-2.0
+ http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
  */
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
@@ -23,17 +23,26 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config } from '../schema';
-import { Effect, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import {
+    Effect,
+    ManagedPolicy,
+    Policy,
+    PolicyDocument,
+    PolicyStatement,
+    Role,
+    ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
+import { HostedRotation, ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { LAMBDA_PATH, REST_API_PATH } from '../util';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { getDefaultRuntime } from '../api-base/utils';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
+    securityGroups: ISecurityGroup[];
 } & BaseProps & StackProps;
 
 /**
@@ -47,13 +56,13 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly tokenTable?: ITable;
 
     /**
-   * @param {Stack} scope - The parent or owner of the construct.
-   * @param {string} id - The unique identifier for the construct within its scope.
-   * @param {LisaServeApplicationProps} props - Properties for the Stack.
-   */
+     * @param {Stack} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaServeApplicationProps} props - Properties for the Stack.
+     */
     constructor (scope: Stack, id: string, props: LisaServeApplicationProps) {
         super(scope, id);
-        const { config, vpc } = props;
+        const { config, vpc, securityGroups } = props;
 
         let tokenTable;
         if (config.restApiConfig.internetFacing) {
@@ -92,46 +101,43 @@ export class LisaServeApplicationConstruct extends Construct {
             removalPolicy: config.removalPolicy
         });
 
-        // const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-        //     scope,
-        //     'base-common-lambda-layer',
-        //     StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
-        // );
+        // Add rotation policy for the management key secret
+        const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
+            runtime: getDefaultRuntime(),
+            handler: 'management_key.handler',
+            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            timeout: Duration.minutes(5),
+            role: new Role(scope, createCdkId([scope.node.id, 'managementKeyRotationRole']), {
+                assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+                managedPolicies: [
+                    ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+                ],
+                inlinePolicies: {
+                    'SecretsManagerRotation': new PolicyDocument({
+                        statements: [
+                            new PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: [
+                                    'secretsmanager:DescribeSecret',
+                                    'secretsmanager:GetSecretValue',
+                                    'secretsmanager:PutSecretValue',
+                                    'secretsmanager:UpdateSecretVersionStage'
+                                ],
+                                resources: [managementKeySecret.secretArn]
+                            })
+                        ]
+                    })
+                }
+            }),
+            securityGroups: securityGroups,
+            vpc: vpc.vpc,
+        });
 
-        // const rotateManagementKeyLambdaId = createCdkId([id, 'RotateManagementKeyLambda'])
-        // const rotateManagementKeyLambda = new Function(scope, rotateManagementKeyLambdaId, {
-        //     deadLetterQueueEnabled: true,
-        //     deadLetterQueue: new Queue(scope, 'RotateManagementKeyLambdaDLQ', {
-        //         queueName: 'RotateManagementKeyLambdaDLQ',
-        //         enforceSSL: true,
-        //     }),
-        //     functionName: rotateManagementKeyLambdaId,
-        //     runtime: config.lambdaConfig.pythonRuntime,
-        //     handler: 'management_key.rotate_management_key',
-        //     code: Code.fromAsset('./lambda/'),
-        //     timeout: Duration.minutes(1),
-        //     memorySize: 1024,
-        //     environment: {
-        //         MANAGEMENT_KEY_NAME: managementKeySecret.secretName
-        //     },
-        //     layers: [commonLambdaLayer],
-        //     vpc: props.vpc.vpc,
-        // });
-
-        // managementKeySecret.grantRead(rotateManagementKeyLambda);
-
-        // new RotationSchedule(scope, createCdkId([id, 'RotateManagementRotationSchedule']), {
-        //     secret: managementKeySecret,
-        //     rotationLambda: rotateManagementKeyLambda,
-        //     automaticallyAfter: Duration.days(1), // Rotate every 30 days
-        //   });
-
-        // You can now use the `secret` variable to access the created secret
-        // For example, you might output the secret's ARN for reference
-        // new CfnOutput(scope, createCdkId([id, 'RotateManagementKey']), {
-        //     value: managementKeySecret.secretArn,
-        //     description: 'The ARN of the secret',
-        // });
+        // Configure automatic rotation every 30 days
+        managementKeySecret.addRotationSchedule('RotationSchedule', {
+            automaticallyAfter: Duration.days(30),
+            rotationLambda: rotationLambda
+        });
 
         const managementKeySecretNameStringParameter = new StringParameter(scope, createCdkId(['ManagementKeySecretName']), {
             parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
@@ -172,6 +178,29 @@ export class LisaServeApplicationConstruct extends Construct {
         });
 
         const litellmDbPasswordSecret = litellmDb.secret!;
+
+        // Add rotation policy for the database password secret (only if not using IAM auth)
+        if (!config.iamRdsAuth) {
+            // Allow the rotation Lambda to connect to the database
+            securityGroups.forEach((sg) => {
+                litellmDbSg.addIngressRule(
+                    sg,
+                    Port.tcp(config.restApiConfig.rdsConfig.dbPort),
+                    'Allow rotation Lambda to connect to database'
+                );
+            });
+
+            litellmDbPasswordSecret.addRotationSchedule('DatabasePasswordRotationSchedule', {
+                automaticallyAfter: Duration.days(30),
+                hostedRotation: HostedRotation.postgreSqlSingleUser({
+                    functionName: `${config.deploymentName}-Litellm-Rotation-Function`,
+                    vpc: vpc.vpc,
+                    vpcSubnets: vpc.subnetSelection,
+                    securityGroups: securityGroups
+                })
+            });
+        }
+
         const litellmDbConnectionInfoPs = new StringParameter(scope, createCdkId([connectionParamName, 'StringParameter']), {
             parameterName: `${config.deploymentPrefix}/${connectionParamName}`,
             stringValue: JSON.stringify({

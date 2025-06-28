@@ -10,15 +10,18 @@
         "isEnabled": false
       },
       "enabledComponents": {
+        "deleteSessionHistory": true,
+        "viewMetaData": true,
+        "editKwargs": true,
+        "editPromptTemplate": true,
+        "editNumOfRagDocument": true,
+        "editChatHistoryBuffer": true,
         "uploadRagDocs": true,
         "uploadContextDocs": true,
         "documentSummarization": true,
-        "viewMetaData": true,
-        "editChatHistoryBuffer": true,
-        "editPromptTemplate": true,
-        "editNumOfRagDocument": true,
-        "editKwargs": true,
-        "deleteSessionHistory": true
+        "showRagLibrary": true,
+        "showPromptTemplateLibrary": true,
+        "mcpConnections": true
       }
     },
     "changedBy": "System",

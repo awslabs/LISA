@@ -80,7 +80,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
-        {
+        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
             id: 'mcp-connection',
             type: 'button',
             variant: 'link',
@@ -88,7 +88,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             disableUtilityCollapse: false,
             external: false,
             href: '/mcp-connections',
-        },
+        } as ButtonDropdownProps.Item] : []),
     ];
 
     return (

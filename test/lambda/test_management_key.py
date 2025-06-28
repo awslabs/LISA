@@ -33,16 +33,11 @@ os.environ["MANAGEMENT_KEY_NAME"] = "test-management-key"
 
 # Add lambda directory to path and import functions
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from management_key import (
-    create_secret,
-    finish_secret,
-    handler,
-    rotate_management_key,
-    set_secret,
-    test_secret as validate_secret,
-)
+from management_key import create_secret, finish_secret, handler, rotate_management_key, set_secret
+from management_key import test_secret as validate_secret
 
 
 @pytest.fixture
@@ -104,7 +99,7 @@ def test_handler_create_secret_success(sample_event, lambda_context, mock_secret
     mock_secrets_manager.get_secret_value.side_effect = ClientError(
         {"Error": {"Code": "ResourceNotFoundException", "Message": "Version not found"}}, "GetSecretValue"
     )
-    
+
     with patch("management_key.secrets_manager", mock_secrets_manager):
         response = handler(sample_event, lambda_context)
 
@@ -481,11 +476,11 @@ def test_integration_full_rotation_cycle():
     # The rotation workflow should complete without errors, and the new version should exist
     response = client.describe_secret(SecretId=secret_name)
     assert "VersionIdsToStages" in response
-    
+
     # Check that we have both AWSCURRENT and AWSPENDING versions (before cleanup)
     version_stages = response["VersionIdsToStages"]
     assert any("AWSCURRENT" in stages for stages in version_stages.values())
-    
+
     # The workflow completed successfully if we reach this point without exceptions
 
 
@@ -498,9 +493,7 @@ def test_handler_with_all_steps(mock_secrets_manager, lambda_context):
 
     mock_secrets_manager.get_secret_value.side_effect = [
         # First call - version doesn't exist for createSecret
-        ClientError(
-            {"Error": {"Code": "ResourceNotFoundException", "Message": "Version not found"}}, "GetSecretValue"
-        ),
+        ClientError({"Error": {"Code": "ResourceNotFoundException", "Message": "Version not found"}}, "GetSecretValue"),
         # Second call - return valid password for testSecret
         {"SecretString": "validpassword123"},
     ]
@@ -512,4 +505,4 @@ def test_handler_with_all_steps(mock_secrets_manager, lambda_context):
             event["Step"] = step
             response = handler(event, lambda_context)
             assert response["statusCode"] == 200
-            assert json.loads(response["body"]) == "Success" 
+            assert json.loads(response["body"]) == "Success"

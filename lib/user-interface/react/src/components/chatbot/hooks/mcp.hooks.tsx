@@ -25,11 +25,13 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
     onConnectionChange: (connection: any, clientName: string) => void
 }) => {
     const connection = useMcp({
-        url: server.url,
-        clientName: server.name,
+        url: server?.url ?? ' ',
+        clientName: server?.name,
         autoReconnect: true,
-        clientConfig: server.clientConfig ?? undefined,
-        customHeaders: server.customHeaders ?? undefined,
+        autoRetry: true,
+        debug: false,
+        clientConfig: server?.clientConfig ?? undefined,
+        customHeaders: server?.customHeaders ?? undefined,
     });
 
     // Use refs to track previous values and avoid unnecessary updates

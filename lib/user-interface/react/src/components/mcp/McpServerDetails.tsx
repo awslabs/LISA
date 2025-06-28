@@ -55,9 +55,11 @@ export function McpServerDetails () {
     } = useMcp({
         url: data?.url ?? ' ',
         clientName: data?.name,
-        autoReconnect: true,
         clientConfig: data?.clientConfig ?? undefined,
         customHeaders: data?.customHeaders ?? undefined,
+        autoReconnect: true,
+        autoRetry: true,
+        debug: false,
     });
 
     const { paginationProps, items, collectionProps } = useCollection(tools, {

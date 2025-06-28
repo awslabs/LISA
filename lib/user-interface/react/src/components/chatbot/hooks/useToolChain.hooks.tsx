@@ -110,7 +110,7 @@ export const useToolChain = ({
                         toolCallId: tr.toolCallId,
                         toolName: tr.toolName,
                         isToolResult: true,
-                        args: toolCalls.find(tool => tool.toolCallId === tool.toolCallId).args,
+                        args: toolCalls.find((tool) => tool.toolCallId === tool.toolCallId).args,
                     } as any
                 }));
 

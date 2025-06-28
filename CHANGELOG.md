@@ -1,3 +1,16 @@
+# v4.4.3
+## Security Enhancements
+- Allowing IAM auth with LISA RDS Instances
+- Fixing breaking 3rd party Dependency
+
+## Acknowledgements
+* @bedanley
+* @jmharold
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.4.2...v4.4.3
+
 # v4.4.2
 ## System Improvements
 - Updated configuration items to make ADC region deployments easier

@@ -27,6 +27,7 @@ const ragOptions = {
 const inContextOptions = {
     uploadContextDocs: 'Allow document upload to context',
     documentSummarization: 'Allow Document Summarization',
+    mcpConnections: 'Allow MCP Server Connections',
 };
 
 const advancedOptions = {
@@ -91,7 +92,6 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                 );
                             })}
                         </SpaceBetween>
-
                     )}
                 </Grid>
             </SpaceBetween>

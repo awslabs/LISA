@@ -106,7 +106,7 @@ export default function Chat ({ sessionId }) {
 
     const { data: {Items: mcpServers} = {Items: []} } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
     // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(mcpServers);
+    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? mcpServers : undefined);
 
     // Custom hooks
     const {
@@ -194,7 +194,7 @@ export default function Chat ({ sessionId }) {
         setSession,
         metadata,
         memory,
-        openAiTools,
+        openAiTools: config?.configuration?.enabledComponents?.mcpConnections ? openAiTools : undefined,
         auth,
         notificationService
     });

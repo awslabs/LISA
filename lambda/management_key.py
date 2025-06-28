@@ -163,7 +163,7 @@ def finish_secret(secret_arn: str, token: str) -> None:
         secrets_manager.update_secret_version_stage(
             SecretId=secret_arn,
             VersionStage="AWSCURRENT",
-            ClientRequestToken=token,
+            MoveToVersionId=token,
             RemoveFromVersionId=current_version,
         )
 

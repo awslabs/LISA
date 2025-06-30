@@ -40,7 +40,7 @@ const nagResults: NagResult = {
     LisaModels: [1,73,0,60],
     LisaNetworking: [1,2,3,5],
     LisaRAG: [3,53,0,50],
-    LisaServe: [1,21,0,31],
+    LisaServe: [1,22,0,33],
     LisaUI: [0,15,0,7],
 };
 

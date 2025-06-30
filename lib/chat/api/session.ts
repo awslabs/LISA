@@ -212,12 +212,13 @@ export class SessionApi extends Construct {
             new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: ['sqs:SendMessage'],
-                resources: [
-                    StringParameter.valueForStringParameter(
-                        this, 
-                        `${config.deploymentPrefix}/resource/user-metrics-queue`
-                    )
-                ]
+                resources: [`arn:aws:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueUrl.split('/').at(-1)}`]
+                // resources: [
+                //     StringParameter.valueForStringParameter(
+                //         this, 
+                //         `${config.deploymentPrefix}/resource/user-metrics-queue`
+                //     )
+                // ]
             })
         );
 

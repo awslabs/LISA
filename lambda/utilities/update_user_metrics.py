@@ -17,11 +17,11 @@ import logging
 import os
 import json
 from datetime import datetime
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 
 import boto3
 from botocore.exceptions import ClientError
-from utilities.common_functions import retry_config, get_groups
+from utilities.common_functions import retry_config
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def process_sqs_event(event: Dict[str, Any], context: Dict[str, Any]) -> None:
             logger.error(f"Error processing SQS message: {str(e)}")
 
 def check_rag_usage(messages: List[Dict[str, Any]]) -> bool:
-    """Check if any human messages in the list used RAG.
+    """Check if last human message in message history used RAG.
     
     Parameters:
     -----------
@@ -76,11 +76,11 @@ def check_rag_usage(messages: List[Dict[str, Any]]) -> bool:
     Returns:
     --------
     bool
-        True if RAG was used in any human message, False otherwise
+        True if RAG was used in last human message, False otherwise
     """
     if not messages:
         return False
-        
+
     # Find the last human message
     for i in range(len(messages) - 1, -1, -1):
         message = messages[i]
@@ -89,46 +89,45 @@ def check_rag_usage(messages: List[Dict[str, Any]]) -> bool:
             if metadata and (metadata.get("ragContext") or metadata.get("ragDocuments")):
                 return True
             break  # Exit after checking the last human message
-            
     return False
 
-def update_user_metrics(user_id: str, has_rag_usage: bool = False, user_groups: List[str] = []) -> None:
-    """Update user metrics for prompt usage.
+def update_user_metrics(user_id: str, has_rag_usage: bool, user_groups: List[str] = []) -> None:
+    """Update metrics for a given user
     
     Parameters:
     -----------
     user_id : str
         The user ID to update metrics for
     has_rag_usage : bool, optional
-        Whether this prompt used RAG functionality, by default False
+        Whether this prompt used RAG functionality
     """
     table_name = os.environ.get("USER_METRICS_TABLE_NAME")
+    
     if not table_name:
         return
+    
     try:
         dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
         metrics_table = dynamodb.Table(table_name)
-        now = datetime.now().isoformat()
-        
+
         response = metrics_table.get_item(Key={"userId": user_id})
         user_exists = "Item" in response
 
         # user group handling
-        
         if not user_exists:
             metrics_table.put_item(
                 Item={
                     "userId": user_id, 
                     "totalPrompts": 1, 
                     "ragUsageCount": 1 if has_rag_usage else 0, 
-                    "firstSeen": now, 
-                    "lastSeen": now,
+                    "firstSeen": datetime.now().isoformat(), 
+                    "lastSeen": datetime.now().isoformat(),
                     "userGroups": set(user_groups) if user_groups else None
                 }
             )
         else:
             update_expression = "SET lastSeen = :now, totalPrompts = totalPrompts + :inc"
-            expression_values = {":now": now, ":inc": 1}
+            expression_values = {":now": datetime.now().isoformat(), ":inc": 1}
             
             if has_rag_usage:
                 update_expression += ", ragUsageCount = if_not_exists(ragUsageCount, :zero) + :inc"

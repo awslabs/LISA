@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Daily scheduled Lambda function to publish unique users metric."""
+"""Daily scheduled Lambda function to publish unique users and group membership metrics."""
 import os
 import boto3
 import logging
@@ -30,7 +30,7 @@ def count_unique_users_and_publish_metric():
         cloudwatch = boto3.client('cloudwatch', region_name=os.environ["AWS_REGION"])
         metrics_table = dynamodb.Table(os.environ["USER_METRICS_TABLE_NAME"])
         
-        # Scan the table to get all items
+        # Scan the table to get all users
         response = metrics_table.scan(Select='COUNT')
         unique_user_count = response['Count']
         
@@ -60,7 +60,7 @@ def count_users_by_group_and_publish_metric():
         cloudwatch = boto3.client('cloudwatch', region_name=os.environ["AWS_REGION"])
         metrics_table = dynamodb.Table(os.environ["USER_METRICS_TABLE_NAME"])
         
-        # Scan the table to get all items with groups
+        # Scan the table to get users with groups
         response = metrics_table.scan(
             ProjectionExpression="userGroups"
         )

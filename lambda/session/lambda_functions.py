@@ -273,7 +273,6 @@ def put_session(event: dict, context: dict) -> dict:
                     "userGroups": get_groups(event),
                     "timestamp": datetime.now().isoformat()
                 }
-                
                 sqs_client.send_message(
                     QueueUrl=os.environ["USER_METRICS_QUEUE_URL"],
                     MessageBody=json.dumps(metrics_event, cls=DecimalEncoder)

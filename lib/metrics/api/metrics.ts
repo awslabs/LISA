@@ -93,10 +93,10 @@ export class MetricsApi extends Construct {
             stringValue: metricsQueue.queueUrl,
         });
         
-        new StringParameter(this, 'UserMetricsQueueArnParameter', {
-            parameterName: `${config.deploymentPrefix}/resource/user-metrics-queue`,
-            stringValue: metricsQueue.queueArn,
-        });
+        // new StringParameter(this, 'UserMetricsQueueArnParameter', {
+        //     parameterName: `${config.deploymentPrefix}/resource/user-metrics-queue`,
+        //     stringValue: metricsQueue.queueArn,
+        // });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
@@ -186,7 +186,7 @@ export class MetricsApi extends Construct {
             }),
             // Users by Group Widget
             new cloudwatch.GraphWidget({
-                title: 'Users by Group',
+                title: 'Groups by Membership Count',
                 left: [
                     new cloudwatch.MathExpression({
                         expression: "SEARCH('{LISA/UserMetrics,GroupName} MetricName=\"UsersPerGroup\"', 'Maximum', 86400)",
@@ -194,6 +194,7 @@ export class MetricsApi extends Construct {
                         period: Duration.days(1),
                     }),
                 ],
+                view: cloudwatch.GraphWidgetView.PIE,
                 width: 24,
                 height: 6,
             }),
@@ -253,22 +254,22 @@ export class MetricsApi extends Construct {
                 lambdaRole,
             );
         });
-        
-        // Scheduled metrics Lambda to count unique users daily
-        const scheduledMetricsLambda = new lambda.Function(this, 'UniqueUsersMetricLambda', {
+
+        // Scheduled metrics Lambda to count unique users and group membership daily
+        const scheduledMetricsLambda = new lambda.Function(this, 'DailyMetricsLambda', {
             runtime: getDefaultRuntime(),
             code: lambda.Code.fromAsset(path.join(lambdaPath)),
             handler: 'metrics/scheduled_metrics.handler',
             environment: env,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
-            timeout: Duration.seconds(30),
+            timeout: Duration.minutes(2),
             role: lambdaRole,
             layers: [commonLambdaLayer],
         });
 
         // EventBridge rule to trigger the UniqueUsersMetric lambda daily
-        new events.Rule(this, 'DailyUniqueUsersRule', {
+        new events.Rule(this, 'DailyMetricsLambda', {
             schedule: events.Schedule.rate(Duration.days(1)),
             targets: [new targets.LambdaFunction(scheduledMetricsLambda)],
         });
@@ -281,7 +282,7 @@ export class MetricsApi extends Construct {
             environment: env,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
-            timeout: Duration.seconds(30),
+            timeout: Duration.minutes(2),
             role: lambdaRole,
             layers: [commonLambdaLayer],
         });

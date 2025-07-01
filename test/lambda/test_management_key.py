@@ -459,6 +459,15 @@ def test_integration_full_rotation_cycle():
 
     token = "test-token-integration-12345678901234567890"  # Needs to be at least 32 chars
 
+    # Mock get_random_password to ensure it returns a password without punctuation
+    # moto doesn't properly respect ExcludePunctuation=True
+    original_get_random_password = client.get_random_password
+
+    def mock_get_random_password(**kwargs):
+        return {"RandomPassword": "testpassword1234"}  # 16 chars, no punctuation
+
+    client.get_random_password = mock_get_random_password
+
     with patch("management_key.secrets_manager", client):
         # Step 1: Create new secret version
         create_secret(secret_name, token)
@@ -471,6 +480,9 @@ def test_integration_full_rotation_cycle():
 
         # Step 4: Finish the rotation
         finish_secret(secret_name, token)
+
+    # Restore original function
+    client.get_random_password = original_get_random_password
 
     # Verify the rotation completed successfully
     # The rotation workflow should complete without errors, and the new version should exist

@@ -29,11 +29,11 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
-import { BaseProps } from '../../schema';
-import { createLambdaRole } from '../../core/utils';
-import { Vpc } from '../../networking/vpc';
-import { LAMBDA_PATH } from '../../util';
+import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { BaseProps } from '../schema';
+import { createLambdaRole } from '../core/utils';
+import { Vpc } from '../networking/vpc';
+import { LAMBDA_PATH } from '../util';
 import { Duration } from 'aws-cdk-lib';
 
 /**
@@ -50,7 +50,7 @@ type MetricsApiProps = {
 /**
  * API which manages user metrics in DynamoDB
  */
-export class MetricsApi extends Construct {
+export class MetricsConstruct extends Construct {
 
     constructor (scope: Construct, id: string, props: MetricsApiProps) {
         super(scope, id);

@@ -21,7 +21,7 @@ import { Construct } from 'constructs';
 
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { MetricsApi } from './api/metrics';
+import { MetricsConstruct } from './metricsConstruct';
 
 /**
  * Properties for LisaMetricsStack.
@@ -38,7 +38,7 @@ export type LisaMetricsStackProps = {
  * LISA Metrics stack.
  */
 export class LisaMetricsStack extends Stack {
-    public readonly metricsApi: MetricsApi;
+    public readonly metricsApi: MetricsConstruct;
 
     /**
      * @param {Construct} scope - The parent or owner of the construct.
@@ -48,7 +48,7 @@ export class LisaMetricsStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaMetricsStackProps) {
         super(scope, id, props);
 
-        this.metricsApi = new MetricsApi(this, id, props);
+        this.metricsApi = new MetricsConstruct(this, id, props);
         this.metricsApi.node.addMetadata('aws:cdk:path', this.node.path);
     }
 }

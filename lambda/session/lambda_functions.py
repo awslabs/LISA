@@ -265,7 +265,7 @@ def put_session(event: dict, context: dict) -> dict:
         
         # Publish event to SQS queue for metrics processing
         try:
-            if "USER_METRICS_QUEUE_URL" in os.environ:
+            if "USER_METRICS_QUEUE_NAME" in os.environ:
                 # Create a copy of the event to send to SQS
                 metrics_event = {
                     "userId": user_id,
@@ -274,12 +274,12 @@ def put_session(event: dict, context: dict) -> dict:
                     "timestamp": datetime.now().isoformat()
                 }
                 sqs_client.send_message(
-                    QueueUrl=os.environ["USER_METRICS_QUEUE_URL"],
+                    QueueUrl=os.environ["USER_METRICS_QUEUE_NAME"],
                     MessageBody=json.dumps(metrics_event, cls=DecimalEncoder)
                 )
                 logger.info(f"Published event to metrics queue for user {user_id}")
             else:
-                logger.warning("USER_METRICS_QUEUE_URL environment variable not set, metrics not published")
+                logger.warning("USER_METRICS_QUEUE_NAME environment variable not set, metrics not published")
         except Exception as e:
             logger.error(f"Failed to publish to metrics queue: {e}")
 

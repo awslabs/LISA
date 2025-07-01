@@ -71,10 +71,10 @@ export class SessionApi extends Construct {
             `${config.deploymentPrefix}/table/user-metrics`
         );
 
-        // Get metrics queue URL from SSM
-        const userMetricsQueueUrl = StringParameter.valueForStringParameter(
+        // Get metrics queue name from SSM
+        const userMetricsQueueName = StringParameter.valueForStringParameter(
             this, 
-            `${config.deploymentPrefix}/queue/user-metrics`
+            `${config.deploymentPrefix}/queue-name/user-metrics`,
         );
 
         // Create DynamoDB table to handle chat sessions
@@ -135,7 +135,7 @@ export class SessionApi extends Construct {
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
             USER_METRICS_TABLE_NAME: userMetricsTableName,
-            USER_METRICS_QUEUE_URL: userMetricsQueueUrl
+            USER_METRICS_QUEUE_NAME: userMetricsQueueName
         };
 
         // Create API Lambda functions
@@ -212,13 +212,7 @@ export class SessionApi extends Construct {
             new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: ['sqs:SendMessage'],
-                resources: [`arn:aws:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueUrl.split('/').at(-1)}`]
-                // resources: [
-                //     StringParameter.valueForStringParameter(
-                //         this, 
-                //         `${config.deploymentPrefix}/resource/user-metrics-queue`
-                //     )
-                // ]
+                resources: [`arn:aws:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueName}`]
             })
         );
 

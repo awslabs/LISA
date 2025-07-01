@@ -83,20 +83,15 @@ export class MetricsApi extends Construct {
         
         // Create SQS Queue for metrics processing
         const metricsQueue = new sqs.Queue(this, 'UserMetricsQueue', {
-            visibilityTimeout: Duration.seconds(60),
+            visibilityTimeout: Duration.minutes(2),
             retentionPeriod: Duration.days(14),
         });
-        
-        // Store queue URL and ARN in SSM for cross-stack access
-        new StringParameter(this, 'UserMetricsQueueUrlParameter', {
-            parameterName: `${config.deploymentPrefix}/queue/user-metrics`,
-            stringValue: metricsQueue.queueUrl,
+
+        // Store queue name and in SSM for cross-stack access
+        new StringParameter(this, 'UserMetricsQueueName', {
+            parameterName: `${config.deploymentPrefix}/queue-name/user-metrics`,
+            stringValue: metricsQueue.queueName,
         });
-        
-        // new StringParameter(this, 'UserMetricsQueueArnParameter', {
-        //     parameterName: `${config.deploymentPrefix}/resource/user-metrics-queue`,
-        //     stringValue: metricsQueue.queueArn,
-        // });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
@@ -195,7 +190,7 @@ export class MetricsApi extends Construct {
                     }),
                 ],
                 view: cloudwatch.GraphWidgetView.PIE,
-                width: 24,
+                width: 12,
                 height: 6,
             }),
         );
@@ -269,7 +264,7 @@ export class MetricsApi extends Construct {
         });
 
         // EventBridge rule to trigger the UniqueUsersMetric lambda daily
-        new events.Rule(this, 'DailyMetricsLambda', {
+        new events.Rule(this, 'DailyMetricsLambdaEventRule', {
             schedule: events.Schedule.rate(Duration.days(1)),
             targets: [new targets.LambdaFunction(scheduledMetricsLambda)],
         });

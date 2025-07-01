@@ -71,7 +71,7 @@ import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { darkStyles, JsonView } from 'react-json-view-lite';
 
-export default function Chat ({ sessionId }) {
+export default function Chat({ sessionId }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
@@ -109,7 +109,7 @@ export default function Chat ({ sessionId }) {
 
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
-    const TOOL_CALL_LIMIT = 1;
+    const TOOL_CALL_LIMIT = 20;
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
 
     const { data: { Items: mcpServers } = { Items: [] } } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });

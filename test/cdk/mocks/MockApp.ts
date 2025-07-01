@@ -23,6 +23,7 @@ import { LisaApiDeploymentStack } from '../../../lib/core/api_deployment';
 import { LisaServeIAMStack } from '../../../lib/iam/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
+import { LisaMetricsStack } from '../../../lib/metrics/index'
 import ConfigParser from './ConfigParser';
 import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
@@ -89,6 +90,16 @@ export default class MockApp {
             stackName: 'LisaApiBase',
             vpc: networkingStack.vpc,
         });
+        const metricsStack = new LisaMetricsStack(app, 'LisaMetrics', {
+            ...baseStackProps,
+            authorizer: apiBaseStack.authorizer!,
+            stackName: 'LisaMetrics',
+            description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+            vpc: networkingStack.vpc,
+        });
         const chatStack = new LisaChatApplicationStack(app, 'LisaChat', {
             ...baseStackProps,
             authorizer: apiBaseStack.authorizer!,
@@ -152,6 +163,7 @@ export default class MockApp {
             iamStack,
             apiBaseStack,
             apiDeploymentStack,
+            metricsStack,
             chatStack,
             serveStack,
             uiStack,

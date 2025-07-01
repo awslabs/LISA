@@ -167,7 +167,7 @@ export class MetricsConstruct extends Construct {
             }),
             // Unique Users Widget
             new cloudwatch.SingleValueWidget({
-                title: 'Unique Users',
+                title: 'Total User Count',
                 metrics: [
                     new cloudwatch.Metric({
                         namespace: 'LISA/UserMetrics',

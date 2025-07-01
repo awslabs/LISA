@@ -38,8 +38,6 @@ export type LisaMetricsStackProps = {
  * LISA Metrics stack.
  */
 export class LisaMetricsStack extends Stack {
-    public readonly metricsApi: MetricsConstruct;
-
     /**
      * @param {Construct} scope - The parent or owner of the construct.
      * @param {string} id - The unique identifier for the construct within its scope.
@@ -48,7 +46,7 @@ export class LisaMetricsStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaMetricsStackProps) {
         super(scope, id, props);
 
-        this.metricsApi = new MetricsConstruct(this, id, props);
-        this.metricsApi.node.addMetadata('aws:cdk:path', this.node.path);
+        new MetricsConstruct(this, id, props).node.addMetadata('aws:cdk:path', this.node.path);
+        
     }
 }

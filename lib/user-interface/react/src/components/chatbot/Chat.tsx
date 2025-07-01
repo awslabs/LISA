@@ -71,7 +71,7 @@ import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { darkStyles, JsonView } from 'react-json-view-lite';
 
-export default function Chat({ sessionId }) {
+export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);

@@ -23,7 +23,7 @@ import { LisaApiDeploymentStack } from '../../../lib/core/api_deployment';
 import { LisaServeIAMStack } from '../../../lib/iam/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
-import { LisaMetricsStack } from '../../../lib/metrics/index'
+import { LisaMetricsStack } from '../../../lib/metrics/index';
 import ConfigParser from './ConfigParser';
 import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';

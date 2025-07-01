@@ -277,7 +277,7 @@ export default function Chat({ sessionId }) {
                     // Check for potential infinite loop before processing
                     consecutiveToolCallCount.current += 1;
 
-                    if (consecutiveToolCallCount.current >= TOOL_CALL_LIMIT) {
+                    if (consecutiveToolCallCount.current > TOOL_CALL_LIMIT) {
                         pendingToolChainExecution.current = async () => {
                             isProcessingToolCalls.current = true;
                             setDirtySession(true);
@@ -289,13 +289,14 @@ export default function Chat({ sessionId }) {
                                 isProcessingToolCalls.current = false;
                             }
                         };
-                        setConfirmationModal({
-                            action: 'Continue Execution',
+                        dispatch(setConfirmationModal({
+                            action: 'Continue',
                             resourceName: 'Tool Executions',
                             onConfirm: () => handleContinueToolCalls(),
                             onDismiss: () => handleStopToolCalls(),
-                            description: `The maximum amount of (${TOOL_CALL_LIMIT}) concurrent tool executions has been reached. Would you like to continue?`
-                        });
+                            description: `The maximum amount of (${TOOL_CALL_LIMIT}) concurrent tool executions has been reached. Would you like to continue?`,
+                            ignoreResponses: true,
+                        }));
                         return;
                     }
 
@@ -348,7 +349,7 @@ export default function Chat({ sessionId }) {
     const handleStopToolCalls = useCallback(() => {
         consecutiveToolCallCount.current = 0; // Reset counter
         pendingToolChainExecution.current = null; // Clear pending execution
-        notificationService.addNotification('info', 'Tool call chain stopped by user');
+        notificationService.generateNotification('Tool call chain stopped by user', 'info');
     }, [notificationService]);
 
     const handleSendGenerateRequest = useCallback(async () => {

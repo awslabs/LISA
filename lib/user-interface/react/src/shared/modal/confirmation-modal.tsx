@@ -29,6 +29,7 @@ export type ConfirmationModalProps = {
     description?: string | ReactElement;
     disabled?: boolean;
     onDismiss?: (event?: NonCancelableCustomEvent<ModalProps.DismissDetail>) => void;
+    ignoreResponses?: boolean;
 };
 
 function ConfirmationModal ({
@@ -38,7 +39,8 @@ function ConfirmationModal ({
     postConfirm,
     description,
     disabled,
-    onDismiss
+    onDismiss,
+    ignoreResponses
 }: ConfirmationModalProps) : ReactElement{
     const [processing, setProcessing] = useState(false);
     const dispatch = useAppDispatch();
@@ -59,9 +61,8 @@ function ConfirmationModal ({
                             variant='primary'
                             onClick={async () => {
                                 setProcessing(true);
-                                await onConfirm();
+                                ignoreResponses ? onConfirm() : await onConfirm();
                                 dispatch(dismissModal());
-                                onDismiss?.();
                                 if (postConfirm) {
                                     postConfirm();
                                 }

@@ -192,7 +192,7 @@ export default function Chat({ sessionId }) {
         });
     };
 
-    const { isRunning, setIsRunning, isStreaming, generateResponse } = useChatGeneration({
+    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,
         selectedModel,
         isImageGenerationMode,
@@ -206,7 +206,7 @@ export default function Chat({ sessionId }) {
     });
 
     // Tool chain hook for handling chained tool calls
-    const { startToolChain, callingToolName } = useToolChain({
+    const { startToolChain, stopToolChain, callingToolName } = useToolChain({
         callTool,
         generateResponse,
         session,
@@ -216,6 +216,17 @@ export default function Chat({ sessionId }) {
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
     startToolChainRef.current = startToolChain;
+
+    // Handle stop functionality
+    const handleStop = useCallback(() => {
+        stopToolChain();
+        stopGeneration();
+        setIsRunning(false);
+        notificationService.generateNotification('Stopping processing...', 'info');
+    }, [stopToolChain, stopGeneration, setIsRunning, notificationService]);
+
+    // Determine if we should show stop button
+    const shouldShowStopButton = isRunning || callingToolName;
 
     useEffect(() => {
         if (sessionHealth) {
@@ -552,8 +563,8 @@ export default function Chat({ sessionId }) {
                             </Grid>
                             <PromptInput
                                 value={userPrompt}
-                                actionButtonAriaLabel='Send message'
-                                actionButtonIconName='send'
+                                actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
+                                actionButtonIconName={shouldShowStopButton ? 'status-stopped' : 'send'}
                                 maxRows={4}
                                 minRows={2}
                                 spellcheck={true}
@@ -564,7 +575,7 @@ export default function Chat({ sessionId }) {
                                 }
                                 disabled={!selectedModel || loadingSession}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
-                                onAction={userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession && handleSendGenerateRequest}
+                                onAction={shouldShowStopButton ? handleStop : (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession ? handleSendGenerateRequest : undefined)}
                                 secondaryActions={
                                     <Box padding={{ left: 'xxs', top: 'xs' }}>
                                         <ButtonGroup

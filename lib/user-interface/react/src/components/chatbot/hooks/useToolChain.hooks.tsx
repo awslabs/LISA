@@ -31,6 +31,7 @@ export const useToolChain = ({
     notificationService: any;
 }) => {
     const isProcessingChain = useRef(false);
+    const stopRequested = useRef(false);
     const [callingToolName, setCallingToolName] = useState<string>(undefined);
 
     const callMcpTool = useCallback(async (tool: any) => {
@@ -67,6 +68,7 @@ export const useToolChain = ({
         }
 
         isProcessingChain.current = true;
+        stopRequested.current = false;
 
         try {
             const toolCalls = lastMessage.toolCalls;
@@ -74,6 +76,12 @@ export const useToolChain = ({
 
             // Execute tool calls sequentially to avoid overwhelming the servers
             for (const tool of toolCalls) {
+                // Check if stop was requested before each tool call
+                if (stopRequested.current) {
+                    notificationService.generateNotification('Tool chain execution stopped by user', 'info');
+                    break;
+                }
+
                 setCallingToolName(tool.name);
                 try {
                     const result = await callMcpTool(tool);
@@ -101,7 +109,7 @@ export const useToolChain = ({
                 }
             }
 
-            if (toolResults.length > 0) {
+            if (toolResults.length > 0 && !stopRequested.current) {
                 // Create tool result messages
                 const toolResultMessages = toolResults.map((tr) => new LisaChatMessage({
                     type: MessageTypes.TOOL,
@@ -110,7 +118,7 @@ export const useToolChain = ({
                         toolCallId: tr.toolCallId,
                         toolName: tr.toolName,
                         isToolResult: true,
-                        args: toolCalls.find((tool) => tool.toolCallId === tool.toolCallId).args,
+                        args: toolCalls.find((tool) => tool.toolCallId === tr.toolCallId).args,
                     } as any
                 }));
 
@@ -123,7 +131,7 @@ export const useToolChain = ({
                 });
 
                 // Generate response - this will use the updated session state
-                await generateResponse({message: toolResultMessages, input: toolResultMessages[0]?.content.toString()});
+                await generateResponse({ message: toolResultMessages, input: toolResultMessages[0]?.content.toString() });
             }
         } finally {
             isProcessingChain.current = false;
@@ -135,8 +143,13 @@ export const useToolChain = ({
         await processToolCallChain(sessionToProcess);
     }, [processToolCallChain]);
 
+    const stopToolChain = useCallback(() => {
+        stopRequested.current = true;
+    }, []);
+
     return {
         startToolChain,
+        stopToolChain,
         isProcessingChain: () => isProcessingChain.current,
         callingToolName
     };

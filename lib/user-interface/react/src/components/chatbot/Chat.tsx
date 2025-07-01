@@ -67,8 +67,9 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
-export default function Chat ({ sessionId }) {
+export default function Chat({ sessionId }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
@@ -104,7 +105,12 @@ export default function Chat ({ sessionId }) {
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
 
-    const { data: {Items: mcpServers} = {Items: []} } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
+    // Tool call loop prevention
+    const consecutiveToolCallCount = useRef(0);
+    const TOOL_CALL_LIMIT = 1;
+    const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
+
+    const { data: { Items: mcpServers } = { Items: [] } } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? mcpServers : undefined);
 
@@ -267,6 +273,32 @@ export default function Chat ({ sessionId }) {
                     currentMessageIndex > lastProcessedMessageIndex.current) {
 
                     lastProcessedMessageIndex.current = currentMessageIndex;
+
+                    // Check for potential infinite loop before processing
+                    consecutiveToolCallCount.current += 1;
+
+                    if (consecutiveToolCallCount.current >= TOOL_CALL_LIMIT) {
+                        pendingToolChainExecution.current = async () => {
+                            isProcessingToolCalls.current = true;
+                            setDirtySession(true);
+                            try {
+                                if (startToolChainRef.current) {
+                                    await startToolChainRef.current(session);
+                                }
+                            } finally {
+                                isProcessingToolCalls.current = false;
+                            }
+                        };
+                        setConfirmationModal({
+                            action: 'Continue Execution',
+                            resourceName: 'Tool Executions',
+                            onConfirm: () => handleContinueToolCalls(),
+                            onDismiss: () => handleStopToolCalls(),
+                            description: `The maximum amount of (${TOOL_CALL_LIMIT}) concurrent tool executions has been reached. Would you like to continue?`
+                        });
+                        return;
+                    }
+
                     isProcessingToolCalls.current = true;
                     setDirtySession(true);
                     try {
@@ -298,9 +330,33 @@ export default function Chat ({ sessionId }) {
         }
     }, [session]);
 
+    // Reset tool call counter when session changes
+    useEffect(() => {
+        consecutiveToolCallCount.current = 0;
+    }, [sessionId]);
+
+    // Handle loop prevention modal actions
+    const handleContinueToolCalls = useCallback(async () => {
+        consecutiveToolCallCount.current = 0; // Reset counter
+
+        if (pendingToolChainExecution.current) {
+            await pendingToolChainExecution.current();
+            pendingToolChainExecution.current = null;
+        }
+    }, []);
+
+    const handleStopToolCalls = useCallback(() => {
+        consecutiveToolCallCount.current = 0; // Reset counter
+        pendingToolChainExecution.current = null; // Clear pending execution
+        notificationService.addNotification('info', 'Tool call chain stopped by user');
+    }, [notificationService]);
+
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;
         setIsRunning(true);
+
+        // Reset tool call counter when human provides input
+        consecutiveToolCallCount.current = 0;
 
         setSession((prev) => ({
             ...prev,
@@ -362,7 +418,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments, notificationService]);
 
     return (
         <div className='h-[80vh]'>

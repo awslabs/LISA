@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { LisaChatMessage, LisaChatSession, MessageTypes } from '@/components/types';
 import { GenerateLLMRequestParams } from '@/shared/model/chat.configurations.model';
 
@@ -23,16 +23,26 @@ export const useToolChain = ({
     generateResponse,
     setSession,
     notificationService,
+    dispatch,
 }: {
     callTool: (toolName: string, args: any) => Promise<any>;
     generateResponse: (params: GenerateLLMRequestParams) => Promise<void>;
     session: LisaChatSession;
     setSession: (updater: (prev: LisaChatSession) => LisaChatSession) => void;
     notificationService: any;
+    dispatch: any;
 }) => {
     const isProcessingChain = useRef(false);
     const stopRequested = useRef(false);
     const [callingToolName, setCallingToolName] = useState<string>(undefined);
+
+    // Local modal state for tool approvals
+    const [toolApprovalModal, setToolApprovalModal] = useState<{
+        visible: boolean;
+        tool: any;
+        resolve: (value: any) => void;
+        reject: (error: any) => void;
+    } | null>(null);
 
     const callMcpTool = useCallback(async (tool: any) => {
         return await callTool(tool.name, { ...tool.args });
@@ -47,7 +57,7 @@ export const useToolChain = ({
                 }
                 return JSON.stringify(item, null, 2);
             }).join('\n');
-        } else if (typeof result === 'object') {
+        } else if (typeof result === 'object' && result !== null) {
             toolResultContent = JSON.stringify(result, null, 2);
         } else {
             toolResultContent = String(result);
@@ -55,7 +65,44 @@ export const useToolChain = ({
         return toolResultContent;
     }, []);
 
+    const executeToolWithApproval = useCallback(async (tool: any): Promise<any> => {
+        if (true) {
+            return new Promise((resolve, reject) => {
+                setToolApprovalModal({
+                    visible: true,
+                    tool,
+                    resolve,
+                    reject
+                });
+            });
+        } else {
+            // If approval is not enabled, execute directly
+            return await callMcpTool(tool);
+        }
+    }, [callMcpTool]);
+
+    const handleToolApproval = useCallback(async () => {
+        if (!toolApprovalModal) return;
+
+        try {
+            setToolApprovalModal(null);
+            const result = await callMcpTool(toolApprovalModal.tool);
+            toolApprovalModal.resolve(result);
+        } catch (error) {
+            toolApprovalModal.reject(error);
+        } finally {
+        }
+    }, [toolApprovalModal, callMcpTool]);
+
+    const handleToolRejection = useCallback(() => {
+        if (!toolApprovalModal) return;
+
+        toolApprovalModal.reject(new Error('Tool execution cancelled by user'));
+        setToolApprovalModal(null);
+    }, [toolApprovalModal]);
+
     const processToolCallChain = useCallback(async (currentSession: LisaChatSession) => {
+
         if (isProcessingChain.current) {
             return; // Prevent concurrent processing
         }
@@ -84,7 +131,7 @@ export const useToolChain = ({
 
                 setCallingToolName(tool.name);
                 try {
-                    const result = await callMcpTool(tool);
+                    const result = await executeToolWithApproval(tool);
                     const formattedContent = formatToolResult(result);
 
                     toolResults.push({
@@ -93,34 +140,42 @@ export const useToolChain = ({
                         content: formattedContent
                     });
                 } catch (error) {
-                    notificationService.generateNotification(
-                        `Tool execution failed: ${tool.name}`,
-                        'error',
-                        undefined,
-                        <p>{error.message}</p>
-                    );
+                    if (error.message === 'Tool execution cancelled by user') {
+                        notificationService.generateNotification(`Tool execution cancelled: ${tool.name}`, 'info');
+                        break; // Stop the chain if user cancels
+                    } else {
+                        notificationService.generateNotification(
+                            `Tool execution failed: ${tool.name}`,
+                            'error',
+                            undefined,
+                            <p>{error.message}</p>
+                        );
 
-                    // Add error as tool result to maintain conversation flow
-                    toolResults.push({
-                        toolCallId: tool.id,
-                        toolName: tool.name,
-                        content: `Error: ${error.message}`
-                    });
+                        // Add error as tool result to maintain conversation flow
+                        toolResults.push({
+                            toolCallId: tool.id,
+                            toolName: tool.name,
+                            content: `Error: ${error.message}`
+                        });
+                    }
                 }
             }
 
             if (toolResults.length > 0 && !stopRequested.current) {
                 // Create tool result messages
-                const toolResultMessages = toolResults.map((tr) => new LisaChatMessage({
-                    type: MessageTypes.TOOL,
-                    content: tr.content,
-                    metadata: {
-                        toolCallId: tr.toolCallId,
-                        toolName: tr.toolName,
-                        isToolResult: true,
-                        args: toolCalls.find((tool) => tool.toolCallId === tr.toolCallId).args,
-                    } as any
-                }));
+                const toolResultMessages = toolResults.map((tr) => {
+                    const originalTool = toolCalls.find((tool) => tool.id === tr.toolCallId);
+                    return new LisaChatMessage({
+                        type: MessageTypes.TOOL,
+                        content: tr.content,
+                        metadata: {
+                            toolCallId: tr.toolCallId,
+                            toolName: tr.toolName,
+                            isToolResult: true,
+                            args: originalTool ? originalTool.args : {},
+                        } as any
+                    });
+                });
 
                 // Add tool result messages to session history
                 setSession((prev) => {
@@ -137,7 +192,7 @@ export const useToolChain = ({
             isProcessingChain.current = false;
             setCallingToolName(undefined);
         }
-    }, [callMcpTool, formatToolResult, generateResponse, setSession, notificationService]);
+    }, [callMcpTool, formatToolResult, generateResponse, setSession, notificationService, executeToolWithApproval]);
 
     const startToolChain = useCallback(async (sessionToProcess: LisaChatSession) => {
         await processToolCallChain(sessionToProcess);
@@ -151,6 +206,9 @@ export const useToolChain = ({
         startToolChain,
         stopToolChain,
         isProcessingChain: () => isProcessingChain.current,
-        callingToolName
+        callingToolName,
+        toolApprovalModal,
+        handleToolApproval,
+        handleToolRejection
     };
 };

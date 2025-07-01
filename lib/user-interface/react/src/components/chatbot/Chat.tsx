@@ -68,6 +68,8 @@ import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilde
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import ConfirmationModal from '@/shared/modal/confirmation-modal';
+import { darkStyles, JsonView } from "react-json-view-lite";
 
 export default function Chat({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -206,12 +208,20 @@ export default function Chat({ sessionId }) {
     });
 
     // Tool chain hook for handling chained tool calls
-    const { startToolChain, stopToolChain, callingToolName } = useToolChain({
+    const {
+        startToolChain,
+        stopToolChain,
+        callingToolName,
+        toolApprovalModal,
+        handleToolApproval,
+        handleToolRejection
+    } = useToolChain({
         callTool,
         generateResponse,
         session,
         setSession,
         notificationService,
+        dispatch,
     });
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
@@ -238,7 +248,7 @@ export default function Chat({ sessionId }) {
     // Handle tool calls with chaining support
     useEffect(() => {
         const handleToolCalls = async () => {
-            if (!isRunning && session.history.length && !isProcessingToolCalls.current) {
+            if (session.history.length && !isProcessingToolCalls.current) {
                 const currentMessageIndex = session.history.length - 1;
 
                 // Update session if there are changes
@@ -283,8 +293,6 @@ export default function Chat({ sessionId }) {
                     lastMessage.toolCalls.length > 0 &&
                     currentMessageIndex > lastProcessedMessageIndex.current) {
 
-                    lastProcessedMessageIndex.current = currentMessageIndex;
-
                     // Check for potential infinite loop before processing
                     consecutiveToolCallCount.current += 1;
 
@@ -318,6 +326,8 @@ export default function Chat({ sessionId }) {
                         if (startToolChainRef.current) {
                             await startToolChainRef.current(session);
                         }
+                        // Update the last processed index after successful processing
+                        lastProcessedMessageIndex.current = currentMessageIndex;
                     } finally {
                         isProcessingToolCalls.current = false;
                     }
@@ -485,6 +495,24 @@ export default function Chat({ sessionId }) {
                 config={config}
                 type={filterPromptTemplateType}
             />
+            {/* Tool Approval Modal */}
+            {toolApprovalModal && (
+                <ConfirmationModal
+                    action="Execute"
+                    resourceName={`Tool: ${toolApprovalModal.tool.name}`}
+                    onConfirm={handleToolApproval}
+                    onDismiss={handleToolRejection}
+                    description={
+                        <div>
+                            <p>The AI is about to execute the following tool:</p>
+                            <p><strong>Tool Name:</strong> {toolApprovalModal.tool.name}</p>
+                            <p><strong>Arguments:</strong></p>
+                            <JsonView data={toolApprovalModal.tool.args} style={darkStyles} />
+                            <p>Do you want to allow this tool execution?</p>
+                        </div>
+                    }
+                />
+            )}
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (

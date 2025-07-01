@@ -294,11 +294,11 @@ export const useChatGeneration = ({
                                 return {
                                     ...prev,
                                     history: [...prev.history.slice(0, -1),
-                                    new LisaChatMessage({
-                                        ...lastMessage,
-                                        content: lastMessage.content + content,
-                                        toolCalls: currentToolCalls
-                                    })
+                                        new LisaChatMessage({
+                                            ...lastMessage,
+                                            content: lastMessage.content + content,
+                                            toolCalls: currentToolCalls
+                                        })
                                     ],
                                 };
                             });
@@ -332,10 +332,10 @@ export const useChatGeneration = ({
                                     return {
                                         ...prev,
                                         history: [...prev.history.slice(0, -1),
-                                        new LisaChatMessage({
-                                            ...lastMessage,
-                                            toolCalls: finalToolCalls
-                                        })
+                                            new LisaChatMessage({
+                                                ...lastMessage,
+                                                toolCalls: finalToolCalls
+                                            })
                                         ],
                                     };
                                 }

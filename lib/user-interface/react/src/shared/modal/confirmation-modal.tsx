@@ -32,7 +32,7 @@ export type ConfirmationModalProps = {
     ignoreResponses?: boolean;
 };
 
-function ConfirmationModal({
+function ConfirmationModal ({
     action,
     resourceName,
     onConfirm,

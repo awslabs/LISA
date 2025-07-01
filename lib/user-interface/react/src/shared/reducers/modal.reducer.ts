@@ -25,10 +25,10 @@ const modalSlice = createSlice({
     name: 'modal',
     initialState,
     reducers: {
-        setConfirmationModal(state, action: PayloadAction<ConfirmationModalProps>) {
+        setConfirmationModal (state, action: PayloadAction<ConfirmationModalProps>) {
             state.confirmationModal = action.payload;
         },
-        dismissModal(state) {
+        dismissModal (state) {
             state.confirmationModal = undefined;
         },
     },

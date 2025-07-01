@@ -23,14 +23,12 @@ export const useToolChain = ({
     generateResponse,
     setSession,
     notificationService,
-    dispatch,
 }: {
     callTool: (toolName: string, args: any) => Promise<any>;
     generateResponse: (params: GenerateLLMRequestParams) => Promise<void>;
     session: LisaChatSession;
     setSession: (updater: (prev: LisaChatSession) => LisaChatSession) => void;
     notificationService: any;
-    dispatch: any;
 }) => {
     const isProcessingChain = useRef(false);
     const stopRequested = useRef(false);
@@ -66,20 +64,20 @@ export const useToolChain = ({
     }, []);
 
     const executeToolWithApproval = useCallback(async (tool: any): Promise<any> => {
-        if (true) {
-            return new Promise((resolve, reject) => {
-                setToolApprovalModal({
-                    visible: true,
-                    tool,
-                    resolve,
-                    reject
-                });
+        // if (true) {
+        return new Promise((resolve, reject) => {
+            setToolApprovalModal({
+                visible: true,
+                tool,
+                resolve,
+                reject
             });
-        } else {
-            // If approval is not enabled, execute directly
-            return await callMcpTool(tool);
-        }
-    }, [callMcpTool]);
+        });
+        // } else {
+        //     // If approval is not enabled, execute directly
+        //     return await callMcpTool(tool);
+        // }
+    }, []);
 
     const handleToolApproval = useCallback(async () => {
         if (!toolApprovalModal) return;
@@ -90,7 +88,6 @@ export const useToolChain = ({
             toolApprovalModal.resolve(result);
         } catch (error) {
             toolApprovalModal.reject(error);
-        } finally {
         }
     }, [toolApprovalModal, callMcpTool]);
 
@@ -192,7 +189,7 @@ export const useToolChain = ({
             isProcessingChain.current = false;
             setCallingToolName(undefined);
         }
-    }, [callMcpTool, formatToolResult, generateResponse, setSession, notificationService, executeToolWithApproval]);
+    }, [formatToolResult, generateResponse, setSession, notificationService, executeToolWithApproval]);
 
     const startToolChain = useCallback(async (sessionToProcess: LisaChatSession) => {
         await processToolCallChain(sessionToProcess);

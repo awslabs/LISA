@@ -69,9 +69,9 @@ import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
-import { darkStyles, JsonView } from "react-json-view-lite";
+import { darkStyles, JsonView } from 'react-json-view-lite';
 
-export default function Chat({ sessionId }) {
+export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
@@ -221,7 +221,6 @@ export default function Chat({ sessionId }) {
         session,
         setSession,
         notificationService,
-        dispatch,
     });
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
@@ -498,7 +497,7 @@ export default function Chat({ sessionId }) {
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
                 <ConfirmationModal
-                    action="Execute"
+                    action='Execute'
                     resourceName={`Tool: ${toolApprovalModal.tool.name}`}
                     onConfirm={handleToolApproval}
                     onDismiss={handleToolRejection}

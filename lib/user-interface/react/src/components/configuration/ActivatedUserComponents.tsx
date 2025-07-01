@@ -57,7 +57,7 @@ export type ActivatedComponentConfigurationProps = {
     enabledComponents: { [key: string]: boolean };
 };
 
-export function ActivatedUserComponents(props: ActivatedComponentConfigurationProps) {
+export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
     return (
         <Container
             header={

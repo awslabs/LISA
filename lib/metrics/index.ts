@@ -48,7 +48,7 @@ export class LisaMetricsStack extends Stack {
     constructor (scope: Construct, id: string, props: LisaMetricsStackProps) {
         super(scope, id, props);
 
-       this.metricsApi = new MetricsApi(this, id, props);
-       this.metricsApi.node.addMetadata('aws:cdk:path', this.node.path);
+        this.metricsApi = new MetricsApi(this, id, props);
+        this.metricsApi.node.addMetadata('aws:cdk:path', this.node.path);
     }
 }

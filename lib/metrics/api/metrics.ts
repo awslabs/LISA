@@ -80,7 +80,7 @@ export class MetricsApi extends Construct {
             parameterName: `${config.deploymentPrefix}/table/user-metrics`,
             stringValue: userMetricsTable.tableName,
         });
-        
+
         // Create SQS Queue for metrics processing
         const metricsQueue = new sqs.Queue(this, 'UserMetricsQueue', {
             visibilityTimeout: Duration.minutes(2),
@@ -130,7 +130,7 @@ export class MetricsApi extends Construct {
                 title: 'Total RAG Usage',
                 left: [
                     new cloudwatch.Metric({
-                        namespace: 'LISA/UserMetrics', 
+                        namespace: 'LISA/UserMetrics',
                         metricName: 'RAGUsageCount',
                         statistic: 'Sum',
                         period: Duration.hours(1),
@@ -144,8 +144,8 @@ export class MetricsApi extends Construct {
                 title: 'Prompts by User',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: "SEARCH('{LISA/UserMetrics,UserId} MetricName=\"UserPromptCount\"', 'Sum', 3600)",
-                        label: "",
+                        expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserPromptCount"\', \'Sum\', 3600)',
+                        label: '',
                         period: Duration.hours(1),
                     }),
                 ],
@@ -157,8 +157,8 @@ export class MetricsApi extends Construct {
                 title: 'RAG Usage by User',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: "SEARCH('{LISA/UserMetrics,UserId} MetricName=\"UserRAGUsageCount\"', 'Sum', 3600)",
-                        label: "",
+                        expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserRAGUsageCount"\', \'Sum\', 3600)',
+                        label: '',
                         period: Duration.hours(1),
                     }),
                 ],
@@ -184,8 +184,8 @@ export class MetricsApi extends Construct {
                 title: 'Groups by Membership Count',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: "SEARCH('{LISA/UserMetrics,GroupName} MetricName=\"UsersPerGroup\"', 'Maximum', 86400)",
-                        label: "",
+                        expression: 'SEARCH(\'{LISA/UserMetrics,GroupName} MetricName="UsersPerGroup"\', \'Maximum\', 86400)',
+                        label: '',
                         period: Duration.days(1),
                     }),
                 ],
@@ -254,7 +254,7 @@ export class MetricsApi extends Construct {
         const scheduledMetricsLambda = new lambda.Function(this, 'DailyMetricsLambda', {
             runtime: getDefaultRuntime(),
             code: lambda.Code.fromAsset(path.join(lambdaPath)),
-            handler: 'metrics/scheduled_metrics.handler',
+            handler: 'metrics/lambda_functions.daily_metrics_handler',
             environment: env,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
@@ -268,12 +268,12 @@ export class MetricsApi extends Construct {
             schedule: events.Schedule.rate(Duration.days(1)),
             targets: [new targets.LambdaFunction(scheduledMetricsLambda)],
         });
-        
+
         // Create Lambda function for processing SQS events
         const metricsProcessorLambda = new lambda.Function(this, 'UserMetricsProcessor', {
             runtime: getDefaultRuntime(),
             code: lambda.Code.fromAsset(path.join(lambdaPath)),
-            handler: 'utilities.update_user_metrics.process_sqs_event',
+            handler: 'metrics.lambda_functions.process_metrics_sqs_event',
             environment: env,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
@@ -281,12 +281,12 @@ export class MetricsApi extends Construct {
             role: lambdaRole,
             layers: [commonLambdaLayer],
         });
-        
+
         // Add SQS event source to the Lambda function
         metricsProcessorLambda.addEventSource(new SqsEventSource(metricsQueue, {
             batchSize: 10,
         }));
-        
+
         // Grant SQS permissions to the Lambda role
         metricsQueue.grantConsumeMessages(metricsProcessorLambda);
     }

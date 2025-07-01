@@ -75,10 +75,10 @@ export const getIamPolicyStatements = (serviceName: string): PolicyStatement[] =
 };
 
 export const createLambdaRole = (
-    construct: Construct, 
-    deploymentName: string, 
-    lambdaName: string, 
-    primaryTableArn: string = '', 
+    construct: Construct,
+    deploymentName: string,
+    lambdaName: string,
+    primaryTableArn: string = '',
     roleOverride?: string,
     additionalTableArns?: string[],
 ): IRole => {
@@ -91,13 +91,13 @@ export const createLambdaRole = (
     if (primaryTableArn) {
         tableArns.push(primaryTableArn, `${primaryTableArn}/*`);
     }
-    
+
     if (additionalTableArns) {
-            additionalTableArns.forEach(arn => {
+        additionalTableArns.forEach((arn) => {
             tableArns.push(arn, `${arn}/*`);
         });
     }
-    
+
     return new Role(construct, roleId, {
         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
         roleName: createCdkId([deploymentName, roleId]),

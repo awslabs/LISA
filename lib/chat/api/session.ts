@@ -67,13 +67,13 @@ export class SessionApi extends Construct {
 
         // Get user metrics table name from SSM
         const userMetricsTableName = StringParameter.valueForStringParameter(
-            this, 
+            this,
             `${config.deploymentPrefix}/table/user-metrics`
         );
 
         // Get metrics queue name from SSM
         const userMetricsQueueName = StringParameter.valueForStringParameter(
-            this, 
+            this,
             `${config.deploymentPrefix}/queue-name/user-metrics`,
         );
 
@@ -191,9 +191,9 @@ export class SessionApi extends Construct {
         ];
 
         const lambdaRole: IRole = createLambdaRole(
-            this, 
-            config.deploymentName, 
-            'SessionApi', 
+            this,
+            config.deploymentName,
+            'SessionApi',
             sessionTable.tableArn,
             config.roles?.LambdaExecutionRole,
             [`arn:aws:dynamodb:${config.region}:${config.accountNumber}:table/${userMetricsTableName}`],
@@ -206,7 +206,7 @@ export class SessionApi extends Construct {
                 resources: ['*']
             })
         );
-        
+
         // Add SQS permissions to the role
         lambdaRole.addToPrincipalPolicy(
             new PolicyStatement({

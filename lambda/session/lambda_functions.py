@@ -26,15 +26,8 @@ from typing import Any, Dict, List, Tuple
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from utilities.common_functions import api_wrapper, get_session_id, get_username, retry_config, get_groups
-
-# Custom JSON encoder to handle Decimal types
-class DecimalEncoder(json.JSONEncoder):
-    """Helper class to convert Decimal types to numbers during JSON serialization."""
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
+from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, retry_config
+from utilities.encoders import convert_decimal
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +255,7 @@ def put_session(event: dict, context: dict) -> dict:
             return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
 
         messages = body["messages"]
-        
+
         # Publish event to SQS queue for metrics processing
         try:
             if "USER_METRICS_QUEUE_NAME" in os.environ:
@@ -271,11 +264,11 @@ def put_session(event: dict, context: dict) -> dict:
                     "userId": user_id,
                     "messages": messages,
                     "userGroups": get_groups(event),
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
                 sqs_client.send_message(
                     QueueUrl=os.environ["USER_METRICS_QUEUE_NAME"],
-                    MessageBody=json.dumps(metrics_event, cls=DecimalEncoder)
+                    MessageBody=json.dumps(convert_decimal(metrics_event)),
                 )
                 logger.info(f"Published event to metrics queue for user {user_id}")
             else:

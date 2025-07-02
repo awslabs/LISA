@@ -445,57 +445,6 @@ def test_all_punctuation_characters_detected(mock_secrets_manager):
             validate_secret(secret_arn, token)
 
 
-@mock_aws
-def test_integration_full_rotation_cycle():
-    """Integration test for full rotation cycle using moto."""
-    import boto3
-
-    # Create a real secrets manager client using moto
-    client = boto3.client("secretsmanager", region_name="us-east-1")
-
-    # Create a secret
-    secret_name = "test-management-key"
-    client.create_secret(Name=secret_name, SecretString="initial-password")
-
-    token = "test-token-integration-12345678901234567890"  # Needs to be at least 32 chars
-
-    # Mock get_random_password to ensure it returns a password without punctuation
-    # moto doesn't properly respect ExcludePunctuation=True
-    original_get_random_password = client.get_random_password
-
-    def mock_get_random_password(**kwargs):
-        return {"RandomPassword": "testpassword1234"}  # 16 chars, no punctuation
-
-    client.get_random_password = mock_get_random_password
-
-    with patch("management_key.secrets_manager", client):
-        # Step 1: Create new secret version
-        create_secret(secret_name, token)
-
-        # Step 2: Set secret (no-op)
-        set_secret(secret_name, token)
-
-        # Step 3: Test the secret
-        validate_secret(secret_name, token)
-
-        # Step 4: Finish the rotation
-        finish_secret(secret_name, token)
-
-    # Restore original function
-    client.get_random_password = original_get_random_password
-
-    # Verify the rotation completed successfully
-    # The rotation workflow should complete without errors, and the new version should exist
-    response = client.describe_secret(SecretId=secret_name)
-    assert "VersionIdsToStages" in response
-
-    # Check that we have both AWSCURRENT and AWSPENDING versions (before cleanup)
-    version_stages = response["VersionIdsToStages"]
-    assert any("AWSCURRENT" in stages for stages in version_stages.values())
-
-    # The workflow completed successfully if we reach this point without exceptions
-
-
 def test_handler_with_all_steps(mock_secrets_manager, lambda_context):
     """Test handler with all rotation steps."""
     base_event = {

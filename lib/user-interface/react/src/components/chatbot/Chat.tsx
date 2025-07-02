@@ -67,6 +67,9 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import ConfirmationModal from '@/shared/modal/confirmation-modal';
+import { darkStyles, JsonView } from 'react-json-view-lite';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -104,7 +107,12 @@ export default function Chat ({ sessionId }) {
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
 
-    const { data: {Items: mcpServers} = {Items: []} } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
+    // Tool call loop prevention
+    const consecutiveToolCallCount = useRef(0);
+    const TOOL_CALL_LIMIT = 20;
+    const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
+
+    const { data: { Items: mcpServers } = { Items: [] } } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? mcpServers : undefined);
 
@@ -186,7 +194,7 @@ export default function Chat ({ sessionId }) {
         });
     };
 
-    const { isRunning, setIsRunning, isStreaming, generateResponse } = useChatGeneration({
+    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,
         selectedModel,
         isImageGenerationMode,
@@ -200,7 +208,14 @@ export default function Chat ({ sessionId }) {
     });
 
     // Tool chain hook for handling chained tool calls
-    const { startToolChain, callingToolName } = useToolChain({
+    const {
+        startToolChain,
+        stopToolChain,
+        callingToolName,
+        toolApprovalModal,
+        handleToolApproval,
+        handleToolRejection
+    } = useToolChain({
         callTool,
         generateResponse,
         session,
@@ -210,6 +225,17 @@ export default function Chat ({ sessionId }) {
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
     startToolChainRef.current = startToolChain;
+
+    // Handle stop functionality
+    const handleStop = useCallback(() => {
+        stopToolChain();
+        stopGeneration();
+        setIsRunning(false);
+        notificationService.generateNotification('Stopping processing...', 'info');
+    }, [stopToolChain, stopGeneration, setIsRunning, notificationService]);
+
+    // Determine if we should show stop button
+    const shouldShowStopButton = isRunning || callingToolName;
 
     useEffect(() => {
         if (sessionHealth) {
@@ -221,7 +247,7 @@ export default function Chat ({ sessionId }) {
     // Handle tool calls with chaining support
     useEffect(() => {
         const handleToolCalls = async () => {
-            if (!isRunning && session.history.length && !isProcessingToolCalls.current) {
+            if (session.history.length && !isProcessingToolCalls.current) {
                 const currentMessageIndex = session.history.length - 1;
 
                 // Update session if there are changes
@@ -266,7 +292,32 @@ export default function Chat ({ sessionId }) {
                     lastMessage.toolCalls.length > 0 &&
                     currentMessageIndex > lastProcessedMessageIndex.current) {
 
-                    lastProcessedMessageIndex.current = currentMessageIndex;
+                    // Check for potential infinite loop before processing
+                    consecutiveToolCallCount.current += 1;
+
+                    if (consecutiveToolCallCount.current > TOOL_CALL_LIMIT) {
+                        pendingToolChainExecution.current = async () => {
+                            isProcessingToolCalls.current = true;
+                            setDirtySession(true);
+                            try {
+                                if (startToolChainRef.current) {
+                                    await startToolChainRef.current(session);
+                                }
+                            } finally {
+                                isProcessingToolCalls.current = false;
+                            }
+                        };
+                        dispatch(setConfirmationModal({
+                            action: 'Continue',
+                            resourceName: 'Tool Executions',
+                            onConfirm: () => handleContinueToolCalls(),
+                            onDismiss: () => handleStopToolCalls(),
+                            description: `The maximum amount of (${TOOL_CALL_LIMIT}) concurrent tool executions has been reached. Would you like to continue?`,
+                            ignoreResponses: true,
+                        }));
+                        return;
+                    }
+
                     isProcessingToolCalls.current = true;
                     setDirtySession(true);
                     try {
@@ -274,6 +325,8 @@ export default function Chat ({ sessionId }) {
                         if (startToolChainRef.current) {
                             await startToolChainRef.current(session);
                         }
+                        // Update the last processed index after successful processing
+                        lastProcessedMessageIndex.current = currentMessageIndex;
                     } finally {
                         isProcessingToolCalls.current = false;
                     }
@@ -298,9 +351,33 @@ export default function Chat ({ sessionId }) {
         }
     }, [session]);
 
+    // Reset tool call counter when session changes
+    useEffect(() => {
+        consecutiveToolCallCount.current = 0;
+    }, [sessionId]);
+
+    // Handle loop prevention modal actions
+    const handleContinueToolCalls = useCallback(async () => {
+        consecutiveToolCallCount.current = 0; // Reset counter
+
+        if (pendingToolChainExecution.current) {
+            await pendingToolChainExecution.current();
+            pendingToolChainExecution.current = null;
+        }
+    }, []);
+
+    const handleStopToolCalls = useCallback(() => {
+        consecutiveToolCallCount.current = 0; // Reset counter
+        pendingToolChainExecution.current = null; // Clear pending execution
+        notificationService.generateNotification('Tool call chain stopped by user', 'info');
+    }, [notificationService]);
+
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;
         setIsRunning(true);
+
+        // Reset tool call counter when human provides input
+        consecutiveToolCallCount.current = 0;
 
         setSession((prev) => ({
             ...prev,
@@ -362,7 +439,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments, notificationService]);
 
     return (
         <div className='h-[80vh]'>
@@ -417,6 +494,24 @@ export default function Chat ({ sessionId }) {
                 config={config}
                 type={filterPromptTemplateType}
             />
+            {/* Tool Approval Modal */}
+            {toolApprovalModal && (
+                <ConfirmationModal
+                    action='Execute'
+                    resourceName={`Tool: ${toolApprovalModal.tool.name}`}
+                    onConfirm={handleToolApproval}
+                    onDismiss={handleToolRejection}
+                    description={
+                        <div>
+                            <p>The AI is about to execute the following tool:</p>
+                            <p><strong>Tool Name:</strong> {toolApprovalModal.tool.name}</p>
+                            <p><strong>Arguments:</strong></p>
+                            <JsonView data={toolApprovalModal.tool.args} style={darkStyles} />
+                            <p>Do you want to allow this tool execution?</p>
+                        </div>
+                    }
+                />
+            )}
             <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
@@ -495,8 +590,8 @@ export default function Chat ({ sessionId }) {
                             </Grid>
                             <PromptInput
                                 value={userPrompt}
-                                actionButtonAriaLabel='Send message'
-                                actionButtonIconName='send'
+                                actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
+                                actionButtonIconName={shouldShowStopButton ? 'status-stopped' : 'send'}
                                 maxRows={4}
                                 minRows={2}
                                 spellcheck={true}
@@ -507,7 +602,7 @@ export default function Chat ({ sessionId }) {
                                 }
                                 disabled={!selectedModel || loadingSession}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
-                                onAction={userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession && handleSendGenerateRequest}
+                                onAction={shouldShowStopButton ? handleStop : (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession ? handleSendGenerateRequest : undefined)}
                                 secondaryActions={
                                     <Box padding={{ left: 'xxs', top: 'xs' }}>
                                         <ButtonGroup

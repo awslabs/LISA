@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { ChatOpenAI } from '@langchain/openai';
 import {
     LisaChatMessage,
@@ -53,6 +53,7 @@ export const useChatGeneration = ({
 }) => {
     const [isRunning, setIsRunning] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
+    const stopRequested = useRef(false);
     const modelSupportsTools = selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true;
 
     const createOpenAiClient = useCallback((streaming: boolean) => {
@@ -75,6 +76,7 @@ export const useChatGeneration = ({
 
     const generateResponse = async (params: GenerateLLMRequestParams) => {
         setIsRunning(true);
+        stopRequested.current = false;
         try {
             // Handle image generation mode specifically
             if (isImageGenerationMode) {
@@ -191,6 +193,12 @@ export const useChatGeneration = ({
                         const toolCallsAccumulator: { [index: number]: any } = {};
 
                         for await (const chunk of stream) {
+                            // Check if stop was requested
+                            if (stopRequested.current) {
+                                notificationService.generateNotification('Generation stopped by user', 'info');
+                                break;
+                            }
+
                             const content = chunk.content as string;
 
                             // Get tool calls from LangChain streaming chunks
@@ -363,5 +371,9 @@ export const useChatGeneration = ({
         }
     };
 
-    return { isRunning, setIsRunning, isStreaming, setIsStreaming, generateResponse, createOpenAiClient };
+    const stopGeneration = useCallback(() => {
+        stopRequested.current = true;
+    }, []);
+
+    return { isRunning, setIsRunning, isStreaming, setIsStreaming, generateResponse, createOpenAiClient, stopGeneration };
 };

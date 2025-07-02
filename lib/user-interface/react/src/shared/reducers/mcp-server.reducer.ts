@@ -18,6 +18,11 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { normalizeError } from '../util/validationUtils';
 
+export enum McpServerStatus {
+    Active = 'active',
+    Inactive = 'inactive'
+}
+
 export type McpClientConfig = {
     name?: string,
     version?: string
@@ -31,6 +36,7 @@ export type McpServer = {
     isOwner?: true;
     customHeaders?: Record<string, string>;
     clientConfig?: McpClientConfig;
+    status?:McpServerStatus;
 };
 
 export type NewMcpServer = Partial<McpServer> & Pick<McpServer, | 'name' | 'url'>;
@@ -39,6 +45,7 @@ export const DefaultMcpServer: NewMcpServer = {
     name: '',
     url: '',
     clientConfig: {},
+    status: McpServerStatus.Active
 };
 
 export type McpServerListResponse = {

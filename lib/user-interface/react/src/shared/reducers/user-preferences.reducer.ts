@@ -20,6 +20,7 @@ import { normalizeError } from '../util/validationUtils';
 
 export type McpServerPreferences = {
     id: string;
+    name: string;
     enabled: boolean;
     disabledTools: string[];
     autoApprovedTools: string[];

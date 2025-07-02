@@ -71,18 +71,19 @@ export function McpServerManagementComponent () {
     // create failure notification
     useEffect(() => {
         if (isUpdatingError) {
-            notificationService.generateNotification(`Error updating server preferences: ${updateError.data?.message ?? updateError.data}`, 'error');
+            const errorMessage = 'data' in updateError ? (updateError.data?.message ?? updateError.data) : updateError.message;
+            notificationService.generateNotification(`Error updating server preferences: ${errorMessage}`, 'error');
         }
     }, [isUpdatingError, updateError, notificationService]);
 
-    const toggleServer = (serverId: string, enabled: boolean) => {
+    const toggleServer = (serverId: string, serverName: string, enabled: boolean) => {
         const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
             enabledServers: [...existingMcpPrefs.enabledServers]
         };
         if (enabled){
-            mcpPrefs.enabledServers.push({id: serverId, enabled: true, disabledTools: [], autoApprovedTools: []});
+            mcpPrefs.enabledServers.push({id: serverId, name: serverName, enabled: true, disabledTools: [], autoApprovedTools: []});
         } else {
             mcpPrefs.enabledServers = mcpPrefs.enabledServers.filter((server) => server.id !== serverId);
         }
@@ -90,8 +91,11 @@ export function McpServerManagementComponent () {
     };
 
     const toggleYoloMode = () => {
-        const mcpPrefs: McpPreferences = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
-        mcpPrefs.overrideAllApprovals = !mcpPrefs.overrideAllApprovals ?? true;
+        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
+        const mcpPrefs: McpPreferences = {
+            ...existingMcpPrefs,
+            overrideAllApprovals: !existingMcpPrefs.overrideAllApprovals
+        };
         updatePrefs(mcpPrefs);
     };
 
@@ -159,7 +163,7 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Server', cell: (item) => <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, detail.checked)}/>},
+                { header: 'Use Server', cell: (item) => <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
                 { header: 'Owner', cell: (item) => item.owner, id: 'owner', sortingField: 'owner'},

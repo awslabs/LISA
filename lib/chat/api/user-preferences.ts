@@ -93,17 +93,17 @@ export class UserPreferencesApi extends Construct {
         const apis: PythonLambdaFunction[] = [
             {
                 name: 'get',
-                resource: 'user-preferences',
+                resource: 'user_preferences',
                 description: 'Returns the preferences for the calling user',
-                path: 'user_preferences',
+                path: 'user-preferences',
                 method: 'GET',
                 environment: env,
             },
             {
                 name: 'update',
-                resource: 'user-preferences',
+                resource: 'user_preferences',
                 description: 'Creates or updates user preferences for user',
-                path: 'user_preferences',
+                path: 'user-preferences',
                 method: 'PUT',
                 environment: env,
             },

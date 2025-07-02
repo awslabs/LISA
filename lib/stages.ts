@@ -247,8 +247,10 @@ export class LisaServeApplicationStage extends Stage {
             apiDeploymentStack.addDependency(ragStack);
         }
 
+        // Declare metricsStack here so that we can reference it in chatStack
+        let metricsStack: LisaMetricsStack | undefined;
         if (config.deployMetrics) {
-            const metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+            metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer!,
                 stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
@@ -277,6 +279,9 @@ export class LisaServeApplicationStage extends Stage {
             });
             chatStack.addDependency(apiBaseStack);
             chatStack.addDependency(coreStack);
+            if (metricsStack) {
+                chatStack.addDependency(metricsStack);
+            }
             apiDeploymentStack.addDependency(chatStack);
             this.stacks.push(chatStack);
 

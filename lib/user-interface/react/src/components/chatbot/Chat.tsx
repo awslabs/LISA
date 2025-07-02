@@ -708,11 +708,11 @@ export default function Chat ({ sessionId }) {
                                             </div>
                                         </TextContent>
                                     </Box>
-                                    {enabledServers && enabledServers.length > 0 && (
+                                    {enabledServers && enabledServers.length > 0 ? (
                                         <Box>
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
                                         </Box>
-                                    )}
+                                    ) : (<div></div>)}
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>
                                             {isConnected ? 'Connected' : 'Disconnected'}

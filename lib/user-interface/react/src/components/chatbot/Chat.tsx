@@ -66,7 +66,7 @@ import { useToolChain } from './hooks/useToolChain.hooks';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
-import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -104,7 +104,11 @@ export default function Chat ({ sessionId }) {
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
 
-    const { data: {Items: mcpServers} = {Items: []} } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
+    const { data: mcpServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true,
+        selectFromResult: (state) => ({
+            isFetching: state.isFetching,
+            data: (state.data?.Items || []).filter((server) => (server.status === McpServerStatus.Active)),
+        }) },);
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? mcpServers : undefined);
 

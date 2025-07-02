@@ -19,6 +19,7 @@ import {
     Container,
     Form,
     FormField,
+    Grid,
     Header,
     Input,
     SpaceBetween,
@@ -35,8 +36,11 @@ import { useNotificationService } from '../../shared/util/hooks';
 import { ModifyMethod } from '../../shared/validation/modify-method';
 import { selectCurrentUserIsAdmin } from '../../shared/reducers/user.reducer';
 import {
-    DefaultMcpServer, NewMcpServer,
-    useCreateMcpServerMutation, useLazyGetMcpServerQuery,
+    DefaultMcpServer,
+    McpServerStatus,
+    NewMcpServer,
+    useCreateMcpServerMutation,
+    useLazyGetMcpServerQuery,
     useUpdateMcpServerMutation
 } from '@/shared/reducers/mcp-server.reducer';
 import { AttributeEditorSchema, EnvironmentVariables } from '@/shared/form/environment-variables';
@@ -67,6 +71,7 @@ export function McpServerForm (props: McpServerFormProps) {
     const schema = z.object({
         name: z.string().trim().min(1, 'String cannot be empty.'),
         url: z.string().trim().min(1, 'String cannot be empty.'),
+        status: z.string().trim(),
         clientConfig: z.object({
             name: z.string().trim(),
             version: z.string().trim()
@@ -88,7 +93,9 @@ export function McpServerForm (props: McpServerFormProps) {
         getMcpServerQuery(mcpServerId).then((response) => {
             if (response.isSuccess) {
                 setFields({ ...response.data,
-                    customHeaders: response.data.customHeaders ? Object.entries(response.data.customHeaders).map(([key, value]) => ({ key, value })) : [],});
+                    customHeaders: response.data.customHeaders ? Object.entries(response.data.customHeaders).map(([key, value]) => ({ key, value })) : [],
+                    status: response.status ?? McpServerStatus.Inactive,
+                });
                 setSharePublic(response.data.owner === 'lisa:public');
             }
         });
@@ -165,14 +172,23 @@ export function McpServerForm (props: McpServerFormProps) {
                         placeholder='Enter MCP server URL' />
                     </FormField>
 
-                    {isUserAdmin && <FormField label='Share with everyone'>
-                        <Toggle checked={sharePublic} onChange={({detail}) => {
-                            setSharePublic(detail.checked);
-                            setFields({owner: detail.checked ? 'lisa:public' : undefined});
-                            touchFields(['owner'], ModifyMethod.Unset);
-                        }}
-                        disabled={disabled} />
-                    </FormField>}
+                    {isUserAdmin && <Grid gridDefinition={[{colspan: 3}, {colspan: 3}]}>
+                        <FormField label='Share with everyone'>
+                            <Toggle checked={sharePublic} onChange={({detail}) => {
+                                setSharePublic(detail.checked);
+                                setFields({owner: detail.checked ? 'lisa:public' : undefined});
+                                touchFields(['owner'], ModifyMethod.Unset);
+                            }}
+                            disabled={disabled} />
+                        </FormField>
+                        <FormField label='Active'>
+                            <Toggle checked={state.form.status === McpServerStatus.Active} onChange={({detail}) => {
+                                setFields({status: detail.checked ? McpServerStatus.Active : McpServerStatus.Inactive});
+                                touchFields(['status'], ModifyMethod.Unset);
+                            }}
+                            disabled={disabled} />
+                        </FormField>
+                    </Grid>}
                     <hr />
                     <Container
                         header={

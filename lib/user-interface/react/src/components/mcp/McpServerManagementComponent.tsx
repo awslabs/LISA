@@ -20,10 +20,13 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import {McpServerActions} from './McpServerActions';
-import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { useAppSelector } from '@/config/store';
+import { selectCurrentUserIsAdmin } from '@/shared/reducers/user.reducer';
 
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
 
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {});
     const { paginationProps, items, collectionProps, filteredItemsCount, actions } = useCollection(allItems, {
@@ -79,6 +82,7 @@ export function McpServerManagementComponent () {
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
                 { header: 'Owner', cell: (item) => item.owner, id: 'owner', sortingField: 'owner'},
                 { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
+                ...(isUserAdmin ? [{ header: 'Status', cell: (item) => item.status ?? McpServerStatus.Inactive}] : [])
             ]}
         />
     );

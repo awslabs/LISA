@@ -42,6 +42,7 @@ const nagResults: NagResult = {
     LisaRAG: [3,53,0,50],
     LisaServe: [1,22,0,33],
     LisaUI: [0,15,0,7],
+    LisaMetrics: [1,13,0,14]
 };
 
 describe('Nag Pack Tests', () => {

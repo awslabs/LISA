@@ -44,6 +44,7 @@ import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
+import { LisaMetricsStack } from './metrics';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
@@ -246,6 +247,25 @@ export class LisaServeApplicationStage extends Stage {
             apiDeploymentStack.addDependency(ragStack);
         }
 
+        // Declare metricsStack here so that we can reference it in chatStack
+        let metricsStack: LisaMetricsStack | undefined;
+        if (config.deployMetrics) {
+            metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
+                description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            metricsStack.addDependency(apiBaseStack);
+            metricsStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(metricsStack);
+            this.stacks.push(metricsStack);
+        }
+
         if (config.deployChat) {
             const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
@@ -259,6 +279,9 @@ export class LisaServeApplicationStage extends Stage {
             });
             chatStack.addDependency(apiBaseStack);
             chatStack.addDependency(coreStack);
+            if (metricsStack) {
+                chatStack.addDependency(metricsStack);
+            }
             apiDeploymentStack.addDependency(chatStack);
             this.stacks.push(chatStack);
 

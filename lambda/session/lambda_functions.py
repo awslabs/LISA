@@ -26,13 +26,15 @@ from typing import Any, Dict, List, Tuple
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from utilities.common_functions import api_wrapper, get_session_id, get_username, retry_config
+from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, retry_config
+from utilities.encoders import convert_decimal
 
 logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"])
+sqs_client = boto3.client("sqs", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
 s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
 
@@ -253,6 +255,26 @@ def put_session(event: dict, context: dict) -> dict:
             return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
 
         messages = body["messages"]
+
+        # Publish event to SQS queue for metrics processing
+        try:
+            if "USER_METRICS_QUEUE_NAME" in os.environ:
+                # Create a copy of the event to send to SQS
+                metrics_event = {
+                    "userId": user_id,
+                    "messages": messages,
+                    "userGroups": get_groups(event),
+                    "timestamp": datetime.now().isoformat(),
+                }
+                sqs_client.send_message(
+                    QueueUrl=os.environ["USER_METRICS_QUEUE_NAME"],
+                    MessageBody=json.dumps(convert_decimal(metrics_event)),
+                )
+                logger.info(f"Published event to metrics queue for user {user_id}")
+            else:
+                logger.warning("USER_METRICS_QUEUE_NAME environment variable not set, metrics not published")
+        except Exception as e:
+            logger.error(f"Failed to publish to metrics queue: {e}")
 
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},

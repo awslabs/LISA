@@ -68,16 +68,16 @@ export const useToolChain = ({
         return toolResultContent;
     }, []);
 
-    const checkOverriddenApproval = (toolName: string): boolean => {
-        if (mcpPreferences?.overrideAllApprovals) {
-            return true;
-        } else {
-            const serverName = toolToServerMap.get(toolName);
-            return mcpPreferences?.enabledServers.find((server: any) => server.name === serverName)?.autoApprovedTools?.includes(toolName) ?? false;
-        }
-    };
-
     const executeToolWithApproval = useCallback(async (tool: any): Promise<any> => {
+        const checkOverriddenApproval = (toolName: string): boolean => {
+            if (mcpPreferences?.overrideAllApprovals) {
+                return true;
+            } else {
+                const serverName = toolToServerMap.get(toolName);
+                return mcpPreferences?.enabledServers.find((server: any) => server.name === serverName)?.autoApprovedTools?.includes(toolName) ?? false;
+            }
+        };
+
         if (checkOverriddenApproval(tool.name)) {
             return await callTool(tool.name, tool.args);
         } else {
@@ -90,7 +90,7 @@ export const useToolChain = ({
                 });
             });
         }
-    }, [callTool, checkOverriddenApproval]);
+    }, [callTool, mcpPreferences, toolToServerMap]);
 
     const handleToolApproval = useCallback(async () => {
         if (!toolApprovalModal) return;

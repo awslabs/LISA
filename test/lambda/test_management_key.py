@@ -20,7 +20,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
-from moto import mock_aws
 
 # Set mock AWS credentials
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"

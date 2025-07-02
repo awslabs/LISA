@@ -67,6 +67,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { useGetUserPreferencesQuery } from '@/shared/reducers/user-preferences.reducer';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -90,6 +91,12 @@ export default function Chat ({ sessionId }) {
             data: (state.data || []).filter((model) => (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) && model.status === ModelStatus.InService),
         })
     });
+    const {data: userPreferences} = useGetUserPreferencesQuery();
+    const { data: mcpServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true,
+        selectFromResult: (state) => ({
+            isFetching: state.isFetching,
+            data: (state.data?.Items || []).filter((server) => (server.status === McpServerStatus.Active)),
+        }) },);
 
     // State management
     const [userPrompt, setUserPrompt] = useState('');
@@ -98,19 +105,21 @@ export default function Chat ({ sessionId }) {
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
     const [openAiTools, setOpenAiTools] = useState(undefined);
+    const [enabledServers, setEnabledServers] = useState(undefined);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
-
-    const { data: mcpServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true,
-        selectFromResult: (state) => ({
-            isFetching: state.isFetching,
-            data: (state.data?.Items || []).filter((server) => (server.status === McpServerStatus.Active)),
-        }) },);
     // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? mcpServers : undefined);
+    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? enabledServers : undefined);
+
+    useEffect(() => {
+        if (mcpServers && userPreferences){
+            const enabledServerIds = userPreferences?.preferences?.mcp?.enabledServers.map((server) => server.id);
+            setEnabledServers(mcpServers.filter((server) => enabledServerIds.includes(server.id)));
+        }
+    }, [mcpServers, userPreferences]);
 
     // Custom hooks
     const {

@@ -19,6 +19,7 @@ import { lisaBaseQuery } from './reducer.utils';
 import { normalizeError } from '../util/validationUtils';
 
 export type McpServerPreferences = {
+    id: string;
     enabled: boolean;
     disabledTools: string[];
     autoApprovedTools: string[];
@@ -53,7 +54,7 @@ export const userPreferencesApi = createApi({
         updateUserPreferences: builder.mutation<UserPreferences, UserPreferences>({
             query: (userPreferences) => ({
                 url: '/user-preferences',
-                method: 'POST',
+                method: 'PUT',
                 data: userPreferences
             }),
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Update User Preferences', baseQueryReturnValue),

@@ -14,21 +14,100 @@
  limitations under the License.
  */
 
-import { Button, Header, Link, Pagination, SpaceBetween, Table, TextContent } from '@cloudscape-design/components';
+import {
+    Button,
+    Header,
+    Link,
+    Pagination,
+    SpaceBetween,
+    Table,
+    TextContent,
+    Toggle
+} from '@cloudscape-design/components';
 import 'react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import {McpServerActions} from './McpServerActions';
-import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
-import { useAppSelector } from '@/config/store';
-import { selectCurrentUserIsAdmin } from '@/shared/reducers/user.reducer';
+import {
+    McpServerStatus,
+    useListMcpServersQuery,
+} from '@/shared/reducers/mcp-server.reducer';
+import { useAppDispatch, useAppSelector } from '@/config/store';
+import { selectCurrentUserIsAdmin, selectCurrentUsername } from '@/shared/reducers/user.reducer';
+import {
+    DefaultUserPreferences, McpPreferences,
+    useGetUserPreferencesQuery,
+    UserPreferences, useUpdateUserPreferencesMutation
+} from '@/shared/reducers/user-preferences.reducer';
+import { useNotificationService } from '@/shared/util/hooks';
 
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
-
+    const userName = useAppSelector(selectCurrentUsername);
+    const {data: userPreferences} = useGetUserPreferencesQuery();
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {});
+    const [preferences, setPreferences] = useState<UserPreferences>(undefined);
+    const [updatePreferences, {isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateUserPreferencesMutation();
+    const notificationService = useNotificationService(dispatch);
+
+    useEffect(() => {
+        if (userPreferences) {
+            setPreferences(userPreferences);
+        } else {
+            setPreferences({...DefaultUserPreferences, user: userName});
+        }
+    }, [userPreferences, userName]);
+
+    // create success notification
+    useEffect(() => {
+        if (isUpdatingSuccess) {
+            notificationService.generateNotification('Successfully updated server preferences', 'success');
+        }
+    }, [isUpdatingSuccess, notificationService]);
+
+    // create failure notification
+    useEffect(() => {
+        if (isUpdatingError) {
+            notificationService.generateNotification(`Error updating server preferences: ${updateError.data?.message ?? updateError.data}`, 'error');
+        }
+    }, [isUpdatingError, updateError, notificationService]);
+
+    const toggleServer = (serverId: string, enabled: boolean) => {
+        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
+        const mcpPrefs: McpPreferences = {
+            ...existingMcpPrefs,
+            enabledServers: [...existingMcpPrefs.enabledServers]
+        };
+        if (enabled){
+            mcpPrefs.enabledServers.push({id: serverId, enabled: true, disabledTools: [], autoApprovedTools: []});
+        } else {
+            mcpPrefs.enabledServers = mcpPrefs.enabledServers.filter((server) => server.id !== serverId);
+        }
+        updatePrefs(mcpPrefs);
+    };
+
+    const toggleYoloMode = () => {
+        const mcpPrefs: McpPreferences = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
+        mcpPrefs.overrideAllApprovals = !mcpPrefs.overrideAllApprovals ?? true;
+        updatePrefs(mcpPrefs);
+    };
+
+    const updatePrefs = (mcpPrefs: McpPreferences) => {
+        const updated = {...preferences,
+            preferences: {...preferences.preferences,
+                mcp: {
+                    ...preferences.preferences.mcp,
+                    ...mcpPrefs
+                }
+            }
+        };
+        setPreferences(updated);
+        updatePreferences(updated);
+    };
+
     const { paginationProps, items, collectionProps, filteredItemsCount, actions } = useCollection(allItems, {
         selection: {
             defaultSelectedItems: [],
@@ -59,6 +138,8 @@ export function McpServerManagementComponent () {
                 <Header counter={filteredItemsCount ? `(${filteredItemsCount})` : undefined} actions={<McpServerActions
                     selectedItems={collectionProps.selectedItems || []}
                     setSelectedItems={actions.setSelectedItems}
+                    preferences={preferences?.preferences?.mcp}
+                    toggleYoloMode={toggleYoloMode}
                 />}>
                     MCP Connections
                 </Header>
@@ -78,6 +159,7 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
+                { header: 'Use Server', cell: (item) => <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, detail.checked)}/>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
                 { header: 'Owner', cell: (item) => item.owner, id: 'owner', sortingField: 'owner'},

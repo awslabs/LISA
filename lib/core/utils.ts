@@ -100,7 +100,11 @@ export const createLambdaRole = (construct: Construct, deploymentName: string, l
                             'dynamodb:GetRecords',
                             'dynamodb:GetShardIterator',
                             'dynamodb:Query',
-                            'dynamodb:Scan'
+                            'dynamodb:Scan',
+                            'dynamodb:BatchWriteItem',
+                            'dynamodb:DeleteItem',
+                            'dynamodb:PutItem',
+                            'dynamodb:UpdateItem'
                         ],
                         resources: [
                             tableArn,

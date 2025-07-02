@@ -44,6 +44,7 @@ import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
+import { LisaMetricsStack } from './metrics';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
@@ -244,6 +245,23 @@ export class LisaServeApplicationStage extends Stage {
             ragStack.addDependency(apiBaseStack);
             this.stacks.push(ragStack);
             apiDeploymentStack.addDependency(ragStack);
+        }
+
+        if (config.deployMetrics) {
+            const metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
+                description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            metricsStack.addDependency(apiBaseStack);
+            metricsStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(metricsStack);
+            this.stacks.push(metricsStack);
         }
 
         if (config.deployChat) {

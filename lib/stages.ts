@@ -247,8 +247,7 @@ export class LisaServeApplicationStage extends Stage {
             apiDeploymentStack.addDependency(ragStack);
         }
 
-        if (config.deployChat) {
-            // Create metrics stack first
+        if (config.deployMetrics) {
             const metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer!,
@@ -261,8 +260,11 @@ export class LisaServeApplicationStage extends Stage {
             });
             metricsStack.addDependency(apiBaseStack);
             metricsStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(metricsStack);
             this.stacks.push(metricsStack);
+        }
 
+        if (config.deployChat) {
             const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer!,
@@ -275,9 +277,7 @@ export class LisaServeApplicationStage extends Stage {
             });
             chatStack.addDependency(apiBaseStack);
             chatStack.addDependency(coreStack);
-            chatStack.addDependency(metricsStack);
             apiDeploymentStack.addDependency(chatStack);
-            apiDeploymentStack.addDependency(metricsStack);
             this.stacks.push(chatStack);
 
             if (config.deployUi) {

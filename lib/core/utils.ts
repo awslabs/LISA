@@ -74,28 +74,10 @@ export const getIamPolicyStatements = (serviceName: string): PolicyStatement[] =
     return extractPolicyStatementsFromJson(serviceName);
 };
 
-export const createLambdaRole = (
-    construct: Construct,
-    deploymentName: string,
-    lambdaName: string,
-    primaryTableArn: string = '',
-    roleOverride?: string,
-    additionalTableArns?: string[],
-): IRole => {
+export const createLambdaRole = (construct: Construct, deploymentName: string, lambdaName: string, tableArn: string = '', roleOverride?: string): IRole => {
     const roleId = `Lisa${lambdaName}LambdaExecutionRole`;
     if (roleOverride) {
         return Role.fromRoleName(construct, roleId, roleOverride);
-    }
-
-    const tableArns: string[] = [];
-    if (primaryTableArn) {
-        tableArns.push(primaryTableArn, `${primaryTableArn}/*`);
-    }
-
-    if (additionalTableArns) {
-        additionalTableArns.forEach((arn) => {
-            tableArns.push(arn, `${arn}/*`);
-        });
     }
 
     return new Role(construct, roleId, {
@@ -107,7 +89,7 @@ export const createLambdaRole = (
         ],
         inlinePolicies: {
             lambdaPermissions: new PolicyDocument({
-                statements: [...(tableArns.length > 0 ? [
+                statements: [...(tableArn ? [
                     new PolicyStatement({
                         effect: Effect.ALLOW,
                         actions: [
@@ -124,7 +106,10 @@ export const createLambdaRole = (
                             'dynamodb:PutItem',
                             'dynamodb:UpdateItem'
                         ],
-                        resources: tableArns
+                        resources: [
+                            tableArn,
+                            `${tableArn}/*`,
+                        ]
                     })
                 ] : []),
                 ]

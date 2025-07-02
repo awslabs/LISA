@@ -65,18 +65,6 @@ export class SessionApi extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        // Get user metrics table name from SSM
-        const userMetricsTableName = StringParameter.valueForStringParameter(
-            this,
-            `${config.deploymentPrefix}/table/user-metrics`
-        );
-
-        // Get metrics queue name from SSM
-        const userMetricsQueueName = StringParameter.valueForStringParameter(
-            this,
-            `${config.deploymentPrefix}/queue-name/user-metrics`,
-        );
-
         // Create DynamoDB table to handle chat sessions
         const sessionTable = new dynamodb.Table(this, 'SessionsTable', {
             partitionKey: {
@@ -134,9 +122,33 @@ export class SessionApi extends Construct {
             SESSIONS_TABLE_NAME: sessionTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
-            USER_METRICS_TABLE_NAME: userMetricsTableName,
-            USER_METRICS_QUEUE_NAME: userMetricsQueueName
         };
+
+        const lambdaRole: IRole = createLambdaRole(
+            this,
+            config.deploymentName,
+            'SessionApi',
+            sessionTable.tableArn,
+            config.roles?.LambdaExecutionRole,
+        );
+
+        // If metrics stack deployment is enabled
+        if (config.deployMetrics) {
+            // Get metrics queue name from SSM
+            const userMetricsQueueName = StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/queue-name/user-metrics`,
+            );
+            // Add SQS permissions to the role
+            lambdaRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['sqs:SendMessage'],
+                    resources: [`arn:aws:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueName}`]
+                })
+            );
+            Object.assign(env, { USER_METRICS_QUEUE_NAME: userMetricsQueueName });
+        }
 
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
@@ -189,32 +201,6 @@ export class SessionApi extends Construct {
                 environment: env,
             },
         ];
-
-        const lambdaRole: IRole = createLambdaRole(
-            this,
-            config.deploymentName,
-            'SessionApi',
-            sessionTable.tableArn,
-            config.roles?.LambdaExecutionRole,
-            [`arn:aws:dynamodb:${config.region}:${config.accountNumber}:table/${userMetricsTableName}`],
-        );
-
-        lambdaRole.addToPrincipalPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: ['cloudwatch:PutMetricData'],
-                resources: ['*']
-            })
-        );
-
-        // Add SQS permissions to the role
-        lambdaRole.addToPrincipalPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: ['sqs:SendMessage'],
-                resources: [`arn:aws:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueName}`]
-            })
-        );
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {

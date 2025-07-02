@@ -26,6 +26,7 @@ import { Vpc } from '../networking/vpc';
 import { ConfigurationApi } from './api/configuration';
 import { PromptTemplateApi } from './api/prompt-template-api';
 import { McpApi } from './api/mcp';
+import { UserPreferencesApi } from './api/user-preferences';
 
 export type LisaChatProps = {
     authorizer: IAuthorizer;
@@ -78,6 +79,15 @@ export class LisaChatApplicationConstruct extends Construct {
         });
 
         new McpApi(scope, 'McpApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
+        new UserPreferencesApi(scope, 'UserPreferencesApi', {
             authorizer,
             config,
             restApiId,

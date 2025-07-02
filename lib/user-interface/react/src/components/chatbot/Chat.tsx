@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
@@ -105,21 +105,23 @@ export default function Chat ({ sessionId }) {
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
     const [openAiTools, setOpenAiTools] = useState(undefined);
-    const [enabledServers, setEnabledServers] = useState(undefined);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
-    // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? enabledServers : undefined);
 
-    useEffect(() => {
-        if (mcpServers && userPreferences){
-            const enabledServerIds = userPreferences?.preferences?.mcp?.enabledServers.map((server) => server.id);
-            setEnabledServers(mcpServers.filter((server) => enabledServerIds.includes(server.id)));
+    // Memoize enabled servers to prevent infinite re-renders
+    const enabledServers = useMemo(() => {
+        if (mcpServers && userPreferences?.preferences?.mcp?.enabledServers) {
+            const enabledServerIds = userPreferences.preferences.mcp.enabledServers.map((server) => server.id);
+            return mcpServers.filter((server) => enabledServerIds.includes(server.id));
         }
-    }, [mcpServers, userPreferences]);
+        return undefined;
+    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers]);
+
+    // Use the custom hook to manage multiple MCP connections
+    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(enabledServers);
 
     // Custom hooks
     const {
@@ -184,20 +186,22 @@ export default function Chat ({ sessionId }) {
                 }
             }));
             setOpenAiTools(formattedTools);
+        } else {
+            setOpenAiTools(undefined);
         }
     }, [mcpTools]);
 
-    const fetchRelevantDocuments = async (query: string) => {
+    const fetchRelevantDocuments = useCallback(async (query: string) => {
         const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
 
         return getRelevantDocuments({
             query,
             repositoryId: ragConfig.repositoryId,
             repositoryType: ragConfig.repositoryType,
-            modelName: ragConfig.embeddingModel.modelId,
+            modelName: ragConfig.embeddingModel?.modelId,
             topK: ragTopK,
         });
-    };
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.embeddingModel?.modelId]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse } = useChatGeneration({
         chatConfiguration,
@@ -223,13 +227,6 @@ export default function Chat ({ sessionId }) {
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
     startToolChainRef.current = startToolChain;
-
-    useEffect(() => {
-        if (sessionHealth) {
-            setIsConnected(true);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionHealth]);
 
     // Handle tool calls with chaining support
     useEffect(() => {
@@ -309,7 +306,7 @@ export default function Chat ({ sessionId }) {
         if (bottomRef) {
             bottomRef?.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [session]);
+    }, [session.history.length]);
 
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;

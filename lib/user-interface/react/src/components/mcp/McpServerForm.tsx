@@ -94,7 +94,7 @@ export function McpServerForm (props: McpServerFormProps) {
             if (response.isSuccess) {
                 setFields({ ...response.data,
                     customHeaders: response.data.customHeaders ? Object.entries(response.data.customHeaders).map(([key, value]) => ({ key, value })) : [],
-                    status: response.status ?? McpServerStatus.Inactive,
+                    status: response.data.status ?? McpServerStatus.Inactive,
                 });
                 setSharePublic(response.data.owner === 'lisa:public');
             }

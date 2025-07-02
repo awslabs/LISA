@@ -41,7 +41,7 @@ export const useMemory = (
         }),
     );
 
-    // Update memory when userPrompt changes
+    // Update memory when session history or buffer size changes
     useEffect(() => {
         setMemory(
             new ChatMemory({
@@ -51,7 +51,7 @@ export const useMemory = (
                 k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
             }),
         );
-    }, [userPrompt, session, chatConfiguration.sessionConfiguration.chatHistoryBufferSize]);
+    }, [session, chatConfiguration.sessionConfiguration.chatHistoryBufferSize]);
 
     // Update metadata when model or configuration changes
     useEffect(() => {

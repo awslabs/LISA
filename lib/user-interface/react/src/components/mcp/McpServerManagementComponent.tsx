@@ -167,7 +167,7 @@ export function McpServerManagementComponent () {
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
-                { header: 'Owner', cell: (item) => item.owner, id: 'owner', sortingField: 'owner'},
+                { header: 'Owner', cell: (item) => item.owner === 'lisa:public' ? <em>(public)</em> : item.owner, id: 'owner', sortingField: 'owner'},
                 { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
                 ...(isUserAdmin ? [{ header: 'Status', cell: (item) => item.status ?? McpServerStatus.Inactive}] : [])
             ]}

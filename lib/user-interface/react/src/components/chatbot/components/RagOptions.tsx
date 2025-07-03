@@ -16,9 +16,9 @@
 
 import { Autosuggest, Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useEffect, useMemo, useState } from 'react';
-import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
-import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
-import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
+import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
+import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
+import { useListRagRepositoriesQuery } from '@/shared/reducers/rag.reducer';
 
 export type RagConfig = {
     embeddingModel: IModel;

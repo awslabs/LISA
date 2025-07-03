@@ -66,7 +66,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
 
                         // turn off summarization and image input for embedded and imagegen models
                         if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen)) {
-                            fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT);
+                            fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT && feature.name !== ModelFeatures.TOOL_CALLS);
                         }
 
                         props.setFields(fields);
@@ -111,7 +111,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     disabled={props.isEdit}
                 />
             </FormField>
-            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
+            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                 <FormField label='LISA Hosted Model' errorText={props.formErrors?.lisaHostedModel}>
                     <Toggle
                         onChange={({ detail }) =>
@@ -130,6 +130,20 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         onBlur={() => props.touchFields(['streaming'])}
                         disabled={isEmbeddingModel || isImageModel}
                         checked={props.item.streaming}
+                    />
+                </FormField>
+                <FormField label='Tool Calls' errorText={props.formErrors?.features}>
+                    <Toggle
+                        onChange={({ detail }) => {
+                            if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) === undefined) {
+                                props.setFields({'features': props.item.features.concat({name: ModelFeatures.TOOL_CALLS, overview: ''})});
+                            } else if (!detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.TOOL_CALLS)});
+                            }
+                        }}
+                        disabled={isEmbeddingModel || isImageModel}
+                        onBlur={() => props.touchFields(['features'])}
+                        checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
                 </FormField>
                 <FormField label='Image Input' errorText={props.formErrors?.features}>

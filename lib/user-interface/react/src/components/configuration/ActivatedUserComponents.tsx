@@ -27,6 +27,7 @@ const ragOptions = {
 const inContextOptions = {
     uploadContextDocs: 'Allow document upload to context',
     documentSummarization: 'Allow Document Summarization',
+    mcpConnections: 'Allow MCP Server Connections',
 };
 
 const advancedOptions = {
@@ -53,7 +54,7 @@ const configurableOperations = [{
 
 export type ActivatedComponentConfigurationProps = {
     setFields: SetFieldsFunction;
-    enabledComponents: {[key: string]: boolean};
+    enabledComponents: { [key: string]: boolean };
 };
 
 export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
@@ -65,7 +66,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                 </Header>
             }>
             <SpaceBetween direction='vertical' size='m'>
-                <Grid gridDefinition={configurableOperations.map(() => ({colspan: 4}))}>
+                <Grid gridDefinition={configurableOperations.map(() => ({ colspan: 4 }))}>
                     {configurableOperations.map((operation) =>
                         <SpaceBetween size={'xs'}>
                             <Header variant='h3'>
@@ -76,7 +77,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                     <Box textAlign='center' key={item}>
                                         <SpaceBetween alignItems='start' size='xs'>
                                             <Toggle
-                                                onChange={({detail}) => {
+                                                onChange={({ detail }) => {
                                                     const updatedField = {};
                                                     updatedField[`enabledComponents.${item}`] = detail.checked;
                                                     props.setFields(updatedField);
@@ -91,7 +92,6 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                 );
                             })}
                         </SpaceBetween>
-
                     )}
                 </Grid>
             </SpaceBetween>

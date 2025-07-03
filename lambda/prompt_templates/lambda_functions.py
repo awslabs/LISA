@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
-from utilities.common_functions import api_wrapper, get_groups, get_username, is_admin, retry_config
+from utilities.common_functions import api_wrapper, get_groups, get_item, get_username, is_admin, retry_config
 
 from .models import PromptTemplateModel
 
@@ -89,8 +89,7 @@ def get(event: dict, context: dict) -> Any:
 
     # Query for the latest prompt template revision
     response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
-    items = response.get("Items", [])
-    item = items[0] if items else None
+    item = get_item(response)
 
     if item is None:
         raise ValueError(f"Prompt template {prompt_template_id} not found.")
@@ -159,8 +158,7 @@ def update(event: dict, context: dict) -> Any:
 
     # Query for the latest prompt template revision
     response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
-    items = response.get("Items", [])
-    item = items[0] if items else None
+    item = get_item(response)
 
     if item is None:
         raise ValueError(f"Prompt template {prompt_template_model} not found.")
@@ -195,8 +193,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
 
     # Query for the latest prompt template revision
     response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
-    items = response.get("Items", [])
-    item = items[0] if items else None
+    item = get_item(response)
 
     if item is None:
         raise ValueError(f"Prompt template {prompt_template_id} not found.")

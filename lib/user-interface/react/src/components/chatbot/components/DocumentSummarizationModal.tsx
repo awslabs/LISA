@@ -24,19 +24,19 @@ import {
     Textarea,
     TextContent,
 } from '@cloudscape-design/components';
-import { FileTypes, LisaChatSession } from '../types';
+import { FileTypes, LisaChatSession } from '../../types';
 import { useEffect, useMemo, useState } from 'react';
-import { useAppDispatch } from '../../config/store';
-import { useNotificationService } from '../../shared/util/hooks';
-import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
-import { IModel, ModelStatus, ModelType } from '../../shared/model/model-management.model';
+import { useAppDispatch } from '@/config/store';
+import { useNotificationService } from '@/shared/util/hooks';
+import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
+import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { handleUpload } from './FileUploadModals';
-import { IChatConfiguration } from '../../shared/model/chat.configurations.model';
+import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { v4 as uuidv4 } from 'uuid';
 import FormField from '@cloudscape-design/components/form-field';
-import { LisaChatMessageHistory } from '../adapters/lisa-chat-history';
+import { LisaChatMessageHistory } from '../../adapters/lisa-chat-history';
 import Toggle from '@cloudscape-design/components/toggle';
-import { ChatMemory } from '../../shared/util/chat-memory';
+import { ChatMemory } from '@/shared/util/chat-memory';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;
@@ -83,7 +83,8 @@ export function DocumentSummarizationModal ({
         refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
-            data: (state.data || []).filter((model: IModel) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService && model.features && model.features.filter((feat) => feat.name === 'summarization').length > 0),
+            data: (state.data || []).filter((model: IModel) => model.modelType === ModelType.textgen && model.status === ModelStatus.InService && model.
+                features && model.features.filter((feat) => feat.name === 'summarization').length > 0),
         })
     });
     const modelsOptions = useMemo(() => allModels.map((model) => ({ label: model.modelId, value: model.modelId, description: model.features.filter((feat) => feat.name === 'summarization')[0].overview })), [allModels]);

@@ -62,6 +62,11 @@ OPENAI_ROUTES = (
     "health",
     "health/readiness",
     "health/liveliness",
+    # MCP
+    "mcp/enabled",
+    "mcp/tools/list",
+    "mcp/tools/call",
+    "v1/mcp/server",
 )
 
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a

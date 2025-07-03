@@ -471,3 +471,8 @@ def get_lambda_role_name() -> str:
     arn = _get_lambda_role_arn()
     parts = arn.split(":assumed-role/")[1].split("/")
     return parts[0]  # This is the role name
+
+
+def get_item(response: Any) -> Any:
+    items = response.get("Items", [])
+    return items[0] if items else None

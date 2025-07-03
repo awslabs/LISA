@@ -33,6 +33,7 @@ export type McpServer = {
     owner: string;
     url: string;
     name: string;
+    description?: string;
     isOwner?: true;
     customHeaders?: Record<string, string>;
     clientConfig?: McpClientConfig;
@@ -44,6 +45,7 @@ export type NewMcpServer = Partial<McpServer> & Pick<McpServer, | 'name' | 'url'
 export const DefaultMcpServer: NewMcpServer = {
     name: '',
     url: '',
+    description: '',
     clientConfig: {},
     status: McpServerStatus.Active
 };

@@ -75,7 +75,6 @@ import {
 } from '@/shared/reducers/user-preferences.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
-import { darkStyles, JsonView } from 'react-json-view-lite';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 
 export default function Chat ({ sessionId }) {
@@ -578,12 +577,14 @@ export default function Chat ({ sessionId }) {
                     onConfirm={handleToolApproval}
                     onDismiss={handleToolRejection}
                     description={
-                        <div>
-                            <p>The AI is about to execute the following tool:</p>
-                            <p><strong>Tool Name:</strong> {toolApprovalModal.tool.name}</p>
-                            <p><strong>Arguments:</strong></p>
-                            <JsonView data={toolApprovalModal.tool.args} style={darkStyles} />
-                            <p>Do you want to allow this tool execution?</p>
+                        <SpaceBetween size='m' direction='vertical'>
+                            <SpaceBetween size='s' direction='vertical'>
+                                <p>The AI is about to execute the following tool:</p>
+                                <p><strong>Tool Name:</strong> {toolApprovalModal.tool.name}</p>
+                                <p><strong>Arguments:</strong></p>
+                                {JSON.stringify(toolApprovalModal.tool.args).replace('{', '').replace('}', '')}
+                                <p><strong>Do you want to allow this tool execution?</strong></p>
+                            </SpaceBetween>
                             <hr/>
                             <Checkbox
                                 onChange={({ detail }) =>
@@ -593,7 +594,7 @@ export default function Chat ({ sessionId }) {
                             >
                                 Auto-approve this tool in the future
                             </Checkbox>
-                        </div>
+                        </SpaceBetween>
                     }
                 />
             )}

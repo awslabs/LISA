@@ -71,6 +71,7 @@ export function McpServerForm (props: McpServerFormProps) {
     const schema = z.object({
         name: z.string().trim().min(1, 'String cannot be empty.'),
         url: z.string().trim().min(1, 'String cannot be empty.'),
+        description: z.string().trim().optional(),
         status: z.string().trim(),
         clientConfig: z.object({
             name: z.string().trim(),
@@ -163,6 +164,13 @@ export function McpServerForm (props: McpServerFormProps) {
                         }}
                         disabled={disabled}
                         placeholder='Enter MCP connection name' />
+                    </FormField>
+                    <FormField label='Description' errorText={errors?.description} description={'A description that provides an overview of your connection.'}>
+                        <Input value={state.form.description} inputMode='text' onBlur={() => touchFields(['description'])} onChange={({ detail }) => {
+                            setFields({ 'description': detail.value });
+                        }}
+                        disabled={disabled}
+                        placeholder='Enter MCP connection description' />
                     </FormField>
                     <FormField label='URL' errorText={errors?.url} description={'The URL for your MCP server.'}>
                         <Input value={state.form.url} inputMode='text' onBlur={() => touchFields(['url'])} onChange={({ detail }) => {

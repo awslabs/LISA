@@ -90,7 +90,7 @@ export function McpServerManagementComponent () {
         updatePrefs(mcpPrefs);
     };
 
-    const toggleYoloMode = () => {
+    const toggleAutopilotMode = () => {
         const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
@@ -143,7 +143,7 @@ export function McpServerManagementComponent () {
                     selectedItems={collectionProps.selectedItems || []}
                     setSelectedItems={actions.setSelectedItems}
                     preferences={preferences?.preferences?.mcp}
-                    toggleYoloMode={toggleYoloMode}
+                    toggleAutopilotMode={toggleAutopilotMode}
                 />}>
                     MCP Connections
                 </Header>
@@ -165,6 +165,7 @@ export function McpServerManagementComponent () {
             columnDefinitions={[
                 { header: 'Use Server', cell: (item) => <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
+                { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
                 { header: 'Owner', cell: (item) => item.owner, id: 'owner', sortingField: 'owner'},
                 { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},

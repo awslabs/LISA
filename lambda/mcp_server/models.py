@@ -52,6 +52,9 @@ class McpServerModel(BaseModel):
     # Name of the MCP server
     name: str
 
+    # Description of the MCP server
+    description: Optional[str] = Field(default_factory=lambda: None)
+
     # Custom headers for the MCP client
     customHeaders: Optional[dict] = Field(default_factory=lambda: None)
 

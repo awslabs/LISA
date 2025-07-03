@@ -31,7 +31,7 @@ export type McpServerActionsProps = {
     selectedItems: readonly McpServer[];
     setSelectedItems: (items: McpServer[]) => void;
     preferences: McpPreferences;
-    toggleYoloMode: () => void;
+    toggleAutopilotMode: () => void;
 };
 
 export function McpServerActions (props: McpServerActionsProps): ReactElement {
@@ -100,8 +100,8 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
     }
 
     items.push({
-        text: `${user.preferences?.overrideAllApprovals === true ? 'Disable' : 'Enable'} YOLO Mode`,
-        id: 'toggleYoloMode',
+        text: `${user.preferences?.overrideAllApprovals === true ? 'Disable' : 'Enable'} Autopilot Mode`,
+        id: 'toggleAutopilotMode',
     });
 
     return (
@@ -111,7 +111,7 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
             disabled={!items}
             loading={isDeleteLoading}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedMcpServer, dispatch, deleteMutation, navigate, props.toggleYoloMode)
+                ModelActionHandler(e, selectedMcpServer, dispatch, deleteMutation, navigate, props.toggleAutopilotMode)
             }
         >
             Actions
@@ -125,7 +125,7 @@ const ModelActionHandler = (
     dispatch: ThunkDispatch<any, any, Action>,
     deleteMutation: MutationTrigger<any>,
     navigate: NavigateFunction,
-    toggleYoloMode: () => void,
+    toggleAutopilotMode: () => void,
 ) => {
     switch (e.detail.id) {
         case 'editMcpServer':
@@ -141,8 +141,8 @@ const ModelActionHandler = (
                 })
             );
             break;
-        case 'toggleYoloMode':
-            toggleYoloMode();
+        case 'toggleAutopilotMode':
+            toggleAutopilotMode();
             break;
         default:
             return;

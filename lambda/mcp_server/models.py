@@ -14,9 +14,21 @@
 
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
+
+
+class McpServerStatus(str, Enum):
+    """Enum representing the prompt template type."""
+
+    def __str__(self) -> str:
+        """Represent the enum as a string."""
+        return str(self.value)
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
 
 
 class McpServerModel(BaseModel):
@@ -45,3 +57,6 @@ class McpServerModel(BaseModel):
 
     # Custom client properties for the MCP client
     clientConfig: Optional[dict] = Field(default_factory=lambda: None)
+
+    # Status of the server set by admins
+    status: Optional[McpServerStatus] = Field(default=McpServerStatus.INACTIVE)

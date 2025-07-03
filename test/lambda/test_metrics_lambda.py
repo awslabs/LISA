@@ -154,13 +154,15 @@ patch.dict(
     "sys.modules",
     {
         "create_env_variables": mock_create_env,
-        "utilities.common_functions": mock_common,
     },
 ).start()
 
-# Patch the specific functions
+# Patch the specific functions in utilities.common_functions
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+
+# Also patch the api_wrapper in the metrics module specifically
+patch("metrics.lambda_functions.api_wrapper", mock_api_wrapper).start()
 
 # Module to test can be imported now that dependencies are mocked
 from metrics.lambda_functions import (

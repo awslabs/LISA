@@ -17,18 +17,23 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { LisaChatMessage, LisaChatSession, MessageTypes } from '@/components/types';
 import { GenerateLLMRequestParams } from '@/shared/model/chat.configurations.model';
+import { McpPreferences } from '@/shared/reducers/user-preferences.reducer';
 
 export const useToolChain = ({
     callTool,
     generateResponse,
     setSession,
     notificationService,
+    toolToServerMap,
+    mcpPreferences,
 }: {
     callTool: (toolName: string, args: any) => Promise<any>;
     generateResponse: (params: GenerateLLMRequestParams) => Promise<void>;
     session: LisaChatSession;
     setSession: (updater: (prev: LisaChatSession) => LisaChatSession) => void;
     notificationService: any;
+    toolToServerMap: Map<string, string>,
+    mcpPreferences: McpPreferences,
 }) => {
     const isProcessingChain = useRef(false);
     const stopRequested = useRef(false);
@@ -64,20 +69,28 @@ export const useToolChain = ({
     }, []);
 
     const executeToolWithApproval = useCallback(async (tool: any): Promise<any> => {
-        // if (true) {
-        return new Promise((resolve, reject) => {
-            setToolApprovalModal({
-                visible: true,
-                tool,
-                resolve,
-                reject
+        const checkOverriddenApproval = (toolName: string): boolean => {
+            if (mcpPreferences?.overrideAllApprovals) {
+                return true;
+            } else {
+                const serverName = toolToServerMap.get(toolName);
+                return mcpPreferences?.enabledServers.find((server: any) => server.name === serverName)?.autoApprovedTools?.includes(toolName) ?? false;
+            }
+        };
+
+        if (checkOverriddenApproval(tool.name)) {
+            return await callTool(tool.name, tool.args);
+        } else {
+            return new Promise((resolve, reject) => {
+                setToolApprovalModal({
+                    visible: true,
+                    tool,
+                    resolve,
+                    reject
+                });
             });
-        });
-        // } else {
-        //     // If approval is not enabled, execute directly
-        //     return await callMcpTool(tool);
-        // }
-    }, []);
+        }
+    }, [callTool, mcpPreferences, toolToServerMap]);
 
     const handleToolApproval = useCallback(async () => {
         if (!toolApprovalModal) return;

@@ -23,7 +23,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.common_functions import api_wrapper, get_item, get_username, is_admin, retry_config
 
-from .models import McpServerModel
+from .models import McpServerModel, McpServerStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 
 def _get_mcp_servers(
     user_id: Optional[str] = None,
+    active: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
@@ -42,6 +43,8 @@ def _get_mcp_servers(
     if user_id:
         condition = Attr("owner").eq(user_id) | Attr("owner").eq("lisa:public")
         filter_expression = condition if filter_expression is None else filter_expression & condition
+    if active:
+        filter_expression = Attr("status").eq(McpServerStatus.ACTIVE)
 
     scan_arguments = {
         "TableName": os.environ["MCP_SERVERS_TABLE_NAME"],
@@ -97,9 +100,8 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
     if is_admin(event):
         logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
         return _get_mcp_servers()
-    else:
-        logger.info(f"Listing mcp servers for user {user_id}")
-    return _get_mcp_servers(user_id=user_id)
+    logger.info(f"Listing mcp servers for user {user_id}")
+    return _get_mcp_servers(user_id=user_id, active=True)
 
 
 @api_wrapper

@@ -25,10 +25,13 @@ import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { NavigateFunction, useNavigate } from 'react-router-dom';
 import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import { McpServer, mcpServerApi, useDeleteMcpServerMutation } from '@/shared/reducers/mcp-server.reducer';
+import { McpPreferences } from '@/shared/reducers/user-preferences.reducer';
 
 export type McpServerActionsProps = {
     selectedItems: readonly McpServer[];
     setSelectedItems: (items: McpServer[]) => void;
+    preferences: McpPreferences;
+    toggleYoloMode: () => void;
 };
 
 export function McpServerActions (props: McpServerActionsProps): ReactElement {
@@ -37,6 +40,7 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
     const navigate = useNavigate();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const username = useAppSelector(selectCurrentUsername);
+    const preferences = props.preferences;
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
@@ -49,7 +53,7 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
             >
                 <Icon name='refresh' />
             </Button>
-            {McpServerActionButton(dispatch, notificationService, props, {isUserAdmin, username})}
+            {McpServerActionButton(dispatch, notificationService, props, {isUserAdmin, username, preferences})}
             <Button variant='primary' onClick={() => {
                 navigate('./new');
             }}>
@@ -59,7 +63,7 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
     );
 }
 
-function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: McpServerActionsProps, user: {isUserAdmin: boolean, username: string}): ReactElement {
+function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: McpServerActionsProps, user: {isUserAdmin: boolean, username: string, preferences: McpPreferences}): ReactElement {
     const selectedMcpServer: McpServer = props?.selectedItems[0];
     const navigate = useNavigate();
     const [
@@ -95,14 +99,19 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
         });
     }
 
+    items.push({
+        text: `${user.preferences?.overrideAllApprovals === true ? 'Disable' : 'Enable'} YOLO Mode`,
+        id: 'toggleYoloMode',
+    });
+
     return (
         <ButtonDropdown
             items={items}
             variant='primary'
-            disabled={!selectedMcpServer}
+            disabled={!items}
             loading={isDeleteLoading}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedMcpServer, dispatch, deleteMutation, navigate)
+                ModelActionHandler(e, selectedMcpServer, dispatch, deleteMutation, navigate, props.toggleYoloMode)
             }
         >
             Actions
@@ -115,7 +124,8 @@ const ModelActionHandler = (
     selectedItem: McpServer,
     dispatch: ThunkDispatch<any, any, Action>,
     deleteMutation: MutationTrigger<any>,
-    navigate: NavigateFunction
+    navigate: NavigateFunction,
+    toggleYoloMode: () => void,
 ) => {
     switch (e.detail.id) {
         case 'editMcpServer':
@@ -130,6 +140,9 @@ const ModelActionHandler = (
                     description: `This will delete the following MCP Connection: ${selectedItem.name}.`
                 })
             );
+            break;
+        case 'toggleYoloMode':
+            toggleYoloMode();
             break;
         default:
             return;

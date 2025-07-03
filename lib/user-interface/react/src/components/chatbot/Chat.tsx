@@ -14,17 +14,18 @@
  limitations under the License.
  */
 
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
     Autosuggest,
-    ButtonGroup,
+    ButtonGroup, Checkbox,
     Grid,
     PromptInput,
     TextContent,
+    Icon,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -45,7 +46,7 @@ import {
     useLazyGetSessionByIdQuery,
     useUpdateSessionMutation,
 } from '@/shared/reducers/session.reducer';
-import { useAppDispatch } from '@/config/store';
+import { useAppDispatch, useAppSelector } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import SessionConfiguration from './components/SessionConfiguration';
 import { GenerateLLMRequestParams } from '@/shared/model/chat.configurations.model';
@@ -66,10 +67,16 @@ import { useToolChain } from './hooks/useToolChain.hooks';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
-import { useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import {
+    DefaultUserPreferences,
+    McpPreferences,
+    useGetUserPreferencesQuery, UserPreferences, useUpdateUserPreferencesMutation
+} from '@/shared/reducers/user-preferences.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { darkStyles, JsonView } from 'react-json-view-lite';
+import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -79,6 +86,7 @@ export default function Chat ({ sessionId }) {
     const modelSelectRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef(null);
     const auth = useAuth();
+    const userName = useAppSelector(selectCurrentUsername);
 
     // API hooks
     const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
@@ -93,6 +101,12 @@ export default function Chat ({ sessionId }) {
             data: (state.data || []).filter((model) => (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) && model.status === ModelStatus.InService),
         })
     });
+    const {data: userPreferences} = useGetUserPreferencesQuery();
+    const { data: mcpServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true,
+        selectFromResult: (state) => ({
+            isFetching: state.isFetching,
+            data: (state.data?.Items || []).filter((server) => (server.status === McpServerStatus.Active)),
+        }) },);
 
     // State management
     const [userPrompt, setUserPrompt] = useState('');
@@ -101,20 +115,38 @@ export default function Chat ({ sessionId }) {
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
     const [openAiTools, setOpenAiTools] = useState(undefined);
+    const [preferences, setPreferences] = useState<UserPreferences>(undefined);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
 
+    // Memoize enabled servers to prevent infinite re-renders
+    const enabledServers = useMemo(() => {
+        if (mcpServers && userPreferences?.preferences?.mcp?.enabledServers) {
+            const enabledServerIds = userPreferences.preferences.mcp.enabledServers.map((server) => server.id);
+            return mcpServers.filter((server) => enabledServerIds.includes(server.id));
+        }
+        return undefined;
+    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers]);
+
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
     const TOOL_CALL_LIMIT = 20;
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
 
-    const { data: { Items: mcpServers } = { Items: [] } } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
     // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections } = useMultipleMcp(config?.configuration?.enabledComponents?.mcpConnections ? mcpServers : undefined);
+    const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
+    const [updatePreferences] = useUpdateUserPreferencesMutation();
+
+    useEffect(() => {
+        if (userPreferences) {
+            setPreferences(userPreferences);
+        } else {
+            setPreferences({...DefaultUserPreferences, user: userName});
+        }
+    }, [userPreferences, userName]);
 
     // Custom hooks
     const {
@@ -179,20 +211,22 @@ export default function Chat ({ sessionId }) {
                 }
             }));
             setOpenAiTools(formattedTools);
+        } else {
+            setOpenAiTools(undefined);
         }
     }, [mcpTools]);
 
-    const fetchRelevantDocuments = async (query: string) => {
+    const fetchRelevantDocuments = useCallback(async (query: string) => {
         const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
 
         return getRelevantDocuments({
             query,
             repositoryId: ragConfig.repositoryId,
             repositoryType: ragConfig.repositoryType,
-            modelName: ragConfig.embeddingModel.modelId,
+            modelName: ragConfig.embeddingModel?.modelId,
             topK: ragTopK,
         });
-    };
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.embeddingModel?.modelId]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,
@@ -221,10 +255,52 @@ export default function Chat ({ sessionId }) {
         session,
         setSession,
         notificationService,
+        toolToServerMap,
+        mcpPreferences: userPreferences?.preferences?.mcp
     });
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
     startToolChainRef.current = startToolChain;
+
+
+    const toggleToolAutoApproval = (toolName: string, enabled: boolean) => {
+        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
+        const mcpPrefs: McpPreferences = {
+            ...existingMcpPrefs,
+            enabledServers: [...existingMcpPrefs.enabledServers]
+        };
+        const originalServer = mcpPrefs.enabledServers.find((server) => server.name === toolToServerMap.get(toolName));
+        if (!originalServer) return; // Early return if server not found
+        // Create a deep copy of the server object with its nested arrays
+        const serverToUpdate = {
+            ...originalServer,
+            autoApprovedTools: [...originalServer.autoApprovedTools],
+        };
+
+        if (enabled) {
+            serverToUpdate.autoApprovedTools.push(toolName);
+        } else {
+            serverToUpdate.autoApprovedTools = serverToUpdate.autoApprovedTools.filter((item) => item !== toolName);
+        }
+        mcpPrefs.enabledServers = [
+            ...mcpPrefs.enabledServers.filter((server) => server.name !== serverToUpdate.name),
+            serverToUpdate
+        ];
+        updatePrefs(mcpPrefs);
+    };
+
+    const updatePrefs = (mcpPrefs: McpPreferences) => {
+        const updated = {...preferences,
+            preferences: {...preferences.preferences,
+                mcp: {
+                    ...preferences.preferences.mcp,
+                    ...mcpPrefs
+                }
+            }
+        };
+        setPreferences(updated);
+        updatePreferences(updated);
+    };
 
     // Handle stop functionality
     const handleStop = useCallback(() => {
@@ -349,7 +425,7 @@ export default function Chat ({ sessionId }) {
         if (bottomRef) {
             bottomRef?.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [session]);
+    }, [session.history.length]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -508,6 +584,15 @@ export default function Chat ({ sessionId }) {
                             <p><strong>Arguments:</strong></p>
                             <JsonView data={toolApprovalModal.tool.args} style={darkStyles} />
                             <p>Do you want to allow this tool execution?</p>
+                            <hr/>
+                            <Checkbox
+                                onChange={({ detail }) =>
+                                    toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
+                                }
+                                checked={userPreferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
+                            >
+                                Auto-approve this tool in the future
+                            </Checkbox>
                         </div>
                     }
                 />
@@ -615,7 +700,7 @@ export default function Chat ({ sessionId }) {
                                 }
                             />
                             <SpaceBetween direction='vertical' size='xs'>
-                                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                                <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
                                     <Box float='left' variant='div'>
                                         <TextContent>
                                             <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
@@ -623,6 +708,11 @@ export default function Chat ({ sessionId }) {
                                             </div>
                                         </TextContent>
                                     </Box>
+                                    {enabledServers && enabledServers.length > 0 ? (
+                                        <Box>
+                                            <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
+                                        </Box>
+                                    ) : (<div></div>)}
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>
                                             {isConnected ? 'Connected' : 'Disconnected'}

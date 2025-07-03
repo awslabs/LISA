@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMcp } from 'use-mcp/react';
 import { McpServer } from '@/shared/reducers/mcp-server.reducer';
+import { McpPreferences } from '@/shared/reducers/user-preferences.reducer';
 
 // Individual MCP Connection Component
 export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
@@ -59,7 +60,7 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
 };
 
 // Custom hook to manage multiple MCP connections dynamically
-export const useMultipleMcp = (servers: McpServer[]) => {
+export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferences) => {
     const [allTools, setAllTools] = useState([]);
     const [serverToolsMap, setServerToolsMap] = useState<Map<string, any[]>>(new Map());
     const [connectionsMap, setConnectionsMap] = useState<Map<string, any>>(new Map());
@@ -68,7 +69,7 @@ export const useMultipleMcp = (servers: McpServer[]) => {
     const handleToolsChange = useCallback((tools: any[], clientName: string) => {
         setServerToolsMap((prev) => {
             const newMap = new Map(prev);
-            newMap.set(clientName, tools);
+            newMap.set(clientName, tools.filter((tool) => !mcpPreferences?.enabledServers?.find((server) => server.name === clientName)?.disabledTools.includes(tool.name)));
             return newMap;
         });
 
@@ -89,7 +90,7 @@ export const useMultipleMcp = (servers: McpServer[]) => {
             });
             return newMap;
         });
-    }, []);
+    }, [mcpPreferences?.enabledServers]);
 
     const handleConnectionChange = useCallback((connection: any, clientName: string) => {
         setConnectionsMap((prev) => {
@@ -134,6 +135,7 @@ export const useMultipleMcp = (servers: McpServer[]) => {
                 onToolsChange={handleToolsChange}
                 onConnectionChange={handleConnectionChange}
             />
-        ))
+        )),
+        toolToServerMap
     };
 };

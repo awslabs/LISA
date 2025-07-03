@@ -158,7 +158,6 @@ export function McpServerDetails () {
                 <Grid gridDefinition={[{ colspan:6 }, { colspan:6 }]}>
                     <Header counter={`(${tools.length.toString() ?? undefined})`}>
                         {data?.name} Tool Details
-
                     </Header>
                     <Box float='right' variant='div'>
                         <StatusIndicator type={state === 'ready' ? 'success' : state.endsWith('ing') ? 'pending' : 'error'}>

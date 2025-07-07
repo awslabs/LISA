@@ -139,6 +139,20 @@ export class MetricsConstruct extends Construct {
                 width: 12,
                 height: 6,
             }),
+            // Total MCP Tool Calls Widget
+            new cloudwatch.GraphWidget({
+                title: 'Total MCP Tool Calls',
+                left: [
+                    new cloudwatch.Metric({
+                        namespace: 'LISA/UserMetrics',
+                        metricName: 'TotalMCPToolCalls',
+                        statistic: 'Sum',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
             // Prompts by User Widget
             new cloudwatch.GraphWidget({
                 title: 'Prompts by User',
@@ -158,6 +172,32 @@ export class MetricsConstruct extends Construct {
                 left: [
                     new cloudwatch.MathExpression({
                         expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserRAGUsageCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+            // MCP Tool Calls by User Widget
+            new cloudwatch.GraphWidget({
+                title: 'MCP Tool Calls by User',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserMCPToolCalls"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+            // MCP Tool Calls by Tool Widget
+            new cloudwatch.GraphWidget({
+                title: 'MCP Tool Calls by Tool',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UserMetrics,ToolName} MetricName="MCPToolCallsByTool"\', \'Sum\', 3600)',
                         label: '',
                         period: Duration.hours(1),
                     }),

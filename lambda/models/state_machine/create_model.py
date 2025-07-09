@@ -87,10 +87,11 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
 
     model_table.update_item(
         Key={"model_id": request.modelId},
-        UpdateExpression="SET model_status = :model_status, model_config = :model_config, last_modified_date = :lm",
+        UpdateExpression="SET model_status = :model_status, model_config = :model_config, model_description = :model_description, last_modified_date = :lm",
         ExpressionAttributeValues={
             ":model_status": ModelStatus.CREATING,
             ":model_config": event,
+            ":model_description": request.modelDescription,
             ":lm": int(datetime.utcnow().timestamp()),
         },
     )

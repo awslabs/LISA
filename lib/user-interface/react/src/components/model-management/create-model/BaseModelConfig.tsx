@@ -46,6 +46,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'modelName': detail.value });
                 }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
             </FormField>
+            <FormField label={<span>Model Description <em>(optional)</em></span>} errorText={props.formErrors?.modelDescription}>
+                <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelDescription': detail.value });
+                }} placeholder='Brief description of the model and its capabilities'/>
+            </FormField>
             <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
@@ -111,17 +116,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     disabled={props.isEdit}
                 />
             </FormField>
-            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
-                <FormField label='LISA Hosted Model' errorText={props.formErrors?.lisaHostedModel}>
-                    <Toggle
-                        onChange={({ detail }) =>
-                            props.setFields({'lisaHostedModel': detail.checked})
-                        }
-                        onBlur={() => props.touchFields(['lisaHostedModel', 'instanceType', 'inferenceContainer'])}
-                        checked={props.item.lisaHostedModel}
-                        disabled={props.isEdit}
-                    />
-                </FormField>
+            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                 <FormField label='Streaming' errorText={props.formErrors?.streaming}>
                     <Toggle
                         onChange={({ detail }) =>

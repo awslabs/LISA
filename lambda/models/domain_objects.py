@@ -192,6 +192,7 @@ class LISAModel(BaseModel):
     loadBalancerConfig: Optional[LoadBalancerConfig] = None
     modelId: str
     modelName: str
+    modelDescription: Optional[str] = None
     modelType: ModelType
     modelUrl: Optional[str] = None
     status: ModelStatus
@@ -215,6 +216,7 @@ class CreateModelRequest(BaseModel):
     loadBalancerConfig: Optional[LoadBalancerConfig] = None
     modelId: str = Field(min_length=1)
     modelName: str = Field(min_length=1)
+    modelDescription: Optional[str] = None
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
@@ -267,6 +269,7 @@ class UpdateModelRequest(BaseModel):
     autoScalingInstanceConfig: Optional[AutoScalingInstanceConfig] = None
     enabled: Optional[bool] = None
     modelType: Optional[ModelType] = None
+    modelDescription: Optional[str] = None
     streaming: Optional[bool] = None
 
     @model_validator(mode="after")
@@ -276,11 +279,12 @@ class UpdateModelRequest(BaseModel):
             self.autoScalingInstanceConfig,
             self.enabled,
             self.modelType,
+            self.modelDescription,
             self.streaming,
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
-                "At least one field out of autoScalingInstanceConfig, enabled, modelType, or "
+                "At least one field out of autoScalingInstanceConfig, enabled, modelType, modelDescription, or "
                 "streaming must be defined in request payload."
             )
 

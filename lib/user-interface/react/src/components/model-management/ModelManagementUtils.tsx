@@ -72,6 +72,11 @@ export const CARD_DEFINITIONS = {
             content: (model: IModel) => model.instanceType ?  model.instanceType : 'Instance Type not defined',
         },
         {
+            id: 'modelDescription',
+            header: 'Description',
+            content: (model: IModel) => model.modelDescription ? model.modelDescription : 'No description provided',
+        },
+        {
             id: 'modelStatus',
             header: 'Status',
             content: (model: IModel) => (
@@ -85,7 +90,7 @@ export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelDescription', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -99,6 +104,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'streaming', label: 'Streaming' },
             { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
             { id: 'instanceType', label: 'Instance Type' },
+            { id: 'modelDescription', label: 'Description' },
             { id: 'modelStatus', label: 'Status' },
         ],
     },

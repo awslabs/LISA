@@ -33,6 +33,7 @@ export type ModelActionProps = {
     setSelectedItems: (items: IModel[]) => void;
     setNewModelModelVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
+    setModelCreationType: (type: 'lisa' | 'external') => void;
 };
 
 function ModelActions (props: ModelActionProps): ReactElement {
@@ -51,12 +52,30 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 <Icon name='refresh' />
             </Button>
             {ModelActionButton(dispatch, notificationService, props)}
-            <Button variant='primary' onClick={() => {
-                props.setEdit(false);
-                props.setNewModelModelVisible(true);
-            }}>
+            <ButtonDropdown
+                items={[
+                    {
+                        text: 'LISA Hosted',
+                        id: 'create-lisa',
+                    },
+                    {
+                        text: 'Externally Hosted',
+                        id: 'create-external',
+                    }
+                ]}
+                variant='primary'
+                onItemClick={(e) => {
+                    props.setEdit(false);
+                    if (e.detail.id === 'create-external') {
+                        props.setModelCreationType('external');
+                    } else {
+                        props.setModelCreationType('lisa');
+                    }
+                    props.setNewModelModelVisible(true);
+                }}
+            >
                 Create Model
-            </Button>
+            </ButtonDropdown>
         </SpaceBetween>
     );
 }

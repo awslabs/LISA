@@ -39,6 +39,7 @@ export type CreateModelModalProps = {
     setVisible: (isEdit: boolean) => void;
     selectedItems: IModel[];
     setSelectedItems: (items: IModel[]) => void;
+    modelCreationType: 'lisa' | 'external';
 };
 
 export type ModelCreateState = {
@@ -152,9 +153,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
                 }
             });
+        } else {
+            setState({
+                ...state,
+                form: {
+                    ...state.form,
+                    lisaHostedModel: props.modelCreationType === 'lisa'
+                }
+            });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [props.isEdit]);
+    }, [props.isEdit, props.modelCreationType]);
 
     useEffect(() => {
         if (!isCreating && isCreateSuccess) {
@@ -180,21 +189,23 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     const reviewError = normalizeError('Model', isCreateError ? createError : isUpdateError ? updateError : undefined);
 
-    const steps = [
+    const allSteps = [
         {
             title: 'Base Model Configuration',
             description: 'Define your model\'s configuration settings using these forms.',
             content: (
                 <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            onEdit: true
+            onEdit: true,
+            forExternalModel: true
         },
         {
             title: 'Container Configuration',
             content: (
                 <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
             ),
-            isOptional: true
+            isOptional: true,
+            forExternalModel: false
         },
         {
             title: 'Auto Scaling Configuration',
@@ -203,13 +214,15 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             ),
             isOptional: true,
             onEdit: state.form.lisaHostedModel,
+            forExternalModel: false
         },
         {
             title: 'Load Balancer Configuration',
             content: (
                 <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
             ),
-            isOptional: true
+            isOptional: true,
+            forExternalModel: false
         },
         {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
@@ -217,9 +230,22 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             content: (
                 <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
             ),
-            onEdit: state.form.lisaHostedModel
+            onEdit: true,
+            forExternalModel: true
         }
-    ].filter((step) => props.isEdit ? step.onEdit : true);
+    ];
+
+    const steps = allSteps.filter((step) => {
+        if (props.isEdit) {
+            return step.onEdit;
+        } else {
+            if (props.modelCreationType === 'external') {
+                return step.forExternalModel;
+            } else {
+                return true; // Show all steps for LISA hosted models
+            }
+        }
+    });
 
 
     return (

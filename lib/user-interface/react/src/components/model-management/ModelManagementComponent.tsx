@@ -45,6 +45,7 @@ export function ModelManagementComponent () : ReactElement {
     const [preferences, setPreferences] = useLocalStorage('ModelManagerPreferences', DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
+    const [modelCreationType, setModelCreationType] = useState<'lisa' | 'external'>('lisa');
     const [count, setCount] = useState('');
 
     useEffect(() => {
@@ -75,7 +76,7 @@ export function ModelManagementComponent () : ReactElement {
 
     return (
         <>
-            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems}/>
+            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems} modelCreationType={modelCreationType}/>
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
@@ -101,6 +102,7 @@ export function ModelManagementComponent () : ReactElement {
                                 setSelectedItems={setSelectedItems}
                                 setNewModelModelVisible={setNewModelModelVisible}
                                 setEdit={setEdit}
+                                setModelCreationType={setModelCreationType}
                             />
                         }
                     >

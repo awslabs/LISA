@@ -94,6 +94,7 @@ export type IModel = {
     features?: ModelFeature[];
     modelId: string;
     modelName: string;
+    modelDescription?: string;
     modelUrl: string;
     streaming: boolean;
     modelType: ModelType;
@@ -112,6 +113,7 @@ export type IModelRequest = {
     features: ModelFeature[];
     modelId: string;
     modelName: string;
+    modelDescription?: string;
     modelUrl: string;
     streaming: boolean;
     multiModal: boolean;
@@ -207,6 +209,7 @@ export const ModelRequestSchema = z.object({
         .regex(/^[a-z0-9].*[a-z0-9]$/i, {message: 'Must start and end with an alphanumeric character.'})
         .default(''),
     modelName: z.string().min(1).default(''),
+    modelDescription: z.string().default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
     features: z.array(z.object({

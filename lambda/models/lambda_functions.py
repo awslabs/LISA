@@ -24,7 +24,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.common_functions import retry_config
+from utilities.common_functions import retry_config, get_groups, is_admin
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (
@@ -97,14 +97,24 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
 
 @app.get(path="", include_in_schema=False)
 @app.get(path="/")
-async def list_models() -> ListModelsResponse:
+async def list_models(request: Request) -> ListModelsResponse:
     """Endpoint to list models."""
     list_handler = ListModelsHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
-    return list_handler()
+    
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+    
+    return list_handler(user_groups=user_groups, is_admin=admin_status)
 
 
 @app.get(path="/{model_id}")
@@ -117,7 +127,17 @@ async def get_model(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
-    return get_handler(model_id=model_id)
+    
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+    
+    return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 
 
 @app.put(path="/{model_id}")

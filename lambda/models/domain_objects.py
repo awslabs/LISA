@@ -198,6 +198,7 @@ class LISAModel(BaseModel):
     status: ModelStatus
     streaming: bool
     features: Optional[List[ModelFeature]] = None
+    allowedGroups: Optional[List[str]] = None
 
 
 class ApiResponseBase(BaseModel):
@@ -221,6 +222,7 @@ class CreateModelRequest(BaseModel):
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
     features: Optional[List[ModelFeature]] = None
+    allowedGroups: Optional[List[str]] = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:

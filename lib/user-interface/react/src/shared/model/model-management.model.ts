@@ -103,6 +103,7 @@ export type IModel = {
     containerConfig: IContainerConfig;
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
+    allowedGroups?: string[];
 };
 
 export type IModelListResponse = {
@@ -124,6 +125,7 @@ export type IModelRequest = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     lisaHostedModel: boolean;
+    allowedGroups?: string[];
 };
 
 export type ModelFeature = {
@@ -223,6 +225,7 @@ export const ModelRequestSchema = z.object({
     containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
     autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
+    allowedGroups: z.array(z.string()).default([]),
 }).superRefine((value, context) => {
     if (value.lisaHostedModel) {
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});

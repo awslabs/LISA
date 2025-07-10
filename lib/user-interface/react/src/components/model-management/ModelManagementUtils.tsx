@@ -77,6 +77,11 @@ export const CARD_DEFINITIONS = {
             content: (model: IModel) => model.modelDescription ? model.modelDescription : 'No description provided',
         },
         {
+            id: 'allowedGroups',
+            header: 'Allowed Groups',
+            content: (model: IModel) => model?.allowedGroups?.length > 0 ? `${model.allowedGroups.join(', ')}` : <em>(public)</em>,
+        },
+        {
             id: 'modelStatus',
             header: 'Status',
             content: (model: IModel) => (
@@ -90,7 +95,7 @@ export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelDescription', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelDescription', 'allowedGroups', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -105,6 +110,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
             { id: 'instanceType', label: 'Instance Type' },
             { id: 'modelDescription', label: 'Description' },
+            { id: 'allowedGroups', label: 'Allowed Groups' },
             { id: 'modelStatus', label: 'Status' },
         ],
     },

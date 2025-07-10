@@ -24,6 +24,7 @@ import { IModelRequest, InferenceContainer, ModelType } from '../../../shared/mo
 import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import { ModelFeatures } from '@/components/types';
+import { ArrayInputField } from '../../../shared/form/array-input';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
@@ -176,6 +177,13 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
                 }} disabled={props.isEdit || !props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Optional overview of Summarization for Model'/>
             </FormField>
+            <ArrayInputField 
+                label='Allowed Groups'
+                errorText={props.formErrors?.allowedGroups}
+                values={props.item.allowedGroups || []}
+                onChange={(values) => props.setFields({ 'allowedGroups': values })}
+                description='Restrict model access to specific groups. Leave empty to allow access to all users.'
+            />
         </SpaceBetween>
     );
 }

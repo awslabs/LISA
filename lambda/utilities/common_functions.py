@@ -316,6 +316,7 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
     if not cert_arn:
         logger.info("No SSL certificate ARN specified, using default verification")
         return True
+    is_acm_cert = ":acm:" in cert_arn
 
     try:
         # Clean up previous cert file if it exists
@@ -327,7 +328,6 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
 
         # Get the certificate name from the ARN
         cert_name = cert_arn.split("/")[1]
-        is_acm_cert = ":acm:" in cert_arn
         logger.info(f"Retrieving certificate '{cert_name}' from {'ACM' if is_acm_cert else 'IAM'}")
 
         # Get the certificate from IAM
@@ -349,7 +349,7 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
         return _cert_file.name
 
     except Exception as e:
-        logger.error(f"Failed to get certificate from IAM: {e}", exc_info=True)
+        logger.error(f"Failed to get certificate from {'ACM' if is_acm_cert else 'IAM'}: {e}", exc_info=True)
         # If we fail to get the cert, return True to fall back to default verification
         return True
 

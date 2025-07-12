@@ -303,7 +303,7 @@ _cert_file = None
 
 
 @cache
-def get_cert_path(iam_client: Any) -> Union[str, bool]:
+def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
     """
     Get cert path for IAM certs for SSL validation against LISA Serve endpoint.
 
@@ -327,11 +327,18 @@ def get_cert_path(iam_client: Any) -> Union[str, bool]:
 
         # Get the certificate name from the ARN
         cert_name = cert_arn.split("/")[1]
-        logger.info(f"Retrieving certificate '{cert_name}' from IAM")
+        is_acm_cert = ":acm:" in cert_arn
+        logger.info(f"Retrieving certificate '{cert_name}' from {'ACM' if is_acm_cert else 'IAM'}")
 
         # Get the certificate from IAM
-        rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
-        cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
+        rest_api_cert = (
+            acm_client.get_certificate(CertificateArn=cert_arn)
+            if is_acm_cert
+            else iam_client.get_server_certificate(ServerCertificateName=cert_name)
+        )
+        cert_body = (
+            rest_api_cert["Certificate"] if is_acm_cert else rest_api_cert["ServerCertificate"]["CertificateBody"]
+        )
 
         # Create a new temporary file
         _cert_file = tempfile.NamedTemporaryFile(delete=False)

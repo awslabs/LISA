@@ -53,6 +53,13 @@
                 "iam:GetServerCertificate"
             ],
             "Resource": "arn:${AWS::Partition}:iam::${AWS::AccountId}:server-certificate/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "acm:GetCertificate"
+            ],
+            "Resource": "arn:${AWS::Partition}:acm::${AWS::AccountId}:certificate/*"
         }
     ]
 }

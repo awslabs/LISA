@@ -25,7 +25,10 @@ from functools import cache
 from typing import Any, Callable, cast, Dict, List, Optional, TypeVar, Union
 
 import boto3
+import six
 from botocore.config import Config
+from utilities.exceptions import HTTPException
+from .brass_client import BrassClient
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -370,15 +373,17 @@ def get_username(event: dict) -> str:
 
 
 def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    # TODO use Bindle lock to gate admin controls
-    principal_id = event.get("requestContext", {}).get("authorizer", {}).get("principalId", "")
-    if principal_id in ['batzela', 'evmann', 'dustinps', 'amescyn', 'jmharold']:
+    """Get admin status from event using BRASS bindle lock authorization."""
+    username = get_username(event)
+    
+    # Check BRASS admin bindle lock using BrassClient directly
+    brass_client = BrassClient()
+    if brass_client.check_admin_access(username):
+        logger.info(f"User {username} granted admin access via BRASS admin bindle lock")
         return True
-    admin_group = os.environ.get("ADMIN_GROUP", "")
-    groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
+    
+    logger.info(f"User {username} denied admin access - no valid authorization found")
+    return False
 
 
 def admin_only(func: Callable) -> Callable:

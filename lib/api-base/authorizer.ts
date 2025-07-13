@@ -17,7 +17,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { IdentitySource, RequestAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -96,6 +96,10 @@ export class CustomAuthorizer extends Construct {
                 USER_GROUP: config.authConfig!.userGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue,
+                // BRASS Bindle Lock Configuration
+                ADMIN_BINDLE_GUID: config.authConfig!.adminBindleGuid,
+                APP_BINDLE_GUID: config.authConfig!.appBindleGuid,
+                BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})
             },
             role: role,
@@ -110,6 +114,18 @@ export class CustomAuthorizer extends Construct {
 
         const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);
         managementKeySecret.grantRead(authorizerLambda);
+
+        // Add BRASS service permissions for bindle lock authorization
+        if (config.authConfig?.adminBindleGuid || config.authConfig?.appBindleGuid) {
+            authorizerLambda.addToRolePolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'brassservice:IsAuthorized',
+                    'brassservice:BatchIsAuthorized',
+                ],
+                resources: ['*'], // BRASS service permissions are typically granted on all resources
+            }));
+        }
 
         // Update
         this.authorizer = new RequestAuthorizer(this, 'APIGWAuthorizer', {

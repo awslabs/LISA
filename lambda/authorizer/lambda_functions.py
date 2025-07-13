@@ -25,6 +25,7 @@ import create_env_variables  # noqa: F401
 import jwt
 import requests
 from botocore.exceptions import ClientError
+from utilities.brass_client import BrassClient
 from cachetools import cached, TTLCache
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
 
@@ -60,28 +61,19 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
     groups: str
-    if id_token in get_management_tokens():
-        username = "lisa-management-token"
-        # Add management token to Admin groups
-        groups = json.dumps([admin_group])
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": groups}
-        logger.debug(f"Generated policy: {allow_policy}")
-        return allow_policy
-
-    if os.environ.get("TOKEN_TABLE_NAME", None) and is_valid_api_token(id_token):
-        username = "api-token"
-        groups = json.dumps([])
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": groups}
-        logger.debug(f"Generated policy: {allow_policy}")
-        return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
-        is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-        is_in_user_group = is_user(jwt_data, user_group, jwt_groups_property) if user_group != "" else True
-        groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         username = find_jwt_username(jwt_data)
+        is_admin_user = is_admin(username)
+        
+        # Check app bindle access for all users (including admins for UI access)
+        has_app_access = check_app_bindle_access(username)
+        
+        if not is_admin_user and not has_app_access:
+            logger.info(f"User {username} denied access - no app bindle lock permission")
+            return deny_policy
+        
+        groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": groups}
 
@@ -178,13 +170,16 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[
         return None
 
 
-def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
-    """Check if the user is an admin."""
-     # TODO use Bindle lock to gate admin controls
-    principal_id = jwt_data.get("sub")
-    if principal_id in ['batzela', 'evmann', 'dustinps', 'amescyn', 'jmharold']:
-        return True
-    return admin_group in (get_property_path(jwt_data, jwt_groups_property) or [])
+def is_admin(username: str) -> bool:
+    """Check if the user is an admin using BRASS bindle lock authorization."""
+    brass_client = BrassClient()
+    return brass_client.check_admin_access(username)
+
+
+def check_app_bindle_access(username: str) -> bool:
+    """Check if user has general app access via app bindle lock."""
+    brass_client = BrassClient()
+    return brass_client.check_app_access(username)
 
 
 def is_user(jwt_data: dict[str, Any], user_group: str, jwt_groups_property: str) -> bool:
@@ -203,9 +198,6 @@ def find_jwt_username(jwt_data: dict[str, str]) -> str:
 
     if not username:
         raise ValueError("No username found in JWT")
-    
-    if username not in ['batzela', 'evmann', 'dustinps', 'jmharold', 'amescyn']:
-        raise ValueError("User is not an authorized")
 
     return username
 

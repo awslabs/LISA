@@ -42,8 +42,12 @@ export function Home ({ setNav }) {
         if (!auth.isAuthenticated && !window.location.href.includes('?')) {
             purgeStore();
         }
+        // Show the error alert immediately if there's an auth error
+        if (auth.authError) {
+            setVisible(true);
+        }
         // eslint-disable-next-line
-    }, []);
+    }, [auth.authError]);
 
     return (
         <Modal
@@ -65,7 +69,14 @@ export function Home ({ setNav }) {
                 </Box>
             }
         >
-            {visible && <Alert type='error'>You must sign in to access this page!</Alert>}
+            {visible && (
+                <Alert type='error'>
+                    {auth.authError?.type === 'bindle' 
+                        ? auth.authError.message
+                        : 'You must sign in to access this page!'
+                    }
+                </Alert>
+            )}
             <Box>
                 <div>
                     <figure>

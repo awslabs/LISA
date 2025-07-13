@@ -60,8 +60,8 @@ export class BrassAuthApi extends Construct {
 
         const env = {
             // BRASS Bindle Lock Configuration - following same pattern as authorizer
-            ADMIN_BINDLE_GUID: config.authConfig!.adminAccessBindleLockGuid,
-            APP_BINDLE_GUID: config.authConfig!.appAccessBindleLockGuid,
+            ADMIN_BINDLE_GUID: config.authConfig!.adminBindleGuid,
+            APP_BINDLE_GUID: config.authConfig!.appBindleGuid,
             BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
             // AWS Region for proper BRASS service signing (custom variable since AWS_REGION is reserved)
             BRASS_REGION: config.region,
@@ -89,7 +89,7 @@ export class BrassAuthApi extends Construct {
         });
 
         // Add BRASS service permissions for bindle lock authorization
-        if (config.authConfig?.adminAccessBindleLockGuid || config.authConfig?.appAccessBindleLockGuid) {
+        if (config.authConfig?.adminBindleGuid || config.authConfig?.appBindleGuid) {
             lambdaRole.addToPolicy(new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: [

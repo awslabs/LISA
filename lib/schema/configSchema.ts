@@ -704,8 +704,8 @@ const AuthConfigSchema = z.object({
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
     // BRASS Bindle Lock Configuration
-    adminAccessBindleLockGuid: z.string().describe('BRASS admin bindle lock GUID for admin authorization.'),
-    appAccessBindleLockGuid: z.string().describe('BRASS app bindle lock GUID for general user authorization.'),
+    adminBindleGuid: z.string().describe('BRASS admin bindle lock GUID for admin authorization.'),
+    appBindleGuid: z.string().describe('BRASS app bindle lock GUID for general user authorization.'),
     brassEndpoint: z.string().default('https://awsauth.us-east-1.prod.brass.a2z.com').describe('BRASS API endpoint URL.'),
 }).describe('Configuration schema for authorization.');
 

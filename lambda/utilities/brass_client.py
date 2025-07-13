@@ -73,7 +73,6 @@ class BrassClient:
                     aws_access_key=six.b(credentials.access_key),
                     aws_secret_key=six.b(credentials.secret_key),
                     aws_security_token=six.b(credentials.token) if credentials.token else None,
-                    verify_cert=False,
                 )
             )
         

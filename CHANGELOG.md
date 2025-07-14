@@ -1,3 +1,16 @@
+# v4.4.4
+## Bug Fixes
+- Resolved an issue with docker base images
+- Added logic to support ACM based certs and custom hosting
+
+## Acknowledgements
+* @bedanley
+* @jmharold
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.4.3...v4.4.4
+
 # v4.4.3
 ## Security Enhancements
 - Allowing IAM auth with LISA RDS Instances

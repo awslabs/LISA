@@ -70,7 +70,7 @@ export const baseConfig: IChatConfiguration = {
         markdownDisplay: true,
         showMetadata: false,
         max_tokens: null,
-        chatHistoryBufferSize: 3,
+        chatHistoryBufferSize: 7,
         ragTopK: 3,
         modelArgs: {
             n: null,

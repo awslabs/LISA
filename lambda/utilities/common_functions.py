@@ -316,10 +316,8 @@ def get_cert_path(iam_client: Any) -> Union[str, bool]:
     if not cert_arn:
         logger.info("No SSL certificate ARN specified, using default verification")
         return True
-    is_acm_cert = ":acm:" in cert_arn
-
     # For ACM certificates, use default verification since they are trusted AWS certificates
-    if is_acm_cert:
+    elif ":acm:" in cert_arn:
         logger.info("ACM certificate detected, using default SSL verification")
         return True
 
@@ -337,12 +335,11 @@ def get_cert_path(iam_client: Any) -> Union[str, bool]:
 
         # Get the certificate from IAM
         rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
-        full_cert = rest_api_cert["ServerCertificate"]["CertificateBody"]
-        logger.info(f"IAM certificate retrieved, length: {len(full_cert)}")
+        cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
 
         # Create a new temporary file
         _cert_file = tempfile.NamedTemporaryFile(delete=False)
-        _cert_file.write(full_cert.encode("utf-8"))
+        _cert_file.write(cert_body.encode("utf-8"))
         _cert_file.flush()
 
         logger.info(f"Certificate saved to temporary file: {_cert_file.name}")

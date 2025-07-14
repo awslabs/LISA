@@ -226,17 +226,13 @@ export class ModelsApi extends Construct {
 
         if (config.restApiConfig?.sslCertIamArn) {
             const certPerms = new Policy(this, 'ModelsApiCertPerms', {
-                statements: [...(config.restApiConfig?.sslCertIamArn.includes(':acm:') ? [new PolicyStatement({
-                    actions: ['acm:GetCertificate'],
-                    resources: [config.restApiConfig?.sslCertIamArn],
-                    effect: Effect.ALLOW,
-                })] : [
+                statements: [
                     new PolicyStatement({
                         actions: ['iam:GetServerCertificate'],
                         resources: [config.restApiConfig?.sslCertIamArn],
                         effect: Effect.ALLOW,
                     })
-                ])]
+                ]
             });
             lambdaFunction.role!.attachInlinePolicy(certPerms);
             stateMachinesLambdaRole.attachInlinePolicy(certPerms);

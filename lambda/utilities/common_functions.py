@@ -330,19 +330,24 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
         cert_name = cert_arn.split("/")[1]
         logger.info(f"Retrieving certificate '{cert_name}' from {'ACM' if is_acm_cert else 'IAM'}")
 
-        # Get the certificate from IAM
-        rest_api_cert = (
-            acm_client.get_certificate(CertificateArn=cert_arn)
-            if is_acm_cert
-            else iam_client.get_server_certificate(ServerCertificateName=cert_name)
-        )
-        cert_body = (
-            rest_api_cert["Certificate"] if is_acm_cert else rest_api_cert["ServerCertificate"]["CertificateBody"]
-        )
+        # Get the certificate from IAM or ACM
+        if is_acm_cert:
+            rest_api_cert = acm_client.get_certificate(CertificateArn=cert_arn)
+            cert_body = rest_api_cert["Certificate"]
+            # For ACM certificates, include the certificate chain if available
+            cert_chain = rest_api_cert.get("CertificateChain")
+            if cert_chain:
+                # Combine the certificate and its chain
+                full_cert = cert_body + "\n" + cert_chain
+            else:
+                full_cert = cert_body
+        else:
+            rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
+            full_cert = rest_api_cert["ServerCertificate"]["CertificateBody"]
 
         # Create a new temporary file
         _cert_file = tempfile.NamedTemporaryFile(delete=False)
-        _cert_file.write(cert_body.encode("utf-8"))
+        _cert_file.write(full_cert.encode("utf-8"))
         _cert_file.flush()
 
         logger.info(f"Certificate saved to temporary file: {_cert_file.name}")

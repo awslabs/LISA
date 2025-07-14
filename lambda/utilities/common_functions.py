@@ -316,6 +316,10 @@ def get_cert_path(iam_client: Any) -> Union[str, bool]:
     if not cert_arn:
         logger.info("No SSL certificate ARN specified, using default verification")
         return True
+    # For ACM certificates, use default verification since they are trusted AWS certificates
+    elif ":acm:" in cert_arn:
+        logger.info("ACM certificate detected, using default SSL verification")
+        return True
 
     try:
         # Clean up previous cert file if it exists

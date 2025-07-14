@@ -318,6 +318,11 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
         return True
     is_acm_cert = ":acm:" in cert_arn
 
+    # For ACM certificates, use default verification since they are trusted AWS certificates
+    if is_acm_cert:
+        logger.info("ACM certificate detected, using default SSL verification")
+        return True
+
     try:
         # Clean up previous cert file if it exists
         if _cert_file and os.path.exists(_cert_file.name):
@@ -328,22 +333,12 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
 
         # Get the certificate name from the ARN
         cert_name = cert_arn.split("/")[1]
-        logger.info(f"Retrieving certificate '{cert_name}' from {'ACM' if is_acm_cert else 'IAM'}")
+        logger.info(f"Retrieving certificate '{cert_name}' from IAM")
 
-        # Get the certificate from IAM or ACM
-        if is_acm_cert:
-            rest_api_cert = acm_client.get_certificate(CertificateArn=cert_arn)
-            cert_body = rest_api_cert["Certificate"]
-            # For ACM certificates, include the certificate chain if available
-            cert_chain = rest_api_cert.get("CertificateChain")
-            if cert_chain:
-                # Combine the certificate and its chain
-                full_cert = cert_body + "\n" + cert_chain
-            else:
-                full_cert = cert_body
-        else:
-            rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
-            full_cert = rest_api_cert["ServerCertificate"]["CertificateBody"]
+        # Get the certificate from IAM
+        rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
+        full_cert = rest_api_cert["ServerCertificate"]["CertificateBody"]
+        logger.info(f"IAM certificate retrieved, length: {len(full_cert)}")
 
         # Create a new temporary file
         _cert_file = tempfile.NamedTemporaryFile(delete=False)
@@ -354,7 +349,7 @@ def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
         return _cert_file.name
 
     except Exception as e:
-        logger.error(f"Failed to get certificate from {'ACM' if is_acm_cert else 'IAM'}: {e}", exc_info=True)
+        logger.error(f"Failed to get certificate from IAM: {e}", exc_info=True)
         # If we fail to get the cert, return True to fall back to default verification
         return True
 

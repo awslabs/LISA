@@ -39,12 +39,11 @@ ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], c
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
 cfnClient = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
-acm_client = boto3.client("acm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 litellm_client = LiteLLMClient(
     base_uri=get_rest_api_container_endpoint(),
-    verify=get_cert_path(iam_client, acm_client),
+    verify=get_cert_path(iam_client),
     headers={
         "Authorization": secrets_manager.get_secret_value(
             SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"

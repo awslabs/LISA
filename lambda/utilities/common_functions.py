@@ -303,7 +303,7 @@ _cert_file = None
 
 
 @cache
-def get_cert_path(iam_client: Any, acm_client: Any) -> Union[str, bool]:
+def get_cert_path(iam_client: Any) -> Union[str, bool]:
     """
     Get cert path for IAM certs for SSL validation against LISA Serve endpoint.
 

@@ -48,7 +48,6 @@ session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name, config=retry_config)
 secrets_client = boto3.client("secretsmanager", region_name, config=retry_config)
 iam_client = boto3.client("iam", region_name, config=retry_config)
-acm_client = boto3.client("acm", region_name, config=retry_config)
 step_functions_client = boto3.client("stepfunctions", region_name, config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
 s3 = session.client(
@@ -87,7 +86,7 @@ def _get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
         lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
 
     base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
-    cert_path = get_cert_path(iam_client, acm_client)
+    cert_path = get_cert_path(iam_client)
 
     embedding = LisaOpenAIEmbeddings(
         lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=cert_path
@@ -123,7 +122,7 @@ class PipelineEmbeddings:
             self.base_url = f"{lisa_api_param_response['Parameter']['Value']}/{os.environ['REST_API_VERSION']}/serve"
 
             # Get certificate path for SSL verification
-            self.cert_path = get_cert_path(iam_client, acm_client)
+            self.cert_path = get_cert_path(iam_client)
 
             logger.info("Successfully initialized pipeline embeddings")
         except Exception:

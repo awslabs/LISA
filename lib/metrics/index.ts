@@ -23,6 +23,8 @@ import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { MetricsConstruct } from './metricsConstruct';
 
+export * from './metricsConstruct'
+
 /**
  * Properties for LisaMetricsStack.
  */

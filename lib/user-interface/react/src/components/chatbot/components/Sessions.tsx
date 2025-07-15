@@ -33,8 +33,8 @@ import {
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../auth/useAuthWithMidway';
-import { IConfiguration } from '../../shared/model/configuration.model';
+import { useAuth } from '../../../auth/useAuthWithMidway';
+import { IConfiguration } from '../../../shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';

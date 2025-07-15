@@ -52,6 +52,23 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'modelDescription': detail.value });
                 }} placeholder='Brief description of the model and its capabilities'/>
             </FormField>
+            <FormField label='Hosting Type' errorText={props.formErrors?.lisaHostedModel}>
+                <Select
+                    selectedOption={{
+                        label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
+                        value: props.item.lisaHostedModel ? 'true' : 'false'
+                    }}
+                    onChange={({ detail }) => {
+                        props.setFields({ 'lisaHostedModel': detail.selectedOption.value === 'true' });
+                    }}
+                    onBlur={() => props.touchFields(['lisaHostedModel'])}
+                    options={[
+                        { label: 'Third Party', value: 'false' },
+                        { label: 'LISA Hosted', value: 'true' }
+                    ]}
+                    disabled={props.isEdit}
+                />
+            </FormField>
             <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
@@ -85,38 +102,42 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     ]}
                 />
             </FormField>
-            <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
-                <Select
-                    options={(instances || []).map((instance) => ({value: instance}))}
-                    selectedOption={{value: props.item.instanceType}}
-                    loadingText='Loading instances'
-                    disabled={props.isEdit}
-                    onBlur={() => props.touchFields(['instanceType'])}
-                    onChange={({ detail }) => {
-                        props.setFields({ 'instanceType': detail.selectedOption.value });
-                    }}
-                    filteringType='auto'
-                    statusType={ isLoadingInstances ? 'loading' : 'finished'}
-                    virtualScroll
-                />
-            </FormField>
-            <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
-                <Select
-                    selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
-                    onBlur={() => props.touchFields(['inferenceContainer'])}
-                    onChange={({ detail }) =>
-                        props.setFields({
-                            'inferenceContainer': detail.selectedOption.value,
-                        })
-                    }
-                    options={[
-                        { label: 'TGI', value: InferenceContainer.TGI },
-                        { label: 'TEI', value: InferenceContainer.TEI },
-                        { label: 'VLLM', value: InferenceContainer.VLLM },
-                    ]}
-                    disabled={props.isEdit}
-                />
-            </FormField>
+            {props.item.lisaHostedModel && (
+                <>
+                    <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
+                        <Select
+                            options={(instances || []).map((instance) => ({value: instance}))}
+                            selectedOption={{value: props.item.instanceType}}
+                            loadingText='Loading instances'
+                            disabled={props.isEdit}
+                            onBlur={() => props.touchFields(['instanceType'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'instanceType': detail.selectedOption.value });
+                            }}
+                            filteringType='auto'
+                            statusType={ isLoadingInstances ? 'loading' : 'finished'}
+                            virtualScroll
+                        />
+                    </FormField>
+                    <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
+                        <Select
+                            selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
+                            onBlur={() => props.touchFields(['inferenceContainer'])}
+                            onChange={({ detail }) =>
+                                props.setFields({
+                                    'inferenceContainer': detail.selectedOption.value,
+                                })
+                            }
+                            options={[
+                                { label: 'TGI', value: InferenceContainer.TGI },
+                                { label: 'TEI', value: InferenceContainer.TEI },
+                                { label: 'VLLM', value: InferenceContainer.VLLM },
+                            ]}
+                            disabled={props.isEdit}
+                        />
+                    </FormField>
+                </>
+            )}
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                 <FormField label='Streaming' errorText={props.formErrors?.streaming}>
                     <Toggle

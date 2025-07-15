@@ -39,7 +39,6 @@ export type CreateModelModalProps = {
     setVisible: (isEdit: boolean) => void;
     selectedItems: IModel[];
     setSelectedItems: (items: IModel[]) => void;
-    modelCreationType: 'lisa' | 'external';
 };
 
 export type ModelCreateState = {
@@ -154,16 +153,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 }
             });
         } else {
+            // For new models, default to Third Party (lisaHostedModel = false)
             setState({
                 ...state,
                 form: {
                     ...state.form,
-                    lisaHostedModel: props.modelCreationType === 'lisa'
+                    lisaHostedModel: false
                 }
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [props.isEdit, props.modelCreationType]);
+    }, [props.isEdit]);
 
     useEffect(() => {
         if (!isCreating && isCreateSuccess) {
@@ -239,7 +239,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         if (props.isEdit) {
             return step.onEdit;
         } else {
-            if (props.modelCreationType === 'external') {
+            if (!state.form.lisaHostedModel) {
                 return step.forExternalModel;
             } else {
                 return true; // Show all steps for LISA hosted models

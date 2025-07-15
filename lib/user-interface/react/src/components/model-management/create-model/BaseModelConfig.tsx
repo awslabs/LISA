@@ -59,7 +59,15 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         value: props.item.lisaHostedModel ? 'true' : 'false'
                     }}
                     onChange={({ detail }) => {
-                        props.setFields({ 'lisaHostedModel': detail.selectedOption.value === 'true' });
+                        const isLisaHosted = detail.selectedOption.value === 'true';
+                        const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
+                        
+                        // If switching to Third Party, clear LISA Hosted specific fields
+                        if (!isLisaHosted) {
+                            fieldsToUpdate['instanceType'] = undefined;
+                            fieldsToUpdate['inferenceContainer'] = undefined;
+                        }
+                        props.setFields(fieldsToUpdate);
                     }}
                     onBlur={() => props.touchFields(['lisaHostedModel'])}
                     options={[

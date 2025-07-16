@@ -19,12 +19,11 @@ import os
 import sys
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import ANY, call, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import boto3
 import pytest
 from botocore.config import Config
-from botocore.exceptions import ClientError
 from moto import mock_aws
 
 # Add the lambda directory to the Python path
@@ -173,7 +172,7 @@ from metrics.lambda_functions import (
     get_global_metrics,
     get_user_metrics,
     process_metrics_sqs_event,
-    update_user_metrics,
+    update_user_metrics_by_session,
 )
 
 
@@ -418,7 +417,7 @@ class TestSQSEventProcessing:
     def test_process_metrics_sqs_event(self, dynamodb_table, lambda_context):
         """Test processing SQS events for user metrics.
 
-        Expected: Should process multiple SQS records and call update_user_metrics for each.
+        Expected: Should process multiple SQS records and call update_user_metrics_by_session for each.
         """
         # Create test SQS event
         sqs_event = {
@@ -427,6 +426,7 @@ class TestSQSEventProcessing:
                     "body": json.dumps(
                         {
                             "userId": "test-user-1",
+                            "sessionId": "session-1",
                             "userGroups": ["group1", "group2"],
                             "messages": [
                                 {"type": "human", "content": "Hello", "metadata": {"ragContext": "Some context"}},
@@ -439,6 +439,7 @@ class TestSQSEventProcessing:
                     "body": json.dumps(
                         {
                             "userId": "test-user-2",
+                            "sessionId": "session-2",
                             "userGroups": ["group1"],
                             "messages": [
                                 {"type": "human", "content": "Help me", "metadata": {}},
@@ -450,14 +451,19 @@ class TestSQSEventProcessing:
             ]
         }
 
-        with patch("metrics.lambda_functions.update_user_metrics") as mock_update_metrics:
+        with patch("metrics.lambda_functions.update_user_metrics_by_session") as mock_update_metrics:
             process_metrics_sqs_event(sqs_event, lambda_context)
 
-            # Verify update_user_metrics was called correctly for each record
+            # Verify update_user_metrics_by_session was called correctly for each record
             assert mock_update_metrics.call_count == 2
-            mock_update_metrics.assert_has_calls(
-                [call("test-user-1", True, ["group1", "group2"]), call("test-user-2", False, ["group1"])]
-            )
+            # Verify the calls included session metrics calculations
+            assert mock_update_metrics.call_args_list[0][0][0] == "test-user-1"  # user_id
+            assert mock_update_metrics.call_args_list[0][0][1] == "session-1"  # session_id
+            assert mock_update_metrics.call_args_list[0][0][3] == ["group1", "group2"]  # user_groups
+
+            assert mock_update_metrics.call_args_list[1][0][0] == "test-user-2"  # user_id
+            assert mock_update_metrics.call_args_list[1][0][1] == "session-2"  # session_id
+            assert mock_update_metrics.call_args_list[1][0][3] == ["group1"]  # user_groups
 
     def test_process_metrics_sqs_event_exception(self, lambda_context):
         """Test exception handling in process_metrics_sqs_event.
@@ -483,6 +489,20 @@ class TestSQSEventProcessing:
         with patch("metrics.lambda_functions.logger.error") as mock_logger:
             process_metrics_sqs_event(sqs_event, lambda_context)
             mock_logger.assert_called_with("SQS message missing required 'userId' field")
+
+    def test_process_metrics_sqs_event_missing_sessionid(self, lambda_context):
+        """Test handling of SQS messages missing sessionId.
+
+        Expected: Should log error and continue processing when SQS record is missing sessionId.
+        """
+        # Create test SQS event with missing sessionId
+        sqs_event = {
+            "Records": [{"body": json.dumps({"userId": "test-user-1", "userGroups": ["group1"], "messages": []})}]
+        }
+
+        with patch("metrics.lambda_functions.logger.error") as mock_logger:
+            process_metrics_sqs_event(sqs_event, lambda_context)
+            mock_logger.assert_called_with("SQS message missing required 'sessionId' field")
 
 
 class TestCheckRagUsage:
@@ -558,121 +578,66 @@ class TestCheckRagUsage:
         assert result is True
 
 
-class TestUpdateUserMetrics:
-    def test_update_user_metrics_new_user(self, dynamodb_table):
-        """Test updating metrics for a new user.
+class TestUpdateUserMetricsBySession:
+    def test_update_user_metrics_by_session_new_user(self, dynamodb_table):
+        """Test updating session metrics for a new user.
 
-        Expected: Should create a new user record with correct initial metrics.
+        Expected: Should create a new user record with correct session metrics.
         """
-        with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
-            update_user_metrics("new-test-user", True, ["group1", "group2"])
+        session_metrics = {
+            "totalPrompts": 2,
+            "ragUsage": 1,
+            "mcpToolCallsCount": 0,
+            "mcpToolUsage": {},
+        }
+
+        with patch("metrics.lambda_functions.publish_metric_deltas") as mock_publish_deltas:
+            update_user_metrics_by_session("new-test-user", "session-1", session_metrics, ["group1", "group2"])
 
             # Check DynamoDB was updated correctly
             response = dynamodb_table.get_item(Key={"userId": "new-test-user"})
             assert "Item" in response
-            assert response["Item"]["totalPrompts"] == 1
+            assert response["Item"]["totalPrompts"] == 2
             assert response["Item"]["ragUsageCount"] == 1
+            assert response["Item"]["mcpToolCallsCount"] == 0
             assert response["Item"]["userGroups"] == {"group1", "group2"}
             assert "firstSeen" in response["Item"]
             assert "lastSeen" in response["Item"]
+            assert "sessionMetrics" in response["Item"]
+            assert response["Item"]["sessionMetrics"]["session-1"] == session_metrics
 
-            # Check CloudWatch metrics were published
-            mock_put_metric.assert_called_once()
-            args = mock_put_metric.call_args[1]
-            assert args["Namespace"] == "LISA/UserMetrics"
-            assert len(args["MetricData"]) == 4  # Total prompt, user prompt, RAG usage, user RAG usage
+            # Check that metric deltas were published
+            mock_publish_deltas.assert_called_once()
 
-    def test_update_user_metrics_existing_user(self, dynamodb_table, sample_user_metrics):
-        """Test updating metrics for an existing user.
+    def test_update_user_metrics_by_session_existing_user(self, dynamodb_table, sample_user_metrics):
+        """Test updating session metrics for an existing user.
 
-        Expected: Should update existing user's metrics, incrementing totalPrompts but not ragUsageCount.
+        Expected: Should update existing user's metrics and track session-level metrics.
         """
-        # Insert sample user first
+        # Insert sample user first (with session metrics structure)
+        sample_user_metrics["sessionMetrics"] = {}
+        sample_user_metrics["mcpToolCallsCount"] = 0
+        sample_user_metrics["mcpToolUsage"] = {}
         dynamodb_table.put_item(Item=sample_user_metrics)
 
-        with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
-            update_user_metrics("test-user-1", False, ["group3", "group4"])
+        session_metrics = {
+            "totalPrompts": 3,
+            "ragUsage": 2,
+            "mcpToolCallsCount": 1,
+            "mcpToolUsage": {"test_tool": 1},
+        }
+
+        with patch("metrics.lambda_functions.publish_metric_deltas") as mock_publish_deltas:
+            update_user_metrics_by_session("test-user-1", "session-1", session_metrics, ["group3", "group4"])
 
             # Check DynamoDB was updated correctly
             response = dynamodb_table.get_item(Key={"userId": "test-user-1"})
             assert "Item" in response
-            assert response["Item"]["totalPrompts"] == 11  # Increased by 1
-            assert response["Item"]["ragUsageCount"] == 5  # No change (rag_usage was False)
+            assert response["Item"]["totalPrompts"] == 3  # Should be session total, not cumulative
+            assert response["Item"]["ragUsageCount"] == 2  # Should be session total, not cumulative
+            assert response["Item"]["mcpToolCallsCount"] == 1
             assert response["Item"]["userGroups"] == {"group3", "group4"}  # Updated groups
+            assert response["Item"]["sessionMetrics"]["session-1"] == session_metrics
 
-            # Check CloudWatch metrics were published
-            mock_put_metric.assert_called_once()
-            args = mock_put_metric.call_args[1]
-            assert args["Namespace"] == "LISA/UserMetrics"
-            assert len(args["MetricData"]) == 2  # Total prompt, user prompt (no RAG metrics)
-
-    def test_update_user_metrics_existing_user_with_rag(self, dynamodb_table, sample_user_metrics):
-        """Test updating metrics for an existing user with RAG usage.
-
-        Expected: Should update existing user's metrics, incrementing both totalPrompts and ragUsageCount.
-        """
-        # Insert sample user first
-        dynamodb_table.put_item(Item=sample_user_metrics)
-
-        with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
-            update_user_metrics("test-user-1", True, ["group1", "group2"])
-
-            # Check DynamoDB was updated correctly
-            response = dynamodb_table.get_item(Key={"userId": "test-user-1"})
-            assert "Item" in response
-            assert response["Item"]["totalPrompts"] == 11  # Increased by 1
-            assert response["Item"]["ragUsageCount"] == 6  # Increased by 1
-            assert response["Item"]["userGroups"] == {"group1", "group2"}  # Updated groups
-
-            # Check CloudWatch metrics were published
-            mock_put_metric.assert_called_once()
-            args = mock_put_metric.call_args[1]
-            assert args["Namespace"] == "LISA/UserMetrics"
-            assert len(args["MetricData"]) == 4  # Total prompt, user prompt, RAG usage, user RAG usage
-
-    def test_update_user_metrics_no_user_groups(self, dynamodb_table):
-        """Test updating metrics with no user groups.
-
-        Expected: Should create user record with no userGroups attribute when empty list provided.
-        """
-        update_user_metrics("new-test-user", False, [])
-
-        # Check DynamoDB was updated correctly
-        response = dynamodb_table.get_item(Key={"userId": "new-test-user"})
-        assert "Item" in response
-        assert response["Item"]["totalPrompts"] == 1
-        assert response["Item"]["ragUsageCount"] == 0
-        assert response["Item"].get("userGroups") is None  # No groups
-
-    def test_update_user_metrics_client_error(self, dynamodb_table):
-        """Test handling ClientError in update_user_metrics.
-
-        Expected: Should catch and log the ClientError without raising it.
-        """
-        with patch("metrics.lambda_functions.metrics_table.get_item") as mock_get_item, patch(
-            "metrics.lambda_functions.logger.error"
-        ) as mock_logger:
-
-            mock_get_item.side_effect = ClientError(
-                {"Error": {"Code": "TestException", "Message": "Test error message"}}, "operation"
-            )
-
-            update_user_metrics("test-user-1", True, ["group1"])
-
-            mock_logger.assert_called_with(ANY)  # We don't test the exact message as it may vary
-
-    def test_update_user_metrics_cloudwatch_exception(self, dynamodb_table):
-        """Test handling CloudWatch exceptions in update_user_metrics.
-
-        Expected: Should catch and log CloudWatch exceptions without raising them.
-        """
-        with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric_data, patch(
-            "metrics.lambda_functions.logger.error"
-        ) as mock_logger:
-
-            mock_put_metric_data.side_effect = Exception("Test CloudWatch exception")
-
-            # This should not raise the exception
-            update_user_metrics("test-user-1", True, ["group1"])
-
-            mock_logger.assert_called_with("Failed to publish CloudWatch metrics: Test CloudWatch exception")
+            # Check that metric deltas were published
+            mock_publish_deltas.assert_called_once()

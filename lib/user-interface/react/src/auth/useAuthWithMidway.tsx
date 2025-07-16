@@ -58,24 +58,24 @@
              }
              
              // Get bindle GUIDs from environment
-             const appAccessBindle = window.env.APP_ACCESS_BINDLE;
-             const adminAccessBindle = window.env.ADMIN_ACCESS_BINDLE;
+             const appAccessBindleLockGuid = window.env.APP_ACCESS_BINDLE;
+             const adminAccessBindleLockGuid = window.env.ADMIN_ACCESS_BINDLE;
              
-             if (!appAccessBindle) {
+             if (!appAccessBindleLockGuid) {
                  throw new Error('APP_ACCESS_BINDLE not configured in environment');
              }
              
              const brassClient = new BrassClient();
              
              // Check app access (required for all users)
-             const appAccessResult = await brassClient.isAuthorizedToUnlockBindle(midwayUser, appAccessBindle);
+             const appAccessResult = await brassClient.isAuthorizedToUnlockBindle(midwayUser, appAccessBindleLockGuid);
              
              if (appAccessResult.authorized) {
                  // User has app access, now check admin access if configured
                  let hasAdminAccess = false;
-                 if (adminAccessBindle) {
+                 if (adminAccessBindleLockGuid) {
                      try {
-                         const adminAccessResult = await brassClient.isAuthorizedToUnlockBindle(midwayUser, adminAccessBindle);
+                         const adminAccessResult = await brassClient.isAuthorizedToUnlockBindle(midwayUser, adminAccessBindleLockGuid);
                          hasAdminAccess = adminAccessResult.authorized;
                      } catch (adminError) {
                          console.warn('Error checking admin access:', adminError);
@@ -102,8 +102,8 @@
                      isAdminUser: false,
                      authError: {
                          type: 'bindle',
-                         message: `You don't have access to the required app bindle lock. Please request access to bindle: ${appAccessBindle}`,
-                         bindleGuid: appAccessBindle
+                         message: `You don't have access to the required app bindle lock. Please request access to bindle: ${appAccessBindleLockGuid}`,
+                         bindleGuid: appAccessBindleLockGuid
                      },
                      timestamp: Date.now()
                  };
@@ -114,11 +114,11 @@
              // Check if this is a bindle lock error or a general auth error
              let authError;
              if (error.message?.includes('bindle') || error.message?.includes('authorized')) {
-                 const appAccessBindle = window.env.APP_ACCESS_BINDLE || 'unknown';
+                 const appAccessBindleLockGuid = window.env.APP_ACCESS_BINDLE || 'unknown';
                  authError = {
                      type: 'bindle' as const,
                      message: `Access denied: ${error.message}`,
-                     bindleGuid: appAccessBindle
+                     bindleGuid: appAccessBindleLockGuid
                  };
              } else {
                  authError = {

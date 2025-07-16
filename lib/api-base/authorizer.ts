@@ -97,9 +97,11 @@ export class CustomAuthorizer extends Construct {
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue,
                 // BRASS Bindle Lock Configuration
-                ADMIN_BINDLE_GUID: config.authConfig!.adminBindleGuid,
-                APP_BINDLE_GUID: config.authConfig!.appBindleGuid,
+                ADMIN_BINDLE_GUID: config.authConfig!.adminAccessBindleLockGuid,
+                APP_BINDLE_GUID: config.authConfig!.appAccessBindleLockGuid,
                 BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
+                // AWS Region for proper BRASS service signing (custom variable since AWS_REGION is reserved)
+                BRASS_REGION: config.region,
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})
             },
             role: role,
@@ -116,7 +118,7 @@ export class CustomAuthorizer extends Construct {
         managementKeySecret.grantRead(authorizerLambda);
 
         // Add BRASS service permissions for bindle lock authorization
-        if (config.authConfig?.adminBindleGuid || config.authConfig?.appBindleGuid) {
+        if (config.authConfig?.adminAccessBindleLockGuid || config.authConfig?.appAccessBindleLockGuid) {
             authorizerLambda.addToRolePolicy(new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: [

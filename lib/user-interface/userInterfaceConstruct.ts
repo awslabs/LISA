@@ -208,8 +208,8 @@ export class UserInterfaceConstruct extends Construct {
                 '/lisa/federated-role-arn'
             ).stringValue,
             // BRASS Bindle Lock Configuration
-            APP_ACCESS_BINDLE: config.authConfig!.appBindleGuid,
-            ADMIN_ACCESS_BINDLE: config.authConfig!.adminBindleGuid,
+            APP_ACCESS_BINDLE: config.authConfig!.appAccessBindleLockGuid,
+            ADMIN_ACCESS_BINDLE: config.authConfig!.adminAccessBindleLockGuid,
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

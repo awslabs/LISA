@@ -100,7 +100,7 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
     }
 
     items.push({
-        text: `${user.preferences?.overrideAllApprovals === true ? 'Disable' : 'Enable'} Autopilot Mode`,
+        text: `${user.preferences?.overrideAllApprovals === true ? 'Activate Safe Mode' : 'Activate Autopilot Mode'}`,
         id: 'toggleAutopilotMode',
     });
 

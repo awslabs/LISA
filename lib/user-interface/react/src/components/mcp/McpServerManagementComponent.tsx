@@ -41,6 +41,7 @@ import {
     UserPreferences, useUpdateUserPreferencesMutation
 } from '@/shared/reducers/user-preferences.reducer';
 import { useNotificationService } from '@/shared/util/hooks';
+import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
@@ -112,6 +113,13 @@ export function McpServerManagementComponent () {
         updatePreferences(updated);
     };
 
+    useEffect(() => {
+        dispatch(setBreadcrumbs([
+            { text: 'MCP Connections', href: '/mcp-connections' }
+        ]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const { paginationProps, items, collectionProps, filteredItemsCount, actions } = useCollection(allItems, {
         selection: {
             defaultSelectedItems: [],
@@ -163,7 +171,7 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Server', cell: (item) => <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/>},
+                { header: 'Use Server', cell: (item) => item.owner === userName || item.owner === 'lisa:public' ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},

@@ -194,7 +194,7 @@ export class SessionApi extends Construct {
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: ['sqs:SendMessage'],
-                    resources: [`arn:${config.partition}:sqs:${config.region}:${config.accountNumber}:${usageMetricsQueueName}`]
+                    resources: [`arn:${config.partition}:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueName}`]
                 })
             );
             Object.assign(env, { USAGE_METRICS_QUEUE_NAME: usageMetricsQueueName });

@@ -212,24 +212,24 @@ def process_metrics_sqs_event(event: dict, context: dict) -> None:
             user_groups = message.get("userGroups", [])
             messages = message.get("messages", [])
 
-            logger.info(f"Processing metrics for user: {user_id}, session: {session_id}, message contains {len(messages)} messages")
+            logger.info(f"Processing metrics for user: {user_id}, session: {session_id}.")
 
             if not user_id:
                 logger.error("SQS message missing required 'userId' field")
                 continue
-                
+
             if not session_id:
                 logger.error("SQS message missing required 'sessionId' field")
                 continue
 
             # Calculate metrics for a given session
             session_metrics = calculate_session_metrics(messages)
-            
+
             logger.info(f"Calculated session metrics: {session_metrics}")
 
             # Update user metrics for given session
             update_user_metrics_by_session(user_id, session_id, session_metrics, user_groups)
-            
+
         except Exception as e:
             logger.error(f"Error processing SQS message: {str(e)}")
 
@@ -275,16 +275,11 @@ def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         Dictionary containing session metrics
     """
     if not messages:
-        return {
-            "totalPrompts": 0,
-            "ragUsage": 0,
-            "mcpToolCallsCount": 0,
-            "mcpToolUsage": {}
-        }
+        return {"totalPrompts": 0, "ragUsage": 0, "mcpToolCallsCount": 0, "mcpToolUsage": {}}
 
     total_prompts = 0
-    mcp_tool_usage = {}
-    
+    mcp_tool_usage: Dict[str, int] = {}
+
     # Count human messages for total prompts
     for message in messages:
         if isinstance(message, dict):
@@ -294,16 +289,15 @@ def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
             # Check for direct type field
             elif message.get("type") == "human":
                 total_prompts += 1
-            
+
             # Check for MCP tool calls in toolCalls array
             tool_calls = message.get("toolCalls", [])
-            
+
             if isinstance(tool_calls, dict) and tool_calls.get("L"):
                 # DynamoDB format - toolCalls is {"L": [...]}
                 for tool_call_item in tool_calls["L"]:
                     tool_call = tool_call_item.get("M", {})
-                    if (isinstance(tool_call.get("type"), dict) and 
-                        tool_call["type"].get("S") == "tool_call"):
+                    if isinstance(tool_call.get("type"), dict) and tool_call["type"].get("S") == "tool_call":
                         # Extract tool name
                         name_obj = tool_call.get("name", {})
                         if isinstance(name_obj, dict) and name_obj.get("S"):
@@ -312,24 +306,25 @@ def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
             elif isinstance(tool_calls, list):
                 # Direct format - toolCalls is a list
                 for tool_call in tool_calls:
-                    if (isinstance(tool_call, dict) and 
-                        tool_call.get("type") == "tool_call"):
+                    if isinstance(tool_call, dict) and tool_call.get("type") == "tool_call":
                         tool_name = tool_call.get("name")
                         if tool_name:
                             mcp_tool_usage[tool_name] = mcp_tool_usage.get(tool_name, 0) + 1
 
     # Calculate RAG usage
     has_rag_usage = check_rag_usage(messages)
-    
+
     return {
         "totalPrompts": total_prompts,
         "ragUsage": 1 if has_rag_usage else 0,
         "mcpToolCallsCount": sum(mcp_tool_usage.values()),
-        "mcpToolUsage": mcp_tool_usage
+        "mcpToolUsage": mcp_tool_usage,
     }
 
 
-def publish_metric_deltas(user_id: str, delta_prompts: int, delta_rag: int, delta_mcp_calls: int, delta_mcp_usage: Dict[str, int]) -> None:
+def publish_metric_deltas(
+    user_id: str, delta_prompts: int, delta_rag: int, delta_mcp_calls: int, delta_mcp_usage: Dict[str, int]
+) -> None:
     """Publish only metric deltas to CloudWatch to prevent double counting.
 
     Parameters:
@@ -348,64 +343,79 @@ def publish_metric_deltas(user_id: str, delta_prompts: int, delta_rag: int, delt
     try:
         timestamp = datetime.now()
         metric_data = []
-        
+
         # Only publish metrics that actually changed
         if delta_prompts != 0:
-            metric_data.extend([
-                {"MetricName": "TotalPromptCount", "Value": delta_prompts, "Unit": "Count", "Timestamp": timestamp},
-                {
-                    "MetricName": "UserPromptCount",
-                    "Dimensions": [{"Name": "UserId", "Value": user_id}],
-                    "Value": delta_prompts,
-                    "Unit": "Count",
-                    "Timestamp": timestamp,
-                },
-            ])
-        
+            metric_data.extend(
+                [
+                    {"MetricName": "TotalPromptCount", "Value": delta_prompts, "Unit": "Count", "Timestamp": timestamp},
+                    {
+                        "MetricName": "UserPromptCount",
+                        "Dimensions": [{"Name": "UserId", "Value": user_id}],
+                        "Value": delta_prompts,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                ]
+            )
+
         if delta_rag != 0:
-            metric_data.extend([
-                {"MetricName": "RAGUsageCount", "Value": delta_rag, "Unit": "Count", "Timestamp": timestamp},
-                {
-                    "MetricName": "UserRAGUsageCount",
-                    "Dimensions": [{"Name": "UserId", "Value": user_id}],
-                    "Value": delta_rag,
-                    "Unit": "Count",
-                    "Timestamp": timestamp,
-                }
-            ])
-        
+            metric_data.extend(
+                [
+                    {"MetricName": "RAGUsageCount", "Value": delta_rag, "Unit": "Count", "Timestamp": timestamp},
+                    {
+                        "MetricName": "UserRAGUsageCount",
+                        "Dimensions": [{"Name": "UserId", "Value": user_id}],
+                        "Value": delta_rag,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                ]
+            )
+
         if delta_mcp_calls != 0:
-            metric_data.extend([
-                {"MetricName": "TotalMCPToolCalls", "Value": delta_mcp_calls, "Unit": "Count", "Timestamp": timestamp},
-                {
-                    "MetricName": "UserMCPToolCalls",
-                    "Dimensions": [{"Name": "UserId", "Value": user_id}],
-                    "Value": delta_mcp_calls,
-                    "Unit": "Count",
-                    "Timestamp": timestamp,
-                }
-            ])
-        
+            metric_data.extend(
+                [
+                    {
+                        "MetricName": "TotalMCPToolCalls",
+                        "Value": delta_mcp_calls,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                    {
+                        "MetricName": "UserMCPToolCalls",
+                        "Dimensions": [{"Name": "UserId", "Value": user_id}],
+                        "Value": delta_mcp_calls,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                ]
+            )
+
         # Individual tool metrics
         for tool_name, delta_count in delta_mcp_usage.items():
             if delta_count != 0:
-                metric_data.append({
-                    "MetricName": "MCPToolCallsByTool",
-                    "Dimensions": [{"Name": "ToolName", "Value": tool_name}],
-                    "Value": delta_count,
-                    "Unit": "Count",
-                    "Timestamp": timestamp,
-                })
+                metric_data.append(
+                    {
+                        "MetricName": "MCPToolCallsByTool",
+                        "Dimensions": [{"Name": "ToolName", "Value": tool_name}],
+                        "Value": delta_count,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    }
+                )
 
         if metric_data:
             cloudwatch.put_metric_data(Namespace="LISA/UserMetrics", MetricData=metric_data)
             logger.info(f"Published {len(metric_data)} metric deltas for user {user_id}")
-    
+
     except Exception as e:
         logger.error(f"Failed to publish metric deltas: {e}")
 
 
-def update_user_metrics_by_session(user_id: str, session_id: str, session_metrics: Dict[str, Any], user_groups: List[str]) -> None:
+def update_user_metrics_by_session(
+    user_id: str, session_id: str, session_metrics: Dict[str, Any], user_groups: List[str]
+) -> None:
     """Update metrics for a given user based on session-level metrics.
 
     Parameters:
@@ -431,18 +441,15 @@ def update_user_metrics_by_session(user_id: str, session_id: str, session_metric
         user_exists = "Item" in response
 
         # Get existing session metrics for this specific session
-        existing_session_metrics = existing_item.get("sessionMetrics", {}).get(session_id, {
-            "totalPrompts": 0,
-            "ragUsage": 0,
-            "mcpToolCallsCount": 0,
-            "mcpToolUsage": {}
-        })
+        existing_session_metrics = existing_item.get("sessionMetrics", {}).get(
+            session_id, {"totalPrompts": 0, "ragUsage": 0, "mcpToolCallsCount": 0, "mcpToolUsage": {}}
+        )
 
         # Calculate deltas
         delta_prompts = session_metrics["totalPrompts"] - existing_session_metrics.get("totalPrompts", 0)
         delta_rag = session_metrics["ragUsage"] - existing_session_metrics.get("ragUsage", 0)
         delta_mcp_calls = session_metrics["mcpToolCallsCount"] - existing_session_metrics.get("mcpToolCallsCount", 0)
-        
+
         # Calculate MCP tool usage deltas
         existing_mcp_usage = existing_session_metrics.get("mcpToolUsage", {})
         new_mcp_usage = session_metrics["mcpToolUsage"]
@@ -466,9 +473,7 @@ def update_user_metrics_by_session(user_id: str, session_id: str, session_metric
                 "ragUsageCount": session_metrics["ragUsage"],
                 "mcpToolCallsCount": session_metrics["mcpToolCallsCount"],
                 "mcpToolUsage": session_metrics["mcpToolUsage"],
-                "sessionMetrics": {
-                    session_id: session_metrics
-                },
+                "sessionMetrics": {session_id: session_metrics},
                 "firstSeen": datetime.now().isoformat(),
                 "lastSeen": datetime.now().isoformat(),
                 "userGroups": set(user_groups) if user_groups else None,
@@ -478,22 +483,24 @@ def update_user_metrics_by_session(user_id: str, session_id: str, session_metric
             # Update existing user
             all_session_metrics = existing_item.get("sessionMetrics", {})
             all_session_metrics[session_id] = session_metrics
-            
+
             # Recalculate aggregate totals from all sessions
             total_prompts = sum(sm.get("totalPrompts", 0) for sm in all_session_metrics.values())
             total_rag = sum(sm.get("ragUsage", 0) for sm in all_session_metrics.values())
             total_mcp_calls = sum(sm.get("mcpToolCallsCount", 0) for sm in all_session_metrics.values())
-            
+
             # Aggregate MCP tool usage across all sessions
-            aggregate_mcp_usage = {}
+            aggregate_mcp_usage: Dict[str, int] = {}
             for sm in all_session_metrics.values():
                 for tool_name, count in sm.get("mcpToolUsage", {}).items():
                     aggregate_mcp_usage[tool_name] = aggregate_mcp_usage.get(tool_name, 0) + count
-            
+
             # Update the user record
             metrics_table.update_item(
                 Key={"userId": user_id},
-                UpdateExpression="SET lastSeen = :now, totalPrompts = :total_prompts, ragUsageCount = :total_rag, mcpToolCallsCount = :total_mcp, mcpToolUsage = :mcp_usage, sessionMetrics = :session_metrics, userGroups = :groups",
+                UpdateExpression="SET lastSeen = :now, totalPrompts = :total_prompts, ragUsageCount = :total_rag, "
+                "mcpToolCallsCount = :total_mcp, mcpToolUsage = :mcp_usage, "
+                "sessionMetrics = :session_metrics, userGroups = :groups",
                 ExpressionAttributeValues={
                     ":now": datetime.now().isoformat(),
                     ":total_prompts": total_prompts,
@@ -502,7 +509,7 @@ def update_user_metrics_by_session(user_id: str, session_id: str, session_metric
                     ":mcp_usage": aggregate_mcp_usage,
                     ":session_metrics": all_session_metrics,
                     ":groups": set(user_groups) if user_groups else existing_item.get("userGroups", set()),
-                }
+                },
             )
     except ClientError as e:
         logger.error(f"Failed to update session metrics for user {user_id}: {e}")

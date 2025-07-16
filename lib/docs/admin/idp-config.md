@@ -15,6 +15,7 @@ authConfig:
   authority: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example
   clientId: your-client-id
   adminGroup: AdminGroup
+  userGroup: UserGroup
   jwtGroupsProperty: cognito:groups
 ```
 
@@ -31,5 +32,6 @@ authConfig:
   authority: https://your-keycloak-server.com
   clientId: your-client-name
   adminGroup: AdminGroup
+  userGroup: UserGroup
   jwtGroupsProperty: realm_access.roles
 ```

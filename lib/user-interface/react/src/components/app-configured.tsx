@@ -15,7 +15,7 @@
 */
 
 // es-lint-disable
-import { AuthProvider } from 'react-oidc-context';
+import { AuthProvider, useAuth } from 'react-oidc-context';
 import App from '../App';
 
 import { OidcConfig } from '../config/oidc.config';
@@ -27,6 +27,7 @@ import { useEffect, useState } from 'react';
 function AppConfigured () {
     const dispatch = useAppDispatch();
     const [oidcUser, setOidcUser] = useState<User | void>();
+    const auth = useAuth();
 
     useEffect(() => {
         if (oidcUser) {
@@ -65,12 +66,20 @@ function AppConfigured () {
         return window.env.ADMIN_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
     };
 
+    const isUser = (userGroups: any): boolean => {
+        return window.env.USER_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
+    };
+
     return (
         <AuthProvider
             {...OidcConfig}
             onSigninCallback={async (user: User | void) => {
-                window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
-                setOidcUser(user);
+                if ((window.env.USER_GROUP && user && isUser(getGroups(user.profile))) || !window.env.USER_GROUP){
+                    window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
+                    setOidcUser(user);
+                } else  {
+                    await auth.signoutSilent();
+                }
             }}
         >
             <App />

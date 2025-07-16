@@ -516,6 +516,50 @@ export default function Chat ({ sessionId }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments, notificationService]);
 
+    // Ref to track if we're processing a keyboard event
+    const isKeyboardEventRef = useRef(false);
+
+    // Custom action handler that only allows stop on button clicks
+    const handleAction = useCallback(() => {
+        // If this is a keyboard event, don't process it here (it's handled in handleKeyPress)
+        if (isKeyboardEventRef.current) {
+            return;
+        }
+
+        if (shouldShowStopButton) {
+            // Only allow stop action on button clicks (not keyboard events)
+            handleStop();
+        } else {
+            // Normal send functionality - allow both button clicks and Enter key
+            if (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession) {
+                handleSendGenerateRequest();
+            }
+        }
+    }, [shouldShowStopButton, handleStop, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
+
+    // Handle Enter key press
+    const handleKeyPress = useCallback((event: any) => {
+        if (event.detail.key === 'Enter' && !event.detail.shiftKey) {
+            event.preventDefault();
+            isKeyboardEventRef.current = true;
+
+            // Handle the action directly for keyboard events
+            if (shouldShowStopButton) {
+                // Do nothing for stop button when Enter is pressed
+            } else {
+                // Normal send functionality for Enter key
+                if (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession) {
+                    handleSendGenerateRequest();
+                }
+            }
+
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                isKeyboardEventRef.current = false;
+            }, 100);
+        }
+    }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
+
     return (
         <div className='h-[80vh]'>
             {/* MCP Connections - invisible components that manage the connections */}
@@ -688,7 +732,8 @@ export default function Chat ({ sessionId }) {
                                 }
                                 disabled={!selectedModel || loadingSession}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
-                                onAction={shouldShowStopButton ? handleStop : (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession ? handleSendGenerateRequest : undefined)}
+                                onAction={handleAction}
+                                onKeyDown={handleKeyPress}
                                 secondaryActions={
                                     <Box padding={{ left: 'xxs', top: 'xs' }}>
                                         <ButtonGroup

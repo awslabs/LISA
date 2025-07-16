@@ -117,7 +117,7 @@ export function McpServerDetails () {
 
     if (isSuccess) {
         dispatch(setBreadcrumbs([
-            { text: 'MCP Servers', href: '/mcp-connections' },
+            { text: 'MCP Connections', href: '/mcp-connections' },
             { text: data?.name, href: '' }
         ]));
     }

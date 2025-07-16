@@ -90,14 +90,12 @@ export class LegacyIngestPipelineStateMachine extends Construct {
         );
 
         // Create IAM certificate policy if certificate ARN is provided
-        let certPolicyStatement;
         if (config.restApiConfig.sslCertIamArn) {
-            certPolicyStatement = new PolicyStatement({
+            policyStatements.push(new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: ['iam:GetServerCertificate'],
                 resources: [config.restApiConfig.sslCertIamArn]
-            });
-            policyStatements.push(certPolicyStatement);
+            }));
         }
 
         // Add EventBridge Rules based on pipeline configuration

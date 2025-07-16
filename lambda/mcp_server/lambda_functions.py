@@ -44,7 +44,8 @@ def _get_mcp_servers(
         condition = Attr("owner").eq(user_id) | Attr("owner").eq("lisa:public")
         filter_expression = condition if filter_expression is None else filter_expression & condition
     if active:
-        filter_expression = Attr("status").eq(McpServerStatus.ACTIVE)
+        condition = Attr("status").eq(McpServerStatus.ACTIVE)
+        filter_expression = condition if filter_expression is None else filter_expression & condition
 
     scan_arguments = {
         "TableName": os.environ["MCP_SERVERS_TABLE_NAME"],
@@ -137,6 +138,9 @@ def update(event: dict, context: dict) -> Any:
 
     # Check if the user is authorized to update the mcp server
     if is_admin(event) or item["owner"] == user_id:
+        # Check if switching to global
+        if item["owner"] != mcp_server_model.owner:
+            table.delete_item(Key={"id": mcp_server_id, "owner": item["owner"]})
         # Update the mcp server
         logger.info(f"new model: {mcp_server_model.model_dump(exclude_none=True)}")
         table.put_item(Item=mcp_server_model.model_dump(exclude_none=True))

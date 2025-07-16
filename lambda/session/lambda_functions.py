@@ -262,6 +262,7 @@ def put_session(event: dict, context: dict) -> dict:
                 # Create a copy of the event to send to SQS
                 metrics_event = {
                     "userId": user_id,
+                    "sessionId": session_id,
                     "messages": messages,
                     "userGroups": get_groups(event),
                     "timestamp": datetime.now().isoformat(),

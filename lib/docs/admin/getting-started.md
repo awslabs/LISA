@@ -137,6 +137,7 @@ In the `config-custom.yaml` file, configure the `authConfig` block for authentic
 - `authority`: URL of your identity provider
 - `clientId`: Client ID for your application
 - `adminGroup`: Group name for users with model management permissions
+- `userGroup`: Group name for regular LISA users
 - `jwtGroupsProperty`: Path to the groups field in the JWT token
 - `additionalScopes` (optional): Extra scopes for group membership information
 

@@ -20,7 +20,7 @@ import App from '../App';
 
 import { OidcConfig } from '../config/oidc.config';
 import { User, UserProfile } from 'oidc-client-ts';
-import { useAppDispatch } from '../config/store';
+import { purgeStore, useAppDispatch } from '../config/store';
 import { updateUserState } from '../shared/reducers/user.reducer';
 import { useEffect, useState } from 'react';
 
@@ -67,7 +67,7 @@ function AppConfigured () {
     };
 
     const isUser = (userGroups: any): boolean => {
-        return window.env.USER_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
+        return window.env.USER_GROUP ? userGroups.includes(window.env.USER_GROUP) : false;
     };
 
     return (
@@ -78,6 +78,7 @@ function AppConfigured () {
                     window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
                     setOidcUser(user);
                 } else  {
+                    await purgeStore();
                     await auth.signoutSilent();
                 }
             }}

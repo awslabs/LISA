@@ -243,7 +243,7 @@ def extract_chunk_strategy(pipeline_config: Dict) -> FixedChunkingStrategy:
     chunk_size = int(pipeline_config["chunkSize"])
     chunk_overlap = int(pipeline_config["chunkOverlap"])
 
-    return FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap))
+    return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
 
 
 def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict]]:

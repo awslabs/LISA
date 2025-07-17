@@ -248,7 +248,7 @@ class RagDocumentRepository:
 
             if join_docs:
                 for doc in docs:
-                    subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
+                    subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.document_id))
                     doc.subdocs = subdocs
 
             return docs, next_key

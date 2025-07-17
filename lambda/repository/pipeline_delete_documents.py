@@ -50,6 +50,9 @@ def pipeline_delete(job: IngestionJob) -> None:
             # Update status
             ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)
             logger.info(f"Successfully deleted {job.s3_path} from S3")
+        else:
+            # If no document found, still update status to completed
+            ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)
     except Exception as e:
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
 
@@ -69,7 +72,13 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
+    if not pipeline_config or not isinstance(pipeline_config, dict):
+        # If pipeline_config is missing or not a dict, skip
+        return
     embedding_model = pipeline_config.get("embeddingModel", None)
+    if embedding_model is None:
+        # If embedding_model is missing, skip
+        return
     s3_key = f"s3://{bucket}/{key}"
 
     logger.info(f"Deleting object {s3_key} for repository {repository_id}/{embedding_model}")

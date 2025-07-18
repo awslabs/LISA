@@ -1,4 +1,4 @@
-# User Analytics
+# Usage Analytics
 
 LISA offers Administrators insights into user engagement, feature adoption, and system utilization. Through Amazon CloudWatch, LISA automatically tracks user interactions, RAG usage, MCP tool calls, and group-level analytics, presenting this data through an integrated dashboard and API endpoints.
 
@@ -15,11 +15,11 @@ Metrics are collected in real-time and aggregated for both immediate monitoring 
 
 ### Accessing the Dashboard
 
-The LISA User Metrics Dashboard is automatically created during deployment. Administrators can be accessed through the AWS Management Console:
+The LISA Metrics Dashboard is automatically created during deployment. Administrators can be accessed through the AWS Management Console:
 
 1. Navigate to the **CloudWatch** service in your AWS console
 2. Select **Dashboards** from the left navigation menu
-3. Locate and click on **LISA-User-Metrics** dashboard. Click on it to open
+3. Locate and click on **LISA-Metrics** dashboard. Click on it to open
 4. The dashboard displays a 7-day view by default
 
 
@@ -81,12 +81,12 @@ Displays MCP tool utilization by organizational groups.
 Usage data is stored in multiple locations:
 
 ### DynamoDB Storage
-- **User Metrics Table**: Stores aggregate user-level metrics including total prompts, RAG usage counts, MCP tool usage, and group memberships
+- **Usage Metrics Table**: Stores aggregate usage metrics including total prompts, RAG usage counts, MCP tool usage, and group memberships
 - **Session-Level Tracking**: Detailed per-session metrics to support accurate counting and prevent data duplication
 - **Real-Time Updates**: Session data updates immediately as users interact with LISA
 
 ### CloudWatch Metrics
-- **Namespace**: All metrics are published under LISA/UserMetrics
+- **Namespace**: All metrics are published under LISA/UsageMetrics
 - **Dimensions**: Supports filtering by UserId, GroupName, and ToolName
 
 ## Customizing Time Ranges
@@ -132,7 +132,7 @@ CloudWatch allows extensive dashboard customization to meet specific organizatio
 
 1. **Document Changes**: Keep records of custom configurations
 2. **Copy Source**: From the CloudWatch dashboard select **Actions** and **View/edit source**. This will show you the source code of the dashboard which can be copied and reused.
-3. **Create Copy**: CloudWatch dashboard select **Actions** and **Save dashboard as**. Provide a unique name and a copy of the `LISA-User-Metrics` dashboard will be made.
+3. **Create Copy**: CloudWatch dashboard select **Actions** and **Save dashboard as**. Provide a unique name and a copy of the `LISA-Metrics` dashboard will be made.
 
 
 ## Daily Metrics Management

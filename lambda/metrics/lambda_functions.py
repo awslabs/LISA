@@ -62,7 +62,7 @@ def get_user_metrics(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def get_global_metrics(event: dict, context: dict) -> dict:
+def get_user_metrics_all(event: dict, context: dict) -> dict:
     """Get aggregated metrics across all users."""
     try:
         # Scan entire metrics table
@@ -101,8 +101,8 @@ def get_global_metrics(event: dict, context: dict) -> dict:
 
         return {"statusCode": 200, "body": metrics}
     except ClientError as e:
-        logger.error(f"Error retrieving global metrics: {e}")
-        return {"statusCode": 500, "body": json.dumps({"error": "Failed to retrieve global metrics"})}
+        logger.error(f"Error retrieving user metrics: {e}")
+        return {"statusCode": 500, "body": json.dumps({"error": "Failed to retrieve user metrics"})}
 
 
 def count_unique_users_and_publish_metric() -> Any:
@@ -323,7 +323,12 @@ def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def publish_metric_deltas(
-    user_id: str, delta_prompts: int, delta_rag: int, delta_mcp_calls: int, delta_mcp_usage: Dict[str, int]
+    user_id: str,
+    delta_prompts: int,
+    delta_rag: int,
+    delta_mcp_calls: int,
+    delta_mcp_usage: Dict[str, int],
+    user_groups: List[str],
 ) -> None:
     """Publish only metric deltas to CloudWatch to prevent double counting.
 
@@ -339,6 +344,8 @@ def publish_metric_deltas(
         Change in MCP tool calls
     delta_mcp_usage : Dict[str, int]
         Changes in individual MCP tool usage
+    user_groups : List[str], optional
+        The groups that the user belongs to
     """
     try:
         timestamp = datetime.now()
@@ -405,6 +412,42 @@ def publish_metric_deltas(
                     }
                 )
 
+        # Group-level metrics
+        if user_groups:
+            for group in user_groups:
+                if delta_prompts != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupPromptCount",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_prompts,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
+                if delta_rag != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupRAGUsageCount",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_rag,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
+                if delta_mcp_calls != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupMCPToolCalls",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_mcp_calls,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
         if metric_data:
             cloudwatch.put_metric_data(Namespace="LISA/UserMetrics", MetricData=metric_data)
             logger.info(f"Published {len(metric_data)} metric deltas for user {user_id}")
@@ -462,7 +505,7 @@ def update_user_metrics_by_session(
 
         # Publish only deltas to CloudWatch (prevents double counting)
         if delta_prompts != 0 or delta_rag != 0 or delta_mcp_calls != 0 or delta_mcp_usage:
-            publish_metric_deltas(user_id, delta_prompts, delta_rag, delta_mcp_calls, delta_mcp_usage)
+            publish_metric_deltas(user_id, delta_prompts, delta_rag, delta_mcp_calls, delta_mcp_usage, user_groups)
 
         # Update DynamoDB with session-based metrics
         if not user_exists:

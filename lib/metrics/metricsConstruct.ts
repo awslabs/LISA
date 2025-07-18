@@ -233,6 +233,45 @@ export class MetricsConstruct extends Construct {
                 width: 12,
                 height: 6,
             }),
+            // Group Prompt Counts Widget
+            new cloudwatch.GraphWidget({
+                title: 'Group Prompt Counts',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UserMetrics,GroupName} MetricName="GroupPromptCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+            // Group RAG Usage Widget
+            new cloudwatch.GraphWidget({
+                title: 'Group RAG Usage',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UserMetrics,GroupName} MetricName="GroupRAGUsageCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+            // Group MCP Usage Widget
+            new cloudwatch.GraphWidget({
+                title: 'Group MCP Usage',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UserMetrics,GroupName} MetricName="GroupMCPToolCalls"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
         );
 
         const env = {
@@ -245,24 +284,16 @@ export class MetricsConstruct extends Construct {
                 name: 'get_user_metrics',
                 resource: 'metrics',
                 description: 'Gets metrics for a specific user',
-                path: 'metrics/user/{userId}',
+                path: 'metrics/users/{userId}',
                 method: 'GET',
                 environment: env,
             },
             {
-                name: 'get_global_metrics',
+                name: 'get_user_metrics_all',
                 resource: 'metrics',
                 description: 'Gets aggregated metrics across all users',
-                path: 'metrics/global',
+                path: 'metrics/users/all',
                 method: 'GET',
-                environment: env,
-            },
-            {
-                name: 'update_user_metrics',
-                resource: 'metrics',
-                description: 'Updates metrics for a specific user',
-                path: 'metrics/user/{userId}',
-                method: 'PUT',
                 environment: env,
             },
         ];

@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Lambda functions for managing user metrics."""
+"""Lambda functions for managing usage metrics."""
 import json
 import logging
 import os
@@ -28,19 +28,19 @@ logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 cloudwatch = boto3.client("cloudwatch", region_name=os.environ["AWS_REGION"])
-metrics_table = dynamodb.Table(os.environ["USER_METRICS_TABLE_NAME"])
+usage_metrics_table = dynamodb.Table(os.environ["USAGE_METRICS_TABLE_NAME"])
 
 
 @api_wrapper
 def get_user_metrics(event: dict, context: dict) -> dict:
-    """Get metrics for a specific user."""
+    """Get usage metrics for a specific user."""
     user_id = event.get("pathParameters", {}).get("userId")
 
     if not user_id:
         return {"statusCode": 400, "body": json.dumps({"error": "Missing userId parameter"})}
 
     try:
-        response = metrics_table.get_item(Key={"userId": user_id})
+        response = usage_metrics_table.get_item(Key={"userId": user_id})
         item = response.get("Item", {})
 
         metrics = {
@@ -62,11 +62,11 @@ def get_user_metrics(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def get_global_metrics(event: dict, context: dict) -> dict:
-    """Get aggregated metrics across all users."""
+def get_user_metrics_all(event: dict, context: dict) -> dict:
+    """Get aggregated usage metrics across all users."""
     try:
-        # Scan entire metrics table
-        response = metrics_table.scan()
+        # Scan entire usage metrics table
+        response = usage_metrics_table.scan()
         items = response.get("Items", [])
 
         # Calculate aggregated metrics
@@ -101,20 +101,20 @@ def get_global_metrics(event: dict, context: dict) -> dict:
 
         return {"statusCode": 200, "body": metrics}
     except ClientError as e:
-        logger.error(f"Error retrieving global metrics: {e}")
-        return {"statusCode": 500, "body": json.dumps({"error": "Failed to retrieve global metrics"})}
+        logger.error(f"Error retrieving user metrics: {e}")
+        return {"statusCode": 500, "body": json.dumps({"error": "Failed to retrieve user metrics"})}
 
 
 def count_unique_users_and_publish_metric() -> Any:
-    """Count unique users in metrics table and publish to CloudWatch."""
+    """Count unique users in usage metrics table and publish to CloudWatch."""
     try:
         # Scan the table to get all users
-        response = metrics_table.scan(Select="COUNT")
+        response = usage_metrics_table.scan(Select="COUNT")
         unique_user_count = response["Count"]
 
         # Publish metric to CloudWatch
         cloudwatch.put_metric_data(
-            Namespace="LISA/UserMetrics",
+            Namespace="LISA/UsageMetrics",
             MetricData=[
                 {"MetricName": "UniqueUsers", "Value": unique_user_count, "Unit": "Count", "Timestamp": datetime.now()}
             ],
@@ -130,7 +130,7 @@ def count_users_by_group_and_publish_metric() -> Dict[str, int]:
     """Count users in each group and publish metrics to CloudWatch."""
     try:
         # Scan the table to get users with groups
-        response = metrics_table.scan(ProjectionExpression="userGroups")
+        response = usage_metrics_table.scan(ProjectionExpression="userGroups")
 
         # Count users in each group
         group_counts: Dict[str, int] = {}
@@ -155,7 +155,7 @@ def count_users_by_group_and_publish_metric() -> Dict[str, int]:
             )
 
         if metric_data:
-            cloudwatch.put_metric_data(Namespace="LISA/UserMetrics", MetricData=metric_data)
+            cloudwatch.put_metric_data(Namespace="LISA/UsageMetrics", MetricData=metric_data)
 
         logger.info(f"Published user counts by group: {group_counts}")
         return group_counts
@@ -166,9 +166,9 @@ def count_users_by_group_and_publish_metric() -> Dict[str, int]:
 
 
 def daily_metrics_handler(event: dict, context: dict) -> tuple:
-    """Lambda handler function for scheduled (Daily) unique user metrics.
+    """Lambda handler function for scheduled (Daily) unique user usage metrics.
 
-    This function is triggered by a daily EventBridge event and publishes metrics for:
+    This function is triggered by a daily EventBridge event and publishes usage metrics for:
     1. Count of unique users in the system
     2. Counts of users by group membership
 
@@ -182,13 +182,13 @@ def daily_metrics_handler(event: dict, context: dict) -> tuple:
     Returns:
     --------
     tuple
-        (unique_user_count, group_counts) containing the published metrics
+        (unique_user_count, group_counts) containing the published usage metrics
     """
     return count_unique_users_and_publish_metric(), count_users_by_group_and_publish_metric()
 
 
 def process_metrics_sqs_event(event: dict, context: dict) -> None:
-    """Process SQS events and update user metrics.
+    """Process SQS events and update usage metrics.
 
     This function is triggered by SQS events containing session data.
     It extracts the necessary information and calls update_user_metrics_by_session.
@@ -227,15 +227,15 @@ def process_metrics_sqs_event(event: dict, context: dict) -> None:
 
             logger.info(f"Calculated session metrics: {session_metrics}")
 
-            # Update user metrics for given session
+            # Update usage metrics for given session
             update_user_metrics_by_session(user_id, session_id, session_metrics, user_groups)
 
         except Exception as e:
             logger.error(f"Error processing SQS message: {str(e)}")
 
 
-def check_rag_usage(messages: List[Dict[str, Any]]) -> bool:
-    """Check if last human message in message history used RAG.
+def count_rag_usage(messages: List[Dict[str, Any]]) -> int:
+    """Count occurrences of 'File context:' in all human messages to determine RAG usage.
 
     Parameters:
     -----------
@@ -244,21 +244,50 @@ def check_rag_usage(messages: List[Dict[str, Any]]) -> bool:
 
     Returns:
     --------
-    bool
-        True if RAG was used in last human message, False otherwise
+    int
+        Count of 'File context:' occurrences across all human messages
     """
     if not messages:
-        return False
+        return 0
 
-    # Find the last human message
-    for i in range(len(messages) - 1, -1, -1):
-        message = messages[i]
-        if isinstance(message, dict) and message.get("type") == "human":
-            metadata = message.get("metadata", {})
-            if metadata and (metadata.get("ragContext") or metadata.get("ragDocuments")):
-                return True
-            break  # Exit after checking the last human message
-    return False
+    file_context_count = 0
+
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+
+        # Check if this is a human message
+        is_human = False
+        if isinstance(message.get("type"), dict) and message["type"].get("S") == "human":
+            is_human = True
+        elif message.get("type") == "human":
+            is_human = True
+
+        if not is_human:
+            continue
+
+        # Extract content and search for "File context:"
+        content = message.get("content")
+
+        if isinstance(content, dict) and content.get("L"):
+            # DynamoDB format - content is {"L": [{"M": {"text": {"S": "..."}}}]}
+            for content_item in content["L"]:
+                if isinstance(content_item, dict) and content_item.get("M"):
+                    text_obj = content_item["M"].get("text", {})
+                    if isinstance(text_obj, dict) and text_obj.get("S"):
+                        text_content = text_obj["S"]
+                        file_context_count += text_content.lower().count("file context:")
+        elif isinstance(content, list):
+            # Direct format - content is a list of content objects
+            for content_item in content:
+                if isinstance(content_item, dict) and content_item.get("text"):
+                    text_content = content_item["text"]
+                    file_context_count += text_content.lower().count("file context:")
+        elif isinstance(content, str):
+            # Simple string content
+            file_context_count += content.lower().count("file context:")
+
+    return file_context_count
 
 
 def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -311,19 +340,24 @@ def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
                         if tool_name:
                             mcp_tool_usage[tool_name] = mcp_tool_usage.get(tool_name, 0) + 1
 
-    # Calculate RAG usage
-    has_rag_usage = check_rag_usage(messages)
+    # Calculate RAG usage by counting "File context:" occurrences
+    rag_usage_count = count_rag_usage(messages)
 
     return {
         "totalPrompts": total_prompts,
-        "ragUsage": 1 if has_rag_usage else 0,
+        "ragUsage": rag_usage_count,
         "mcpToolCallsCount": sum(mcp_tool_usage.values()),
         "mcpToolUsage": mcp_tool_usage,
     }
 
 
 def publish_metric_deltas(
-    user_id: str, delta_prompts: int, delta_rag: int, delta_mcp_calls: int, delta_mcp_usage: Dict[str, int]
+    user_id: str,
+    delta_prompts: int,
+    delta_rag: int,
+    delta_mcp_calls: int,
+    delta_mcp_usage: Dict[str, int],
+    user_groups: List[str],
 ) -> None:
     """Publish only metric deltas to CloudWatch to prevent double counting.
 
@@ -339,6 +373,8 @@ def publish_metric_deltas(
         Change in MCP tool calls
     delta_mcp_usage : Dict[str, int]
         Changes in individual MCP tool usage
+    user_groups : List[str], optional
+        The groups that the user belongs to
     """
     try:
         timestamp = datetime.now()
@@ -405,8 +441,44 @@ def publish_metric_deltas(
                     }
                 )
 
+        # Group-level metrics
+        if user_groups:
+            for group in user_groups:
+                if delta_prompts != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupPromptCount",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_prompts,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
+                if delta_rag != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupRAGUsageCount",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_rag,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
+                if delta_mcp_calls != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupMCPToolCalls",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_mcp_calls,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
         if metric_data:
-            cloudwatch.put_metric_data(Namespace="LISA/UserMetrics", MetricData=metric_data)
+            cloudwatch.put_metric_data(Namespace="LISA/UsageMetrics", MetricData=metric_data)
             logger.info(f"Published {len(metric_data)} metric deltas for user {user_id}")
 
     except Exception as e:
@@ -416,12 +488,12 @@ def publish_metric_deltas(
 def update_user_metrics_by_session(
     user_id: str, session_id: str, session_metrics: Dict[str, Any], user_groups: List[str]
 ) -> None:
-    """Update metrics for a given user based on session-level metrics.
+    """Update usage metrics for a given user based on session-level metrics.
 
     Parameters:
     -----------
     user_id : str
-        The user ID to update metrics for
+        The user ID to update usage metrics for
     session_id : str
         The session ID being updated
     session_metrics : Dict[str, Any]
@@ -429,14 +501,14 @@ def update_user_metrics_by_session(
     user_groups : List[str]
         The groups that the user is apart of
     """
-    table_name = os.environ.get("USER_METRICS_TABLE_NAME")
+    table_name = os.environ.get("USAGE_METRICS_TABLE_NAME")
 
     if not table_name:
         return
 
     try:
         # Get existing user data
-        response = metrics_table.get_item(Key={"userId": user_id})
+        response = usage_metrics_table.get_item(Key={"userId": user_id})
         existing_item = response.get("Item", {})
         user_exists = "Item" in response
 
@@ -462,7 +534,7 @@ def update_user_metrics_by_session(
 
         # Publish only deltas to CloudWatch (prevents double counting)
         if delta_prompts != 0 or delta_rag != 0 or delta_mcp_calls != 0 or delta_mcp_usage:
-            publish_metric_deltas(user_id, delta_prompts, delta_rag, delta_mcp_calls, delta_mcp_usage)
+            publish_metric_deltas(user_id, delta_prompts, delta_rag, delta_mcp_calls, delta_mcp_usage, user_groups)
 
         # Update DynamoDB with session-based metrics
         if not user_exists:
@@ -478,7 +550,7 @@ def update_user_metrics_by_session(
                 "lastSeen": datetime.now().isoformat(),
                 "userGroups": set(user_groups) if user_groups else None,
             }
-            metrics_table.put_item(Item=item)
+            usage_metrics_table.put_item(Item=item)
         else:
             # Update existing user
             all_session_metrics = existing_item.get("sessionMetrics", {})
@@ -496,7 +568,7 @@ def update_user_metrics_by_session(
                     aggregate_mcp_usage[tool_name] = aggregate_mcp_usage.get(tool_name, 0) + count
 
             # Update the user record
-            metrics_table.update_item(
+            usage_metrics_table.update_item(
                 Key={"userId": user_id},
                 UpdateExpression="SET lastSeen = :now, totalPrompts = :total_prompts, ragUsageCount = :total_rag, "
                 "mcpToolCallsCount = :total_mcp, mcpToolUsage = :mcp_usage, "

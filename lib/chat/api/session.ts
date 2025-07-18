@@ -135,19 +135,19 @@ export class SessionApi extends Construct {
         // If metrics stack deployment is enabled
         if (config.deployMetrics) {
             // Get metrics queue name from SSM
-            const userMetricsQueueName = StringParameter.valueForStringParameter(
+            const usageMetricsQueueName = StringParameter.valueForStringParameter(
                 this,
-                `${config.deploymentPrefix}/queue-name/user-metrics`,
+                `${config.deploymentPrefix}/queue-name/usage-metrics`,
             );
             // Add SQS permissions to the role
             lambdaRole.addToPrincipalPolicy(
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: ['sqs:SendMessage'],
-                    resources: [`arn:${config.partition}:sqs:${config.region}:${config.accountNumber}:${userMetricsQueueName}`]
+                    resources: [`arn:${config.partition}:sqs:${config.region}:${config.accountNumber}:${usageMetricsQueueName}`]
                 })
             );
-            Object.assign(env, { USER_METRICS_QUEUE_NAME: userMetricsQueueName });
+            Object.assign(env, { USAGE_METRICS_QUEUE_NAME: usageMetricsQueueName });
         }
 
         // Create API Lambda functions

@@ -80,6 +80,138 @@ documented [here](https://platform.openai.com/docs/api-reference/models/list).
 - `created`: A Unix timestamp representing when the model was created.
 - `owned_by`: The entity responsible for the model, such as "openai."
 
+## Metrics API Gateway Endpoints
+
+LISA provides RESTful API endpoints for programmatic access to user metrics data. These endpoints enable administrators and applications to retrieve detailed analytics and usage statistics.
+
+### Base URL Structure
+
+All metrics endpoints are accessed through LISA's main API Gateway with the following structure:
+```
+https://{API-GATEWAY-DOMAIN}/{STAGE}/metrics/users/
+```
+
+### Authentication
+
+All API endpoints require proper authentication through LISA's configured authorization mechanism. Ensure your requests include valid authorization headers as configured in your LISA deployment.
+
+### Available Endpoints
+
+#### **Get Individual User Metrics**
+
+**Endpoint**: `GET /metrics/users/{userId}`  
+**Integrated Lambda Function**: `get_user_metrics`  
+**Description**: Retrieves comprehensive metrics data for a specific user, including session-level details and usage history.
+
+**Path Parameters**:
+- `userId` (string, required): The unique identifier for the user whose metrics you want to retrieve
+
+**Example Request**:
+```bash
+curl -X GET \
+  'https://your-api-gateway-domain/metrics/users/john.doe@company.com' \
+  -H 'Authorization: Bearer {YOUR-AUTH-TOKEN}'
+```
+
+**Response Format**:
+```json
+{
+    "statusCode": 200,
+    "body": {
+        "johnDoe": {
+            "totalPrompts": 20.0,
+            "ragUsageCount": 1.0,
+            "mcpToolCallsCount": 12.0,
+            "mcpToolUsage": {
+                "GMAIL-SEND-EMAIL": 11.0,
+                "GOOGLE_CALENDAR-LIST-EVENTS": 1.0
+            },
+            "userGroups": [
+                "lisa-enjoyers",
+                "coffee-lovers"
+            ],
+            "sessionMetrics": {
+                "c6d20198-b1b1-46d9-8bec-3ddaafeb96a6": {
+                    "ragUsage": 0.0,
+                    "mcpToolUsage": {
+                        "GMAIL-SEND-EMAIL": 3.0
+                    },
+                    "totalPrompts": 5.0,
+                    "mcpToolCallsCount": 3.0
+                }
+            },
+            "firstSeen": "2025-07-01T16:47:21.171855",
+            "lastSeen": "2025-07-17T19:51:16.036882"
+        }
+    }
+}
+```
+
+**Response Fields**:
+- `totalPrompts`: Total number of prompts submitted by the user
+- `ragUsageCount`: Number of times the user utilized RAG features
+- `mcpToolCallsCount`: Total MCP tool calls made by the user
+- `mcpToolUsage`: Breakdown of usage by individual MCP tools
+- `userGroups`: List of organizational groups the user belongs to
+- `sessionMetrics`: Detailed metrics for each user session
+- `firstSeen`: Timestamp of user's first interaction with LISA
+- `lastSeen`: Timestamp of user's most recent interaction
+
+**Error Responses**:
+- `400 Bad Request`: Missing or invalid userId parameter
+- `404 Not Found`: User not found in metrics database
+- `500 Internal Server Error`: Database or system error
+
+#### **Get All Users Metrics**
+
+**Endpoint**: `GET /metrics/users/all`  
+**Lambda Function**: `get_user_metrics_all`  
+**Description**: Retrieves aggregated metrics across all users in the system, providing system-wide analytics and usage statistics.
+
+**Example Request**:
+```bash
+curl -X GET \
+  'https://your-api-gateway-domain/metrics/users/all' \
+  -H 'Authorization: Bearer {YOUR-AUTH-TOKEN}'
+```
+
+**Response Format**:
+```json
+{
+    "statusCode": 200,
+    "body": {
+        "totalUniqueUsers": 3,
+        "totalPrompts": 31.0,
+        "totalRagUsage": 1.0,
+        "ragUsagePercentage": 3.225806451612903,
+        "totalMCPToolCalls": 12.0,
+        "mcpToolCallsPercentage": 38.70967741935484,
+        "mcpToolUsage": {
+            "GMAIL-SEND-EMAIL": 11.0,
+            "GOOGLE_CALENDAR-LIST-EVENTS": 1.0
+        },
+        "userGroups": {
+            "tea-lovers": 2,
+            "lisa-enjoyers": 2,
+            "coffee-lovers": 1
+        }
+    }
+}                                                  
+```
+
+**Response Fields**:
+- `totalUniqueUsers`: Count of unique users who have interacted with LISA
+- `totalPrompts`: Aggregate count of all prompts across users
+- `totalRagUsage`: Total number of RAG feature uses
+- `ragUsagePercentage`: Percentage of prompts that utilized RAG
+- `totalMCPToolCalls`: Total MCP tool calls across all users
+- `mcpToolCallsPercentage`: Percentage of prompts that included MCP tool usage
+- `mcpToolUsage`: System-wide breakdown of MCP tool usage by tool name
+- `userGroups`: Distribution of users across organizational groups
+
+**Error Responses**:
+- `500 Internal Server Error`: Database scan error or system failure
+
 
 # Error Handling for API Requests
 

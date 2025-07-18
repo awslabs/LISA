@@ -99,8 +99,8 @@ All API endpoints require proper authentication through LISA's configured author
 
 #### **Get Individual User Metrics**
 
-**Endpoint**: `GET /metrics/users/{userId}`  
-**Integrated Lambda Function**: `get_user_metrics`  
+**Endpoint**: `GET /metrics/users/{userId}`
+**Integrated Lambda Function**: `get_user_metrics`
 **Description**: Retrieves comprehensive metrics data for a specific user, including session-level details and usage history.
 
 **Path Parameters**:
@@ -164,8 +164,8 @@ curl -X GET \
 
 #### **Get All Users Metrics**
 
-**Endpoint**: `GET /metrics/users/all`  
-**Lambda Function**: `get_user_metrics_all`  
+**Endpoint**: `GET /metrics/users/all`
+**Lambda Function**: `get_user_metrics_all`
 **Description**: Retrieves aggregated metrics across all users in the system, providing system-wide analytics and usage statistics.
 
 **Example Request**:
@@ -196,7 +196,7 @@ curl -X GET \
             "coffee-lovers": 1
         }
     }
-}                                                  
+}
 ```
 
 **Response Fields**:

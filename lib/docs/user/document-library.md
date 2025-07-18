@@ -33,4 +33,4 @@ or manually by users in chat sessions.
 ### Visibility Control
 
 Admins can hide the Document Library from the UI by toggling off the `Show Document Library` configuration
-under [Configuration](/admin/ui-configuration.md)
+under

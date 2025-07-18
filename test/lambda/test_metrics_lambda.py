@@ -37,7 +37,7 @@ os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
-os.environ["USER_METRICS_TABLE_NAME"] = "user-metrics-table"
+os.environ["USAGE_METRICS_TABLE_NAME"] = "usage-metrics-table"
 
 
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
@@ -82,9 +82,9 @@ def cloudwatch():
 
 @pytest.fixture(scope="function")
 def dynamodb_table(dynamodb):
-    """Create a mock DynamoDB table for user metrics."""
+    """Create a mock DynamoDB table for usage metrics."""
     table = dynamodb.create_table(
-        TableName="user-metrics-table",
+        TableName="usage-metrics-table",
         KeySchema=[{"AttributeName": "userId", "KeyType": "HASH"}],
         AttributeDefinitions=[{"AttributeName": "userId", "AttributeType": "S"}],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
@@ -93,8 +93,8 @@ def dynamodb_table(dynamodb):
 
 
 @pytest.fixture
-def sample_user_metrics():
-    """Sample user metrics data."""
+def sample_usage_metrics():
+    """Sample usage metrics data."""
     return {
         "userId": "test-user-1",
         "totalPrompts": 10,
@@ -122,8 +122,8 @@ def sample_user_metrics():
 
 
 @pytest.fixture
-def multiple_user_metrics(dynamodb_table):
-    """Create multiple user metrics entries."""
+def multiple_usage_metrics(dynamodb_table):
+    """Create multiple usage metrics entries."""
     items = [
         {
             "userId": "test-user-1",
@@ -189,7 +189,7 @@ patch("metrics.lambda_functions.api_wrapper", mock_api_wrapper).start()
 # Module to test can be imported now that dependencies are mocked
 from metrics.lambda_functions import (
     calculate_session_metrics,
-    check_rag_usage,
+    count_rag_usage,
     count_unique_users_and_publish_metric,
     count_users_by_group_and_publish_metric,
     daily_metrics_handler,
@@ -216,15 +216,15 @@ def lambda_context():
 
 
 class TestGetUserMetrics:
-    def test_get_user_metrics_success(self, dynamodb_table, sample_user_metrics, lambda_context):
-        """Test getting user metrics successfully.
+    def test_get_user_metrics_success(self, dynamodb_table, sample_usage_metrics, lambda_context):
+        """Test getting usage metrics successfully.
 
-        Expected: Should return user metrics with 200 status code when userId exists.
+        Expected: Should return usage metrics with 200 status code when userId exists.
         """
         # Insert sample data into table
-        dynamodb_table.put_item(Item=sample_user_metrics)
+        dynamodb_table.put_item(Item=sample_usage_metrics)
 
-        # get user metrics
+        # get usage metrics
         event = {"pathParameters": {"userId": "test-user-1"}}
         response = get_user_metrics(event, lambda_context)
 
@@ -239,7 +239,7 @@ class TestGetUserMetrics:
         assert "sessionMetrics" in body["test-user-1"]
 
     def test_get_user_metrics_missing_user_id(self, lambda_context):
-        """Test getting user metrics with missing userId parameter.
+        """Test getting usage metrics with missing userId parameter.
 
         Expected: Should return 400 status code when userId is missing from pathParameters.
         """
@@ -250,7 +250,7 @@ class TestGetUserMetrics:
         assert "Missing userId" in json.loads(response["body"])["error"]
 
     def test_get_user_metrics_no_path_parameters(self, lambda_context):
-        """Test getting user metrics with no pathParameters.
+        """Test getting usage metrics with no pathParameters.
 
         Expected: Should return 400 status code when pathParameters is missing entirely.
         """
@@ -282,7 +282,7 @@ class TestGetUserMetrics:
 
         Expected: Should return 500 status code when an exception occurs.
         """
-        with patch("metrics.lambda_functions.metrics_table.get_item") as mock_get_item:
+        with patch("metrics.lambda_functions.usage_metrics_table.get_item") as mock_get_item:
             mock_get_item.side_effect = Exception("Test exception")
 
             event = {"pathParameters": {"userId": "test-user-1"}}
@@ -294,8 +294,8 @@ class TestGetUserMetrics:
 
 
 class TestGetUserMetricsAll:
-    def test_get_user_metrics_all_success(self, dynamodb_table, multiple_user_metrics, lambda_context):
-        """Test getting all user metrics successfully.
+    def test_get_user_metrics_all_success(self, dynamodb_table, multiple_usage_metrics, lambda_context):
+        """Test getting all usage metrics successfully.
 
         Expected: Should return aggregated metrics across all users with correct calculations.
         """
@@ -331,7 +331,7 @@ class TestGetUserMetricsAll:
         assert body["mcpToolUsage"]["tool3"] == 3  # 3
 
     def test_get_user_metrics_all_empty_table(self, dynamodb_table, lambda_context):
-        """Test getting all user metrics from an empty table.
+        """Test getting all usage metrics from an empty table.
 
         Expected: Should return zero metrics when there are no users in the table.
         """
@@ -355,7 +355,7 @@ class TestGetUserMetricsAll:
 
         Expected: Should return 500 status code when an exception occurs during metric retrieval.
         """
-        with patch("metrics.lambda_functions.metrics_table.scan") as mock_scan:
+        with patch("metrics.lambda_functions.usage_metrics_table.scan") as mock_scan:
             mock_scan.side_effect = Exception("Test exception")
 
             event = {}
@@ -367,7 +367,7 @@ class TestGetUserMetricsAll:
 
 
 class TestCloudwatchMetrics:
-    def test_count_unique_users_and_publish_metric(self, dynamodb_table, multiple_user_metrics):
+    def test_count_unique_users_and_publish_metric(self, dynamodb_table, multiple_usage_metrics):
         """Test counting unique users and publishing to CloudWatch.
 
         Expected: Should count users correctly and publish metrics to CloudWatch.
@@ -380,13 +380,13 @@ class TestCloudwatchMetrics:
             # Verify CloudWatch was called correctly
             mock_put_metric.assert_called_once()
             args = mock_put_metric.call_args[1]
-            assert args["Namespace"] == "LISA/UserMetrics"
+            assert args["Namespace"] == "LISA/UsageMetrics"
             assert len(args["MetricData"]) == 1
             assert args["MetricData"][0]["MetricName"] == "UniqueUsers"
             assert args["MetricData"][0]["Value"] == 3
             assert args["MetricData"][0]["Unit"] == "Count"
 
-    def test_count_users_by_group_and_publish_metric(self, dynamodb_table, multiple_user_metrics):
+    def test_count_users_by_group_and_publish_metric(self, dynamodb_table, multiple_usage_metrics):
         """Test counting users by group and publishing to CloudWatch.
 
         Expected: Should count users by group correctly and publish metrics to CloudWatch.
@@ -402,7 +402,7 @@ class TestCloudwatchMetrics:
             # Verify CloudWatch was called correctly
             mock_put_metric.assert_called_once()
             args = mock_put_metric.call_args[1]
-            assert args["Namespace"] == "LISA/UserMetrics"
+            assert args["Namespace"] == "LISA/UsageMetrics"
             assert len(args["MetricData"]) == 3  # 3 groups
 
             # Check that all groups have metrics
@@ -411,7 +411,7 @@ class TestCloudwatchMetrics:
             assert metrics["group2"] == 2
             assert metrics["group3"] == 2
 
-    def test_daily_metrics_handler(self, dynamodb_table, multiple_user_metrics, lambda_context):
+    def test_daily_metrics_handler(self, dynamodb_table, multiple_usage_metrics, lambda_context):
         """Test the daily metrics handler function.
 
         Expected: Should call both metrics functions and return the combined results.
@@ -437,7 +437,7 @@ class TestCloudwatchMetrics:
 
         Expected: Should raise the exception after logging the error.
         """
-        with patch("metrics.lambda_functions.metrics_table.scan") as mock_scan:
+        with patch("metrics.lambda_functions.usage_metrics_table.scan") as mock_scan:
             mock_scan.side_effect = Exception("Test exception")
 
             # The exception is caught and logged, then re-raised with the original message
@@ -449,7 +449,7 @@ class TestCloudwatchMetrics:
 
         Expected: Should raise the exception after logging the error.
         """
-        with patch("metrics.lambda_functions.metrics_table.scan") as mock_scan:
+        with patch("metrics.lambda_functions.usage_metrics_table.scan") as mock_scan:
             mock_scan.side_effect = Exception("Test exception")
 
             # The exception is caught and logged, then re-raised with the original message
@@ -459,7 +459,7 @@ class TestCloudwatchMetrics:
 
 class TestSQSEventProcessing:
     def test_process_metrics_sqs_event(self, dynamodb_table, lambda_context):
-        """Test processing SQS events for user metrics.
+        """Test processing SQS events for usage metrics.
 
         Expected: Should process multiple SQS records and call update_user_metrics_by_session for each.
         """
@@ -549,77 +549,120 @@ class TestSQSEventProcessing:
             mock_logger.assert_called_with("SQS message missing required 'sessionId' field")
 
 
-class TestCheckRagUsage:
-    def test_check_rag_usage_with_rag_context(self):
-        """Test check_rag_usage when RAG context is present.
+class TestCountRagUsage:
+    def test_count_rag_usage_with_file_context_direct_format(self):
+        """Test count_rag_usage with 'File context:' in direct format messages.
 
-        Expected: Should return True when ragContext is in message metadata.
+        Expected: Should count occurrences of 'File context:' in human message content.
         """
         messages = [
-            {"type": "human", "content": "Hello", "metadata": {"ragContext": "Some context"}},
+            {"type": "human", "content": "File context: Some content here"},
             {"type": "assistant", "content": "Hi there!"},
         ]
 
-        result = check_rag_usage(messages)
-        assert result is True
+        result = count_rag_usage(messages)
+        assert result == 1
 
-    def test_check_rag_usage_with_rag_documents(self):
-        """Test check_rag_usage when RAG documents are present.
+    def test_count_rag_usage_with_multiple_file_contexts(self):
+        """Test count_rag_usage with multiple 'File context:' occurrences.
 
-        Expected: Should return True when ragDocuments is in message metadata.
+        Expected: Should count all occurrences of 'File context:' across all human messages.
         """
         messages = [
-            {"type": "human", "content": "Hello", "metadata": {"ragDocuments": ["doc1", "doc2"]}},
+            {"type": "human", "content": "File context: First content\nFile context: Second content"},
+            {"type": "assistant", "content": "Response"},
+            {"type": "human", "content": "File context: Third content"},
+        ]
+
+        result = count_rag_usage(messages)
+        assert result == 3
+
+    def test_count_rag_usage_dynamodb_format(self):
+        """Test count_rag_usage with DynamoDB format messages.
+
+        Expected: Should handle DynamoDB format and count 'File context:' occurrences.
+        """
+        messages = [
+            {
+                "type": {"S": "human"},
+                "content": {
+                    "L": [
+                        {
+                            "M": {
+                                "type": {"S": "text"},
+                                "text": {"S": "File context: \nJmharold is the GOAT.\n\nJmharold is the GOAT.\n"},
+                            }
+                        },
+                        {
+                            "M": {
+                                "type": {"S": "text"},
+                                "text": {"S": "Can you tell me who jmharold is again one more time?"},
+                            }
+                        },
+                    ]
+                },
+            }
+        ]
+
+        result = count_rag_usage(messages)
+        assert result == 1
+
+    def test_count_rag_usage_case_insensitive(self):
+        """Test count_rag_usage is case insensitive.
+
+        Expected: Should count 'FILE CONTEXT:', 'file context:', 'File Context:' etc.
+        """
+        messages = [
+            {"type": "human", "content": "FILE CONTEXT: uppercase"},
+            {"type": "human", "content": "file context: lowercase"},
+            {"type": "human", "content": "File Context: mixed case"},
+        ]
+
+        result = count_rag_usage(messages)
+        assert result == 3
+
+    def test_count_rag_usage_no_file_context(self):
+        """Test count_rag_usage when no 'File context:' is present.
+
+        Expected: Should return 0 when no 'File context:' is found.
+        """
+        messages = [
+            {"type": "human", "content": "Hello, no file context here", "metadata": {}},
             {"type": "assistant", "content": "Hi there!"},
         ]
 
-        result = check_rag_usage(messages)
-        assert result is True
+        result = count_rag_usage(messages)
+        assert result == 0
 
-    def test_check_rag_usage_no_rag(self):
-        """Test check_rag_usage when no RAG is used.
+    def test_count_rag_usage_empty_messages(self):
+        """Test count_rag_usage with empty messages list.
 
-        Expected: Should return False when no RAG metadata is present.
+        Expected: Should return 0 when messages list is empty.
         """
-        messages = [
-            {"type": "human", "content": "Hello", "metadata": {}},
-            {"type": "assistant", "content": "Hi there!"},
-        ]
+        result = count_rag_usage([])
+        assert result == 0
 
-        result = check_rag_usage(messages)
-        assert result is False
+    def test_count_rag_usage_no_human_messages(self):
+        """Test count_rag_usage with no human messages.
 
-    def test_check_rag_usage_empty_messages(self):
-        """Test check_rag_usage with empty messages list.
-
-        Expected: Should return False when messages list is empty.
-        """
-        result = check_rag_usage([])
-        assert result is False
-
-    def test_check_rag_usage_no_human_messages(self):
-        """Test check_rag_usage with no human messages.
-
-        Expected: Should return False when no human messages are present.
+        Expected: Should return 0 when no human messages are present.
         """
         messages = [{"type": "assistant", "content": "Hi there!"}, {"type": "system", "content": "System message"}]
 
-        result = check_rag_usage(messages)
-        assert result is False
+        result = count_rag_usage(messages)
+        assert result == 0
 
-    def test_check_rag_usage_multiple_human_messages(self):
-        """Test check_rag_usage with multiple human messages.
+    def test_count_rag_usage_content_list_format(self):
+        """Test count_rag_usage with content as list format.
 
-        Expected: Should return True if any human message has RAG metadata.
+        Expected: Should handle content as list of objects with text fields.
         """
         messages = [
-            {"type": "human", "content": "First message", "metadata": {}},
-            {"type": "assistant", "content": "Response"},
-            {"type": "human", "content": "Second message", "metadata": {"ragContext": "Some context"}},
+            {"type": "human", "content": [{"text": "File context: First part"}, {"text": "File context: Second part"}]}
         ]
 
-        result = check_rag_usage(messages)
-        assert result is True
+        result = count_rag_usage(messages)
+        assert result == 2
 
 
 class TestUpdateUserMetricsBySession:
@@ -741,7 +784,7 @@ class TestUpdateUserMetricsBySession:
             assert second_call_args[4] == {"tool2": 1}  # only new tool usage
 
     def test_update_user_metrics_by_session_no_table_name(self):
-        """Test handling when USER_METRICS_TABLE_NAME environment variable is missing.
+        """Test handling when USAGE_METRICS_TABLE_NAME environment variable is missing.
 
         Expected: Should return early without processing when table name is not set.
         """
@@ -762,7 +805,7 @@ class TestUpdateUserMetricsBySession:
             "mcpToolUsage": {},
         }
 
-        with patch("metrics.lambda_functions.metrics_table.get_item") as mock_get_item, patch(
+        with patch("metrics.lambda_functions.usage_metrics_table.get_item") as mock_get_item, patch(
             "metrics.lambda_functions.logger.error"
         ) as mock_logger:
 
@@ -795,7 +838,7 @@ class TestCalculateSessionMetrics:
     def test_calculate_session_metrics_basic_messages(self):
         """Test calculate_session_metrics with basic human and assistant messages.
 
-        Expected: Should count human messages as prompts and detect RAG usage in last human message.
+        Expected: Should count human messages as prompts and count 'File context:' occurrences for RAG usage.
         """
         messages = [
             {
@@ -804,14 +847,14 @@ class TestCalculateSessionMetrics:
                 "metadata": {},
             },
             {"type": "assistant", "content": "Hi there!"},
-            {"type": "human", "content": "How are you?", "metadata": {"ragContext": "Some context"}},
+            {"type": "human", "content": "File context: Some content here\nHow are you?"},
             {"type": "assistant", "content": "I'm doing well!"},
         ]
 
         result = calculate_session_metrics(messages)
 
         assert result["totalPrompts"] == 2  # Two human messages
-        assert result["ragUsage"] == 1  # RAG used in last human message
+        assert result["ragUsage"] == 1  # One "File context:" occurrence
         assert result["mcpToolCallsCount"] == 0
         assert result["mcpToolUsage"] == {}
 
@@ -886,7 +929,7 @@ class TestCalculateSessionMetrics:
         messages = [
             {
                 "type": "human",
-                "content": "Direct format message",
+                "content": "File context: Some content\nDirect format message",
                 "metadata": {"ragDocuments": ["doc1"]},
                 "toolCalls": [{"type": "tool_call", "name": "direct_tool"}],
             },
@@ -909,7 +952,7 @@ class TestCalculateSessionMetrics:
         result = calculate_session_metrics(messages)
 
         assert result["totalPrompts"] == 2
-        assert result["ragUsage"] == 1  # RAG documents in first message
+        assert result["ragUsage"] == 1  # One "File context:" occurrence in first message
         assert result["mcpToolCallsCount"] == 2
         assert result["mcpToolUsage"]["direct_tool"] == 1
         assert result["mcpToolUsage"]["dynamo_tool"] == 1
@@ -937,7 +980,7 @@ class TestPublishMetricDeltas:
 
             mock_put_metric.assert_called_once()
             args = mock_put_metric.call_args[1]
-            assert args["Namespace"] == "LISA/UserMetrics"
+            assert args["Namespace"] == "LISA/UsageMetrics"
 
             # Should have prompt metrics + group metrics
             metric_names = [m["MetricName"] for m in args["MetricData"]]

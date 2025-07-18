@@ -39,7 +39,7 @@ LISA system.
 #### Request Example:
 
 ```bash
-curl -s -H 'Authorization: Bearer <your_token>' -X GET https://<alb_endpoint>/v2/serve/models
+curl -s -H 'Authorization: Bearer <your_token>' -X GET https://<apigw_endpoint>/v2/serve/models
 ```
 
 #### Response Example:

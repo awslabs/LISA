@@ -16,6 +16,7 @@ LISA has four main components: serve, chat user interface, retrieval augmented g
 These capabilities support the following major features.
 
 **Model Flexibility & Orchestration**
+
 LISA’s core component, Serve, provides secure, scalable, low latency access to customers' generative LLMs and embedding
 language models. Serve offers model flexibility out of the box. Customers can self-host models directly within LISA
 infrastructure, or integrate with compatible third party model providers. LISA supports model self-hosting and inference
@@ -33,6 +34,7 @@ provider. Customers can securely centralize and standardize communication across
 model orchestration layer.
 
 **Chat UI**
+
 Through LISA's chat UI, customers securely prompt LLMs, receive responses, create and manage prompt templates, change
 model arguments, manage their personal session history, upload files, and access advanced chat features.
 Administrators can add, remove, and update models configured with LISA via the model management page. The application
@@ -42,6 +44,7 @@ Administrators can also configure vector stores and automate document pipelines 
 generation capabilities. Lastly, the chat UI supports integration with an OIDC identity provider to handle user authentication.
 
 **Model Context Protocol (MCP)**
+
 LISA supports MCP, a popular open standard that enables developers to securely connect AI assistants to systems where
 data lives. Customers can connect MCP servers with LISA and use the tools hosted on that server. For example, if an MCP
 server is added to LISA that supports email/calendar actions then LISA customers can prompt for supported tasks. In this
@@ -50,6 +53,7 @@ availability. The LLM would automatically engage the appropriate MCP server tool
 complete the task.
 
 **Retrieval Augmented Generation (RAG)**
+
 LISA supports RAG through Amazon OpenSearch or PostgreSQL's PGVector extension in Amazon RDS. RAG is the process of
 optimizing the output of LLMs by referencing supplemental authoritative information before generating a response.
 RAG reduces the need for fine-tuning models, an expensive and time-consuming undertaking. Through LISA's Chat UI,
@@ -58,11 +62,13 @@ incorporating contextually relevant information into responses. LISA also suppor
 pipeline for Administrators to routinely load files into their vector stores.
 
 **APIs**
+
 Customers can configure LISA Serve directly with their existing mission tooling or alternative front ends. LISA offers
 APIs to support inference requests and responses, model management, and chat session management. Inference calls can
 also include MCP and RAG prompting if configured with LISA.
 
 **CodeGen**
+
 LISA integrates easily with applications compatible with OpenAI's API specification. For instance, customers can
 configure LISA as the model provider for the [Continue](https://www.continue.dev/) plugin, an open-source AI code
 assistance tool for [JetBrains](https://www.jetbrains.com/) and [Visual Studio Code](https://code.visualstudio.com/)

@@ -4,6 +4,8 @@ LISA’s major components include Serve, a Chat user interface (UI), and retriev
 Serve is required but the remaining components are optional. LISA also offers APIs for customers using LISA for model
 hosting and orchestration.
 
+![LISA Overall Architecture](../assets/LisaArchitecture.png)
+
 * **Serve:** This is the core of LISA. Serve supports model self-hosting in scalable Amazon ECS clusters.
 Through LiteLLM, Serve is also compatible with 100+ models hosted by external model providers like Amazon Bedrock.
 * **Chat UI:** Customers prompt LLMs, receive responses, create and modify prompt templates and personas, adjust model

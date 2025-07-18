@@ -67,7 +67,7 @@ const navLinks = [
         ],
       },
       { text: 'Model Context Protocol (MCP)', link: '/config/mcp' },
-      { text: 'Amazon CloudWatch', link: '/config/cloudwatch' },
+      { text: 'Usage Analytics', link: '/config/cloudwatch' },
     ],
   },
   {

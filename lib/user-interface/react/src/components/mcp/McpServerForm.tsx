@@ -34,7 +34,7 @@ import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { ModifyMethod } from '../../shared/validation/modify-method';
-import { selectCurrentUserIsAdmin } from '../../shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import {
     DefaultMcpServer,
     McpServerStatus,
@@ -55,6 +55,7 @@ export function McpServerForm (props: McpServerFormProps) {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const userName = useAppSelector(selectCurrentUsername);
 
     const [createMcpServer, {data: createData, isLoading: isCreating, isSuccess: isCreatingSuccess, isError: isCreatingError, error: createError}] = useCreateMcpServerMutation();
     const [updateMcpSever, {data: updateData, isLoading: isUpdating, isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateMcpServerMutation();
@@ -184,7 +185,7 @@ export function McpServerForm (props: McpServerFormProps) {
                         <FormField label='Share with everyone'>
                             <Toggle checked={sharePublic} onChange={({detail}) => {
                                 setSharePublic(detail.checked);
-                                setFields({owner: detail.checked ? 'lisa:public' : undefined});
+                                setFields({owner: detail.checked ? 'lisa:public' : userName});
                                 touchFields(['owner'], ModifyMethod.Unset);
                             }}
                             disabled={disabled} />

@@ -15,7 +15,7 @@
  */
 import { LisaChatMessage } from '../../components/types';
 import { IModel } from '@/shared/model/model-management.model';
-import { RagConfig } from '@/components/chatbot/RagOptions';
+import { RagConfig } from '@/components/chatbot/components/RagOptions';
 
 export type IChatConfiguration = {
     promptConfiguration: IPromptConfiguration,
@@ -70,7 +70,7 @@ export const baseConfig: IChatConfiguration = {
         markdownDisplay: true,
         showMetadata: false,
         max_tokens: null,
-        chatHistoryBufferSize: 3,
+        chatHistoryBufferSize: 7,
         ragTopK: 3,
         modelArgs: {
             n: null,

@@ -39,6 +39,7 @@ import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 import { ConfigurationContext } from './shared/configuration.provider';
+import McpServers from '@/pages/Mcp';
 
 
 export type RouteProps = {
@@ -145,30 +146,33 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
-                            <Route
-                                path='document-library'
-                                element={
-                                    <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                        <RepositoryLibrary setNav={setNav} />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path='document-library/:repoId'
-                                element={
-                                    <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                        <DocumentLibrary setNav={setNav} />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
+                            {config?.configuration?.enabledComponents?.showRagLibrary &&
+                                <>
+                                    <Route
+                                        path='document-library'
+                                        element={
+                                            <PrivateRoute showConfig='showRagLibrary' configs={config}>
+                                                <RepositoryLibrary setNav={setNav} />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path='document-library/:repoId'
+                                        element={
+                                            <PrivateRoute showConfig='showRagLibrary' configs={config}>
+                                                <DocumentLibrary setNav={setNav} />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                </>}
+                            {config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <Route
                                 path='prompt-templates/*'
                                 element={
                                     <PrivateRoute showConfig='showPromptTemplates' configs={config}>
                                         <PromptTemplatesLibrary setNav={setNav} />
                                     </PrivateRoute>
                                 }
-                            />
+                            />}
                             <Route
                                 path='configuration'
                                 element={
@@ -177,6 +181,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {config?.configuration?.enabledComponents?.mcpConnections && <Route
+                                path='mcp-connections/*'
+                                element={
+                                    <PrivateRoute showConfig='showMcpServers' configs={config}>
+                                        <McpServers setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
                         </Routes>
                     }
                 />

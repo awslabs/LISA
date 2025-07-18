@@ -16,7 +16,7 @@
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -121,8 +121,34 @@ export class SessionApi extends Construct {
         const env = {
             SESSIONS_TABLE_NAME: sessionTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-            GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName
+            GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
         };
+
+        const lambdaRole: IRole = createLambdaRole(
+            this,
+            config.deploymentName,
+            'SessionApi',
+            sessionTable.tableArn,
+            config.roles?.LambdaExecutionRole,
+        );
+
+        // If metrics stack deployment is enabled
+        if (config.deployMetrics) {
+            // Get metrics queue name from SSM
+            const usageMetricsQueueName = StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/queue-name/usage-metrics`,
+            );
+            // Add SQS permissions to the role
+            lambdaRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['sqs:SendMessage'],
+                    resources: [`arn:${config.partition}:sqs:${config.region}:${config.accountNumber}:${usageMetricsQueueName}`]
+                })
+            );
+            Object.assign(env, { USAGE_METRICS_QUEUE_NAME: usageMetricsQueueName });
+        }
 
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
@@ -176,7 +202,6 @@ export class SessionApi extends Construct {
             },
         ];
 
-        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'SessionApi', sessionTable.tableArn, config.roles?.LambdaExecutionRole);
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(

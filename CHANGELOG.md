@@ -1,3 +1,59 @@
+# v5.0.0
+## Model Context Protocol (MCP) Integration
+LISA now supports Model Context Protocol (MCP), a popular open standard that enables developers to securely connect AI assistants with external tools and services! LISA customers can leverage MCP servers and tools directly within LISA's chat assistant user interface, or APIs.
+
+### Administrative Features
+- Control the availability of MCP support via LISA's Configuration page
+- Create, edit, and delete MCP server connections
+- Activate or deactivate specific MCP server connections
+- Choose the MCP server connections for global use in order to support organization-wide availability
+- Identify specific LLMs to support handling of tool calls
+
+### User Experience Enhancements
+- Create, edit, and delete personal MCP server connections
+- Browse the intuitive user interface to view personal and global MCP server connections
+- Activate specific MCP server connections for individual use
+- Real-time visibility into the number of active MCP servers and tools for personal use in chat sessions
+- Seamless integration with existing LLM chat interface to execute MCP tools
+
+### Tool Management Functionality
+- Users individually opt out of specific MCP server tools with simple toggle controls
+- Users  are automatically enrolled in Safe Mode, which requires confirmation for tool execution. Users have the optional to auto-approve specific tool actions
+- Users have the ability to manually stop tool execution at any time via Stop generation button
+
+### Autopilot Mode
+- Users can individually activate Autopilot Mode for streamlined tool execution without confirmation prompts
+- User-specific setting applies across all active MCP server connections
+- Reduces risk of tool timeouts waiting for user confirmation, but maintains users' visibility into actions being executed
+- Beneficial for multi-step workflows involving multiple tools
+
+
+## Usage Analytics Dashboard
+Comprehensive visibility into LISA usage analytics via an Amazon CloudWatch dashboard. The LISA User Metrics Dashboard is automatically created during deployment and can be accessed through the AWS Management Console
+
+## Administrative Insights
+- 12 new metric widgets depict detailed usage to help measure platform adoption and impact
+- Track unique user counts across multiple time periods and features (daily, weekly, monthly, quarterly, YTD)
+- Monitor organization-level engagement through IDP group aggregation
+- Visualize usage trends with interactive time-series graphs
+
+### Detailed Usage Metrics
+- Comprehensive prompt tracking showing total prompts by users and groups
+- RAG utilization metrics showing vector store engagement patterns by users and groups
+- MCP tool call metrics showing total tool usage over time by users and groups
+
+
+## Updated Documentation
+- Updated System Administrator Guides within LISA's documentation. This is accessible via the Document link in the GitHub repo, and also bundled with LISA
+- Additional updates are coming soon for the Advanced Configuration and User Guides sections
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.4.4...v5.0.0
+
 # v4.4.4
 ## Bug Fixes
 - Resolved an issue with docker base images

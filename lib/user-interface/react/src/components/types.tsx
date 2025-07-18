@@ -67,6 +67,7 @@ export type LisaChatMessageFields = {
     type: MessageType;
     content: MessageContent;
     metadata?: LisaChatMessageMetadata;
+    toolCalls?: any[];
 } & BaseMessageFields;
 
 /**
@@ -75,11 +76,13 @@ export type LisaChatMessageFields = {
 export class LisaChatMessage extends BaseMessage implements LisaChatMessageFields {
     type: MessageType;
     metadata?: LisaChatMessageMetadata;
+    toolCalls?: any[];
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
+        this.toolCalls = fields.toolCalls ?? [];
     }
 
     static lc_name () {
@@ -215,7 +218,8 @@ export enum StatusTypes {
 export enum MessageTypes {
     HUMAN = 'human',
     SYSTEM = 'system',
-    AI = 'ai'
+    AI = 'ai',
+    TOOL = 'tool',
 }
 
 
@@ -224,5 +228,6 @@ export enum MessageTypes {
  */
 export enum ModelFeatures {
     SUMMARIZATION = 'summarization',
-    IMAGE_INPUT = 'imageInput'
+    IMAGE_INPUT = 'imageInput',
+    TOOL_CALLS = 'toolCalls',
 }

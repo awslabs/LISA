@@ -89,6 +89,7 @@ export class FastApiContainer extends Construct {
             environment.AUTHORITY = config.authConfig!.authority;
             environment.CLIENT_ID = config.authConfig!.clientId;
             environment.ADMIN_GROUP = config.authConfig!.adminGroup;
+            environment.USER_GROUP = config.authConfig!.userGroup;
             environment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
         } else {
             environment.USE_AUTH = 'false';

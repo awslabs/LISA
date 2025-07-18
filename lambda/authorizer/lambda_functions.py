@@ -55,6 +55,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     client_id = os.environ.get("CLIENT_ID", "")
     authority = os.environ.get("AUTHORITY", "")
     admin_group = os.environ.get("ADMIN_GROUP", "")
+    user_group = os.environ.get("USER_GROUP", "")
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
@@ -78,11 +79,14 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
+        is_in_user_group = is_user(jwt_data, user_group, jwt_groups_property) if user_group != "" else True
         groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         username = find_jwt_username(jwt_data)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": groups}
 
+        if not is_in_user_group:
+            return deny_policy
         if requested_resource.startswith("/models") and not is_admin_user:
             # non-admin users can still list models
             if event["path"].rstrip("/") != "/models":
@@ -177,6 +181,10 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[
 def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
     """Check if the user is an admin."""
     return admin_group in (get_property_path(jwt_data, jwt_groups_property) or [])
+
+
+def is_user(jwt_data: dict[str, Any], user_group: str, jwt_groups_property: str) -> bool:
+    return user_group in (get_property_path(jwt_data, jwt_groups_property) or [])
 
 
 def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:

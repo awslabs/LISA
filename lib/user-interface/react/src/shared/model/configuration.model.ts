@@ -32,6 +32,7 @@ export type IEnabledComponents = {
     documentSummarization: boolean;
     showRagLibrary: boolean;
     showPromptTemplateLibrary: boolean;
+    mcpConnections: boolean;
 };
 
 export type ISystemBannerConfiguration = {

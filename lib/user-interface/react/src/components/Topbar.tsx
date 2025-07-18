@@ -21,7 +21,7 @@ import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/globa
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
 import { purgeStore, useAppSelector } from '../config/store';
-import { selectCurrentUserIsAdmin } from '../shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '../shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 
@@ -35,6 +35,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
     const navigate = useNavigate();
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const userName = useAppSelector(selectCurrentUsername);
     const [isDarkMode, setIsDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
 
     useEffect(() => {
@@ -79,6 +80,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             disableUtilityCollapse: false,
             external: false,
             href: '/prompt-templates',
+        } as ButtonDropdownProps.Item] : []),
+        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
+            id: 'mcp-connection',
+            type: 'button',
+            variant: 'link',
+            text: 'MCP Connections',
+            disableUtilityCollapse: false,
+            external: false,
+            href: '/mcp-connections',
         } as ButtonDropdownProps.Item] : []),
     ];
 
@@ -144,7 +154,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     }] : []) as TopNavigationProps.Utility[]),
                 {
                     type: 'menu-dropdown',
-                    description: auth.isAuthenticated ? auth.user?.profile.email : undefined,
+                    description: auth.isAuthenticated ? userName : undefined,
                     onItemClick: async (item) => {
                         switch (item.detail.id) {
                             case 'signin':

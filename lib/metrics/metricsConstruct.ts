@@ -48,7 +48,7 @@ type MetricsApiProps = {
 } & BaseProps;
 
 /**
- * API which manages user metrics in DynamoDB
+ * API which manages usage metrics in DynamoDB
  */
 export class MetricsConstruct extends Construct {
 
@@ -64,8 +64,8 @@ export class MetricsConstruct extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        // Create User Metrics table
-        const userMetricsTable = new dynamodb.Table(this, 'UserMetricsTable', {
+        // Create Usage Metrics table
+        const usageMetricsTable = new dynamodb.Table(this, 'UsageMetricsTable', {
             partitionKey: {
                 name: 'userId',
                 type: dynamodb.AttributeType.STRING,
@@ -76,21 +76,21 @@ export class MetricsConstruct extends Construct {
         });
 
         // Store table name in SSM for cross-stack access
-        new StringParameter(this, 'UserMetricsTableNameParameter', {
-            parameterName: `${config.deploymentPrefix}/table/user-metrics`,
-            stringValue: userMetricsTable.tableName,
+        new StringParameter(this, 'UsageMetricsTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/table/usage-metrics`,
+            stringValue: usageMetricsTable.tableName,
         });
 
         // Create SQS Queue for metrics processing
-        const metricsQueue = new sqs.Queue(this, 'UserMetricsQueue', {
+        const usageMetricsQueue = new sqs.Queue(this, 'UsageMetricsQueue', {
             visibilityTimeout: Duration.minutes(2),
             retentionPeriod: Duration.days(14),
         });
 
-        // Store queue name and in SSM for cross-stack access
-        new StringParameter(this, 'UserMetricsQueueName', {
-            parameterName: `${config.deploymentPrefix}/queue-name/user-metrics`,
-            stringValue: metricsQueue.queueName,
+        // Store queue name in SSM for cross-stack access
+        new StringParameter(this, 'UsageMetricsQueueName', {
+            parameterName: `${config.deploymentPrefix}/queue-name/usage-metrics`,
+            stringValue: usageMetricsQueue.queueName,
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
@@ -98,16 +98,16 @@ export class MetricsConstruct extends Construct {
             rootResourceId: rootResourceId,
         });
 
-        // Create CloudWatch Dashboard for user metrics
-        const dashboard = new cloudwatch.Dashboard(this, 'UserMetricsDashboard', {
-            dashboardName: 'LISA-User-Metrics',
+        // Create CloudWatch Dashboard for usage metrics
+        const dashboard = new cloudwatch.Dashboard(this, 'UsageMetricsDashboard', {
+            dashboardName: 'LISA-Metrics',
             start: '-P7D',
         });
 
         dashboard.addWidgets(
             // Dashboard Title
             new cloudwatch.TextWidget({
-                markdown: '# LISA User Metrics Dashboard',
+                markdown: '# LISA Metrics Dashboard',
                 width: 24,
                 height: 1,
             }),
@@ -116,7 +116,7 @@ export class MetricsConstruct extends Construct {
                 title: 'Total Prompts',
                 left: [
                     new cloudwatch.Metric({
-                        namespace: 'LISA/UserMetrics',
+                        namespace: 'LISA/UsageMetrics',
                         metricName: 'TotalPromptCount',
                         statistic: 'Sum',
                         period: Duration.hours(1),
@@ -130,7 +130,7 @@ export class MetricsConstruct extends Construct {
                 title: 'Total RAG Usage',
                 left: [
                     new cloudwatch.Metric({
-                        namespace: 'LISA/UserMetrics',
+                        namespace: 'LISA/UsageMetrics',
                         metricName: 'RAGUsageCount',
                         statistic: 'Sum',
                         period: Duration.hours(1),
@@ -144,7 +144,7 @@ export class MetricsConstruct extends Construct {
                 title: 'Total MCP Tool Calls',
                 left: [
                     new cloudwatch.Metric({
-                        namespace: 'LISA/UserMetrics',
+                        namespace: 'LISA/UsageMetrics',
                         metricName: 'TotalMCPToolCalls',
                         statistic: 'Sum',
                         period: Duration.hours(1),
@@ -158,7 +158,7 @@ export class MetricsConstruct extends Construct {
                 title: 'Prompts by User',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserPromptCount"\', \'Sum\', 3600)',
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserPromptCount"\', \'Sum\', 3600)',
                         label: '',
                         period: Duration.hours(1),
                     }),
@@ -171,7 +171,7 @@ export class MetricsConstruct extends Construct {
                 title: 'RAG Usage by User',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserRAGUsageCount"\', \'Sum\', 3600)',
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserRAGUsageCount"\', \'Sum\', 3600)',
                         label: '',
                         period: Duration.hours(1),
                     }),
@@ -184,7 +184,7 @@ export class MetricsConstruct extends Construct {
                 title: 'MCP Tool Calls by User',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UserMetrics,UserId} MetricName="UserMCPToolCalls"\', \'Sum\', 3600)',
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserMCPToolCalls"\', \'Sum\', 3600)',
                         label: '',
                         period: Duration.hours(1),
                     }),
@@ -197,7 +197,7 @@ export class MetricsConstruct extends Construct {
                 title: 'MCP Tool Calls by Tool',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UserMetrics,ToolName} MetricName="MCPToolCallsByTool"\', \'Sum\', 3600)',
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,ToolName} MetricName="MCPToolCallsByTool"\', \'Sum\', 3600)',
                         label: '',
                         period: Duration.hours(1),
                     }),
@@ -210,7 +210,7 @@ export class MetricsConstruct extends Construct {
                 title: 'Total User Count',
                 metrics: [
                     new cloudwatch.Metric({
-                        namespace: 'LISA/UserMetrics',
+                        namespace: 'LISA/UsageMetrics',
                         metricName: 'UniqueUsers',
                         statistic: 'Maximum',
                         period: Duration.days(1),
@@ -224,7 +224,7 @@ export class MetricsConstruct extends Construct {
                 title: 'Groups by Membership Count',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UserMetrics,GroupName} MetricName="UsersPerGroup"\', \'Maximum\', 86400)',
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="UsersPerGroup"\', \'Maximum\', 86400)',
                         label: '',
                         period: Duration.days(1),
                     }),
@@ -233,10 +233,49 @@ export class MetricsConstruct extends Construct {
                 width: 12,
                 height: 6,
             }),
+            // Group Prompt Counts Widget
+            new cloudwatch.GraphWidget({
+                title: 'Group Prompt Counts',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="GroupPromptCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+            // Group RAG Usage Widget
+            new cloudwatch.GraphWidget({
+                title: 'Group RAG Usage',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="GroupRAGUsageCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+            // Group MCP Usage Widget
+            new cloudwatch.GraphWidget({
+                title: 'Group MCP Usage',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="GroupMCPToolCalls"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
         );
 
         const env = {
-            USER_METRICS_TABLE_NAME: userMetricsTable.tableName
+            USAGE_METRICS_TABLE_NAME: usageMetricsTable.tableName
         };
 
         // Create metrics API endpoints
@@ -245,29 +284,21 @@ export class MetricsConstruct extends Construct {
                 name: 'get_user_metrics',
                 resource: 'metrics',
                 description: 'Gets metrics for a specific user',
-                path: 'metrics/user/{userId}',
+                path: 'metrics/users/{userId}',
                 method: 'GET',
                 environment: env,
             },
             {
-                name: 'get_global_metrics',
+                name: 'get_user_metrics_all',
                 resource: 'metrics',
                 description: 'Gets aggregated metrics across all users',
-                path: 'metrics/global',
+                path: 'metrics/users/all',
                 method: 'GET',
-                environment: env,
-            },
-            {
-                name: 'update_user_metrics',
-                resource: 'metrics',
-                description: 'Updates metrics for a specific user',
-                path: 'metrics/user/{userId}',
-                method: 'PUT',
                 environment: env,
             },
         ];
 
-        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'LisaMetricsApiLambdaExecutionRole', userMetricsTable.tableArn, config.roles?.LambdaExecutionRole);
+        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'LisaMetricsApiLambdaExecutionRole', usageMetricsTable.tableArn, config.roles?.LambdaExecutionRole);
 
         lambdaRole.addToPrincipalPolicy(new PolicyStatement({
             actions: ['cloudwatch:PutMetricData'],
@@ -310,7 +341,7 @@ export class MetricsConstruct extends Construct {
         });
 
         // Create Lambda function for processing SQS events
-        const metricsProcessorLambda = new lambda.Function(this, 'UserMetricsProcessor', {
+        const metricsProcessorLambda = new lambda.Function(this, 'UsageMetricsProcessor', {
             runtime: getDefaultRuntime(),
             code: lambda.Code.fromAsset(path.join(lambdaPath)),
             handler: 'metrics.lambda_functions.process_metrics_sqs_event',
@@ -323,11 +354,11 @@ export class MetricsConstruct extends Construct {
         });
 
         // Add SQS event source to the Lambda function
-        metricsProcessorLambda.addEventSource(new SqsEventSource(metricsQueue, {
+        metricsProcessorLambda.addEventSource(new SqsEventSource(usageMetricsQueue, {
             batchSize: 10,
         }));
 
         // Grant SQS permissions to the Lambda role
-        metricsQueue.grantConsumeMessages(metricsProcessorLambda);
+        usageMetricsQueue.grantConsumeMessages(metricsProcessorLambda);
     }
 }

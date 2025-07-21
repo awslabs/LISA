@@ -30,6 +30,7 @@ declare global {
             AUTHORITY: string;
             CLIENT_ID: string;
             ADMIN_GROUP?: string;
+            USER_GROUP?: string;
             JWT_GROUPS_PROP?: string;
             CUSTOM_SCOPES: string[];
             RESTAPI_URI: string;

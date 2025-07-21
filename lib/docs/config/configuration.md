@@ -13,6 +13,7 @@ authConfig:
   authority:
   clientId:
   adminGroup:
+  userGroup:
   jwtGroupsProperty:
 ```
 

@@ -1,0 +1,8 @@
+# Used for dependencies which are still in Brazil (i.e. live) and not in Peru
+# Refer to https://docs.hub.amazon.dev/brazil/peru-user-guide/python-peru/#using-crossover-for-python-packages
+version_set = "live"
+
+# Because this is a PeruPython app, we specify `pypi` as the repository here.
+[pypi]
+# This is a list of Package-MajorVersion's to crossover,
+packages = ["BrassServicePythonClient-1.0"]

@@ -47,3 +47,6 @@ config-custom.yaml
 # Test Artifacts
 /cypress/videos
 /cypress/screenshots
+
+# Ignore PeruHatch local cache directory
+/.hatch

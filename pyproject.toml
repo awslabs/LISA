@@ -1,3 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lisa-adc"
+version = "1.0.0"
+requires-python = ">=3.11"
+description = "LISA ADC Project"
+dependencies = [
+    "amzn_BrassServicePythonClient==1.0"
+]
+
+[tool.hatch.build]
+directory = "./build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["python"]
+only-include = ["src"]
+sources = ["src"]
+[tool.hatch.env]
+requires = [ "hatch-pip-compile" ]
+
+[tool.hatch.envs.default]
+python = "3.11"
+path = ".venv"
+
+[tool.hatch.envs.default.scripts]
+setup = [
+    "echo noop",
+]
+
+release = [
+]
+
+[tool.hatch.envs.build-tools]
+# This version states what version your build tools build with.  To change it,
+# you will need to:
+# * Remove the `requirements/requirements-build-tools.txt` file
+# * Run `brazil-build run update` to generate a new lock file for the environment
+python = "3.11"
+detached = true
+skip-install = true
+dependencies = [
+    "hatch",
+    "hatch-pip-compile",
+]
+
+# PeruHatch repository and package locking plugin
+[tool.hatch.env.collectors.custom]
+path = ".hatch/hatch_plugin.py"
+
+# This is necessary to use 'uv' as the resolver if this is the top-level package
+# in a monorepo (which is usually the case).  Remove this if copying the
+# package into a monorepo
+[tool.uv.workspace]
+
 [tool.bandit]
 exclude_dirs = [
     "test",

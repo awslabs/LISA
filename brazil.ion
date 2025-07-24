@@ -7,7 +7,12 @@ common::{
   dependencies : {
     default_closure : run,
     closures : {
-      run : public::{ include : [ self ] }
+      run: public::{
+        include: [self],
+        build_requires: [
+          "BrassServicePythonClient"
+        ],
+      },
     },
   },
 
@@ -16,7 +21,9 @@ common::{
     env: {
       PATH: [
         (farm "PeruNPM" "bin"),
-        (env PATH)
+        (farm "PeruHatch" "bin"),
+        (env PATH),
+        "bin"
       ]
     },
     outputs : {

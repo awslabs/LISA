@@ -2,6 +2,59 @@
 set -e
 
 ROOT=$(pwd)
+OUTPUT_DIR=$ROOT/dist/layers
+mkdir -p $OUTPUT_DIR
 
-./bin/build-lambdas
-./bin/build-images --export
+# echo "Setup Python..."
+# peru-hatch python install 3
+peru-hatch run setup # dummy operation to ensure hatch environment is setup
+
+CACHED_URL_FILE=".hatch/cached_wire_url"
+PYPI_URL=$(cat "$CACHED_URL_FILE")simple/
+# source .venv/bin/activate
+
+# Define associative array for package name and source mapping
+declare -A LAMBDA_LAYERS
+LAMBDA_LAYERS["AimlAdcLisaCommonLayer"]="./lib/core/layers/common"
+LAMBDA_LAYERS["AimlAdcLisaAuthLayer"]="./lib/core/layers/authorizer"
+LAMBDA_LAYERS["AimlAdcLisaFastApiLayer"]="./lib/core/layers/fastapi"
+LAMBDA_LAYERS["AimlAdcLisaRag"]="./lib/rag/layer"
+LAMBDA_LAYERS["AimlAdcLisaSdk"]="./lisa-sdk"
+
+echo "Building Python Lambda Layers..."
+for package_name in "${!LAMBDA_LAYERS[@]}"; do
+  source_path=${LAMBDA_LAYERS[$package_name]}
+  echo "Building Lambda Layer $package_name from $source_path..."
+  cd $source_path
+  $ROOT/bin/package-lambda --src . --output "$package_name.zip" --pypi $PYPI_URL --layer
+  mv ./build/"$package_name.zip" $OUTPUT_DIR/
+  rm -rf ./build
+  cd $ROOT
+done
+
+declare -A LAMBDAS
+LAMBDAS["AimlAdcLisaLambda"]="./lambda"
+echo "Building Python Lambdas..."
+for package_name in "${!LAMBDAS[@]}"; do
+  source_path=${LAMBDAS[$package_name]}
+  echo "Building Lambda $package_name from $source_path..."
+  cd "$source_path"
+  $ROOT/bin/package-lambda --src . --output "$package_name.zip" --pypi $PYPI_URL
+  mv ./build/"$package_name.zip" $OUTPUT_DIR/
+  rm -rf ./build
+  cd $ROOT
+done
+
+#   LISA_CONTAINERS: (farm "AimlAdcLisaContainers"),
+#   LISA_MODELS: (farm "AimlAdcLisaModels"),
+
+declare -A CONTAINERS
+CONTAINERS["AimlAdcLisaRestApi"]="./lib/serve/rest-api"
+# echo "Building Containers..."
+
+# docker build -t lisa-rest-api:latest \
+#   --build-arg BASE_IMAGE=python:3.11 \
+#   --build-arg LITELLM_CONFIG='db_key: sk-a8814208-0388-480c-9fc7-fea59607ca38' \
+#   -f lib/serve/rest-api/Dockerfile . && \
+# docker save lisa-rest-api:latest -o lisa-rest-api.tar
+

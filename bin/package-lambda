@@ -83,8 +83,8 @@ if [ $IS_LAYER -eq 1 ]; then
     TMP_DIR=$BUILD_DIR/tmp/python/
 fi
 
-if [ ! PYPI_URL = "" ]; then
-    echo "Must supply PYPIURL via --pypi"
+if [ -z "$PYPI_URL" ]; then
+    echo "Must supply PYPI_URL via --pypi"
     exit 1
 fi
 

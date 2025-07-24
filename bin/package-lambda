@@ -83,6 +83,13 @@ if [ $IS_LAYER -eq 1 ]; then
     TMP_DIR=$BUILD_DIR/tmp/python/
 fi
 
+if [ ! PYPI_URL = "" ]; then
+    echo "Must supply PYPIURL via --pypi"
+    exit 1
+fi
+
+# Extract IP from PYPI_URL for trusted host
+TRUSTED_HOST=$(echo $PYPI_URL | sed 's|http://||' | sed 's|/.*||')
 
 # Print parameters for debugging
 echo "Source directory: $SRC"
@@ -92,12 +99,12 @@ echo "Temp directory: $TMP_DIR"
 
 
 install_requirements() {
-    echo "installing requirements"
+    echo "Installing requirements"
     rm -rf "$TMP_DIR"
     mkdir -p "$TMP_DIR"
     if [ -f "$SRC/requirements.txt" ]; then
         echo "Installing requirements from $SRC/requirements.txt"
-        python3 -m pip install -r "$SRC/requirements.txt" --target "$TMP_DIR" --index-url $PYPI_URL
+        python3 -m pip install -r "$SRC/requirements.txt" --target "$TMP_DIR" --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
     else
         echo "No requirements.txt found in $SRC"
     fi
@@ -105,7 +112,7 @@ install_requirements() {
 
 
 build_package() {
-    echo "building package"
+    echo "Building package"
     if [ -d "$SRC" ]; then
         find "$SRC" -type f -not -path "*/build/*" -not -path "*/.hatch/*" -not -path "*/.venv/*" -exec cp --parents {} "$TMP_DIR" \;
     fi

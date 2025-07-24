@@ -40,7 +40,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Model ID' errorText={props.formErrors?.modelId}>
                 <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
                     props.setFields({ 'modelId': detail.value });
-                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
+                }} disabled={false} placeholder='mistral-vllm'/>
             </FormField>
             <FormField label='Model Name' errorText={props.formErrors?.modelName}>
                 <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
@@ -108,6 +108,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         { label: 'IMAGEGEN', value: ModelType.imagegen },
                         { label: 'EMBEDDING', value: ModelType.embedding },
                     ]}
+                    disabled={props.isEdit}
                 />
             </FormField>
             {props.item.lisaHostedModel && (
@@ -166,7 +167,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.TOOL_CALLS)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={props.isEdit || isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
@@ -180,7 +181,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.IMAGE_INPUT)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={props.isEdit || isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
@@ -195,7 +196,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={props.isEdit || isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined}
                     />
@@ -204,7 +205,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Summarization Capabilities' errorText={props.formErrors?.summarizationCapabilities}>
                 <Input value={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
                     props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
-                }} disabled={props.isEdit || !props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Optional overview of Summarization for Model'/>
+                }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Optional overview of Summarization for Model'/>
             </FormField>
             <ArrayInputField 
                 label='Allowed Groups'

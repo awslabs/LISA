@@ -273,6 +273,8 @@ class UpdateModelRequest(BaseModel):
     modelType: Optional[ModelType] = None
     modelDescription: Optional[str] = None
     streaming: Optional[bool] = None
+    allowedGroups: Optional[List[str]] = None
+    features: Optional[List[ModelFeature]] = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -283,11 +285,13 @@ class UpdateModelRequest(BaseModel):
             self.modelType,
             self.modelDescription,
             self.streaming,
+            self.allowedGroups,
+            self.features,
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
-                "At least one field out of autoScalingInstanceConfig, enabled, modelType, modelDescription, or "
-                "streaming must be defined in request payload."
+                "At least one field out of autoScalingInstanceConfig, enabled, modelType, modelDescription, "
+                "streaming, allowedGroups, or features must be defined in request payload."
             )
 
         if self.modelType == ModelType.EMBEDDING and self.streaming:

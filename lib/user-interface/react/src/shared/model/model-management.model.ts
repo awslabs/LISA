@@ -138,6 +138,9 @@ export type IModelUpdateRequest = {
     streaming?: boolean;
     enabled?: boolean;
     modelType?: ModelType;
+    modelDescription?: string;
+    allowedGroups?: string[];
+    features?: ModelFeature[];
     autoScalingInstanceConfig?: IAutoScalingConfig;
 };
 

@@ -122,8 +122,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: externalModel || ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
-            disabledReason: externalModel ? 'Unable to stop a model that is not hosted in LISA' : ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
+            disabled: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
         });
     }
 

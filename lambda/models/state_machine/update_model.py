@@ -171,13 +171,30 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # metadata updates
     payload_model_type = event["update_payload"].get("modelType", None)
     is_payload_streaming_update = (payload_streaming := event["update_payload"].get("streaming", None)) is not None
-    if payload_model_type or is_payload_streaming_update or is_autoscaling_update:
+    payload_model_description = event["update_payload"].get("modelDescription", None)
+    payload_allowed_groups = event["update_payload"].get("allowedGroups", None)
+    payload_features = event["update_payload"].get("features", None)
+    
+    has_metadata_update = (payload_model_type or is_payload_streaming_update or 
+                          payload_model_description is not None or payload_allowed_groups is not None or 
+                          payload_features is not None or is_autoscaling_update)
+    
+    if has_metadata_update:
         if payload_model_type:
             logger.info(f"Setting type '{payload_model_type}' for model '{model_id}'")
             model_config["modelType"] = payload_model_type
         if is_payload_streaming_update:
             logger.info(f"Setting streaming to '{payload_streaming}' for model '{model_id}'")
             model_config["streaming"] = payload_streaming
+        if payload_model_description is not None:
+            logger.info(f"Setting model description for model '{model_id}'")
+            model_config["modelDescription"] = payload_model_description
+        if payload_allowed_groups is not None:
+            logger.info(f"Setting allowed groups for model '{model_id}'")
+            model_config["allowedGroups"] = payload_allowed_groups
+        if payload_features is not None:
+            logger.info(f"Setting features for model '{model_id}'")
+            model_config["features"] = payload_features
 
         ddb_update_expression += ", model_config = :mc"
         ddb_update_values[":mc"] = model_config

@@ -116,20 +116,41 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             resetCreate();
             createModelMutation(toSubmit);
         } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
-            // pick only the values we care about
+            // pick only the values we care about for update
             resetUpdate();
-            updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
+            const updateFields: any = _.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
                 'modelId',
                 'streaming',
                 'enabled',
                 'modelType',
+                'modelDescription',
+                'allowedGroups',
+                'features',
                 'autoScalingConfig.minCapacity',
                 'autoScalingConfig.maxCapacity',
                 'autoScalingConfig.desiredCapacity'
-            ]), (value: any, key: string) => {
-                if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
-                return key;
-            }));
+            ]);
+            
+            const updateRequest: any = {
+                modelId: props.selectedItems[0].modelId,
+                ...(updateFields.streaming !== undefined && { streaming: updateFields.streaming }),
+                ...(updateFields.enabled !== undefined && { enabled: updateFields.enabled }),
+                ...(updateFields.modelType !== undefined && { modelType: updateFields.modelType }),
+                ...(updateFields.modelDescription !== undefined && { modelDescription: updateFields.modelDescription }),
+                ...(updateFields.allowedGroups !== undefined && { allowedGroups: updateFields.allowedGroups }),
+                ...(updateFields.features !== undefined && { features: updateFields.features }),
+                ...((updateFields['autoScalingConfig.minCapacity'] !== undefined || 
+                    updateFields['autoScalingConfig.maxCapacity'] !== undefined || 
+                    updateFields['autoScalingConfig.desiredCapacity'] !== undefined) && {
+                    autoScalingInstanceConfig: {
+                        ...(updateFields['autoScalingConfig.minCapacity'] !== undefined && { minCapacity: updateFields['autoScalingConfig.minCapacity'] }),
+                        ...(updateFields['autoScalingConfig.maxCapacity'] !== undefined && { maxCapacity: updateFields['autoScalingConfig.maxCapacity'] }),
+                        ...(updateFields['autoScalingConfig.desiredCapacity'] !== undefined && { desiredCapacity: updateFields['autoScalingConfig.desiredCapacity'] })
+                    }
+                })
+            };
+            
+            updateModelMutation(updateRequest);
         }
     }
 
@@ -237,7 +258,12 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     const steps = allSteps.filter((step) => {
         if (props.isEdit) {
-            return step.onEdit;
+            // For edit mode, use the same logic as create mode
+            if (!state.form.lisaHostedModel) {
+                return step.forExternalModel;
+            } else {
+                return true; // Show all steps for LISA hosted models
+            }
         } else {
             if (!state.form.lisaHostedModel) {
                 return step.forExternalModel;

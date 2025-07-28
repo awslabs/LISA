@@ -11,7 +11,7 @@ peru-hatch run setup # dummy operation to ensure hatch environment is setup
 
 CACHED_URL_FILE=".hatch/cached_wire_url"
 PYPI_URL=$(cat "$CACHED_URL_FILE")simple/
-# source .venv/bin/activate
+source .venv/bin/activate
 
 # Define associative array for package name and source mapping
 declare -A LAMBDA_LAYERS

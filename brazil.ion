@@ -17,7 +17,7 @@ common::{
   },
 
   build : {
-    command : "run-npm",
+    command : "./bin/build-assets",
     env: {
       PATH: [
         (farm "PeruNPM" "bin"),

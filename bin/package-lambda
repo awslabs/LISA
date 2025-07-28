@@ -104,7 +104,7 @@ install_requirements() {
     mkdir -p "$TMP_DIR"
     if [ -f "$SRC/requirements.txt" ]; then
         echo "Installing requirements from $SRC/requirements.txt"
-        python3 -m pip install -r "$SRC/requirements.txt" --target "$TMP_DIR" --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+        python3 -m pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target "$TMP_DIR" --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
     else
         echo "No requirements.txt found in $SRC"
     fi

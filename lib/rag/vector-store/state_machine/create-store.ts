@@ -53,6 +53,8 @@ export class CreateStoreStateMachine extends Construct {
             resultPath: '$.dynamoResult',
         });
 
+        const createVectorStoreInfraChoice = new sfn.Choice(this, 'CreateVectorStoreInfraChoice');
+
         // Task to invoke a Lambda function to deploy the vector store
         const deployVectorStore = new tasks.LambdaInvoke(this, 'DeployVectorStore', {
             lambdaFunction: lambda.Function.fromFunctionArn(this, 'VectorStoreDeployer', vectorStoreDeployerFnArn),
@@ -111,34 +113,36 @@ export class CreateStoreStateMachine extends Construct {
 
         // Define the sequence of tasks and conditions in the state machine
         const definition = createVectorStoreEntry
-            .next(deployVectorStore.addCatch(updateFailureStatus))
-            .next(
-                checkDeploymentStatus.next(
-                    new sfn.Choice(this, 'DeploymentComplete?')
-                        .when(
-                            sfn.Condition.and(
-                                sfn.Condition.isPresent('$.deployResult.status'),
-                                sfn.Condition.or(
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_IN_PROGRESS'),
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_IN_PROGRESS'),
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'),
-                                ),
-                            ),
-                            wait.next(checkDeploymentStatus)
+            .next(createVectorStoreInfraChoice
+                .when(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'), updateSuccessStatus)
+                .otherwise(deployVectorStore.addCatch(updateFailureStatus)
+                    .next(
+                        checkDeploymentStatus.next(
+                            new sfn.Choice(this, 'DeploymentComplete?')
+                                .when(
+                                    sfn.Condition.and(
+                                        sfn.Condition.isPresent('$.deployResult.status'),
+                                        sfn.Condition.or(
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_IN_PROGRESS'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_IN_PROGRESS'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'),
+                                        ),
+                                    ),
+                                    wait.next(checkDeploymentStatus)
+                                )
+                                .when(
+                                    sfn.Condition.and(
+                                        sfn.Condition.isPresent('$.deployResult.status'),
+                                        sfn.Condition.or(
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_COMPLETE'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE'),
+                                        ),
+                                    ),
+                                    updateSuccessStatus
+                                )
+                                .otherwise(updateFailureStatus)
                         )
-                        .when(
-                            sfn.Condition.and(
-                                sfn.Condition.isPresent('$.deployResult.status'),
-                                sfn.Condition.or(
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_COMPLETE'),
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE'),
-                                ),
-                            ),
-                            updateSuccessStatus
-                        )
-                        .otherwise(updateFailureStatus)
-                )
-            );
+                    )));
 
         // Create a new state machine using the definition and roles specified
         this.stateMachine = new sfn.StateMachine(this, 'CreateStoreStateMachine', {

@@ -88,6 +88,17 @@ export class CreateStoreStateMachine extends Construct {
         });
 
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
+        const updateBedrockKBSuccess = new tasks.DynamoUpdateItem(this, 'UpdateBedrockKBSuccess', {
+            table: vectorStoreConfigTable,
+            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
+            updateExpression: 'SET #status = :status',
+            expressionAttributeNames: { '#status': 'status' },
+            expressionAttributeValues: {
+                ':status': tasks.DynamoAttributeValue.fromString('CREATE_COMPLETE')
+            },
+        });
+
+        // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
         const updateSuccessStatus = new tasks.DynamoUpdateItem(this, 'UpdateSuccessStatus', {
             table: vectorStoreConfigTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
@@ -114,7 +125,7 @@ export class CreateStoreStateMachine extends Construct {
         // Define the sequence of tasks and conditions in the state machine
         const definition = createVectorStoreEntry
             .next(createVectorStoreInfraChoice
-                .when(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'), updateSuccessStatus)
+                .when(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'), updateBedrockKBSuccess)
                 .otherwise(deployVectorStore.addCatch(updateFailureStatus)
                     .next(
                         checkDeploymentStatus.next(

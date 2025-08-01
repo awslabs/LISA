@@ -95,7 +95,7 @@ export class CreateStoreStateMachine extends Construct {
             expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
             expressionAttributeValues: {
                 ':status': tasks.DynamoAttributeValue.fromString('CREATE_COMPLETE'),
-                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName'))
+                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName') ?? '')
             },
         });
 

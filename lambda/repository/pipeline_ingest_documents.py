@@ -49,18 +49,17 @@ def pipeline_ingest(job: IngestionJob) -> None:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         all_ids = []
-        if repository.get("config", {}).get("type", "") == "bedrock_knowledge_base":
-            repo_config = repository.get("config", {})
+        if repository.get("type", "") == "bedrock_knowledge_base":
             s3.copy_object(
                 CopySource=job.s3_path,
-                Bucket=repo_config.get("bedrockKnowledgeBaseConfig", {}).get(
+                Bucket=repository.get("bedrockKnowledgeBaseConfig", {}).get(
                     "bedrockKnowledgeDatasourceS3Bucket", None
                 ),
                 Key=os.path.basename(job.s3_path),
             )
             bedrock_agent.start_ingestion_job(
-                knowledgeBaseId=repo_config.get("bedrockKnowledgeBaseConfig", {}).get("bedrockKnowledgeBaseId", None),
-                dataSourceId=repo_config.get("bedrockKnowledgeBaseConfig", {}).get(
+                knowledgeBaseId=repository.get("bedrockKnowledgeBaseConfig", {}).get("bedrockKnowledgeBaseId", None),
+                dataSourceId=repository.get("bedrockKnowledgeBaseConfig", {}).get(
                     "bedrockKnowledgeDatasourceId", None
                 ),
             )

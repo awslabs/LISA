@@ -32,13 +32,21 @@ export function BedrockKnowledgeBaseConfigForm (props: FormProps<BedrockKnowledg
     return (
         <Container header={<Header variant='h2'>Bedrock Knowledge Base Config</Header>}>
             <SpaceBetween direction='vertical' size='s'>
-                <FormField label='Knowledge Base ARN' key={'bedrockKnowledgeBaseArn'}
-                    errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeBaseArn}
-                    description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeBaseArn.description}>
-                    <Input value={item.bedrockKnowledgeBaseArn} inputMode='text'
-                        onBlur={() => touchFields(['bedrockKnowledgeBaseConfig.bedrockKnowledgeBaseArn'])}
-                        onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeBaseArn': detail.value })}
-                        placeholder='Knowledge Base ARN' disabled={isEdit} />
+                <FormField label='Knowledge Base Name' key={'bedrockKnowledgeBaseName'}
+                    errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeBaseName}
+                    description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeBaseName.description}>
+                    <Input value={item.bedrockKnowledgeBaseName} inputMode='text'
+                        onBlur={() => touchFields(['bedrockKnowledgeBaseConfig.bedrockKnowledgeBaseName'])}
+                        onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeBaseName': detail.value })}
+                        placeholder='Knowledge Base Name' disabled={isEdit} />
+                </FormField>
+                <FormField label='Knowledge Base ID' key={'bedrockKnowledgeBaseId'}
+                    errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeBaseId}
+                    description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeBaseId.description}>
+                    <Input value={item.bedrockKnowledgeBaseId} inputMode='text'
+                        onBlur={() => touchFields(['bedrockKnowledgeBaseConfig.bedrockKnowledgeBaseId'])}
+                        onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeBaseId': detail.value })}
+                        placeholder='Knowledge Base ID' disabled={isEdit} />
                 </FormField>
                 <FormField label='Knowledge Base Datasource Name' key={'bedrockKnowledgeDatasourceName'}
                     errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeDatasourceName}
@@ -48,12 +56,20 @@ export function BedrockKnowledgeBaseConfigForm (props: FormProps<BedrockKnowledg
                         onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourceName': detail.value })}
                         placeholder='Knowledge Base Datasource Name' disabled={isEdit} />
                 </FormField>
-                <FormField label='Knowledge Base Datasource S3 Bucket' key={'bedrockKnowledgeDatasourcS3Bucket'}
-                    errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeDatasourcS3Bucket}
-                    description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeDatasourcS3Bucket.description}>
-                    <Input value={item.bedrockKnowledgeDatasourcS3Bucket} inputMode='text'
-                        onBlur={() => touchFields(['bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourcS3Bucket'])}
-                        onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourcS3Bucket': detail.value })}
+                <FormField label='Knowledge Base Datasource ID' key={'bedrockKnowledgeDatasourceId'}
+                    errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeDatasourceId}
+                    description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeDatasourceId.description}>
+                    <Input value={item.bedrockKnowledgeDatasourceId} inputMode='text'
+                        onBlur={() => touchFields(['bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourceId'])}
+                        onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourceId': detail.value })}
+                        placeholder='Knowledge Base Datasource ID' disabled={isEdit} />
+                </FormField>
+                <FormField label='Knowledge Base Datasource S3 Bucket' key={'bedrockKnowledgeDatasourceS3Bucket'}
+                    errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeDatasourceS3Bucket}
+                    description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeDatasourceS3Bucket.description}>
+                    <Input value={item.bedrockKnowledgeDatasourceS3Bucket} inputMode='text'
+                        onBlur={() => touchFields(['bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourceS3Bucket'])}
+                        onChange={({ detail }) => setFields({ 'bedrockKnowledgeBaseConfig.bedrockKnowledgeDatasourceS3Bucket': detail.value })}
                         placeholder='Knowledge Base Datasource S3 Bucket' disabled={isEdit} />
                 </FormField>
             </SpaceBetween>

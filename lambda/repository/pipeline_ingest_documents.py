@@ -23,6 +23,7 @@ import boto3
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.lambda_functions import RagDocumentRepository
+from repository.vector_store_repo import VectorStoreRepository
 from utilities.common_functions import get_username, retry_config
 from utilities.file_processing import generate_chunks
 from utilities.vector_store import get_vector_store_client
@@ -33,10 +34,12 @@ dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], conf
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
+vs_repo = VectorStoreRepository()
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
+bedrock_agent = boto3.client("bedrock_agent", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
@@ -44,23 +47,41 @@ rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"]
 def pipeline_ingest(job: IngestionJob) -> None:
     try:
         # chunk and save chunks in vector store
-        documents = generate_chunks(job)
-        texts, metadatas = prepare_chunks(documents, job.repository_id)
-        all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
+        repository = vs_repo.find_repository_by_id(job.repository_id)
+        all_ids = []
+        if repository.get("config", {}).get("type", "") == "bedrock_knowledge_base":
+            repo_config = repository.get("config", {})
+            s3.copy_object(
+                CopySource=job.s3_path,
+                Bucket=repo_config.get("bedrockKnowledgeBaseConfig", {}).get(
+                    "bedrockKnowledgeDatasourceS3Bucket", None
+                ),
+                Key=os.path.basename(job.s3_path),
+            )
+            bedrock_agent.start_ingestion_job(
+                knowledgeBaseId=repo_config.get("bedrockKnowledgeBaseConfig", {}).get("bedrockKnowledgeBaseId", None),
+                dataSourceId=repo_config.get("bedrockKnowledgeBaseConfig", {}).get(
+                    "bedrockKnowledgeDatasourceId", None
+                ),
+            )
+        else:
+            documents = generate_chunks(job)
+            texts, metadatas = prepare_chunks(documents, job.repository_id)
+            all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
 
-        # remove old
-        for rag_document in rag_document_repository.find_by_source(
-            job.repository_id, job.collection_id, job.s3_path, join_docs=True
-        ):
-            prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+            # remove old
+            for rag_document in rag_document_repository.find_by_source(
+                job.repository_id, job.collection_id, job.s3_path, join_docs=True
+            ):
+                prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
-            if prev_job:
-                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
-            remove_document_from_vectorstore(rag_document)
-            rag_document_repository.delete_by_id(rag_document.document_id)
+                if prev_job:
+                    ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
+                remove_document_from_vectorstore(rag_document)
+                rag_document_repository.delete_by_id(rag_document.document_id)
 
-            if prev_job:
-                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
+                if prev_job:
+                    ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
 
         ingestion_type = IngestionType.AUTO
         if job.username != "system":

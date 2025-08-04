@@ -26,9 +26,11 @@ export enum RagRepositoryType {
 }
 
 export const BedrockKnowledgeBaseInstanceConfig = z.object({
-    bedrockKnowledgeBaseArn: z.string().describe('The ARN of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeBaseName: z.string().describe('The name of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeBaseId: z.string().describe('The id of the Bedrock Knowledge Base.'),
     bedrockKnowledgeDatasourceName: z.string().describe('The name of the Bedrock Knowledge Datasource.'),
-    bedrockKnowledgeDatasourcS3Bucket: z.string().describe('The S3 bucket of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeDatasourceId: z.string().describe('The id of the Bedrock Knowledge Datasource.'),
+    bedrockKnowledgeDatasourceS3Bucket: z.string().describe('The S3 bucket of the Bedrock Knowledge Base.'),
 });
 
 export const OpenSearchNewClusterConfig = z.object({

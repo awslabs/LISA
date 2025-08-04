@@ -53,10 +53,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
             bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
             source_bucket = job.s3_path.split("/")[2]
             s3.copy_object(
-                CopySource={
-                    'Bucket': source_bucket,
-                    'Key': job.s3_path.split(source_bucket + "/")[1]
-                },
+                CopySource={"Bucket": source_bucket, "Key": job.s3_path.split(source_bucket + "/")[1]},
                 Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
                 Key=os.path.basename(job.s3_path),
             )

@@ -50,18 +50,19 @@ def pipeline_ingest(job: IngestionJob) -> None:
         repository = vs_repo.find_repository_by_id(job.repository_id)
         all_ids = []
         if repository.get("type", "") == "bedrock_knowledge_base":
+            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+            source_bucket = job.s3_path.split("/")[2]
             s3.copy_object(
-                CopySource=job.s3_path,
-                Bucket=repository.get("bedrockKnowledgeBaseConfig", {}).get(
-                    "bedrockKnowledgeDatasourceS3Bucket", None
-                ),
+                CopySource={
+                    'Bucket': source_bucket,
+                    'Key': job.s3_path.split(source_bucket + "/")[1]
+                },
+                Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
                 Key=os.path.basename(job.s3_path),
             )
             bedrock_agent.start_ingestion_job(
-                knowledgeBaseId=repository.get("bedrockKnowledgeBaseConfig", {}).get("bedrockKnowledgeBaseId", None),
-                dataSourceId=repository.get("bedrockKnowledgeBaseConfig", {}).get(
-                    "bedrockKnowledgeDatasourceId", None
-                ),
+                knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
+                dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
             )
         else:
             documents = generate_chunks(job)

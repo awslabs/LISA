@@ -39,7 +39,7 @@ vs_repo = VectorStoreRepository()
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
-bedrock_agent = boto3.client("bedrock_agent", region_name=os.environ["AWS_REGION"], config=retry_config)
+bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 

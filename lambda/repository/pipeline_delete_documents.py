@@ -14,7 +14,6 @@
 
 import logging
 import os
-from pstats import add_func_stats
 from typing import Any, Dict
 
 import boto3
@@ -49,11 +48,10 @@ def pipeline_delete(job: IngestionJob) -> None:
             repository = vs_repo.find_repository_by_id(job.repository_id)
             if repository.get("type", "") == "bedrock_knowledge_base":
                 bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-                s3.delete_object(Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
-                                 Key=os.path.basename(job.s3_path).split("_", 1)[1]
-                                 if "_" in os.path.basename(job.s3_path)
-                                 else os.path.basename(job.s3_path)
-                                 )
+                s3.delete_object(
+                    Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
+                    Key=os.path.basename(job.s3_path),
+                )
                 bedrock_agent.start_ingestion_job(
                     knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
                     dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),

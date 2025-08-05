@@ -373,6 +373,97 @@ export class ECSCluster extends Construct {
             removalPolicy: config.removalPolicy
         });
 
+        // Retrieve execution role if it has been overridden
+        const executionRole = config.roles ? Role.fromRoleArn(
+            this,
+            createCdkId([ecsConfig.identifier, 'ER']),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}EX`),
+        ) : undefined;
+
+        // Create ECS task definition
+        const taskRole = Role.fromRoleArn(
+            this,
+            createCdkId([ecsConfig.identifier, 'TR']),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`),
+        );
+        
+        // Grant CloudWatch logs permissions to task role
+        logGroup.grantWrite(taskRole);
+        const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
+            family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+            volumes,
+            ...(taskRole && { taskRole }),
+            ...(executionRole && { executionRole }),
+        });
+
+        // Grant CloudWatch logs permissions to both task role and execution role
+        logGroup.grantWrite(taskRole);
+        if (executionRole) {
+            logGroup.grantWrite(executionRole);
+        } else {
+            // If no custom execution role, ensure the default execution role has CloudWatch permissions
+            // This is critical for log stream creation during container startup
+            taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'logs:CreateLogGroup',
+                    'logs:CreateLogStream',
+                    'logs:PutLogEvents',
+                    'logs:DescribeLogStreams'
+                ],
+                resources: [logGroup.logGroupArn, `${logGroup.logGroupArn}:*`]
+            }));
+        }
+        // Add container to task definition
+        const containerHealthCheckConfig = ecsConfig.containerConfig.healthCheckConfig;
+        const containerHealthCheck: HealthCheck = {
+            command: containerHealthCheckConfig.command,
+            interval: Duration.seconds(containerHealthCheckConfig.interval),
+            startPeriod: Duration.seconds(containerHealthCheckConfig.startPeriod),
+            timeout: Duration.seconds(containerHealthCheckConfig.timeout),
+            retries: containerHealthCheckConfig.retries,
+        };
+
+        const linuxParameters =
+            ecsConfig.containerConfig.sharedMemorySize > 0
+                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
+                    sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
+                })
+                : undefined;
+
+        const image = CodeFactory.createImage(ecsConfig.containerConfig.image, this, ecsConfig.identifier, ecsConfig.buildArgs);
+
+        const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
+            containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+            image,
+            environment,
+            logging: LogDriver.awsLogs({
+                logGroup: logGroup,
+                streamPrefix: ecsConfig.identifier
+            }),
+            gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
+            memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
+            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
+            healthCheck: containerHealthCheck,
+            // Model containers need to run with privileged set to true
+            privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
+            ...(linuxParameters && { linuxParameters }),
+        });
+        container.addMountPoints(...mountPoints);
+
+        // Create ECS service
+        const serviceProps: Ec2ServiceProps = {
+            cluster: cluster,
+            daemon: true,
+            serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+            taskDefinition: taskDefinition,
+            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
+        };
+
+        const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
+
+        service.node.addDependency(autoScalingGroup);
+
         // Create application load balancer
         const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([config.deploymentName, config.deploymentStage, identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,

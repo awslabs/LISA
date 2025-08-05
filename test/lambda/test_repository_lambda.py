@@ -1563,7 +1563,11 @@ def test_real_download_document_function():
 
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
 
-        mock_doc_repo.find_by_id.return_value = {"username": "test-user", "source": "s3://test-bucket/test-key"}
+        # Create a mock RagDocument object
+        mock_doc = MagicMock()
+        mock_doc.source = "s3://test-bucket/test-key"
+        mock_doc.username = "test-user"
+        mock_doc_repo.find_by_id.return_value = mock_doc
 
         mock_s3.generate_presigned_url.return_value = "https://test-url"
 
@@ -1578,8 +1582,9 @@ def test_real_download_document_function():
 
         # The function is wrapped by api_wrapper, so we get an HTTP response
         assert result["statusCode"] == 200
-        body = json.loads(result["body"])
-        assert body == "https://test-url"
+        # The function returns a string URL, which gets JSON serialized by api_wrapper
+        # So the body is a JSON-encoded string
+        assert result["body"] == '"https://test-url"'
 
 
 def test_real_list_docs_function():

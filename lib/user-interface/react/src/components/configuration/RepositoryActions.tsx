@@ -88,7 +88,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
 
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedRepo) {
-            notificationService.generateNotification(`Successfully deleted repository: ${selectedRepo.repositoryId}`, 'success');
+            notificationService.generateNotification(`Successfully deleted repository: ${selectedRepo?.repositoryId}`, 'success');
             setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedRepo) {
             notificationService.generateNotification(`Error deleting repository: ${deleteError.data?.message ?? deleteError.data}`, 'error');
@@ -99,7 +99,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
 
     useEffect(() => {
         if (!isUpdating && isUpdateSuccess && selectedRepo) {
-            notificationService.generateNotification(`Successfully updated repository: ${selectedRepo.repositoryId}`, 'success');
+            notificationService.generateNotification(`Successfully updated repository: ${selectedRepo?.repositoryId}`, 'success');
             setSelectedItems([]);
         } else if (!isUpdating && isUpdateError && selectedRepo) {
             notificationService.generateNotification(`Error updating repository: ${updateError.data?.message ?? updateError.data}`, 'error');
@@ -113,14 +113,14 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
             dispatch(setConfirmationModal({
                 action: 'Delete',
                 resourceName: 'Repository',
-                onConfirm: () => deleteMutation(selectedRepo.repositoryId),
+                onConfirm: () => deleteMutation(selectedRepo?.repositoryId),
                 onDismiss: () => {
                     setDisabledModel(false);
                     setShowModal(false);
                 },
                 description: (
                     <SpaceBetween direction='vertical' size='s'>
-                        <p key={'message'}>This will delete the following repository: {selectedRepo.repositoryId}.</p>
+                        <p key={'message'}>This will delete the following repository: {selectedRepo?.repositoryId}.</p>
                         {selectedRepo?.legacy &&
                             <Alert key={'alert'} type='warning'>
                                 <Checkbox

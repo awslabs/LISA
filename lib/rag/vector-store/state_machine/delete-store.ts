@@ -138,6 +138,10 @@ export class DeleteStoreStateMachine extends Construct {
             role: executionRole,
         });
 
+        const handleCleanupBedrockKnowledgeBase = new Choice(this, 'BedrockKnowledgeBase')
+            .when(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'), deleteDynamoDbEntry)
+            .otherwise(deleteStack);
+
         const hasMoreDocs = new Choice(this, 'HasMoreDocs')
             .when(Condition.isNotNull('$.lastEvaluated'), new LambdaInvoke(this, 'CleanupRepositoryDocsRetry', {
                 lambdaFunction: cleanupDocsFunc,
@@ -148,7 +152,7 @@ export class DeleteStoreStateMachine extends Construct {
                 }),
                 outputPath: OUTPUT_PATH,
             }))
-            .otherwise(deleteStack);
+            .otherwise(handleCleanupBedrockKnowledgeBase);
 
         const cleanupDocs = new LambdaInvoke(this, 'CleanupRepositoryDocs', {
             lambdaFunction: cleanupDocsFunc,

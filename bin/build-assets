@@ -44,17 +44,3 @@ for package_name in "${!LAMBDAS[@]}"; do
   rm -rf ./build
   cd $ROOT
 done
-
-#   LISA_CONTAINERS: (farm "AimlAdcLisaContainers"),
-#   LISA_MODELS: (farm "AimlAdcLisaModels"),
-
-declare -A CONTAINERS
-CONTAINERS["AimlAdcLisaRestApi"]="./lib/serve/rest-api"
-# echo "Building Containers..."
-
-# docker build -t lisa-rest-api:latest \
-#   --build-arg BASE_IMAGE=python:3.11 \
-#   --build-arg LITELLM_CONFIG='db_key: sk-a8814208-0388-480c-9fc7-fea59607ca38' \
-#   -f lib/serve/rest-api/Dockerfile . && \
-# docker save lisa-rest-api:latest -o lisa-rest-api.tar
-

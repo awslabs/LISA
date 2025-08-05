@@ -40,7 +40,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             <FormField label='Model ID' errorText={props.formErrors?.modelId}>
                 <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
                     props.setFields({ 'modelId': detail.value });
-                }} disabled={false} placeholder='mistral-vllm'/>
+                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
             </FormField>
             <FormField label='Model Name' errorText={props.formErrors?.modelName}>
                 <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
@@ -167,7 +167,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.TOOL_CALLS)});
                             }
                         }}
-                        disabled={props.isEdit || isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
@@ -181,7 +181,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.IMAGE_INPUT)});
                             }
                         }}
-                        disabled={props.isEdit || isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
@@ -196,7 +196,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION)});
                             }
                         }}
-                        disabled={props.isEdit || isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined}
                     />

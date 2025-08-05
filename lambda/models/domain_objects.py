@@ -171,6 +171,22 @@ class ContainerConfig(BaseModel):
         return environment
 
 
+class ContainerConfigUpdatable(BaseModel):
+    """Specifies container configuration fields that can be updated."""
+
+    environment: Optional[Dict[str, str]] = None
+    sharedMemorySize: Optional[PositiveInt] = None
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
+        """Validates environment variable key names."""
+        if environment:
+            if not all((key for key in environment.keys())):
+                raise ValueError("Empty strings are not allowed for environment variable key names.")
+        return environment
+
+
 class ModelFeature(BaseModel):
     """Defines model feature attributes."""
 
@@ -275,6 +291,7 @@ class UpdateModelRequest(BaseModel):
     streaming: Optional[bool] = None
     allowedGroups: Optional[List[str]] = None
     features: Optional[List[ModelFeature]] = None
+    containerConfig: Optional[ContainerConfigUpdatable] = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -287,10 +304,11 @@ class UpdateModelRequest(BaseModel):
             self.streaming,
             self.allowedGroups,
             self.features,
+            self.containerConfig,
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
-                "At least one field out of autoScalingInstanceConfig, enabled, modelType, modelDescription, "
+                "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, modelDescription, "
                 "streaming, allowedGroups, or features must be defined in request payload."
             )
 
@@ -304,6 +322,14 @@ class UpdateModelRequest(BaseModel):
         """Validates auto-scaling instance configuration."""
         if not config:
             raise ValueError("The autoScalingInstanceConfig must not be null if defined in request payload.")
+        return config
+
+    @field_validator("containerConfig")
+    @classmethod
+    def validate_container_config(cls, config: ContainerConfigUpdatable) -> ContainerConfigUpdatable:
+        """Validates container configuration update."""
+        if not config:
+            raise ValueError("The containerConfig must not be null if defined in request payload.")
         return config
 
 

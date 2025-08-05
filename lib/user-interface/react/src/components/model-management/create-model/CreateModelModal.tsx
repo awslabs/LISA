@@ -78,7 +78,12 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         ...state.form,
         containerConfig: (state.form.lisaHostedModel ? ({
             ...state.form.containerConfig,
-            environment: state.form.containerConfig.environment?.reduce((r,{key,value}) => (r[key] = value,r), {})
+            environment: state.form.containerConfig.environment?.reduce((r: any,{key,value}: any) => {
+                if (key && key.trim() !== '') {
+                    r[key] = value;
+                }
+                return r;
+            }, {})
         }) : null),
         loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
         autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
@@ -126,6 +131,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 'modelDescription',
                 'allowedGroups',
                 'features',
+                'containerConfig',
                 'autoScalingConfig.minCapacity',
                 'autoScalingConfig.maxCapacity',
                 'autoScalingConfig.desiredCapacity'
@@ -139,6 +145,32 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 ...(updateFields.modelDescription !== undefined && { modelDescription: updateFields.modelDescription }),
                 ...(updateFields.allowedGroups !== undefined && { allowedGroups: updateFields.allowedGroups }),
                 ...(updateFields.features !== undefined && { features: updateFields.features }),
+                ...(updateFields.containerConfig !== undefined && { 
+                    containerConfig: {
+                        ...updateFields.containerConfig,
+                        environment: (() => {
+                            const originalEnv = props.selectedItems[0]?.containerConfig?.environment || {};
+                            const result: any = {};
+                            const currentKeys = new Set<string>();
+                            
+                            // Add/update current variables and track keys
+                            (state.form.containerConfig.environment || []).forEach(({key, value}: any) => {
+                                if (key && key.trim() !== '') {
+                                    result[key] = value;
+                                    currentKeys.add(key);
+                                }
+                            });
+
+                            // Mark deletions
+                            Object.keys(originalEnv).forEach(key => {
+                                if (!currentKeys.has(key)) {
+                                    result[key] = 'DELETE';
+                                }
+                            });
+                            return result;
+                        })()
+                    }
+                }),
                 ...((updateFields['autoScalingConfig.minCapacity'] !== undefined || 
                     updateFields['autoScalingConfig.maxCapacity'] !== undefined || 
                     updateFields['autoScalingConfig.desiredCapacity'] !== undefined) && {
@@ -223,9 +255,10 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         {
             title: 'Container Configuration',
             content: (
-                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
             isOptional: true,
+            onEdit: state.form.lisaHostedModel,
             forExternalModel: false
         },
         {

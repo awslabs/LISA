@@ -142,6 +142,7 @@ export type IModelUpdateRequest = {
     allowedGroups?: string[];
     features?: ModelFeature[];
     autoScalingInstanceConfig?: IAutoScalingConfig;
+    containerConfig?: IContainerConfig;
 };
 
 const containerHealthCheckConfigSchema = z.object({

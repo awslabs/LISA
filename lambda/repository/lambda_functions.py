@@ -486,9 +486,9 @@ def download_document(event: dict, context: dict) -> str:
     document_id = path_params.get("documentId")
 
     _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
-    doc = doc_repo.find_by_id(repository_id=repository_id, document_id=document_id)
+    doc = doc_repo.find_by_id(document_id=document_id)
 
-    source = doc.get("source")
+    source = doc.source
     bucket, key = source.replace("s3://", "").split("/", 1)
 
     url: str = s3.generate_presigned_url(

@@ -55,7 +55,11 @@ def pipeline_ingest(job: IngestionJob) -> None:
             s3.copy_object(
                 CopySource={"Bucket": source_bucket, "Key": job.s3_path.split(source_bucket + "/")[1]},
                 Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
-                Key=os.path.basename(job.s3_path),
+                Key=(
+                    os.path.basename(job.s3_path).split("_", 1)[1]
+                    if "_" in os.path.basename(job.s3_path)
+                    else os.path.basename(job.s3_path)
+                ),
             )
             bedrock_agent.start_ingestion_job(
                 knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
@@ -66,19 +70,20 @@ def pipeline_ingest(job: IngestionJob) -> None:
             texts, metadatas = prepare_chunks(documents, job.repository_id)
             all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
 
-            # remove old
-            for rag_document in rag_document_repository.find_by_source(
-                job.repository_id, job.collection_id, job.s3_path, join_docs=True
-            ):
-                prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+        # remove old
+        for rag_document in rag_document_repository.find_by_source(
+            job.repository_id, job.collection_id, job.s3_path, join_docs=True
+        ):
+            prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
-                if prev_job:
-                    ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
+            if prev_job:
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
+            if repository.get("type", "") != "bedrock_knowledge_base":
                 remove_document_from_vectorstore(rag_document)
-                rag_document_repository.delete_by_id(rag_document.document_id)
+            rag_document_repository.delete_by_id(rag_document.document_id)
 
-                if prev_job:
-                    ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
+            if prev_job:
+                ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_COMPLETED)
 
         ingestion_type = IngestionType.AUTO
         if job.username != "system":

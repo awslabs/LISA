@@ -126,7 +126,7 @@ export class DeleteStoreStateMachine extends Construct {
         });
 
         const handleCleanupBedrockKnowledgeBase = new Choice(this, 'BedrockKnowledgeBase')
-            .when(sfn.Condition.stringEquals('$.ddbResult.Item.ragConfig.type.S', 'bedrock_knowledge_base'), deleteDynamoDbEntry)
+            .when(sfn.Condition.stringEquals('$.ddbResult.Item.config.M.type.S', 'bedrock_knowledge_base'), deleteDynamoDbEntry)
             .otherwise(deleteStack);
 
         const getRepoFromDdb = new tasks.DynamoGetItem(this, 'GetRepoFromDdb', {

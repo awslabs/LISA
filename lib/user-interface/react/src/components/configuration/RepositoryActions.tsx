@@ -90,9 +90,13 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
         if (!isDeleteLoading && isDeleteSuccess && selectedRepo) {
             notificationService.generateNotification(`Successfully deleted repository: ${selectedRepo?.repositoryId}`, 'success');
             setSelectedItems([]);
+            setDisabledModel(false);
+            setShowModal(false);
         } else if (!isDeleteLoading && isDeleteError && selectedRepo) {
             notificationService.generateNotification(`Error deleting repository: ${deleteError.data?.message ?? deleteError.data}`, 'error');
             setSelectedItems([]);
+            setDisabledModel(false);
+            setShowModal(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);

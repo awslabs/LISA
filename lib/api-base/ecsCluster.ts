@@ -387,8 +387,11 @@ export class ECSCluster extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`),
         );
         
-        // Grant CloudWatch logs permissions to task role
+        // Grant CloudWatch logs permissions to both task role and execution role
         logGroup.grantWrite(taskRole);
+        if (executionRole) {
+            logGroup.grantWrite(executionRole);
+        }
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             volumes,
@@ -443,7 +446,7 @@ export class ECSCluster extends Construct {
             }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
-            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
+            portMappings: [{ containerPort: 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
@@ -493,6 +496,40 @@ export class ECSCluster extends Construct {
             listenerProps,
         );
         const protocol = listenerProps.port === 443 ? 'https' : 'http';
+
+        // Add targets
+        const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
+        const targetGroup = listener.addTargets(createCdkId([ecsConfig.identifier, 'TgtGrp']), {
+            targetGroupName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
+            healthCheck: {
+                path: loadBalancerHealthCheckConfig.path,
+                interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
+                timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
+                healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
+                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
+            },
+            targets: [service],
+        });
+
+        // ALB metric for ASG to use for auto scaling EC2 instances
+        // TODO: Update this to step scaling for embedding models??
+        const requestCountPerTargetMetric = new Metric({
+            metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
+            namespace: 'AWS/ApplicationELB',
+            dimensionsMap: {
+                TargetGroup: targetGroup.targetGroupFullName,
+                LoadBalancer: loadBalancer.loadBalancerFullName,
+            },
+            statistic: Stats.SAMPLE_COUNT,
+            period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+        });
+
+        // Create hook to scale on ALB metric count exceeding thresholds
+        autoScalingGroup.scaleToTrackMetric(createCdkId([ecsConfig.identifier, 'ScalingPolicy']), {
+            metric: requestCountPerTargetMetric,
+            targetValue: ecsConfig.autoScalingConfig.metricConfig.targetValue,
+            estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+        });
 
         const domain =
             ecsConfig.loadBalancerConfig.domainName !== null

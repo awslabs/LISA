@@ -29,6 +29,8 @@ from utilities.common_functions import get_cert_path, get_rest_api_container_end
 ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
 autoscaling_client = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)
+ecs_client = boto3.client("ecs", region_name=os.environ["AWS_REGION"], config=retry_config)
+cfn_client = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 
@@ -235,9 +237,14 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         ExpressionAttributeValues=ddb_update_values,
     )
 
+    # Determine if ECS update is needed (container config changes for LISA-hosted models)
+    needs_ecs_update = (payload_container_config is not None and model_asg is not None and 
+                       model_status == ModelStatus.IN_SERVICE)
+    
     # We only need to poll for activation so that we know when to add the model back to LiteLLM
     output_dict["has_capacity_update"] = is_enable
     output_dict["is_disable"] = is_disable
+    output_dict["needs_ecs_update"] = needs_ecs_update
     output_dict["initial_model_status"] = model_status  # needed for simple metadata updates
     output_dict["current_model_status"] = ddb_update_values[":ms"]  # for state machine debugging / visibility
     return output_dict
@@ -343,4 +350,235 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     output_dict["current_model_status"] = ddb_update_values[":ms"]
 
+    return output_dict
+
+
+def get_ecs_resources_from_stack(stack_name: str) -> tuple[str, str, str]:
+    """Extract ECS service name, cluster name, and current task definition ARN from CloudFormation."""
+    try:
+        resources = cfn_client.describe_stack_resources(StackName=stack_name)["StackResources"]
+        
+        service_name = None
+        cluster_name = None
+
+        for resource in resources:
+            if resource["ResourceType"] == "AWS::ECS::Service":
+                service_name = resource["PhysicalResourceId"]
+            elif resource["ResourceType"] == "AWS::ECS::Cluster":
+                cluster_name = resource["PhysicalResourceId"]
+
+        if not service_name or not cluster_name:
+            raise RuntimeError(f"Could not find ECS service or cluster in stack {stack_name}")
+        
+        # TODO: Might be failing to get the correct information here or failing to unpack in creation of new task def
+        # Get current task definition from service
+        service_info = ecs_client.describe_services(
+            cluster=cluster_name,
+            services=[service_name]
+        )["services"][0]
+        
+        current_task_def_arn = service_info["taskDefinition"]
+        
+        return service_name, cluster_name, current_task_def_arn
+        
+    except Exception as e:
+        logger.error(f"Error getting ECS resources from stack {stack_name}: {str(e)}")
+        raise RuntimeError(f"Failed to get ECS resources from CloudFormation stack: {str(e)}")
+
+
+def create_updated_task_definition(task_definition_arn: str, new_env_vars: Dict[str, str]) -> str:
+    """Create new task definition revision with updated environment variables."""
+    try:
+        # Get current task definition
+        task_def_response = ecs_client.describe_task_definition(taskDefinition=task_definition_arn)
+        task_def = task_def_response["taskDefinition"]
+        
+        # Create new task definition with updated environment variables
+        new_task_def = {
+            "family": task_def["family"],
+            "volumes": task_def.get("volumes", []),
+            "containerDefinitions": []
+        }
+        
+        # Add optional fields only if they have valid values
+        if task_def.get("taskRoleArn"):
+            new_task_def["taskRoleArn"] = task_def["taskRoleArn"]
+        if task_def.get("executionRoleArn"):
+            new_task_def["executionRoleArn"] = task_def["executionRoleArn"]
+        if task_def.get("networkMode"):
+            new_task_def["networkMode"] = task_def["networkMode"]
+        if task_def.get("requiresCompatibilities"):
+            new_task_def["requiresCompatibilities"] = task_def["requiresCompatibilities"]
+        
+        # Only include cpu and memory if they have valid non-None values
+        if task_def.get("cpu") is not None:
+            new_task_def["cpu"] = str(task_def["cpu"])
+        if task_def.get("memory") is not None:
+            new_task_def["memory"] = str(task_def["memory"])
+        
+        # Update container definitions with new environment variables
+        for container in task_def["containerDefinitions"]:
+            new_container = container.copy()
+            
+            # Update environment variables
+            existing_env = {env["name"]: env["value"] for env in container.get("environment", [])}
+            existing_env.update(new_env_vars)
+            
+            new_container["environment"] = [
+                {"name": key, "value": value} for key, value in existing_env.items()
+            ]
+            
+            new_task_def["containerDefinitions"].append(new_container)
+        
+        # Register new task definition
+        response = ecs_client.register_task_definition(**new_task_def)
+        new_task_def_arn = response["taskDefinition"]["taskDefinitionArn"]
+        
+        logger.info(f"Created new task definition: {new_task_def_arn}")
+        return new_task_def_arn
+        
+    except Exception as e:
+        logger.error(f"Error creating updated task definition: {str(e)}")
+        raise RuntimeError(f"Failed to create updated task definition: {str(e)}")
+
+
+def update_ecs_service(cluster_name: str, service_name: str, task_definition_arn: str) -> None:
+    """Update ECS service to use new task definition."""
+    try:
+        ecs_client.update_service(
+            cluster=cluster_name,
+            service=service_name,
+            taskDefinition=task_definition_arn
+        )
+        logger.info(f"Updated ECS service {service_name} to use task definition {task_definition_arn}")
+        
+    except Exception as e:
+        logger.error(f"Error updating ECS service: {str(e)}")
+        raise RuntimeError(f"Failed to update ECS service: {str(e)}")
+
+
+def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Update ECS task definition with new environment variables and update service.
+    
+    This handler will:
+    1. Retrieve current task definition from ECS
+    2. Create new task definition revision with updated environment variables  
+    3. Update ECS service to use new task definition
+    4. Set up for deployment monitoring
+    """
+    output_dict = deepcopy(event)
+    model_id = event["model_id"]
+    
+    logger.info(f"Starting ECS update for model '{model_id}'")
+    
+    try:
+        # Get current model info from DDB
+        ddb_item = model_table.get_item(Key={"model_id": model_id})["Item"]
+        cloudformation_stack_name = ddb_item.get("cloudformation_stack_name")
+        
+        if not cloudformation_stack_name:
+            raise RuntimeError(f"No CloudFormation stack found for model '{model_id}'")
+        
+        # Get ECS service and task definition from CloudFormation stack
+        service_name, cluster_name, task_definition_arn = get_ecs_resources_from_stack(cloudformation_stack_name)
+        
+        # Get updated environment variables from model config
+        updated_env_vars = ddb_item["model_config"]["containerConfig"]["environment"]
+        
+        # Create new task definition with updated environment variables
+        new_task_def_arn = create_updated_task_definition(task_definition_arn, updated_env_vars)
+        
+        # Update ECS service to use new task definition
+        update_ecs_service(cluster_name, service_name, new_task_def_arn)
+        
+        # Set up tracking for deployment monitoring
+        output_dict["new_task_definition_arn"] = new_task_def_arn
+        output_dict["ecs_service_name"] = service_name
+        output_dict["ecs_cluster_name"] = cluster_name
+        output_dict["remaining_ecs_polls"] = 30  # Set initial polling limit
+        
+        logger.info(f"Successfully initiated ECS update for model '{model_id}'")
+        
+    except Exception as e:
+        logger.error(f"ECS update failed for model '{model_id}': {str(e)}")
+        # Set error for state machine handling
+        output_dict["ecs_update_error"] = str(e)
+    
+    return output_dict
+
+
+def handle_poll_ecs_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Monitor ECS service deployment progress.
+    
+    This handler will:
+    1. Check if ECS service deployment is complete
+    2. Return boolean for continued polling if needed
+    3. Handle deployment failures
+    """
+    output_dict = deepcopy(event)
+    model_id = event["model_id"]
+    
+    # Check if there was an error in the ECS update step
+    if event.get("ecs_update_error"):
+        logger.error(f"ECS update error for model '{model_id}': {event['ecs_update_error']}")
+        output_dict["should_continue_ecs_polling"] = False
+        return output_dict
+    
+    cluster_name = event["ecs_cluster_name"]
+    service_name = event["ecs_service_name"]
+    new_task_def_arn = event["new_task_definition_arn"]
+    
+    try:
+        # Get service deployment status
+        services = ecs_client.describe_services(
+            cluster=cluster_name,
+            services=[service_name]
+        )["services"]
+        
+        if not services:
+            raise RuntimeError(f"ECS service {service_name} not found")
+        
+        service = services[0]
+        deployments = service["deployments"]
+        
+        # Check if deployment is stable
+        is_deployment_stable = True
+        primary_deployment = None
+        
+        for deployment in deployments:
+            if deployment["taskDefinition"] == new_task_def_arn:
+                primary_deployment = deployment
+                if deployment["status"] != "PRIMARY" or deployment["rolloutState"] != "COMPLETED":
+                    is_deployment_stable = False
+                break
+        
+        if not primary_deployment:
+            logger.warning(f"Could not find deployment for task definition {new_task_def_arn}")
+            is_deployment_stable = False
+        
+        # Check polling limits
+        remaining_polls = event.get("remaining_ecs_polls", 30) - 1
+        if remaining_polls <= 0 and not is_deployment_stable:
+            logger.error(f"ECS deployment polling timeout for model '{model_id}'")
+            output_dict["ecs_polling_error"] = f"ECS deployment did not complete within expected time for model '{model_id}'"
+            output_dict["should_continue_ecs_polling"] = False
+            return output_dict
+        
+        should_continue_polling = not is_deployment_stable and remaining_polls > 0
+        
+        output_dict["should_continue_ecs_polling"] = should_continue_polling
+        output_dict["remaining_ecs_polls"] = remaining_polls
+        
+        if is_deployment_stable:
+            logger.info(f"ECS deployment completed successfully for model '{model_id}'")
+        else:
+            logger.info(f"ECS deployment still in progress for model '{model_id}', remaining polls: {remaining_polls}")
+            
+    except Exception as e:
+        logger.error(f"Error polling ECS deployment for model '{model_id}': {str(e)}")
+        output_dict["ecs_polling_error"] = f"Error polling ECS deployment: {str(e)}"
+        output_dict["should_continue_ecs_polling"] = False
+    
     return output_dict

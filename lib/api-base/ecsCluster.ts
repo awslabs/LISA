@@ -189,7 +189,7 @@ export class ECSCluster extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor (scope: Construct, id: string, props: ECSClusterProps) {
+    constructor(scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, identifier, vpc, securityGroup, ecsConfig } = props;
 
@@ -342,7 +342,6 @@ export class ECSCluster extends Construct {
 
         // Add CloudWatch Logs permissions to EC2 instance role for ECS logging
         autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'));
-        
         // Add permissions to use SSM in dev environment for EC2 debugging purposes only
         if (config.deploymentStage === 'dev') {
             autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'));
@@ -387,25 +386,6 @@ export class ECSCluster extends Construct {
             createCdkId([ecsConfig.identifier, 'TR']),
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`),
         );
-        
-        // Grant CloudWatch logs permissions to both task role and execution role
-        logGroup.grantWrite(taskRole);
-        if (executionRole) {
-            logGroup.grantWrite(executionRole);
-        } else {
-            // If no custom execution role, ensure the default execution role has CloudWatch permissions
-            // This is critical for log stream creation during container startup
-            taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: [
-                    'logs:CreateLogGroup',
-                    'logs:CreateLogStream',
-                    'logs:PutLogEvents',
-                    'logs:DescribeLogStreams'
-                ],
-                resources: [logGroup.logGroupArn, `${logGroup.logGroupArn}:*`]
-            }));
-        }
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             volumes,
@@ -460,7 +440,7 @@ export class ECSCluster extends Construct {
             }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
-            portMappings: [{ containerPort: 8080, protocol: Protocol.TCP }],
+            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
@@ -522,6 +502,7 @@ export class ECSCluster extends Construct {
                 healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
                 unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
             },
+            port: 80,
             targets: [service],
         });
 

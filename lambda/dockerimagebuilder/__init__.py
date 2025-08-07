@@ -54,7 +54,9 @@ EOF
 
 # Start services
 systemctl start docker
-systemctl start amazon-cloudwatch-agent
+
+# Start CloudWatch agent with configuration
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
 # Setup build environment
 mkdir /home/ec2-user/docker_resources

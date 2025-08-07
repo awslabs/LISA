@@ -17,6 +17,7 @@
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
@@ -41,7 +42,7 @@ import {
     BaseApplicationListenerProps,
     SslPolicy,
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
+import { Effect, IRole, ManagedPolicy, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -81,7 +82,7 @@ export class ECSCluster extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor (scope: Construct, id: string, props: ECSClusterProps) {
+    constructor(scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, vpc, securityGroup, ecsConfig } = props;
 
@@ -160,6 +161,8 @@ export class ECSCluster extends Construct {
             mountPoints.push(nvmeMountPoint);
         }
 
+        // Add CloudWatch Logs permissions to EC2 instance role for ECS logging
+        autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'));
         // Add permissions to use SSM in dev environment for EC2 debugging purposes only
         if (config.deploymentStage === 'dev') {
             autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'));
@@ -184,6 +187,13 @@ export class ECSCluster extends Construct {
             environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
         }
 
+        // Create CloudWatch log group with explicit retention
+        const logGroup = new LogGroup(this, createCdkId([ecsConfig.identifier, 'LogGroup']), {
+            logGroupName: `/aws/ecs/${config.deploymentName}-${ecsConfig.identifier}`,
+            retention: RetentionDays.ONE_WEEK,
+            removalPolicy: config.removalPolicy
+        });
+
         // Retrieve execution role if it has been overridden
         const executionRole = config.roles ? Role.fromRoleArn(
             this,
@@ -204,6 +214,24 @@ export class ECSCluster extends Construct {
             ...(executionRole && { executionRole }),
         });
 
+        // Grant CloudWatch logs permissions to both task role and execution role
+        logGroup.grantWrite(taskRole);
+        if (executionRole) {
+            logGroup.grantWrite(executionRole);
+        } else {
+            // If no custom execution role, ensure the default execution role has CloudWatch permissions
+            // This is critical for log stream creation during container startup
+            taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'logs:CreateLogGroup',
+                    'logs:CreateLogStream',
+                    'logs:PutLogEvents',
+                    'logs:DescribeLogStreams'
+                ],
+                resources: [logGroup.logGroupArn, `${logGroup.logGroupArn}:*`]
+            }));
+        }
         // Add container to task definition
         const containerHealthCheckConfig = ecsConfig.containerConfig.healthCheckConfig;
         const containerHealthCheck: HealthCheck = {
@@ -227,7 +255,10 @@ export class ECSCluster extends Construct {
             containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             image,
             environment,
-            logging: LogDriver.awsLogs({ streamPrefix: ecsConfig.identifier }),
+            logging: LogDriver.awsLogs({
+                logGroup: logGroup,
+                streamPrefix: ecsConfig.identifier
+            }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
             portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],

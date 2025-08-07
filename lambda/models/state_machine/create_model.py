@@ -15,12 +15,17 @@
 """Lambda handlers for CreateModel state machine."""
 
 import json
+import logging
 import os
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict
 
 import boto3
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, InferenceContainer, ModelStatus
@@ -69,6 +74,7 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Set DDB entry to CREATING status."""
+    logger.info(f"Setting model to CREATING status: {event.get('modelId')}")
     output_dict = deepcopy(event)
     request = CreateModelRequest.validate(event)
 
@@ -100,6 +106,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
 
 def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Start process for copying Docker image into local AWS account."""
+    logger.info(f"Starting Docker image copy for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
     request = CreateModelRequest.validate(event)
 
@@ -313,14 +320,17 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Expectation of this function is to terminate the EC2 instance if it is still running, and to set the model status
     to Failed. Cleaning up the CloudFormation stack, if it still exists, will happen in the DeleteModel API.
     """
+    logger.error(f"Handling state machine failure: {event}")
     error_dict = json.loads(  # error from SFN is json payload on top of json payload we add to the exception
         json.loads(event["Cause"])["errorMessage"]
     )
     error_reason = error_dict["error"]
     original_event = error_dict["event"]
+    logger.error(f"Failure reason: {error_reason}, Model ID: {original_event.get('modelId', 'unknown')}")
 
     # terminate EC2 instance if we have one recorded
     if "image_info" in original_event and "instance_id" in original_event["image_info"]:
+        logger.info(f"Terminating EC2 instance: {original_event['image_info']['instance_id']}")
         ec2Client.terminate_instances(InstanceIds=[original_event["image_info"]["instance_id"]])
 
     # set model as Failed in DDB, so it shows as such in the UI. adds error reason as well.

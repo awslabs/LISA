@@ -212,6 +212,7 @@ def handle_poll_capacity(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     output_dict = deepcopy(event)
     model_id = event["model_id"]
     asg_name = event["asg_name"]
+    logger.info(f"Polling capacity for model {model_id}, ASG: {asg_name}")
     asg_info = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])["AutoScalingGroups"][0]
 
     desired_capacity = asg_info["DesiredCapacity"]

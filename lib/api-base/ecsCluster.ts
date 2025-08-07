@@ -342,6 +342,7 @@ export class ECSCluster extends Construct {
 
         // Add CloudWatch Logs permissions to EC2 instance role for ECS logging
         autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'));
+        
         // Add permissions to use SSM in dev environment for EC2 debugging purposes only
         if (config.deploymentStage === 'dev') {
             autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'));
@@ -391,6 +392,19 @@ export class ECSCluster extends Construct {
         logGroup.grantWrite(taskRole);
         if (executionRole) {
             logGroup.grantWrite(executionRole);
+        } else {
+            // If no custom execution role, ensure the default execution role has CloudWatch permissions
+            // This is critical for log stream creation during container startup
+            taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'logs:CreateLogGroup',
+                    'logs:CreateLogStream',
+                    'logs:PutLogEvents',
+                    'logs:DescribeLogStreams'
+                ],
+                resources: [logGroup.logGroupArn, `${logGroup.logGroupArn}:*`]
+            }));
         }
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),

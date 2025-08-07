@@ -118,7 +118,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
 
     payload = response["Payload"].read()
     output_dict["image_info"] = json.loads(payload)
-    output_dict["image_info"]["remaining_polls"] = 90
+    output_dict["image_info"]["remaining_polls"] = 200
     return output_dict
 
 
@@ -208,7 +208,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         },
     )
 
-    output_dict["remaining_polls_stack"] = 90
+    output_dict["remaining_polls_stack"] = 200
 
     return output_dict
 

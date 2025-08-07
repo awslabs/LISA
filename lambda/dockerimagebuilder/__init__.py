@@ -74,11 +74,11 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
             "ImageId": ami_id,
             "MinCount": 1,
             "MaxCount": 1,
-            "InstanceType": "m5.large",
+            "InstanceType": "m5.2xlarge",
             "UserData": rendered_userdata,
             "IamInstanceProfile": {"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
             "BlockDeviceMappings": [
-                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": int(os.environ["LISA_IMAGEBUILDER_VOLUME_SIZE"])}}
+                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 300}}
             ],
             "TagSpecifications": [
                 {

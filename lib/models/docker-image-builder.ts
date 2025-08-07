@@ -151,6 +151,13 @@ export class DockerImageBuilder extends Construct {
                     ],
                     resources: ['*'],
                 }),
+                new PolicyStatement({
+                    actions: [
+                        'logs:CreateLogStream',
+                        'logs:PutLogEvents',
+                    ],
+                    resources: ['*'],
+                }),
             ],
         });
 

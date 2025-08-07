@@ -177,36 +177,40 @@ dockerCheck:
 
 ## Check if models are uploaded
 modelCheck:
-	@$(foreach MODEL_ID,$(MODEL_IDS), \
-		$(PROJECT_DIR)/scripts/check-for-models.sh -m $(MODEL_ID) -s $(MODEL_BUCKET); \
-		if \
-			[ $$? != 0 ]; \
-			then \
-				localModelDir="./models"; \
-				if \
-					[ ! -d "$localModelDir" ]; \
-					then \
-						mkdir "$localModelDir"; \
-				fi; \
-				echo; \
-				echo "Preparing to download, convert, and upload safetensors for model: $(MODEL_ID)"; \
-				echo "Local directory: '$$localModelDir' will be used to store downloaded and converted model weights"; \
-				echo "Note: sudo privileges required to remove model dir due to docker mount using root"; \
-				echo "Would you like to continue? [y/N] "; \
-				read confirm_download; \
-				if \
-					[ $${confirm_download:-'N'} = 'y' ]; \
-					then \
-						mkdir -p $$localModelDir; \
+	@access_token=""; \
+	for MODEL_ID in $(MODEL_IDS); do \
+		$(PROJECT_DIR)/scripts/check-for-models.sh -m $$MODEL_ID -s $(MODEL_BUCKET); \
+		if [ $$? != 0 ]; then \
+			localModelDir="./models"; \
+			if [ ! -d "$$localModelDir" ]; then \
+				mkdir "$$localModelDir"; \
+			fi; \
+			echo; \
+			echo "Preparing to download, convert, and upload safetensors for model: $$MODEL_ID"; \
+			echo "Local directory: '$$localModelDir' will be used to store downloaded and converted model weights"; \
+			echo "Note: sudo privileges required to remove model dir due to docker mount using root"; \
+			echo "Would you like to continue? [y/N] "; \
+			read confirm_download; \
+			if [ $${confirm_download:-'N'} = 'y' ]; then \
+				mkdir -p $$localModelDir; \
+				if [ -z "$$access_token" ]; then \
+					if [ -n "$$HUGGINGFACE_TOKEN" ]; then \
+						access_token="$$HUGGINGFACE_TOKEN"; \
+					elif [ -f ".hf_token_cache" ]; then \
+						access_token=$$(cat .hf_token_cache); \
+					else \
 						echo "What is your huggingface access token? "; \
 						read access_token; \
-						echo "Converting and uploading safetensors for model: $(MODEL_ID)"; \
-						tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
-						echo $$tgiImage; \
-						$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $(MODEL_ID) -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
+						echo "$$access_token" > .hf_token_cache; \
+					fi; \
 				fi; \
+				echo "Converting and uploading safetensors for model: $$MODEL_ID"; \
+				tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
+				echo $$tgiImage; \
+				$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $$MODEL_ID -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
+			fi; \
 		fi; \
-	)
+	done
 
 ## Run all clean commands
 clean: cleanTypeScript cleanPython cleanCfn cleanMisc
@@ -243,6 +247,7 @@ cleanCfn:
 ## Delete all misc files
 cleanMisc:
 	@find . -type f -name "*.DS_Store" -delete
+	@rm -f .hf_token_cache
 
 
 ## Login Docker CLI to Amazon Elastic Container Registry
@@ -284,7 +289,7 @@ endef
 ## Deploy all infrastructure
 deploy: installPythonRequirements dockerCheck dockerLogin cleanMisc modelCheck buildNpmModules
 	$(call print_config)
-ifneq (,$(findstring true, $(HEADLESS)))
+ifeq ($(HEADLESS),true)
 	npx cdk deploy ${STACK} $(if $(PROFILE),--profile ${PROFILE}) --require-approval never -c ${ENV}='$(shell echo '${${ENV}}')';
 else
 	@printf "Is the configuration correct? [y/N]  "\
@@ -298,7 +303,7 @@ endif
 ## Tear down all infrastructure
 destroy: cleanMisc
 	$(call print_config)
-ifneq (,$(findstring true, $(HEADLESS)))
+ifeq ($(HEADLESS),true)
 	npx cdk destroy ${STACK} --force $(if $(PROFILE),--profile ${PROFILE});
 else
 	@printf "Is the configuration correct? [y/N]  "\

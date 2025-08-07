@@ -22,10 +22,6 @@ from datetime import datetime
 from typing import Any, Dict
 
 import boto3
-
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, InferenceContainer, ModelStatus
@@ -35,6 +31,9 @@ from models.exception import (
     UnexpectedCloudFormationStateException,
 )
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
 lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)

@@ -22,14 +22,13 @@ from typing import Any, Dict
 from uuid import uuid4
 
 import boto3
-
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 from models.clients.litellm_client import LiteLLMClient
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 from ..domain_objects import ModelStatus
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Clients
 cloudformation = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)

@@ -82,7 +82,7 @@ export class ECSCluster extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor(scope: Construct, id: string, props: ECSClusterProps) {
+    constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, vpc, securityGroup, ecsConfig } = props;
 

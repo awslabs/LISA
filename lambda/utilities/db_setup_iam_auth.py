@@ -22,7 +22,7 @@ from botocore.exceptions import ClientError
 
 def get_db_credentials(secret_arn: str) -> Any:
     """Retrieve database credentials from Secrets Manager"""
-    client = boto3.client("secretsmanager")
+    client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
 
     try:
         response = client.get_secret_value(SecretId=secret_arn)

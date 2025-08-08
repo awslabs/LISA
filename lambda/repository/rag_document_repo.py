@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import logging
+import os
 from typing import Generator, Optional
 
 import boto3
@@ -32,7 +33,7 @@ class RagDocumentRepository:
         dynamodb = boto3.resource("dynamodb")
         self.doc_table = dynamodb.Table(document_table_name)
         self.subdoc_table = dynamodb.Table(sub_document_table_name)
-        self.s3_client = boto3.client("s3")
+        self.s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
         self.vs_repo = VectorStoreRepository()
 
     def delete_by_id(self, document_id: str) -> None:

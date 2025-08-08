@@ -32,7 +32,7 @@ from utilities.exceptions import RagUploadException
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
-s3 = session.client("s3")
+s3 = session.client("s3", region_name=os.environ["AWS_REGION"])
 
 
 def _get_metadata(s3_uri: str, name: str) -> dict:

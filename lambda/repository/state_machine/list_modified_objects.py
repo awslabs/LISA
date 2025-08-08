@@ -15,6 +15,7 @@
 """Lambda handlers for ListModifiedObjects state machine."""
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
@@ -112,7 +113,7 @@ def handle_list_modified_objects(event: Dict[str, Any], context: Any) -> Dict[st
         validate_bucket_prefix(bucket, prefix)
 
         # Initialize S3 client
-        s3_client = boto3.client("s3")
+        s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
 
         # Calculate timestamp for 24 hours ago
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)

@@ -19,9 +19,10 @@ import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import { IContainerConfig } from '../../../shared/model/model-management.model';
-import { Button, Grid, Header, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, Grid, Header, Icon, Select, SpaceBetween } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
 import { EnvironmentVariables } from '../../../shared/form/environment-variables';
+import { EcsSourceType } from '../../../../../../schema';
 
 export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElement {
     return (
@@ -45,10 +46,18 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
                             props.setFields({ 'containerConfig.image.baseImage': detail.value });
                         }}/>
                     </FormField>
-                    <FormField label='Type' errorText={props.formErrors?.containerConfig?.image?.type}>
-                        <Input value={props.item.image.type} inputMode='text' onBlur={() => props.touchFields(['containerConfig.image.type'])} onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.image.type': detail.value });
-                        }}/>
+                    <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
+                        <Select
+                            selectedOption={{label: props.item.image.type, value: props.item.image.type}}
+                            onBlur={() => props.touchFields(['containerConfig.image.type'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'containerConfig.image.type': detail.selectedOption.value });
+                            }}
+                            options={[
+                                { label: 'Asset', value: EcsSourceType.ASSET },
+                                { label: 'ECR', value: EcsSourceType.ECR },
+                            ]}
+                        />
                     </FormField>
                 </SpaceBetween>
             </Container>

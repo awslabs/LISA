@@ -112,6 +112,50 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     image_path = get_container_path(request.inferenceContainer)
     output_dict["containerConfig"]["image"]["path"] = image_path
 
+    # Check if image type is ECR - skip building docker image if it already exists
+    if request.containerConfig and request.containerConfig.image.type == 'ecr':
+        logger.info(f"ECR image detected for model {event.get('modelId')}, verifying image accessibility")
+        # Verify the ECR image is accessible
+        try:
+            # Extract repository name and tag from the base image
+            base_image = request.containerConfig.image.baseImage
+            if ':' in base_image:
+                repository_name, image_tag = base_image.rsplit(':', 1)
+            else:
+                repository_name = base_image
+                image_tag = 'latest'
+
+            # Remove registry URL if present to get just the repository name
+            if '/' in repository_name:
+                repository_name = repository_name.split('/')[-1]
+
+            # Verify image exists in ECR
+            ecrClient.describe_images(
+                repositoryName=repository_name,
+                imageIds=[{"imageTag": image_tag}]
+            )
+
+            logger.info(f"ECR image {base_image} verified successfully")
+            output_dict["image_info"] = {
+                "image_tag": image_tag,
+                "image_uri": repository_name,
+                "image_type": "ecr",
+                "remaining_polls": 0,
+                "image_status": "prebuilt"
+            }
+            return output_dict
+
+        except ecrClient.exceptions.ImageNotFoundException:
+            error_msg = f"ECR image {base_image} not found. Please ensure the image exists and is accessible."
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        except ecrClient.exceptions.RepositoryNotFoundException:
+            error_msg = f"ECR repository {repository_name} not found. Please ensure the repository exists and is accessible."
+            logger.error(error_msg)
+            raise Exception(error_msg)
+
+    # For non-ECR images, proceed with the normal docker image building process
+    logger.info(f"Invoking image build for model {event.get('modelId')}")
     response = lambdaClient.invoke(
         FunctionName=os.environ["DOCKER_IMAGE_BUILDER_FN_ARN"],
         Payload=json.dumps(
@@ -125,6 +169,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     payload = response["Payload"].read()
     output_dict["image_info"] = json.loads(payload)
     output_dict["image_info"]["remaining_polls"] = 30
+    output_dict["image_info"]["image_status"] = "building"
     return output_dict
 
 
@@ -133,14 +178,22 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
     output_dict = deepcopy(event)
 
     try:
+        # Use the appropriate repository name based on image type
+        repository_name = (
+            event["image_info"]["image_uri"]
+            if event["image_info"].get("image_type") == 'ecr'
+            else os.environ["ECR_REPOSITORY_NAME"]
+        )
         ecrClient.describe_images(
-            repositoryName=os.environ["ECR_REPOSITORY_NAME"], imageIds=[{"imageTag": event["image_info"]["image_tag"]}]
+            repositoryName=repository_name, imageIds=[{"imageTag": event["image_info"]["image_tag"]}]
         )
     except ecrClient.exceptions.ImageNotFoundException:
         output_dict["continue_polling_docker"] = True
         output_dict["image_info"]["remaining_polls"] -= 1
         if output_dict["image_info"]["remaining_polls"] <= 0:
-            ec2Client.terminate_instances(InstanceIds=[event["image_info"]["instance_id"]])
+            # Only terminate EC2 instance if one exists (not for pre-existing ECR images)
+            if "instance_id" in event["image_info"]:
+                ec2Client.terminate_instances(InstanceIds=[event["image_info"]["instance_id"]])
             raise MaxPollsExceededException(
                 json.dumps(
                     {
@@ -152,7 +205,9 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
         return output_dict
 
     output_dict["continue_polling_docker"] = False
-    ec2Client.terminate_instances(InstanceIds=[event["image_info"]["instance_id"]])
+    # Only terminate EC2 instance if one exists (not for pre-existing ECR images)
+    if "instance_id" in event["image_info"]:
+        ec2Client.terminate_instances(InstanceIds=[event["image_info"]["instance_id"]])
     return output_dict
 
 
@@ -173,11 +228,29 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
 
     prepared_event = camelize_object(event)
     prepared_event["containerConfig"]["environment"] = event["containerConfig"]["environment"]
-    prepared_event["containerConfig"]["image"] = {
-        "repositoryArn": os.environ["ECR_REPOSITORY_ARN"],
-        "tag": event["image_info"]["image_tag"],
-        "type": "ecr",
-    }
+
+    # Handle ECR images differently - use the existing ECR image instead of the built one
+    if event["image_info"].get("image_type") == 'ecr':
+        # For pre-existing ECR images, construct the ARN using the image repository
+        account_id = os.environ.get("AWS_ACCOUNT_ID", "")
+        if not account_id:
+            # Try to get account ID from the existing ECR repository ARN
+            ecr_repo_arn = os.environ.get("ECR_REPOSITORY_ARN", "")
+            if ecr_repo_arn:
+                account_id = ecr_repo_arn.split(":")[4]
+
+        prepared_event["containerConfig"]["image"] = {
+            "repositoryArn": f"arn:aws:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}",
+            "tag": event["image_info"]["image_tag"],
+            "type": "ecr",
+        }
+    else:
+        # For built images, use the default ECR repository
+        prepared_event["containerConfig"]["image"] = {
+            "repositoryArn": os.environ["ECR_REPOSITORY_ARN"],
+            "tag": event["image_info"]["image_tag"],
+            "type": "ecr",
+        }
 
     response = lambdaClient.invoke(
         FunctionName=os.environ["ECS_MODEL_DEPLOYER_FN_ARN"],

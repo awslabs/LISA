@@ -17,7 +17,7 @@
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -73,7 +73,7 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
         Key=model_key,
         UpdateExpression="SET last_modified_date = :lmd, model_status = :ms",
         ExpressionAttributeValues={
-            ":lmd": int(datetime.utcnow().timestamp()),
+            ":lmd": int(datetime.now(UTC).timestamp()),
             ":ms": ModelStatus.DELETING,
         },
     )

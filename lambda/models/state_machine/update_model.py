@@ -18,7 +18,7 @@ import json
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict
 
 import boto3
@@ -107,7 +107,7 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
     ddb_update_values = {
         ":ms": ModelStatus.UPDATING,
-        ":lm": int(datetime.utcnow().timestamp()),
+        ":lm": int(datetime.now(UTC).timestamp()),
     }
 
     if is_activation_request:
@@ -264,7 +264,7 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
     ddb_update_values: Dict[str, Any] = {
-        ":lm": int(datetime.utcnow().timestamp()),
+        ":lm": int(datetime.now(UTC).timestamp()),
     }
 
     if polling_error := event.get("polling_error", None):

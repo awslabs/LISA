@@ -18,7 +18,7 @@ import json
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict
 
 import boto3
@@ -75,7 +75,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
     """Set DDB entry to CREATING status."""
     logger.info(f"Setting model to CREATING status: {event.get('modelId')}")
     output_dict = deepcopy(event)
-    request = CreateModelRequest.validate(event)
+    request = CreateModelRequest.model_validate(event)
 
     is_lisa_managed = all(
         (
@@ -96,7 +96,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
         ExpressionAttributeValues={
             ":model_status": ModelStatus.CREATING,
             ":model_config": event,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
         },
     )
     output_dict["create_infra"] = is_lisa_managed
@@ -107,7 +107,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     """Start process for copying Docker image into local AWS account."""
     logger.info(f"Starting Docker image copy for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
-    request = CreateModelRequest.validate(event)
+    request = CreateModelRequest.model_validate(event)
 
     image_path = get_container_path(request.inferenceContainer)
     output_dict["containerConfig"]["image"]["path"] = image_path
@@ -159,7 +159,7 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
 def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Start model infrastructure creation."""
     output_dict = deepcopy(event)
-    request = CreateModelRequest.validate(event)
+    request = CreateModelRequest.model_validate(event)
 
     def camelize_object(o):  # type: ignore[no-untyped-def]
         o2 = {}
@@ -210,7 +210,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         ExpressionAttributeValues={
             ":stack_name": stack_name,
             ":stack_arn": stack_arn,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
         },
     )
 
@@ -298,7 +298,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         ExpressionAttributeValues={
             ":ms": ModelStatus.IN_SERVICE,
             ":lid": litellm_id,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
             ":mu": litellm_params.get("api_base", ""),
             ":asg": event.get("autoScalingGroup", ""),
         },
@@ -338,7 +338,7 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         UpdateExpression="SET model_status = :ms, last_modified_date = :lm, failure_reason = :fr",
         ExpressionAttributeValues={
             ":ms": ModelStatus.FAILED,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
             ":fr": error_reason,
         },
     )

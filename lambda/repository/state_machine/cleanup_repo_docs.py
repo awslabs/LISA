@@ -15,6 +15,7 @@
 import logging
 import os
 from typing import Any, Dict
+from pydantic import BaseModel
 
 from repository.rag_document_repo import RagDocumentRepository
 
@@ -42,4 +43,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
 
     doc_repo.delete_s3_docs(repository_id=repository_id, docs=docs)
 
-    return {"repositoryId": repository_id, "stackName": stack_name, "documents": docs, "lastEvaluated": last_evaluated}
+    # Ensure JSON-serializable payload for Step Functions when Pydantic models are provided
+    serializable_docs = [doc.model_dump() if isinstance(doc, BaseModel) else doc for doc in docs]
+    return {
+        "repositoryId": repository_id,
+        "stackName": stack_name,
+        "documents": serializable_docs,
+        "lastEvaluated": last_evaluated,
+    }

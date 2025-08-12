@@ -18,6 +18,7 @@ import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
 import { OpenSearchVectorStoreStack } from './opensearch';
 import { PGVectorStoreStack } from './pgvector';
 import { RagRepositoryConfigSchema, RagRepositoryType,PartialConfigSchema } from '../../../lib/schema';
+import { BedrockKnowledgeBaseStack } from './bedrock_knowledge_base';
 
 const app = new App();
 
@@ -46,6 +47,12 @@ if  (ragConfig.type === RagRepositoryType.OPENSEARCH) {
     stack = new PGVectorStoreStack(app, stackName, {
         ...vectorStoreProps,
     });
+} else if (ragConfig.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
+    if (ragConfig.pipelines){
+        stack = new BedrockKnowledgeBaseStack(app, stackName, {
+            ...vectorStoreProps,
+        });
+    }
 } else {
     console.error(`Unsupported repository type: ${ragConfig.type}`);
     throw new Error(`Unsupported repository type: ${ragConfig.type}`);

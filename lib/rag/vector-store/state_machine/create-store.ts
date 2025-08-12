@@ -125,7 +125,8 @@ export class CreateStoreStateMachine extends Construct {
         // Define the sequence of tasks and conditions in the state machine
         const definition = createVectorStoreEntry
             .next(createVectorStoreInfraChoice
-                .when(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'), updateBedrockKBSuccess)
+                .when(sfn.Condition.and(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
+                    sfn.Condition.isNotPresent('$.body.ragConfig.pipelines[0]')), updateBedrockKBSuccess)
                 .otherwise(deployVectorStore.addCatch(updateFailureStatus)
                     .next(
                         checkDeploymentStatus.next(

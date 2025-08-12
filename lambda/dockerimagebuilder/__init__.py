@@ -77,9 +77,7 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
             "InstanceType": "m5.2xlarge",
             "UserData": rendered_userdata,
             "IamInstanceProfile": {"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
-            "BlockDeviceMappings": [
-                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 300}}
-            ],
+            "BlockDeviceMappings": [{"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 300}}],
             "TagSpecifications": [
                 {
                     "ResourceType": "instance",

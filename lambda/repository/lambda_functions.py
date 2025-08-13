@@ -50,6 +50,7 @@ secrets_client = boto3.client("secretsmanager", region_name, config=retry_config
 iam_client = boto3.client("iam", region_name, config=retry_config)
 step_functions_client = boto3.client("stepfunctions", region_name, config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
+bedrock_client = boto3.client("bedrock-agent-runtime", region_name, config=retry_config)
 s3 = session.client(
     "s3",
     region_name,
@@ -303,7 +304,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     query_string_params = event["queryStringParameters"]
     model_name = query_string_params["modelName"]
     query = query_string_params["query"]
-    top_k = query_string_params.get("topK", 3)
+    top_k = int(query_string_params["topK"]) if "topK" in query_string_params else 3
     repository_id = event["pathParameters"]["repositoryId"]
 
     repository = vs_repo.find_repository_by_id(repository_id)
@@ -311,13 +312,43 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     id_token = get_id_token(event)
 
-    embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
-    docs = vs.similarity_search(
-        query,
-        k=top_k,
-    )
-    doc_content = [{"Document": {"page_content": doc.page_content, "metadata": doc.metadata}} for doc in docs]
+    docs: List[Dict[str, Any]] = []
+    if repository.get("type", "") == "bedrock_knowledge_base":
+        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+        response = bedrock_client.retrieve(
+            knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
+            retrievalQuery={"text": query},
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": int(top_k)}},
+        )
+        docs = [
+            {
+                "page_content": doc.get("content", {}).get("text", ""),
+                "metadata": {
+                    "source": doc.get("location", {}).get("s3Location", {}).get("uri"),
+                    "name": doc.get("location", {}).get("s3Location", {}).get("uri").split("/")[-1],
+                    "repository_id": repository_id,
+                },
+            }
+            for doc in response.get("retrievalResults", [])
+        ]
+    else:
+        embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
+        vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+        results = vs.similarity_search(
+            query,
+            k=top_k,
+        )
+        docs = [{"page_content": r.page_content, "metadata": r.metadata} for r in results]
+
+    doc_content = [
+        {
+            "Document": {
+                "page_content": doc.get("page_content", ""),
+                "metadata": doc.get("metadata", {}),
+            }
+        }
+        for doc in docs
+    ]
 
     doc_return = {"docs": doc_content}
     logger.info(f"Returning: {doc_return}")

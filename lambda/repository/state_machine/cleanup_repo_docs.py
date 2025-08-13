@@ -15,8 +15,8 @@
 import logging
 import os
 from typing import Any, Dict
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 from repository.rag_document_repo import RagDocumentRepository
 
 logger = logging.getLogger(__name__)

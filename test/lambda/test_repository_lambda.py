@@ -1792,8 +1792,8 @@ def test_real_similarity_search_bedrock_kb_function():
 
         event = {
             "requestContext": {
-                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}}
-            ,
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
             "pathParameters": {"repositoryId": "test-repo"},
             "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "2"},
         }

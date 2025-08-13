@@ -1759,3 +1759,52 @@ def test_ensure_document_ownership_edge_cases():
 
         with pytest.raises(ValueError):
             _ensure_document_ownership(event, docs)
+
+
+def test_real_similarity_search_bedrock_kb_function():
+    """Test the actual similarity_search function for Bedrock Knowledge Base repositories"""
+    from repository.lambda_functions import similarity_search
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.bedrock_client"
+    ) as mock_bedrock, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "type": "bedrock_knowledge_base",
+            "allowedGroups": ["test-group"],
+            "bedrockKnowledgeBaseConfig": {"bedrockKnowledgeBaseId": "kb-123"},
+            "status": "active",
+        }
+
+        mock_bedrock.retrieve.return_value = {
+            "retrievalResults": [
+                {
+                    "content": {"text": "KB doc content"},
+                    "location": {"s3Location": {"uri": "s3://bucket/path/doc1.pdf"}},
+                },
+                {
+                    "content": {"text": "Second"},
+                    "location": {"s3Location": {"uri": "s3://bucket/path/doc2.txt"}},
+                },
+            ]
+        }
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}}
+            ,
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "2"},
+        }
+
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "docs" in body
+        assert len(body["docs"]) == 2
+        first_doc = body["docs"][0]["Document"]
+        assert first_doc["page_content"] == "KB doc content"
+        assert first_doc["metadata"]["source"] == "s3://bucket/path/doc1.pdf"
+        assert first_doc["metadata"]["name"] == "doc1.pdf"

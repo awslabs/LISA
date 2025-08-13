@@ -65,7 +65,8 @@
       {
         "Effect": "Allow",
         "Action": [
-          "bedrock:StartIngestionJob"
+          "bedrock:StartIngestionJob",
+          "bedrock:Retrieve"
         ],
         "Resource": "*"
       }

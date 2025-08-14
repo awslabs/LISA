@@ -113,27 +113,24 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     output_dict["containerConfig"]["image"]["path"] = image_path
 
     # Check if image type is ECR - skip building docker image if it already exists
-    if request.containerConfig and request.containerConfig.image.type == 'ecr':
+    if request.containerConfig and request.containerConfig.image.type == "ecr":
         logger.info(f"ECR image detected for model {event.get('modelId')}, verifying image accessibility")
         # Verify the ECR image is accessible
         try:
             # Extract repository name and tag from the base image
             base_image = request.containerConfig.image.baseImage
-            if ':' in base_image:
-                repository_name, image_tag = base_image.rsplit(':', 1)
+            if ":" in base_image:
+                repository_name, image_tag = base_image.rsplit(":", 1)
             else:
                 repository_name = base_image
-                image_tag = 'latest'
+                image_tag = "latest"
 
             # Remove registry URL if present to get just the repository name
-            if '/' in repository_name:
-                repository_name = repository_name.split('/')[-1]
+            if "/" in repository_name:
+                repository_name = repository_name.split("/")[-1]
 
             # Verify image exists in ECR
-            ecrClient.describe_images(
-                repositoryName=repository_name,
-                imageIds=[{"imageTag": image_tag}]
-            )
+            ecrClient.describe_images(repositoryName=repository_name, imageIds=[{"imageTag": image_tag}])
 
             logger.info(f"ECR image {base_image} verified successfully")
             output_dict["image_info"] = {
@@ -141,7 +138,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
                 "image_uri": repository_name,
                 "image_type": "ecr",
                 "remaining_polls": 0,
-                "image_status": "prebuilt"
+                "image_status": "prebuilt",
             }
             return output_dict
 
@@ -150,7 +147,9 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
             logger.error(error_msg)
             raise Exception(error_msg)
         except ecrClient.exceptions.RepositoryNotFoundException:
-            error_msg = f"ECR repository {repository_name} not found. Please ensure the repository exists and is accessible."
+            error_msg = (
+                f"ECR repository {repository_name} not found. Please ensure the repository exists and is accessible."
+            )
             logger.error(error_msg)
             raise Exception(error_msg)
 
@@ -181,7 +180,7 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
         # Use the appropriate repository name based on image type
         repository_name = (
             event["image_info"]["image_uri"]
-            if event["image_info"].get("image_type") == 'ecr'
+            if event["image_info"].get("image_type") == "ecr"
             else os.environ["ECR_REPOSITORY_NAME"]
         )
         ecrClient.describe_images(
@@ -230,7 +229,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     prepared_event["containerConfig"]["environment"] = event["containerConfig"]["environment"]
 
     # Handle ECR images differently - use the existing ECR image instead of the built one
-    if event["image_info"].get("image_type") == 'ecr':
+    if event["image_info"].get("image_type") == "ecr":
         # For pre-existing ECR images, construct the ARN using the image repository
         account_id = os.environ.get("AWS_ACCOUNT_ID", "")
         if not account_id:
@@ -239,8 +238,11 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
             if ecr_repo_arn:
                 account_id = ecr_repo_arn.split(":")[4]
 
+        repository_arn = (
+            f"arn:aws:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}"
+        )
         prepared_event["containerConfig"]["image"] = {
-            "repositoryArn": f"arn:aws:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}",
+            "repositoryArn": repository_arn,
             "tag": event["image_info"]["image_tag"],
             "type": "ecr",
         }

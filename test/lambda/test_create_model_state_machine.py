@@ -79,7 +79,8 @@ mock_cfn = MagicMock()
 mock_iam = MagicMock()
 mock_secrets = MagicMock()
 
-IMAGE_TAG='test-tag'
+IMAGE_TAG = "test-tag"
+
 
 # Create mock exception classes for ECR
 class MockECRExceptions:

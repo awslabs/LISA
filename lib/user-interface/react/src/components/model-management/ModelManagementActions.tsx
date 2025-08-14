@@ -15,7 +15,7 @@
  */
 
 import { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween, Popover, Box } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { useNotificationService } from '../../shared/util/hooks';
@@ -38,7 +38,7 @@ export type ModelActionProps = {
     setComparisonModalVisible: (state: boolean) => void;
 };
 
-function ModelActions(props: ModelActionProps): ReactElement {
+function ModelActions (props: ModelActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -70,7 +70,7 @@ function ModelActions(props: ModelActionProps): ReactElement {
     );
 }
 
-function ModelActionButton(dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
+function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
     const selectedModel: IModel = props?.selectedItems[0];
     const [
         deleteMutation,

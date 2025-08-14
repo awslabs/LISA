@@ -43,25 +43,25 @@ import { RESTAPI_URI, RESTAPI_VERSION } from '../utils';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 
-export interface ModelComparisonModalProps {
+export type ModelComparisonModalProps = {
     visible: boolean;
     setVisible: (visible: boolean) => void;
     models: IModel[];
-}
+};
 
-interface ComparisonResponse {
+type ComparisonResponse = {
     modelId: string;
     response: string;
     loading: boolean;
     error?: string;
-}
+};
 
-interface ModelSelection {
+type ModelSelection = {
     id: string;
     selectedModel: SelectProps.Option | null;
-}
+};
 
-export function ModelComparisonModal({ visible, setVisible, models }: ModelComparisonModalProps): ReactElement {
+export function ModelComparisonModal ({ visible, setVisible, models }: ModelComparisonModalProps): ReactElement {
     const dispatch = useAppDispatch();
     const auth = useAuth();
     const notificationService = useNotificationService(dispatch);
@@ -76,11 +76,11 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
 
     // Filter models to only show InService text generation models
     const availableModels = models
-        .filter(model =>
+        .filter((model) =>
             model.status === ModelStatus.InService &&
             model.modelType === 'textgen'
         )
-        .map(model => ({
+        .map((model) => ({
             label: model.modelName,
             value: model.modelId,
             description: model.modelId
@@ -95,12 +95,12 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
 
     const removeModelComparison = (idToRemove: string) => {
         if (modelSelections.length > 2) {
-            setModelSelections(modelSelections.filter(selection => selection.id !== idToRemove));
+            setModelSelections(modelSelections.filter((selection) => selection.id !== idToRemove));
         }
     };
 
     const updateModelSelection = (id: string, selectedModel: SelectProps.Option | null) => {
-        setModelSelections(modelSelections.map(selection =>
+        setModelSelections(modelSelections.map((selection) =>
             selection.id === id ? { ...selection, selectedModel } : selection
         ));
     };
@@ -108,14 +108,14 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
     // Get available models for a specific dropdown, excluding already selected models
     const getAvailableModelsForSelection = (currentSelectionId: string) => {
         const selectedModelIds = modelSelections
-            .filter(selection => selection.id !== currentSelectionId && selection.selectedModel)
-            .map(selection => selection.selectedModel!.value);
+            .filter((selection) => selection.id !== currentSelectionId && selection.selectedModel)
+            .map((selection) => selection.selectedModel!.value);
 
-        return availableModels.filter(model => !selectedModelIds.includes(model.value));
+        return availableModels.filter((model) => !selectedModelIds.includes(model.value));
     };
 
     const createOpenAiClient = useCallback((modelId: string) => {
-        const model = models.find(m => m.modelId === modelId);
+        const model = models.find((m) => m.modelId === modelId);
         if (!model) return null;
 
         const modelConfig = {
@@ -161,15 +161,15 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
 
     const handleCompare = async () => {
         const selectedModels = modelSelections
-            .filter(selection => selection.selectedModel)
-            .map(selection => selection.selectedModel!);
+            .filter((selection) => selection.selectedModel)
+            .map((selection) => selection.selectedModel!);
 
         if (selectedModels.length < 2 || !prompt.trim()) {
             return;
         }
 
         setIsComparing(true);
-        const initialResponses = selectedModels.map(model => ({
+        const initialResponses = selectedModels.map((model) => ({
             modelId: model.value!,
             response: '',
             loading: true
@@ -207,7 +207,7 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
                 error.message ? <p>{error.message}</p> : undefined
             );
 
-            const errorResponses = selectedModels.map(model => ({
+            const errorResponses = selectedModels.map((model) => ({
                 modelId: model.value!,
                 response: '',
                 loading: false,
@@ -232,39 +232,39 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
         setIsComparing(false);
     };
 
-    const selectedModelsCount = modelSelections.filter(selection => selection.selectedModel).length;
-    const canCompare = selectedModelsCount >= 2 && prompt.trim() && !isComparing;
+    const selectedModelsCount = modelSelections.filter((selection) => selection.selectedModel).length;
+    const canCompare = selectedModelsCount >= 2 && !isComparing;
 
     return (
         <Modal
             onDismiss={handleClose}
             visible={visible}
-            size="max"
+            size='max'
             header={
-                <Header variant="h1">
+                <Header variant='h1'>
                     Model Comparison
                 </Header>
             }
             footer={
-                <Box float="right">
-                    <Button variant="link" onClick={handleClose}>
+                <Box float='right'>
+                    <Button variant='link' onClick={handleClose}>
                         Close
                     </Button>
                 </Box>
             }
         >
-            <SpaceBetween size="l">
+            <SpaceBetween size='l'>
                 <Container
                     header={
                         <Header
-                            variant="h2"
+                            variant='h2'
                             actions={
                                 <Button
-                                    variant="icon"
-                                    iconName="add-plus"
+                                    variant='icon'
+                                    iconName='add-plus'
                                     onClick={addModelComparison}
                                     disabled={modelSelections.length >= 4}
-                                    ariaLabel="Add model comparison"
+                                    ariaLabel='Add model comparison'
                                 />
                             }
                         >
@@ -272,21 +272,21 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
                         </Header>
                     }
                 >
-                    <SpaceBetween size="m">
+                    <SpaceBetween size='m'>
                         <ColumnLayout columns={modelSelections.length <= 2 ? modelSelections.length : 2}>
                             {modelSelections.map((selection, index) => (
-                                <SpaceBetween key={selection.id} size="s">
-                                    <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                                        <Box variant="h3">
+                                <SpaceBetween key={selection.id} size='s'>
+                                    <SpaceBetween direction='horizontal' size='xs' alignItems='center'>
+                                        <Box variant='h3'>
                                             Model {index + 1}
                                         </Box>
                                         {modelSelections.length > 2 && (
                                             <Button
-                                                variant="icon"
-                                                iconName="remove"
+                                                variant='icon'
+                                                iconName='remove'
                                                 onClick={() => removeModelComparison(selection.id)}
                                                 ariaLabel={`Remove model ${index + 1}`}
-                                                formAction="none"
+                                                formAction='none'
                                             />
                                         )}
                                     </SpaceBetween>
@@ -295,72 +295,73 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
                                         onChange={({ detail }) => updateModelSelection(selection.id, detail.selectedOption)}
                                         options={getAvailableModelsForSelection(selection.id)}
                                         placeholder={`Select model ${index + 1}`}
-                                        filteringType="auto"
+                                        filteringType='auto'
                                     />
                                 </SpaceBetween>
                             ))}
                         </ColumnLayout>
 
-                        <SpaceBetween size="s">
-                            <Box variant="h3">Prompt</Box>
+                        <SpaceBetween size='s'>
+                            <Box variant='h3'>Prompt</Box>
                             <PromptInput
                                 value={prompt}
                                 onChange={({ detail }) => setPrompt(detail.value)}
-                                placeholder="Enter your prompt here to compare responses from selected models..."
-                                actionButtonIconName="send"
-                                actionButtonAriaLabel="Send prompt"
+                                placeholder='Enter your prompt here to compare responses from selected models...'
+                                actionButtonIconName='send'
+                                actionButtonAriaLabel='Send prompt'
                                 onAction={handleCompare}
-                            // disabled={!canCompare}
+                                disabled={!canCompare}
+                                minRows={3}
                             />
                         </SpaceBetween>
                     </SpaceBetween>
                 </Container>
 
                 {responses.length > 0 && (
-                    <Container header={<Header variant="h2">Comparison Results</Header>}>
-                        <SpaceBetween size="m">
+                    <Container header={<Header variant='h2'>Comparison Results</Header>}>
+                        <SpaceBetween size='m'>
                             {prompt && (
                                 <ChatBubble
-                                    ariaLabel="User prompt"
-                                    type="outgoing"
+                                    ariaLabel='User prompt'
+                                    type='outgoing'
                                     avatar={
                                         <Avatar
-                                            ariaLabel="User"
-                                            tooltipText="User"
-                                            initials="U"
+                                            ariaLabel='User'
+                                            tooltipText='User'
+                                            initials='U'
                                         />
                                     }
                                 >
-                                    <Box variant="p">{prompt}</Box>
+                                    <Box variant='p'>{prompt}</Box>
                                 </ChatBubble>
                             )}
                             <ColumnLayout columns={responses.length <= 2 ? responses.length : 2}>
                                 {responses.map((response) => {
-                                    const modelName = models.find(m => m.modelId === response.modelId)?.modelName || response.modelId;
+                                    const modelName = models.find((m) => m.modelId === response.modelId)?.modelName || response.modelId;
                                     return (
-                                        <SpaceBetween key={response.modelId} size="s">
-                                            <Box variant="h4" textAlign="center">{modelName}</Box>
-                                            <SpaceBetween direction="horizontal" size="m">
+                                        <SpaceBetween key={response.modelId} size='s'>
+                                            <Box variant='h4' textAlign='center'>{modelName}</Box>
+                                            <SpaceBetween direction='horizontal' size='m'>
                                                 <ChatBubble
                                                     ariaLabel={`Response from ${modelName}`}
-                                                    type="incoming"
+                                                    type='incoming'
                                                     showLoadingBar={response.loading}
                                                     avatar={
                                                         <Avatar
                                                             loading={response.loading}
-                                                            color="gen-ai"
-                                                            iconName="gen-ai"
+                                                            color='gen-ai'
+                                                            iconName='gen-ai'
                                                             ariaLabel={modelName}
                                                             tooltipText={modelName}
                                                         />
                                                     }
                                                 >
                                                     {response.loading ? (
-                                                        <Box color="text-status-inactive">
+                                                        <Box color='text-status-inactive'>
                                                             Generating response...
                                                         </Box>
                                                     ) : response.error ? (
-                                                        <Alert type="error" header="Error">
+                                                        <Alert type='error' header='Error'>
                                                             {response.error}
                                                         </Alert>
                                                     ) : (
@@ -369,7 +370,7 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
                                                                 remarkPlugins={[remarkBreaks]}
                                                                 children={response.response}
                                                                 components={{
-                                                                    code({ className, children, ...props }: any) {
+                                                                    code ({ className, children, ...props }: any) {
                                                                         const match = /language-(\w+)/.exec(className || '');
                                                                         const codeString = String(children).replace(/\n$/, '');
 
@@ -429,13 +430,13 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
                                                                             </code>
                                                                         );
                                                                     },
-                                                                    ul({ ...props }: any) {
+                                                                    ul ({ ...props }: any) {
                                                                         return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
                                                                     },
-                                                                    ol({ ...props }: any) {
+                                                                    ol ({ ...props }: any) {
                                                                         return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
                                                                     },
-                                                                    li({ ...props }: any) {
+                                                                    li ({ ...props }: any) {
                                                                         return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
                                                                     },
                                                                 }}
@@ -479,7 +480,7 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
                 )}
 
                 {availableModels.length < 2 && (
-                    <Alert type="warning" header="Insufficient Models">
+                    <Alert type='warning' header='Insufficient Models'>
                         You need at least 2 InService text generation models to use the comparison feature.
                     </Alert>
                 )}

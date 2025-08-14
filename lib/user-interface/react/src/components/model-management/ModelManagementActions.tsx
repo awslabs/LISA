@@ -33,6 +33,7 @@ export type ModelActionProps = {
     setSelectedItems: (items: IModel[]) => void;
     setNewModelModelVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
+    setComparisonModalVisible: (state: boolean) => void;
 };
 
 function ModelActions (props: ModelActionProps): ReactElement {
@@ -49,6 +50,12 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 ariaLabel={'Refresh models cards'}
             >
                 <Icon name='refresh' />
+            </Button>
+            <Button
+                onClick={() => props.setComparisonModalVisible(true)}
+                ariaLabel={'Compare models'}
+            >
+                <Icon name='copy' />
             </Button>
             {ModelActionButton(dispatch, notificationService, props)}
             <Button variant='primary' onClick={() => {
@@ -78,7 +85,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully deleted model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedModel) {
-            notificationService.generateNotification(`Error deleting model: ${deleteError.data?.message ?? deleteError.data}`, 'error');
+            const errorMessage = deleteError && 'data' in deleteError ? deleteError.data?.message ?? deleteError.data : 'Unknown error occurred';
+            notificationService.generateNotification(`Error deleting model: ${errorMessage}`, 'error');
             props.setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,7 +97,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully updated model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isUpdating && isUpdateError && selectedModel) {
-            notificationService.generateNotification(`Error updating model: ${updateError.data?.message ?? updateError.data}`, 'error');
+            const errorMessage = updateError && 'data' in updateError ? updateError.data?.message ?? updateError.data : 'Unknown error occurred';
+            notificationService.generateNotification(`Error updating model: ${errorMessage}`, 'error');
             props.setSelectedItems([]);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

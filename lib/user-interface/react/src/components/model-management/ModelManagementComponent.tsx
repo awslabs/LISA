@@ -19,6 +19,7 @@ import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } fro
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
 import CreateModelModal from './create-model/CreateModelModal';
+import ModelComparisonModal from './ModelComparisonModal';
 import {
     CARD_DEFINITIONS,
     DEFAULT_PREFERENCES,
@@ -44,6 +45,7 @@ export function ModelManagementComponent () : ReactElement {
     const [selectedItems, setSelectedItems] = useState([]);
     const [preferences, setPreferences] = useLocalStorage('ModelManagerPreferences', DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
+    const [comparisonModalVisible, setComparisonModalVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
     const [count, setCount] = useState('');
 
@@ -76,6 +78,7 @@ export function ModelManagementComponent () : ReactElement {
     return (
         <>
             <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems}/>
+            <ModelComparisonModal visible={comparisonModalVisible} setVisible={setComparisonModalVisible} models={allModels || []} />
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
@@ -101,6 +104,7 @@ export function ModelManagementComponent () : ReactElement {
                                 setSelectedItems={setSelectedItems}
                                 setNewModelModelVisible={setNewModelModelVisible}
                                 setEdit={setEdit}
+                                setComparisonModalVisible={setComparisonModalVisible}
                             />
                         }
                     >

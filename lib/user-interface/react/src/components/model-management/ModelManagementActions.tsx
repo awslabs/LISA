@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, useEffect } from 'react';
+import { ReactElement, useEffect, useContext } from 'react';
 import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
@@ -29,6 +29,8 @@ import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCodeCompare } from '@fortawesome/free-solid-svg-icons';
+import { IConfiguration } from '@/shared/model/configuration.model';
+import ConfigurationContext from '@/shared/configuration.provider';
 
 export type ModelActionProps = {
     selectedItems: IModel[];
@@ -38,9 +40,11 @@ export type ModelActionProps = {
     setComparisonModalVisible: (state: boolean) => void;
 };
 
+
 function ModelActions (props: ModelActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
+    const config: IConfiguration = useContext(ConfigurationContext);
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
@@ -53,12 +57,14 @@ function ModelActions (props: ModelActionProps): ReactElement {
             >
                 <Icon name='refresh' />
             </Button>
-            <Button
-                onClick={() => props.setComparisonModalVisible(true)}
-                ariaLabel={'Compare models'}
-            >
-                <FontAwesomeIcon icon={faCodeCompare} />
-            </Button>
+
+            {config?.configuration?.enabledComponents?.enableModelComparisonUtility &&
+                <Button
+                    onClick={() => props.setComparisonModalVisible(true)}
+                    ariaLabel={'Compare models'} >
+                    <FontAwesomeIcon icon={faCodeCompare} />
+                </Button>
+            }
             {ModelActionButton(dispatch, notificationService, props)}
             <Button variant='primary' onClick={() => {
                 props.setEdit(false);

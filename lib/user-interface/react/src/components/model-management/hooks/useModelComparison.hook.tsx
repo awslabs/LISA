@@ -24,17 +24,17 @@ import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { MODEL_COMPARISON_CONFIG, MESSAGES } from '../config/modelComparison.config';
 
-export interface ComparisonResponse {
+export type ComparisonResponse = {
     modelId: string;
     response: string;
     loading: boolean;
     error?: string;
-}
+};
 
-export interface ModelSelection {
+export type ModelSelection = {
     id: string;
     selectedModel: SelectProps.Option | null;
-}
+};
 
 export const useModelComparison = (models: IModel[]) => {
     const dispatch = useAppDispatch();
@@ -52,20 +52,20 @@ export const useModelComparison = (models: IModel[]) => {
     // Filter models to only show InService text generation models - memoized for performance
     const availableModels = useMemo(() =>
         models
-            .filter(model =>
+            .filter((model) =>
                 model.status === ModelStatus.InService &&
                 model.modelType === 'textgen'
             )
-            .map(model => ({
+            .map((model) => ({
                 label: model.modelName,
                 value: model.modelId,
                 description: model.modelId
             })),
-        [models]
+    [models]
     );
 
     const createOpenAiClient = useCallback((modelId: string) => {
-        const model = models.find(m => m.modelId === modelId);
+        const model = models.find((m) => m.modelId === modelId);
         if (!model) return null;
 
         const modelConfig = {
@@ -110,7 +110,7 @@ export const useModelComparison = (models: IModel[]) => {
     };
 
     const addModelComparison = useCallback(() => {
-        setModelSelections(prev => {
+        setModelSelections((prev) => {
             if (prev.length < MODEL_COMPARISON_CONFIG.MAX_MODELS) {
                 const newId = (prev.length + 1).toString();
                 return [...prev, { id: newId, selectedModel: null }];
@@ -120,17 +120,17 @@ export const useModelComparison = (models: IModel[]) => {
     }, []);
 
     const removeModelComparison = useCallback((idToRemove: string) => {
-        setModelSelections(prev => {
+        setModelSelections((prev) => {
             if (prev.length > MODEL_COMPARISON_CONFIG.MIN_MODELS) {
-                return prev.filter(selection => selection.id !== idToRemove);
+                return prev.filter((selection) => selection.id !== idToRemove);
             }
             return prev;
         });
     }, []);
 
     const updateModelSelection = useCallback((id: string, selectedModel: SelectProps.Option | null) => {
-        setModelSelections(prev =>
-            prev.map(selection =>
+        setModelSelections((prev) =>
+            prev.map((selection) =>
                 selection.id === id ? { ...selection, selectedModel } : selection
             )
         );
@@ -139,23 +139,23 @@ export const useModelComparison = (models: IModel[]) => {
     // Get available models for a specific dropdown, excluding already selected models - memoized
     const getAvailableModelsForSelection = useCallback((currentSelectionId: string) => {
         const selectedModelIds = modelSelections
-            .filter(selection => selection.id !== currentSelectionId && selection.selectedModel)
-            .map(selection => selection.selectedModel!.value);
+            .filter((selection) => selection.id !== currentSelectionId && selection.selectedModel)
+            .map((selection) => selection.selectedModel!.value);
 
-        return availableModels.filter(model => !selectedModelIds.includes(model.value));
+        return availableModels.filter((model) => !selectedModelIds.includes(model.value));
     }, [modelSelections, availableModels]);
 
     const handleCompare = async () => {
         const selectedModels = modelSelections
-            .filter(selection => selection.selectedModel)
-            .map(selection => selection.selectedModel!);
+            .filter((selection) => selection.selectedModel)
+            .map((selection) => selection.selectedModel!);
 
         if (selectedModels.length < MODEL_COMPARISON_CONFIG.MIN_MODELS) {
             return;
         }
 
         setIsComparing(true);
-        const initialResponses = selectedModels.map(model => ({
+        const initialResponses = selectedModels.map((model) => ({
             modelId: model.value!,
             response: '',
             loading: true
@@ -193,7 +193,7 @@ export const useModelComparison = (models: IModel[]) => {
                 error.message ? <p>{error.message}</p> : undefined
             );
 
-            const errorResponses = selectedModels.map(model => ({
+            const errorResponses = selectedModels.map((model) => ({
                 modelId: model.value!,
                 response: '',
                 loading: false,
@@ -217,13 +217,13 @@ export const useModelComparison = (models: IModel[]) => {
 
     // Memoize expensive calculations
     const selectedModelsCount = useMemo(() =>
-        modelSelections.filter(selection => selection.selectedModel).length,
-        [modelSelections]
+        modelSelections.filter((selection) => selection.selectedModel).length,
+    [modelSelections]
     );
 
     const canCompare = useMemo(() =>
         selectedModelsCount >= MODEL_COMPARISON_CONFIG.MIN_MODELS && !isComparing,
-        [selectedModelsCount, isComparing]
+    [selectedModelsCount, isComparing]
     );
 
     return {

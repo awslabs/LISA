@@ -17,15 +17,17 @@
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
-import { ButtonDropdown, Grid} from '@cloudscape-design/components';
+import { ButtonDropdown, Grid, Input, Popover, Modal, FormField } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
-    useDeleteSessionByIdMutation, useLazyGetSessionByIdQuery,
+    useDeleteSessionByIdMutation,
+    useLazyGetSessionByIdQuery,
     useListSessionsQuery,
+    useUpdateSessionMutation,
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -42,7 +44,7 @@ import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
-export function Sessions ({newSession}) {
+export function Sessions ({ newSession }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -63,9 +65,20 @@ export function Sessions ({newSession}) {
         error: deleteUserSessionsError,
         isLoading: isDeleteUserSessionsLoading,
     }] = useDeleteAllSessionsForUserMutation();
+    const [updateSession, {
+        isSuccess: isUpdateSessionSuccess,
+        isError: isUpdateSessionError,
+        error: updateSessionError,
+        isLoading: isUpdateSessionLoading,
+    }] = useUpdateSessionMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
+    const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
+    const [newSessionName, setNewSessionName] = useState<string>('');
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+
     const { items } = useCollection(sessions || [], {
         sorting: {
             defaultState: {
@@ -107,6 +120,40 @@ export function Sessions ({newSession}) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
+    useEffect(() => {
+        if (!isUpdateSessionLoading && isUpdateSessionSuccess) {
+            notificationService.generateNotification('Successfully renamed session', 'success');
+            setRenameModalVisible(false);
+            setSessionToRename(null);
+            setNewSessionName('');
+        } else if (!isUpdateSessionLoading && isUpdateSessionError) {
+            notificationService.generateNotification(`Error renaming session: ${updateSessionError?.message || 'Unknown error'}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateSessionSuccess, isUpdateSessionError, updateSessionError, isUpdateSessionLoading]);
+
+    const handleRenameSession = (session: LisaChatSession) => {
+        setSessionToRename(session);
+        setNewSessionName(getDisplayableMessage(session.firstHumanMessage ?? ''));
+        setRenameModalVisible(true);
+    };
+
+    const handleRenameConfirm = () => {
+        if (sessionToRename && newSessionName.trim()) {
+            const updatedSession = {
+                ...sessionToRename,
+                firstHumanMessage: newSessionName.trim()
+            };
+            updateSession(updatedSession);
+        }
+    };
+
+    const handleRenameCancel = () => {
+        setRenameModalVisible(false);
+        setSessionToRename(null);
+        setNewSessionName('');
+    };
+
     return (
         <div className='p-9'>
             <SpaceBetween size={'xl'} direction={'vertical'}>
@@ -114,6 +161,36 @@ export function Sessions ({newSession}) {
                     actions={
                         <div className='mr-10'>
                             <SpaceBetween direction='horizontal' size='m'>
+                                <Popover
+                                    size='large'
+                                    position='bottom'
+                                    dismissButton={false}
+                                    triggerType='click'
+                                    content={
+                                        <SpaceBetween size='s'>
+                                            <Input
+                                                value={searchQuery}
+                                                onChange={({ detail }) => setSearchQuery(detail.value)}
+                                                placeholder='Search sessions by message content...'
+                                                clearAriaLabel='Clear search'
+                                                type='search'
+                                            />
+                                            {searchQuery && (
+                                                <Box variant='small' color='text-status-info'>
+                                                    Found {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                                                </Box>
+                                            )}
+                                        </SpaceBetween>
+                                    }
+                                >
+                                    <Button
+                                        iconName='search'
+                                        variant='inline-link'
+                                        ariaLabel='Search sessions'
+                                    >
+                                        Search
+                                    </Button>
+                                </Popover>
                                 <Button iconName='add-plus' variant='inline-link' onClick={() => {
                                     navigate('ai-assistant');
                                     newSession();
@@ -129,22 +206,22 @@ export function Sessions ({newSession}) {
                                     Refresh
                                 </Button>
                                 {config?.configuration.enabledComponents.deleteSessionHistory &&
-                                <Button
-                                    iconAlt='Delete sessions'
-                                    iconName='delete-marker'
-                                    variant='inline-link'
-                                    onClick={() =>
-                                        dispatch(
-                                            setConfirmationModal({
-                                                action: 'Delete',
-                                                resourceName: 'All Sessions',
-                                                onConfirm: () => deleteUserSessions(),
-                                                description: 'This will delete all of your user sessions.'
-                                            })
-                                        )}
-                                >
-                                    Delete all
-                                </Button>}
+                                    <Button
+                                        iconAlt='Delete sessions'
+                                        iconName='delete-marker'
+                                        variant='inline-link'
+                                        onClick={() =>
+                                            dispatch(
+                                                setConfirmationModal({
+                                                    action: 'Delete',
+                                                    resourceName: 'All Sessions',
+                                                    onConfirm: () => deleteUserSessions(),
+                                                    description: 'This will delete all of your user sessions.'
+                                                })
+                                            )}
+                                    >
+                                        Delete all
+                                    </Button>}
                             </SpaceBetween>
                         </div>
                     }
@@ -167,15 +244,17 @@ export function Sessions ({newSession}) {
                             <SpaceBetween size={'s'} alignItems={'end'}>
                                 <ButtonDropdown
                                     items={[
-
-                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker'},
-                                        { id: 'download-session', text: 'Download Session', iconName: 'download'},
-                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder'},
+                                        { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
+                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
+                                        { id: 'download-session', text: 'Download Session', iconName: 'download' },
+                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
                                     ]}
                                     ariaLabel='Control instance'
                                     variant='icon'
                                     onItemClick={(e) => {
-                                        if (e.detail.id === 'delete-session'){
+                                        if (e.detail.id === 'rename-session') {
+                                            handleRenameSession(item);
+                                        } else if (e.detail.id === 'delete-session') {
                                             dispatch(
                                                 setConfirmationModal({
                                                     action: 'Delete',
@@ -184,7 +263,7 @@ export function Sessions ({newSession}) {
                                                     description: `This will delete the Session: ${item.sessionId}.`
                                                 })
                                             );
-                                        } else if (e.detail.id === 'download-session'){
+                                        } else if (e.detail.id === 'download-session') {
                                             getSessionById(item.sessionId).then((resp) => {
                                                 const sess: LisaChatSession = resp.data;
                                                 const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
@@ -209,7 +288,7 @@ export function Sessions ({newSession}) {
                                                     const imagePromises = images.map(async (imageUrl, index) => {
                                                         try {
                                                             const blob = await fetchImage(imageUrl);
-                                                            zip.file(`image_${index + 1}.png`, blob, {binary: true});
+                                                            zip.file(`image_${index + 1}.png`, blob, { binary: true });
                                                         } catch (error) {
                                                             console.error(`Error processing image ${index + 1}:`, error);
                                                         }
@@ -217,7 +296,7 @@ export function Sessions ({newSession}) {
 
                                                     // Wait for all images to be processed
                                                     await Promise.all(imagePromises);
-                                                    const content = await zip.generateAsync({type: 'blob'});
+                                                    const content = await zip.generateAsync({ type: 'blob' });
                                                     downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
                                                 }
                                             });
@@ -229,6 +308,48 @@ export function Sessions ({newSession}) {
                     ))}
                 </Grid>
             </div>
+
+            {/* Rename Session Modal */}
+            <Modal
+                onDismiss={handleRenameCancel}
+                visible={renameModalVisible}
+                header='Rename Session'
+                footer={
+                    <Box float='right'>
+                        <SpaceBetween direction='horizontal' size='xs'>
+                            <Button variant='link' onClick={handleRenameCancel}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant='primary'
+                                onClick={handleRenameConfirm}
+                                disabled={!newSessionName.trim() || isUpdateSessionLoading}
+                                loading={isUpdateSessionLoading}
+                            >
+                                Rename
+                            </Button>
+                        </SpaceBetween>
+                    </Box>
+                }
+            >
+                <SpaceBetween size='m'>
+                    <FormField
+                        label='Session Name'
+                        description='Enter a new name for this session'
+                    >
+                        <Input
+                            value={newSessionName}
+                            onChange={({ detail }) => setNewSessionName(detail.value)}
+                            placeholder='Enter session name...'
+                            onKeyDown={(e) => {
+                                if (e.detail.key === 'Enter' && newSessionName.trim() && !isUpdateSessionLoading) {
+                                    handleRenameConfirm();
+                                }
+                            }}
+                        />
+                    </FormField>
+                </SpaceBetween>
+            </Modal>
         </div>
     );
 }

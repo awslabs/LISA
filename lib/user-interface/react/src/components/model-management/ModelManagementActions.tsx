@@ -14,8 +14,8 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { ReactElement, useEffect } from 'react';
+import { Button, ButtonDropdown, Icon, SpaceBetween, Popover, Box } from '@cloudscape-design/components';
 import { useAppDispatch } from '../../config/store';
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { useNotificationService } from '../../shared/util/hooks';
@@ -27,6 +27,8 @@ import {
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCodeCompare } from '@fortawesome/free-solid-svg-icons';
 
 export type ModelActionProps = {
     selectedItems: IModel[];
@@ -36,7 +38,7 @@ export type ModelActionProps = {
     setComparisonModalVisible: (state: boolean) => void;
 };
 
-function ModelActions (props: ModelActionProps): ReactElement {
+function ModelActions(props: ModelActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -55,7 +57,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 onClick={() => props.setComparisonModalVisible(true)}
                 ariaLabel={'Compare models'}
             >
-                <Icon name='copy' />
+                <FontAwesomeIcon icon={faCodeCompare} />
             </Button>
             {ModelActionButton(dispatch, notificationService, props)}
             <Button variant='primary' onClick={() => {
@@ -68,7 +70,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
     );
 }
 
-function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
+function ModelActionButton(dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
     const selectedModel: IModel = props?.selectedItems[0];
     const [
         deleteMutation,
@@ -89,7 +91,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Error deleting model: ${errorMessage}`, 'error');
             props.setSelectedItems([]);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
 
     useEffect(() => {

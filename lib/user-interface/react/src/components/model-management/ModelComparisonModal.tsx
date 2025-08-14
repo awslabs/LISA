@@ -14,22 +14,34 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useState } from 'react';
+import { ReactElement, useState, useCallback } from 'react';
 import {
     Modal,
     Box,
     SpaceBetween,
     Header,
     Select,
-    Textarea,
     Button,
     Container,
     ColumnLayout,
-    Spinner,
     Alert,
-    SelectProps
+    SelectProps,
+    PromptInput,
+    ButtonGroup,
+    StatusIndicator
 } from '@cloudscape-design/components';
+import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
+import Avatar from '@cloudscape-design/chat-components/avatar';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useAuth } from 'react-oidc-context';
+import { ChatOpenAI } from '@langchain/openai';
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
+import { RESTAPI_URI, RESTAPI_VERSION } from '../utils';
+import { useAppDispatch } from '../../config/store';
+import { useNotificationService } from '../../shared/util/hooks';
 
 export interface ModelComparisonModalProps {
     visible: boolean;
@@ -44,9 +56,20 @@ interface ComparisonResponse {
     error?: string;
 }
 
+interface ModelSelection {
+    id: string;
+    selectedModel: SelectProps.Option | null;
+}
+
 export function ModelComparisonModal({ visible, setVisible, models }: ModelComparisonModalProps): ReactElement {
-    const [selectedModel1, setSelectedModel1] = useState<SelectProps.Option | null>(null);
-    const [selectedModel2, setSelectedModel2] = useState<SelectProps.Option | null>(null);
+    const dispatch = useAppDispatch();
+    const auth = useAuth();
+    const notificationService = useNotificationService(dispatch);
+
+    const [modelSelections, setModelSelections] = useState<ModelSelection[]>([
+        { id: '1', selectedModel: null },
+        { id: '2', selectedModel: null }
+    ]);
     const [prompt, setPrompt] = useState<string>('');
     const [responses, setResponses] = useState<ComparisonResponse[]>([]);
     const [isComparing, setIsComparing] = useState<boolean>(false);
@@ -63,63 +86,154 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
             description: model.modelId
         }));
 
+    const addModelComparison = () => {
+        if (modelSelections.length < 4) {
+            const newId = (modelSelections.length + 1).toString();
+            setModelSelections([...modelSelections, { id: newId, selectedModel: null }]);
+        }
+    };
+
+    const removeModelComparison = (idToRemove: string) => {
+        if (modelSelections.length > 2) {
+            setModelSelections(modelSelections.filter(selection => selection.id !== idToRemove));
+        }
+    };
+
+    const updateModelSelection = (id: string, selectedModel: SelectProps.Option | null) => {
+        setModelSelections(modelSelections.map(selection =>
+            selection.id === id ? { ...selection, selectedModel } : selection
+        ));
+    };
+
+    // Get available models for a specific dropdown, excluding already selected models
+    const getAvailableModelsForSelection = (currentSelectionId: string) => {
+        const selectedModelIds = modelSelections
+            .filter(selection => selection.id !== currentSelectionId && selection.selectedModel)
+            .map(selection => selection.selectedModel!.value);
+
+        return availableModels.filter(model => !selectedModelIds.includes(model.value));
+    };
+
+    const createOpenAiClient = useCallback((modelId: string) => {
+        const model = models.find(m => m.modelId === modelId);
+        if (!model) return null;
+
+        const modelConfig = {
+            modelName: model.modelId,
+            openAIApiKey: auth.user?.id_token,
+            maxRetries: 0,
+            configuration: {
+                baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
+            },
+            streaming: false,
+            maxTokens: 2000,
+        };
+
+        return new ChatOpenAI(modelConfig);
+    }, [models, auth]);
+
+    const generateModelResponse = async (modelId: string, userPrompt: string): Promise<string> => {
+        const llmClient = createOpenAiClient(modelId);
+        if (!llmClient) {
+            throw new Error(`Failed to create client for model ${modelId}`);
+        }
+
+        // Create messages similar to Chat.tsx
+        const messages = [
+            {
+                role: 'system',
+                content: 'You are a helpful AI assistant. Provide clear, concise, and accurate responses.'
+            },
+            {
+                role: 'user',
+                content: userPrompt
+            }
+        ];
+
+        try {
+            const response = await llmClient.invoke(messages);
+            return response.content as string;
+        } catch (error) {
+            console.error(`Error generating response for model ${modelId}:`, error);
+            throw new Error(`Failed to generate response: ${error.message || 'Unknown error'}`);
+        }
+    };
+
     const handleCompare = async () => {
-        if (!selectedModel1 || !selectedModel2 || !prompt.trim()) {
+        const selectedModels = modelSelections
+            .filter(selection => selection.selectedModel)
+            .map(selection => selection.selectedModel!);
+
+        if (selectedModels.length < 2 || !prompt.trim()) {
             return;
         }
 
         setIsComparing(true);
-        setResponses([
-            { modelId: selectedModel1.value!, response: '', loading: true },
-            { modelId: selectedModel2.value!, response: '', loading: true }
-        ]);
+        const initialResponses = selectedModels.map(model => ({
+            modelId: model.value!,
+            response: '',
+            loading: true
+        }));
+        setResponses(initialResponses);
 
-        // Simulate API calls to both models
-        // In a real implementation, you would call your chat API endpoints here
+        // Make real API calls to all selected models
         try {
-            const [response1, response2] = await Promise.all([
-                simulateModelResponse(selectedModel1.value!, prompt),
-                simulateModelResponse(selectedModel2.value!, prompt)
-            ]);
+            const responsePromises = selectedModels.map(async (model) => {
+                try {
+                    const response = await generateModelResponse(model.value!, prompt);
+                    return {
+                        modelId: model.value!,
+                        response,
+                        loading: false
+                    };
+                } catch (error) {
+                    return {
+                        modelId: model.value!,
+                        response: '',
+                        loading: false,
+                        error: error.message || 'Failed to get response'
+                    };
+                }
+            });
 
-            setResponses([
-                { modelId: selectedModel1.value!, response: response1, loading: false },
-                { modelId: selectedModel2.value!, response: response2, loading: false }
-            ]);
+            const modelResponses = await Promise.all(responsePromises);
+            setResponses(modelResponses);
         } catch (error) {
-            setResponses([
-                { modelId: selectedModel1.value!, response: '', loading: false, error: 'Failed to get response' },
-                { modelId: selectedModel2.value!, response: '', loading: false, error: 'Failed to get response' }
-            ]);
+            console.error('Error in model comparison:', error);
+            notificationService.generateNotification(
+                'Failed to compare models',
+                'error',
+                undefined,
+                error.message ? <p>{error.message}</p> : undefined
+            );
+
+            const errorResponses = selectedModels.map(model => ({
+                modelId: model.value!,
+                response: '',
+                loading: false,
+                error: 'Failed to get response'
+            }));
+            setResponses(errorResponses);
         } finally {
             setIsComparing(false);
         }
     };
 
-    const simulateModelResponse = async (modelId: string, prompt: string): Promise<string> => {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
 
-        // Simulate different responses from different models
-        const responses = [
-            `Response from ${modelId}: This is a simulated response to your prompt: "${prompt}". Each model would provide different insights and perspectives based on their training and capabilities.`,
-            `${modelId} responds: Here's my analysis of your query: "${prompt}". I would approach this differently than other models, offering unique insights based on my specific training data and architecture.`,
-            `From ${modelId}: Your prompt "${prompt}" is interesting. Let me provide a comprehensive response that demonstrates this model's particular strengths and reasoning approach.`
-        ];
-
-        return responses[Math.floor(Math.random() * responses.length)];
-    };
 
     const handleClose = () => {
         setVisible(false);
-        setSelectedModel1(null);
-        setSelectedModel2(null);
+        setModelSelections([
+            { id: '1', selectedModel: null },
+            { id: '2', selectedModel: null }
+        ]);
         setPrompt('');
         setResponses([]);
         setIsComparing(false);
     };
 
-    const canCompare = selectedModel1 && selectedModel2 && prompt.trim() && !isComparing;
+    const selectedModelsCount = modelSelections.filter(selection => selection.selectedModel).length;
+    const canCompare = selectedModelsCount >= 2 && prompt.trim() && !isComparing;
 
     return (
         <Modal
@@ -133,55 +247,70 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
             }
             footer={
                 <Box float="right">
-                    <SpaceBetween direction="horizontal" size="xs">
-                        <Button variant="link" onClick={handleClose}>
-                            Close
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={handleCompare}
-                            disabled={!canCompare}
-                            loading={isComparing}
-                        >
-                            Compare Models
-                        </Button>
-                    </SpaceBetween>
+                    <Button variant="link" onClick={handleClose}>
+                        Close
+                    </Button>
                 </Box>
             }
         >
             <SpaceBetween size="l">
-                <Container header={<Header variant="h2">Model Selection & Prompt</Header>}>
+                <Container
+                    header={
+                        <Header
+                            variant="h2"
+                            actions={
+                                <Button
+                                    variant="icon"
+                                    iconName="add-plus"
+                                    onClick={addModelComparison}
+                                    disabled={modelSelections.length >= 4}
+                                    ariaLabel="Add model comparison"
+                                />
+                            }
+                        >
+                            Model Selection & Prompt
+                        </Header>
+                    }
+                >
                     <SpaceBetween size="m">
-                        <ColumnLayout columns={2}>
-                            <SpaceBetween size="s">
-                                <Box variant="h3">First Model</Box>
-                                <Select
-                                    selectedOption={selectedModel1}
-                                    onChange={({ detail }) => setSelectedModel1(detail.selectedOption)}
-                                    options={availableModels}
-                                    placeholder="Select first model"
-                                    filteringType="auto"
-                                />
-                            </SpaceBetween>
-                            <SpaceBetween size="s">
-                                <Box variant="h3">Second Model</Box>
-                                <Select
-                                    selectedOption={selectedModel2}
-                                    onChange={({ detail }) => setSelectedModel2(detail.selectedOption)}
-                                    options={availableModels}
-                                    placeholder="Select second model"
-                                    filteringType="auto"
-                                />
-                            </SpaceBetween>
+                        <ColumnLayout columns={modelSelections.length <= 2 ? modelSelections.length : 2}>
+                            {modelSelections.map((selection, index) => (
+                                <SpaceBetween key={selection.id} size="s">
+                                    <SpaceBetween direction="horizontal" size="xs" alignItems="center">
+                                        <Box variant="h3">
+                                            Model {index + 1}
+                                        </Box>
+                                        {modelSelections.length > 2 && (
+                                            <Button
+                                                variant="icon"
+                                                iconName="remove"
+                                                onClick={() => removeModelComparison(selection.id)}
+                                                ariaLabel={`Remove model ${index + 1}`}
+                                                formAction="none"
+                                            />
+                                        )}
+                                    </SpaceBetween>
+                                    <Select
+                                        selectedOption={selection.selectedModel}
+                                        onChange={({ detail }) => updateModelSelection(selection.id, detail.selectedOption)}
+                                        options={getAvailableModelsForSelection(selection.id)}
+                                        placeholder={`Select model ${index + 1}`}
+                                        filteringType="auto"
+                                    />
+                                </SpaceBetween>
+                            ))}
                         </ColumnLayout>
 
                         <SpaceBetween size="s">
                             <Box variant="h3">Prompt</Box>
-                            <Textarea
+                            <PromptInput
                                 value={prompt}
                                 onChange={({ detail }) => setPrompt(detail.value)}
-                                placeholder="Enter your prompt here to compare responses from both models..."
-                                rows={4}
+                                placeholder="Enter your prompt here to compare responses from selected models..."
+                                actionButtonIconName="send"
+                                actionButtonAriaLabel="Send prompt"
+                                onAction={handleCompare}
+                            // disabled={!canCompare}
                             />
                         </SpaceBetween>
                     </SpaceBetween>
@@ -189,38 +318,163 @@ export function ModelComparisonModal({ visible, setVisible, models }: ModelCompa
 
                 {responses.length > 0 && (
                     <Container header={<Header variant="h2">Comparison Results</Header>}>
-                        <ColumnLayout columns={2}>
-                            {responses.map((response, index) => {
-                                const modelName = models.find(m => m.modelId === response.modelId)?.modelName || response.modelId;
-                                return (
-                                    <Container
-                                        key={response.modelId}
-                                        header={
-                                            <Header variant="h3">
-                                                {modelName}
-                                            </Header>
-                                        }
-                                    >
-                                        {response.loading ? (
-                                            <Box textAlign="center" padding="l">
-                                                <SpaceBetween size="m" alignItems="center">
-                                                    <Spinner size="large" />
-                                                    <Box variant="p">Generating response...</Box>
-                                                </SpaceBetween>
-                                            </Box>
-                                        ) : response.error ? (
-                                            <Alert type="error" header="Error">
-                                                {response.error}
-                                            </Alert>
-                                        ) : (
-                                            <Box variant="p" padding="s">
-                                                {response.response}
-                                            </Box>
-                                        )}
-                                    </Container>
-                                );
-                            })}
-                        </ColumnLayout>
+                        <SpaceBetween size="m">
+                            {prompt && (
+                                <ChatBubble
+                                    ariaLabel="User prompt"
+                                    type="outgoing"
+                                    avatar={
+                                        <Avatar
+                                            ariaLabel="User"
+                                            tooltipText="User"
+                                            initials="U"
+                                        />
+                                    }
+                                >
+                                    <Box variant="p">{prompt}</Box>
+                                </ChatBubble>
+                            )}
+                            <ColumnLayout columns={responses.length <= 2 ? responses.length : 2}>
+                                {responses.map((response) => {
+                                    const modelName = models.find(m => m.modelId === response.modelId)?.modelName || response.modelId;
+                                    return (
+                                        <SpaceBetween key={response.modelId} size="s">
+                                            <Box variant="h4" textAlign="center">{modelName}</Box>
+                                            <SpaceBetween direction="horizontal" size="m">
+                                                <ChatBubble
+                                                    ariaLabel={`Response from ${modelName}`}
+                                                    type="incoming"
+                                                    showLoadingBar={response.loading}
+                                                    avatar={
+                                                        <Avatar
+                                                            loading={response.loading}
+                                                            color="gen-ai"
+                                                            iconName="gen-ai"
+                                                            ariaLabel={modelName}
+                                                            tooltipText={modelName}
+                                                        />
+                                                    }
+                                                >
+                                                    {response.loading ? (
+                                                        <Box color="text-status-inactive">
+                                                            Generating response...
+                                                        </Box>
+                                                    ) : response.error ? (
+                                                        <Alert type="error" header="Error">
+                                                            {response.error}
+                                                        </Alert>
+                                                    ) : (
+                                                        <div style={{ maxWidth: '60em' }}>
+                                                            <ReactMarkdown
+                                                                remarkPlugins={[remarkBreaks]}
+                                                                children={response.response}
+                                                                components={{
+                                                                    code({ className, children, ...props }: any) {
+                                                                        const match = /language-(\w+)/.exec(className || '');
+                                                                        const codeString = String(children).replace(/\n$/, '');
+
+                                                                        const CodeBlockWithCopyButton = ({ language, code }: { language: string, code: string }) => {
+                                                                            return (
+                                                                                <div style={{ position: 'relative' }}>
+                                                                                    <div
+                                                                                        style={{
+                                                                                            position: 'absolute',
+                                                                                            top: '5px',
+                                                                                            right: '5px',
+                                                                                            zIndex: 10
+                                                                                        }}
+                                                                                    >
+                                                                                        <ButtonGroup
+                                                                                            onItemClick={() =>
+                                                                                                navigator.clipboard.writeText(code)
+                                                                                            }
+                                                                                            ariaLabel='Code actions'
+                                                                                            dropdownExpandToViewport
+                                                                                            items={[
+                                                                                                {
+                                                                                                    type: 'icon-button',
+                                                                                                    id: 'copy code',
+                                                                                                    iconName: 'copy',
+                                                                                                    text: 'Copy Code',
+                                                                                                    popoverFeedback: (
+                                                                                                        <StatusIndicator type='success'>
+                                                                                                            Code copied
+                                                                                                        </StatusIndicator>
+                                                                                                    )
+                                                                                                }
+                                                                                            ]}
+                                                                                            variant='icon'
+                                                                                        />
+                                                                                    </div>
+                                                                                    <SyntaxHighlighter
+                                                                                        style={vscDarkPlus}
+                                                                                        language={language}
+                                                                                        PreTag='div'
+                                                                                        {...props}
+                                                                                    >
+                                                                                        {code}
+                                                                                    </SyntaxHighlighter>
+                                                                                </div>
+                                                                            );
+                                                                        };
+
+                                                                        return match ? (
+                                                                            <CodeBlockWithCopyButton
+                                                                                language={match[1]}
+                                                                                code={codeString}
+                                                                            />
+                                                                        ) : (
+                                                                            <code className={className} {...props}>
+                                                                                {children}
+                                                                            </code>
+                                                                        );
+                                                                    },
+                                                                    ul({ ...props }: any) {
+                                                                        return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
+                                                                    },
+                                                                    ol({ ...props }: any) {
+                                                                        return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
+                                                                    },
+                                                                    li({ ...props }: any) {
+                                                                        return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
+                                                                    },
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </ChatBubble>
+                                                {!response.loading && !response.error && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                                                        <ButtonGroup
+                                                            onItemClick={({ detail }) =>
+                                                                ['copy'].includes(detail.id) &&
+                                                                navigator.clipboard.writeText(response.response)
+                                                            }
+                                                            ariaLabel='Response actions'
+                                                            dropdownExpandToViewport
+                                                            items={[
+                                                                {
+                                                                    type: 'icon-button',
+                                                                    id: 'copy',
+                                                                    iconName: 'copy',
+                                                                    text: 'Copy Response',
+                                                                    popoverFeedback: (
+                                                                        <StatusIndicator type='success'>
+                                                                            Response copied
+                                                                        </StatusIndicator>
+                                                                    )
+                                                                }
+                                                            ]}
+                                                            variant='icon'
+                                                        />
+                                                    </div>
+                                                )}
+                                            </SpaceBetween>
+                                        </SpaceBetween>
+                                    );
+                                })}
+                            </ColumnLayout>
+                        </SpaceBetween>
                     </Container>
                 )}
 

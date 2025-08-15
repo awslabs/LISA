@@ -62,7 +62,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
                 value: model.modelId,
                 description: model.modelId
             })),
-        [models]
+    [models]
     );
 
     const createOpenAiClient = useCallback((modelId: string) => {
@@ -230,12 +230,12 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
     // Memoize expensive calculations
     const selectedModelsCount = useMemo(() =>
         modelSelections.filter((selection) => selection.selectedModel).length,
-        [modelSelections]
+    [modelSelections]
     );
 
     const canCompare = useMemo(() =>
         selectedModelsCount >= MODEL_COMPARISON_CONFIG.MIN_MODELS && !isComparing,
-        [selectedModelsCount, isComparing]
+    [selectedModelsCount, isComparing]
     );
 
     return {

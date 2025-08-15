@@ -39,11 +39,7 @@ import SessionConfiguration from '@/components/chatbot/components/SessionConfigu
 import { IChatConfiguration, baseConfig } from '@/shared/model/chat.configurations.model';
 import ConfigurationContext from '@/shared/configuration.provider';
 
-type ModelComparisonPageProps = {
-    setNav: (nav: any) => void;
-};
-
-export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps): ReactElement {
+export default function ModelComparisonPage (): ReactElement {
     const navigate = useNavigate();
     const config = useContext(ConfigurationContext);
 
@@ -73,7 +69,7 @@ export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps
         responses,
         availableModels,
         canCompare,
-        
+
         // Actions
         setPrompt,
         addModelComparison,
@@ -96,13 +92,13 @@ export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps
             <ContentLayout
                 header={
                     <Header
-                        variant="h1"
+                        variant='h1'
                         actions={
-                            <SpaceBetween direction="horizontal" size="xs">
+                            <SpaceBetween direction='horizontal' size='xs'>
 
                                 <Button
-                                    variant="normal"
-                                    iconAlign="left"
+                                    variant='normal'
+                                    iconAlign='left'
                                     onClick={handleBack}
                                 >
                                     <FontAwesomeIcon icon={faArrowLeft} />
@@ -113,10 +109,10 @@ export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps
                     >
                         Model Comparison
                         <Button
-                            variant="icon"
+                            variant='icon'
                             onClick={handleOpenSettings}
-                            ariaLabel="Open settings"
-                            iconName="settings" >
+                            ariaLabel='Open Model Configurations'
+                            iconName='settings' >
                         </Button>
                     </Header>
                 }
@@ -145,6 +141,8 @@ export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps
                                 responses={responses}
                                 models={models}
                                 markdownDisplay={modelConfiguration.sessionConfiguration.markdownDisplay}
+                                chatConfiguration={modelConfiguration}
+                                setChatConfiguration={setModelConfiguration}
                             />
                         )}
 
@@ -158,6 +156,7 @@ export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps
             </ContentLayout>
 
             <SessionConfiguration
+                title='Model Configuration'
                 chatConfiguration={modelConfiguration}
                 setChatConfiguration={setModelConfiguration}
                 selectedModel={models[0]} // Use first available model as default
@@ -165,6 +164,7 @@ export default function ModelComparisonPage({ setNav }: ModelComparisonPageProps
                 visible={showSessionConfig}
                 setVisible={setShowSessionConfig}
                 systemConfig={config}
+                modelOnly={true}
             />
         </>
     );

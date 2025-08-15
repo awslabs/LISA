@@ -76,7 +76,7 @@ const AdminRoute = ({ children }: RouteProps) => {
     }
 };
 
-function App() {
+function App () {
     const [showNavigation, setShowNavigation] = useState(false);
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
@@ -194,7 +194,7 @@ function App() {
                                 path='model-comparison'
                                 element={
                                     <PrivateRoute>
-                                        <ModelComparisonPage setNav={setNav} />
+                                        <ModelComparisonPage />
                                     </PrivateRoute>
                                 }
                             />

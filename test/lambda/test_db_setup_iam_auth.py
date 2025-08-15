@@ -90,7 +90,7 @@ def test_get_db_credentials_success():
         assert result == secret_value
 
         # Verify the client was called correctly
-        mock_client.assert_called_once_with("secretsmanager")
+        mock_client.assert_called_once_with("secretsmanager", region_name="us-east-1")
         mock_secretsmanager.get_secret_value.assert_called_once_with(SecretId=secret_arn)
 
 

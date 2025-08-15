@@ -44,7 +44,9 @@ from dockerimagebuilder import handler
 @pytest.fixture
 def lambda_context():
     """Create a mock Lambda context."""
-    return MagicMock()
+    context = MagicMock()
+    context.log_group_name = "/aws/lambda/test-function"
+    return context
 
 
 def test_handler_success(lambda_context):
@@ -178,7 +180,7 @@ def test_handler_ssm_error(lambda_context):
             handler(event, lambda_context)
 
 
-def test_user_data_template_rendering():
+def test_user_data_template_rendering(lambda_context):
     """Test that user data template is properly rendered."""
     event = {"base_image": "python:3.9-slim", "layer_to_add": "test-layer"}
 

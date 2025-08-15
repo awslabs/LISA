@@ -101,7 +101,7 @@ export const WelcomeScreen = ({
                 <ButtonBadge
                     text='Compare Models'
                     icon={faCodeCompare}
-                    onClick={() => openModal('modelComparison')}
+                    onClick={() => navigate('/model-comparison')}
                     show={config?.configuration?.enabledComponents?.enableModelComparisonUtility}
                 />
             </div>

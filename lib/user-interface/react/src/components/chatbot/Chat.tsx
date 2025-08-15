@@ -55,7 +55,6 @@ import { IConfiguration } from '@/shared/model/configuration.model';
 import { DocumentSummarizationModal } from './components/DocumentSummarizationModal';
 import { useNavigate } from 'react-router-dom';
 import { PromptTemplateModal } from '../prompt-templates-library/PromptTemplateModal';
-import { ModelComparisonModal } from '../model-management/ModelComparisonModal';
 import ConfigurationContext from '@/shared/configuration.provider';
 import FormField from '@cloudscape-design/components/form-field';
 import { useMultipleMcp } from './hooks/mcp.hooks';
@@ -617,11 +616,6 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
-            />
-            <ModelComparisonModal
-                visible={modals.modelComparison}
-                setVisible={(show) => show ? openModal('modelComparison') : closeModal('modelComparison')}
-                models={allModels || []}
             />
             {/* Tool Approval Modal */}
             {toolApprovalModal && (

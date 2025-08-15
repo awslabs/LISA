@@ -164,9 +164,10 @@ export const UserPromptBubble = memo(function UserPromptBubble ({ prompt }: User
 type ModelResponseBubbleProps = {
     response: ComparisonResponse;
     modelName: string;
+    markdownDisplay?: boolean;
 };
 
-export const ModelResponseBubble = memo(function ModelResponseBubble ({ response, modelName }: ModelResponseBubbleProps): ReactElement {
+export const ModelResponseBubble = memo(function ModelResponseBubble ({ response, modelName, markdownDisplay = true }: ModelResponseBubbleProps): ReactElement {
     const CodeBlockWithCopyButton = useCallback(({ language, code }: { language: string, code: string }) => {
         return (
             <div style={{ position: 'relative' }}>
@@ -237,36 +238,42 @@ export const ModelResponseBubble = memo(function ModelResponseBubble ({ response
                         </Alert>
                     ) : (
                         <div style={{ maxWidth: UI_CONFIG.RESPONSE_MAX_WIDTH }}>
-                            <ReactMarkdown
-                                remarkPlugins={[remarkBreaks]}
-                                children={response.response}
-                                components={{
-                                    code ({ className, children, ...props }: any) {
-                                        const match = /language-(\w+)/.exec(className || '');
-                                        const codeString = String(children).replace(/\n$/, '');
+                            {markdownDisplay ? (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkBreaks]}
+                                    children={response.response}
+                                    components={{
+                                        code ({ className, children, ...props }: any) {
+                                            const match = /language-(\w+)/.exec(className || '');
+                                            const codeString = String(children).replace(/\n$/, '');
 
-                                        return match ? (
-                                            <CodeBlockWithCopyButton
-                                                language={match[1]}
-                                                code={codeString}
-                                            />
-                                        ) : (
-                                            <code className={className} {...props}>
-                                                {children}
-                                            </code>
-                                        );
-                                    },
-                                    ul ({ ...props }: any) {
-                                        return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
-                                    },
-                                    ol ({ ...props }: any) {
-                                        return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
-                                    },
-                                    li ({ ...props }: any) {
-                                        return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
-                                    },
-                                }}
-                            />
+                                            return match ? (
+                                                <CodeBlockWithCopyButton
+                                                    language={match[1]}
+                                                    code={codeString}
+                                                />
+                                            ) : (
+                                                <code className={className} {...props}>
+                                                    {children}
+                                                </code>
+                                            );
+                                        },
+                                        ul ({ ...props }: any) {
+                                            return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
+                                        },
+                                        ol ({ ...props }: any) {
+                                            return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
+                                        },
+                                        li ({ ...props }: any) {
+                                            return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
+                                        },
+                                    }}
+                                />
+                            ) : (
+                                <Box variant='p' style={{ whiteSpace: 'pre-wrap' }}>
+                                    {response.response}
+                                </Box>
+                            )}
                         </div>
                     )}
                 </ChatBubble>
@@ -305,9 +312,10 @@ type ComparisonResultsProps = {
     prompt: string;
     responses: ComparisonResponse[];
     models: IModel[];
+    markdownDisplay?: boolean;
 };
 
-export const ComparisonResults = memo(function ComparisonResults ({ prompt, responses, models }: ComparisonResultsProps): ReactElement {
+export const ComparisonResults = memo(function ComparisonResults ({ prompt, responses, models, markdownDisplay = true }: ComparisonResultsProps): ReactElement {
     return (
         <Container header={<Header variant='h2'>Comparison Results</Header>}>
             <SpaceBetween size='m'>
@@ -320,6 +328,7 @@ export const ComparisonResults = memo(function ComparisonResults ({ prompt, resp
                                 key={response.modelId}
                                 response={response}
                                 modelName={modelName}
+                                markdownDisplay={markdownDisplay}
                             />
                         );
                     })}

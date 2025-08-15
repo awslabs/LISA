@@ -23,6 +23,7 @@ import { RESTAPI_URI, RESTAPI_VERSION } from '../../utils';
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { MODEL_COMPARISON_CONFIG, MESSAGES } from '../config/modelComparison.config';
+import { IChatConfiguration } from '../../../shared/model/chat.configurations.model';
 
 export type ComparisonResponse = {
     modelId: string;
@@ -36,7 +37,7 @@ export type ModelSelection = {
     selectedModel: SelectProps.Option | null;
 };
 
-export const useModelComparison = (models: IModel[]) => {
+export const useModelComparison = (models: IModel[], chatConfig: IChatConfiguration) => {
     const dispatch = useAppDispatch();
     const auth = useAuth();
     const notificationService = useNotificationService(dispatch);
@@ -61,12 +62,15 @@ export const useModelComparison = (models: IModel[]) => {
                 value: model.modelId,
                 description: model.modelId
             })),
-    [models]
+        [models]
     );
 
     const createOpenAiClient = useCallback((modelId: string) => {
         const model = models.find((m) => m.modelId === modelId);
         if (!model) return null;
+
+        const sessionConfig = chatConfig.sessionConfiguration;
+        const modelArgs = sessionConfig.modelArgs;
 
         const modelConfig = {
             modelName: model.modelId,
@@ -75,12 +79,19 @@ export const useModelComparison = (models: IModel[]) => {
             configuration: {
                 baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
             },
-            streaming: false,
-            maxTokens: MODEL_COMPARISON_CONFIG.DEFAULT_MAX_TOKENS,
+            streaming: sessionConfig.streaming || false,
+            maxTokens: sessionConfig.max_tokens || MODEL_COMPARISON_CONFIG.DEFAULT_MAX_TOKENS,
+            temperature: modelArgs.temperature,
+            topP: modelArgs.top_p,
+            frequencyPenalty: modelArgs.frequency_penalty,
+            presencePenalty: modelArgs.presence_penalty,
+            n: modelArgs.n,
+            seed: modelArgs.seed,
+            stop: modelArgs.stop,
         };
 
         return new ChatOpenAI(modelConfig);
-    }, [models, auth]);
+    }, [models, auth, chatConfig]);
 
     const generateModelResponse = async (modelId: string, userPrompt: string): Promise<string> => {
         const llmClient = createOpenAiClient(modelId);
@@ -89,10 +100,11 @@ export const useModelComparison = (models: IModel[]) => {
         }
 
         // Create messages similar to Chat.tsx
+        const systemMessage = chatConfig.promptConfiguration.promptTemplate || MODEL_COMPARISON_CONFIG.DEFAULT_SYSTEM_MESSAGE;
         const messages = [
             {
                 role: 'system',
-                content: MODEL_COMPARISON_CONFIG.DEFAULT_SYSTEM_MESSAGE
+                content: systemMessage
             },
             {
                 role: 'user',
@@ -218,12 +230,12 @@ export const useModelComparison = (models: IModel[]) => {
     // Memoize expensive calculations
     const selectedModelsCount = useMemo(() =>
         modelSelections.filter((selection) => selection.selectedModel).length,
-    [modelSelections]
+        [modelSelections]
     );
 
     const canCompare = useMemo(() =>
         selectedModelsCount >= MODEL_COMPARISON_CONFIG.MIN_MODELS && !isComparing,
-    [selectedModelsCount, isComparing]
+        [selectedModelsCount, isComparing]
     );
 
     return {

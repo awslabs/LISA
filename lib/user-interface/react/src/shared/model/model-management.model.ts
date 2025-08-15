@@ -15,6 +15,7 @@
  */
 import { z } from 'zod';
 import { AttributeEditorSchema } from '../form/environment-variables';
+import { IChatConfiguration } from './chat.configurations.model';
 
 export enum ModelStatus {
     Creating = 'Creating',
@@ -95,6 +96,7 @@ export type IModel = {
     modelId: string;
     modelName: string;
     modelUrl: string;
+    modelConfig: IChatConfiguration;
     streaming: boolean;
     modelType: ModelType;
     instanceType: string;

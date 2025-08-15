@@ -55,6 +55,7 @@ export const WelcomeScreen = ({
             <div style={{
                 display: 'flex',
                 flexDirection: 'row',
+                flexWrap: 'wrap',
                 justifyContent: 'center',
                 alignItems: 'center',
                 gap: '1em',

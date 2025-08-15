@@ -16,21 +16,22 @@
 
 import { ReactElement, useEffect, useContext } from 'react';
 import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
-import { useAppDispatch } from '../../config/store';
-import { IModel, ModelStatus } from '../../shared/model/model-management.model';
-import { useNotificationService } from '../../shared/util/hooks';
-import { INotificationService } from '../../shared/notification/notification.service';
+import { useAppDispatch, useAppSelector } from '@/config/store';
+import { IModel, ModelStatus } from '@/shared/model/model-management.model';
+import { useNotificationService } from '@/shared/util/hooks';
+import { INotificationService } from '@/shared/notification/notification.service';
 import {
     modelManagementApi,
     useDeleteModelMutation, useUpdateModelMutation,
-} from '../../shared/reducers/model-management.reducer';
+} from '@/shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
-import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCodeCompare } from '@fortawesome/free-solid-svg-icons';
-import { IConfiguration } from '@/shared/model/configuration.model';
+import { IConfiguration, SystemConfiguration } from '@/shared/model/configuration.model';
 import ConfigurationContext from '@/shared/configuration.provider';
+import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 
 export type ModelActionProps = {
     selectedItems: IModel[];
@@ -38,6 +39,9 @@ export type ModelActionProps = {
     setNewModelModelVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
     setComparisonModalVisible: (state: boolean) => void;
+    updateConfigMutation?: any;
+    currentDefaultModel?: string;
+    currentConfig?: any;
 };
 
 
@@ -78,6 +82,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
 
 function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
     const selectedModel: IModel = props?.selectedItems[0];
+    const currentUsername = useAppSelector(selectCurrentUsername);
     const [
         deleteMutation,
         { isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError, isLoading: isDeleteLoading },
@@ -139,6 +144,12 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             disabled: externalModel || ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
             disabledReason: externalModel ? 'Unable to stop a model that is not hosted in LISA' : ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
         });
+        items.push({
+            text: 'Set Default',
+            id: 'setDefault',
+            disabled: selectedModel.modelId === props?.currentDefaultModel,
+            disabledReason: selectedModel.modelId === props?.currentDefaultModel ? 'This model is already the default' : '',
+        });
     }
 
     return (
@@ -148,7 +159,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             disabled={!selectedModel}
             loading={isDeleteLoading || isUpdating}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedModel, dispatch, deleteMutation, updateModelMutation, props.setNewModelModelVisible, props.setEdit)
+                ModelActionHandler(e, selectedModel, dispatch, deleteMutation, updateModelMutation, props.setNewModelModelVisible, props.setEdit, props.updateConfigMutation, notificationService, props.currentConfig, currentUsername)
             }
         >
             Actions
@@ -162,8 +173,12 @@ const ModelActionHandler = async (
     dispatch: ThunkDispatch<any, any, Action>,
     deleteMutation: MutationTrigger<any>,
     updateMutation: MutationTrigger<any>,
-    setNewModelModelVisible: (boolean) => void,
-    setEdit: (boolean) => void
+    setNewModelModelVisible: (arg0: boolean) => void,
+    setEdit: (boolean) => void,
+    updateConfigMutation?: any,
+    notificationService?: INotificationService,
+    currentConfig?: any,
+    currentUsername?: string
 ) => {
     switch (e.detail.id) {
         case 'startModel':
@@ -205,6 +220,38 @@ const ModelActionHandler = async (
                     description: `This will delete the following model: ${selectedModel.modelId}.`
                 })
             );
+            break;
+        case 'setDefault':
+            if (updateConfigMutation && notificationService && currentConfig) {
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Set Default',
+                        resourceName: 'Model',
+                        onConfirm: async () => {
+                            try {
+                                const updatedConfiguration: SystemConfiguration = {
+                                    ...currentConfig[0]?.configuration,
+                                    global: { defaultModel: selectedModel.modelId }
+                                };
+                                '';
+                                const configUpdate: IConfiguration = {
+                                    configuration: updatedConfiguration,
+                                    configScope: 'global',
+                                    versionId: Number(currentConfig[0]?.versionId) + 1,
+                                    changedBy: currentUsername ?? 'Admin',
+                                    changeReason: `Set default model to: ${selectedModel.modelId}`,
+                                };
+
+                                await updateConfigMutation(configUpdate).unwrap();
+                                notificationService.generateNotification(`Successfully set ${selectedModel.modelId} as default model`, 'success');
+                            } catch (error) {
+                                notificationService.generateNotification(`Error setting default model: ${error}`, 'error');
+                            }
+                        },
+                        description: `This will set ${selectedModel.modelId} as the default model.`
+                    })
+                );
+            }
             break;
         default:
             return;

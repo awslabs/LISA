@@ -21,7 +21,7 @@ import { useGetAllModelsQuery } from '../../shared/reducers/model-management.red
 import CreateModelModal from './create-model/CreateModelModal';
 import ModelComparisonModal from './ModelComparisonModal';
 import {
-    CARD_DEFINITIONS,
+    createCardDefinitions,
     DEFAULT_PREFERENCES,
     PAGE_SIZE_OPTIONS,
     VISIBLE_CONTENT_OPTIONS,
@@ -29,13 +29,14 @@ import {
 import { ModelActions } from './ModelManagementActions';
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
-import { Duration } from 'luxon';
+import { useGetConfigurationQuery, useUpdateConfigurationMutation } from '@/shared/reducers/configuration.reducer';
 
-export function ModelManagementComponent () : ReactElement {
+export function ModelManagementComponent (): ReactElement {
     const [shouldPoll, setShouldPoll] = useState(true);
-    const { data: allModels, isFetching: fetchingModels } = useGetAllModelsQuery(undefined, {
+    const { data: allModels, isFetching: fetchingModels, refetch } = useGetAllModelsQuery(undefined, {
         refetchOnMountOrArgChange: true,
-        pollingInterval: shouldPoll ? Duration.fromObject({seconds: 30}) : undefined
+        refetchOnFocus: false, // Prevent unnecessary refetches
+        pollingInterval: shouldPoll ? 30000 : undefined // 30 seconds in milliseconds
     });
     const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
     const [searchText, setSearchText] = useState<string>('');
@@ -49,8 +50,22 @@ export function ModelManagementComponent () : ReactElement {
     const [isEdit, setEdit] = useState(false);
     const [count, setCount] = useState('');
 
+    const {
+        data: config,
+    } = useGetConfigurationQuery('global', { refetchOnMountOrArgChange: true });
+    const [updateConfigMutation] = useUpdateConfigurationMutation();
+
+    // Ensure models are fetched on component mount
     useEffect(() => {
-        const finalStatePredicate = (model) => [ModelStatus.InService, ModelStatus.Failed, ModelStatus.Stopped].includes(model.status);
+        // Force refetch on mount if no data is available
+        if (!allModels && !fetchingModels) {
+            console.log('No models data available, triggering refetch...');
+            refetch();
+        }
+    }, [allModels, fetchingModels, refetch]);
+
+    useEffect(() => {
+        const finalStatePredicate = (model: IModel) => [ModelStatus.InService, ModelStatus.Failed, ModelStatus.Stopped].includes(model.status);
         if (allModels?.every(finalStatePredicate)) {
             setShouldPoll(false);
         }
@@ -58,7 +73,7 @@ export function ModelManagementComponent () : ReactElement {
 
     useEffect(() => {
         let newPageCount = 0;
-        if (searchText){
+        if (searchText) {
             const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
             setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
             newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
@@ -69,7 +84,7 @@ export function ModelManagementComponent () : ReactElement {
             setCount(allModels ? allModels.length.toString() : '0');
         }
 
-        if (newPageCount < numberOfPages){
+        if (newPageCount < numberOfPages) {
             setCurrentPageIndex(1);
         }
         setNumberOfPages(newPageCount);
@@ -77,16 +92,16 @@ export function ModelManagementComponent () : ReactElement {
 
     return (
         <>
-            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems}/>
+            <CreateModelModal visible={newModelModalVisible} setVisible={setNewModelModelVisible} isEdit={isEdit} setIsEdit={setEdit} selectedItems={selectedItems} setSelectedItems={setSelectedItems} />
             <ModelComparisonModal visible={comparisonModalVisible} setVisible={setComparisonModalVisible} models={allModels || []} />
             <Cards
                 onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
                 selectedItems={selectedItems}
                 ariaLabels={{
-                    itemSelectionLabel: (e, t) => `select ${t.modelName}`,
+                    itemSelectionLabel: (_, t) => `select ${t.modelName}`,
                     selectionGroupLabel: 'Model selection',
                 }}
-                cardDefinition={CARD_DEFINITIONS}
+                cardDefinition={createCardDefinitions(config?.[0]?.configuration?.global?.defaultModel)}
                 visibleSections={preferences.visibleContent}
                 loadingText='Loading models'
                 items={matchedModels}
@@ -105,6 +120,9 @@ export function ModelManagementComponent () : ReactElement {
                                 setNewModelModelVisible={setNewModelModelVisible}
                                 setEdit={setEdit}
                                 setComparisonModalVisible={setComparisonModalVisible}
+                                updateConfigMutation={updateConfigMutation}
+                                currentDefaultModel={config?.[0]?.configuration?.global?.defaultModel}
+                                currentConfig={config}
                             />
                         }
                     >

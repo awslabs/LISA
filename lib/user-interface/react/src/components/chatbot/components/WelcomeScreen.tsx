@@ -15,11 +15,12 @@
 */
 
 import { v4 as uuidv4 } from 'uuid';
-import { Button, Header, SpaceBetween, TextContent } from '@cloudscape-design/components';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Header } from '@cloudscape-design/components';
 import { faFileLines, faMessage, faPenToSquare, faComment } from '@fortawesome/free-regular-svg-icons';
 import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
+import { ButtonBadge } from '@/components/common/ButtonBadge';
+import { faCodeCompare } from '@fortawesome/free-solid-svg-icons';
 
 type WelcomeScreenProps = {
     navigate: (path: string) => void;
@@ -59,47 +60,49 @@ export const WelcomeScreen = ({
                 gap: '1em',
                 textAlign: 'center'
             }}>
-                <Button variant='normal' onClick={() => {
-                    navigate(`/ai-assistant/${uuidv4()}`);
-                    modelSelectRef?.current?.focus();
-                }}>
-                    <SpaceBetween direction='horizontal' size='xs'>
-                        <FontAwesomeIcon icon={faMessage} />
-                        <TextContent>Start chatting</TextContent>
-                    </SpaceBetween>
-                </Button>
+                <ButtonBadge
+                    text='Start Chatting'
+                    icon={faMessage}
+                    onClick={() => {
+                        navigate(`/ai-assistant/${uuidv4()}`);
+                        modelSelectRef?.current?.focus();
+                    }}
+                />
 
-                {config?.configuration?.enabledComponents?.showPromptTemplateLibrary && (
-                    <>
-                        <Button variant='normal' onClick={() => {
-                            refreshPromptTemplate();
-                            setFilterPromptTemplateType(PromptTemplateType.Persona);
-                            openModal('promptTemplate');
-                        }}>
-                            <SpaceBetween direction='horizontal' size='xs'>
-                                <FontAwesomeIcon icon={faPenToSquare} />
-                                <TextContent>Select Persona</TextContent>
-                            </SpaceBetween>
-                        </Button>
-                        <Button variant='normal' onClick={() => {
-                            refreshPromptTemplate();
-                            setFilterPromptTemplateType(PromptTemplateType.Directive);
-                            openModal('promptTemplate');
-                        }}>
-                            <SpaceBetween direction='horizontal' size='xs'>
-                                <FontAwesomeIcon icon={faComment} />
-                                <TextContent>Select Directive</TextContent>
-                            </SpaceBetween>
-                        </Button>
-                    </>
-                )}
+                <ButtonBadge
+                    text='Select Persona'
+                    icon={faPenToSquare}
+                    onClick={() => {
+                        refreshPromptTemplate();
+                        setFilterPromptTemplateType(PromptTemplateType.Persona);
+                        openModal('promptTemplate');
+                    }}
+                    show={config?.configuration?.enabledComponents?.showPromptTemplateLibrary}
+                />
 
-                <Button variant='normal' onClick={() => openModal('documentSummarization')}>
-                    <SpaceBetween direction='horizontal' size='xs'>
-                        <FontAwesomeIcon icon={faFileLines} />
-                        <TextContent>Summarize a doc</TextContent>
-                    </SpaceBetween>
-                </Button>
+                <ButtonBadge
+                    text='Select Directive'
+                    icon={faComment}
+                    onClick={() => {
+                        refreshPromptTemplate();
+                        setFilterPromptTemplateType(PromptTemplateType.Directive);
+                        openModal('promptTemplate');
+                    }}
+                    show={config?.configuration?.enabledComponents?.showPromptTemplateLibrary}
+                />
+
+                <ButtonBadge
+                    text='Summarize a Doc'
+                    icon={faFileLines}
+                    onClick={() => openModal('documentSummarization')}
+                />
+
+                <ButtonBadge
+                    text='Compare Models'
+                    icon={faCodeCompare}
+                    onClick={() => openModal('modelComparison')}
+                    show={config?.configuration?.enabledComponents?.enableModelComparisonUtility}
+                />
             </div>
         </div>
     );

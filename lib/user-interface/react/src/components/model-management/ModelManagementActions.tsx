@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, useEffect, useContext } from 'react';
+import { ReactElement, useEffect } from 'react';
 import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch, useAppSelector } from '@/config/store';
 import { IModel, ModelStatus } from '@/shared/model/model-management.model';
@@ -27,10 +27,7 @@ import {
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCodeCompare } from '@fortawesome/free-solid-svg-icons';
 import { IConfiguration, SystemConfiguration } from '@/shared/model/configuration.model';
-import ConfigurationContext from '@/shared/configuration.provider';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 
 export type ModelActionProps = {
@@ -38,17 +35,14 @@ export type ModelActionProps = {
     setSelectedItems: (items: IModel[]) => void;
     setNewModelModelVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
-    setComparisonModalVisible: (state: boolean) => void;
     updateConfigMutation?: any;
     currentDefaultModel?: string;
     currentConfig?: any;
 };
 
-
 function ModelActions (props: ModelActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const config: IConfiguration = useContext(ConfigurationContext);
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
@@ -62,13 +56,6 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 <Icon name='refresh' />
             </Button>
 
-            {config?.configuration?.enabledComponents?.enableModelComparisonUtility &&
-                <Button
-                    onClick={() => props.setComparisonModalVisible(true)}
-                    ariaLabel={'Compare models'} >
-                    <FontAwesomeIcon icon={faCodeCompare} />
-                </Button>
-            }
             {ModelActionButton(dispatch, notificationService, props)}
             <Button variant='primary' onClick={() => {
                 props.setEdit(false);
@@ -173,7 +160,7 @@ const ModelActionHandler = async (
     dispatch: ThunkDispatch<any, any, Action>,
     deleteMutation: MutationTrigger<any>,
     updateMutation: MutationTrigger<any>,
-    setNewModelModelVisible: (arg0: boolean) => void,
+    setNewModelModelVisible: (boolean) => void,
     setEdit: (boolean) => void,
     updateConfigMutation?: any,
     notificationService?: INotificationService,

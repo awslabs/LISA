@@ -76,7 +76,7 @@ export class FastApiContainer extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {FastApiContainerProps} props - The properties of the construct.
    */
-    constructor (scope: Construct, id: string, props: FastApiContainerProps) {
+    constructor(scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
@@ -101,6 +101,21 @@ export class FastApiContainer extends Construct {
             USER_GROUP: config.authConfig!.userGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
         };
+
+        if (config.restApiConfig.internetFacing) {
+            environment.USE_AUTH = 'true';
+            environment.AUTHORITY = config.authConfig!.authority;
+            environment.CLIENT_ID = config.authConfig!.clientId;
+            environment.ADMIN_GROUP = config.authConfig!.adminGroup;
+            environment.USER_GROUP = config.authConfig!.userGroup;
+            environment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
+            // BRASS Bindle Lock Configuration
+            environment.ADMIN_BINDLE_GUID = config.authConfig!.adminAccessBindleLockGuid;
+            environment.APP_BINDLE_GUID = config.authConfig!.appAccessBindleLockGuid;
+            environment.BRASS_ENDPOINT = config.authConfig!.brassEndpoint;
+        } else {
+            environment.USE_AUTH = 'false';
+        }
 
         if (tokenTable) {
             baseEnvironment.TOKEN_TABLE_NAME = tokenTable.tableName;

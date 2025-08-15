@@ -170,6 +170,10 @@ export class LisaRagConstruct extends Construct {
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             REST_API_VERSION: 'v2',
             TIKTOKEN_CACHE_DIR: '/tmp',
+            // BRASS Bindle Lock Configuration
+            ADMIN_BINDLE_GUID: config.authConfig!.adminAccessBindleLockGuid,
+            APP_BINDLE_GUID: config.authConfig!.appAccessBindleLockGuid,
+            BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API

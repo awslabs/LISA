@@ -80,7 +80,6 @@ export class CustomAuthorizer extends Construct {
         // Create Lambda authorizer
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-
             runtime: getDefaultRuntime(),
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
@@ -96,10 +95,14 @@ export class CustomAuthorizer extends Construct {
                 USER_GROUP: config.authConfig!.userGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue,
+
                 // BRASS Bindle Lock Configuration
                 ADMIN_BINDLE_GUID: config.authConfig!.adminBindleGuid,
                 APP_BINDLE_GUID: config.authConfig!.appBindleGuid,
                 BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
+
+                // AWS Region for proper BRASS service signing (custom variable since AWS_REGION is reserved)
+                BRASS_REGION: config.region,
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})
             },
             role: role,

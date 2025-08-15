@@ -112,6 +112,10 @@ export class McpApi extends Construct {
 
         const env = {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            // BRASS Bindle Lock Configuration
+            ADMIN_BINDLE_GUID: config.authConfig!.adminAccessBindleLockGuid,
+            APP_BINDLE_GUID: config.authConfig!.appAccessBindleLockGuid,
+            BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName,
             MCP_SERVERS_BY_OWNER_INDEX_NAME: byOwnerIndex,
         };

@@ -43,7 +43,7 @@ type PromptTemplateApiProps = {
  * Constructs and manages API endpoints for handling prompt templates in the application.
  */
 export class PromptTemplateApi extends Construct {
-    constructor (scope: Construct, id: string, props: PromptTemplateApiProps) {
+    constructor(scope: Construct, id: string, props: PromptTemplateApiProps) {
         super(scope, id);
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
@@ -104,6 +104,10 @@ export class PromptTemplateApi extends Construct {
 
         const environment = {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            // BRASS Bindle Lock Configuration
+            ADMIN_BINDLE_GUID: config.authConfig!.adminAccessBindleLockGuid,
+            APP_BINDLE_GUID: config.authConfig!.appAccessBindleLockGuid,
+            BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
             PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
             PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME: byOwnerIndexName,
         };

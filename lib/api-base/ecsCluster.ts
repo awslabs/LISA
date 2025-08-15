@@ -189,7 +189,7 @@ export class ECSCluster extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor(scope: Construct, id: string, props: ECSClusterProps) {
+    constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, identifier, vpc, securityGroup, ecsConfig } = props;
 
@@ -386,6 +386,12 @@ export class ECSCluster extends Construct {
             createCdkId([ecsConfig.identifier, 'TR']),
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${ecsConfig.identifier}`),
         );
+        
+        // Grant CloudWatch logs permissions to both task role and execution role
+        logGroup.grantWrite(taskRole);
+        if (executionRole) {
+            logGroup.grantWrite(executionRole);
+        }
         const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
             volumes,
@@ -440,7 +446,7 @@ export class ECSCluster extends Construct {
             }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
-            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
+            portMappings: [{ containerPort: 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
@@ -531,84 +537,9 @@ export class ECSCluster extends Construct {
                 ? ecsConfig.loadBalancerConfig.domainName
                 : loadBalancer.loadBalancerDnsName;
         this.endpointUrl = `${protocol}://${domain}`;
-        baseEnvironment.CORS_ORIGINS = [loadBalancer.loadBalancerDnsName, ecsConfig.loadBalancerConfig.domainName].filter(Boolean)
-            .map((domain) => `${protocol}://${domain}`)
-            .concat('*')
-            .join(',');
 
-        Object.entries(ecsConfig.tasks).forEach(([name, definition]) => {
-            const taskResult = this.createTaskDefinition(
-                name,
-                config,
-                definition,
-                baseEnvironment,
-                ecsConfig,
-                volumes,
-                mountPoints,
-                logGroup,
-                taskRole,
-                executionRole
-            );
-            const { taskDefinition, container } = taskResult;
-
-            // Create ECS service for primary task
-            const serviceProps: Ec2ServiceProps = {
-                cluster: cluster,
-                serviceName: createCdkId([name], 32, 2),
-                taskDefinition: taskDefinition,
-                circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
-                capacityProviderStrategies: [
-                    { capacityProvider: asgCapacityProvider.capacityProviderName, weight: 1 }
-                ]
-            };
-
-            const service = new Ec2Service(this, createCdkId([config.deploymentName, name, 'Ec2Svc']), serviceProps);
-            const scalableTaskCount = service.autoScaleTaskCount({
-                minCapacity: 1,
-                // 10 is just a magic number we don't expect to hit because we don't have better data on this
-                maxCapacity: 10
-            });
-            service.node.addDependency(autoScalingGroup);
-
-            // since our containers are using ephemeral ports, the load balancer must be allowed to access them
-            service.connections.allowFrom(loadBalancer, Port.allTcp());
-
-            // Create target groups for both services
-            const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
-
-            const targetGroup = listener.addTargets(createCdkId([identifier, name, 'TgtGrp']), {
-                targetGroupName: createCdkId([config.deploymentName, identifier, name], 32, 2).toLowerCase(),
-                healthCheck: {
-                    path: loadBalancerHealthCheckConfig.path,
-                    interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
-                    timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
-                    healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
-                    unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
-                },
-                port: 80,
-                targets: [service],
-                priority: definition.applicationTarget?.priority,
-                conditions: definition.applicationTarget?.conditions?.map(({ type, values }) => {
-                    switch (type) {
-                        case 'pathPatterns':
-                            return ListenerCondition.pathPatterns(values);
-                    }
-                })
-            });
-
-            scalableTaskCount.scaleOnRequestCount(createCdkId([identifier, 'ScalingPolicy']), {
-                requestsPerTarget: ecsConfig.autoScalingConfig.metricConfig.targetValue,
-                targetGroup,
-                scaleInCooldown: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
-                scaleOutCooldown: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration)
-            });
-
-            // Store in maps for future reference
-            const ecsTasksKey = name as keyof typeof ECSTasks;
-            this.containers[ecsTasksKey] = container;
-            this.taskRoles[ecsTasksKey] = taskRole;
-            this.services[ecsTasksKey] = service;
-            this.targetGroups[ecsTasksKey] = targetGroup;
-        });
+        // Update
+        this.container = container;
+        this.taskRole = taskRole;
     }
 }

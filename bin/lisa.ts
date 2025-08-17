@@ -28,7 +28,7 @@ import { Config, ConfigFile, ConfigSchema } from '../lib/schema';
 import { LisaServeApplicationStage } from '../lib/stages';
 import { SSMClient, GetParameterCommand, SSMServiceException } from '@aws-sdk/client-ssm';
 
-async function readAndMergeConfigs(): Promise<any> {
+async function readAndMergeConfigs (): Promise<any> {
     // Read configuration files
     const baseConfigFilePath = path.join(__dirname, '../config-base.yaml');
     const customConfigFilePath = path.join(__dirname, '../config-custom.yaml');
@@ -56,7 +56,7 @@ async function readAndMergeConfigs(): Promise<any> {
     return configData;
 }
 
-async function validateConfig(configData: any): Promise<Config> {
+async function validateConfig (configData: any): Promise<Config> {
     try {
         // Validate and parse configuration
         const config = await ConfigSchema.parseAsync(configData);

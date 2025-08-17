@@ -114,7 +114,7 @@ export class FastApiContainer extends Construct {
             }
         }
 
-        if (config.region?.includes('iso') && (config.restApiConfig.launchType === "fargate")) {
+        if (config.region?.includes('iso') && (config.restApiConfig.launchType === 'fargate')) {
             const copyOptions = {
                 recursive: true,
                 force: true

@@ -54,7 +54,7 @@ async function getSubnetData (subnetId: string, region: string) {
         });
 }
 
-async function resolveSubnets(name: string | { subnetId: string; ipv4CidrBlock: string; availabilityZone: string; }[] | undefined, 
+async function resolveSubnets (name: string | { subnetId: string; ipv4CidrBlock: string; availabilityZone: string; }[] | undefined,
     region: string): Promise<{ subnetId: string; ipv4CidrBlock: string; availabilityZone: string; }[] | undefined> {
     if (typeof name === 'string') {
         const subnetList = (await resolveSSMParameter(name, region))?.split(',');
@@ -68,13 +68,13 @@ async function resolveSubnets(name: string | { subnetId: string; ipv4CidrBlock: 
                     return subnet as { subnetId: string; ipv4CidrBlock: string; availabilityZone: string; };
                 })
             );
-            return subnets
+            return subnets;
         }
     }
     return undefined;
 }
 
-async function resolveSecurityGroups(
+async function resolveSecurityGroups (
     securityGroupConfig: z.infer<typeof RawConfigSchema>['securityGroupConfig'],
     region: string
 ) {

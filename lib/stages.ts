@@ -30,6 +30,9 @@ import {
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AwsSolutionsChecks, NagSuppressions, NIST80053R5Checks } from 'cdk-nag';
+import { LaunchTemplate } from 'aws-cdk-lib/aws-ec2';
+import { Function } from 'aws-cdk-lib/aws-lambda';
+import { ContainerDefinition, TaskDefinition } from 'aws-cdk-lib/aws-ecs';
 
 import { LisaChatApplicationStack } from './chat';
 import { ARCHITECTURE, CoreStack } from './core';
@@ -40,7 +43,7 @@ import { LisaServeIAMStack } from './iam';
 import { LisaModelsApiStack } from './models';
 import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
-import { BaseProps, stackSynthesizerType } from './schema';
+import { BaseProps, Config, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
@@ -75,6 +78,181 @@ class UpdateLaunchTemplateMetadataOptions implements IAspect {
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpPutResponseHopLimit', 2);
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpTokens', 'required');
         }
+    }
+}
+
+class ApplyCertEnvironmentVariables implements IAspect {
+    private certificateAuthorityBundle: string;
+    constructor (certificateAuthorityBundle: string) {
+        this.certificateAuthorityBundle = certificateAuthorityBundle;
+    }
+
+    public visit (node: Construct): void {
+        const vars = {
+            'AWS_CA_BUNDLE': this.certificateAuthorityBundle,
+            'REQUESTS_CA_BUNDLE': this.certificateAuthorityBundle,
+            'SSL_CERT_DIR': '/etc/pki/tls/certs',
+            'SSL_CERT_FILE': this.certificateAuthorityBundle,
+        };
+
+        if (node instanceof Function) {
+            this.configureLambda(node, vars);
+        }
+    }
+
+    private configureLambda (lambda: Function, vars: Record<string, string>) {
+        Object.entries(vars).forEach(([key, value]) => {
+            lambda.addEnvironment(key, value);
+        });
+    }
+}
+
+class ApplyProxyEnvironmentVariables implements IAspect {
+    /**
+    * This crawls the synth'd cfn template and ensures proxy configs are applied to anything that needs them.
+    * @param {webProxy} string - The proxy config sourced from config.yaml
+    * @param {noProxy} string - The no porxy config sourced from config.yaml
+    * @param {config} Config - Config sourced from config.yaml
+    */
+    private webProxy: string;
+    private noProxy: string;
+    private config: Config;
+
+    constructor (webProxy: string, noProxy: string, config: Config) {
+        this.webProxy = webProxy;
+        this.noProxy = noProxy;
+        this.config = config;
+    }
+
+    public visit (node: Construct): void {
+        const commonNoProxy = '169.254.169.254,169.254.170.2,/var/run/docker.sock';
+        const fullNoProxy = `${this.noProxy},${commonNoProxy}`;
+
+        // These are the proxy env vars we set for lambda and task defs for containers
+        const proxy = {
+            'HTTPS_PROXY': this.webProxy,
+            'HTTP_PROXY': this.webProxy,
+            'https_proxy': this.webProxy,
+            'http_proxy': this.webProxy,
+            'NO_PROXY': fullNoProxy,
+            'no_proxy': fullNoProxy
+        };
+
+        // Check if the node is a lambda/launchtemplate/task def and call the correct method
+        if (node instanceof CfnResource && node.cfnResourceType === 'AWS::Lambda::Function') {
+            this.configureLambda(node, proxy);
+        } else if (node instanceof LaunchTemplate) {
+            this.configureLaunchTemplate(node, proxy);
+        } else if (node instanceof TaskDefinition) {
+            this.configureTaskDefinition(node, proxy);
+        }
+    }
+
+    private configureLambda (lambda: any, proxy: Record<string, string>) {
+        if (!this.config.subnets || !Array.isArray(this.config.subnets)) {
+            throw new Error('Configuration error: subnets must be an array of subnet objects');
+        }
+
+        // Configure VPC settings
+        lambda.addPropertyOverride('VpcConfig', {
+            SubnetIds: this.config.subnets.map((subnet) => subnet.subnetId),
+            SecurityGroupIds: [this.config.securityGroupConfig?.lambdaSecurityGroupId]
+        });
+
+        // Get the role reference and ID
+        const roleRef = lambda.cfnProperties?.Role || lambda.cfnProperties?.role;
+        if (!roleRef) return;
+
+        const resolvedRole = Stack.of(lambda).resolve(roleRef);
+        const roleId = resolvedRole['Fn::GetAtt']?.[0] || resolvedRole['Ref'];
+        if (!roleId) return;
+
+        // Find and update the role
+        const role = Stack.of(lambda).node.findAll()
+            .find((construct) => construct instanceof CfnResource &&
+                  construct.cfnResourceType === 'AWS::IAM::Role' &&
+                  Stack.of(construct).resolve((construct as any).logicalId) === roleId) as any;
+
+        if (role) {
+            // Add VPC execution policy
+            const lambdaVpcPolicyArn = {
+                'Fn::Join': ['',['arn:',{'Ref':'AWS::Partition'},':iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole']]
+            };
+
+            const currentPolicies = Stack.of(role).resolve(role.cfnProperties?.ManagedPolicyArns || role.cfnProperties?.managedPolicyArns);
+            if (currentPolicies) {
+                // Add the VPC execution policy if not already present
+                if (!currentPolicies.some((policy: any) => JSON.stringify(policy) === JSON.stringify(lambdaVpcPolicyArn))) {
+                    currentPolicies.push(lambdaVpcPolicyArn);
+                    role.addPropertyOverride('ManagedPolicyArns', currentPolicies);
+                }
+            } else {
+                // No managed policies yet, add the VPC execution policy
+                role.addPropertyOverride('ManagedPolicyArns', [lambdaVpcPolicyArn]);
+            }
+        }
+
+        // Add proxy environment variables
+        lambda.addPropertyOverride('Environment.Variables', proxy);
+    }
+
+    private configureLaunchTemplate (launchTemplate: LaunchTemplate, proxy: Record<string, string>) {
+        const userDataCommands = this.generateUserDataCommands(proxy); // Generate commands for launch template
+        userDataCommands.forEach((command) => { // Add each command as a new line in the UserData script
+            launchTemplate.userData?.addCommands(command);
+        });
+    }
+
+    private configureTaskDefinition (taskDefinition: TaskDefinition, proxy: Record<string, string>) {
+        const containers = taskDefinition.node.findAll().filter((child) => child instanceof ContainerDefinition);
+        if (containers.length > 0) { // We want to make sure there's a container
+            const container = containers[0] as ContainerDefinition; // Take the 0th indexed container(every task def should only have one)
+            Object.entries(proxy).forEach(([key, value]) => {
+                container.addEnvironment(key, value); // Add each proxy env var to the container def
+            });
+        } else {
+            console.warn('No containers found in the task definition');
+        }
+    }
+
+    private generateUserDataCommands (proxy: Record<string, string>): string[] {
+        return [
+            '#!/bin/bash',
+            'set -e',
+
+            // Configure ECS
+            'echo \'ECS_ENABLE_TASK_IAM_ROLE=true\' >> /etc/ecs/ecs.config',
+            'echo \'ECS_ENABLE_TASK_ENI=true\' >> /etc/ecs/ecs.config',
+            'echo \'ECS_AWSVPC_BLOCK_IMDS=true\' >> /etc/ecs/ecs.config',
+            ...Object.entries(proxy).map(([key, value]) => `echo "${key}=${value}" >> /etc/ecs/ecs.config`),
+
+            // Configure ECS service
+            'mkdir -p /etc/systemd/system/ecs.service.d',
+            `cat <<EOF > /etc/systemd/system/ecs.service.d/http-proxy.conf
+[Service]
+${Object.entries(proxy).map(([key, value]) => `Environment="${key}=${value}"`).join('\n')}
+EOF`,
+
+            // Configure Docker
+            'mkdir -p /etc/systemd/system/docker.service.d',
+            `cat <<EOF > /etc/systemd/system/docker.service.d/http-proxy.conf
+[Service]
+${Object.entries(proxy).map(([key, value]) => `Environment="${key}=${value}"`).join('\n')}
+EOF`,
+
+            // Set system-wide proxy settings
+            `cat <<EOF >> /etc/environment
+${Object.entries(proxy).map(([key, value]) => `${key}=${value}`).join('\n')}
+EOF`,
+
+            // Reload systemd and restart services
+            'systemctl daemon-reload',
+            'systemctl restart docker',
+            'systemctl restart ecs',
+
+            // Export variables for the current session
+            ...Object.entries(proxy).map(([key, value]) => `export ${key}=${value}`)
+        ];
     }
 }
 
@@ -323,7 +501,12 @@ export class LisaServeApplicationStage extends Stage {
         // config.yaml
         if (config.permissionsBoundaryAspect) {
             this.stacks.forEach((lisaStack) => {
-                Aspects.of(lisaStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+                Aspects.of(lisaStack).add(new AddPermissionBoundary({
+                    permissionsBoundaryPolicyName: config.permissionsBoundaryAspect!.permissionsBoundaryPolicyName,
+                    rolePrefix: `${config.permissionsBoundaryAspect!.rolePrefix}-${config.deploymentName}`,
+                    policyPrefix: `${config.permissionsBoundaryAspect!.policyPrefix}-${config.deploymentName}`,
+                    instanceProfilePrefix: `${config.permissionsBoundaryAspect!.instanceProfilePrefix}-${config.deploymentName}`
+                }));
             });
         }
 
@@ -357,9 +540,21 @@ export class LisaServeApplicationStage extends Stage {
             });
         }
 
+        if (config.webProxy) {
+            this.stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new ApplyProxyEnvironmentVariables(config.webProxy!, config.noProxy!, config));
+            });
+        }
+
         if (config.securityGroupConfig) {
             this.stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
+            });
+        }
+
+        if (config.region.includes('iso')) {
+            this.stacks.forEach((lisaStack) => {
+                Aspects.of(lisaStack).add(new ApplyCertEnvironmentVariables(config.certificateAuthorityBundle));
             });
         }
 

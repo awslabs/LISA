@@ -16,3 +16,5 @@
 PDF_FILE = "pdf"
 TEXT_FILE = "txt"
 DOCX_FILE = "docx"
+MD_FILE = "md"
+MD_FILE = "md"

@@ -87,6 +87,7 @@ export class IngestionJobConstruct extends Construct {
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
             computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             vpc: vpc.vpc,
+            securityGroups: [vpc.securityGroups.lambdaSg],
 
         });
 
@@ -140,7 +141,10 @@ export class IngestionJobConstruct extends Construct {
         const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
             directory: ingestionImageRoot,
             buildArgs: {
-                'BUILD_DIR': buildDirName
+                'BUILD_DIR': buildDirName,
+                'PYPI_INDEX_URL': config.pypiConfig.indexUrl,
+                'PYPI_TRUSTED_HOST': config.pypiConfig.trustedHost,
+                'ALPINE_IMAGE': config.alpineImage
             },
         });
 

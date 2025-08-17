@@ -23,7 +23,14 @@ import requests
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from lisapy.langchain import LisaOpenAIEmbeddings
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, RagDocument
+from models.domain_objects import (
+    ChunkingStrategyType,
+    FixedChunkingStrategy,
+    HierarchicalChunkingStrategy,
+    IngestionJob,
+    IngestionStatus,
+    RagDocument,
+)
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
@@ -291,6 +298,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
+            - queryStringParameters.hybridWeight (optional): Weight for kNN in hybrid search (0-1)
         context (dict): The Lambda context object
 
     Returns:
@@ -303,8 +311,14 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     query_string_params = event["queryStringParameters"]
     model_name = query_string_params["modelName"]
     query = query_string_params["query"]
-    top_k = query_string_params.get("topK", 3)
+    top_k = int(query_string_params.get("topK", 3))
     repository_id = event["pathParameters"]["repositoryId"]
+
+    # Optional hybrid weight parameter
+    hybrid_weight = None
+    if "hybridWeight" in query_string_params:
+        hybrid_weight = float(query_string_params.get("hybridWeight"))
+        logger.info(f"Using hybrid search with weight {hybrid_weight}")
 
     repository = vs_repo.find_repository_by_id(repository_id)
     _ensure_repository_access(event, repository)
@@ -313,11 +327,18 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
     vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
-    docs = vs.similarity_search(
+
+    # Pass hybrid_weight to similarity_search_with_relevance_scores if provided
+    docs = vs.similarity_search_with_relevance_scores(
         query,
         k=top_k,
+        hybrid_weight=hybrid_weight,
     )
-    doc_content = [{"Document": {"page_content": doc.page_content, "metadata": doc.metadata}} for doc in docs]
+
+    doc_content = [
+        {"Document": {"page_content": doc[0].page_content, "metadata": doc[0].metadata, "relevance_score": doc[1]}}
+        for doc in docs
+    ]
 
     doc_return = {"docs": doc_content}
     logger.info(f"Returning: {doc_return}")
@@ -423,6 +444,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             - queryStringParameters.repositoryType: Repository type (VectorStore)
             - queryStringParameters.chunkSize (optional): Size of text chunks
             - queryStringParameters.chunkOverlap (optional): Overlap between chunks
+            - queryStringParameters.chunkStrategy (optional): Chunking strategy
         context (dict): The Lambda context object
 
     Returns:
@@ -442,20 +464,44 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository_id = path_params.get("repositoryId")
 
     query_string_params = event["queryStringParameters"]
-    chunk_size = int(query_string_params["chunkSize"]) if "chunkSize" in query_string_params else None
-    chunk_overlap = int(query_string_params["chunkOverlap"]) if "chunkOverlap" in query_string_params else None
+    chunk_size = (
+        int(query_string_params["chunkSize"])
+        if "chunkSize" in query_string_params
+        else int(os.getenv("CHUNK_SIZE", "512"))
+    )
+    chunk_overlap = (
+        int(query_string_params["chunkOverlap"])
+        if "chunkOverlap" in query_string_params
+        else int(os.getenv("CHUNK_OVERLAP", "51"))
+    )
+    chunk_strategy_type = query_string_params.get("chunkStrategy", None)
+
+    try:
+        chunk_strategy_type = (
+            ChunkingStrategyType(chunk_strategy_type) if chunk_strategy_type else ChunkingStrategyType.FIXED
+        )
+    except ValueError:
+        raise ValidationError(
+            f"Invalid chunk strategy: {chunk_strategy_type}. "
+            f"Allowed strategies: {', '.join(s.value for s in ChunkingStrategyType)}."
+        )
+
     logger.info(f"using repository {repository_id}")
 
     username = get_username(event)
     repository = vs_repo.find_repository_by_id(repository_id)
     _ensure_repository_access(event, repository)
 
+    if chunk_strategy_type == ChunkingStrategyType.FIXED:
+        chunk_strategy = FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
+    elif chunk_strategy_type == ChunkingStrategyType.HIERARCHICAL:
+        chunk_strategy = HierarchicalChunkingStrategy()
     ingestion_document_ids = []
     for key in body["keys"]:
         job = IngestionJob(
             repository_id=repository_id,
             collection_id=model_name,
-            chunk_strategy=FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap)),
+            chunk_strategy=chunk_strategy,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
         )

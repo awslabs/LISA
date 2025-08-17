@@ -72,6 +72,7 @@ export class EcsModel extends Construct {
                 instanceType: modelConfig.instanceType,
                 internetFacing: false,
                 loadBalancerConfig: modelConfig.loadBalancerConfig,
+                launchType: 'ec2',
             },
             securityGroup,
             vpc,

@@ -65,7 +65,7 @@ export class PGVectorStoreStack extends PipelineStack {
         // Optional subnet selection based on provided subnets
         let subnetSelection: SubnetSelection | undefined;
 
-        if (subnets && subnets.length > 0) {
+        if (subnets && Array.isArray(subnets) && subnets.length > 0) {
             subnetSelection = {
                 subnets: subnets?.map((subnet, index) => Subnet.fromSubnetId(this, `subnet-${index}`, subnet.subnetId))
             };

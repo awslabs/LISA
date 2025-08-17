@@ -16,6 +16,88 @@
 
 import { z } from 'zod';
 import { RawConfigObject, RawConfigSchema } from './configSchema';
+import { SSMClient, GetParameterCommand, SSMServiceException } from '@aws-sdk/client-ssm';
+import { EC2Client, DescribeSubnetsCommand } from '@aws-sdk/client-ec2';
+
+async function resolveSSMParameter (name: string | undefined, region: string): Promise<string | undefined> {
+    if (!name) return undefined;
+    if (!name.startsWith('ssm:')) return undefined;
+
+    const client = new SSMClient({ region: region });
+    const command = new GetParameterCommand({ Name: name.split(':')[1] });
+    return await client.send(command)
+        .then((response) => {
+            console.log('SSM Parameter Value:', response.Parameter?.Value);
+            return response.Parameter?.Value;
+        })
+        .catch((error: SSMServiceException) => {
+            console.error('Error fetching SSM parameter:', error);
+            throw error;
+        });
+}
+
+async function getSubnetData (subnetId: string, region: string) {
+    const client = new EC2Client({ region: region });
+    const command = new DescribeSubnetsCommand({ SubnetIds: [subnetId] });
+
+    return await client.send(command)
+        .then((response) => {
+            return {
+                subnetId: response.Subnets?.[0]?.SubnetId,
+                ipv4CidrBlock: response.Subnets?.[0]?.CidrBlock,
+                availabilityZone: response.Subnets?.[0]?.AvailabilityZone
+            };
+        })
+        .catch((error) => {
+            console.error('Error fetching subnet data:', error);
+            throw error;
+        });
+}
+
+async function resolveSubnets(name: string | { subnetId: string; ipv4CidrBlock: string; availabilityZone: string; }[] | undefined, 
+    region: string): Promise<{ subnetId: string; ipv4CidrBlock: string; availabilityZone: string; }[] | undefined> {
+    if (typeof name === 'string') {
+        const subnetList = (await resolveSSMParameter(name, region))?.split(',');
+        if (subnetList && subnetList.length > 0) {
+            const subnets = await Promise.all(
+                subnetList.map(async (subnetId) => {
+                    const subnet = await getSubnetData(subnetId, region);
+                    if (!subnet.subnetId || !subnet.ipv4CidrBlock || !subnet.availabilityZone) {
+                        throw new Error(`Incomplete subnet data for subnet ID ${subnetId}`);
+                    }
+                    return subnet as { subnetId: string; ipv4CidrBlock: string; availabilityZone: string; };
+                })
+            );
+            return subnets
+        }
+    }
+    return undefined;
+}
+
+async function resolveSecurityGroups(
+    securityGroupConfig: z.infer<typeof RawConfigSchema>['securityGroupConfig'],
+    region: string
+) {
+    if (!securityGroupConfig) return undefined;
+
+    const resolvedConfig = { ...securityGroupConfig };
+
+    await Promise.all(
+        Object.keys(securityGroupConfig).map(async (key) => {
+            const typedKey = key as keyof typeof securityGroupConfig;
+            const value = securityGroupConfig[typedKey];
+
+            if (value) {
+                const resolved = await resolveSSMParameter(value, region);
+                if (resolved) {
+                    resolvedConfig[typedKey] = resolved;
+                }
+            }
+        })
+    );
+
+    return resolvedConfig;
+}
 
 /**
  * Apply transformations to the raw application configuration schema.
@@ -23,7 +105,7 @@ import { RawConfigObject, RawConfigSchema } from './configSchema';
  * @param {Object} rawConfig - .describe('The raw application configuration.')
  * @returns {Object} The transformed application configuration.
  */
-export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
+export const ConfigSchema = RawConfigSchema.transform(async (rawConfig) => {
     let deploymentPrefix = rawConfig.deploymentPrefix;
 
     if (!deploymentPrefix && rawConfig.appName && rawConfig.deploymentStage && rawConfig.deploymentName) {
@@ -52,11 +134,20 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
         awsRegionArn = 'aws';
     }
 
+    const vpcId = await resolveSSMParameter(rawConfig.vpcId, rawConfig.region);
+    const subnets = await resolveSubnets(rawConfig.subnets, rawConfig.region);
+    const securityGroupConfig = await resolveSecurityGroups(rawConfig.securityGroupConfig, rawConfig.region);
+    const webProxy = await resolveSSMParameter(rawConfig.webProxy, rawConfig.region);
+
     return {
         ...rawConfig,
         deploymentPrefix: deploymentPrefix,
         tags: tags,
         awsRegionArn,
+        ...(vpcId && { vpcId }),
+        ...(subnets && { subnets }),
+        ...(securityGroupConfig && { securityGroupConfig }),
+        ...(webProxy && { webProxy }),
     };
 });
 

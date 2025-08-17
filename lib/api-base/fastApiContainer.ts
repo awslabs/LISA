@@ -28,6 +28,7 @@ import { Vpc } from '../networking/vpc';
 import { REST_API_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
+import * as fs from 'node:fs';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -113,6 +114,17 @@ export class FastApiContainer extends Construct {
             }
         }
 
+        if (config.region?.includes('iso') && (config.restApiConfig.launchType === "fargate")) {
+            const copyOptions = {
+                recursive: true,
+                force: true
+            };
+            const certs_dir = '/etc/pki';
+            if (process.env.NODE_ENV !== 'test') {
+                fs.cpSync(certs_dir, path.join(REST_API_PATH, 'certs'), copyOptions);
+            }
+        }
+
         const image = config.restApiConfig.imageConfig || {
             baseImage: config.baseImage,
             path: REST_API_PATH,
@@ -164,6 +176,7 @@ export class FastApiContainer extends Construct {
                     domainName: config.restApiConfig.domainName,
                     sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,
                 },
+                launchType: config.restApiConfig.launchType,
             },
             securityGroup,
             vpc

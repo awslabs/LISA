@@ -1,6 +1,6 @@
-datasets==2.20.0
-fastapi==0.111.1
-fastapi_utils==0.7.0
+datasets==3.2.0
+fastapi==0.115.6
+fastapi_utils==0.8.0
 locust==2.25.0
 loguru==0.7.2
 mangum==0.17.0

@@ -13,6 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
+import { DockerImage } from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -104,6 +105,27 @@ export class CoreConstruct extends Construct {
                 compatibleRuntimes: [getDefaultRuntime()],
                 removalPolicy: config.removalPolicy,
                 description: 'LISA SDK common layer',
+                bundling: {
+                    image: DockerImage.fromBuild(SDK_PATH),
+                    command: [
+                        'bash', '-c',
+                        [
+                            ...(config.pypiConfig && config.pypiConfig.trustedHost && config.pypiConfig.indexUrl ? [
+                                `pip config set global.trusted-host ${config.pypiConfig.trustedHost}`,
+                                `pip config set global.index-url ${config.pypiConfig.indexUrl}`,
+                            ] : []),
+                            'python -m venv /usr/app/venv',
+                            '/usr/app/venv/bin/pip install --upgrade pip',
+                            '/usr/app/venv/bin/pip install pipenv==2022.4.8 poetry==1.5.1',
+                            'rm -rf /tmp/pip-cache/* /tmp/poetry-cache/*',
+                            'rsync -rLv /asset-input/ /asset-output/python',
+                            'cd /asset-output/python',
+                            'poetry export --without-hashes --with-credentials --format requirements.txt --output requirements.txt',
+                            'python -m pip install -r requirements.txt -t /asset-output/python',
+                            'rm -rf /tmp/pip-cache/* /tmp/poetry-cache/*'
+                        ].filter(Boolean).join(' && \\\n')
+                    ]
+                }
             });
         }
 

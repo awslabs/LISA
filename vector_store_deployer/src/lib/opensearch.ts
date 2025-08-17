@@ -18,12 +18,17 @@ import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservic
 import { Construct } from 'constructs';
 import { RagRepositoryConfig, RagRepositoryType,PartialConfig } from '../../../lib/schema';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { CfnServiceLinkedRole, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../lib/core/utils';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
+
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { ProxyAgent } from 'proxy-agent';
+
+const agent = new ProxyAgent();
 
 type OpenSearchVectorStoreStackProps = StackProps & {
     config: PartialConfig
@@ -54,7 +59,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
 
         let subnetSelection: SubnetSelection | undefined;
 
-        if (subnets && subnets.length > 0) {
+        if (subnets && Array.isArray(props.config.subnets) && subnets.length > 0) {
             subnetSelection = {
                 subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetAttributes(this, index.toString(), {
                     subnetId: subnet.subnetId,
@@ -82,7 +87,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
             openSearchDomain = new Domain(this, createCdkId([deploymentName!, deploymentStage!, 'RagRepository', repositoryId]), {
                 domainName: ['lisa-rag', repositoryId].join('-'),
                 // 2.9 is the latest available in ADC regions as of 1/11/24
-                version: EngineVersion.OPENSEARCH_2_9,
+                version: EngineVersion.OPENSEARCH_2_17,
                 enableVersionUpgrade: true,
                 vpc: vpc,
                 ...(subnetSelection && {vpcSubnets: [subnetSelection]}),
@@ -92,7 +97,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                     volumeType: opensearchConfig.volumeType,
                 },
                 zoneAwareness: {
-                    availabilityZoneCount: (config.subnets && config.subnets.length) ?? vpc.privateSubnets.length,
+                    availabilityZoneCount: (config.subnets && Array.isArray(config.subnets) ? config.subnets.length : undefined) ?? vpc.privateSubnets.length,
                     enabled: true,
                 },
                 capacity: {
@@ -102,14 +107,6 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                     masterNodeInstanceType: opensearchConfig.masterNodeInstanceType,
                     multiAzWithStandbyEnabled: opensearchConfig.multiAzWithStandby,
                 },
-                accessPolicies: [
-                    new PolicyStatement({
-                        actions: ['es:*'],
-                        resources: ['*'],
-                        effect: Effect.ALLOW,
-                        principals: [new AnyPrincipal()],
-                    }),
-                ],
                 nodeToNodeEncryption: true,
                 enforceHttps: true,
                 encryptionAtRest: {
@@ -157,7 +154,13 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
      * If the role doesn't exist, it will be created.
      */
     async linkServiceRole (region: string) {
-        const iam = new IAMClient({region});
+        const iam = new IAMClient({
+            region: region,
+            requestHandler: new NodeHttpHandler({
+                httpAgent: agent,
+                httpsAgent: agent
+            }),
+        });
         const response = await iam.send(
             new ListRolesCommand({
                 PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',

@@ -327,7 +327,7 @@ class LisaLlm(BaseModel):
         """Close session."""
         try:
             self._session.close()
-        except Exception:
+        except Exception: # nosec B110, if it doesn't close and we fail/crash that still counts as a close? Werid try block though
             pass
 
 

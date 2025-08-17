@@ -62,7 +62,7 @@ export class LisaModelStack extends Stack {
 
         let subnetSelection: SubnetSelection | undefined;
 
-        if (props.config.subnets && props.config.subnets.length > 0) {
+        if (props.config.subnets && Array.isArray(props.config.subnets) && props.config.subnets.length > 0) {
             subnetSelection = {
                 subnets: props.config.subnets?.map((subnet, index) => Subnet.fromSubnetId(this, index.toString(), subnet.subnetId))
             };

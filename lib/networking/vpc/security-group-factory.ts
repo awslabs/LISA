@@ -123,7 +123,7 @@ export class SecurityGroupFactory {
         const subNets = config.subnets && config.vpcId ? vpc.subnetSelection?.subnets : vpc.vpc.isolatedSubnets.concat(vpc.vpc.privateSubnets);
         subNets?.forEach((subnet) => {
             securityGroup.connections.allowFrom(
-                Peer.ipv4(config.subnets ? config.subnets.filter((filteredSubnet: { subnetId: string; }) =>
+                Peer.ipv4((config.subnets && Array.isArray(config.subnets) ) ? config.subnets.filter((filteredSubnet: { subnetId: string; }) =>
                     filteredSubnet.subnetId === subnet.subnetId)?.[0]?.ipv4CidrBlock :  subnet.ipv4CidrBlock),
                 Port.tcp(port),
                 `Allow REST API private subnets to communicate with ${securityGroupName}`,

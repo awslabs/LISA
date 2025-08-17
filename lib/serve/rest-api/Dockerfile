@@ -1,4 +1,12 @@
 ARG BASE_IMAGE
+
+# Add build stage for staging files
+FROM ${BASE_IMAGE} as staging
+
+WORKDIR /
+COPY . .
+RUN mkdir -p certs
+
 FROM ${BASE_IMAGE}
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
@@ -9,7 +17,12 @@ ARG PYPI_INDEX_URL
 ARG PYPI_TRUSTED_HOST
 RUN if [ "$PYPI_INDEX_URL" != "" ]; then \
         pip config set global.index-url $PYPI_INDEX_URL && \
-        pip config set global.trusted-host $PYPI_TRUSTED_HOST;fi
+        pip config set global.trusted-host $PYPI_TRUSTED_HOST; \
+    fi
+
+WORKDIR /
+RUN mkdir -p /etc/pki
+COPY --from=staging certs /etc/pki
 
 # Set working directory in the container
 WORKDIR /app

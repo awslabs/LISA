@@ -15,6 +15,7 @@
 */
 import { App, Aspects } from 'aws-cdk-lib/core';
 import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
+import { CliCredentialsStackSynthesizer } from 'aws-cdk-lib';
 import { OpenSearchVectorStoreStack } from './opensearch';
 import { PGVectorStoreStack } from './pgvector';
 import { RagRepositoryConfigSchema, RagRepositoryType,PartialConfigSchema } from '../../../lib/schema';
@@ -35,6 +36,7 @@ const vectorStoreProps = {
         account: config.accountNumber,
         region: config.region
     },
+    synthesizer: new CliCredentialsStackSynthesizer()
 };
 
 let stack;

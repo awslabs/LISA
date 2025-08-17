@@ -1,5 +1,5 @@
 # boto3==1.34.131 // Provided by Lambda
-fastapi==0.111.0
+fastapi==0.115.6
 mangum==0.17.0
 pydantic==2.8.2
 requests==2.32.4

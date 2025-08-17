@@ -133,6 +133,7 @@ export class DeleteStoreStateMachine extends Construct {
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc.vpc,
+            securityGroups: [vpc.securityGroups.lambdaSg],
             environment: environment,
             layers: lambdaLayers,
             role: executionRole,

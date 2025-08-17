@@ -341,9 +341,11 @@ def get_cert_path(iam_client: Any) -> Union[str, bool]:
         _cert_file = tempfile.NamedTemporaryFile(delete=False)
         _cert_file.write(cert_body.encode("utf-8"))
         _cert_file.flush()
+        _cert_file_path = _cert_file.name
+        _cert_file.close()
 
-        logger.info(f"Certificate saved to temporary file: {_cert_file.name}")
-        return _cert_file.name
+        logger.info(f"Certificate saved to temporary file: {_cert_file_path}")
+        return _cert_file_path
 
     except Exception as e:
         logger.error(f"Failed to get certificate from IAM: {e}", exc_info=True)

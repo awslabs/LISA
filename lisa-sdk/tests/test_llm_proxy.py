@@ -90,7 +90,7 @@ def test_generate_stream(lisa_llm: LisaLlm) -> None:
     assert len(responses) == 1
     response = responses[0]
 
-    assert response.token == ""
+    assert response.token == "" # nosec B105, not a password
     assert response.finish_reason == "length"
     assert response.generated_tokens == 1
 
@@ -120,6 +120,6 @@ async def test_generate_stream_async(lisa_llm: LisaLlm) -> None:
     assert len(responses) == 1
     response = responses[0]
 
-    assert response.token == ""
+    assert response.token == "" # nosec B105, not a password
     assert response.finish_reason == "length"
     assert response.generated_tokens == 1

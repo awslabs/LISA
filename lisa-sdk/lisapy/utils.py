@@ -34,5 +34,5 @@ def get_cert_path(iam_client: Any) -> str | bool:
     cert_file = tempfile.NamedTemporaryFile(delete=False)
     cert_file.write(cert_body.encode("utf-8"))
     rest_api_cert_path = cert_file.name
-
+    cert_file.close()
     return rest_api_cert_path

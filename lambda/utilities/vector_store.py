@@ -18,11 +18,11 @@ import logging
 import os
 
 import boto3
-from langchain_community.vectorstores.opensearch_vector_search import OpenSearchVectorSearch
 from langchain_community.vectorstores.pgvector import PGVector
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
+from repository.opensearch_hybrid_search import OpenSearchHybridSearch
 from requests_aws4auth import AWS4Auth
 from utilities.common_functions import get_lambda_role_name, retry_config
 from utilities.rds_auth import generate_auth_token
@@ -58,7 +58,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
         opensearch_endpoint = f"https://{connection_info.get('endpoint')}"
 
-        return OpenSearchVectorSearch(
+        return OpenSearchHybridSearch(
             opensearch_url=opensearch_endpoint,
             index_name=index,
             embedding_function=embeddings,

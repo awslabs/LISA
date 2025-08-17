@@ -13,10 +13,14 @@
   },
   "author": "",
   "license": "Apache-2.0",
+  "overrides": {
+    "@smithy/middleware-endpoint": "4.1.1"
+  },
   "dependencies": {
     "@aws-sdk/client-iam": "^3.490.0",
     "aws-cdk": "^2.153.0",
     "aws-cdk-lib": "^2.185.0",
+    "proxy-agent": "^6.5.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

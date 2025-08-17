@@ -45,6 +45,10 @@ export enum ModelType {
     EMBEDDING = 'embedding',
 }
 
+const SsmParameterSchema = z.string().refine((val) => val.startsWith('ssm:'), {
+    message: 'String must start with "ssm:"',
+});
+
 /**
  * Configuration schema for Security Group imports.
  * These values are none/small/all, meaning a user can import any number of these or none of these.
@@ -57,14 +61,22 @@ export enum ModelType {
  * @property {string} pgVectorSecurityGroupId - Security Group ID.
  */
 export const SecurityGroupConfigSchema = z.object({
-    modelSecurityGroupId: z.string().startsWith('sg-'),
-    restAlbSecurityGroupId: z.string().startsWith('sg-'),
-    lambdaSecurityGroupId: z.string().startsWith('sg-'),
-    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
-    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
-    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
+    modelSecurityGroupId: z.union([z.string().startsWith('sg-'), SsmParameterSchema]),
+    restAlbSecurityGroupId: z.union([z.string().startsWith('sg-'), SsmParameterSchema]),
+    lambdaSecurityGroupId: z.union([z.string().startsWith('sg-'), SsmParameterSchema]),
+    liteLlmDbSecurityGroupId: z.union([z.string().startsWith('sg-'), SsmParameterSchema]),
+    openSearchSecurityGroupId: z.union([z.string().startsWith('sg-'), SsmParameterSchema]),
+    pgVectorSecurityGroupId: z.union([z.string().startsWith('sg-'), SsmParameterSchema]),
 })
     .describe('Security Group Overrides used across stacks.');
+
+export const SubnetConfigSchema = z.object({
+    subnetId: z.string().startsWith('subnet-'),
+    ipv4CidrBlock: z.string(),
+    availabilityZone: z.string().describe('Specify the availability zone for the subnet in the format {region}{letter} (e.g., us-east-1a).'),
+});
+
+const SubnetsSchema = z.union([SsmParameterSchema, z.array(SubnetConfigSchema)]);
 
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),
@@ -522,6 +534,7 @@ export const EcsBaseConfigSchema = z.object({
     instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),
     internetFacing: z.boolean().default(false).describe('Whether or not the cluster will be configured as internet facing'),
     loadBalancerConfig: LoadBalancerConfigSchema,
+    launchType: z.enum(['ec2', 'fargate']).optional().default('ec2').describe('Whether to deploy task on EC2 or Fargate.'),
 });
 
 
@@ -595,6 +608,7 @@ export const EcsClusterConfigSchema = z
             .refine((data) => {
                 return !data.includes('.'); // string cannot contain a period
             }),
+        launchType: EcsBaseConfigSchema.shape.launchType,
     })
     .refine(
         (data) => {
@@ -690,6 +704,7 @@ const FastApiContainerConfigSchema = z.object({
                     'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
             },
         ),
+    launchType: EcsBaseConfigSchema.shape.launchType,
 }).describe('Configuration schema for REST API.');
 
 
@@ -779,11 +794,9 @@ export const RawConfigObject = z.object({
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema,
     vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
-    subnets: z.array(z.object({
-        subnetId: z.string().startsWith('subnet-'),
-        ipv4CidrBlock: z.string(),
-        availabilityZone: z.string().describe('Specify the availability zone for the subnet in the format {region}{letter} (e.g., us-east-1a).'),
-    })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
+    webProxy: z.string().optional(),
+    noProxy: z.string().optional(),
+    subnets: SubnetsSchema.optional().describe('Either the name of containing a comma-delimited list of Subnet IDs, or an array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
     securityGroupConfig: SecurityGroupConfigSchema.optional(),
     deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
     removalPolicy: z.enum([RemovalPolicy.DESTROY, RemovalPolicy.RETAIN])
@@ -817,6 +830,7 @@ export const RawConfigObject = z.object({
         trustedHost: '',
     }).describe('Pypi configuration.'),
     baseImage: z.string().default('python:3.11').describe('Base image used for LISA serve components'),
+    alpineImage: z.string().default('alpine:3.20').describe('Base Alpine image used for Lambda docker container builds'),
     nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:18').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),

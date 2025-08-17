@@ -72,6 +72,7 @@ export class VectorStoreCreatorStack extends Construct {
                 'ec2:*',
                 'rds:*',
                 'opensearch:*',
+                'es:*',
                 'ssm:*',
                 'iam:*'
             ],

@@ -323,6 +323,7 @@ class ChunkingStrategyType(str, Enum):
     """Defines supported document chunking strategies."""
 
     FIXED = "fixed"
+    HIERARCHICAL = "hierarchical"
 
 
 class IngestionStatus(str, Enum):
@@ -347,7 +348,13 @@ class FixedChunkingStrategy(BaseModel):
     overlap: int
 
 
-ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
+class HierarchicalChunkingStrategy(BaseModel):
+    """Defines parameters for hierarchical document chunking."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.HIERARCHICAL
+
+
+ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy, HierarchicalChunkingStrategy]
 
 
 class RagSubDocument(BaseModel):

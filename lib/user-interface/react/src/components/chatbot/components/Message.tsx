@@ -252,7 +252,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type === 'ai' && !isRunning && !callingToolName && (
+            {message?.type === 'ai' && !isRunning && !callingToolName && message?.content && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'

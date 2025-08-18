@@ -22,13 +22,13 @@ export type EcsRestartWarningProps = {
     onAcknowledge: (acknowledged: boolean) => void;
 };
 
-export function EcsRestartWarning(props: EcsRestartWarningProps): ReactElement {
+export function EcsRestartWarning (props: EcsRestartWarningProps): ReactElement {
     const { acknowledged, onAcknowledge } = props;
 
     return (
         <Alert
-            type="warning"
-            header="Container Restart Required"
+            type='warning'
+            header='Container Restart Required'
             action={
                 <Checkbox
                     checked={acknowledged}
@@ -38,10 +38,10 @@ export function EcsRestartWarning(props: EcsRestartWarningProps): ReactElement {
                 </Checkbox>
             }
         >
-            <SpaceBetween size="xs">
+            <SpaceBetween size='xs'>
                 <p>
-                    The container configuration changes made will require restarting the ECS container hosting the model. 
-                    This will cause a temporary outage where users will be unable to prompt the model 
+                    The container configuration changes made will require restarting the ECS container hosting the model.
+                    This will cause a temporary outage where users will be unable to prompt the model
                     until the container has fully restarted.
                 </p>
                 <p>

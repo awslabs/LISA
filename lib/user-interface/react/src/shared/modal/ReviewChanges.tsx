@@ -44,6 +44,15 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
 
         for (const key in json) {
             const value = json[key];
+
+            // Special handling for allowedGroups - show "Public" when empty
+            if (key === 'allowedGroups' && _.isArray(value) && _.isEmpty(value)) {
+                output.push((
+                    <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>: Public</p>
+                    </li>));
+                continue;
+            }
+
             const isNested = _.isObject(value);
             output.push((
                 <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p>

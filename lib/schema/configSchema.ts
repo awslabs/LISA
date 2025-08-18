@@ -342,6 +342,13 @@ export class Ec2Metadata {
             maxThroughput: 400,
             vCpus: 96,
         },
+        'p4de.24xlarge': {
+            memory: 1152 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 400,
+            vCpus: 96,
+        },
         'p5.48xlarge': {
             memory: 2000 * 1000,
             gpuCount: 8,

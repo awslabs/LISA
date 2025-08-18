@@ -24,6 +24,7 @@ from models.domain_objects import FixedChunkingStrategy, IngestionJob, Ingestion
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.lambda_functions import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.bedrock_kb import ingest_document_to_kb, is_bedrock_kb_repository
 from utilities.common_functions import get_username, retry_config
 from utilities.file_processing import generate_chunks
 from utilities.vector_store import get_vector_store_client
@@ -49,17 +50,12 @@ def pipeline_ingest(job: IngestionJob) -> None:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         all_ids = []
-        if repository.get("type", "") == "bedrock_knowledge_base":
-            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-            source_bucket = job.s3_path.split("/")[2]
-            s3.copy_object(
-                CopySource={"Bucket": source_bucket, "Key": job.s3_path.split(source_bucket + "/")[1]},
-                Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
-                Key=os.path.basename(job.s3_path),
-            )
-            bedrock_agent.start_ingestion_job(
-                knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
-                dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
+        if is_bedrock_kb_repository(repository):
+            ingest_document_to_kb(
+                s3_client=s3,
+                bedrock_agent_client=bedrock_agent,
+                job=job,
+                repository=repository,
             )
         else:
             documents = generate_chunks(job)
@@ -74,7 +70,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
 
             if prev_job:
                 ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
-            if repository.get("type", "") != "bedrock_knowledge_base":
+            if not is_bedrock_kb_repository(repository):
                 remove_document_from_vectorstore(rag_document)
             rag_document_repository.delete_by_id(rag_document.document_id)
 

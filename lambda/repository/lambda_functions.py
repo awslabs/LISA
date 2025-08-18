@@ -28,6 +28,7 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.bedrock_kb import is_bedrock_kb_repository, retrieve_documents
 from utilities.common_functions import (
     admin_only,
     api_wrapper,
@@ -304,7 +305,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     query_string_params = event["queryStringParameters"]
     model_name = query_string_params["modelName"]
     query = query_string_params["query"]
-    top_k = int(query_string_params["topK"]) if "topK" in query_string_params else 3
+    top_k = query_string_params.get("topK", 3)
     repository_id = event["pathParameters"]["repositoryId"]
 
     repository = vs_repo.find_repository_by_id(repository_id)
@@ -313,24 +314,14 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     id_token = get_id_token(event)
 
     docs: List[Dict[str, Any]] = []
-    if repository.get("type", "") == "bedrock_knowledge_base":
-        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-        response = bedrock_client.retrieve(
-            knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
-            retrievalQuery={"text": query},
-            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": int(top_k)}},
+    if is_bedrock_kb_repository(repository):
+        docs = retrieve_documents(
+            bedrock_runtime_client=bedrock_client,
+            repository=repository,
+            query=query,
+            top_k=int(top_k),
+            repository_id=repository_id,
         )
-        docs = [
-            {
-                "page_content": doc.get("content", {}).get("text", ""),
-                "metadata": {
-                    "source": doc.get("location", {}).get("s3Location", {}).get("uri"),
-                    "name": doc.get("location", {}).get("s3Location", {}).get("uri").split("/")[-1],
-                    "repository_id": repository_id,
-                },
-            }
-            for doc in response.get("retrievalResults", [])
-        ]
     else:
         embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
         vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)

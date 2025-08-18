@@ -21,6 +21,7 @@ from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.bedrock_kb import delete_document_from_kb, is_bedrock_kb_repository
 from utilities.common_functions import retry_config
 
 from .lambda_functions import DocumentIngestionService, RagDocumentRepository
@@ -46,15 +47,12 @@ def pipeline_delete(job: IngestionJob) -> None:
         if rag_document:
             # Actually remove from vector store
             repository = vs_repo.find_repository_by_id(job.repository_id)
-            if repository.get("type", "") == "bedrock_knowledge_base":
-                bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-                s3.delete_object(
-                    Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
-                    Key=os.path.basename(job.s3_path),
-                )
-                bedrock_agent.start_ingestion_job(
-                    knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
-                    dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
+            if is_bedrock_kb_repository(repository):
+                delete_document_from_kb(
+                    s3_client=s3,
+                    bedrock_agent_client=bedrock_agent,
+                    job=job,
+                    repository=repository,
                 )
             else:
                 remove_document_from_vectorstore(rag_document)

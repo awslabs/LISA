@@ -72,9 +72,8 @@ export function Sessions ({ newSession }) {
         if (!searchQuery.trim()) {
             return sessions || [];
         }
-        return (sessions || []).filter((session) =>
-            session.firstHumanMessage?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        return (sessions || [])
+            .filter((session) => getDisplayableMessage(session.firstHumanMessage ?? '').toLowerCase().includes(searchQuery.toLowerCase()));
     }, [sessions, searchQuery]);
 
     const { items } = useCollection(filteredSessions, {

@@ -387,7 +387,10 @@ export class ModelsApi extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'ecr:DescribeImages'
+                                'ecr:DescribeImages',
+                                'ecr:DescribeRepositories',
+                                'ecr:GetRepositoryPolicy',
+                                'ecr:ListImages'
                             ],
                             resources: ['*']
                         }),

@@ -79,6 +79,8 @@ mock_cfn = MagicMock()
 mock_iam = MagicMock()
 mock_secrets = MagicMock()
 
+IMAGE_TAG = "test-tag"
+
 
 # Create mock exception classes for ECR
 class MockECRExceptions:
@@ -214,7 +216,7 @@ def sample_event():
             },
         },
         "containerConfig": {
-            "image": {"baseImage": "test-image:latest", "type": "ecr"},
+            "image": {"baseImage": "test-image:test-tag", "type": "ecr"},
             "environment": {"TEST_VAR": "test_value"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
@@ -278,18 +280,23 @@ def test_handle_set_model_to_creating_not_lisa_managed(model_table, lambda_conte
 
 def test_handle_start_copy_docker_image(sample_event, lambda_context):
     """Test starting Docker image copy process."""
+    # Mock ECR image found to trigger ECR verification path
+    mock_ecr.describe_images.return_value = {"imageDetails": [{"imageTags": [IMAGE_TAG]}]}
+
     result = handle_start_copy_docker_image(sample_event, lambda_context)
 
     assert result["containerConfig"]["image"]["path"] == "vllm"
     assert "image_info" in result
-    assert result["image_info"]["image_tag"] == "test-tag"
-    assert result["image_info"]["instance_id"] == "i-1234567890abcdef0"
-    assert result["image_info"]["remaining_polls"] == 30
+    assert result["image_info"]["image_tag"] == IMAGE_TAG
+    assert result["image_info"]["image_type"] == "ecr"
+    assert result["image_info"]["remaining_polls"] == 0
+    assert result["image_info"]["image_status"] == "prebuilt"
 
-    # Verify lambda invocation
-    mock_lambda.invoke.assert_called_once()
-    call_args = mock_lambda.invoke.call_args
-    assert call_args[1]["FunctionName"] == os.environ["DOCKER_IMAGE_BUILDER_FN_ARN"]
+    # Verify ECR describe_images was called for verification
+    mock_ecr.describe_images.assert_called_once()
+    call_args = mock_ecr.describe_images.call_args
+    assert call_args[1]["repositoryName"] == "test-image"
+    assert call_args[1]["imageIds"] == [{"imageTag": IMAGE_TAG}]
 
 
 def test_handle_poll_docker_image_available_success(sample_event, lambda_context):
@@ -535,7 +542,7 @@ def test_handle_start_copy_docker_image_tei(lambda_context):
             },
         },
         "containerConfig": {
-            "image": {"baseImage": "test-image:latest", "type": "ecr"},
+            "image": {"baseImage": "test-image:test-tag", "type": "ecr"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
                 "command": "curl -f http://localhost:8080/health || exit 1",
@@ -556,9 +563,16 @@ def test_handle_start_copy_docker_image_tei(lambda_context):
         },
     }
 
+    # Reset mock and set return value for ECR image found
+    mock_ecr.describe_images.side_effect = None
+    mock_ecr.describe_images.return_value = {"imageDetails": [{"imageTags": [IMAGE_TAG]}]}
+
     result = handle_start_copy_docker_image(event, lambda_context)
 
     assert result["containerConfig"]["image"]["path"] == "embedding/tei"
+    assert result["image_info"]["image_tag"] == IMAGE_TAG
+    assert result["image_info"]["image_type"] == "ecr"
+    assert result["image_info"]["image_status"] == "prebuilt"
 
 
 def test_handle_start_copy_docker_image_tgi(lambda_context):
@@ -582,7 +596,7 @@ def test_handle_start_copy_docker_image_tgi(lambda_context):
             },
         },
         "containerConfig": {
-            "image": {"baseImage": "test-image:latest", "type": "ecr"},
+            "image": {"baseImage": "test-image:test-tag", "type": "ecr"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
                 "command": "curl -f http://localhost:8080/health || exit 1",
@@ -603,9 +617,16 @@ def test_handle_start_copy_docker_image_tgi(lambda_context):
         },
     }
 
+    # Reset mock and set return value for ECR image found
+    mock_ecr.describe_images.side_effect = None
+    mock_ecr.describe_images.return_value = {"imageDetails": [{"imageTags": [IMAGE_TAG]}]}
+
     result = handle_start_copy_docker_image(event, lambda_context)
 
     assert result["containerConfig"]["image"]["path"] == "textgen/tgi"
+    assert result["image_info"]["image_tag"] == IMAGE_TAG
+    assert result["image_info"]["image_type"] == "ecr"
+    assert result["image_info"]["image_status"] == "prebuilt"
 
 
 def test_handle_add_model_to_litellm_json_decode_error(model_table, sample_event, lambda_context):

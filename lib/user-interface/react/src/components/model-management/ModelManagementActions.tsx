@@ -51,8 +51,8 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 <Icon name='refresh' />
             </Button>
             {ModelActionButton(dispatch, notificationService, props)}
-            <Button 
-                variant='primary' 
+            <Button
+                variant='primary'
                 onClick={() => {
                     props.setEdit(false);
                     props.setNewModelModelVisible(true);

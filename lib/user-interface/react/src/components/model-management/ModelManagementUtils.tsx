@@ -44,7 +44,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'modelFeatures',
             header: 'Model Features',
-            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : 'Model doesn\'t have any special features',
+            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : '-',
         },
         {
             id: 'modelType',
@@ -54,7 +54,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'modelUrl',
             header: 'URL',
-            content: (model: IModel) => model.modelUrl ? model.modelUrl : 'Model URL not defined',
+            content: (model: IModel) => model.modelUrl ? model.modelUrl : '-',
         },
         {
             id: 'streaming',
@@ -69,12 +69,12 @@ export const CARD_DEFINITIONS = {
         {
             id: 'instanceType',
             header: 'Instance Type',
-            content: (model: IModel) => model.instanceType ?  model.instanceType : 'Instance Type not defined',
+            content: (model: IModel) => model.instanceType ?  model.instanceType : '-',
         },
         {
             id: 'modelDescription',
             header: 'Description',
-            content: (model: IModel) => model.modelDescription ? model.modelDescription : 'No description provided',
+            content: (model: IModel) => model.modelDescription ? model.modelDescription : '-',
         },
         {
             id: 'allowedGroups',

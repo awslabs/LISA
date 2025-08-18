@@ -38,12 +38,12 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                 <SpaceBetween size={'s'}>
                     <FormField label='Shared Memory Size' errorText={props.formErrors?.containerConfig?.sharedMemorySize}>
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input 
-                                value={props.item.sharedMemorySize.toString()} 
-                                type='number' 
-                                inputMode='numeric' 
+                            <Input
+                                value={props.item.sharedMemorySize.toString()}
+                                type='number'
+                                inputMode='numeric'
                                 disabled={props.isEdit}
-                                onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])} 
+                                onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])}
                                 onChange={({ detail }) => {
                                     props.setFields({ 'containerConfig.sharedMemorySize': Number(detail.value) });
                                 }}
@@ -52,22 +52,22 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                         </Grid>
                     </FormField>
                     <FormField label='Base Image' errorText={props.formErrors?.containerConfig?.image?.baseImage}>
-                        <Input 
-                            value={props.item.image.baseImage} 
-                            inputMode='text' 
+                        <Input
+                            value={props.item.image.baseImage}
+                            inputMode='text'
                             disabled={props.isEdit}
-                            onBlur={() => props.touchFields(['containerConfig.image.baseImage'])} 
+                            onBlur={() => props.touchFields(['containerConfig.image.baseImage'])}
                             onChange={({ detail }) => {
                                 props.setFields({ 'containerConfig.image.baseImage': detail.value });
                             }}
                         />
                     </FormField>
                     <FormField label='Type' errorText={props.formErrors?.containerConfig?.image?.type}>
-                        <Input 
-                            value={props.item.image.type} 
-                            inputMode='text' 
+                        <Input
+                            value={props.item.image.type}
+                            inputMode='text'
                             disabled={props.isEdit}
-                            onBlur={() => props.touchFields(['containerConfig.image.type'])} 
+                            onBlur={() => props.touchFields(['containerConfig.image.type'])}
                             onChange={({ detail }) => {
                                 props.setFields({ 'containerConfig.image.type': detail.value });
                             }}
@@ -85,7 +85,7 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                         <SpaceBetween size={'s'}>
                             {props.item.healthCheckConfig.command.map((item, index) =>
                                 <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]} key={`health-check-config-command-${index}-grid`}>
-                                    <Input value={item} inputMode='text' key={`health-check-config-command-${index}`} onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.command'])} onChange={({ detail }) => {
+                                    <Input value={item} inputMode='text' disabled={props.isEdit} key={`health-check-config-command-${index}`} onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.command'])} onChange={({ detail }) => {
                                         props.setFields({ 'containerConfig.healthCheckConfig.command' : props.item.healthCheckConfig.command.map((item, i) => i === index ? detail.value : item) });
                                     }}/>
                                     <Button
@@ -95,6 +95,7 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                                             props.item.healthCheckConfig.command.splice(index, 1);
                                             props.setFields({'containerConfig.healthCheckConfig.command': props.item.healthCheckConfig.command });
                                         }}
+                                        disabled={props.isEdit}
                                         ariaLabel={'Remove command element'}
                                     >
                                         <Icon name='close' key={`health-check-config-command-${index}-icon`} />
@@ -106,6 +107,7 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                                     props.setFields({'containerConfig.healthCheckConfig.command': [...props.item.healthCheckConfig.command, '']});
                                     props.touchFields(['containerConfig.healthCheckConfig.command']);
                                 }}
+                                disabled={props.isEdit}
                                 ariaLabel={'Add command element'}
                             >
                                 Add
@@ -114,7 +116,7 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                     </FormField>
                     <FormField label='Interval' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.interval}>
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
+                            <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
                                 props.setFields({ 'containerConfig.healthCheckConfig.interval': Number(detail.value) });
                             }}/>
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
@@ -122,7 +124,7 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                     </FormField>
                     <FormField label='Start Period' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.startPeriod}>
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.healthCheckConfig.startPeriod.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.startPeriod'])} onChange={({ detail }) => {
+                            <Input value={props.item.healthCheckConfig.startPeriod.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.startPeriod'])} onChange={({ detail }) => {
                                 props.setFields({ 'containerConfig.healthCheckConfig.startPeriod': Number(detail.value) });
                             }}/>
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
@@ -130,14 +132,14 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                     </FormField>
                     <FormField label='Timeout' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.timeout}>
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
+                            <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
                                 props.setFields({ 'containerConfig.healthCheckConfig.timeout': Number(detail.value) });
                             }}/>
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                         </Grid>
                     </FormField>
                     <FormField label='Retries' errorText={props.formErrors?.containerConfig?.healthCheckConfig?.retries}>
-                        <Input value={props.item.healthCheckConfig.retries.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.retries'])} onChange={({ detail }) => {
+                        <Input value={props.item.healthCheckConfig.retries.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.retries'])} onChange={({ detail }) => {
                             props.setFields({ 'containerConfig.healthCheckConfig.retries': Number(detail.value) });
                         }}/>
                     </FormField>

@@ -24,7 +24,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.common_functions import retry_config, get_groups, is_admin
+from utilities.common_functions import get_groups, is_admin, retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (
@@ -104,7 +104,7 @@ async def list_models(request: Request) -> ListModelsResponse:
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
-    
+
     if "aws.event" in request.scope:
         event = request.scope["aws.event"]
         try:
@@ -113,7 +113,7 @@ async def list_models(request: Request) -> ListModelsResponse:
         except Exception:
             user_groups = []
             admin_status = False
-    
+
     return list_handler(user_groups=user_groups, is_admin=admin_status)
 
 
@@ -127,7 +127,7 @@ async def get_model(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
-    
+
     if "aws.event" in request.scope:
         event = request.scope["aws.event"]
         try:
@@ -136,7 +136,7 @@ async def get_model(
         except Exception:
             user_groups = []
             admin_status = False
-    
+
     return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 
 

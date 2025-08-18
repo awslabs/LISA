@@ -308,8 +308,8 @@ class UpdateModelRequest(BaseModel):
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
-                "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, modelDescription, "
-                "streaming, allowedGroups, or features must be defined in request payload."
+                "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, "
+                "modelDescription, streaming, allowedGroups, or features must be defined in request payload."
             )
 
         if self.modelType == ModelType.EMBEDDING and self.streaming:

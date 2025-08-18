@@ -14,7 +14,7 @@
 
 """Handler for GetModel requests."""
 
-from typing import List
+from typing import List, Optional
 
 from ..domain_objects import GetModelResponse
 from ..exception import ModelNotFoundError
@@ -25,29 +25,31 @@ from .utils import to_lisa_model
 class GetModelHandler(BaseApiHandler):
     """Handler class for GetModel requests."""
 
-    def __call__(self, model_id: str, user_groups: List[str] = None, is_admin: bool = False) -> GetModelResponse:  # type: ignore
+    def __call__(
+        self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+    ) -> GetModelResponse:
         """Get model metadata from LiteLLM and translate to a model management response object."""
         ddb_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not ddb_item:
             raise ModelNotFoundError(f"Model '{model_id}' was not found.")
-        
+
         model = to_lisa_model(ddb_item)
-        
+
         # Check if user has access to this model based on groups
         if not is_admin and user_groups is not None:
             if not self._user_has_group_access(user_groups, model.allowedGroups or []):
                 raise ModelNotFoundError(f"Model '{model_id}' was not found.")
-        
+
         return GetModelResponse(model=model)
-    
+
     def _user_has_group_access(self, user_groups: List[str], allowed_groups: List[str]) -> bool:
         """
         Check if user has access to a model based on group membership.
-        
+
         Args:
             user_groups: List of groups the user belongs to
             allowed_groups: List of groups allowed to access the model
-            
+
         Returns:
             True if user has access (either no restrictions or user has required group)
         """

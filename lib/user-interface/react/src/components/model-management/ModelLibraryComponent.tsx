@@ -27,6 +27,7 @@ import {
 import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { Duration } from 'luxon';
+import { ModelLibraryActions } from './ModelLibraryActions';
 
 export function ModelLibraryComponent () : ReactElement {
     const [shouldPoll, setShouldPoll] = useState(true);
@@ -81,6 +82,7 @@ export function ModelLibraryComponent () : ReactElement {
             header={
                 <Header
                     counter={`(${count})`}
+                    actions={<ModelLibraryActions />}
                 >
                     Model Library
                 </Header>

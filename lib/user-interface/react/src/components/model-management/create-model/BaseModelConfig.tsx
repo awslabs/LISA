@@ -61,7 +61,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     onChange={({ detail }) => {
                         const isLisaHosted = detail.selectedOption.value === 'true';
                         const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
-                        
+
                         // If switching to Third Party, clear LISA Hosted specific fields
                         if (!isLisaHosted) {
                             fieldsToUpdate['instanceType'] = undefined;
@@ -207,7 +207,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
                 }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Optional overview of Summarization for Model'/>
             </FormField>
-            <ArrayInputField 
+            <ArrayInputField
                 label='Allowed Groups'
                 errorText={props.formErrors?.allowedGroups}
                 values={props.item.allowedGroups || []}

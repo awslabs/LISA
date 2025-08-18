@@ -186,12 +186,12 @@ export class UpdateModelStateMachine extends Construct {
 
         // State Machine definition
         handleJobIntake.next(hasEcsUpdateChoice);
-        
+
         // ECS update flow
         hasEcsUpdateChoice
             .when(Condition.booleanEquals('$.needs_ecs_update', true), handleEcsUpdate)
             .otherwise(hasCapacityUpdateChoice);
-        
+
         handleEcsUpdate.next(handlePollEcsDeployment);
         handlePollEcsDeployment.next(pollEcsDeploymentChoice);
         pollEcsDeploymentChoice

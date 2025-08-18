@@ -64,7 +64,8 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
         InferenceContainer.TGI: "textgen/tgi",
         InferenceContainer.VLLM: "vllm",
     }
-    return path_mapping[inference_container_type]  # API validation before state machine guarantees the value exists.
+    # API validation before state machine guarantees the value exists.
+    return path_mapping[inference_container_type]
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -87,7 +88,10 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
 
     model_table.update_item(
         Key={"model_id": request.modelId},
-        UpdateExpression="SET model_status = :model_status, model_config = :model_config, model_description = :model_description, last_modified_date = :lm",
+        UpdateExpression=(
+            "SET model_status = :model_status, model_config = :model_config, "
+            "model_description = :model_description, last_modified_date = :lm"
+        ),
         ExpressionAttributeValues={
             ":model_status": ModelStatus.CREATING,
             ":model_config": event,

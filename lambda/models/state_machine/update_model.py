@@ -87,7 +87,6 @@ def _update_container_config(
             logger.info(f"Deleted environment variables for model '{model_id}': {env_vars_to_delete}")
         logger.info(f"Updated environment variables for model '{model_id}': {env_vars}")
 
-
     return container_metadata
 
 

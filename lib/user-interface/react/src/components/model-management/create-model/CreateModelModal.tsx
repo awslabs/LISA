@@ -17,7 +17,7 @@
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
 import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
-import { ReactElement, useEffect, useMemo } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
 import { ContainerConfig } from './ContainerConfig';
@@ -31,6 +31,7 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { getDefaults } from '#root/lib/schema/zodUtil';
+import { EcsRestartWarning } from '../EcsRestartWarning';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -63,6 +64,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     };
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
+
+    // ECS restart warning state
+    const [ecsRestartAcknowledged, setEcsRestartAcknowledged] = useState(false);
 
     const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(ModelRequestSchema, {
         validateAll: false as boolean,
@@ -130,6 +134,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }, ModifyMethod.Set);
         resetCreate();
         resetUpdate();
+        setEcsRestartAcknowledged(false);
     }
 
     const changesDiff = useMemo(() => {
@@ -141,7 +146,28 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, props.isEdit]);
 
+    // Check if ECS restart is required
+    const requiresEcsRestart = useMemo(() => {
+        if (!props.isEdit || !props.selectedItems[0]) return false;
+
+        const isLisaHosted = Boolean(props.selectedItems[0].containerConfig);
+        const hasContainerChanges = (changesDiff as any)?.containerConfig !== undefined;
+
+        return isLisaHosted && hasContainerChanges;
+    }, [props.isEdit, props.selectedItems, changesDiff]);
+
+    useEffect(() => {
+        if (requiresEcsRestart) {
+            setEcsRestartAcknowledged(false);
+        }
+    }, [requiresEcsRestart]);
+
     function handleSubmit () {
+        // Check if ECS restart acknowledgment is required but not provided
+        if (requiresEcsRestart && !ecsRestartAcknowledged) {
+            return; // Don't proceed with submission
+        }
+
         delete toSubmit.lisaHostedModel;
         if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
             resetCreate();
@@ -305,7 +331,17 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
             content: (
-                <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
+                <div>
+                    <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
+                    {requiresEcsRestart && (
+                        <div style={{ marginTop: '1rem' }}>
+                            <EcsRestartWarning
+                                acknowledged={ecsRestartAcknowledged}
+                                onAcknowledge={setEcsRestartAcknowledged}
+                            />
+                        </div>
+                    )}
+                </div>
             ),
             onEdit: true,
             forExternalModel: true

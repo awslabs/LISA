@@ -36,7 +36,8 @@ const advancedOptions = {
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
-    showPromptTemplateLibrary: 'Show Prompt Template Library'
+    showPromptTemplateLibrary: 'Show Prompt Template Library',
+    enableModelComparisonUtility: 'Enable Model Comparison Utility'
 };
 
 const configurableOperations = [{

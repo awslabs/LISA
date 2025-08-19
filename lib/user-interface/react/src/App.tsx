@@ -40,6 +40,7 @@ import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-ch
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 import { ConfigurationContext } from './shared/configuration.provider';
 import McpServers from '@/pages/Mcp';
+import ModelComparisonPage from './pages/ModelComparison';
 
 
 export type RouteProps = {
@@ -80,7 +81,7 @@ function App () {
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
-    const [ getConfigurationQuery, {data: fullConfig} ] = useLazyGetConfigurationQuery();
+    const [getConfigurationQuery, { data: fullConfig }] = useLazyGetConfigurationQuery();
     const config = fullConfig?.[0];
 
     useEffect(() => {
@@ -189,6 +190,15 @@ function App () {
                                     </PrivateRoute>
                                 }
                             />}
+                            {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
+                                path='model-comparison'
+                                element={
+                                    <PrivateRoute>
+                                        <ModelComparisonPage />
+                                    </PrivateRoute>
+                                }
+                            />
+                            }
                         </Routes>
                     }
                 />

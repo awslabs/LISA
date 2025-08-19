@@ -17,7 +17,8 @@ import { z } from 'zod';
 
 export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
-    enabledComponents: IEnabledComponents
+    enabledComponents: IEnabledComponents,
+    global: IGlobalConfiguration
 };
 
 export type IEnabledComponents = {
@@ -32,6 +33,7 @@ export type IEnabledComponents = {
     documentSummarization: boolean;
     showRagLibrary: boolean;
     showPromptTemplateLibrary: boolean;
+    enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
 };
 
@@ -40,6 +42,10 @@ export type ISystemBannerConfiguration = {
     text: string;
     textColor: string;
     backgroundColor: string;
+};
+
+export type IGlobalConfiguration = {
+    defaultModel: string;
 };
 
 export type BaseConfiguration = {
@@ -73,10 +79,16 @@ export const enabledComponentsSchema = z.object({
     editNumOfRagDocument: z.boolean().default(true),
     uploadRagDocs: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
-    documentSummarization: z.boolean().default(true)
+    documentSummarization: z.boolean().default(true),
+    enableModelComparisonUtility: z.boolean().default(false)
+});
+
+export const globalConfigSchema = z.object({
+    defaultModel: z.string().optional()
 });
 
 export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
     enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
+    global: globalConfigSchema.default(globalConfigSchema.parse({})),
 });

@@ -31,7 +31,7 @@ import {
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
@@ -74,12 +74,24 @@ export function Sessions ({ newSession }) {
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const [searchQuery, setSearchQuery] = useState<string>('');
+
     const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
 
     const { items } = useCollection(sessions || [], {
+    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    // Filter sessions based on search query
+    const filteredSessions = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return sessions || [];
+        }
+        return (sessions || [])
+            .filter((session) => getDisplayableMessage(session.firstHumanMessage ?? '').toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [sessions, searchQuery]);
+
+    const { items } = useCollection(filteredSessions, {
         sorting: {
             defaultState: {
                 sortingColumn: {
@@ -160,7 +172,7 @@ export function Sessions ({ newSession }) {
                 <Header
                     actions={
                         <div className='mr-10'>
-                            <SpaceBetween direction='horizontal' size='m'>
+                            <SpaceBetween direction='horizontal' size='s'>
                                 <Popover
                                     size='large'
                                     position='bottom'
@@ -177,7 +189,7 @@ export function Sessions ({ newSession }) {
                                             />
                                             {searchQuery && (
                                                 <Box variant='small' color='text-status-info'>
-                                                    Found {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                                                    Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
                                                 </Box>
                                             )}
                                         </SpaceBetween>
@@ -187,24 +199,24 @@ export function Sessions ({ newSession }) {
                                         iconName='search'
                                         variant='inline-link'
                                         ariaLabel='Search sessions'
-                                    >
-                                        Search
-                                    </Button>
+                                    ></Button>
                                 </Popover>
-                                <Button iconName='add-plus' variant='inline-link' onClick={() => {
-                                    navigate('ai-assistant');
-                                    newSession();
-                                }}>
-                                    New
-                                </Button>
+                                <Button
+                                    iconName='add-plus'
+                                    variant='inline-link'
+                                    onClick={() => {
+                                        navigate('ai-assistant');
+                                        newSession();
+                                    }}
+                                    ariaLabel='New Session'
+                                ></Button>
                                 <Button
                                     iconAlt='Refresh list'
                                     iconName='refresh'
                                     variant='inline-link'
                                     onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
-                                >
-                                    Refresh
-                                </Button>
+                                    ariaLabel='Refresh Sessions'
+                                ></Button>
                                 {config?.configuration.enabledComponents.deleteSessionHistory &&
                                     <Button
                                         iconAlt='Delete sessions'
@@ -219,9 +231,8 @@ export function Sessions ({ newSession }) {
                                                     description: 'This will delete all of your user sessions.'
                                                 })
                                             )}
-                                    >
-                                        Delete all
-                                    </Button>}
+                                        ariaLabel='Delete All Sessions'
+                                    ></Button>}
                             </SpaceBetween>
                         </div>
                     }

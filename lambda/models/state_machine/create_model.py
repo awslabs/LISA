@@ -15,9 +15,10 @@
 """Lambda handlers for CreateModel state machine."""
 
 import json
+import logging
 import os
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict
 
 import boto3
@@ -30,6 +31,9 @@ from models.exception import (
     UnexpectedCloudFormationStateException,
 )
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attempts": 1})
 lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)
@@ -70,8 +74,9 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Set DDB entry to CREATING status."""
+    logger.info(f"Setting model to CREATING status: {event.get('modelId')}")
     output_dict = deepcopy(event)
-    request = CreateModelRequest.validate(event)
+    request = CreateModelRequest.model_validate(event)
 
     is_lisa_managed = all(
         (
@@ -96,7 +101,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
             ":model_status": ModelStatus.CREATING,
             ":model_config": event,
             ":model_description": request.modelDescription,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
         },
     )
     output_dict["create_infra"] = is_lisa_managed
@@ -105,8 +110,9 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
 
 def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Start process for copying Docker image into local AWS account."""
+    logger.info(f"Starting Docker image copy for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
-    request = CreateModelRequest.validate(event)
+    request = CreateModelRequest.model_validate(event)
 
     image_path = get_container_path(request.inferenceContainer)
     output_dict["containerConfig"]["image"]["path"] = image_path
@@ -158,7 +164,7 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
 def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Start model infrastructure creation."""
     output_dict = deepcopy(event)
-    request = CreateModelRequest.validate(event)
+    request = CreateModelRequest.model_validate(event)
 
     def camelize_object(o):  # type: ignore[no-untyped-def]
         o2 = {}
@@ -209,7 +215,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         ExpressionAttributeValues={
             ":stack_name": stack_name,
             ":stack_arn": stack_arn,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
         },
     )
 
@@ -297,7 +303,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         ExpressionAttributeValues={
             ":ms": ModelStatus.IN_SERVICE,
             ":lid": litellm_id,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
             ":mu": litellm_params.get("api_base", ""),
             ":asg": event.get("autoScalingGroup", ""),
         },
@@ -318,14 +324,17 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Expectation of this function is to terminate the EC2 instance if it is still running, and to set the model status
     to Failed. Cleaning up the CloudFormation stack, if it still exists, will happen in the DeleteModel API.
     """
+    logger.error(f"Handling state machine failure: {event}")
     error_dict = json.loads(  # error from SFN is json payload on top of json payload we add to the exception
         json.loads(event["Cause"])["errorMessage"]
     )
     error_reason = error_dict["error"]
     original_event = error_dict["event"]
+    logger.error(f"Failure reason: {error_reason}, Model ID: {original_event.get('modelId', 'unknown')}")
 
     # terminate EC2 instance if we have one recorded
     if "image_info" in original_event and "instance_id" in original_event["image_info"]:
+        logger.info(f"Terminating EC2 instance: {original_event['image_info']['instance_id']}")
         ec2Client.terminate_instances(InstanceIds=[original_event["image_info"]["instance_id"]])
 
     # set model as Failed in DDB, so it shows as such in the UI. adds error reason as well.
@@ -334,7 +343,7 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         UpdateExpression="SET model_status = :ms, last_modified_date = :lm, failure_reason = :fr",
         ExpressionAttributeValues={
             ":ms": ModelStatus.FAILED,
-            ":lm": int(datetime.utcnow().timestamp()),
+            ":lm": int(datetime.now(UTC).timestamp()),
             ":fr": error_reason,
         },
     )

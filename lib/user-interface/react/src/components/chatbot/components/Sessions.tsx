@@ -17,7 +17,7 @@
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
-import { ButtonDropdown, Grid} from '@cloudscape-design/components';
+import { ButtonDropdown, Grid, Input, Popover } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
@@ -29,7 +29,7 @@ import {
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
@@ -42,7 +42,7 @@ import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
-export function Sessions ({newSession}) {
+export function Sessions ({ newSession }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -65,8 +65,18 @@ export function Sessions ({newSession}) {
     }] = useDeleteAllSessionsForUserMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
-    const { items } = useCollection(sessions || [], {
+    // Filter sessions based on search query
+    const filteredSessions = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return sessions || [];
+        }
+        return (sessions || [])
+            .filter((session) => getDisplayableMessage(session.firstHumanMessage ?? '').toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [sessions, searchQuery]);
+
+    const { items } = useCollection(filteredSessions, {
         sorting: {
             defaultState: {
                 sortingColumn: {
@@ -113,38 +123,67 @@ export function Sessions ({newSession}) {
                 <Header
                     actions={
                         <div className='mr-10'>
-                            <SpaceBetween direction='horizontal' size='m'>
-                                <Button iconName='add-plus' variant='inline-link' onClick={() => {
-                                    navigate('ai-assistant');
-                                    newSession();
-                                }}>
-                                    New
-                                </Button>
+                            <SpaceBetween direction='horizontal' size='s'>
+                                <Popover
+                                    size='large'
+                                    position='bottom'
+                                    dismissButton={false}
+                                    triggerType='click'
+                                    content={
+                                        <SpaceBetween size='s'>
+                                            <Input
+                                                value={searchQuery}
+                                                onChange={({ detail }) => setSearchQuery(detail.value)}
+                                                placeholder='Search sessions by message content...'
+                                                clearAriaLabel='Clear search'
+                                                type='search'
+                                            />
+                                            {searchQuery && (
+                                                <Box variant='small' color='text-status-info'>
+                                                    Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
+                                                </Box>
+                                            )}
+                                        </SpaceBetween>
+                                    }
+                                >
+                                    <Button
+                                        iconName='search'
+                                        variant='inline-link'
+                                        ariaLabel='Search sessions'
+                                    ></Button>
+                                </Popover>
+                                <Button
+                                    iconName='add-plus'
+                                    variant='inline-link'
+                                    onClick={() => {
+                                        navigate('ai-assistant');
+                                        newSession();
+                                    }}
+                                    ariaLabel='New Session'
+                                ></Button>
                                 <Button
                                     iconAlt='Refresh list'
                                     iconName='refresh'
                                     variant='inline-link'
                                     onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
-                                >
-                                    Refresh
-                                </Button>
+                                    ariaLabel='Refresh Sessions'
+                                ></Button>
                                 {config?.configuration.enabledComponents.deleteSessionHistory &&
-                                <Button
-                                    iconAlt='Delete sessions'
-                                    iconName='delete-marker'
-                                    variant='inline-link'
-                                    onClick={() =>
-                                        dispatch(
-                                            setConfirmationModal({
-                                                action: 'Delete',
-                                                resourceName: 'All Sessions',
-                                                onConfirm: () => deleteUserSessions(),
-                                                description: 'This will delete all of your user sessions.'
-                                            })
-                                        )}
-                                >
-                                    Delete all
-                                </Button>}
+                                    <Button
+                                        iconAlt='Delete sessions'
+                                        iconName='delete-marker'
+                                        variant='inline-link'
+                                        onClick={() =>
+                                            dispatch(
+                                                setConfirmationModal({
+                                                    action: 'Delete',
+                                                    resourceName: 'All Sessions',
+                                                    onConfirm: () => deleteUserSessions(),
+                                                    description: 'This will delete all of your user sessions.'
+                                                })
+                                            )}
+                                        ariaLabel='Delete All Sessions'
+                                    ></Button>}
                             </SpaceBetween>
                         </div>
                     }
@@ -168,14 +207,14 @@ export function Sessions ({newSession}) {
                                 <ButtonDropdown
                                     items={[
 
-                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker'},
-                                        { id: 'download-session', text: 'Download Session', iconName: 'download'},
-                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder'},
+                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
+                                        { id: 'download-session', text: 'Download Session', iconName: 'download' },
+                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
                                     ]}
                                     ariaLabel='Control instance'
                                     variant='icon'
                                     onItemClick={(e) => {
-                                        if (e.detail.id === 'delete-session'){
+                                        if (e.detail.id === 'delete-session') {
                                             dispatch(
                                                 setConfirmationModal({
                                                     action: 'Delete',
@@ -184,7 +223,7 @@ export function Sessions ({newSession}) {
                                                     description: `This will delete the Session: ${item.sessionId}.`
                                                 })
                                             );
-                                        } else if (e.detail.id === 'download-session'){
+                                        } else if (e.detail.id === 'download-session') {
                                             getSessionById(item.sessionId).then((resp) => {
                                                 const sess: LisaChatSession = resp.data;
                                                 const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
@@ -209,7 +248,7 @@ export function Sessions ({newSession}) {
                                                     const imagePromises = images.map(async (imageUrl, index) => {
                                                         try {
                                                             const blob = await fetchImage(imageUrl);
-                                                            zip.file(`image_${index + 1}.png`, blob, {binary: true});
+                                                            zip.file(`image_${index + 1}.png`, blob, { binary: true });
                                                         } catch (error) {
                                                             console.error(`Error processing image ${index + 1}:`, error);
                                                         }
@@ -217,7 +256,7 @@ export function Sessions ({newSession}) {
 
                                                     // Wait for all images to be processed
                                                     await Promise.all(imagePromises);
-                                                    const content = await zip.generateAsync({type: 'blob'});
+                                                    const content = await zip.generateAsync({ type: 'blob' });
                                                     downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
                                                 }
                                             });

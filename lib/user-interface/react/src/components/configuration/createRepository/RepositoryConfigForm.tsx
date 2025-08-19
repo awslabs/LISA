@@ -26,11 +26,13 @@ import {
     RagRepositoryConfigSchema,
     RagRepositoryType,
     RdsInstanceConfig,
+    BedrockKnowledgeBaseInstanceConfig
 } from '#root/lib/schema';
 import { getDefaults } from '#root/lib/schema/zodUtil';
 import { ArrayInputField } from '../../../shared/form/array-input';
 import { RdsConfigForm } from './RdsConfigForm';
 import { OpenSearchConfigForm } from './OpenSearchConfigForm';
+import { BedrockKnowledgeBaseConfigForm } from './BedrockKnowledgeBaseConfigForm';
 
 export type RepositoryConfigProps = {
     isEdit: boolean
@@ -73,12 +75,21 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                                 setFields({ 'rdsConfig': getDefaults(RdsInstanceConfig) });
                             }
                             setFields({ 'opensearchConfig': undefined });
+                            setFields({ 'bedrockKnowledgeBaseConfig': undefined });
                         }
                         if (detail.selectedOption.value === RagRepositoryType.OPENSEARCH) {
                             if (item.opensearchConfig === undefined) {
                                 setFields({ 'opensearchConfig': getDefaults(OpenSearchNewClusterConfig) });
                             }
                             setFields({ 'rdsConfig': undefined });
+                            setFields({ 'bedrockKnowledgeBaseConfig': undefined });
+                        }
+                        if (detail.selectedOption.value === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
+                            if (item.bedrockKnowledgeBaseConfig === undefined) {
+                                setFields({ 'bedrockKnowledgeBaseConfig': getDefaults(BedrockKnowledgeBaseInstanceConfig) });
+                            }
+                            setFields({ 'rdsConfig': undefined });
+                            setFields({ 'opensearchConfig': undefined });
                         }
                         setFields({ 'type': detail.selectedOption.value });
                     }}
@@ -98,6 +109,10 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
             {item.type === RagRepositoryType.OPENSEARCH &&
                 <OpenSearchConfigForm item={item.opensearchConfig} setFields={setFields} touchFields={touchFields}
                     formErrors={formErrors} isEdit={isEdit}></OpenSearchConfigForm>
+            }
+            {item.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE &&
+                <BedrockKnowledgeBaseConfigForm item={item.bedrockKnowledgeBaseConfig} setFields={setFields} touchFields={touchFields}
+                    formErrors={formErrors} isEdit={isEdit}></BedrockKnowledgeBaseConfigForm>
             }
             <ArrayInputField label='Allowed Groups'
                 errorText={formErrors?.allowedGroups}

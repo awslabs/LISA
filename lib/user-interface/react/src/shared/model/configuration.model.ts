@@ -80,7 +80,7 @@ export const enabledComponentsSchema = z.object({
     uploadRagDocs: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
     documentSummarization: z.boolean().default(true),
-    enableModelComparisonUtility: z.boolean().default(true)
+    enableModelComparisonUtility: z.boolean().default(false)
 });
 
 export const globalConfigSchema = z.object({

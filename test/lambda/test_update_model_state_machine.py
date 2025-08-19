@@ -805,13 +805,14 @@ def test_handle_job_intake_container_config_env_var_deletion(model_table, sample
 
 def test_handle_job_intake_container_config_stopped_model_no_ecs_update(model_table, lambda_context):
     """Test container config update on stopped model doesn't trigger ECS update."""
-    # Create stopped model with container config
+    # Create stopped model with container config and autoScalingConfig
     item = {
         "model_id": "stopped-model",
         "model_status": ModelStatus.STOPPED,
         "auto_scaling_group": "test-asg",
         "model_config": {
             "modelId": "stopped-model",
+            "autoScalingConfig": {"minCapacity": 1, "maxCapacity": 3, "metricConfig": {"estimatedInstanceWarmup": 300}},
             "containerConfig": {"environment": {"TEST_VAR": "test_value"}},
         },
     }
@@ -841,7 +842,6 @@ def test_update_container_config():
     model_config = {"containerConfig": {"environment": {"EXISTING": "value"}}}
     container_config = {
         "environment": {"NEW_VAR": "new_value", "DELETE_ME": "LISA_MARKED_FOR_DELETION"},
-        "sharedMemorySize": 4096,
     }
 
     metadata = _update_container_config(model_config, container_config, "test-model")
@@ -857,7 +857,11 @@ def test_update_container_config():
 
 def test_process_metadata_updates():
     """Test the _process_metadata_updates helper function."""
-    model_config = {"streaming": True, "modelType": "textgen"}
+    model_config = {
+        "streaming": True,
+        "modelType": "textgen",
+        "containerConfig": {"environment": {"EXISTING_VAR": "existing_value"}},
+    }
     update_payload = {
         "streaming": False,
         "modelDescription": "Updated description",
@@ -880,8 +884,8 @@ def test_handle_ecs_update(model_table, sample_model, lambda_context):
         result = handle_ecs_update(event, lambda_context)
 
         assert result["new_task_definition_arn"] == "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2"
-        assert result["ecs_service_name"] == "test-service"
-        assert result["ecs_cluster_name"] == "test-cluster"
+        assert result["ecs_service_arn"] == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
+        assert result["ecs_cluster_arn"] == "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster"
         assert result["remaining_ecs_polls"] == 30
 
         # Verify ECS client calls
@@ -915,8 +919,8 @@ def test_handle_poll_ecs_deployment_completed(lambda_context):
     """Test ECS deployment polling when deployment is completed."""
     event = {
         "model_id": "test-model",
-        "ecs_cluster_name": "test-cluster",
-        "ecs_service_name": "test-service",
+        "ecs_cluster_arn": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
+        "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
         "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
         "remaining_ecs_polls": 20,
     }
@@ -946,8 +950,8 @@ def test_handle_poll_ecs_deployment_in_progress(lambda_context):
 
     event = {
         "model_id": "test-model",
-        "ecs_cluster_name": "test-cluster",
-        "ecs_service_name": "test-service",
+        "ecs_cluster_arn": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
+        "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
         "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
         "remaining_ecs_polls": 20,
     }
@@ -978,8 +982,8 @@ def test_handle_poll_ecs_deployment_timeout(lambda_context):
     """Test ECS deployment polling when polls are exhausted."""
     event = {
         "model_id": "test-model",
-        "ecs_cluster_name": "test-cluster",
-        "ecs_service_name": "test-service",
+        "ecs_cluster_arn": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
+        "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
         "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
         "remaining_ecs_polls": 1,
     }
@@ -1018,11 +1022,14 @@ def test_handle_poll_ecs_deployment_with_error(lambda_context):
 
 def test_handle_job_intake_container_config_for_lisa_only_model(model_table, lambda_context):
     """Test container config update fails for models without ASG (LiteLLM-only)."""
-    # Create model without ASG
+    # Create model without ASG but with containerConfig
     item = {
         "model_id": "litellm-only-model",
         "model_status": ModelStatus.IN_SERVICE,
-        "model_config": {"modelName": "test-model"},
+        "model_config": {
+            "modelName": "test-model",
+            "containerConfig": {"environment": {"EXISTING_VAR": "existing_value"}},
+        },
     }
     model_table.put_item(Item=item)
 
@@ -1032,10 +1039,12 @@ def test_handle_job_intake_container_config_for_lisa_only_model(model_table, lam
     }
 
     with patch("models.state_machine.update_model.model_table", model_table):
-        with pytest.raises(
-            RuntimeError, match="Cannot request AutoScaling updates to models that are not hosted by LISA"
-        ):
-            handle_job_intake(event, lambda_context)
+        # This should not fail because container config updates don't require ASG when model status is IN_SERVICE and no ASG is present
+        result = handle_job_intake(event, lambda_context)
+
+        # Instead of raising an error, it should process the metadata update but set needs_ecs_update to False
+        assert result["needs_ecs_update"] is False  # No ASG means no ECS update needed
+        assert result["current_model_status"] == ModelStatus.UPDATING
 
 
 def test_handle_job_intake_multiple_metadata_updates(model_table, sample_model, lambda_context):

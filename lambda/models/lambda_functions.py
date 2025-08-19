@@ -105,6 +105,9 @@ async def list_models(request: Request) -> ListModelsResponse:
         model_table_resource=model_table,
     )
 
+    user_groups = []
+    admin_status = False
+
     if "aws.event" in request.scope:
         event = request.scope["aws.event"]
         try:
@@ -127,6 +130,9 @@ async def get_model(
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
     )
+
+    user_groups = []
+    admin_status = False
 
     if "aws.event" in request.scope:
         event = request.scope["aws.event"]

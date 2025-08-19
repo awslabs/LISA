@@ -79,9 +79,6 @@ export function Sessions ({ newSession }) {
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
-
-    const { items } = useCollection(sessions || [], {
-    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
     // Filter sessions based on search query
     const filteredSessions = useMemo(() => {
         if (!searchQuery.trim()) {

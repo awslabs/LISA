@@ -40,14 +40,14 @@ class BrassClient:
             BRASS endpoint URL. If not provided, will use BRASS_ENDPOINT environment variable
             or default to US East 1 production endpoint.
         region : Optional[str]
-            AWS region for the BRASS service. If not provided, will use BRASS_REGION environment variable
+            AWS region for the BRASS service. If not provided, will use AWS_REGION environment variable
             or attempt to extract from endpoint as fallback.
         """
         self.endpoint = endpoint or os.environ.get(
             "BRASS_ENDPOINT", 
             "https://awsauth.us-east-1.prod.brass.a2z.com"
         )
-        self.region = region or os.environ.get("BRASS_REGION", "us-east-1")
+        self.region = region or os.environ.get("AWS_REGION", "us-east-1")
         self._client: Optional[BrassServiceClient] = None
     
     def _get_client(self) -> BrassServiceClient:

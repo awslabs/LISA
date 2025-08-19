@@ -63,8 +63,6 @@ export class BrassAuthApi extends Construct {
             ADMIN_BINDLE_GUID: config.authConfig!.adminBindleGuid,
             APP_BINDLE_GUID: config.authConfig!.appBindleGuid,
             BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
-            // AWS Region for proper BRASS service signing (custom variable since AWS_REGION is reserved)
-            BRASS_REGION: config.region,
         };
 
         // Create API Lambda functions

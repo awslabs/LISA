@@ -101,8 +101,6 @@ export class CustomAuthorizer extends Construct {
                 APP_BINDLE_GUID: config.authConfig!.appBindleGuid,
                 BRASS_ENDPOINT: config.authConfig!.brassEndpoint,
 
-                // AWS Region for proper BRASS service signing (custom variable since AWS_REGION is reserved)
-                BRASS_REGION: config.region,
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})
             },
             role: role,

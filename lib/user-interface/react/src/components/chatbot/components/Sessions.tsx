@@ -253,7 +253,7 @@ export function Sessions ({ newSession }) {
                             <SpaceBetween size={'s'} alignItems={'end'}>
                                 <ButtonDropdown
                                     items={[
-                                        { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
+                                        // { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
                                         { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
                                         { id: 'download-session', text: 'Download Session', iconName: 'download' },
                                         { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
@@ -261,9 +261,7 @@ export function Sessions ({ newSession }) {
                                     ariaLabel='Control instance'
                                     variant='icon'
                                     onItemClick={(e) => {
-                                        if (e.detail.id === 'rename-session') {
-                                            handleRenameSession(item);
-                                        } else if (e.detail.id === 'delete-session') {
+                                        if (e.detail.id === 'delete-session') {
                                             dispatch(
                                                 setConfirmationModal({
                                                     action: 'Delete',
@@ -309,6 +307,8 @@ export function Sessions ({ newSession }) {
                                                     downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
                                                 }
                                             });
+                                        } else if (e.detail.id === 'rename-session') {
+                                            handleRenameSession(item);
                                         }
                                     }}
                                 />

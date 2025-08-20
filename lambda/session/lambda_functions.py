@@ -116,12 +116,28 @@ def _generate_presigned_image_url(key: str) -> str:
 def _map_session(session: dict) -> Dict[str, Any]:
     return {
         "sessionId": session["sessionId"],
-        "firstHumanMessage": next(
-            (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
-        ),
+        "name": session["name"],
+        "firstHumanMessage": _find_first_human_message(session),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
     }
+
+
+def _find_first_human_message(session: dict) -> str:
+    for msg in session.get("history", []):
+        if msg.get("type") == "human":
+            content = msg.get("content")
+            if isinstance(content, str):
+                return content
+            elif isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict):
+                        text: str = item.get("text", "")
+                        if text and not text.startswith("File context:"):
+                            return text
+            else:
+                logger.warning(f"Unhandled human message content in session {session['sessionId']}")
+    return ""
 
 
 @api_wrapper
@@ -240,6 +256,32 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
+def update_session_name(event: dict, context: dict) -> dict:
+    """Update session name in DynamoDB."""
+    try:
+        user_id = get_username(event)
+        session_id = get_session_id(event)
+
+        try:
+            body = json.loads(event["body"], parse_float=Decimal)
+        except json.JSONDecodeError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
+
+        if "name" not in body:
+            return {"statusCode": 400, "body": json.dumps({"error": "Missing required field: name"})}
+
+        table.update_item(
+            Key={"sessionId": session_id, "userId": user_id},
+            UpdateExpression="SET #name = :name",
+            ExpressionAttributeNames={"#name": "name"},
+            ExpressionAttributeValues={":name": body["name"]},
+        )
+        return {"statusCode": 200, "body": json.dumps({"message": "Session name updated successfully"})}
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+
+
+@api_wrapper
 def put_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:
@@ -279,16 +321,18 @@ def put_session(event: dict, context: dict) -> dict:
 
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
-            UpdateExpression="SET #history = :history, #configuration = :configuration, #startTime = :startTime, "
-            + "#createTime = if_not_exists(#createTime, :createTime)",
+            UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
+            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime)",
             ExpressionAttributeNames={
                 "#history": "history",
+                "#name": "name",
                 "#configuration": "configuration",
                 "#startTime": "startTime",
                 "#createTime": "createTime",
             },
             ExpressionAttributeValues={
                 ":history": messages,
+                ":name": body.get("name", None),
                 ":configuration": body.get("configuration", None),
                 ":startTime": datetime.now().isoformat(),
                 ":createTime": datetime.now().isoformat(),

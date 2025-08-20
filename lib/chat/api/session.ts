@@ -191,6 +191,13 @@ export class SessionApi extends Construct {
                 path: 'session/{sessionId}',
                 method: 'PUT',
                 environment: env,
+            },{
+                name: 'rename_session',
+                resource: 'session',
+                description: 'Updates session name',
+                path: 'session/{sessionId}/name',
+                method: 'PUT',
+                environment: env,
             },
             {
                 name: 'attach_image_to_session',

@@ -102,6 +102,7 @@ export type LisaChatSession = {
     userId: string;
     startTime: string;
     history: LisaChatMessage[];
+    name?: string;
     firstHumanMessage?: MessageContent;
     configuration?: IChatConfiguration & IModelConfiguration;
 };

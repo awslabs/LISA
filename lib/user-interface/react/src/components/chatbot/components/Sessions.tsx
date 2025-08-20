@@ -35,8 +35,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { truncateText } from '@/shared/util/formats';
-import { fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import { fetchImage, getDisplayableMessage, getSessionDisplay, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import React from 'react';
@@ -86,7 +85,7 @@ export function Sessions ({ newSession }) {
             return sessions || [];
         }
         return (sessions || [])
-            .filter((session) => getDisplayableMessage(session.firstHumanMessage ?? '').toLowerCase().includes(searchQuery.toLowerCase()));
+            .filter((session) => getSessionDisplay(session).toLowerCase().includes(searchQuery.toLowerCase()));
     }, [sessions, searchQuery]);
 
     const { items } = useCollection(filteredSessions, {
@@ -152,7 +151,7 @@ export function Sessions ({ newSession }) {
         if (sessionToRename && newSessionName.trim()) {
             const updatedSession = {
                 ...sessionToRename,
-                firstHumanMessage: newSessionName.trim()
+                name: newSessionName.trim()
             };
             updateSession(updatedSession);
         }
@@ -246,14 +245,14 @@ export function Sessions ({ newSession }) {
                                 <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
                                     <Box color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
                                         fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}>
-                                        {truncateText(getDisplayableMessage(item.firstHumanMessage ?? ''), 40, '...')}
+                                        {getSessionDisplay(item, 40)}
                                     </Box>
                                 </Link>
                             </SpaceBetween>
                             <SpaceBetween size={'s'} alignItems={'end'}>
                                 <ButtonDropdown
                                     items={[
-                                        // { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
+                                        { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
                                         { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
                                         { id: 'download-session', text: 'Download Session', iconName: 'download' },
                                         { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },

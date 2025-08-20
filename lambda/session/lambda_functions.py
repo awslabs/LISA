@@ -115,8 +115,8 @@ def _generate_presigned_image_url(key: str) -> str:
 
 def _map_session(session: dict) -> Dict[str, Any]:
     return {
-        "sessionId": session["sessionId"],
-        "name": session["name"],
+        "sessionId": session.get("sessionId", None),
+        "name": session.get("name", None),
         "firstHumanMessage": _find_first_human_message(session),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
@@ -263,7 +263,7 @@ def update_session_name(event: dict, context: dict) -> dict:
         session_id = get_session_id(event)
 
         try:
-            body = json.loads(event["body"], parse_float=Decimal)
+            body = json.loads(event.get("body", {}), parse_float=Decimal)
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 
@@ -274,7 +274,7 @@ def update_session_name(event: dict, context: dict) -> dict:
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #name = :name",
             ExpressionAttributeNames={"#name": "name"},
-            ExpressionAttributeValues={":name": body["name"]},
+            ExpressionAttributeValues={":name": body.get("name")},
         )
         return {"statusCode": 200, "body": json.dumps({"message": "Session name updated successfully"})}
     except ValueError as e:

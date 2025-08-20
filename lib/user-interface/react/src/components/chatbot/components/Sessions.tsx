@@ -27,7 +27,7 @@ import {
     useDeleteSessionByIdMutation,
     useLazyGetSessionByIdQuery,
     useListSessionsQuery,
-    useUpdateSessionMutation,
+    useUpdateSessionNameMutation,
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -64,12 +64,12 @@ export function Sessions ({ newSession }) {
         error: deleteUserSessionsError,
         isLoading: isDeleteUserSessionsLoading,
     }] = useDeleteAllSessionsForUserMutation();
-    const [updateSession, {
-        isSuccess: isUpdateSessionSuccess,
-        isError: isUpdateSessionError,
-        error: updateSessionError,
-        isLoading: isUpdateSessionLoading,
-    }] = useUpdateSessionMutation();
+    const [updateSessionName, {
+        isSuccess: isUpdateSessionNameSuccess,
+        isError: isUpdateSessionNameError,
+        error: updateSessionNameError,
+        isLoading: isUpdateSessionNameLoading,
+    }] = useUpdateSessionNameMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const [searchQuery, setSearchQuery] = useState<string>('');
@@ -130,16 +130,16 @@ export function Sessions ({ newSession }) {
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
     useEffect(() => {
-        if (!isUpdateSessionLoading && isUpdateSessionSuccess) {
+        if (!isUpdateSessionNameLoading && isUpdateSessionNameSuccess) {
             notificationService.generateNotification('Successfully renamed session', 'success');
             setRenameModalVisible(false);
             setSessionToRename(null);
             setNewSessionName('');
-        } else if (!isUpdateSessionLoading && isUpdateSessionError) {
-            notificationService.generateNotification(`Error renaming session: ${updateSessionError?.message || 'Unknown error'}`, 'error');
+        } else if (!isUpdateSessionNameLoading && isUpdateSessionNameError) {
+            notificationService.generateNotification(`Error renaming session: ${updateSessionNameError?.message || 'Unknown error'}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdateSessionSuccess, isUpdateSessionError, updateSessionError, isUpdateSessionLoading]);
+    }, [isUpdateSessionNameSuccess, isUpdateSessionNameError, updateSessionNameError, isUpdateSessionNameLoading]);
 
     const handleRenameSession = (session: LisaChatSession) => {
         setSessionToRename(session);
@@ -153,7 +153,7 @@ export function Sessions ({ newSession }) {
                 ...sessionToRename,
                 name: newSessionName.trim()
             };
-            updateSession(updatedSession);
+            updateSessionName(updatedSession);
         }
     };
 
@@ -331,8 +331,8 @@ export function Sessions ({ newSession }) {
                             <Button
                                 variant='primary'
                                 onClick={handleRenameConfirm}
-                                disabled={!newSessionName.trim() || isUpdateSessionLoading}
-                                loading={isUpdateSessionLoading}
+                                disabled={!newSessionName.trim() || isUpdateSessionNameLoading}
+                                loading={isUpdateSessionNameLoading}
                             >
                                 Rename
                             </Button>
@@ -350,7 +350,7 @@ export function Sessions ({ newSession }) {
                             onChange={({ detail }) => setNewSessionName(detail.value)}
                             placeholder='Enter session name...'
                             onKeyDown={(e) => {
-                                if (e.detail.key === 'Enter' && newSessionName.trim() && !isUpdateSessionLoading) {
+                                if (e.detail.key === 'Enter' && newSessionName.trim() && !isUpdateSessionNameLoading) {
                                     handleRenameConfirm();
                                 }
                             }}

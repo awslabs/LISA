@@ -144,6 +144,7 @@ export const {
     useDeleteSessionByIdMutation,
     useDeleteAllSessionsForUserMutation,
     useUpdateSessionMutation,
+    useUpdateSessionNameMutation,
     useLazyGetSessionByIdQuery,
     useGetSessionHealthQuery,
     useAttachImageToSessionMutation

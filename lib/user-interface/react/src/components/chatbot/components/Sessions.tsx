@@ -35,7 +35,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { fetchImage, getDisplayableMessage, getSessionDisplay, messageContainsImage } from '@/components/utils';
+import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import React from 'react';
@@ -143,7 +143,7 @@ export function Sessions ({ newSession }) {
 
     const handleRenameSession = (session: LisaChatSession) => {
         setSessionToRename(session);
-        setNewSessionName(getDisplayableMessage(session.firstHumanMessage ?? ''));
+        setNewSessionName(getSessionDisplay(session));
         setRenameModalVisible(true);
     };
 

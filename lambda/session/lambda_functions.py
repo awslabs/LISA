@@ -256,7 +256,7 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def update_session_name(event: dict, context: dict) -> dict:
+def rename_session(event: dict, context: dict) -> dict:
     """Update session name in DynamoDB."""
     try:
         user_id = get_username(event)

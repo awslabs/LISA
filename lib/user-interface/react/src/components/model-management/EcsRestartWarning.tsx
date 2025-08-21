@@ -40,8 +40,8 @@ export function EcsRestartWarning (props: EcsRestartWarningProps): ReactElement 
         >
             <SpaceBetween size='xs'>
                 <p>
-                    Your container configuration changes require restarting the ECS container that is hosting the model. 
-                    This will cause a temporary outage for users. Users will be unable to prompt the model until the container has fully restarted, and may receive errors. 
+                    Your container configuration changes require restarting the ECS container that is hosting the model.
+                    This will cause a temporary outage for users. Users will be unable to prompt the model until the container has fully restarted, and may receive errors.
                     You can move forward with the restart, or cancel and make these changes later.
                 </p>
                 <p>

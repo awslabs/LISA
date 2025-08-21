@@ -1,5 +1,8 @@
 name: Smoke Tests
 
+permissions:
+  contents: read
+
 # Trigger on every push to any branch
 on:
   push:

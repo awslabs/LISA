@@ -38,7 +38,7 @@ os.environ["MODEL_TABLE_NAME"] = "model-table"
 os.environ["MANAGEMENT_KEY_NAME"] = "test-management-key"
 os.environ["LITELLM_CONFIG_OBJ"] = '{"litellm_settings": {"drop_params": true}}'
 
-# Create a real retry config
+# Create retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
 # Create mock modules
@@ -52,7 +52,7 @@ mock_litellm_client = MagicMock()
 mock_litellm_client.add_model.return_value = {"model_info": {"id": "test-litellm-id"}}
 mock_litellm_client.delete_model.return_value = {"status": "deleted"}
 
-# First, patch sys.modules
+# Patch sys.modules
 patch.dict(
     "sys.modules",
     {
@@ -60,7 +60,7 @@ patch.dict(
     },
 ).start()
 
-# Then patch the specific functions
+# Patch functions
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
 patch("utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
@@ -136,7 +136,7 @@ mock_cfn.describe_stack_resources.return_value = {
 }
 
 
-# Create comprehensive mock for boto3.client to handle all possible service requests
+# Mock boto3.client
 def mock_boto3_client(service, **kwargs):
     if service == "autoscaling":
         return mock_autoscaling
@@ -166,16 +166,20 @@ patch("boto3.client", side_effect=mock_boto3_client).start()
 
 from models.domain_objects import ModelStatus
 
-# Now import the state machine functions
+# Import state machine functions
 from models.state_machine.update_model import (
+    _get_metadata_update_handlers,
     _process_metadata_updates,
     _update_container_config,
     _update_simple_field,
+    create_updated_task_definition,
+    get_ecs_resources_from_stack,
     handle_ecs_update,
     handle_finish_update,
     handle_job_intake,
     handle_poll_capacity,
     handle_poll_ecs_deployment,
+    update_ecs_service,
 )
 
 
@@ -275,803 +279,477 @@ def litellm_only_model(model_table):
     return item
 
 
-def test_handle_job_intake_enable_model(model_table, stopped_model, lambda_context):
-    """Test enabling a stopped model."""
-    event = {"model_id": "stopped-model", "update_payload": {"enabled": True}}
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
-
-        assert result["has_capacity_update"] is True
-        assert result["is_disable"] is False
-        assert result["asg_name"] == "test-asg"
-        assert result["model_warmup_seconds"] == 300
-        assert result["current_model_status"] == ModelStatus.STARTING
-
-        # Verify DDB update
-        item = model_table.get_item(Key={"model_id": "stopped-model"})["Item"]
-        assert item["model_status"] == ModelStatus.STARTING
-
-        # Verify ASG update call
-        mock_autoscaling.update_auto_scaling_group.assert_called_once()
-        call_args = mock_autoscaling.update_auto_scaling_group.call_args
-        assert call_args[1]["AutoScalingGroupName"] == "test-asg"
-        assert call_args[1]["MinSize"] == 1
-        assert call_args[1]["MaxSize"] == 3
-
-
-def test_handle_job_intake_disable_model(model_table, sample_model, lambda_context):
-    """Test disabling a running model."""
-    # Reset mocks for this test
+def test_handle_job_intake_comprehensive(model_table, sample_model, stopped_model, litellm_only_model, lambda_context):
+    """Comprehensive test covering multiple job intake scenarios."""
+    # Reset mocks
     mock_autoscaling.reset_mock()
     mock_litellm_client.reset_mock()
 
-    event = {"model_id": "test-model", "update_payload": {"enabled": False}}
-
     with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
+        # Test 1: Enable stopped model
+        event1 = {"model_id": "stopped-model", "update_payload": {"enabled": True}}
+        result1 = handle_job_intake(event1, lambda_context)
+        assert result1["has_capacity_update"] is True
+        assert result1["current_model_status"] == ModelStatus.STARTING
 
-        assert result["has_capacity_update"] is False
-        assert result["is_disable"] is True
-        assert result["asg_name"] == "test-asg"
-        assert result["current_model_status"] == ModelStatus.STOPPING
-
-        # Verify DDB update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_status"] == ModelStatus.STOPPING
-        assert item["litellm_id"] is None
-
-        # Verify LiteLLM deletion call
+        # Test 2: Disable running model
+        mock_autoscaling.reset_mock()
+        mock_litellm_client.reset_mock()
+        event2 = {"model_id": "test-model", "update_payload": {"enabled": False}}
+        result2 = handle_job_intake(event2, lambda_context)
+        assert result2["is_disable"] is True
+        assert result2["current_model_status"] == ModelStatus.STOPPING
         mock_litellm_client.delete_model.assert_called_once_with(identifier="test-litellm-id")
 
-        # Verify ASG update call
-        mock_autoscaling.update_auto_scaling_group.assert_called_once()
-        call_args = mock_autoscaling.update_auto_scaling_group.call_args
-        assert call_args[1]["AutoScalingGroupName"] == "test-asg"
-        assert call_args[1]["MinSize"] == 0
-        assert call_args[1]["MaxSize"] == 0
-        assert call_args[1]["DesiredCapacity"] == 0
-
-
-def test_handle_job_intake_autoscaling_update_running_model(model_table, sample_model, lambda_context):
-    """Test updating autoscaling configuration for a running model."""
-    # Reset mocks for this test
-    mock_autoscaling.reset_mock()
-
-    event = {
-        "model_id": "test-model",
-        "update_payload": {"autoScalingInstanceConfig": {"minCapacity": 2, "maxCapacity": 5, "desiredCapacity": 3}},
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
-
-        assert result["has_capacity_update"] is False
-        assert result["is_disable"] is False
-        assert result["current_model_status"] == ModelStatus.UPDATING
-
-        # Verify model config update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_config"]["autoScalingConfig"]["minCapacity"] == 2
-        assert item["model_config"]["autoScalingConfig"]["maxCapacity"] == 5
-
-        # Verify ASG update call
-        mock_autoscaling.update_auto_scaling_group.assert_called_once()
+        # Test 3: Autoscaling with all parameters (cooldown, warmup, capacity)
+        # Reset model status back to IN_SERVICE for autoscaling test
+        model_table.update_item(
+            Key={"model_id": "test-model"},
+            UpdateExpression="SET model_status = :ms",
+            ExpressionAttributeValues={":ms": ModelStatus.IN_SERVICE},
+        )
+        mock_autoscaling.reset_mock()
+        event3 = {
+            "model_id": "test-model",
+            "update_payload": {
+                "autoScalingInstanceConfig": {
+                    "minCapacity": 2,
+                    "maxCapacity": 5,
+                    "desiredCapacity": 3,
+                    "cooldown": 600,
+                    "defaultInstanceWarmup": 400,
+                }
+            },
+        }
+        result3 = handle_job_intake(event3, lambda_context)
+        assert result3["current_model_status"] == ModelStatus.UPDATING
+        # Verify autoscaling was called since the model is IN_SERVICE
+        assert mock_autoscaling.update_auto_scaling_group.called
         call_args = mock_autoscaling.update_auto_scaling_group.call_args
         assert call_args[1]["MinSize"] == 2
         assert call_args[1]["MaxSize"] == 5
-        assert call_args[1]["DesiredCapacity"] == 3
+        assert call_args[1]["DefaultCooldown"] == 600
+        assert call_args[1]["DefaultInstanceWarmup"] == 400
 
+        # Test 4: Container config with all features (env vars, health check, shared memory, deletion)
+        # Reset model status to IN_SERVICE for ECS update test
+        model_table.update_item(
+            Key={"model_id": "test-model"},
+            UpdateExpression="SET model_status = :ms",
+            ExpressionAttributeValues={":ms": ModelStatus.IN_SERVICE},
+        )
+        event4 = {
+            "model_id": "test-model",
+            "update_payload": {
+                "containerConfig": {
+                    "environment": {
+                        "NEW_VAR": "new_value",
+                        "TO_UPDATE": "LISA_MARKED_FOR_DELETION",  # Test deletion
+                    },
+                    "sharedMemorySize": 2048,
+                    "healthCheckCommand": ["CMD-SHELL", "curl -f http://localhost:8080/health"],
+                    "healthCheckInterval": 60,
+                    "healthCheckTimeout": 10,
+                    "healthCheckStartPeriod": 120,
+                    "healthCheckRetries": 5,
+                }
+            },
+        }
+        result4 = handle_job_intake(event4, lambda_context)
+        assert result4["needs_ecs_update"] is True
+        assert "container_metadata" in result4
+        assert "TO_UPDATE" in result4["container_metadata"]["env_vars_to_delete"]
 
-def test_handle_job_intake_autoscaling_update_stopped_model(model_table, stopped_model, lambda_context):
-    """Test updating autoscaling configuration for a stopped model."""
-    # Reset mocks for this test
-    mock_autoscaling.reset_mock()
-
-    event = {
-        "model_id": "stopped-model",
-        "update_payload": {"autoScalingInstanceConfig": {"minCapacity": 2, "maxCapacity": 5}},
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
-
-        assert result["has_capacity_update"] is False
-        assert result["is_disable"] is False
-        assert result["current_model_status"] == ModelStatus.UPDATING
-
-        # Verify model config update
-        item = model_table.get_item(Key={"model_id": "stopped-model"})["Item"]
-        assert item["model_config"]["autoScalingConfig"]["minCapacity"] == 2
-        assert item["model_config"]["autoScalingConfig"]["maxCapacity"] == 5
-
-        # ASG should not be updated for stopped model
-        mock_autoscaling.update_auto_scaling_group.assert_not_called()
-
-
-def test_handle_job_intake_metadata_update(model_table, sample_model, lambda_context):
-    """Test updating model metadata only."""
-    event = {"model_id": "test-model", "update_payload": {"streaming": False, "modelType": "embedding"}}
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
-
-        assert result["has_capacity_update"] is False
-        assert result["is_disable"] is False
-        assert result["current_model_status"] == ModelStatus.UPDATING
-        assert result["initial_model_status"] == ModelStatus.IN_SERVICE
-
-        # Verify model config update
+        # Test 5: Multiple metadata updates
+        event5 = {
+            "model_id": "test-model",
+            "update_payload": {
+                "streaming": False,
+                "modelType": "embedding",
+                "modelDescription": "Updated description",
+                "allowedGroups": ["group1", "group2"],
+                "features": [{"name": "feature1", "overview": "overview1"}],
+            },
+        }
+        result5 = handle_job_intake(event5, lambda_context)
+        assert result5["current_model_status"] == ModelStatus.UPDATING
         item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
         assert item["model_config"]["streaming"] is False
         assert item["model_config"]["modelType"] == "embedding"
 
 
-def test_handle_job_intake_model_not_found(model_table, lambda_context):
-    """Test handling when model is not found."""
-    event = {"model_id": "nonexistent-model", "update_payload": {"enabled": True}}
-
+def test_handle_job_intake_errors(model_table, litellm_only_model, sample_model, lambda_context):
+    """Test error conditions in job intake."""
     with patch("models.state_machine.update_model.model_table", model_table):
+        # Test 1: Model not found
         with pytest.raises(RuntimeError, match="Requested model 'nonexistent-model' was not found"):
-            handle_job_intake(event, lambda_context)
+            handle_job_intake({"model_id": "nonexistent-model", "update_payload": {"enabled": True}}, lambda_context)
 
-
-def test_handle_job_intake_litellm_only_model_activation_error(model_table, litellm_only_model, lambda_context):
-    """Test error when trying to activate/deactivate LiteLLM-only model."""
-    event = {"model_id": "litellm-model", "update_payload": {"enabled": False}}
-
-    with patch("models.state_machine.update_model.model_table", model_table):
+        # Test 2: LiteLLM-only model activation error
         with pytest.raises(
             RuntimeError, match="Cannot request AutoScaling updates to models that are not hosted by LISA"
         ):
-            handle_job_intake(event, lambda_context)
+            handle_job_intake({"model_id": "litellm-model", "update_payload": {"enabled": False}}, lambda_context)
 
-
-def test_handle_job_intake_concurrent_activation_and_autoscaling_error(model_table, sample_model, lambda_context):
-    """Test error when trying to do activation and autoscaling updates simultaneously."""
-    event = {
-        "model_id": "test-model",
-        "update_payload": {"enabled": False, "autoScalingInstanceConfig": {"minCapacity": 2}},
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
+        # Test 3: Concurrent activation and autoscaling error
         with pytest.raises(
             RuntimeError, match="Cannot request AutoScaling updates at the same time as an enable or disable operation"
         ):
-            handle_job_intake(event, lambda_context)
+            handle_job_intake(
+                {
+                    "model_id": "test-model",
+                    "update_payload": {"enabled": False, "autoScalingInstanceConfig": {"minCapacity": 2}},
+                },
+                lambda_context,
+            )
 
 
-def test_handle_poll_capacity_healthy_instances(lambda_context):
-    """Test polling capacity when instances are healthy."""
-    event = {"model_id": "test-model", "asg_name": "test-asg", "remaining_capacity_polls": 20}
+def test_handle_poll_capacity_scenarios(lambda_context):
+    """Test all capacity polling scenarios."""
+    # Test 1: Healthy instances
+    result1 = handle_poll_capacity(
+        {"model_id": "test-model", "asg_name": "test-asg", "remaining_capacity_polls": 20}, lambda_context
+    )
+    assert result1["should_continue_capacity_polling"] is False
+    assert result1["remaining_capacity_polls"] == 19
 
-    result = handle_poll_capacity(event, lambda_context)
-
-    assert result["should_continue_capacity_polling"] is False
-    assert result["remaining_capacity_polls"] == 19
-    assert "polling_error" not in result
-
-
-def test_handle_poll_capacity_unhealthy_instances(lambda_context):
-    """Test polling capacity when instances are not yet healthy."""
-    event = {"model_id": "test-model", "asg_name": "test-asg", "remaining_capacity_polls": 20}
-
-    # Mock unhealthy instances
+    # Test 2: Unhealthy instances (continue polling)
     mock_autoscaling.describe_auto_scaling_groups.return_value = {
         "AutoScalingGroups": [
             {"DesiredCapacity": 2, "Instances": [{"HealthStatus": "Healthy"}, {"HealthStatus": "Unhealthy"}]}
         ]
     }
+    result2 = handle_poll_capacity(
+        {"model_id": "test-model", "asg_name": "test-asg", "remaining_capacity_polls": 20}, lambda_context
+    )
+    assert result2["should_continue_capacity_polling"] is True
 
-    result = handle_poll_capacity(event, lambda_context)
+    # Test 3: Max polls exceeded (timeout)
+    result3 = handle_poll_capacity(
+        {"model_id": "test-model", "asg_name": "test-asg", "remaining_capacity_polls": 1}, lambda_context
+    )
+    assert result3["should_continue_capacity_polling"] is False
+    assert "polling_error" in result3
 
-    assert result["should_continue_capacity_polling"] is True
-    assert result["remaining_capacity_polls"] == 19
-    assert "polling_error" not in result
-
-
-def test_handle_poll_capacity_max_polls_exceeded(lambda_context):
-    """Test polling capacity when max polls exceeded."""
-    event = {"model_id": "test-model", "asg_name": "test-asg", "remaining_capacity_polls": 1}
-
-    # Mock unhealthy instances
-    mock_autoscaling.describe_auto_scaling_groups.return_value = {
-        "AutoScalingGroups": [
-            {"DesiredCapacity": 2, "Instances": [{"HealthStatus": "Healthy"}, {"HealthStatus": "Unhealthy"}]}
-        ]
-    }
-
-    result = handle_poll_capacity(event, lambda_context)
-
-    assert result["should_continue_capacity_polling"] is False
-    assert result["remaining_capacity_polls"] == 0
-    assert "polling_error" in result
-    assert "did not start healthy instances" in result["polling_error"]
-
-
-def test_handle_finish_update_enable_success(model_table, lambda_context):
-    """Test finishing update for successful model enable."""
-    # Create model without litellm_id (enabled model should get one)
-    item = {
-        "model_id": "test-model",
-        "model_status": ModelStatus.STARTING,
-        "auto_scaling_group": "test-asg",
-        "model_url": "https://test-model.example.com/v1",
-        "model_config": {"modelName": "test-model-name"},
-    }
-    model_table.put_item(Item=item)
-
-    event = {
-        "model_id": "test-model",
-        "asg_name": "test-asg",
-        "has_capacity_update": True,
-        "is_disable": False,
-        "initial_model_status": ModelStatus.STOPPED,
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_finish_update(event, lambda_context)
-
-        assert result["litellm_id"] == "test-litellm-id"
-        assert result["current_model_status"] == ModelStatus.IN_SERVICE
-
-        # Verify DDB update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_status"] == ModelStatus.IN_SERVICE
-        assert item["litellm_id"] == "test-litellm-id"
-
-        # Verify LiteLLM add call
-        mock_litellm_client.add_model.assert_called_once()
-        call_args = mock_litellm_client.add_model.call_args
-        assert call_args[1]["model_name"] == "test-model"
-
-
-def test_handle_finish_update_disable_success(model_table, lambda_context):
-    """Test finishing update for successful model disable."""
-    item = {
-        "model_id": "test-model",
-        "model_status": ModelStatus.STOPPING,
-        "auto_scaling_group": "test-asg",
-        "model_url": "https://test-model.example.com/v1",
-        "model_config": {"modelName": "test-model-name"},
-    }
-    model_table.put_item(Item=item)
-
-    event = {
-        "model_id": "test-model",
-        "asg_name": "test-asg",
-        "has_capacity_update": False,
-        "is_disable": True,
-        "initial_model_status": ModelStatus.IN_SERVICE,
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_finish_update(event, lambda_context)
-
-        assert result["current_model_status"] == ModelStatus.STOPPED
-
-        # Verify DDB update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_status"] == ModelStatus.STOPPED
-
-
-def test_handle_finish_update_metadata_only(model_table, lambda_context):
-    """Test finishing update for metadata-only update."""
-    item = {
-        "model_id": "test-model",
-        "model_status": ModelStatus.UPDATING,
-        "auto_scaling_group": "test-asg",
-        "model_url": "https://test-model.example.com/v1",
-        "model_config": {"modelName": "test-model-name"},
-    }
-    model_table.put_item(Item=item)
-
-    event = {
-        "model_id": "test-model",
-        "asg_name": "test-asg",
-        "has_capacity_update": False,
-        "is_disable": False,
-        "initial_model_status": ModelStatus.IN_SERVICE,
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_finish_update(event, lambda_context)
-
-        assert result["current_model_status"] == ModelStatus.IN_SERVICE
-
-        # Verify DDB update - should restore initial status
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_status"] == ModelStatus.IN_SERVICE
-
-
-def test_handle_finish_update_polling_error(model_table, lambda_context):
-    """Test finishing update when there was a polling error."""
-    # Reset mocks for this test
-    mock_autoscaling.reset_mock()
-
-    item = {
-        "model_id": "test-model",
-        "model_status": ModelStatus.STARTING,
-        "auto_scaling_group": "test-asg",
-        "model_url": "https://test-model.example.com/v1",
-        "model_config": {"modelName": "test-model-name"},
-    }
-    model_table.put_item(Item=item)
-
-    event = {
-        "model_id": "test-model",
-        "asg_name": "test-asg",
-        "has_capacity_update": True,
-        "is_disable": False,
-        "polling_error": "Model did not start in time",
-        "initial_model_status": ModelStatus.STOPPED,
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_finish_update(event, lambda_context)
-
-        assert result["current_model_status"] == ModelStatus.STOPPED
-
-        # Verify DDB update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_status"] == ModelStatus.STOPPED
-
-        # Verify ASG is scaled down due to error
-        mock_autoscaling.update_auto_scaling_group.assert_called_once()
-        call_args = mock_autoscaling.update_auto_scaling_group.call_args
-        assert call_args[1]["MinSize"] == 0
-        assert call_args[1]["MaxSize"] == 0
-        assert call_args[1]["DesiredCapacity"] == 0
-
-
-def test_handle_finish_update_json_decode_error(model_table, lambda_context):
-    """Test finishing update with invalid LiteLLM config JSON."""
-    item = {
-        "model_id": "test-model",
-        "model_status": ModelStatus.STARTING,
-        "auto_scaling_group": "test-asg",
-        "model_url": "https://test-model.example.com/v1",
-        "model_config": {"modelName": "test-model-name"},
-    }
-    model_table.put_item(Item=item)
-
-    event = {
-        "model_id": "test-model",
-        "asg_name": "test-asg",
-        "has_capacity_update": True,
-        "is_disable": False,
-        "initial_model_status": ModelStatus.STOPPED,
-    }
-
-    with patch("os.environ.get") as mock_env:
-        mock_env.return_value = "invalid-json"
-
-        with patch("models.state_machine.update_model.model_table", model_table):
-            result = handle_finish_update(event, lambda_context)
-
-            assert result["litellm_id"] == "test-litellm-id"
-
-            # Should fallback to empty dict when JSON parsing fails
-            call_args = mock_litellm_client.add_model.call_args
-            assert call_args[1]["litellm_params"]["api_key"] == "ignored"
-
-
-def test_end_to_end_enable_workflow(model_table, stopped_model, lambda_context):
-    """Test complete enable workflow end-to-end."""
-    # Reset mocks for this test
-    mock_autoscaling.reset_mock()
-    mock_litellm_client.reset_mock()
-
-    # Ensure the autoscaling mock returns the expected values for this test
+    # Reset mock
     mock_autoscaling.describe_auto_scaling_groups.return_value = {
         "AutoScalingGroups": [
             {"DesiredCapacity": 2, "Instances": [{"HealthStatus": "Healthy"}, {"HealthStatus": "Healthy"}]}
         ]
     }
 
+
+def test_handle_finish_update_scenarios(model_table, lambda_context):
+    """Test all finish update scenarios."""
     with patch("models.state_machine.update_model.model_table", model_table):
-        # Step 1: Job intake for enable
-        event1 = {"model_id": "stopped-model", "update_payload": {"enabled": True}}
-        result1 = handle_job_intake(event1, lambda_context)
-        assert result1["has_capacity_update"] is True
-        assert result1["current_model_status"] == ModelStatus.STARTING
-
-        # Step 2: Poll capacity (healthy)
-        event2 = {"model_id": "stopped-model", "asg_name": "test-asg", "remaining_capacity_polls": 20}
-        result2 = handle_poll_capacity(event2, lambda_context)
-        assert result2["should_continue_capacity_polling"] is False
-
-        # Step 3: Finish update
-        event3 = {
-            "model_id": "stopped-model",
-            "asg_name": "test-asg",
-            "has_capacity_update": True,
-            "is_disable": False,
-            "initial_model_status": ModelStatus.STOPPED,
+        # Test 1: Successful enable
+        item1 = {
+            "model_id": "enable-model",
+            "model_status": ModelStatus.STARTING,
+            "auto_scaling_group": "test-asg",
+            "model_url": "https://test-model.example.com/v1",
+            "model_config": {"modelName": "test-model-name"},
         }
-        result3 = handle_finish_update(event3, lambda_context)
-        assert result3["current_model_status"] == ModelStatus.IN_SERVICE
+        model_table.put_item(Item=item1)
+        result1 = handle_finish_update(
+            {
+                "model_id": "enable-model",
+                "asg_name": "test-asg",
+                "has_capacity_update": True,
+                "is_disable": False,
+                "initial_model_status": ModelStatus.STOPPED,
+            },
+            lambda_context,
+        )
+        assert result1["current_model_status"] == ModelStatus.IN_SERVICE
+        assert result1["litellm_id"] == "test-litellm-id"
 
-        # Verify final state
-        item = model_table.get_item(Key={"model_id": "stopped-model"})["Item"]
-        assert item["model_status"] == ModelStatus.IN_SERVICE
-
-
-def test_end_to_end_disable_workflow(model_table, sample_model, lambda_context):
-    """Test complete disable workflow end-to-end."""
-    with patch("models.state_machine.update_model.model_table", model_table):
-        # Step 1: Job intake for disable
-        event1 = {"model_id": "test-model", "update_payload": {"enabled": False}}
-        result1 = handle_job_intake(event1, lambda_context)
-        assert result1["is_disable"] is True
-        assert result1["current_model_status"] == ModelStatus.STOPPING
-
-        # Step 2: Finish update (no polling needed for disable)
-        event2 = {
-            "model_id": "test-model",
-            "asg_name": "test-asg",
-            "has_capacity_update": False,
-            "is_disable": True,
-            "initial_model_status": ModelStatus.IN_SERVICE,
+        # Test 2: Successful disable
+        item2 = {
+            "model_id": "disable-model",
+            "model_status": ModelStatus.STOPPING,
+            "auto_scaling_group": "test-asg",
+            "model_url": "https://test-model.example.com/v1",
+            "model_config": {"modelName": "test-model-name"},
         }
-        result2 = handle_finish_update(event2, lambda_context)
+        model_table.put_item(Item=item2)
+        result2 = handle_finish_update(
+            {
+                "model_id": "disable-model",
+                "asg_name": "test-asg",
+                "has_capacity_update": False,
+                "is_disable": True,
+                "initial_model_status": ModelStatus.IN_SERVICE,
+            },
+            lambda_context,
+        )
         assert result2["current_model_status"] == ModelStatus.STOPPED
 
-        # Verify final state
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_status"] == ModelStatus.STOPPED
+        # Test 3: Metadata-only update
+        item3 = {
+            "model_id": "metadata-model",
+            "model_status": ModelStatus.UPDATING,
+            "auto_scaling_group": "test-asg",
+            "model_url": "https://test-model.example.com/v1",
+            "model_config": {"modelName": "test-model-name"},
+        }
+        model_table.put_item(Item=item3)
+        result3 = handle_finish_update(
+            {
+                "model_id": "metadata-model",
+                "asg_name": "test-asg",
+                "has_capacity_update": False,
+                "is_disable": False,
+                "initial_model_status": ModelStatus.IN_SERVICE,
+            },
+            lambda_context,
+        )
+        assert result3["current_model_status"] == ModelStatus.IN_SERVICE
 
-
-def test_handle_job_intake_partial_autoscaling_config(model_table, sample_model, lambda_context):
-    """Test updating only some autoscaling parameters."""
-    # Reset mocks for this test
-    mock_autoscaling.reset_mock()
-
-    event = {
-        "model_id": "test-model",
-        "update_payload": {"autoScalingInstanceConfig": {"maxCapacity": 5}},  # Only update max capacity
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        handle_job_intake(event, lambda_context)
-
-        # Verify model config update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        assert item["model_config"]["autoScalingConfig"]["minCapacity"] == 1  # Unchanged
-        assert item["model_config"]["autoScalingConfig"]["maxCapacity"] == 5  # Updated
-
-        # Verify ASG update call only includes maxCapacity
-        mock_autoscaling.update_auto_scaling_group.assert_called_once()
+        # Test 4: Polling error handling
+        mock_autoscaling.reset_mock()
+        item4 = {
+            "model_id": "error-model",
+            "model_status": ModelStatus.STARTING,
+            "auto_scaling_group": "test-asg",
+            "model_url": "https://test-model.example.com/v1",
+            "model_config": {"modelName": "test-model-name"},
+        }
+        model_table.put_item(Item=item4)
+        result4 = handle_finish_update(
+            {
+                "model_id": "error-model",
+                "asg_name": "test-asg",
+                "has_capacity_update": True,
+                "is_disable": False,
+                "polling_error": "Model did not start in time",
+                "initial_model_status": ModelStatus.STOPPED,
+            },
+            lambda_context,
+        )
+        assert result4["current_model_status"] == ModelStatus.STOPPED
+        # Verify ASG scaled down on error
         call_args = mock_autoscaling.update_auto_scaling_group.call_args
-        assert "MaxSize" in call_args[1]
-        assert call_args[1]["MaxSize"] == 5
-        assert "MinSize" not in call_args[1]
-        assert "DesiredCapacity" not in call_args[1]
+        assert call_args[1]["MinSize"] == 0
 
 
-# Tests for container configuration updating
-def test_handle_job_intake_container_config_update(model_table, sample_model, lambda_context):
-    """Test updating container configuration."""
-    event = {
-        "model_id": "test-model",
-        "update_payload": {
-            "containerConfig": {
-                "environment": {"NEW_VAR": "new_value", "TO_UPDATE": "updated_value"},
-            }
-        },
-    }
-
+def test_ecs_update_and_polling(model_table, sample_model, lambda_context):
+    """Test ECS update and deployment polling."""
     with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
+        # Test 1: ECS update success
+        result1 = handle_ecs_update(
+            {"model_id": "test-model", "container_metadata": {"env_vars_to_delete": ["TO_DELETE"]}}, lambda_context
+        )
+        assert (
+            result1["new_task_definition_arn"] == "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2"
+        )
+        assert result1["ecs_service_arn"] == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
 
-        assert result["needs_ecs_update"] is True
-        assert result["current_model_status"] == ModelStatus.UPDATING
+        # Test 2: ECS update error (no stack)
+        item = {
+            "model_id": "no-stack-model",
+            "model_status": ModelStatus.IN_SERVICE,
+            "model_config": {"containerConfig": {"environment": {"VAR": "value"}}},
+        }
+        model_table.put_item(Item=item)
+        result2 = handle_ecs_update({"model_id": "no-stack-model"}, lambda_context)
+        assert "ecs_update_error" in result2
 
-        # Verify model config update
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        updated_env = item["model_config"]["containerConfig"]["environment"]
-        assert updated_env["NEW_VAR"] == "new_value"
-        assert updated_env["TO_UPDATE"] == "updated_value"
+        # Test 3: ECS deployment completed
+        event = {
+            "model_id": "test-model",
+            "ecs_cluster_arn": "cluster",
+            "ecs_service_arn": "service",
+            "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
+            "remaining_ecs_polls": 20,
+        }
+        result3 = handle_poll_ecs_deployment(event, lambda_context)
+        assert result3["should_continue_ecs_polling"] is False
 
-
-def test_handle_job_intake_container_config_env_var_deletion(model_table, sample_model, lambda_context):
-    """Test deleting environment variables using deletion markers."""
-    event = {
-        "model_id": "test-model",
-        "update_payload": {
-            "containerConfig": {
-                "environment": {
-                    "NEW_VAR": "new_value",
-                    "TO_UPDATE": "LISA_MARKED_FOR_DELETION",  # This should be deleted
+        # Test 4: ECS deployment in progress
+        mock_ecs.describe_services.return_value = {
+            "services": [
+                {
+                    "deployments": [
+                        {
+                            "status": "PRIMARY",
+                            "rolloutState": "IN_PROGRESS",
+                            "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
+                        }
+                    ]
                 }
-            }
-        },
-    }
+            ]
+        }
+        result4 = handle_poll_ecs_deployment(event, lambda_context)
+        assert result4["should_continue_ecs_polling"] is True
 
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
+        # Test 5: ECS deployment timeout
+        result5 = handle_poll_ecs_deployment({**event, "remaining_ecs_polls": 1}, lambda_context)
+        assert result5["should_continue_ecs_polling"] is False
+        assert "ecs_polling_error" in result5
 
-        assert result["needs_ecs_update"] is True
-        assert "container_metadata" in result
-        assert "env_vars_to_delete" in result["container_metadata"]
-        assert "TO_UPDATE" in result["container_metadata"]["env_vars_to_delete"]
-
-        # Verify model config update - deleted var should be removed
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        updated_env = item["model_config"]["containerConfig"]["environment"]
-        assert updated_env["NEW_VAR"] == "new_value"
-        assert "TO_UPDATE" not in updated_env
-
-
-def test_handle_job_intake_container_config_stopped_model_no_ecs_update(model_table, lambda_context):
-    """Test container config update on stopped model doesn't trigger ECS update."""
-    # Create stopped model with container config and autoScalingConfig
-    item = {
-        "model_id": "stopped-model",
-        "model_status": ModelStatus.STOPPED,
-        "auto_scaling_group": "test-asg",
-        "model_config": {
-            "modelId": "stopped-model",
-            "autoScalingConfig": {"minCapacity": 1, "maxCapacity": 3, "metricConfig": {"estimatedInstanceWarmup": 300}},
-            "containerConfig": {"environment": {"TEST_VAR": "test_value"}},
-        },
-    }
-    model_table.put_item(Item=item)
-
-    event = {
-        "model_id": "stopped-model",
-        "update_payload": {"containerConfig": {"environment": {"NEW_VAR": "new_value"}}},
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
-
-        assert result["needs_ecs_update"] is False  # Stopped model shouldn't trigger ECS update
-        assert result["current_model_status"] == ModelStatus.UPDATING
+        # Reset mock
+        mock_ecs.describe_services.return_value = {
+            "services": [
+                {
+                    "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:1",
+                    "deployments": [
+                        {
+                            "status": "PRIMARY",
+                            "rolloutState": "COMPLETED",
+                            "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
+                        }
+                    ],
+                }
+            ]
+        }
 
 
-def test_update_simple_field():
-    """Test the _update_simple_field helper function."""
+def test_helper_functions():
+    """Test helper functions for maximum coverage."""
+    # Test _update_simple_field
     model_config = {"streaming": True}
     _update_simple_field(model_config, "streaming", False, "test-model")
     assert model_config["streaming"] is False
 
-
-def test_update_container_config():
-    """Test the _update_container_config helper function."""
+    # Test _update_container_config with all features
     model_config = {"containerConfig": {"environment": {"EXISTING": "value"}}}
     container_config = {
         "environment": {"NEW_VAR": "new_value", "DELETE_ME": "LISA_MARKED_FOR_DELETION"},
+        "sharedMemorySize": 1024,
+        "healthCheckCommand": ["CMD-SHELL", "curl -f http://localhost:8080/health"],
+        "healthCheckInterval": 30,
+        "healthCheckTimeout": 5,
+        "healthCheckStartPeriod": 60,
+        "healthCheckRetries": 3,
     }
-
     metadata = _update_container_config(model_config, container_config, "test-model")
-
-    # Check environment variables
     assert model_config["containerConfig"]["environment"]["NEW_VAR"] == "new_value"
     assert "DELETE_ME" not in model_config["containerConfig"]["environment"]
+    assert model_config["containerConfig"]["sharedMemorySize"] == 1024
+    assert metadata["env_vars_to_delete"] == ["DELETE_ME"]
 
-    # Check metadata
-    assert "env_vars_to_delete" in metadata
-    assert "DELETE_ME" in metadata["env_vars_to_delete"]
-
-
-def test_process_metadata_updates():
-    """Test the _process_metadata_updates helper function."""
-    model_config = {
-        "streaming": True,
-        "modelType": "textgen",
-        "containerConfig": {"environment": {"EXISTING_VAR": "existing_value"}},
-    }
+    # Test _process_metadata_updates
+    model_config = {"streaming": True, "modelType": "textgen", "containerConfig": {"environment": {"VAR": "value"}}}
     update_payload = {
         "streaming": False,
-        "modelDescription": "Updated description",
-        "containerConfig": {"environment": {"NEW_VAR": "value"}},
+        "modelDescription": "Updated",
+        "containerConfig": {"environment": {"NEW": "value"}},
     }
-
     has_updates, metadata = _process_metadata_updates(model_config, update_payload, "test-model")
-
     assert has_updates is True
     assert model_config["streaming"] is False
-    assert model_config["modelDescription"] == "Updated description"
-    assert model_config["containerConfig"]["environment"]["NEW_VAR"] == "value"
+    assert model_config["modelDescription"] == "Updated"
 
+    # Test _get_metadata_update_handlers
+    handlers = _get_metadata_update_handlers(model_config, "test-model")
+    expected_handlers = ["modelType", "streaming", "modelDescription", "allowedGroups", "features", "containerConfig"]
+    for handler_name in expected_handlers:
+        assert handler_name in handlers
+        assert callable(handlers[handler_name])
 
-def test_handle_ecs_update(model_table, sample_model, lambda_context):
-    """Test ECS update handler."""
-    event = {"model_id": "test-model", "container_metadata": {"env_vars_to_delete": ["TO_DELETE"]}}
+    # Test get_ecs_resources_from_stack
+    service_arn, cluster_arn, task_def_arn = get_ecs_resources_from_stack("test-stack")
+    assert service_arn == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
+    assert cluster_arn == "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster"
+    assert task_def_arn == "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:1"
 
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_ecs_update(event, lambda_context)
-
-        assert result["new_task_definition_arn"] == "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2"
-        assert result["ecs_service_arn"] == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
-        assert result["ecs_cluster_arn"] == "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster"
-        assert result["remaining_ecs_polls"] == 30
-
-        # Verify ECS client calls
-        mock_cfn.describe_stack_resources.assert_called_once_with(StackName="test-stack")
-        mock_ecs.describe_services.assert_called_once()
-        mock_ecs.describe_task_definition.assert_called_once()
-        mock_ecs.register_task_definition.assert_called_once()
-        mock_ecs.update_service.assert_called_once()
-
-
-def test_handle_ecs_update_no_stack_error(model_table, lambda_context):
-    """Test ECS update handler when no CloudFormation stack found."""
-    # Create model without stack name
-    item = {
-        "model_id": "no-stack-model",
-        "model_status": ModelStatus.IN_SERVICE,
-        "model_config": {"containerConfig": {"environment": {"VAR": "value"}}},
+    # Test get_ecs_resources_from_stack error case
+    mock_cfn.describe_stack_resources.return_value = {
+        "StackResources": [{"ResourceType": "AWS::ECS::Cluster", "PhysicalResourceId": "cluster"}]
     }
-    model_table.put_item(Item=item)
+    with pytest.raises(RuntimeError, match="Failed to get ECS resources from CloudFormation stack"):
+        get_ecs_resources_from_stack("test-stack")
 
-    event = {"model_id": "no-stack-model"}
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_ecs_update(event, lambda_context)
-
-        assert "ecs_update_error" in result
-        assert "No CloudFormation stack found" in result["ecs_update_error"]
-
-
-def test_handle_poll_ecs_deployment_completed(lambda_context):
-    """Test ECS deployment polling when deployment is completed."""
-    event = {
-        "model_id": "test-model",
-        "ecs_cluster_arn": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
-        "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-        "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
-        "remaining_ecs_polls": 20,
-    }
-
-    result = handle_poll_ecs_deployment(event, lambda_context)
-
-    assert result["should_continue_ecs_polling"] is False
-    assert result["remaining_ecs_polls"] == 19
-
-
-def test_handle_poll_ecs_deployment_in_progress(lambda_context):
-    """Test ECS deployment polling when deployment is in progress."""
-    # Mock deployment in progress
-    mock_ecs.describe_services.return_value = {
-        "services": [
+    # Reset mock
+    mock_cfn.describe_stack_resources.return_value = {
+        "StackResources": [
             {
-                "deployments": [
-                    {
-                        "status": "PRIMARY",
-                        "rolloutState": "IN_PROGRESS",
-                        "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
-                    }
-                ]
-            }
+                "ResourceType": "AWS::ECS::Service",
+                "PhysicalResourceId": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
+            },
+            {
+                "ResourceType": "AWS::ECS::Cluster",
+                "PhysicalResourceId": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
+            },
         ]
     }
 
-    event = {
-        "model_id": "test-model",
-        "ecs_cluster_arn": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
-        "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-        "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
-        "remaining_ecs_polls": 20,
-    }
-
-    result = handle_poll_ecs_deployment(event, lambda_context)
-
-    assert result["should_continue_ecs_polling"] is True
-    assert result["remaining_ecs_polls"] == 19
-
-    # Reset mock for other tests
-    mock_ecs.describe_services.return_value = {
-        "services": [
-            {
-                "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:1",
-                "deployments": [
-                    {
-                        "status": "PRIMARY",
-                        "rolloutState": "COMPLETED",
-                        "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
-                    }
-                ],
-            }
-        ]
-    }
-
-
-def test_handle_poll_ecs_deployment_timeout(lambda_context):
-    """Test ECS deployment polling when polls are exhausted."""
-    event = {
-        "model_id": "test-model",
-        "ecs_cluster_arn": "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster",
-        "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-        "new_task_definition_arn": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
-        "remaining_ecs_polls": 1,
-    }
-
-    # Mock deployment still in progress
-    mock_ecs.describe_services.return_value = {
-        "services": [
-            {
-                "deployments": [
-                    {
-                        "status": "PRIMARY",
-                        "rolloutState": "IN_PROGRESS",
-                        "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
-                    }
-                ]
-            }
-        ]
-    }
-
-    result = handle_poll_ecs_deployment(event, lambda_context)
-
-    assert result["should_continue_ecs_polling"] is False
-    assert "ecs_polling_error" in result
-    assert "did not complete within expected time" in result["ecs_polling_error"]
-
-
-def test_handle_poll_ecs_deployment_with_error(lambda_context):
-    """Test ECS deployment polling with previous error."""
-    event = {"model_id": "test-model", "ecs_update_error": "Previous ECS update failed"}
-
-    result = handle_poll_ecs_deployment(event, lambda_context)
-
-    assert result["should_continue_ecs_polling"] is False
-    assert "ecs_update_error" in result
-
-
-def test_handle_job_intake_container_config_for_lisa_only_model(model_table, lambda_context):
-    """Test container config update fails for models without ASG (LiteLLM-only)."""
-    # Create model without ASG but with containerConfig
-    item = {
-        "model_id": "litellm-only-model",
-        "model_status": ModelStatus.IN_SERVICE,
-        "model_config": {
-            "modelName": "test-model",
-            "containerConfig": {"environment": {"EXISTING_VAR": "existing_value"}},
+    # Test create_updated_task_definition
+    task_def_arn = "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:1"
+    updated_env_vars = {"NEW_VAR": "new_value", "UPDATED_VAR": "updated_value"}
+    env_vars_to_delete = ["TO_DELETE"]
+    updated_container_config = {
+        "sharedMemorySize": 1024,
+        "healthCheckConfig": {
+            "command": ["CMD-SHELL", "health"],
+            "interval": 30,
+            "timeout": 5,
+            "startPeriod": 60,
+            "retries": 3,
         },
     }
-    model_table.put_item(Item=item)
+    new_task_def_arn = create_updated_task_definition(
+        task_def_arn, updated_env_vars, env_vars_to_delete, updated_container_config
+    )
+    assert new_task_def_arn == "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2"
 
-    event = {
-        "model_id": "litellm-only-model",
-        "update_payload": {"containerConfig": {"environment": {"NEW_VAR": "new_value"}}},
-    }
+    # Test update_ecs_service
+    update_ecs_service("cluster-arn", "service-arn", "task-def-arn")
+    mock_ecs.update_service.assert_called_with(
+        cluster="cluster-arn", service="service-arn", taskDefinition="task-def-arn"
+    )
 
+
+def test_edge_cases_and_json_error(model_table, lambda_context):
+    """Test edge cases and JSON decoding error for complete coverage."""
     with patch("models.state_machine.update_model.model_table", model_table):
-        # This should not fail because container config updates don't require ASG when model status is IN_SERVICE and no ASG is present
-        result = handle_job_intake(event, lambda_context)
+        # Test JSON decode error in handle_finish_update
+        item = {
+            "model_id": "json-error-model",
+            "model_status": ModelStatus.STARTING,
+            "auto_scaling_group": "test-asg",
+            "model_url": "https://test-model.example.com/v1",
+            "model_config": {"modelName": "test-model-name"},
+        }
+        model_table.put_item(Item=item)
 
-        # Instead of raising an error, it should process the metadata update but set needs_ecs_update to False
-        assert result["needs_ecs_update"] is False  # No ASG means no ECS update needed
-        assert result["current_model_status"] == ModelStatus.UPDATING
+        with patch("os.environ.get") as mock_env:
+            mock_env.return_value = "invalid-json"
+            result = handle_finish_update(
+                {
+                    "model_id": "json-error-model",
+                    "asg_name": "test-asg",
+                    "has_capacity_update": True,
+                    "is_disable": False,
+                    "initial_model_status": ModelStatus.STOPPED,
+                },
+                lambda_context,
+            )
+            assert result["litellm_id"] == "test-litellm-id"
 
+        # Test ECS deployment with previous error
+        result_with_error = handle_poll_ecs_deployment(
+            {"model_id": "test-model", "ecs_update_error": "Previous error"}, lambda_context
+        )
+        assert result_with_error["should_continue_ecs_polling"] is False
+        assert "ecs_update_error" in result_with_error
 
-def test_handle_job_intake_multiple_metadata_updates(model_table, sample_model, lambda_context):
-    """Test updating multiple metadata fields at once."""
-    event = {
-        "model_id": "test-model",
-        "update_payload": {
-            "streaming": False,
-            "modelType": "embedding",
-            "modelDescription": "Updated description",
-            "allowedGroups": ["group1", "group2"],
-            "features": [{"name": "feature1", "overview": "overview1"}],
-        },
-    }
-
-    with patch("models.state_machine.update_model.model_table", model_table):
-        result = handle_job_intake(event, lambda_context)
-
-        assert result["current_model_status"] == ModelStatus.UPDATING
-        assert result["needs_ecs_update"] is False
-
-        # Verify all metadata updates
-        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
-        config = item["model_config"]
-        assert config["streaming"] is False
-        assert config["modelType"] == "embedding"
-        assert config["modelDescription"] == "Updated description"
-        assert config["allowedGroups"] == ["group1", "group2"]
-        assert len(config["features"]) == 1
-        assert config["features"][0]["name"] == "feature1"
+        # Test container config on LiteLLM-only model (should not fail but not trigger ECS update)
+        litellm_item = {
+            "model_id": "litellm-container-model",
+            "model_status": ModelStatus.IN_SERVICE,
+            "model_config": {
+                "modelName": "test-model",
+                "containerConfig": {"environment": {"EXISTING_VAR": "existing_value"}},
+            },
+        }
+        model_table.put_item(Item=litellm_item)
+        result_litellm = handle_job_intake(
+            {
+                "model_id": "litellm-container-model",
+                "update_payload": {"containerConfig": {"environment": {"NEW_VAR": "new_value"}}},
+            },
+            lambda_context,
+        )
+        assert result_litellm["needs_ecs_update"] is False

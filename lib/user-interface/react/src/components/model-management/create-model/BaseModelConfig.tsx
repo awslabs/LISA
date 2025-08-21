@@ -37,21 +37,6 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
 
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Model ID' errorText={props.formErrors?.modelId}>
-                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelId': detail.value });
-                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
-            </FormField>
-            <FormField label='Model Name' errorText={props.formErrors?.modelName}>
-                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelName': detail.value });
-                }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
-            </FormField>
-            <FormField label={<span>Model Description <em>(optional)</em></span>} errorText={props.formErrors?.modelDescription}>
-                <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelDescription': detail.value });
-                }} placeholder='Brief description of the model and its capabilities'/>
-            </FormField>
             <FormField label='Hosting Type' errorText={props.formErrors?.lisaHostedModel}>
                 <Select
                     selectedOption={{
@@ -76,6 +61,21 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     ]}
                     disabled={props.isEdit}
                 />
+            </FormField>
+            <FormField label='Model ID' errorText={props.formErrors?.modelId} description='A unique identifier. This is displayed to users when selecting models.'>
+                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelId': detail.value });
+                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
+            </FormField>
+            <FormField label='Model Name' errorText={props.formErrors?.modelName} description='The full model identifier, typically the repository path or file system path to the model.'>
+                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelName': detail.value });
+                }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
+            </FormField>
+            <FormField label={<span>Model Description <em>(optional)</em></span>} errorText={props.formErrors?.modelDescription}>
+                <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelDescription': detail.value });
+                }} placeholder='Brief description of the model and its capabilities'/>
             </FormField>
             <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {

@@ -223,7 +223,6 @@ patch.dict(
         "create_env_variables": mock_create_env,
         "repository.vector_store_repo": mock_vs_repo,
         "repository.rag_document_repo": mock_doc_repo,
-        "utilities.common_functions": mock_common,
         "lisapy": mock_lisapy,
         "lisapy.langchain": mock_lisapy_langchain,
         "langchain_community": mock_langchain_community,
@@ -974,7 +973,7 @@ def test_repository_access_validation():
     }
     repository = {"allowedGroups": ["admin-group"]}
 
-    with patch("utilities.common_functions.is_admin", return_value=True):
+    with patch("repository.lambda_functions.is_admin", return_value=True):
         # Admin should always have access
         assert _ensure_repository_access(event, repository) is None
 
@@ -984,7 +983,7 @@ def test_repository_access_validation():
     }
     repository = {"allowedGroups": ["test-group"]}
 
-    with patch("utilities.common_functions.is_admin", return_value=False):
+    with patch("repository.lambda_functions.is_admin", return_value=False):
         # User has the right group
         assert _ensure_repository_access(event, repository) is None
 
@@ -994,7 +993,7 @@ def test_repository_access_validation():
     }
     repository = {"allowedGroups": ["test-group"]}
 
-    with patch("utilities.common_functions.is_admin", return_value=False):
+    with patch("repository.lambda_functions.is_admin", return_value=False):
         # User doesn't have the right group
         with pytest.raises(HTTPException) as exc_info:
             _ensure_repository_access(event, repository)
@@ -1341,20 +1340,20 @@ def test_get_embeddings_pipeline():
 
 
 def test_user_has_group():
-    """Test user_has_group helper function"""
-    from repository.lambda_functions import user_has_group
+    """Test user_has_group_access helper function"""
+    from utilities.common_functions import user_has_group_access
 
     # Test user has group
-    assert user_has_group(["group1", "group2"], ["group2", "group3"]) is True
+    assert user_has_group_access(["group1", "group2"], ["group2", "group3"]) is True
 
     # Test user doesn't have group
-    assert user_has_group(["group1", "group2"], ["group3", "group4"]) is False
+    assert user_has_group_access(["group1", "group2"], ["group3", "group4"]) is False
 
     # Test empty user groups
-    assert user_has_group([], ["group1"]) is False
+    assert user_has_group_access([], ["group1"]) is False
 
     # Test empty allowed groups - this returns True according to the actual implementation
-    assert user_has_group(["group1"], []) is True
+    assert user_has_group_access(["group1"], []) is True
 
 
 def test_real_list_all_function():

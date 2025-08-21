@@ -16,6 +16,8 @@
 
 from typing import List, Optional
 
+from utilities.common_functions import user_has_group_access
+
 from ..domain_objects import ListModelsResponse
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
@@ -40,25 +42,7 @@ class ListModelsHandler(BaseApiHandler):
         # Filter models based on user groups if not admin
         if not is_admin and user_groups is not None:
             models_list = [
-                model for model in models_list if self._user_has_group_access(user_groups, model.allowedGroups or [])
+                model for model in models_list if user_has_group_access(user_groups, model.allowedGroups or [])
             ]
 
         return ListModelsResponse(models=models_list)
-
-    def _user_has_group_access(self, user_groups: List[str], allowed_groups: List[str]) -> bool:
-        """
-        Check if user has access to a model based on group membership.
-
-        Args:
-            user_groups: List of groups the user belongs to
-            allowed_groups: List of groups allowed to access the model
-
-        Returns:
-            True if user has access (either no restrictions or user has required group)
-        """
-        # Model is public
-        if not allowed_groups:
-            return True
-
-        # Check if user has at least one matching group
-        return len(set(user_groups).intersection(set(allowed_groups))) > 0

@@ -38,6 +38,7 @@ from utilities.common_functions import (
     get_username,
     is_admin,
     retry_config,
+    user_has_group_access,
 )
 from utilities.exceptions import HTTPException
 from utilities.validation import ValidationError
@@ -252,7 +253,7 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     return [
         repo
         for repo in registered_repositories
-        if admin_override or user_has_group(user_groups, repo.get("allowedGroups", []))
+        if admin_override or user_has_group_access(user_groups, repo.get("allowedGroups", []))
     ]
 
 
@@ -266,18 +267,6 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
         List of repository status
     """
     return cast(dict, vs_repo.get_repository_status())
-
-
-def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
-    """Returns if user groups has at least one intersection with allowed groups.
-
-    If allowed groups is empty this will return True.
-    """
-
-    if len(allowed_groups) > 0:
-        return len(set(user_groups).intersection(set(allowed_groups))) > 0
-    else:
-        return True
 
 
 @api_wrapper
@@ -350,7 +339,7 @@ def _ensure_repository_access(event: dict[str, Any], repository: dict[str, Any])
     """Ensures a user has access to the repository or else raises an HTTPException"""
     if is_admin(event) is False:
         user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-        if not user_has_group(user_groups, repository.get("allowedGroups", [])):
+        if not user_has_group_access(user_groups, repository.get("allowedGroups", [])):
             raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
 

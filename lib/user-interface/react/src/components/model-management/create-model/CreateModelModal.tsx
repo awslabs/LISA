@@ -218,14 +218,26 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                                 }
                             });
                             return result;
-                        })()
+                        })(),
+                        ...(updateFields.containerConfig.healthCheckConfig && {
+                            healthCheckCommand: updateFields.containerConfig.healthCheckConfig.command,
+                            healthCheckInterval: updateFields.containerConfig.healthCheckConfig.interval,
+                            healthCheckTimeout: updateFields.containerConfig.healthCheckConfig.timeout,
+                            healthCheckStartPeriod: updateFields.containerConfig.healthCheckConfig.startPeriod,
+                            healthCheckRetries: updateFields.containerConfig.healthCheckConfig.retries,
+                        }),
+                        ...(updateFields.containerConfig.sharedMemorySize !== undefined && {
+                            sharedMemorySize: updateFields.containerConfig.sharedMemorySize,
+                        })
                     }
                 }),
                 ...(updateFields.autoScalingConfig && {
                     autoScalingInstanceConfig: {
                         ...(updateFields.autoScalingConfig.minCapacity !== undefined && { minCapacity: updateFields.autoScalingConfig.minCapacity }),
                         ...(updateFields.autoScalingConfig.maxCapacity !== undefined && { maxCapacity: updateFields.autoScalingConfig.maxCapacity }),
-                        ...(updateFields.autoScalingConfig.desiredCapacity !== undefined && { desiredCapacity: updateFields.autoScalingConfig.desiredCapacity })
+                        ...(updateFields.autoScalingConfig.desiredCapacity !== undefined && { desiredCapacity: updateFields.autoScalingConfig.desiredCapacity }),
+                        ...(updateFields.autoScalingConfig.cooldown !== undefined && { cooldown: updateFields.autoScalingConfig.cooldown }),
+                        ...(updateFields.autoScalingConfig.defaultInstanceWarmup !== undefined && { defaultInstanceWarmup: updateFields.autoScalingConfig.defaultInstanceWarmup })
                     }
                 })
             };

@@ -16,6 +16,8 @@
 
 from typing import List, Optional
 
+from utilities.common_functions import user_has_group_access
+
 from ..domain_objects import GetModelResponse
 from ..exception import ModelNotFoundError
 from .base_handler import BaseApiHandler
@@ -37,25 +39,7 @@ class GetModelHandler(BaseApiHandler):
 
         # Check if user has access to this model based on groups
         if not is_admin and user_groups is not None:
-            if not self._user_has_group_access(user_groups, model.allowedGroups or []):
+            if not user_has_group_access(user_groups, model.allowedGroups or []):
                 raise ModelNotFoundError(f"Model '{model_id}' was not found.")
 
         return GetModelResponse(model=model)
-
-    def _user_has_group_access(self, user_groups: List[str], allowed_groups: List[str]) -> bool:
-        """
-        Check if user has access to a model based on group membership.
-
-        Args:
-            user_groups: List of groups the user belongs to
-            allowed_groups: List of groups allowed to access the model
-
-        Returns:
-            True if user has access (either no restrictions or user has required group)
-        """
-        # Public Model
-        if not allowed_groups:
-            return True
-
-        # Check if user has at least one matching group
-        return len(set(user_groups).intersection(set(allowed_groups))) > 0

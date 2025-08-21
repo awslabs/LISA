@@ -87,6 +87,34 @@ def _update_container_config(
             logger.info(f"Deleted environment variables for model '{model_id}': {env_vars_to_delete}")
         logger.info(f"Updated environment variables for model '{model_id}': {env_vars}")
 
+    # Update sharedMemorySize
+    if container_config.get("sharedMemorySize") is not None:
+        model_config["containerConfig"]["sharedMemorySize"] = container_config["sharedMemorySize"]
+        logger.info(f"Updated shared memory size for model '{model_id}': {container_config['sharedMemorySize']}")
+
+    # Update health check configuration
+    health_check_updates = {}
+    if container_config.get("healthCheckCommand") is not None:
+        health_check_updates["command"] = container_config["healthCheckCommand"]
+    if container_config.get("healthCheckInterval") is not None:
+        health_check_updates["interval"] = container_config["healthCheckInterval"]
+    if container_config.get("healthCheckTimeout") is not None:
+        health_check_updates["timeout"] = container_config["healthCheckTimeout"]
+    if container_config.get("healthCheckStartPeriod") is not None:
+        health_check_updates["startPeriod"] = container_config["healthCheckStartPeriod"]
+    if container_config.get("healthCheckRetries") is not None:
+        health_check_updates["retries"] = container_config["healthCheckRetries"]
+
+    if health_check_updates:
+        # Update the health check config in model_config
+        if "healthCheckConfig" not in model_config["containerConfig"]:
+            model_config["containerConfig"]["healthCheckConfig"] = {}
+
+        for field, value in health_check_updates.items():
+            model_config["containerConfig"]["healthCheckConfig"][field] = value
+
+        logger.info(f"Updated health check configuration for model '{model_id}': {health_check_updates}")
+
     return container_metadata
 
 
@@ -240,6 +268,11 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             model_config["autoScalingConfig"]["minCapacity"] = int(minCapacity)
         if maxCapacity := asg_config.get("maxCapacity", False):
             model_config["autoScalingConfig"]["maxCapacity"] = int(maxCapacity)
+        if cooldown := asg_config.get("cooldown", False):
+            model_config["autoScalingConfig"]["cooldown"] = int(cooldown)
+        if defaultInstanceWarmup := asg_config.get("defaultInstanceWarmup", False):
+            model_config["autoScalingConfig"]["defaultInstanceWarmup"] = int(defaultInstanceWarmup)
+
         # If model is running, apply update immediately, else set metadata but don't apply until an 'enable' operation
         if model_status == ModelStatus.IN_SERVICE:
             asg_update_payload = {
@@ -251,6 +284,10 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 asg_update_payload["MaxSize"] = int(maxCapacity)
             if desiredCapacity := asg_config.get("desiredCapacity", False):
                 asg_update_payload["DesiredCapacity"] = int(desiredCapacity)
+            if cooldown:
+                asg_update_payload["DefaultCooldown"] = int(cooldown)
+            if defaultInstanceWarmup:
+                asg_update_payload["DefaultInstanceWarmup"] = int(defaultInstanceWarmup)
 
             # Start ASG update with known parameters. Because of model validations, at least one arg is guaranteed.
             autoscaling_client.update_auto_scaling_group(**asg_update_payload)
@@ -402,6 +439,9 @@ def get_ecs_resources_from_stack(stack_name: str) -> tuple[str, str, str]:
     try:
         resources = cfn_client.describe_stack_resources(StackName=stack_name)["StackResources"]
 
+        service_arn = None
+        cluster_arn = None
+
         for resource in resources:
             if resource["ResourceType"] == "AWS::ECS::Service":
                 service_arn = resource["PhysicalResourceId"]
@@ -424,14 +464,18 @@ def get_ecs_resources_from_stack(stack_name: str) -> tuple[str, str, str]:
 
 
 def create_updated_task_definition(
-    task_definition_arn: str, updated_env_vars: Dict[str, str], env_vars_to_delete: Optional[List[str]] = None
+    task_definition_arn: str,
+    updated_env_vars: Dict[str, str],
+    env_vars_to_delete: Optional[List[str]] = None,
+    updated_container_config: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Create new task definition revision with updated environment variables.
+    """Create new task definition revision with updated environment variables and container config.
 
     Args:
         task_definition_arn: ARN of the current task definition
         updated_env_vars: Environment variables to add/update from DynamoDB config
         env_vars_to_delete: List of environment variable names to delete
+        updated_container_config: Updated container configuration from DynamoDB
     """
     try:
         if env_vars_to_delete is None:
@@ -486,6 +530,42 @@ def create_updated_task_definition(
 
             # Set the new environment variables
             new_container["environment"] = [{"name": key, "value": value} for key, value in existing_env.items()]
+
+            # Update container configuration if provided
+            if updated_container_config:
+                # Update shared memory size
+                if updated_container_config.get("sharedMemorySize") is not None:
+                    # Ensure linuxParameters exists
+                    if "linuxParameters" not in new_container:
+                        new_container["linuxParameters"] = {}
+
+                    new_container["linuxParameters"]["sharedMemorySize"] = int(
+                        updated_container_config["sharedMemorySize"]
+                    )
+                    logger.info(
+                        f"Updated container shared memory size: {updated_container_config['sharedMemorySize']} MiB"
+                    )
+
+                # Update health check configuration
+                health_check_config = updated_container_config.get("healthCheckConfig")
+                if health_check_config:
+                    # Start with existing health check if it exists
+                    current_health_check = new_container.get("healthCheck", {})
+
+                    # Update individual health check fields, converting Decimal to int
+                    if health_check_config.get("command") is not None:
+                        current_health_check["command"] = health_check_config["command"]
+                    if health_check_config.get("interval") is not None:
+                        current_health_check["interval"] = int(health_check_config["interval"])
+                    if health_check_config.get("timeout") is not None:
+                        current_health_check["timeout"] = int(health_check_config["timeout"])
+                    if health_check_config.get("startPeriod") is not None:
+                        current_health_check["startPeriod"] = int(health_check_config["startPeriod"])
+                    if health_check_config.get("retries") is not None:
+                        current_health_check["retries"] = int(health_check_config["retries"])
+
+                    new_container["healthCheck"] = current_health_check
+                    logger.info(f"Updated container health check: {current_health_check}")
 
             new_task_def["containerDefinitions"].append(new_container)
 
@@ -548,8 +628,13 @@ def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         logger.info(f"Environment variables to delete: {env_vars_to_delete}")
 
-        # Create new task definition with updated environment variables
-        new_task_def_arn = create_updated_task_definition(task_definition_arn, updated_env_vars, env_vars_to_delete)
+        # Get updated container config from model config
+        updated_container_config = ddb_item["model_config"]["containerConfig"]
+
+        # Create new task definition with updated environment variables and container config
+        new_task_def_arn = create_updated_task_definition(
+            task_definition_arn, updated_env_vars, env_vars_to_delete, updated_container_config
+        )
 
         # Update ECS service to use new task definition
         update_ecs_service(cluster_arn, service_arn, new_task_def_arn)

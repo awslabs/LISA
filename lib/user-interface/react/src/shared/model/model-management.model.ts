@@ -135,6 +135,14 @@ export type ModelFeature = {
     overview: string;
 };
 
+export type IAutoScalingInstanceConfig = {
+    minCapacity?: number;
+    maxCapacity?: number;
+    desiredCapacity?: number;
+    cooldown?: number;
+    defaultInstanceWarmup?: number;
+};
+
 export type IModelUpdateRequest = {
     modelId: string;
     streaming?: boolean;
@@ -143,7 +151,7 @@ export type IModelUpdateRequest = {
     modelDescription?: string;
     allowedGroups?: string[];
     features?: ModelFeature[];
-    autoScalingInstanceConfig?: IAutoScalingConfig;
+    autoScalingInstanceConfig?: IAutoScalingInstanceConfig;
     containerConfig?: IContainerConfig;
 };
 

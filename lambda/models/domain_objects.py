@@ -122,11 +122,19 @@ class AutoScalingInstanceConfig(BaseModel):
     minCapacity: Optional[PositiveInt] = None
     maxCapacity: Optional[PositiveInt] = None
     desiredCapacity: Optional[PositiveInt] = None
+    cooldown: Optional[PositiveInt] = None
+    defaultInstanceWarmup: Optional[PositiveInt] = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
         """Validates auto-scaling instance configuration parameters."""
-        config_fields = [self.minCapacity, self.maxCapacity, self.desiredCapacity]
+        config_fields = [
+            self.minCapacity,
+            self.maxCapacity,
+            self.desiredCapacity,
+            self.cooldown,
+            self.defaultInstanceWarmup,
+        ]
         if not validate_any_fields_defined(config_fields):
             raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
         if self.desiredCapacity and self.maxCapacity and self.desiredCapacity > self.maxCapacity:
@@ -176,6 +184,11 @@ class ContainerConfigUpdatable(BaseModel):
 
     environment: Optional[Dict[str, str]] = None
     sharedMemorySize: Optional[PositiveInt] = None
+    healthCheckCommand: Optional[Union[str, List[str]]] = None
+    healthCheckInterval: Optional[PositiveInt] = None
+    healthCheckTimeout: Optional[PositiveInt] = None
+    healthCheckStartPeriod: Optional[PositiveInt] = None
+    healthCheckRetries: Optional[PositiveInt] = None
 
     @field_validator("environment")
     @classmethod

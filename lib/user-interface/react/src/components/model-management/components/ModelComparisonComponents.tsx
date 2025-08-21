@@ -38,6 +38,7 @@ import {
 import { LisaChatMessage, MessageTypes } from '../../types';
 import Message from '../../chatbot/components/Message';
 import { IChatConfiguration } from '../../../shared/model/chat.configurations.model';
+import { downloadFile } from '@/shared/util/downloader';
 
 type ModelSelectionSectionProps = {
     modelSelections: ModelSelection[];
@@ -179,8 +180,43 @@ export const ComparisonResults = memo(function ComparisonResults ({
     const handleSendGenerateRequest = () => {};
     const setUserPrompt = () => {};
 
+    const handleDownloadResults = (): void => {
+        const results = responses.map((response) => {
+            const model = models.find((m) => m.modelId === response.modelId);
+            return {
+                modelId: response.modelId,
+                modelName: model?.modelName || response.modelId,
+                response: response.response,
+                error: response.error,
+                loading: response.loading
+            };
+        });
+
+        const data = {
+            prompt: prompt,
+            configuration: chatConfiguration,
+            results: results
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `model-comparison-${timestamp}.json`;
+        const url = URL.createObjectURL(blob);
+        downloadFile(url, filename);
+    };
+
     return (
-        <Container header={<Header variant='h2'>Comparison Results</Header>}>
+        <Container header={<Header variant='h2' actions={
+            <SpaceBetween direction='horizontal' size='xs'>
+                <Button
+                    iconName='download'
+                    onClick={handleDownloadResults}
+                    disabled={responses.length === 0 || responses.some((r) => r.loading)}
+                >
+                    Download Results
+                </Button>
+            </SpaceBetween>
+        }>Comparison Results</Header>}>
             <SpaceBetween size='m'>
                 {/* Display user prompt */}
                 {prompt && (

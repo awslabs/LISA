@@ -187,61 +187,75 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 'autoScalingConfig'
             ]);
 
-            const updateRequest: any = {
-                modelId: props.selectedItems[0].modelId,
-                ...(updateFields.streaming !== undefined && { streaming: updateFields.streaming }),
-                ...(updateFields.enabled !== undefined && { enabled: updateFields.enabled }),
-                ...(updateFields.modelType !== undefined && { modelType: updateFields.modelType }),
-                ...(updateFields.modelDescription !== undefined && { modelDescription: updateFields.modelDescription }),
-                ...(updateFields.allowedGroups !== undefined && { allowedGroups: updateFields.allowedGroups }),
-                ...(updateFields.features !== undefined && { features: updateFields.features }),
-                ...(updateFields.containerConfig !== undefined && {
-                    containerConfig: {
-                        ...updateFields.containerConfig,
-                        environment: (() => {
-                            const originalEnv = props.selectedItems[0]?.containerConfig?.environment || {};
-                            const result: any = {};
-                            const currentKeys = new Set<string>();
+            // Build the update request
+            const baseRequest = { modelId: props.selectedItems[0].modelId };
 
-                            // Add/update current variables and track keys
-                            (state.form.containerConfig.environment || []).forEach(({key, value}: any) => {
-                                if (key && key.trim() !== '') {
-                                    result[key] = value;
-                                    currentKeys.add(key);
-                                }
-                            });
+            // Pick defined fields from updateFields for basic properties
+            const basicFields = _.pickBy(updateFields, (value, key) =>
+                ['streaming', 'enabled', 'modelType', 'modelDescription', 'allowedGroups', 'features'].includes(key) &&
+                value !== undefined
+            );
 
-                            // Mark deletions
-                            Object.keys(originalEnv).forEach((key) => {
-                                if (!currentKeys.has(key)) {
-                                    result[key] = 'LISA_MARKED_FOR_DELETION';
-                                }
-                            });
-                            return result;
-                        })(),
-                        ...(updateFields.containerConfig.healthCheckConfig && {
-                            healthCheckCommand: updateFields.containerConfig.healthCheckConfig.command,
-                            healthCheckInterval: updateFields.containerConfig.healthCheckConfig.interval,
-                            healthCheckTimeout: updateFields.containerConfig.healthCheckConfig.timeout,
-                            healthCheckStartPeriod: updateFields.containerConfig.healthCheckConfig.startPeriod,
-                            healthCheckRetries: updateFields.containerConfig.healthCheckConfig.retries,
-                        }),
-                        ...(updateFields.containerConfig.sharedMemorySize !== undefined && {
-                            sharedMemorySize: updateFields.containerConfig.sharedMemorySize,
-                        })
-                    }
-                }),
-                ...(updateFields.autoScalingConfig && {
-                    autoScalingInstanceConfig: {
-                        ...(updateFields.autoScalingConfig.minCapacity !== undefined && { minCapacity: updateFields.autoScalingConfig.minCapacity }),
-                        ...(updateFields.autoScalingConfig.maxCapacity !== undefined && { maxCapacity: updateFields.autoScalingConfig.maxCapacity }),
-                        ...(updateFields.autoScalingConfig.desiredCapacity !== undefined && { desiredCapacity: updateFields.autoScalingConfig.desiredCapacity }),
-                        ...(updateFields.autoScalingConfig.cooldown !== undefined && { cooldown: updateFields.autoScalingConfig.cooldown }),
-                        ...(updateFields.autoScalingConfig.defaultInstanceWarmup !== undefined && { defaultInstanceWarmup: updateFields.autoScalingConfig.defaultInstanceWarmup })
-                    }
-                })
-            };
+            const updateRequest: any = _.merge({}, baseRequest, basicFields);
 
+            // Handle containerConfig if present
+            if (updateFields.containerConfig !== undefined) {
+                const containerConfigBase = _.omit(updateFields.containerConfig, ['healthCheckConfig', 'sharedMemorySize']);
+
+                const containerConfig = _.merge({}, containerConfigBase, {
+                    environment: (() => {
+                        const originalEnv = props.selectedItems[0]?.containerConfig?.environment || {};
+                        const result: any = {};
+                        const currentKeys = new Set<string>();
+
+                        // Add/update current variables and track keys
+                        (state.form.containerConfig.environment || []).forEach(({key, value}: any) => {
+                            if (key && key.trim() !== '') {
+                                result[key] = value;
+                                currentKeys.add(key);
+                            }
+                        });
+
+                        // Mark deletions
+                        Object.keys(originalEnv).forEach((key) => {
+                            if (!currentKeys.has(key)) {
+                                result[key] = 'LISA_MARKED_FOR_DELETION';
+                            }
+                        });
+                        return result;
+                    })()
+                });
+
+                // Add health check config if present
+                if (updateFields.containerConfig.healthCheckConfig) {
+                    const healthCheckMapping = {
+                        healthCheckCommand: 'command',
+                        healthCheckInterval: 'interval',
+                        healthCheckTimeout: 'timeout',
+                        healthCheckStartPeriod: 'startPeriod',
+                        healthCheckRetries: 'retries'
+                    };
+
+                    const healthCheckFields = _.mapKeys(
+                        updateFields.containerConfig.healthCheckConfig,
+                        (value, key) => _.findKey(healthCheckMapping, (mappedKey) => mappedKey === key) || key
+                    );
+                    _.merge(containerConfig, healthCheckFields);
+                }
+
+                // Add shared memory size if present
+                if (updateFields.containerConfig.sharedMemorySize !== undefined) {
+                    containerConfig.sharedMemorySize = updateFields.containerConfig.sharedMemorySize;
+                }
+                updateRequest.containerConfig = containerConfig;
+            }
+
+            // Handle autoScalingConfig if present
+            if (updateFields.autoScalingConfig) {
+                updateRequest.autoScalingInstanceConfig = _.pickBy(updateFields.autoScalingConfig,
+                    (value) => value !== undefined
+                );
+            }
             updateModelMutation(updateRequest);
         }
     }

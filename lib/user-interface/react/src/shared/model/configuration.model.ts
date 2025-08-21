@@ -35,6 +35,7 @@ export type IEnabledComponents = {
     showPromptTemplateLibrary: boolean;
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
+    modelLibrary: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -80,6 +81,10 @@ export const enabledComponentsSchema = z.object({
     uploadRagDocs: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
     documentSummarization: z.boolean().default(true),
+    showRagLibrary: z.boolean().default(true),
+    showPromptTemplateLibrary: z.boolean().default(true),
+    mcpConnections: z.boolean().default(true),
+    modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false)
 });
 

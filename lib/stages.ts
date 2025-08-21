@@ -28,6 +28,7 @@ import {
     StageProps,
     Tags,
 } from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { AwsSolutionsChecks, NagSuppressions, NIST80053R5Checks } from 'cdk-nag';
 
@@ -117,6 +118,26 @@ class RemoveSecurityGroupAspect implements IAspect {
                 // Directly modify the CloudFormation properties to remove get attr pointing to removed sg(s)
                 node.addOverride('Properties.LaunchTemplateData.SecurityGroupIds', [this.sgId]);
             }
+        }
+    }
+}
+
+/**
+ * Removes Tags property from all AWS::Lambda::EventSourceMapping resources in a CDK application.
+ * This is required for AWS GovCloud regions which don't support Tags on EventSourceMapping resources.
+ */
+class RemoveEventSourceMappingTagsAspect implements IAspect {
+    /**
+     * Checks if the given node is an instance of CfnResource and specifically an AWS::Lambda::EventSourceMapping resource.
+     * If true, it removes the Tags property to prevent deployment failures in AWS GovCloud regions.
+     *
+     * @param {Construct} node - The CDK construct being visited.
+     */
+    public visit (node: Construct): void {
+        // Check if the node is a CloudFormation resource of type AWS::Lambda::EventSourceMapping
+        if (node instanceof lambda.CfnEventSourceMapping) {
+            // Remove Tags property for AWS GovCloud compatibility
+            node.addPropertyDeletionOverride('Tags');
         }
     }
 }
@@ -365,5 +386,11 @@ export class LisaServeApplicationStage extends Stage {
 
         // Enforce updates to EC2 launch templates
         Aspects.of(this).add(new UpdateLaunchTemplateMetadataOptions());
+
+        // Apply EventSourceMapping tags removal aspect for AWS GovCloud regions
+        // AWS GovCloud regions don't support Tags on EventSourceMapping resources
+        if (config.region.includes('gov')) {
+            Aspects.of(this).add(new RemoveEventSourceMappingTagsAspect());
+        }
     }
 }

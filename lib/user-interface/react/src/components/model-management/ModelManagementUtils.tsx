@@ -45,7 +45,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         {
             id: 'modelFeatures',
             header: 'Model Features',
-            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : 'Model doesn\'t have any special features',
+            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : '-',
         },
         {
             id: 'modelType',
@@ -55,7 +55,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         {
             id: 'modelUrl',
             header: 'URL',
-            content: (model: IModel) => model.modelUrl ? model.modelUrl : 'Model URL not defined',
+            content: (model: IModel) => model.modelUrl ? model.modelUrl : '-',
         },
         {
             id: 'streaming',
@@ -70,7 +70,17 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         {
             id: 'instanceType',
             header: 'Instance Type',
-            content: (model: IModel) => model.instanceType ?  model.instanceType : 'Instance Type not defined',
+            content: (model: IModel) => model.instanceType ?  model.instanceType : '-',
+        },
+        {
+            id: 'modelDescription',
+            header: 'Description',
+            content: (model: IModel) => model.modelDescription ? model.modelDescription : '-',
+        },
+        {
+            id: 'allowedGroups',
+            header: 'Allowed Groups',
+            content: (model: IModel) => model?.allowedGroups?.length > 0 ? `${model.allowedGroups.join(', ')}` : <em>(public)</em>,
         },
         {
             id: 'modelStatus',
@@ -89,7 +99,7 @@ export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelDescription', 'allowedGroups', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -103,6 +113,8 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'streaming', label: 'Streaming' },
             { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
             { id: 'instanceType', label: 'Instance Type' },
+            { id: 'modelDescription', label: 'Description' },
+            { id: 'allowedGroups', label: 'Allowed Groups' },
             { id: 'modelStatus', label: 'Status' },
         ],
     },

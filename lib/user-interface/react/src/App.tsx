@@ -28,6 +28,7 @@ import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import ModelLibrary from './pages/ModelLibrary';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
@@ -147,6 +148,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {config?.configuration?.enabledComponents?.modelLibrary && <Route
+                                path='model-library'
+                                element={
+                                    <PrivateRoute showConfig='modelLibrary' configs={config}>
+                                        <ModelLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
                             {config?.configuration?.enabledComponents?.showRagLibrary &&
                                 <>
                                     <Route

@@ -26,7 +26,7 @@ from typing import Any, Dict, List
 BEDROCK_KB_TYPE = "bedrock_knowledge_base"
 
 
-def is_bedrock_kb_repository(repository: Dict[str, Any]) -> bool:
+def is_bedrock_kb_repository(repository: Dict[str, Any]) -> Any:
     """Return True if the repository is a Bedrock Knowledge Base."""
     return bool(repository.get("type", "") == BEDROCK_KB_TYPE)
 

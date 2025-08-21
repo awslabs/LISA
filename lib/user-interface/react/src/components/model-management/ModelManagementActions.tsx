@@ -57,10 +57,13 @@ function ModelActions (props: ModelActionProps): ReactElement {
             </Button>
 
             {ModelActionButton(dispatch, notificationService, props)}
-            <Button variant='primary' onClick={() => {
-                props.setEdit(false);
-                props.setNewModelModelVisible(true);
-            }}>
+            <Button
+                variant='primary'
+                onClick={() => {
+                    props.setEdit(false);
+                    props.setNewModelModelVisible(true);
+                }}
+            >
                 Create Model
             </Button>
         </SpaceBetween>
@@ -128,8 +131,8 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
         items.push({
             text: 'Update',
             id: 'editModel',
-            disabled: externalModel || ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
-            disabledReason: externalModel ? 'Unable to stop a model that is not hosted in LISA' : ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
+            disabled: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status),
+            disabledReason: ![ModelStatus.InService, ModelStatus.Stopped].includes(selectedModel.status) ? 'Unable to update a model that is in a pending or failed state' : '',
         });
         items.push({
             text: 'Set Default',

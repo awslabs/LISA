@@ -34,18 +34,18 @@ export function EcsRestartWarning (props: EcsRestartWarningProps): ReactElement 
                     checked={acknowledged}
                     onChange={({ detail }) => onAcknowledge(detail.checked)}
                 >
-                    I understand that this update will cause a temporary service outage
+                    I understand that this update will cause a temporary service outage.
                 </Checkbox>
             }
         >
             <SpaceBetween size='xs'>
                 <p>
-                    The container configuration changes made will require restarting the ECS container hosting the model.
-                    This will cause a temporary outage where users will be unable to prompt the model
-                    until the container has fully restarted.
+                    Your container configuration changes require restarting the ECS container that is hosting the model. 
+                    This will cause a temporary outage for users. Users will be unable to prompt the model until the container has fully restarted, and may receive errors. 
+                    You can move forward with the restart, or cancel and make these changes later.
                 </p>
                 <p>
-                    <strong>Expected Impact:</strong> Brief service interruption during container deployment
+                    <strong>Expected Impact:</strong> Brief service interruption during container deployment.
                 </p>
             </SpaceBetween>
         </Alert>

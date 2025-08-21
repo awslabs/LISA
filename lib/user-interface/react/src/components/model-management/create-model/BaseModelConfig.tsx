@@ -62,12 +62,13 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     disabled={props.isEdit}
                 />
             </FormField>
-            <FormField label='Model ID' errorText={props.formErrors?.modelId} description='A unique identifier. This is displayed to users when selecting models.'>
+            <FormField label='Model ID' errorText={props.formErrors?.modelId} description='The unique model IDs are displayed to users in the "Select a model" drop down. We recommend using a descriptive name like "Claude3.7" or "Nova-ImageGen"'>
                 <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
                     props.setFields({ 'modelId': detail.value });
                 }} disabled={props.isEdit} placeholder='mistral-vllm'/>
             </FormField>
-            <FormField label='Model Name' errorText={props.formErrors?.modelName} description='The full model identifier, typically the repository path or file system path to the model.'>
+            <FormField label='Model Name' errorText={props.formErrors?.modelName}
+                description='The full model name is the repository path, or the third party model provider path. The path format typically will be: {ProviderPath}/{ProviderModelName}. Users do not see this value in the chat assistant user interface.'>
                 <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
                     props.setFields({ 'modelName': detail.value });
                 }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>

@@ -17,6 +17,7 @@ import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { CollectionPreferencesProps, StatusIndicator } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
+import Badge from '@cloudscape-design/components/badge';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
     [K in T]: U;
@@ -33,8 +34,8 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
     [ModelStatus.Failed]: 'error',
 };
 
-export const CARD_DEFINITIONS = {
-    header: (model: IModel) => <div>{model.modelId}</div>,
+export const createCardDefinitions = (defaultModelId?: string) => ({
+    header: (model: IModel) => <div>{model.modelId} {model.modelId === defaultModelId && <Badge>DEFAULT</Badge>}</div>,
     sections: [
         {
             id: 'modelName',
@@ -89,7 +90,10 @@ export const CARD_DEFINITIONS = {
             ),
         },
     ],
-};
+});
+
+// Keep the original export for backward compatibility
+export const CARD_DEFINITIONS = createCardDefinitions();
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 

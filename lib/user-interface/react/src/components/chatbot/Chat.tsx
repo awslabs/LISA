@@ -100,12 +100,14 @@ export default function Chat ({ sessionId }) {
             data: (state.data || []).filter((model) => (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) && model.status === ModelStatus.InService),
         })
     });
-    const {data: userPreferences} = useGetUserPreferencesQuery();
-    const { data: mcpServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true,
+    const { data: userPreferences } = useGetUserPreferencesQuery();
+    const { data: mcpServers } = useListMcpServersQuery(undefined, {
+        refetchOnMountOrArgChange: true,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
             data: (state.data?.Items || []).filter((server) => (server.status === McpServerStatus.Active)),
-        }) },);
+        })
+    },);
 
     // State management
     const [userPrompt, setUserPrompt] = useState('');
@@ -143,7 +145,7 @@ export default function Chat ({ sessionId }) {
         if (userPreferences) {
             setPreferences(userPreferences);
         } else {
-            setPreferences({...DefaultUserPreferences, user: userName});
+            setPreferences({ ...DefaultUserPreferences, user: userName });
         }
     }, [userPreferences, userName]);
 
@@ -263,7 +265,7 @@ export default function Chat ({ sessionId }) {
 
 
     const toggleToolAutoApproval = (toolName: string, enabled: boolean) => {
-        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
+        const existingMcpPrefs = preferences.preferences.mcp ?? { enabledServers: [], overrideAllApprovals: false };
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
             enabledServers: [...existingMcpPrefs.enabledServers]
@@ -289,8 +291,10 @@ export default function Chat ({ sessionId }) {
     };
 
     const updatePrefs = (mcpPrefs: McpPreferences) => {
-        const updated = {...preferences,
-            preferences: {...preferences.preferences,
+        const updated = {
+            ...preferences,
+            preferences: {
+                ...preferences.preferences,
                 mcp: {
                     ...preferences.preferences.mcp,
                     ...mcpPrefs
@@ -629,7 +633,7 @@ export default function Chat ({ sessionId }) {
                                 {JSON.stringify(toolApprovalModal.tool.args).replace('{', '').replace('}', '')}
                                 <p><strong>Do you want to allow this tool execution?</strong></p>
                             </SpaceBetween>
-                            <hr/>
+                            <hr />
                             <Checkbox
                                 onChange={({ detail }) =>
                                     toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)

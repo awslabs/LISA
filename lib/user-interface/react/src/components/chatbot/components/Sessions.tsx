@@ -17,15 +17,17 @@
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
-import { ButtonDropdown, Grid, Input, Popover } from '@cloudscape-design/components';
+import { ButtonDropdown, Grid, Input, Popover, Modal, FormField } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
     sessionApi,
     useDeleteAllSessionsForUserMutation,
-    useDeleteSessionByIdMutation, useLazyGetSessionByIdQuery,
+    useDeleteSessionByIdMutation,
+    useLazyGetSessionByIdQuery,
     useListSessionsQuery,
+    useUpdateSessionNameMutation,
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -33,8 +35,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { truncateText } from '@/shared/util/formats';
-import { fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import React from 'react';
@@ -63,17 +64,28 @@ export function Sessions ({ newSession }) {
         error: deleteUserSessionsError,
         isLoading: isDeleteUserSessionsLoading,
     }] = useDeleteAllSessionsForUserMutation();
+    const [updateSessionName, {
+        isSuccess: isUpdateSessionNameSuccess,
+        isError: isUpdateSessionNameError,
+        error: updateSessionNameError,
+        isLoading: isUpdateSessionNameLoading,
+    }] = useUpdateSessionNameMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const [searchQuery, setSearchQuery] = useState<string>('');
+
+    const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
+    const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
+    const [newSessionName, setNewSessionName] = useState<string>('');
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+
     // Filter sessions based on search query
     const filteredSessions = useMemo(() => {
         if (!searchQuery.trim()) {
             return sessions || [];
         }
         return (sessions || [])
-            .filter((session) => getDisplayableMessage(session.firstHumanMessage ?? '').toLowerCase().includes(searchQuery.toLowerCase()));
+            .filter((session) => getSessionDisplay(session).toLowerCase().includes(searchQuery.toLowerCase()));
     }, [sessions, searchQuery]);
 
     const { items } = useCollection(filteredSessions, {
@@ -116,6 +128,40 @@ export function Sessions ({ newSession }) {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
+
+    useEffect(() => {
+        if (!isUpdateSessionNameLoading && isUpdateSessionNameSuccess) {
+            notificationService.generateNotification('Successfully renamed session', 'success');
+            setRenameModalVisible(false);
+            setSessionToRename(null);
+            setNewSessionName('');
+        } else if (!isUpdateSessionNameLoading && isUpdateSessionNameError) {
+            notificationService.generateNotification(`Error renaming session: ${updateSessionNameError?.message || 'Unknown error'}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateSessionNameSuccess, isUpdateSessionNameError, updateSessionNameError, isUpdateSessionNameLoading]);
+
+    const handleRenameSession = (session: LisaChatSession) => {
+        setSessionToRename(session);
+        setNewSessionName(getSessionDisplay(session));
+        setRenameModalVisible(true);
+    };
+
+    const handleRenameConfirm = () => {
+        if (sessionToRename && newSessionName.trim()) {
+            const updatedSession = {
+                ...sessionToRename,
+                name: newSessionName.trim()
+            };
+            updateSessionName(updatedSession);
+        }
+    };
+
+    const handleRenameCancel = () => {
+        setRenameModalVisible(false);
+        setSessionToRename(null);
+        setNewSessionName('');
+    };
 
     return (
         <div className='p-9'>
@@ -199,14 +245,14 @@ export function Sessions ({ newSession }) {
                                 <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
                                     <Box color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
                                         fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}>
-                                        {truncateText(getDisplayableMessage(item.firstHumanMessage ?? ''), 40, '...')}
+                                        {getSessionDisplay(item, 40)}
                                     </Box>
                                 </Link>
                             </SpaceBetween>
                             <SpaceBetween size={'s'} alignItems={'end'}>
                                 <ButtonDropdown
                                     items={[
-
+                                        { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
                                         { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
                                         { id: 'download-session', text: 'Download Session', iconName: 'download' },
                                         { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
@@ -260,6 +306,8 @@ export function Sessions ({ newSession }) {
                                                     downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
                                                 }
                                             });
+                                        } else if (e.detail.id === 'rename-session') {
+                                            handleRenameSession(item);
                                         }
                                     }}
                                 />
@@ -268,6 +316,48 @@ export function Sessions ({ newSession }) {
                     ))}
                 </Grid>
             </div>
+
+            {/* Rename Session Modal */}
+            <Modal
+                onDismiss={handleRenameCancel}
+                visible={renameModalVisible}
+                header='Rename Session'
+                footer={
+                    <Box float='right'>
+                        <SpaceBetween direction='horizontal' size='xs'>
+                            <Button variant='link' onClick={handleRenameCancel}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant='primary'
+                                onClick={handleRenameConfirm}
+                                disabled={!newSessionName.trim() || isUpdateSessionNameLoading}
+                                loading={isUpdateSessionNameLoading}
+                            >
+                                Rename
+                            </Button>
+                        </SpaceBetween>
+                    </Box>
+                }
+            >
+                <SpaceBetween size='m'>
+                    <FormField
+                        label='Session Name'
+                        description='Enter a new name for this session'
+                    >
+                        <Input
+                            value={newSessionName}
+                            onChange={({ detail }) => setNewSessionName(detail.value)}
+                            placeholder='Enter session name...'
+                            onKeyDown={(e) => {
+                                if (e.detail.key === 'Enter' && newSessionName.trim() && !isUpdateSessionNameLoading) {
+                                    handleRenameConfirm();
+                                }
+                            }}
+                        />
+                    </FormField>
+                </SpaceBetween>
+            </Modal>
         </div>
     );
 }

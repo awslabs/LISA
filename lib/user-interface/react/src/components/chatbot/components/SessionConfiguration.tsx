@@ -33,6 +33,7 @@ import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
 
 export type SessionConfigurationProps = {
+    title?: string;
     chatConfiguration: IChatConfiguration;
     setChatConfiguration: (items: IChatConfiguration) => void;
     setVisible: (boolean) => void;
@@ -40,9 +41,11 @@ export type SessionConfigurationProps = {
     selectedModel: IModel;
     isRunning: boolean;
     systemConfig: IConfiguration;
+    modelOnly?: boolean
 };
 
 export default function SessionConfiguration ({
+    title,
     chatConfiguration,
     setChatConfiguration,
     selectedModel,
@@ -50,6 +53,7 @@ export default function SessionConfiguration ({
     visible,
     setVisible,
     systemConfig,
+    modelOnly = false
 }: SessionConfigurationProps) {
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
@@ -75,7 +79,7 @@ export default function SessionConfiguration ({
         <Modal
             onDismiss={() => setVisible(false)}
             visible={visible}
-            header={<Header variant='h1'>Session Configuration</Header>}
+            header={<Header variant='h1'>{title || 'Session Configuration'}</Header>}
             footer=''
             size='large'
         >
@@ -102,7 +106,7 @@ export default function SessionConfiguration ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !modelOnly &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -119,7 +123,7 @@ export default function SessionConfiguration ({
                                 options={oneThroughTenOptions}
                             />
                         </SpaceBetween>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !modelOnly &&
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
@@ -316,7 +320,7 @@ export default function SessionConfiguration ({
                                 }}
                             />
                         </FormField>
-                        <FormField label='Stop'
+                        {!modelOnly && <FormField label='Stop'
                             description='Up to 4 sequences where the API will stop generating further tokens.'>
                             <Container>
                                 <AttributeEditor
@@ -364,7 +368,8 @@ export default function SessionConfiguration ({
                                 />
                             </Container>
                         </FormField>
-                        <FormField
+                        }
+                        {!modelOnly && <FormField
                             label='Seed'
                             description='If specified, our system will make a best
                       effort to sample deterministically, such that
@@ -393,6 +398,7 @@ export default function SessionConfiguration ({
                                 }}
                             />
                         </FormField>
+                        }
                     </Container>}
                 {isImageModel && (
                     <Container
@@ -406,7 +412,7 @@ export default function SessionConfiguration ({
                     >
                         <FormField label='Image Size'>
                             <Select
-                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.size}}
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.imageGenerationArgs.size }}
                                 onChange={({ detail }) => {
                                     updateSessionConfiguration('imageGenerationArgs', {
                                         ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
@@ -414,7 +420,7 @@ export default function SessionConfiguration ({
                                     });
                                 }}
                                 options={[
-                                    { label: '1024x1024 (Square)', value: '1024x1024'},
+                                    { label: '1024x1024 (Square)', value: '1024x1024' },
                                     { label: '1024x1792 (Portrait)', value: '1024x1792' },
                                     { label: '1792x1024 (Landscape)', value: '1792x1024' },
                                 ]}
@@ -422,7 +428,7 @@ export default function SessionConfiguration ({
                         </FormField>
                         <FormField label='Image Quality'>
                             <Select
-                                selectedOption={{value: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality}}
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality }}
                                 onChange={({ detail }) => {
                                     updateSessionConfiguration('imageGenerationArgs', {
                                         ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
@@ -430,14 +436,14 @@ export default function SessionConfiguration ({
                                     });
                                 }}
                                 options={[
-                                    { label: 'Standard', value: 'standard'},
+                                    { label: 'Standard', value: 'standard' },
                                     { label: 'HD', value: 'hd' },
                                 ]}
                             />
                         </FormField>
                         <FormField label='Number of Images'>
                             <Select
-                                selectedOption={{value: String(chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages)}}
+                                selectedOption={{ value: String(chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages) }}
                                 onChange={({ detail }) => {
                                     updateSessionConfiguration('imageGenerationArgs', {
                                         ...chatConfiguration.sessionConfiguration.imageGenerationArgs,
@@ -446,7 +452,7 @@ export default function SessionConfiguration ({
                                 }}
                                 options={
                                     Array.from({ length: 5 }, (_, i) => i + 1).map((i) => {
-                                        return {label: String(i), value: String(i)};
+                                        return { label: String(i), value: String(i) };
                                     })
                                 }
                             />

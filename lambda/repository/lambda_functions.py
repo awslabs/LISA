@@ -28,6 +28,7 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.bedrock_kb import is_bedrock_kb_repository, retrieve_documents
 from utilities.common_functions import (
     admin_only,
     api_wrapper,
@@ -37,6 +38,7 @@ from utilities.common_functions import (
     get_username,
     is_admin,
     retry_config,
+    user_has_group_access,
 )
 from utilities.exceptions import HTTPException
 from utilities.validation import ValidationError
@@ -50,6 +52,7 @@ secrets_client = boto3.client("secretsmanager", region_name, config=retry_config
 iam_client = boto3.client("iam", region_name, config=retry_config)
 step_functions_client = boto3.client("stepfunctions", region_name, config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
+bedrock_client = boto3.client("bedrock-agent-runtime", region_name, config=retry_config)
 s3 = session.client(
     "s3",
     region_name,
@@ -250,7 +253,7 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     return [
         repo
         for repo in registered_repositories
-        if admin_override or user_has_group(user_groups, repo.get("allowedGroups", []))
+        if admin_override or user_has_group_access(user_groups, repo.get("allowedGroups", []))
     ]
 
 
@@ -264,18 +267,6 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
         List of repository status
     """
     return cast(dict, vs_repo.get_repository_status())
-
-
-def user_has_group(user_groups: List[str], allowed_groups: List[str]) -> bool:
-    """Returns if user groups has at least one intersection with allowed groups.
-
-    If allowed groups is empty this will return True.
-    """
-
-    if len(allowed_groups) > 0:
-        return len(set(user_groups).intersection(set(allowed_groups))) > 0
-    else:
-        return True
 
 
 @api_wrapper
@@ -311,13 +302,33 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     id_token = get_id_token(event)
 
-    embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
-    docs = vs.similarity_search(
-        query,
-        k=top_k,
-    )
-    doc_content = [{"Document": {"page_content": doc.page_content, "metadata": doc.metadata}} for doc in docs]
+    docs: List[Dict[str, Any]] = []
+    if is_bedrock_kb_repository(repository):
+        docs = retrieve_documents(
+            bedrock_runtime_client=bedrock_client,
+            repository=repository,
+            query=query,
+            top_k=int(top_k),
+            repository_id=repository_id,
+        )
+    else:
+        embeddings = _get_embeddings(model_name=model_name, id_token=id_token)
+        vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+        results = vs.similarity_search(
+            query,
+            k=top_k,
+        )
+        docs = [{"page_content": r.page_content, "metadata": r.metadata} for r in results]
+
+    doc_content = [
+        {
+            "Document": {
+                "page_content": doc.get("page_content", ""),
+                "metadata": doc.get("metadata", {}),
+            }
+        }
+        for doc in docs
+    ]
 
     doc_return = {"docs": doc_content}
     logger.info(f"Returning: {doc_return}")
@@ -328,7 +339,7 @@ def _ensure_repository_access(event: dict[str, Any], repository: dict[str, Any])
     """Ensures a user has access to the repository or else raises an HTTPException"""
     if is_admin(event) is False:
         user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-        if not user_has_group(user_groups, repository.get("allowedGroups", [])):
+        if not user_has_group_access(user_groups, repository.get("allowedGroups", [])):
             raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
 
@@ -486,9 +497,9 @@ def download_document(event: dict, context: dict) -> str:
     document_id = path_params.get("documentId")
 
     _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
-    doc = doc_repo.find_by_id(repository_id=repository_id, document_id=document_id)
+    doc = doc_repo.find_by_id(document_id=document_id)
 
-    source = doc.get("source")
+    source = doc.source
     bucket, key = source.replace("s3://", "").split("/", 1)
 
     url: str = s3.generate_presigned_url(

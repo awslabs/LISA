@@ -109,6 +109,7 @@ export class ConfigurationApi extends Construct {
                                 'showRagLibrary': {'BOOL': 'True'},
                                 'showPromptTemplateLibrary': {'BOOL': 'True'},
                                 'mcpConnections': {'BOOL': 'True'},
+                                'modelLibrary': {'BOOL': 'True'},
                             }},
                             'systemBanner': {'M': {
                                 'isEnabled': {'BOOL': 'False'},

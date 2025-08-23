@@ -24,6 +24,11 @@ const ragOptions = {
     editNumOfRagDocument: 'Edit number of referenced documents',
 };
 
+const libraryOptions = {
+    modelLibrary: 'Show Model Library',
+    showPromptTemplateLibrary: 'Show Prompt Template Library'
+};
+
 const inContextOptions = {
     uploadContextDocs: 'Allow document upload to context',
     documentSummarization: 'Allow Document Summarization',
@@ -36,12 +41,17 @@ const advancedOptions = {
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
-    showPromptTemplateLibrary: 'Show Prompt Template Library'
+    showPromptTemplateLibrary: 'Show Prompt Template Library',
+    enableModelComparisonUtility: 'Enable Model Comparison Utility'
 };
 
 const configurableOperations = [{
     header: 'RAG Components',
     items: ragOptions
+},
+{
+    header: 'Library Components',
+    items: libraryOptions
 },
 {
     header: 'In-Context Components',

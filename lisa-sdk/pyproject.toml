@@ -3,7 +3,7 @@ requires-python = ">=3.11"
 
 [tool.poetry]
 name = "lisapy"
-version = "5.0.0"
+version = "5.1.0"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
 authors = ["Steve Goley <sgoley@amazon.com>"]
 readme = "README.md"

@@ -38,7 +38,92 @@ sqs_client = boto3.client("sqs", region_name=os.environ["AWS_REGION"], config=re
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
 s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
 
+# Get model table for real-time feature validation
+model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
+
 executor = ThreadPoolExecutor(max_workers=10)
+
+
+def _get_current_model_config(model_id: str) -> Any:
+    """Get the current model configuration from the model table.
+
+    Parameters
+    ----------
+    model_id : str
+        The model ID to fetch configuration for.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The current model configuration, or empty dict if not found.
+    """
+    if not model_table or not model_id:
+        return {}
+
+    try:
+        response = model_table.get_item(Key={"model_id": model_id})
+        model_item = response.get("Item", {})
+        return model_item.get("model_config", {})
+    except ClientError as error:
+        logger.warning(f"Could not fetch model config for {model_id}: {error}")
+        return {}
+
+
+def _update_session_with_current_model_config(session_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Update session configuration with the most recent model configuration.
+
+    Parameters
+    ----------
+    session_config : Dict[str, Any]
+        The session configuration containing model information.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Updated configuration with current model settings.
+    """
+    if not session_config:
+        return session_config
+
+    # Extract model ID from selectedModel section
+    selected_model = session_config.get("selectedModel", {})
+
+    # Get the modelId directly
+    model_id = selected_model.get("modelId")
+    if not model_id:
+        logger.warning("No modelId found in session selectedModel")
+        return session_config
+
+    current_model_config = _get_current_model_config(model_id)
+
+    if not current_model_config:
+        logger.warning(f"Could not fetch current config for model {model_id}, using existing session config")
+        return session_config
+
+    # Create updated config with current model settings
+    updated_config = session_config.copy()
+
+    # Update the selectedModel section with current model configuration
+    if "selectedModel" not in updated_config:
+        updated_config["selectedModel"] = {}
+
+    selected_model_section = updated_config["selectedModel"]
+
+    # Update features from current model config
+    if "features" in current_model_config:
+        selected_model_section["features"] = current_model_config["features"]
+
+    # Update streaming setting
+    if "streaming" in current_model_config:
+        selected_model_section["streaming"] = current_model_config["streaming"]
+
+    # Update other model-specific settings that might have changed
+    for key in ["modelType", "modelDescription", "allowedGroups"]:
+        if key in current_model_config:
+            selected_model_section[key] = current_model_config[key]
+
+    logger.info(f"Updated session selectedModel config for model {model_id} with current model settings")
+    return updated_config
 
 
 def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
@@ -172,6 +257,19 @@ def get_session(event: dict, context: dict) -> dict:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         resp = response.get("Item", {})
 
+        # Update configuration with current model settings before returning
+        if resp and resp.get("configuration"):
+            configuration = resp.get("configuration", {})
+            # Update the selectedModel within the configuration with current model settings
+            if configuration.get("selectedModel"):
+                temp_config = {"selectedModel": configuration["selectedModel"]}
+                updated_temp_config = _update_session_with_current_model_config(temp_config)
+                configuration["selectedModel"] = updated_temp_config.get(
+                    "selectedModel", configuration["selectedModel"]
+                )
+                # Update the configuration in the response
+                resp["configuration"] = configuration
+
         # Create a list of tasks for parallel processing
         tasks = []
         for message in resp.get("history", []):
@@ -183,7 +281,7 @@ def get_session(event: dict, context: dict) -> dict:
                             tasks.append((item, s3_key))
 
         list(executor.map(_process_image, tasks))
-        return response.get("Item", {})  # type: ignore [no-any-return]
+        return resp  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
@@ -298,6 +396,15 @@ def put_session(event: dict, context: dict) -> dict:
 
         messages = body["messages"]
 
+        # Get the configuration from the request body (what the frontend sends)
+        configuration = body.get("configuration", {})
+
+        # Update the selectedModel within the configuration with current model settings
+        if configuration and configuration.get("selectedModel"):
+            temp_config = {"selectedModel": configuration["selectedModel"]}
+            updated_temp_config = _update_session_with_current_model_config(temp_config)
+            configuration["selectedModel"] = updated_temp_config.get("selectedModel", configuration["selectedModel"])
+
         # Publish event to SQS queue for metrics processing
         try:
             if "USAGE_METRICS_QUEUE_NAME" in os.environ:
@@ -333,7 +440,7 @@ def put_session(event: dict, context: dict) -> dict:
             ExpressionAttributeValues={
                 ":history": messages,
                 ":name": body.get("name", None),
-                ":configuration": body.get("configuration", None),
+                ":configuration": configuration,
                 ":startTime": datetime.now().isoformat(),
                 ":createTime": datetime.now().isoformat(),
             },

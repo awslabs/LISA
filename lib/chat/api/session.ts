@@ -118,10 +118,17 @@ export class SessionApi extends Construct {
             rootResourceId: rootResourceId,
         });
 
+        // Get model table name from SSM parameter
+        const modelTableName = StringParameter.valueForStringParameter(
+            this,
+            `${config.deploymentPrefix}/modelTableName`
+        );
+
         const env = {
             SESSIONS_TABLE_NAME: sessionTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
+            MODEL_TABLE_NAME: modelTableName,
         };
 
         const lambdaRole: IRole = createLambdaRole(
@@ -130,6 +137,15 @@ export class SessionApi extends Construct {
             'SessionApi',
             sessionTable.tableArn,
             config.roles?.LambdaExecutionRole,
+        );
+
+        // Add permissions to read from model table
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['dynamodb:GetItem'],
+                resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${modelTableName}`]
+            })
         );
 
         // If metrics stack deployment is enabled

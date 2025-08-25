@@ -58,6 +58,13 @@ export function getTableDefinition ({
             visible: true,
         },
         {
+            id: 'embeddingModelId',
+            header: 'Default Embedding Model',
+            cell: (e) => e.embeddingModelId ?? '-',
+            sortingField: 'type',
+            visible: true,
+        },
+        {
             id: 'allowedGroups',
             header: 'Allowed Groups',
             cell: (e) => e?.allowedGroups?.length > 0 ? `${e.allowedGroups.join(', ')}` : <em>(public)</em>,

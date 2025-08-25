@@ -24,7 +24,6 @@ import {
     ButtonGroup, Checkbox,
     Grid,
     PromptInput,
-    TextContent,
     Icon,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
@@ -153,7 +152,6 @@ export default function Chat ({ sessionId }) {
     const {
         session,
         setSession,
-        internalSessionId,
         setInternalSessionId,
         loadingSession,
         chatConfiguration,
@@ -750,14 +748,7 @@ export default function Chat ({ sessionId }) {
                                 }
                             />
                             <SpaceBetween direction='vertical' size='xs'>
-                                <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
-                                    <Box float='left' variant='div'>
-                                        <TextContent>
-                                            <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
-                                                Session ID: {internalSessionId}
-                                            </div>
-                                        </TextContent>
-                                    </Box>
+                                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
                                     {enabledServers && enabledServers.length > 0 ? (
                                         <Box>
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools

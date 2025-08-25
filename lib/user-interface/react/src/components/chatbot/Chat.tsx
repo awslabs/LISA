@@ -725,7 +725,7 @@ export default function Chat ({ sessionId }) {
                             <PromptInput
                                 value={userPrompt}
                                 actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
-                                actionButtonIconName={shouldShowStopButton ? 'status-stopped' : 'send'}
+                                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
                                 maxRows={4}
                                 minRows={2}
                                 spellcheck={true}

@@ -112,7 +112,6 @@ export function Sessions ({ newSession }) {
     useEffect(() => {
         if (!isDeleteByIdLoading && isDeleteByIdSuccess) {
             notificationService.generateNotification('Successfully deleted session', 'success');
-            navigate('ai-assistant');
             newSession();
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
             notificationService.generateNotification(`Error deleting session: ${deleteByIdError.data?.message ?? deleteByIdError.data}`, 'error');

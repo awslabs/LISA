@@ -300,21 +300,45 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 </SpaceBetween>
             )}
             {message?.type === 'human' && (
-                <ChatBubble
-                    ariaLabel={currentUser}
-                    type='outgoing'
-                    avatar={
-                        <Avatar
-                            ariaLabel={currentUser}
-                            tooltipText={currentUser}
-                            initials={currentUser?.charAt(0).toUpperCase()}
+                <SpaceBetween direction='horizontal' size='m'>
+                    <ChatBubble
+                        ariaLabel={currentUser}
+                        type='outgoing'
+                        avatar={
+                            <Avatar
+                                ariaLabel={currentUser}
+                                tooltipText={currentUser}
+                                initials={currentUser?.charAt(0).toUpperCase()}
+                            />
+                        }
+                    >
+                        <div style={{ maxWidth: '60em' }}>
+                            {renderContent(message.type, message.content)}
+                        </div>
+                    </ChatBubble>
+                    <ButtonGroup
+                            onItemClick={({ detail }) =>
+                                ['copy'].includes(detail.id) &&
+                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                            }
+                            ariaLabel='Chat actions'
+                            dropdownExpandToViewport
+                            items={[
+                                {
+                                    type: 'icon-button',
+                                    id: 'copy',
+                                    iconName: 'copy',
+                                    text: 'Copy Input',
+                                    popoverFeedback: (
+                                        <StatusIndicator type='success'>
+                                            Input copied
+                                        </StatusIndicator>
+                                    )
+                                }
+                            ]}
+                            variant='icon'
                         />
-                    }
-                >
-                    <div style={{ maxWidth: '60em' }}>
-                        {renderContent(message.type, message.content)}
-                    </div>
-                </ChatBubble>
+                </SpaceBetween>
             )}
             {message?.type === MessageTypes.TOOL && (
                 <ExpandableSection variant='footer' headerText={`🔨Called Tool - ${message?.metadata?.toolName} 🔨`}>

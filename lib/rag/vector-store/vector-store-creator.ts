@@ -56,16 +56,16 @@ export class VectorStoreCreatorStack extends Construct {
             ],
         });
 
-        // Additional CloudFormation permissions that might be needed
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: [
-                'cloudformation:ValidateTemplate',
-                'cloudformation:EstimateTemplateCost',
-                'cloudformation:ListStacks',
-                'cloudformation:ListStackResources'
+                's3:*',
+                'ec2:*',
+                'rds:*',
+                'opensearch:*',
+                'ssm:*',
             ],
-            resources: ['*'],
-        }));
+            resources: ['*']
+        }));// Additional CloudFormation permissions that might be needed
 
         const lambdaExecutionRole = iam.Role.fromRoleArn(
             this,
@@ -75,19 +75,6 @@ export class VectorStoreCreatorStack extends Construct {
                 `${config.deploymentPrefix}/roles/${createCdkId([config.deploymentName, Roles.RAG_LAMBDA_EXECUTION_ROLE])}`,
             ),
         );
-
-        // Add least-privilege permissions for resources created by dynamic stacks
-        // S3: CDK asset bucket access
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject', 's3:ListBucket'],
-            resources: ['*'],
-        }));
-
-        // SSM: comprehensive read/write permissions for deployment parameters
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: ['ssm:GetParameter', 'ssm:GetParameters', 'ssm:GetParametersByPath', 'ssm:PutParameter'],
-            resources: ['*'],
-        }));
 
         // IAM: service-linked role creation for required services
         cdkRole.addToPolicy(new iam.PolicyStatement({
@@ -160,104 +147,6 @@ export class VectorStoreCreatorStack extends Construct {
                     ]
                 }
             }
-        }));
-
-        // EC2: VPC networking for Lambdas/DB and SG updates
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'ec2:DescribeVpcs',
-                'ec2:DescribeSubnets',
-                'ec2:DescribeSecurityGroups',
-                'ec2:DescribeRouteTables',
-                'ec2:DescribeInternetGateways',
-                'ec2:DescribeNatGateways',
-                'ec2:DescribeVpcEndpoints',
-                'ec2:DescribeVpcPeeringConnections',
-                'ec2:DescribeNetworkAcls',
-                'ec2:DescribeAvailabilityZones',
-                'ec2:DescribeAccountAttributes',
-                'ec2:DescribeVpnGateways',
-                'ec2:DescribeVpnConnections',
-                'ec2:DescribeVpcAttribute',
-                'ec2:DescribeVpcClassicLink',
-                'ec2:DescribeVpcClassicLinkDnsSupport',
-                'ec2:CreateNetworkInterface',
-                'ec2:DeleteNetworkInterface',
-                'ec2:DescribeNetworkInterfaces',
-                'ec2:AuthorizeSecurityGroupIngress',
-                'ec2:RevokeSecurityGroupIngress'
-            ],
-            resources: ['*'],
-        }));
-
-        // RDS: lifecycle for PGVector DBs
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'rds:CreateDBInstance',
-                'rds:DeleteDBInstance',
-                'rds:ModifyDBInstance',
-                'rds:DescribeDBInstances',
-                'rds:AddTagsToResource',
-                'rds:ListTagsForResource',
-                'rds:RemoveTagsFromResource'
-            ],
-            resources: ['*'],
-        }));
-
-        // Secrets Manager: credentials for databases
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'secretsmanager:CreateSecret',
-                'secretsmanager:PutSecretValue',
-                'secretsmanager:GetSecretValue',
-                'secretsmanager:DescribeSecret',
-                'secretsmanager:TagResource',
-                'secretsmanager:UntagResource',
-                'secretsmanager:DeleteSecret'
-            ],
-            resources: ['*'],
-        }));
-
-        // EventBridge: rules for pipelines
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'events:PutRule',
-                'events:PutTargets',
-                'events:DeleteRule',
-                'events:RemoveTargets',
-                'events:ListTargetsByRule'
-            ],
-            resources: ['*'],
-        }));
-
-        // Lambda: helper/custom resource functions created by dynamic stacks
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'lambda:CreateFunction',
-                'lambda:UpdateFunctionCode',
-                'lambda:UpdateFunctionConfiguration',
-                'lambda:DeleteFunction',
-                'lambda:AddPermission',
-                'lambda:RemovePermission',
-                'lambda:GetFunction',
-                'lambda:TagResource',
-                'lambda:UntagResource'
-            ],
-            resources: ['*'],
-        }));
-
-        // OpenSearch: restrict to domains created by LISA naming
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'es:CreateDomain',
-                'es:DeleteDomain',
-                'es:DescribeDomain',
-                'es:DescribeDomains',
-                'es:UpdateDomainConfig',
-                'es:AddTags',
-                'es:RemoveTags'
-            ],
-            resources: [`arn:${config.partition}:es:${config.region}:${config.accountNumber}:domain/lisa-rag-*`],
         }));
 
         const stateMachineRole = new iam.Role(this, createCdkId([config.deploymentName, config.deploymentStage, 'StateMachineRole']), {

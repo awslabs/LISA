@@ -142,6 +142,7 @@ export class VectorStoreCreatorStack extends Construct {
             conditions: {
                 StringEquals: {
                     'iam:PassedToService': [
+                        'cloudformation.amazonaws.com',
                         'lambda.amazonaws.com',
                         'events.amazonaws.com'
                     ]

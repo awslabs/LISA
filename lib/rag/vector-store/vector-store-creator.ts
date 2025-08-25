@@ -90,7 +90,22 @@ export class VectorStoreCreatorStack extends Construct {
         // SSM: read/write app-owned parameters
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: ['ssm:GetParameter', 'ssm:GetParameters', 'ssm:GetParametersByPath', 'ssm:PutParameter'],
-            resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*`],
+            resources: [
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*/*`
+            ],
+        }));
+
+        // SSM: read security group and other infrastructure parameters
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['ssm:GetParameter', 'ssm:GetParameters'],
+            resources: [
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/pgvectorSecurityGroupId`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/openSearchSecurityGroupId`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/layerVersion/*`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/roles/*`
+            ],
         }));
 
         // IAM: service-linked role creation for required services

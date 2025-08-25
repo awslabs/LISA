@@ -90,18 +90,7 @@ export class VectorStoreCreatorStack extends Construct {
         // SSM: comprehensive read/write permissions for deployment parameters
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: ['ssm:GetParameter', 'ssm:GetParameters', 'ssm:GetParametersByPath', 'ssm:PutParameter'],
-            resources: [
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*/*`,
-                // Explicit permissions for specific parameters that might have different naming patterns
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/pgvectorSecurityGroupId`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/openSearchSecurityGroupId`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/pgvectorSecurityGroup`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/opensearchSecurityGroup`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/layerVersion/*`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/roles/*`
-            ],
+            resources: ['*'],
         }));
 
         // IAM: service-linked role creation for required services

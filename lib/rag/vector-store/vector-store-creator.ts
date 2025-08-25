@@ -56,6 +56,17 @@ export class VectorStoreCreatorStack extends Construct {
             ],
         });
 
+        // Additional CloudFormation permissions that might be needed
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                'cloudformation:ValidateTemplate',
+                'cloudformation:EstimateTemplateCost',
+                'cloudformation:ListStacks',
+                'cloudformation:ListStackResources'
+            ],
+            resources: ['*'],
+        }));
+
         const lambdaExecutionRole = iam.Role.fromRoleArn(
             this,
             `${Roles.RAG_LAMBDA_EXECUTION_ROLE}-VectorStore`,
@@ -103,7 +114,11 @@ export class VectorStoreCreatorStack extends Construct {
                 'iam:PutRolePolicy',
                 'iam:DeleteRolePolicy',
                 'iam:TagRole',
-                'iam:UntagRole'
+                'iam:UntagRole',
+                'iam:GetRole',
+                'iam:GetRolePolicy',
+                'iam:ListRolePolicies',
+                'iam:ListAttachedRolePolicies'
             ],
             resources: ['*'],
         }));
@@ -126,6 +141,14 @@ export class VectorStoreCreatorStack extends Construct {
                 'ec2:DescribeVpcs',
                 'ec2:DescribeSubnets',
                 'ec2:DescribeSecurityGroups',
+                'ec2:DescribeRouteTables',
+                'ec2:DescribeInternetGateways',
+                'ec2:DescribeNatGateways',
+                'ec2:DescribeVpcEndpoints',
+                'ec2:DescribeVpcPeeringConnections',
+                'ec2:DescribeNetworkAcls',
+                'ec2:DescribeAvailabilityZones',
+                'ec2:DescribeAccountAttributes',
                 'ec2:CreateNetworkInterface',
                 'ec2:DeleteNetworkInterface',
                 'ec2:DescribeNetworkInterfaces',

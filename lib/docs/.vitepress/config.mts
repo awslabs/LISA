@@ -75,6 +75,7 @@ const navLinks = [
     items: [
       { text: 'LISA Chat UI', link: '/user/chat' },
       { text: 'Document Library Management', link: '/user/document-library' },
+      { text: 'Model Library', link: '/user/model-library' },
       { text: 'Breaking Changes', link: '/user/breaking-changes' },
       { text: 'Change Log', link: 'https://github.com/awslabs/LISA/releases' },
     ],

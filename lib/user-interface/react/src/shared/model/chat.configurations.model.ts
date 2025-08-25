@@ -79,7 +79,7 @@ export const baseConfig: IChatConfiguration = {
             presence_penalty: null,
             temperature: null,
             seed: null,
-            stop: ['\nUser:', '\n User:', 'User:', 'User'],
+            stop: [],
         },
         imageGenerationArgs: {
             size: '1024x1024',

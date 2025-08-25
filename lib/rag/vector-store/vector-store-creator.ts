@@ -102,9 +102,9 @@ export class VectorStoreCreatorStack extends Construct {
                 'iam:GetRolePolicy',
                 'iam:ListRolePolicies',
                 'iam:ListAttachedRolePolicies',
-                'iam:GetRolePolicy',
                 'iam:ListRoleTags',
-                'iam:UpdateAssumeRolePolicy'
+                'iam:UpdateAssumeRolePolicy',
+                'iam:ListRoles'
             ],
             resources: ['*'],
         }));

@@ -77,14 +77,10 @@ export class VectorStoreCreatorStack extends Construct {
         );
 
         // Add least-privilege permissions for resources created by dynamic stacks
-        // S3: limit to CDK asset buckets
+        // S3: CDK asset bucket access
         cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
-            resources: [`arn:${config.partition}:s3:::cdk-*/*`],
-        }));
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: ['s3:ListBucket'],
-            resources: [`arn:${config.partition}:s3:::cdk-*`],
+            actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject', 's3:ListBucket'],
+            resources: ['*'],
         }));
 
         // SSM: comprehensive read/write permissions for deployment parameters

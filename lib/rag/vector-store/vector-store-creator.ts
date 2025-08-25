@@ -87,22 +87,18 @@ export class VectorStoreCreatorStack extends Construct {
             resources: [`arn:${config.partition}:s3:::cdk-*`],
         }));
 
-        // SSM: read/write app-owned parameters
+        // SSM: comprehensive read/write permissions for deployment parameters
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: ['ssm:GetParameter', 'ssm:GetParameters', 'ssm:GetParametersByPath', 'ssm:PutParameter'],
             resources: [
                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*`,
                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*`,
-                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*/*`
-            ],
-        }));
-
-        // SSM: read security group and other infrastructure parameters
-        cdkRole.addToPolicy(new iam.PolicyStatement({
-            actions: ['ssm:GetParameter', 'ssm:GetParameters'],
-            resources: [
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/*/*/*`,
+                // Explicit permissions for specific parameters that might have different naming patterns
                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/pgvectorSecurityGroupId`,
                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/openSearchSecurityGroupId`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/pgvectorSecurityGroup`,
+                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/opensearchSecurityGroup`,
                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/layerVersion/*`,
                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/${config.deploymentPrefix}/roles/*`
             ],
@@ -133,7 +129,10 @@ export class VectorStoreCreatorStack extends Construct {
                 'iam:GetRole',
                 'iam:GetRolePolicy',
                 'iam:ListRolePolicies',
-                'iam:ListAttachedRolePolicies'
+                'iam:ListAttachedRolePolicies',
+                'iam:GetRolePolicy',
+                'iam:ListRoleTags',
+                'iam:UpdateAssumeRolePolicy'
             ],
             resources: ['*'],
         }));
@@ -164,6 +163,11 @@ export class VectorStoreCreatorStack extends Construct {
                 'ec2:DescribeNetworkAcls',
                 'ec2:DescribeAvailabilityZones',
                 'ec2:DescribeAccountAttributes',
+                'ec2:DescribeVpnGateways',
+                'ec2:DescribeVpnConnections',
+                'ec2:DescribeVpcAttribute',
+                'ec2:DescribeVpcClassicLink',
+                'ec2:DescribeVpcClassicLinkDnsSupport',
                 'ec2:CreateNetworkInterface',
                 'ec2:DeleteNetworkInterface',
                 'ec2:DescribeNetworkInterfaces',

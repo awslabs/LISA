@@ -423,10 +423,10 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (bottomRef) {
-            bottomRef?.current.scrollIntoView({ behavior: 'smooth' });
+        if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [session.history.length]);
+    }, [session.history.length, isStreaming, isRunning, generateResponse]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -723,7 +723,7 @@ export default function Chat ({ sessionId }) {
                             <PromptInput
                                 value={userPrompt}
                                 actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
-                                actionButtonIconName={shouldShowStopButton ? 'status-stopped' : 'send'}
+                                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
                                 maxRows={4}
                                 minRows={2}
                                 spellcheck={true}

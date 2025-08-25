@@ -317,27 +317,27 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         </div>
                     </ChatBubble>
                     <ButtonGroup
-                            onItemClick={({ detail }) =>
-                                ['copy'].includes(detail.id) &&
+                        onItemClick={({ detail }) =>
+                            ['copy'].includes(detail.id) &&
                                 navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                        }
+                        ariaLabel='Chat actions'
+                        dropdownExpandToViewport
+                        items={[
+                            {
+                                type: 'icon-button',
+                                id: 'copy',
+                                iconName: 'copy',
+                                text: 'Copy Input',
+                                popoverFeedback: (
+                                    <StatusIndicator type='success'>
+                                        Input copied
+                                    </StatusIndicator>
+                                )
                             }
-                            ariaLabel='Chat actions'
-                            dropdownExpandToViewport
-                            items={[
-                                {
-                                    type: 'icon-button',
-                                    id: 'copy',
-                                    iconName: 'copy',
-                                    text: 'Copy Input',
-                                    popoverFeedback: (
-                                        <StatusIndicator type='success'>
-                                            Input copied
-                                        </StatusIndicator>
-                                    )
-                                }
-                            ]}
-                            variant='icon'
-                        />
+                        ]}
+                        variant='icon'
+                    />
                 </SpaceBetween>
             )}
             {message?.type === MessageTypes.TOOL && (

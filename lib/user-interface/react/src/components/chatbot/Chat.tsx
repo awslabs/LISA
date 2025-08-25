@@ -425,10 +425,10 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (bottomRef) {
-            bottomRef?.current.scrollIntoView({ behavior: 'smooth' });
+        if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [session.history.length]);
+    }, [session.history.length, isStreaming, isRunning, generateResponse]);
 
     // Reset tool call counter when session changes
     useEffect(() => {

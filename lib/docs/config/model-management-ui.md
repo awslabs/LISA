@@ -6,7 +6,7 @@ LISA's Model Management UI allows Administrators to configure models for use wit
 
 
 ## Updating Models
- 
+
 ### Overview
 
 Through LISA's Model Management UI, Administrators can update the configuration of running models, to include their underlying infrastructure, without requiring a complete redeployment. Updates are processed through the `UpdateModel` state machine.
@@ -145,5 +145,5 @@ Updates are processed through a multi-step state machine:
 
 1. **Check Model Status**: Ensure model is in an updatable state
 2. **Review Configuration**: Validate all parameters against AWS limits
-3. **Check State Machine Execution**: Check the recent executions of the `UpdateModel` state machine for any failures 
+3. **Check State Machine Execution**: Check the recent executions of the `UpdateModel` state machine for any failures
 4. **Monitor Logs**: Check CloudWatch logs for any detailed error information

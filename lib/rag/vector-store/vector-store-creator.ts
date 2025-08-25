@@ -121,6 +121,34 @@ export class VectorStoreCreatorStack extends Construct {
             ],
             resources: ['*'],
         }));
+
+        // IAM: assume CDK bootstrap roles for deployment
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['iam:AssumeRole'],
+            resources: [
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*-deploy-role-${config.accountNumber}-${config.region}`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-hnb659fds-deploy-role-${config.accountNumber}-${config.region}`
+            ],
+        }));
+
+        // IAM: additional permissions for CDK bootstrap operations
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                'iam:GetRole',
+                'iam:ListRoles',
+                'iam:ListRoleTags',
+                'iam:GetRolePolicy',
+                'iam:ListRolePolicies',
+                'iam:ListAttachedRolePolicies'
+            ],
+            resources: [
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*-deploy-role-*`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*-file-publishing-role-*`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*-image-publishing-role-*`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*-lookup-role-*`
+            ],
+        }));
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: ['iam:PassRole'],
             resources: ['*'],

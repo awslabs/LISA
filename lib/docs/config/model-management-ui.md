@@ -14,7 +14,7 @@ Through LISA's Model Management UI, Administrators can update the configuration 
 ### Update Considerations
 
 > [!WARNING]
-> Updates to a LISA-hosted model's Container Configuration require a container restart in order to pick up the newly generated task definition. **This will result in a temporary outage**. Administrators must acknowldge this risk on the final step of the update wizard in order to submit the request.
+> Updates to a LISA-hosted model's Container Configuration require a container restart in order to pick up the newly generated task definition. **This will result in a temporary outage**. Administrators must acknowledge this risk on the final step of the update wizard in order to submit the request.
 
 Models undergoing updating will not be selectable from the Chat UI. Users with existing sessions to the model being updated should expect to see errors returned when trying to prompt the model mid-update.
 

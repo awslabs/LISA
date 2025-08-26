@@ -205,7 +205,9 @@ def _map_session(session: dict) -> Dict[str, Any]:
         "firstHumanMessage": _find_first_human_message(session),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
-        "lastUpdated": session.get("lastUpdated", session.get("startTime", None)),  # Fallback to startTime for backward compatibility
+        "lastUpdated": session.get(
+            "lastUpdated", session.get("startTime", None)
+        ),  # Fallback to startTime for backward compatibility
     }
 
 

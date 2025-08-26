@@ -54,7 +54,7 @@ const groupSessionsByTime = (sessions: LisaChatSession[]) => {
         'Older': [] as LisaChatSession[]
     };
 
-    sessions.forEach(session => {
+    sessions.forEach((session) => {
         // Use lastUpdated if available, otherwise fallback to startTime for backward compatibility
         const lastUpdated = session.lastUpdated || session.startTime;
         const sessionDate = new Date(lastUpdated);
@@ -76,7 +76,7 @@ const groupSessionsByTime = (sessions: LisaChatSession[]) => {
     return groups;
 };
 
-export function Sessions({ newSession }) {
+export function Sessions ({ newSession }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -269,14 +269,14 @@ export function Sessions({ newSession }) {
                         if (sessions.length === 0) return null;
 
                         return (
-                            <div key={timeGroup} className="mb-6">
-                                <Header variant="h3" className="mb-3">
+                            <div key={timeGroup}>
+                                <Header variant='h4'>
                                     {timeGroup} ({sessions.length})
                                 </Header>
-                                <SpaceBetween size="s">
+                                <SpaceBetween size='s'>
                                     {sessions.map((item) => (
-                                        <div key={item.sessionId} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                                            <div className="flex-1">
+                                        <div key={item.sessionId} className='flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50'>
+                                            <div className='flex-1'>
                                                 <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
                                                     <Box
                                                         color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}

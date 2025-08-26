@@ -43,38 +43,7 @@ import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
-// Utility function to group sessions by time periods
-const groupSessionsByTime = (sessions: LisaChatSession[]) => {
-    const now = new Date();
-    const groups = {
-        'Last Day': [] as LisaChatSession[],
-        'Last 7 Days': [] as LisaChatSession[],
-        'Last Month': [] as LisaChatSession[],
-        'Last 3 Months': [] as LisaChatSession[],
-        'Older': [] as LisaChatSession[]
-    };
 
-    sessions.forEach((session) => {
-        // Use lastUpdated if available, otherwise fallback to startTime for backward compatibility
-        const lastUpdated = session.lastUpdated || session.startTime;
-        const sessionDate = new Date(lastUpdated);
-        const diffInDays = (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24);
-
-        if (diffInDays <= 1) {
-            groups['Last Day'].push(session);
-        } else if (diffInDays <= 7) {
-            groups['Last 7 Days'].push(session);
-        } else if (diffInDays <= 30) {
-            groups['Last Month'].push(session);
-        } else if (diffInDays <= 90) {
-            groups['Last 3 Months'].push(session);
-        } else {
-            groups['Older'].push(session);
-        }
-    });
-
-    return groups;
-};
 
 export function Sessions({ newSession }) {
     const dispatch = useAppDispatch();
@@ -121,7 +90,47 @@ export function Sessions({ newSession }) {
             .filter((session) => getSessionDisplay(session).toLowerCase().includes(searchQuery.toLowerCase()));
     }, [sessions, searchQuery]);
 
-    // Sessions are now grouped by time periods instead of using collection sorting
+    // Group and sort sessions by time periods
+    const groupedSessions = useMemo(() => {
+        const now = new Date();
+        const groups = {
+            'Last Day': [] as LisaChatSession[],
+            'Last 7 Days': [] as LisaChatSession[],
+            'Last Month': [] as LisaChatSession[],
+            'Last 3 Months': [] as LisaChatSession[],
+            'Older': [] as LisaChatSession[]
+        };
+
+        filteredSessions.forEach((session) => {
+            // Use lastUpdated if available, otherwise fallback to startTime for backward compatibility
+            const lastUpdated = session.lastUpdated || session.startTime;
+            const sessionDate = new Date(lastUpdated);
+            const diffInDays = (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24);
+
+            if (diffInDays <= 1) {
+                groups['Last Day'].push(session);
+            } else if (diffInDays <= 7) {
+                groups['Last 7 Days'].push(session);
+            } else if (diffInDays <= 30) {
+                groups['Last Month'].push(session);
+            } else if (diffInDays <= 90) {
+                groups['Last 3 Months'].push(session);
+            } else {
+                groups['Older'].push(session);
+            }
+        });
+
+        // Sort sessions within each group by lastUpdated (most recent first)
+        Object.keys(groups).forEach(key => {
+            groups[key as keyof typeof groups].sort((a, b) => {
+                const aTime = new Date(a.lastUpdated || a.startTime).getTime();
+                const bTime = new Date(b.lastUpdated || b.startTime).getTime();
+                return bTime - aTime; // Descending order (newest first)
+            });
+        });
+
+        return groups;
+    }, [filteredSessions]);
 
     useEffect(() => {
         if (!auth.isLoading && auth.isAuthenticated) {
@@ -262,7 +271,6 @@ export function Sessions({ newSession }) {
             </SpaceBetween>
             <SpaceBetween size='l' className='pt-5'>
                 {(() => {
-                    const groupedSessions = groupSessionsByTime(filteredSessions);
                     const timeGroups = Object.entries(groupedSessions);
 
                     return timeGroups.map(([timeGroup, sessions]) => {

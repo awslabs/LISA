@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Send Internal PR Created Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
-        uses: rtCamp/action-slack-notify@v2
+        uses: rtCamp/action-slack-notify@4e5fb42d249be6a40e8ac1e7cdefc3e00b9f43c9 # v2.3.0
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_TITLE: 'PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
@@ -25,7 +25,7 @@ jobs:
           SLACK_MESSAGE: 'PR Created ${{ github.event.pull_request.html_url }}'
       - name: Send Mission Solution PR Created Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
-        uses: rtCamp/action-slack-notify@v2
+        uses: rtCamp/action-slack-notify@4e5fb42d249be6a40e8ac1e7cdefc3e00b9f43c9 # v2.3.0
         env:
           SLACK_WEBHOOK: ${{ secrets.MISSION_SOLUTION_PR_WEBHOOK }}
           SLACK_TITLE: '${{github.event.repository.name}} PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
@@ -37,9 +37,9 @@ jobs:
     needs: [send_starting_slack_notification]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Use Node.js 20.x
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
           node-version: 20.x
       - name: Install dependencies
@@ -53,9 +53,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [send_starting_slack_notification]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     - name: Set up Python 3.11
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
       with:
         python-version: "3.11"
     - name: Install dependencies
@@ -71,20 +71,20 @@ jobs:
       needs: [send_starting_slack_notification]
       runs-on: ubuntu-latest
       steps:
-        - uses: actions/checkout@v4
+        - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         - name: Set up Python 3.11
-          uses: actions/setup-python@v3
+          uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
           with:
             python-version: '3.11'
         - name: Use Node.js 20.x
-          uses: actions/setup-node@v3
+          uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
           with:
             node-version: 20.x
         - name: Install CDK dependencies
           working-directory: ./
           run: |
             npm ci
-        - uses: pre-commit/action@v3.0.1
+        - uses: pre-commit/action@2c7b3805fd54ace2c5b12058fcda3ca19dd5a03a # v3.0.1
   send_final_slack_notification:
     name: Send Final Slack Notification
     needs: [cdk-build, backend-build, pre-commit]
@@ -92,7 +92,7 @@ jobs:
     if: always()
     steps:
       - name: Send GitHub Action trigger data to Slack workflow
-        uses: rtCamp/action-slack-notify@v2
+        uses: rtCamp/action-slack-notify@4e5fb42d249be6a40e8ac1e7cdefc3e00b9f43c9 # v2.3.0
         if: github.event_name != 'pull_request'
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}

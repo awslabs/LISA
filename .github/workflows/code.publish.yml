@@ -14,9 +14,9 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       # Setup .npmrc file to publish to GitHub Packages
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
@@ -32,7 +32,7 @@ jobs:
     if: always()
     steps:
       - name: Send Notification that package has published
-        uses: rtCamp/action-slack-notify@v2
+        uses: rtCamp/action-slack-notify@4e5fb42d249be6a40e8ac1e7cdefc3e00b9f43c9 # v2.3.0
         env:
           SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}

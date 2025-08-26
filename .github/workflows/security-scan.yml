@@ -1,0 +1,78 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    - cron: '30 2 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  vulnerability-scan:
+    name: Vulnerability Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b9ceecfd3 # v0.24.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@eb055d739abdc2e8de2e5f4ba1a8b246daa779aa # v3.26.0
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  license-scan:
+    name: License Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        
+      - name: Set up Python 3.11
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: "3.11"
+          
+      - name: Install pip-licenses
+        run: |
+          pip install pip-licenses
+          
+      - name: Check Python licenses
+        run: |
+          pip install -r requirements-dev.txt
+          pip-licenses --format=json --output-file=python-licenses.json
+          
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: 20.x
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Check NPM licenses
+        run: |
+          npx license-checker --json --out npm-licenses.json || true
+          
+      - name: Upload license reports
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: license-reports
+          path: |
+            python-licenses.json
+            npm-licenses.json
+          retention-days: 30

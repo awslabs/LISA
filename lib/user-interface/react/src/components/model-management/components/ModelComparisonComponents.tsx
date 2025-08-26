@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, memo } from 'react';
+import { ReactElement, memo, useCallback, useRef } from 'react';
 import {
     Box,
     SpaceBetween,
@@ -49,7 +49,7 @@ type ModelSelectionSectionProps = {
     getAvailableModelsForSelection: (id: string) => SelectProps.Option[];
 };
 
-export const ModelSelectionSection = memo(function ModelSelectionSection ({
+export const ModelSelectionSection = memo(function ModelSelectionSection({
     modelSelections,
     onAddModel,
     onRemoveModel,
@@ -110,15 +110,68 @@ type PromptInputSectionProps = {
     prompt: string;
     onPromptChange: (value: string) => void;
     onCompare: () => void;
+    onStopComparison: () => void;
     canCompare: boolean;
+    shouldShowStopButton: boolean;
 };
 
-export const PromptInputSection = memo(function PromptInputSection ({
+export const PromptInputSection = memo(function PromptInputSection({
     prompt,
     onPromptChange,
     onCompare,
-    canCompare
+    onStopComparison,
+    canCompare,
+    shouldShowStopButton
 }: PromptInputSectionProps): ReactElement {
+    // Ref to track if we're processing a keyboard event
+    const isKeyboardEventRef = useRef(false);
+
+    // Handle stop functionality similar to Chat.tsx
+    const handleStop = useCallback(() => {
+        onStopComparison();
+    }, [onStopComparison]);
+
+    // Custom action handler that only allows stop on button clicks
+    const handleAction = useCallback(() => {
+        // If this is a keyboard event, don't process it here (it's handled in handleKeyPress)
+        if (isKeyboardEventRef.current) {
+            return;
+        }
+
+        if (shouldShowStopButton) {
+            // Only allow stop action on button clicks (not keyboard events)
+            handleStop();
+        } else {
+            // Normal send functionality - allow both button clicks and Enter key
+            if (prompt.length > 0 && canCompare) {
+                onCompare();
+            }
+        }
+    }, [shouldShowStopButton, handleStop, prompt.length, canCompare, onCompare]);
+
+    // Handle Enter key press
+    const handleKeyPress = useCallback((event: any) => {
+        if (event.detail.key === 'Enter' && !event.detail.shiftKey) {
+            event.preventDefault();
+            isKeyboardEventRef.current = true;
+
+            // Handle the action directly for keyboard events
+            if (shouldShowStopButton) {
+                // Do nothing for stop button when Enter is pressed
+            } else {
+                // Normal send functionality for Enter key
+                if (prompt.length > 0 && canCompare) {
+                    onCompare();
+                }
+            }
+
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                isKeyboardEventRef.current = false;
+            }, 100);
+        }
+    }, [shouldShowStopButton, prompt.length, canCompare, onCompare]);
+
     return (
         <SpaceBetween size='s'>
             <Box variant='h3'>Prompt</Box>
@@ -126,10 +179,14 @@ export const PromptInputSection = memo(function PromptInputSection ({
                 value={prompt}
                 onChange={({ detail }) => onPromptChange(detail.value)}
                 placeholder={PLACEHOLDERS.PROMPT_INPUT}
-                actionButtonIconName='send'
-                actionButtonAriaLabel={ARIA_LABELS.SEND_PROMPT}
-                onAction={onCompare}
-                actionButtonDisabled={!canCompare}
+                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
+                actionButtonAriaLabel={shouldShowStopButton ? 'Stop comparison' : ARIA_LABELS.SEND_PROMPT}
+                onAction={handleAction}
+                onKeyDown={handleKeyPress}
+                maxRows={4}
+                minRows={2}
+                spellcheck={true}
+                disabled={!canCompare && !shouldShowStopButton}
             />
         </SpaceBetween>
     );
@@ -146,7 +203,7 @@ type ComparisonResultsProps = {
     setChatConfiguration: (config: IChatConfiguration) => void;
 };
 
-export const ComparisonResults = memo(function ComparisonResults ({
+export const ComparisonResults = memo(function ComparisonResults({
     prompt,
     responses,
     models,
@@ -177,8 +234,8 @@ export const ComparisonResults = memo(function ComparisonResults ({
     });
 
     // Dummy functions for Message component (not used in comparison context)
-    const handleSendGenerateRequest = () => {};
-    const setUserPrompt = () => {};
+    const handleSendGenerateRequest = () => { };
+    const setUserPrompt = () => { };
 
     const handleDownloadResults = (): void => {
         const results = responses.map((response) => {
@@ -207,15 +264,13 @@ export const ComparisonResults = memo(function ComparisonResults ({
 
     return (
         <Container header={<Header variant='h2' actions={
-            <SpaceBetween direction='horizontal' size='xs'>
-                <Button
-                    iconName='download'
-                    onClick={handleDownloadResults}
-                    disabled={responses.length === 0 || responses.some((r) => r.loading)}
-                >
-                    Download Results
-                </Button>
-            </SpaceBetween>
+            <Button
+                iconName='download'
+                onClick={handleDownloadResults}
+                disabled={responses.length === 0 || responses.some((r) => r.loading || r.streaming)}
+            >
+                Download Results
+            </Button>
         }>Comparison Results</Header>}>
             <SpaceBetween size='m'>
                 {/* Display user prompt */}
@@ -247,7 +302,7 @@ export const ComparisonResults = memo(function ComparisonResults ({
                                     isRunning={response.loading}
                                     callingToolName=''
                                     showMetadata={false}
-                                    isStreaming={false}
+                                    isStreaming={response.streaming}
                                     markdownDisplay={markdownDisplay}
                                     setChatConfiguration={setChatConfiguration}
                                     handleSendGenerateRequest={handleSendGenerateRequest}

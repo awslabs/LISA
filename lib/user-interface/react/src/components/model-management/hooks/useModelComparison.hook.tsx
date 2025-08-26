@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { ChatOpenAI } from '@langchain/openai';
 import { SelectProps } from '@cloudscape-design/components';
@@ -29,6 +29,7 @@ export type ComparisonResponse = {
     modelId: string;
     response: string;
     loading: boolean;
+    streaming: boolean;
     error?: string;
 };
 
@@ -49,6 +50,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
     const [prompt, setPrompt] = useState<string>('');
     const [responses, setResponses] = useState<ComparisonResponse[]>([]);
     const [isComparing, setIsComparing] = useState<boolean>(false);
+    const stopRequested = useRef(false);
 
     // Filter models to only show InService text generation models - memoized for performance
     const availableModels = useMemo(() =>
@@ -65,7 +67,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
     [models]
     );
 
-    const createOpenAiClient = useCallback((modelId: string) => {
+    const createOpenAiClient = useCallback((modelId: string, streaming: boolean = false) => {
         const model = models.find((m) => m.modelId === modelId);
         if (!model) return null;
 
@@ -79,7 +81,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
             configuration: {
                 baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,
             },
-            streaming: sessionConfig.streaming || false,
+            streaming,
             maxTokens: sessionConfig.max_tokens || MODEL_COMPARISON_CONFIG.DEFAULT_MAX_TOKENS,
             temperature: modelArgs.temperature,
             topP: modelArgs.top_p,
@@ -93,8 +95,14 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         return new ChatOpenAI(modelConfig);
     }, [models, auth, chatConfig]);
 
-    const generateModelResponse = async (modelId: string, userPrompt: string): Promise<string> => {
-        const llmClient = createOpenAiClient(modelId);
+    const generateModelResponse = async (
+        modelId: string, 
+        userPrompt: string, 
+        updateCallback: (modelId: string, update: Partial<ComparisonResponse>) => void
+    ): Promise<void> => {
+        const useStreaming = chatConfig.sessionConfiguration.streaming || false;
+        const llmClient = createOpenAiClient(modelId, useStreaming);
+        
         if (!llmClient) {
             throw new Error(`Failed to create client for model ${modelId}`);
         }
@@ -113,8 +121,59 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         ];
 
         try {
-            const response = await llmClient.invoke(messages);
-            return response.content as string;
+            if (useStreaming) {
+                // Set streaming state
+                updateCallback(modelId, { streaming: true });
+                
+                const stream = await llmClient.stream(messages);
+                const responseChunks: string[] = [];
+
+                for await (const chunk of stream) {
+                    // Check if stop was requested
+                    if (stopRequested.current) {
+                        updateCallback(modelId, {
+                            response: responseChunks.join(''),
+                            loading: false,
+                            streaming: false
+                        });
+                        return;
+                    }
+
+                    const content = chunk.content as string;
+                    responseChunks.push(content);
+                    
+                    // Update response with accumulated content
+                    updateCallback(modelId, {
+                        response: responseChunks.join(''),
+                        streaming: true
+                    });
+                }
+
+                // Finalize streaming
+                updateCallback(modelId, {
+                    response: responseChunks.join(''),
+                    loading: false,
+                    streaming: false
+                });
+            } else {
+                // Check if stop was requested before non-streaming call
+                if (stopRequested.current) {
+                    updateCallback(modelId, {
+                        response: '',
+                        loading: false,
+                        streaming: false
+                    });
+                    return;
+                }
+
+                // Non-streaming response
+                const response = await llmClient.invoke(messages);
+                updateCallback(modelId, {
+                    response: response.content as string,
+                    loading: false,
+                    streaming: false
+                });
+            }
         } catch (error) {
             console.error(`Error generating response for model ${modelId}:`, error);
             throw new Error(`Failed to generate response: ${error.message || 'Unknown error'}`);
@@ -167,35 +226,43 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         }
 
         setIsComparing(true);
+        stopRequested.current = false;
         const initialResponses = selectedModels.map((model) => ({
             modelId: model.value!,
             response: '',
-            loading: true
+            loading: true,
+            streaming: false
         }));
         setResponses(initialResponses);
 
-        // Make real API calls to all selected models
-        try {
-            const responsePromises = selectedModels.map(async (model) => {
-                try {
-                    const response = await generateModelResponse(model.value!, prompt);
-                    return {
-                        modelId: model.value!,
-                        response,
-                        loading: false
-                    };
-                } catch (error) {
-                    return {
-                        modelId: model.value!,
-                        response: '',
-                        loading: false,
-                        error: error.message || MESSAGES.FAILED_TO_GET_RESPONSE
-                    };
-                }
-            });
+        // Update individual responses as they complete
+        const updateResponse = (modelId: string, update: Partial<ComparisonResponse>) => {
+            setResponses((prevResponses) =>
+                prevResponses.map((response) =>
+                    response.modelId === modelId
+                        ? { ...response, ...update }
+                        : response
+                )
+            );
+        };
 
-            const modelResponses = await Promise.all(responsePromises);
-            setResponses(modelResponses);
+        // Make API calls to all selected models and update each as it completes
+        const responsePromises = selectedModels.map(async (model) => {
+            try {
+                await generateModelResponse(model.value!, prompt, updateResponse);
+            } catch (error) {
+                updateResponse(model.value!, {
+                    response: '',
+                    loading: false,
+                    streaming: false,
+                    error: error.message || MESSAGES.FAILED_TO_GET_RESPONSE
+                });
+            }
+        });
+
+        // Wait for all requests to complete before setting isComparing to false
+        try {
+            await Promise.all(responsePromises);
         } catch (error) {
             console.error('Error in model comparison:', error);
             notificationService.generateNotification(
@@ -204,18 +271,25 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
                 undefined,
                 error.message ? <p>{error.message}</p> : undefined
             );
-
-            const errorResponses = selectedModels.map((model) => ({
-                modelId: model.value!,
-                response: '',
-                loading: false,
-                error: MESSAGES.FAILED_TO_GET_RESPONSE
-            }));
-            setResponses(errorResponses);
         } finally {
             setIsComparing(false);
         }
     };
+
+    const stopComparison = useCallback(() => {
+        stopRequested.current = true;
+        setIsComparing(false);
+        notificationService.generateNotification('Model comparison stopped by user', 'info');
+        
+        // Update any still-loading responses to stopped state
+        setResponses((prevResponses) =>
+            prevResponses.map((response) =>
+                response.loading || response.streaming
+                    ? { ...response, loading: false, streaming: false }
+                    : response
+            )
+        );
+    }, [notificationService]);
 
     const resetComparison = useCallback(() => {
         setModelSelections([
@@ -225,6 +299,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         setPrompt('');
         setResponses([]);
         setIsComparing(false);
+        stopRequested.current = false;
     }, []);
 
     // Memoize expensive calculations
@@ -238,6 +313,9 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
     [selectedModelsCount, isComparing]
     );
 
+    // Determine if we should show stop button - simplified like Chat.tsx
+    const shouldShowStopButton = isComparing;
+
     return {
         // State
         modelSelections,
@@ -246,6 +324,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         isComparing,
         availableModels,
         canCompare,
+        shouldShowStopButton,
 
         // Actions
         setPrompt,
@@ -254,6 +333,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         updateModelSelection,
         getAvailableModelsForSelection,
         handleCompare,
+        stopComparison,
         resetComparison
     };
 };

@@ -8,6 +8,10 @@ PORT="8080"
 # Generate Prisma client at runtime to ensure it's available
 echo "Generating Prisma client..."
 cd src && prisma generate
+cd ..
+
+# Set PYTHONPATH to include the src directory so Python can find the generated Prisma client
+export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
 
 # Update LiteLLM config that was already copied from config.yaml with runtime-deployed models.
 # Depends on SSM Parameter for registered models.

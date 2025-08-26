@@ -5,6 +5,10 @@ set -e
 HOST="0.0.0.0"
 PORT="8080"
 
+# Generate Prisma client at runtime to ensure it's available
+echo "Generating Prisma client..."
+cd src && prisma generate
+
 # Update LiteLLM config that was already copied from config.yaml with runtime-deployed models.
 # Depends on SSM Parameter for registered models.
 echo "Configuring and starting LiteLLM"

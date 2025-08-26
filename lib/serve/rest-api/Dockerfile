@@ -18,18 +18,15 @@ WORKDIR /app
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Copy LiteLLM config directly to container, it will be updated at runtime
-# with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify
-# the filename unless you modify it in the entrypoint.sh file too.
-RUN echo "$LITELLM_CONFIG" > litellm_config.yaml
-
 # Copy the source code into the container
 COPY src/ ./src
 
 COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
 
-# Generate the prisma binary
-RUN prisma generate
+# Copy LiteLLM config directly to container, it will be updated at runtime
+# with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify
+# the filename unless you modify it in the entrypoint.sh file too.
+RUN echo "$LITELLM_CONFIG" > litellm_config.yaml
 
 # Make entrypoint.sh executable
 RUN chmod +x src/entrypoint.sh

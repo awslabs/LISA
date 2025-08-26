@@ -101,6 +101,7 @@ export type LisaChatSession = {
     sessionId: string;
     userId: string;
     startTime: string;
+    lastUpdated?: string;  // Optional for backward compatibility
     history: LisaChatMessage[];
     name?: string;
     firstHumanMessage?: MessageContent;

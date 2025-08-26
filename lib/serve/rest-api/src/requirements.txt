@@ -1,6 +1,6 @@
 aioboto3==12.3.0
 aiobotocore==2.11.2
-aiohttp==3.11.10
+aiohttp==3.12.14
 boto3==1.34.34
 click==8.1.7
 cryptography==44.0.1

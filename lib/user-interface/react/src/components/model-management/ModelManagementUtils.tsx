@@ -17,6 +17,7 @@ import { IModel, ModelStatus } from '../../shared/model/model-management.model';
 import { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { CollectionPreferencesProps, StatusIndicator } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
+import Badge from '@cloudscape-design/components/badge';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
     [K in T]: U;
@@ -33,8 +34,8 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
     [ModelStatus.Failed]: 'error',
 };
 
-export const CARD_DEFINITIONS = {
-    header: (model: IModel) => <div>{model.modelId}</div>,
+export const createCardDefinitions = (defaultModelId?: string) => ({
+    header: (model: IModel) => <div>{model.modelId} {model.modelId === defaultModelId && <Badge>DEFAULT</Badge>}</div>,
     sections: [
         {
             id: 'modelName',
@@ -44,7 +45,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'modelFeatures',
             header: 'Model Features',
-            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : 'Model doesn\'t have any special features',
+            content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : '-',
         },
         {
             id: 'modelType',
@@ -54,7 +55,7 @@ export const CARD_DEFINITIONS = {
         {
             id: 'modelUrl',
             header: 'URL',
-            content: (model: IModel) => model.modelUrl ? model.modelUrl : 'Model URL not defined',
+            content: (model: IModel) => model.modelUrl ? model.modelUrl : '-',
         },
         {
             id: 'streaming',
@@ -69,7 +70,17 @@ export const CARD_DEFINITIONS = {
         {
             id: 'instanceType',
             header: 'Instance Type',
-            content: (model: IModel) => model.instanceType ?  model.instanceType : 'Instance Type not defined',
+            content: (model: IModel) => model.instanceType ?  model.instanceType : '-',
+        },
+        {
+            id: 'modelDescription',
+            header: 'Description',
+            content: (model: IModel) => model.modelDescription ? model.modelDescription : '-',
+        },
+        {
+            id: 'allowedGroups',
+            header: 'Allowed Groups',
+            content: (model: IModel) => model?.allowedGroups?.length > 0 ? `${model.allowedGroups.join(', ')}` : <em>(public)</em>,
         },
         {
             id: 'modelStatus',
@@ -79,13 +90,16 @@ export const CARD_DEFINITIONS = {
             ),
         },
     ],
-};
+});
+
+// Keep the original export for backward compatibility
+export const CARD_DEFINITIONS = createCardDefinitions();
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelDescription', 'allowedGroups', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -99,6 +113,8 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'streaming', label: 'Streaming' },
             { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
             { id: 'instanceType', label: 'Instance Type' },
+            { id: 'modelDescription', label: 'Description' },
+            { id: 'allowedGroups', label: 'Allowed Groups' },
             { id: 'modelStatus', label: 'Status' },
         ],
     },

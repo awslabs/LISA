@@ -1,13 +1,2 @@
-@tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-div > pre > code {
-  word-wrap: break-word;
-  white-space: pre-line;
-}
-
-ol {
-  list-style: decimal;
-  padding-left: 2rem;
-}

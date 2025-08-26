@@ -20,16 +20,20 @@ import boto3
 from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore
+from repository.vector_store_repo import VectorStoreRepository
+from utilities.bedrock_kb import delete_document_from_kb, is_bedrock_kb_repository
 from utilities.common_functions import retry_config
 
 from .lambda_functions import DocumentIngestionService, RagDocumentRepository
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
+vs_repo = VectorStoreRepository()
 
 logger = logging.getLogger(__name__)
 
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
+bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION"], config=retry_config)
 rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
@@ -42,7 +46,16 @@ def pipeline_delete(job: IngestionJob) -> None:
 
         if rag_document:
             # Actually remove from vector store
-            remove_document_from_vectorstore(rag_document)
+            repository = vs_repo.find_repository_by_id(job.repository_id)
+            if is_bedrock_kb_repository(repository):
+                delete_document_from_kb(
+                    s3_client=s3,
+                    bedrock_agent_client=bedrock_agent,
+                    job=job,
+                    repository=repository,
+                )
+            else:
+                remove_document_from_vectorstore(rag_document)
 
             # Remove from DDB
             rag_document_repository.delete_by_id(rag_document.document_id)

@@ -63,6 +63,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
     }, []);
 
     const libraryItems = [
+        ...(configs?.configuration.enabledComponents?.modelLibrary ? [{
+            id: 'model-library',
+            type: 'button',
+            variant: 'link',
+            text: 'Model Library',
+            disableUtilityCollapse: false,
+            external: false,
+            href: '/model-library',
+        } as ButtonDropdownProps.Item] : []),
         ...(configs?.configuration.enabledComponents?.showRagLibrary ? [{
             id: 'document-library',
             type: 'button',

@@ -125,6 +125,17 @@ export class DeleteStoreStateMachine extends Construct {
             resultPath: '$.updateDynamoDbResult',
         });
 
+        const handleCleanupBedrockKnowledgeBase = new Choice(this, 'BedrockKnowledgeBase')
+            .when(sfn.Condition.and(sfn.Condition.stringEquals('$.ddbResult.Item.config.M.type.S', 'bedrock_knowledge_base'),
+                sfn.Condition.isNull('$.stackName')), deleteDynamoDbEntry)
+            .otherwise(deleteStack);
+
+        const getRepoFromDdb = new tasks.DynamoGetItem(this, 'GetRepoFromDdb', {
+            table: ragVectorStoreTable,
+            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
+            resultPath: '$.ddbResult',
+        }).next(handleCleanupBedrockKnowledgeBase);
+
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
             runtime: getDefaultRuntime(),
@@ -138,6 +149,11 @@ export class DeleteStoreStateMachine extends Construct {
             role: executionRole,
         });
 
+        // Allow the Step Functions role to invoke the cleanup lambda
+        if (role) {
+            cleanupDocsFunc.grantInvoke(role);
+        }
+
         const hasMoreDocs = new Choice(this, 'HasMoreDocs')
             .when(Condition.isNotNull('$.lastEvaluated'), new LambdaInvoke(this, 'CleanupRepositoryDocsRetry', {
                 lambdaFunction: cleanupDocsFunc,
@@ -148,7 +164,7 @@ export class DeleteStoreStateMachine extends Construct {
                 }),
                 outputPath: OUTPUT_PATH,
             }))
-            .otherwise(deleteStack);
+            .otherwise(getRepoFromDdb);
 
         const cleanupDocs = new LambdaInvoke(this, 'CleanupRepositoryDocs', {
             lambdaFunction: cleanupDocsFunc,
@@ -161,7 +177,7 @@ export class DeleteStoreStateMachine extends Construct {
 
         const shouldSkipCleanup = new Choice(this, 'ShouldSkipCleanup')
             .when(Condition.and(Condition.isPresent('$.skipDocumentRemoval'), Condition.booleanEquals('$.skipDocumentRemoval', true)),
-                deleteStack)
+                handleCleanupBedrockKnowledgeBase)
             .otherwise(cleanupDocs.next(hasMoreDocs));
 
         deleteStack.next(checkStackStatus.addCatch(deleteDynamoDbEntry, {

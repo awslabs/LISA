@@ -17,7 +17,7 @@
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
 import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
-import { ReactElement, useEffect, useMemo } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
 import { ContainerConfig } from './ContainerConfig';
@@ -31,6 +31,7 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { getDefaults } from '#root/lib/schema/zodUtil';
+import { EcsRestartWarning } from '../EcsRestartWarning';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -64,6 +65,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
+    // ECS restart warning state
+    const [ecsRestartAcknowledged, setEcsRestartAcknowledged] = useState(false);
+
     const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(ModelRequestSchema, {
         validateAll: false as boolean,
         touched: {},
@@ -78,7 +82,38 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         ...state.form,
         containerConfig: (state.form.lisaHostedModel ? ({
             ...state.form.containerConfig,
-            environment: state.form.containerConfig.environment?.reduce((r,{key,value}) => (r[key] = value,r), {})
+            environment: (() => {
+                if (props.isEdit) {
+                    // For edit mode, include DELETE markers for removed environment variables
+                    const originalEnv = props.selectedItems[0]?.containerConfig?.environment || {};
+                    const result: any = {};
+                    const currentKeys = new Set<string>();
+
+                    // Add/update current variables and track keys
+                    (state.form.containerConfig.environment || []).forEach(({key, value}: any) => {
+                        if (key && key.trim() !== '') {
+                            result[key] = value;
+                            currentKeys.add(key);
+                        }
+                    });
+
+                    // Mark deletions for review modal
+                    Object.keys(originalEnv).forEach((key) => {
+                        if (!currentKeys.has(key)) {
+                            result[key] = 'LISA_MARKED_FOR_DELETION';
+                        }
+                    });
+                    return result;
+                } else {
+                    // For create mode, just convert array to object
+                    return state.form.containerConfig.environment?.reduce((r: any,{key,value}: any) => {
+                        if (key && key.trim() !== '') {
+                            r[key] = value;
+                        }
+                        return r;
+                    }, {});
+                }
+            })()
         }) : null),
         loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
         autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
@@ -99,6 +134,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }, ModifyMethod.Set);
         resetCreate();
         resetUpdate();
+        setEcsRestartAcknowledged(false);
     }
 
     const changesDiff = useMemo(() => {
@@ -110,26 +146,117 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, props.isEdit]);
 
+    // Check if ECS restart is required
+    const requiresEcsRestart = useMemo(() => {
+        if (!props.isEdit || !props.selectedItems[0]) return false;
+
+        const isLisaHosted = Boolean(props.selectedItems[0].containerConfig);
+        const hasContainerChanges = (changesDiff as any)?.containerConfig !== undefined;
+
+        return isLisaHosted && hasContainerChanges;
+    }, [props.isEdit, props.selectedItems, changesDiff]);
+
+    useEffect(() => {
+        if (requiresEcsRestart) {
+            setEcsRestartAcknowledged(false);
+        }
+    }, [requiresEcsRestart]);
+
     function handleSubmit () {
+        // Check if ECS restart acknowledgment is required but not provided
+        if (requiresEcsRestart && !ecsRestartAcknowledged) {
+            return; // Don't proceed with submission
+        }
+
         delete toSubmit.lisaHostedModel;
         if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
             resetCreate();
             createModelMutation(toSubmit);
         } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
-            // pick only the values we care about
+            // pick only the values we care about for update
             resetUpdate();
-            updateModelMutation(_.mapKeys(_.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
+            const updateFields: any = _.pick({...changesDiff, modelId: props.selectedItems[0].modelId}, [
                 'modelId',
                 'streaming',
                 'enabled',
                 'modelType',
-                'autoScalingConfig.minCapacity',
-                'autoScalingConfig.maxCapacity',
-                'autoScalingConfig.desiredCapacity'
-            ]), (value: any, key: string) => {
-                if (key === 'autoScalingConfig') return 'autoScalingInstanceConfig';
-                return key;
-            }));
+                'modelDescription',
+                'allowedGroups',
+                'features',
+                'containerConfig',
+                'autoScalingConfig'
+            ]);
+
+            // Build the update request
+            const baseRequest = { modelId: props.selectedItems[0].modelId };
+
+            // Pick defined fields from updateFields for basic properties
+            const basicFields = _.pickBy(updateFields, (value, key) =>
+                ['streaming', 'enabled', 'modelType', 'modelDescription', 'allowedGroups', 'features'].includes(key) &&
+                value !== undefined
+            );
+
+            const updateRequest: any = _.merge({}, baseRequest, basicFields);
+
+            // Handle containerConfig if present
+            if (updateFields.containerConfig !== undefined) {
+                const containerConfigBase = _.omit(updateFields.containerConfig, ['healthCheckConfig', 'sharedMemorySize']);
+
+                const containerConfig = _.merge({}, containerConfigBase, {
+                    environment: (() => {
+                        const originalEnv = props.selectedItems[0]?.containerConfig?.environment || {};
+                        const result: any = {};
+                        const currentKeys = new Set<string>();
+
+                        // Add/update current variables and track keys
+                        (state.form.containerConfig.environment || []).forEach(({key, value}: any) => {
+                            if (key && key.trim() !== '') {
+                                result[key] = value;
+                                currentKeys.add(key);
+                            }
+                        });
+
+                        // Mark deletions
+                        Object.keys(originalEnv).forEach((key) => {
+                            if (!currentKeys.has(key)) {
+                                result[key] = 'LISA_MARKED_FOR_DELETION';
+                            }
+                        });
+                        return result;
+                    })()
+                });
+
+                // Add health check config if present
+                if (updateFields.containerConfig.healthCheckConfig) {
+                    const healthCheckMapping = {
+                        healthCheckCommand: 'command',
+                        healthCheckInterval: 'interval',
+                        healthCheckTimeout: 'timeout',
+                        healthCheckStartPeriod: 'startPeriod',
+                        healthCheckRetries: 'retries'
+                    };
+
+                    const healthCheckFields = _.mapKeys(
+                        updateFields.containerConfig.healthCheckConfig,
+                        (value, key) => _.findKey(healthCheckMapping, (mappedKey) => mappedKey === key) || key
+                    );
+                    _.merge(containerConfig, healthCheckFields);
+                }
+
+                // Add shared memory size if present
+                if (updateFields.containerConfig.sharedMemorySize !== undefined) {
+                    containerConfig.sharedMemorySize = updateFields.containerConfig.sharedMemorySize;
+                }
+                updateRequest.containerConfig = containerConfig;
+            }
+
+            // Handle autoScalingConfig if present
+            if (updateFields.autoScalingConfig) {
+                updateRequest.autoScalingInstanceConfig = _.pickBy(updateFields.autoScalingConfig,
+                    (value) => value !== undefined
+                );
+            }
+            updateModelMutation(updateRequest);
         }
     }
 
@@ -150,6 +277,15 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
                     },
                     lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
+                }
+            });
+        } else {
+            // For new models, default to Third Party (lisaHostedModel = false)
+            setState({
+                ...state,
+                form: {
+                    ...state.form,
+                    lisaHostedModel: false
                 }
             });
         }
@@ -180,21 +316,24 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     const reviewError = normalizeError('Model', isCreateError ? createError : isUpdateError ? updateError : undefined);
 
-    const steps = [
+    const allSteps = [
         {
             title: 'Base Model Configuration',
             description: 'Define your model\'s configuration settings using these forms.',
             content: (
                 <BaseModelConfig item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            onEdit: true
+            onEdit: true,
+            forExternalModel: true
         },
         {
             title: 'Container Configuration',
             content: (
-                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            isOptional: true
+            isOptional: true,
+            onEdit: state.form.lisaHostedModel,
+            forExternalModel: false
         },
         {
             title: 'Auto Scaling Configuration',
@@ -203,23 +342,54 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             ),
             isOptional: true,
             onEdit: state.form.lisaHostedModel,
+            forExternalModel: false
         },
         {
             title: 'Load Balancer Configuration',
             content: (
-                <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} />
+                <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            isOptional: true
+            isOptional: true,
+            onEdit: state.form.lisaHostedModel,
+            forExternalModel: false
         },
         {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${props.isEdit ? 'changes' : ''} prior to submitting.`,
             content: (
-                <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
+                <div>
+                    <ReviewChanges jsonDiff={changesDiff} error={reviewError} />
+                    {requiresEcsRestart && (
+                        <div style={{ marginTop: '1rem' }}>
+                            <EcsRestartWarning
+                                acknowledged={ecsRestartAcknowledged}
+                                onAcknowledge={setEcsRestartAcknowledged}
+                            />
+                        </div>
+                    )}
+                </div>
             ),
-            onEdit: state.form.lisaHostedModel
+            onEdit: true,
+            forExternalModel: true
         }
-    ].filter((step) => props.isEdit ? step.onEdit : true);
+    ];
+
+    const steps = allSteps.filter((step) => {
+        if (props.isEdit) {
+            // For edit mode, use the same logic as create mode
+            if (!state.form.lisaHostedModel) {
+                return step.forExternalModel;
+            } else {
+                return true; // Show all steps for LISA hosted models
+            }
+        } else {
+            if (!state.form.lisaHostedModel) {
+                return step.forExternalModel;
+            } else {
+                return true; // Show all steps for LISA hosted models
+            }
+        }
+    });
 
 
     return (

@@ -205,6 +205,7 @@ def _map_session(session: dict) -> Dict[str, Any]:
         "firstHumanMessage": _find_first_human_message(session),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
+        "lastUpdated": session.get("lastUpdated", session.get("startTime", None)),  # Fallback to startTime for backward compatibility
     }
 
 
@@ -370,9 +371,9 @@ def rename_session(event: dict, context: dict) -> dict:
 
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
-            UpdateExpression="SET #name = :name",
-            ExpressionAttributeNames={"#name": "name"},
-            ExpressionAttributeValues={":name": body.get("name")},
+            UpdateExpression="SET #name = :name, #lastUpdated = :lastUpdated",
+            ExpressionAttributeNames={"#name": "name", "#lastUpdated": "lastUpdated"},
+            ExpressionAttributeValues={":name": body.get("name"), ":lastUpdated": datetime.now().isoformat()},
         )
         return {"statusCode": 200, "body": json.dumps({"message": "Session name updated successfully"})}
     except ValueError as e:
@@ -429,13 +430,14 @@ def put_session(event: dict, context: dict) -> dict:
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
-            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime)",
+            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), #lastUpdated = :lastUpdated",
             ExpressionAttributeNames={
                 "#history": "history",
                 "#name": "name",
                 "#configuration": "configuration",
                 "#startTime": "startTime",
                 "#createTime": "createTime",
+                "#lastUpdated": "lastUpdated",
             },
             ExpressionAttributeValues={
                 ":history": messages,
@@ -443,6 +445,7 @@ def put_session(event: dict, context: dict) -> dict:
                 ":configuration": configuration,
                 ":startTime": datetime.now().isoformat(),
                 ":createTime": datetime.now().isoformat(),
+                ":lastUpdated": datetime.now().isoformat(),
             },
             ReturnValues="UPDATED_NEW",
         )

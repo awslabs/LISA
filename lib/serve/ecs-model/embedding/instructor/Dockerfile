@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.11
+ARG BASE_IMAGE=public.ecr.aws/sam/build-python3.11
 FROM ${BASE_IMAGE}
 
 #### POINT TO NEW PYPI CONFIG

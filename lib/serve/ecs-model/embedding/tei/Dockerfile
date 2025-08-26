@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ghcr.io/huggingface/text-embeddings-inference:1.2.3
+ARG BASE_IMAGE=public.ecr.aws/sam/build-python3.11
 FROM ${BASE_IMAGE}
 
 ##### DOWNLOAD MOUNTPOINTS S3

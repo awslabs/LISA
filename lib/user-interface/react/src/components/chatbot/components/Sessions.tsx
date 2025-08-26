@@ -45,7 +45,7 @@ import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
 
 
-export function Sessions({ newSession }) {
+export function Sessions ({ newSession }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -121,7 +121,7 @@ export function Sessions({ newSession }) {
         });
 
         // Sort sessions within each group by lastUpdated (most recent first)
-        Object.keys(groups).forEach(key => {
+        Object.keys(groups).forEach((key) => {
             groups[key as keyof typeof groups].sort((a, b) => {
                 const aTime = new Date(a.lastUpdated || a.startTime).getTime();
                 const bTime = new Date(b.lastUpdated || b.startTime).getTime();

@@ -27,17 +27,17 @@ import {
     SelectProps,
     PromptInput
 } from '@cloudscape-design/components';
-import { IModel } from '../../../shared/model/model-management.model';
-import { ComparisonResponse, ModelSelection } from '../hooks/useModelComparison.hook';
+import { IModel } from '@/shared/model/model-management.model';
+import { ComparisonResponse, ModelSelection } from '@/components/model-management/hooks/useModelComparison.hook';
 import {
     MODEL_COMPARISON_CONFIG,
     UI_CONFIG,
     PLACEHOLDERS,
     ARIA_LABELS
 } from '../config/modelComparison.config';
-import { LisaChatMessage, MessageTypes } from '../../types';
-import Message from '../../chatbot/components/Message';
-import { IChatConfiguration } from '../../../shared/model/chat.configurations.model';
+import { LisaChatMessage, MessageTypes } from '@/components/types';
+import Message from '@/components/chatbot/components/Message';
+import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 
 type ModelSelectionSectionProps = {

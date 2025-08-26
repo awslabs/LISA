@@ -17,7 +17,7 @@
 import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
+import { Badge, ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -50,7 +50,7 @@ type MessageProps = {
     chatConfiguration: IChatConfiguration;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName }: MessageProps) {
+export default function Message({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -131,7 +131,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         remarkPlugins={[remarkBreaks]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={{
-                            code ({ className, children, ...props }: any) {
+                            code({ className, children, ...props }: any) {
                                 const match = /language-(\w+)/.exec(className || '');
                                 const codeString = String(children).replace(/\n$/, '');
 
@@ -193,13 +193,13 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                     </code>
                                 );
                             },
-                            ul ({ ...props }: any) {
+                            ul({ ...props }: any) {
                                 return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
                             },
-                            ol ({ ...props }: any) {
+                            ol({ ...props }: any) {
                                 return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
                             },
-                            li ({ ...props }: any) {
+                            li({ ...props }: any) {
                                 return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
                             },
                         }}
@@ -268,9 +268,21 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         }
                     >
                         {renderContent(message.type, message.content, message.metadata)}
-                        {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
-                            <JsonView data={message.metadata} style={darkStyles} />
-                        </ExpandableSection>}
+                        {showMetadata && !isStreaming &&
+                            <ExpandableSection
+                                variant='footer'
+                                // variant="stacked"
+                                headerText='Metadata'
+                                headerInfo={<>
+                                    <Badge>Tokens: {message.usage?.completion_tokens}</Badge>
+                                    <Badge>Duration: {message.request_duration?.toFixed(2)}s</Badge>
+                                </>}>
+                                <JsonView data={{
+                                    ...message.metadata,
+                                    ...(message.usage && { usage: message.usage }),
+                                    ...(message.request_duration && { request_duration: message.request_duration })
+                                }} style={darkStyles} />
+                            </ExpandableSection>}
                     </ChatBubble>
                     {!isStreaming && !messageContainsImage(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>

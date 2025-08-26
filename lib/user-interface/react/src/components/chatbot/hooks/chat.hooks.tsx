@@ -355,10 +355,11 @@ export const useChatGeneration = ({
                 } else {
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                     const content = response.content as string;
+                    const usage = response.response_metadata.tokenUsage;
                     await memory.saveContext({ input: params.input }, { output: content });
                     setSession((prev) => ({
                         ...prev,
-                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata, toolCalls: [...(response.tool_calls ?? [])] })],
+                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata, toolCalls: [...(response.tool_calls ?? [])], usage })],
                     }));
                 }
             }

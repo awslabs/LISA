@@ -79,7 +79,7 @@ export function Sessions ({ newSession }) {
     const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
-    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
 
     // Filter sessions based on search query
     const filteredSessions = useMemo(() => {
@@ -269,107 +269,119 @@ export function Sessions ({ newSession }) {
                     History
                 </Header>
             </SpaceBetween>
-            <SpaceBetween size='l' className='pt-5'>
-                {(() => {
-                    const timeGroups = Object.entries(groupedSessions);
 
-                    return timeGroups.map(([timeGroup, sessions]) => {
-                        if (sessions.length === 0) return null;
+            {isSessionsLoading && (
+                <Box textAlign='center' padding='l'>
+                    <SpaceBetween size='s' direction='vertical'>
+                        <Box color='text-status-info'>Loading sessions...</Box>
+                        <Box variant='small' color='text-status-inactive'>Please wait while we fetch your session history</Box>
+                    </SpaceBetween>
+                </Box>
+            )}
 
-                        return (
-                            <SpaceBetween key={timeGroup} size='xs'>
-                                <Header variant='h4'>
-                                    {timeGroup} ({sessions.length})
-                                </Header>
-                                <SpaceBetween size='xxs'>
-                                    {sessions.map((item) => (
-                                        <Box key={item.sessionId} padding='xs'>
-                                            <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
-                                                <Box>
-                                                    <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
-                                                        <Box
-                                                            color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
-                                                            fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
-                                                        >
-                                                            {getSessionDisplay(item, 40)}
-                                                        </Box>
-                                                    </Link>
-                                                </Box>
-                                                <Box>
-                                                    <ButtonDropdown
-                                                        items={[
-                                                            { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
-                                                            { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
-                                                            { id: 'download-session', text: 'Download Session', iconName: 'download' },
-                                                            { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
-                                                        ]}
-                                                        ariaLabel='Control instance'
-                                                        variant='icon'
-                                                        onItemClick={(e) => {
-                                                            if (e.detail.id === 'delete-session') {
-                                                                dispatch(
-                                                                    setConfirmationModal({
-                                                                        action: 'Delete',
-                                                                        resourceName: 'Session',
-                                                                        onConfirm: () => deleteById(item.sessionId),
-                                                                        description: `This will delete the Session: ${item.sessionId}.`
-                                                                    })
-                                                                );
-                                                            } else if (e.detail.id === 'download-session') {
-                                                                getSessionById(item.sessionId).then((resp) => {
-                                                                    const sess: LisaChatSession = resp.data;
-                                                                    const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
-                                                                    downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
-                                                                });
-                                                            } else if (e.detail.id === 'export-images') {
-                                                                getSessionById(item.sessionId).then(async (resp) => {
-                                                                    const sess: LisaChatSession = resp.data;
-                                                                    const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
-                                                                        .flatMap((msg) => {
-                                                                            if (Array.isArray(msg.content)) {
-                                                                                return msg.content.map((contentItem) => {
-                                                                                    if (contentItem.type === 'image_url') {
-                                                                                        return contentItem.image_url.url;
-                                                                                    }
-                                                                                });
-                                                                            }
-                                                                            return [];
-                                                                        });
+            {!isSessionsLoading && (
+                <SpaceBetween size='s' className='pt-5'>
+                    {(() => {
+                        const timeGroups = Object.entries(groupedSessions);
 
-                                                                    if (images.length === 0) {
-                                                                        notificationService.generateNotification('No images found to export', 'info');
-                                                                    } else {
-                                                                        const zip = new JSZip();
-                                                                        const imagePromises = images.map(async (imageUrl, index) => {
-                                                                            try {
-                                                                                const blob = await fetchImage(imageUrl);
-                                                                                zip.file(`image_${index + 1}.png`, blob, { binary: true });
-                                                                            } catch (error) {
-                                                                                console.error(`Error processing image ${index + 1}:`, error);
-                                                                            }
-                                                                        });
+                        return timeGroups.map(([timeGroup, sessions]) => {
+                            if (sessions.length === 0) return null;
 
-                                                                        // Wait for all images to be processed
-                                                                        await Promise.all(imagePromises);
-                                                                        const content = await zip.generateAsync({ type: 'blob' });
-                                                                        downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
-                                                                    }
-                                                                });
-                                                            } else if (e.detail.id === 'rename-session') {
-                                                                handleRenameSession(item);
-                                                            }
-                                                        }}
-                                                    />
-                                                </Box>
-                                            </Grid>
-                                        </Box>
-                                    ))}
+                            return (
+                                <SpaceBetween key={timeGroup} size='xs'>
+                                    <Header variant='h4'>
+                                        {timeGroup} ({sessions.length})
+                                    </Header>
+                                    <SpaceBetween size='xxs'>
+                                        {sessions.map((item) => (
+                                            <Box key={item.sessionId} padding='xxs'>
+                                                <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
+                                                    <Box>
+                                                        <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
+                                                            <Box
+                                                                color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
+                                                                fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
+                                                            >
+                                                                {getSessionDisplay(item, 40)}
+                                                            </Box>
+                                                        </Link>
+                                                    </Box>
+                                                    <Box>
+                                                        <ButtonDropdown
+                                                            items={[
+                                                                { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
+                                                                { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
+                                                                { id: 'download-session', text: 'Download Session', iconName: 'download' },
+                                                                { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
+                                                            ]}
+                                                            ariaLabel='Control instance'
+                                                            variant='icon'
+                                                            onItemClick={(e) => {
+                                                                if (e.detail.id === 'delete-session') {
+                                                                    dispatch(
+                                                                        setConfirmationModal({
+                                                                            action: 'Delete',
+                                                                            resourceName: 'Session',
+                                                                            onConfirm: () => deleteById(item.sessionId),
+                                                                            description: `This will delete the Session: ${item.sessionId}.`
+                                                                        })
+                                                                    );
+                                                                } else if (e.detail.id === 'download-session') {
+                                                                    getSessionById(item.sessionId).then((resp) => {
+                                                                        const sess: LisaChatSession = resp.data;
+                                                                        const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
+                                                                        downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
+                                                                    });
+                                                                } else if (e.detail.id === 'export-images') {
+                                                                    getSessionById(item.sessionId).then(async (resp) => {
+                                                                        const sess: LisaChatSession = resp.data;
+                                                                        const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
+                                                                            .flatMap((msg) => {
+                                                                                if (Array.isArray(msg.content)) {
+                                                                                    return msg.content.map((contentItem) => {
+                                                                                        if (contentItem.type === 'image_url') {
+                                                                                            return contentItem.image_url.url;
+                                                                                        }
+                                                                                    });
+                                                                                }
+                                                                                return [];
+                                                                            });
+
+                                                                        if (images.length === 0) {
+                                                                            notificationService.generateNotification('No images found to export', 'info');
+                                                                        } else {
+                                                                            const zip = new JSZip();
+                                                                            const imagePromises = images.map(async (imageUrl, index) => {
+                                                                                try {
+                                                                                    const blob = await fetchImage(imageUrl);
+                                                                                    zip.file(`image_${index + 1}.png`, blob, { binary: true });
+                                                                                } catch (error) {
+                                                                                    console.error(`Error processing image ${index + 1}:`, error);
+                                                                                }
+                                                                            });
+
+                                                                            // Wait for all images to be processed
+                                                                            await Promise.all(imagePromises);
+                                                                            const content = await zip.generateAsync({ type: 'blob' });
+                                                                            downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
+                                                                        }
+                                                                    });
+                                                                } else if (e.detail.id === 'rename-session') {
+                                                                    handleRenameSession(item);
+                                                                }
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                </Grid>
+                                            </Box>
+                                        ))}
+                                    </SpaceBetween>
                                 </SpaceBetween>
-                            </SpaceBetween>
-                        );
-                    });
-                })()}
-            </SpaceBetween>
+                            );
+                        });
+                    })()}
+                </SpaceBetween>
+            )}
 
             {/* Rename Session Modal */}
             <Modal

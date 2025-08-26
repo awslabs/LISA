@@ -432,7 +432,8 @@ def put_session(event: dict, context: dict) -> dict:
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
-            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), #lastUpdated = :lastUpdated",
+            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), "
+            + "#lastUpdated = :lastUpdated",
             ExpressionAttributeNames={
                 "#history": "history",
                 "#name": "name",

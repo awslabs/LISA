@@ -23,11 +23,8 @@ COPY src/ ./src
 
 COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
 
-# Generate Prisma client from LiteLLM's schema (find schema dynamically)
-RUN python -c "import litellm.proxy; import os; schema_path = os.path.join(os.path.dirname(litellm.proxy.__file__), 'schema.prisma'); print(schema_path)" > schema_path.txt && \
-    SCHEMA_PATH=$(cat schema_path.txt) && \
-    echo "Using schema at: $SCHEMA_PATH" && \
-    python -m prisma generate --schema "$SCHEMA_PATH"
+# Generate the prisma binary
+RUN prisma generate
 
 # Copy LiteLLM config directly to container, it will be updated at runtime
 # with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify

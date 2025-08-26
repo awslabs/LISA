@@ -5,7 +5,7 @@ set -e
 HOST="0.0.0.0"
 PORT="8080"
 
-# Prisma client is now generated during build from LiteLLM's schema
+# Prisma client is generated during build
 echo "Prisma client already generated during build"
 
 # Update LiteLLM config that was already copied from config.yaml with runtime-deployed models.

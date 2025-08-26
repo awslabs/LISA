@@ -7,7 +7,7 @@ langchain-openai==0.2.11
 opensearch-py==2.6.0
 pgvector==0.2.5
 psycopg2-binary==2.9.9
-pypdf==4.3.1
+pypdf==6.0.0
 lxml==5.1.0
 python-docx==1.1.0
 requests-aws4auth==1.2.3

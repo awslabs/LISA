@@ -283,7 +283,7 @@ export function Sessions ({ newSession }) {
                                 </Header>
                                 <SpaceBetween size='xxs'>
                                     {sessions.map((item) => (
-                                        <Box key={item.sessionId} padding='xs' className='border border-gray-200 rounded-lg hover:bg-gray-50'>
+                                        <Box key={item.sessionId} padding='xs'>
                                             <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                 <Box>
                                                     <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>

@@ -31,6 +31,7 @@ export type ComparisonResponse = {
     loading: boolean;
     streaming: boolean;
     error?: string;
+    usage?: any;
 };
 
 export type ModelSelection = {
@@ -64,7 +65,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
                 value: model.modelId,
                 description: model.modelId
             })),
-    [models]
+        [models]
     );
 
     const createOpenAiClient = useCallback((modelId: string, streaming: boolean = false) => {
@@ -96,13 +97,14 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
     }, [models, auth, chatConfig]);
 
     const generateModelResponse = async (
-        modelId: string, 
-        userPrompt: string, 
+        modelId: string,
+        userPrompt: string,
         updateCallback: (modelId: string, update: Partial<ComparisonResponse>) => void
     ): Promise<void> => {
+        const startTime = performance.now(); // Start client timer
         const useStreaming = chatConfig.sessionConfiguration.streaming || false;
         const llmClient = createOpenAiClient(modelId, useStreaming);
-        
+
         if (!llmClient) {
             throw new Error(`Failed to create client for model ${modelId}`);
         }
@@ -124,24 +126,28 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
             if (useStreaming) {
                 // Set streaming state
                 updateCallback(modelId, { streaming: true });
-                
+
                 const stream = await llmClient.stream(messages);
                 const responseChunks: string[] = [];
 
                 for await (const chunk of stream) {
                     // Check if stop was requested
                     if (stopRequested.current) {
+                        const responseTime = (performance.now() - startTime) / 1000;
                         updateCallback(modelId, {
                             response: responseChunks.join(''),
                             loading: false,
-                            streaming: false
+                            streaming: false,
+                            usage: {
+                                responseTime: parseFloat(responseTime.toFixed(2))
+                            }
                         });
                         return;
                     }
 
                     const content = chunk.content as string;
                     responseChunks.push(content);
-                    
+
                     // Update response with accumulated content
                     updateCallback(modelId, {
                         response: responseChunks.join(''),
@@ -149,29 +155,63 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
                     });
                 }
 
-                // Finalize streaming
+                // Calculate response time and finalize streaming
+                const responseTime = (performance.now() - startTime) / 1000;
                 updateCallback(modelId, {
                     response: responseChunks.join(''),
                     loading: false,
-                    streaming: false
+                    streaming: false,
+                    usage: {
+                        responseTime: parseFloat(responseTime.toFixed(2))
+                    }
                 });
             } else {
                 // Check if stop was requested before non-streaming call
                 if (stopRequested.current) {
+                    const responseTime = (performance.now() - startTime) / 1000;
                     updateCallback(modelId, {
                         response: '',
                         loading: false,
-                        streaming: false
+                        streaming: false,
+                        usage: {
+                            responseTime: parseFloat(responseTime.toFixed(2))
+                        }
                     });
                     return;
                 }
 
                 // Non-streaming response
                 const response = await llmClient.invoke(messages);
+
+                // Debug: Log the response structure to understand how to extract usage info
+                console.log('LangChain response structure:', {
+                    response_metadata: response.response_metadata,
+                    additional_kwargs: response.additional_kwargs,
+                    full_response: response
+                });
+
+                // Calculate response time
+                const responseTime = (performance.now() - startTime) / 1000;
+
+                // Extract usage information from response metadata (LangChain converts to camelCase)
+                const usage = response.response_metadata?.tokenUsage;
+
+                console.log('Extracted values:', {
+                    usage,
+                    tokenUsage: response.response_metadata?.tokenUsage,
+                    additional_kwargs: response.additional_kwargs
+                });
+
+                const finalUsage = {
+                    ...usage,
+                    responseTime: parseFloat(responseTime.toFixed(2))
+                };
+
                 updateCallback(modelId, {
                     response: response.content as string,
                     loading: false,
-                    streaming: false
+                    streaming: false,
+                    usage: finalUsage,
                 });
             }
         } catch (error) {
@@ -248,14 +288,19 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
 
         // Make API calls to all selected models and update each as it completes
         const responsePromises = selectedModels.map(async (model) => {
+            const modelStartTime = performance.now();
             try {
                 await generateModelResponse(model.value!, prompt, updateResponse);
             } catch (error) {
+                const responseTime = (performance.now() - modelStartTime) / 1000;
                 updateResponse(model.value!, {
                     response: '',
                     loading: false,
                     streaming: false,
-                    error: error.message || MESSAGES.FAILED_TO_GET_RESPONSE
+                    error: error.message || MESSAGES.FAILED_TO_GET_RESPONSE,
+                    usage: {
+                        responseTime: parseFloat(responseTime.toFixed(2))
+                    }
                 });
             }
         });
@@ -280,7 +325,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         stopRequested.current = true;
         setIsComparing(false);
         notificationService.generateNotification('Model comparison stopped by user', 'info');
-        
+
         // Update any still-loading responses to stopped state
         setResponses((prevResponses) =>
             prevResponses.map((response) =>
@@ -305,12 +350,12 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
     // Memoize expensive calculations
     const selectedModelsCount = useMemo(() =>
         modelSelections.filter((selection) => selection.selectedModel).length,
-    [modelSelections]
+        [modelSelections]
     );
 
     const canCompare = useMemo(() =>
         selectedModelsCount >= MODEL_COMPARISON_CONFIG.MIN_MODELS && !isComparing,
-    [selectedModelsCount, isComparing]
+        [selectedModelsCount, isComparing]
     );
 
     // Determine if we should show stop button - simplified like Chat.tsx

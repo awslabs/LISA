@@ -229,7 +229,8 @@ export const ComparisonResults = memo(function ComparisonResults({
             content: response.loading ? '' : response.error ? `Error: ${response.error}` : response.response,
             metadata: {
                 modelName: modelName
-            }
+            },
+            usage: response.usage,
         });
     });
 
@@ -286,6 +287,7 @@ export const ComparisonResults = memo(function ComparisonResults({
                         handleSendGenerateRequest={handleSendGenerateRequest}
                         setUserPrompt={setUserPrompt}
                         chatConfiguration={chatConfiguration}
+                        showUsage={true}
                     />
                 )}
 
@@ -308,6 +310,7 @@ export const ComparisonResults = memo(function ComparisonResults({
                                     handleSendGenerateRequest={handleSendGenerateRequest}
                                     setUserPrompt={setUserPrompt}
                                     chatConfiguration={chatConfiguration}
+                                    showUsage={true}
                                 />
                                 {response.error && (
                                     <Alert type='error' header='Error'>

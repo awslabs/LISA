@@ -17,7 +17,7 @@
 import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { Badge, ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
+import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -30,11 +30,12 @@ import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
 import ImageViewer from '@/components/chatbot/components/ImageViewer';
+import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
 
 type MessageProps = {
@@ -48,9 +49,10 @@ type MessageProps = {
     handleSendGenerateRequest: () => void;
     setUserPrompt: (state: string) => void;
     chatConfiguration: IChatConfiguration;
+    showUsage?: boolean;
 };
 
-export default function Message({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName }: MessageProps) {
+export default function Message({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -66,7 +68,7 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resend]);
 
-    const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
+    const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
                 if (item.type === 'text') {
@@ -227,6 +229,7 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
                             tooltipText='Generative AI assistant'
                         />
                     }
+                    actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
                     <Box color='text-status-inactive'>
                         Generating response
@@ -246,6 +249,7 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
                             tooltipText='Generative AI assistant'
                         />
                     }
+                    actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
                     <Box color='text-status-inactive'>
                         🔨Calling {callingToolName} tool 🔨
@@ -266,21 +270,18 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
                                 tooltipText='Generative AI assistant'
                             />
                         }
+                        actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.type, message.content, message.metadata)}
+                        {renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'
                                 // variant="stacked"
                                 headerText='Metadata'
-                                headerInfo={<>
-                                    <Badge>Tokens: {message.usage?.completion_tokens}</Badge>
-                                    <Badge>Duration: {message.request_duration?.toFixed(2)}s</Badge>
-                                </>}>
+                            >
                                 <JsonView data={{
                                     ...message.metadata,
-                                    ...(message.usage && { usage: message.usage }),
-                                    ...(message.request_duration && { request_duration: message.request_duration })
+                                    ...(message.usage && { usage: message.usage })
                                 }} style={darkStyles} />
                             </ExpandableSection>}
                     </ChatBubble>
@@ -325,13 +326,13 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
                         }
                     >
                         <div style={{ maxWidth: '60em' }}>
-                            {renderContent(message.type, message.content)}
+                            {renderContent(message.content)}
                         </div>
                     </ChatBubble>
                     <ButtonGroup
                         onItemClick={({ detail }) =>
                             ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                            navigator.clipboard.writeText(getDisplayableMessage(message.content))
                         }
                         ariaLabel='Chat actions'
                         dropdownExpandToViewport

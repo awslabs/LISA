@@ -188,19 +188,10 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                         code={codeString}
                                     />
                                 ) : (
-                                    <code className={className} {...props}>
+                                    <code className={`${className} bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono`} {...props}>
                                         {children}
                                     </code>
                                 );
-                            },
-                            ul ({ ...props }: any) {
-                                return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
-                            },
-                            ol ({ ...props }: any) {
-                                return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
-                            },
-                            li ({ ...props }: any) {
-                                return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
                             },
                         }}
                     />
@@ -212,7 +203,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2' style={{ overflow: 'hidden' }}>
+        <div className='mt-2 pl-52' style={{ overflow: 'hidden' }}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName) && (
                 <ChatBubble
@@ -301,6 +292,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
             )}
             {message?.type === 'human' && (
                 <SpaceBetween direction='horizontal' size='m'>
+                    <div style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                     <ChatBubble
                         ariaLabel={currentUser}
                         type='outgoing'
@@ -338,6 +330,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         ]}
                         variant='icon'
                     />
+                    </div>
                 </SpaceBetween>
             )}
             {message?.type === MessageTypes.TOOL && (

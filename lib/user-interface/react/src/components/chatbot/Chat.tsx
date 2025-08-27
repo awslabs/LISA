@@ -644,7 +644,7 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
+            <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
                         <Message

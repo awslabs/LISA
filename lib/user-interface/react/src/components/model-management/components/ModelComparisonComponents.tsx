@@ -34,7 +34,7 @@ import {
     UI_CONFIG,
     PLACEHOLDERS,
     ARIA_LABELS
-} from '../config/modelComparison.config';
+} from '@/components/model-management/config/modelComparison.config';
 import { LisaChatMessage, MessageTypes } from '@/components/types';
 import Message from '@/components/chatbot/components/Message';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
@@ -49,7 +49,7 @@ type ModelSelectionSectionProps = {
     getAvailableModelsForSelection: (id: string) => SelectProps.Option[];
 };
 
-export const ModelSelectionSection = memo(function ModelSelectionSection({
+export const ModelSelectionSection = memo(function ModelSelectionSection ({
     modelSelections,
     onAddModel,
     onRemoveModel,
@@ -115,7 +115,7 @@ type PromptInputSectionProps = {
     shouldShowStopButton: boolean;
 };
 
-export const PromptInputSection = memo(function PromptInputSection({
+export const PromptInputSection = memo(function PromptInputSection ({
     prompt,
     onPromptChange,
     onCompare,
@@ -192,8 +192,6 @@ export const PromptInputSection = memo(function PromptInputSection({
     );
 });
 
-
-
 type ComparisonResultsProps = {
     prompt: string;
     responses: ComparisonResponse[];
@@ -203,7 +201,7 @@ type ComparisonResultsProps = {
     setChatConfiguration: (config: IChatConfiguration) => void;
 };
 
-export const ComparisonResults = memo(function ComparisonResults({
+export const ComparisonResults = memo(function ComparisonResults ({
     prompt,
     responses,
     models,
@@ -246,7 +244,8 @@ export const ComparisonResults = memo(function ComparisonResults({
                 modelName: model?.modelName || response.modelId,
                 response: response.response,
                 error: response.error,
-                loading: response.loading
+                loading: response.loading,
+                usage: response.usage
             };
         });
 
@@ -280,7 +279,7 @@ export const ComparisonResults = memo(function ComparisonResults({
                         message={userMessage}
                         isRunning={false}
                         callingToolName=''
-                        showMetadata={false}
+                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
                         isStreaming={false}
                         markdownDisplay={markdownDisplay}
                         setChatConfiguration={setChatConfiguration}
@@ -303,7 +302,7 @@ export const ComparisonResults = memo(function ComparisonResults({
                                     message={aiMessages[index]}
                                     isRunning={response.loading}
                                     callingToolName=''
-                                    showMetadata={false}
+                                    showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
                                     isStreaming={response.streaming}
                                     markdownDisplay={markdownDisplay}
                                     setChatConfiguration={setChatConfiguration}

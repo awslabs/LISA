@@ -52,7 +52,7 @@ type MessageProps = {
     showUsage?: boolean;
 };
 
-export default function Message({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -133,7 +133,7 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
                         remarkPlugins={[remarkBreaks]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={{
-                            code({ className, children, ...props }: any) {
+                            code ({ className, children, ...props }: any) {
                                 const match = /language-(\w+)/.exec(className || '');
                                 const codeString = String(children).replace(/\n$/, '');
 
@@ -195,13 +195,13 @@ export default function Message({ message, isRunning, showMetadata, isStreaming,
                                     </code>
                                 );
                             },
-                            ul({ ...props }: any) {
+                            ul ({ ...props }: any) {
                                 return <ul style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }} {...props} />;
                             },
-                            ol({ ...props }: any) {
+                            ol ({ ...props }: any) {
                                 return <ol style={{ paddingLeft: '20px', marginTop: '8px', marginBottom: '8px' }} {...props} />;
                             },
-                            li({ ...props }: any) {
+                            li ({ ...props }: any) {
                                 return <li style={{ marginBottom: '4px', display: 'list-item' }} {...props} />;
                             },
                         }}

@@ -91,7 +91,7 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     toolCalls?: any[];
     usage?: UsageInfo;
 
-    constructor(fields: LisaChatMessageFields) {
+    constructor (fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
@@ -99,11 +99,11 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
         this.usage = fields.usage;
     }
 
-    static lc_name() {
+    static lc_name () {
         return 'LisaChatMessage';
     }
 
-    _getType(): MessageType {
+    _getType (): MessageType {
         return this.type;
     }
 }

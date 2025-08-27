@@ -36,7 +36,7 @@ type UsageInfoProps = {
  * Used in chat messages to show model performance metrics.
  */
 
-export default function UsageInfo({
+export default function UsageInfo ({
     usage,
     showTokens = true,
     showResponseTime = true,
@@ -44,16 +44,16 @@ export default function UsageInfo({
     if (!usage) return null;
 
     return (
-        <SpaceBetween direction="horizontal" size="s">
+        <SpaceBetween direction='horizontal' size='s'>
             {showTokens && usage.completionTokens && (
-                <Badge color="green">Tokens
-                    <FontAwesomeIcon icon={faCircleUp} className="pl-1"/> {usage.promptTokens}
-                    <FontAwesomeIcon icon={faCircleDown} className="pl-1"/> {usage.completionTokens}
+                <Badge color='green'>Tokens
+                    <FontAwesomeIcon icon={faCircleUp} className='pl-1'/> {usage.promptTokens}
+                    <FontAwesomeIcon icon={faCircleDown} className='pl-1'/> {usage.completionTokens}
                 </Badge>
             )}
             {showResponseTime && usage.responseTime !== undefined && usage.responseTime !== null && (
-                <Badge color="green">Response
-                    <FontAwesomeIcon icon={faStopwatch} className="pl-1"/> {usage.responseTime.toFixed(2)}s
+                <Badge color='green'>Response
+                    <FontAwesomeIcon icon={faStopwatch} className='pl-1'/> {usage.responseTime.toFixed(2)}s
                 </Badge>
             )}
         </SpaceBetween>

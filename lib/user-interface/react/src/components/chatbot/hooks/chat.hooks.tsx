@@ -301,11 +301,11 @@ export const useChatGeneration = ({
                                 return {
                                     ...prev,
                                     history: [...prev.history.slice(0, -1),
-                                    new LisaChatMessage({
-                                        ...lastMessage,
-                                        content: lastMessage.content + content,
-                                        toolCalls: currentToolCalls
-                                    })
+                                        new LisaChatMessage({
+                                            ...lastMessage,
+                                            content: lastMessage.content + content,
+                                            toolCalls: currentToolCalls
+                                        })
                                     ],
                                 };
                             });
@@ -339,10 +339,10 @@ export const useChatGeneration = ({
                                     return {
                                         ...prev,
                                         history: [...prev.history.slice(0, -1),
-                                        new LisaChatMessage({
-                                            ...lastMessage,
-                                            toolCalls: finalToolCalls
-                                        })
+                                            new LisaChatMessage({
+                                                ...lastMessage,
+                                                toolCalls: finalToolCalls
+                                            })
                                         ],
                                     };
                                 }
@@ -358,13 +358,13 @@ export const useChatGeneration = ({
                                 return {
                                     ...prev,
                                     history: [...prev.history.slice(0, -1),
-                                    new LisaChatMessage({
-                                        ...lastMessage,
-                                        usage: {
-                                            ...lastMessage.usage,
-                                            responseTime: parseFloat(responseTime.toFixed(2))
-                                        }
-                                    })
+                                        new LisaChatMessage({
+                                            ...lastMessage,
+                                            usage: {
+                                                ...lastMessage.usage,
+                                                responseTime: parseFloat(responseTime.toFixed(2))
+                                            }
+                                        })
                                     ],
                                 };
                             }
@@ -384,18 +384,18 @@ export const useChatGeneration = ({
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                     const content = response.content as string;
                     const usage = response.response_metadata.tokenUsage;
-                    
+
                     // Calculate response time
                     const responseTime = (performance.now() - startTime) / 1000;
-                    
+
                     await memory.saveContext({ input: params.input }, { output: content });
                     setSession((prev) => ({
                         ...prev,
-                        history: [...prev.history, new LisaChatMessage({ 
-                            type: 'ai', 
-                            content, 
-                            metadata, 
-                            toolCalls: [...(response.tool_calls ?? [])], 
+                        history: [...prev.history, new LisaChatMessage({
+                            type: 'ai',
+                            content,
+                            metadata,
+                            toolCalls: [...(response.tool_calls ?? [])],
                             usage: {
                                 ...usage,
                                 responseTime: parseFloat(responseTime.toFixed(2))

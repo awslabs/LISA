@@ -14,10 +14,8 @@
 
 """Model invocation routes."""
 
-import json
 import logging
 import os
-import time
 from collections.abc import Iterator
 from typing import Union
 
@@ -92,36 +90,6 @@ def generate_response(iterator: Iterator[Union[str, bytes]]) -> Iterator[str]:
             yield f"{line}\n\n"
 
 
-def generate_response_with_duration(iterator: Iterator[Union[str, bytes]], start_time: float) -> Iterator[str]:
-    """
-    For streaming responses, generate strings and add request_duration to the final message.
-
-    OpenAI streaming format sends Server-Sent Events (SSE) with 'data: ' prefix.
-    The stream ends with 'data: [DONE]' message.
-    """
-    for line in iterator:
-        if isinstance(line, bytes):
-            line = line.decode()
-
-        if line.strip():
-            # Check if this is the [DONE] message that indicates end of stream
-            if line.strip() == "data: [DONE]":
-                response_time = round(time.time() - start_time, 2)
-                # Send a custom message with request duration before the [DONE] message
-                duration_message = {
-                    "id": "duration",
-                    "object": "chat.completion.chunk",
-                    "created": int(time.time()),
-                    "model": "duration",
-                    "choices": [],
-                    "response_time": response_time
-                }
-                yield f"data: {json.dumps(duration_message)}\n\n"
-                yield f"{line}\n\n"
-            else:
-                yield f"{line}\n\n"
-
-
 @router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE", "HEAD"])
 async def litellm_passthrough(request: Request, api_path: str) -> Response:
     """
@@ -176,33 +144,17 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers["Authorization"] = f"Bearer {LITELLM_KEY}"
 
     http_method = request.method
-    start_time = time.time()
-
     if http_method == "GET":
         response = requests.request(method=http_method, url=litellm_path, headers=headers)
-        response_time = round(time.time() - start_time, 2)
-
-        response_data = response.json()
-        response_data["response_time"] = response_time
-        return JSONResponse(response_data, status_code=response.status_code)
-
+        return JSONResponse(response.json(), status_code=response.status_code)
     # not a GET request, so expect a JSON payload as part of the request
     params = await request.json()
     if params.get("stream", False):  # if a streaming request
         response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
-        # For streaming responses, we detect the end of stream and add response_time
-        return StreamingResponse(
-            generate_response_with_duration(response.iter_lines(), start_time),
-            status_code=response.status_code,
-            media_type="text/plain"
-        )
+        return StreamingResponse(generate_response(response.iter_lines()), status_code=response.status_code)
     else:  # not a streaming request
         response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers)
-        response_time = round(time.time() - start_time, 2)
-
-        response_data = response.json()
-        response_data["response_time"] = response_time
-        return JSONResponse(response_data, status_code=response.status_code)
+        return JSONResponse(response.json(), status_code=response.status_code)
 
 
 def refresh_management_tokens() -> list[str]:

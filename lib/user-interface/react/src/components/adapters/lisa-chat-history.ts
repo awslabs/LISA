@@ -23,7 +23,7 @@ import { LisaChatMessage, LisaChatSession } from '../types';
 export class LisaChatMessageHistory extends BaseChatMessageHistory {
     lc_namespace = ['components', 'adapters', 'lisa-chat-history'];
 
-    private session: LisaChathaSession;
+    private session: LisaChatSession;
 
     constructor (session: LisaChatSession) {
     // eslint-disable-next-line prefer-rest-params

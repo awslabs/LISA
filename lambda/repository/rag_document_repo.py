@@ -122,6 +122,8 @@ class RagDocumentRepository:
                 docs[0]["subdocs"] = subdocs
 
             doc = RagDocument(**docs[0])
+            if join_docs:
+                doc.chunks = len(subdocs)  # Recalculate chunks after populating subdocs
             return doc
         except ClientError as e:
             logging.error(f"Error querying document: {e.response['Error']['Message']}")
@@ -162,6 +164,7 @@ class RagDocumentRepository:
             for doc in docs:
                 subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.get("document_id")))
                 doc["subdocs"] = subdocs
+                doc["chunks"] = len(subdocs)  # Recalculate chunks after populating subdocs
         return docs
 
     def find_by_source(
@@ -192,7 +195,7 @@ class RagDocumentRepository:
         while "LastEvaluatedKey" in response:
             response = self.doc_table.query(
                 KeyConditionExpression=Key("pk").eq(pk),
-                FilterExpression=Key("document_name").eq(document_source),
+                FilterExpression=Key("source").eq(document_source),
                 ExclusiveStartKey=response["LastEvaluatedKey"],
             )
 
@@ -203,6 +206,7 @@ class RagDocumentRepository:
             document = RagDocument(**item)
             if join_docs:
                 document.subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(document.document_id))
+                document.chunks = len(document.subdocs)  # Recalculate chunks after populating subdocs
             yield document
 
     def list_all(
@@ -251,6 +255,7 @@ class RagDocumentRepository:
                 for doc in docs:
                     subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.document_id))
                     doc.subdocs = subdocs
+                    doc.chunks = len(subdocs)  # Recalculate chunks after populating subdocs
 
             return docs, next_key
 

@@ -579,7 +579,7 @@ def list_docs(event: dict, context: dict) -> dict[str, list[dict] | str | None]:
     last_evaluated = query_string_params.get("lastEvaluated")
 
     docs, last_evaluated = doc_repo.list_all(
-        repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated
+        repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated, join_docs=True
     )
     return {"documents": [doc.model_dump() for doc in docs], "lastEvaluated": last_evaluated}
 

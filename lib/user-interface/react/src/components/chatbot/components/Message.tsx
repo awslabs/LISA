@@ -28,13 +28,16 @@ import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
+import remarkMath from 'remark-math';
+import rehypeMathjax from 'rehype-mathjax';
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
 import ImageViewer from '@/components/chatbot/components/ImageViewer';
+import MermaidDiagram from '@/components/chatbot/components/MermaidDiagram';
 import { merge } from 'lodash';
 
 type MessageProps = {
@@ -65,6 +68,74 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resend]);
+
+    // Memoize the ReactMarkdown components to prevent re-creation on every render
+    const markdownComponents = useMemo(() => ({
+        code ({ className, children, ...props }: any) {
+            const match = /language-(\w+)/.exec(className || '');
+            const codeString = String(children).replace(/\n$/, '');
+
+            const CodeBlockWithCopyButton = ({ language, code }: { language: string, code: string }) => {
+                return (
+                    <div style={{ position: 'relative' }}>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '5px',
+                                right: '5px',
+                                zIndex: 10
+                            }}
+                        >
+                            <ButtonGroup
+                                onItemClick={() =>
+                                    navigator.clipboard.writeText(code)
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
+                                    {
+                                        type: 'icon-button',
+                                        id: 'copy code',
+                                        iconName: 'copy',
+                                        text: 'Copy Code',
+                                        popoverFeedback: (
+                                            <StatusIndicator type='success'>
+                                                Code copied
+                                            </StatusIndicator>
+                                        )
+                                    }
+                                ]}
+                                variant='icon'
+                            />
+                        </div>
+                        <SyntaxHighlighter
+                            style={vscDarkPlus}
+                            language={language}
+                            PreTag='div'
+                            {...props}
+                        >
+                            {code}
+                        </SyntaxHighlighter>
+                    </div>
+                );
+            };
+
+            return match ? (
+                match[1] === 'mermaid' ? (
+                    <MermaidDiagram chart={codeString} isStreaming={isStreaming} />
+                ) : (
+                    <CodeBlockWithCopyButton
+                        language={match[1]}
+                        code={codeString}
+                    />
+                )
+            ) : (
+                <code className={`${className} bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono`} {...props}>
+                    {children}
+                </code>
+            );
+        },
+    }), [isStreaming]); // Include isStreaming so the component can access it
 
     const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
@@ -128,72 +199,10 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
             <div style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
-                        remarkPlugins={[remarkBreaks]}
+                        remarkPlugins={[remarkBreaks, remarkMath]}
+                        rehypePlugins={[rehypeMathjax]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
-                        components={{
-                            code ({ className, children, ...props }: any) {
-                                const match = /language-(\w+)/.exec(className || '');
-                                const codeString = String(children).replace(/\n$/, '');
-
-                                const CodeBlockWithCopyButton = ({ language, code }: { language: string, code: string }) => {
-
-
-                                    return (
-                                        <div style={{ position: 'relative' }}>
-                                            <div
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: '5px',
-                                                    right: '5px',
-                                                    zIndex: 10
-                                                }}
-                                            >
-                                                <ButtonGroup
-                                                    onItemClick={() =>
-                                                        navigator.clipboard.writeText(code)
-                                                    }
-                                                    ariaLabel='Chat actions'
-                                                    dropdownExpandToViewport
-                                                    items={[
-                                                        {
-                                                            type: 'icon-button',
-                                                            id: 'copy code',
-                                                            iconName: 'copy',
-                                                            text: 'Copy Code',
-                                                            popoverFeedback: (
-                                                                <StatusIndicator type='success'>
-                                                                    Code copied
-                                                                </StatusIndicator>
-                                                            )
-                                                        }
-                                                    ]}
-                                                    variant='icon'
-                                                />
-                                            </div>
-                                            <SyntaxHighlighter
-                                                style={vscDarkPlus}
-                                                language={language}
-                                                PreTag='div'
-                                                {...props}
-                                            >
-                                                {code}
-                                            </SyntaxHighlighter>
-                                        </div>
-                                    );
-                                };
-
-                                return match ? (
-                                    <CodeBlockWithCopyButton
-                                        language={match[1]}
-                                        code={codeString}
-                                    />
-                                ) : (
-                                    <code className={`${className} bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono`} {...props}>
-                                        {children}
-                                    </code>
-                                );
-                            },
-                        }}
+                        components={markdownComponents}
                     />
                 ) : (
                     <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>

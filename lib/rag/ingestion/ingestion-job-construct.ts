@@ -37,6 +37,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
+import { ContainerImage } from 'aws-cdk-lib/aws-ecs';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -47,20 +48,7 @@ export type IngestionJobConstructProps = StackProps & BaseProps & {
 };
 
 export class IngestionJobConstruct extends Construct {
-    private getMaxCpus (vpc: Vpc): number {
-        // Calculate maxvCpus based on available IPs in subnets to prevent IP exhaustion
-        // Each task uses 2 vCPUs, so maxvCpus = available_ips * 2 vCPUs per task
-        const availableIps = vpc.subnetSelection?.subnets?.reduce((total, subnet) => {
-            // Each subnet reserves 5 IPs (network, broadcast, gateway, DNS, future use)
-            const subnetSize = Math.pow(2, 32 - parseInt(subnet.ipv4CidrBlock.split('/')[1]));
-            return total + Math.max(0, subnetSize - 5);
-        }, 0) || 64; // Default to 64 if calculation fails
-
-        const maxTasks = Math.min(availableIps, 256); // Cap at 256 for reasonable limits
-        return maxTasks * 2; // Each task uses 2 vCPUs
-    }
-
-    constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
+    constructor(scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
         const { config, vpc, layers, lambdaRole, baseEnvironment } = props;

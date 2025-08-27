@@ -26,7 +26,8 @@ const ragOptions = {
 
 const libraryOptions = {
     modelLibrary: 'Show Model Library',
-    showPromptTemplateLibrary: 'Show Prompt Template Library'
+    showPromptTemplateLibrary: 'Show Prompt Template Library',
+    showMcpWorkbench: 'Show MCP Workbench'
 };
 
 const inContextOptions = {

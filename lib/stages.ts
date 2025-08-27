@@ -49,6 +49,7 @@ import { LisaMetricsStack } from './metrics';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
+import { McpWorkbenchStack } from './serve/mcpWorkbench';
 
 
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
@@ -232,6 +233,15 @@ export class LisaServeApplicationStage extends Stage {
             restApiId: apiBaseStack.restApiId,
         });
         apiDeploymentStack.addDependency(apiBaseStack);
+
+        new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
+            ...baseStackProps,
+            authorizer: apiBaseStack.authorizer!,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
+            vpc: networkingStack.vpc,
+        });
 
         const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
             ...baseStackProps,

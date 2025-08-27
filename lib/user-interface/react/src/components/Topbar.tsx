@@ -99,6 +99,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/mcp-connections',
         } as ButtonDropdownProps.Item] : []),
+        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
+            id: 'mcp-workbench',
+            type: 'button',
+            variant: 'link',
+            text: 'MCP Workbnech',
+            disableUtilityCollapse: false,
+            external: false,
+            href: '/mcp-workbench',
+        } as ButtonDropdownProps.Item] : []),
     ];
 
     return (

@@ -14,12 +14,12 @@
  limitations under the License.
  */
 
-import React, { ReactElement } from 'react';
+import React, { ReactElement, useMemo, useState } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
-import { SpaceBetween } from '@cloudscape-design/components';
+import { Autosuggest, SpaceBetween } from '@cloudscape-design/components';
 import {
     OpenSearchNewClusterConfig,
     RagRepositoryConfig,
@@ -33,6 +33,8 @@ import { ArrayInputField } from '../../../shared/form/array-input';
 import { RdsConfigForm } from './RdsConfigForm';
 import { OpenSearchConfigForm } from './OpenSearchConfigForm';
 import { BedrockKnowledgeBaseConfigForm } from './BedrockKnowledgeBaseConfigForm';
+import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
+import { ModelStatus, ModelType } from '@/shared/model/model-management.model';
 
 export type RepositoryConfigProps = {
     isEdit: boolean
@@ -41,6 +43,15 @@ export type RepositoryConfigProps = {
 export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & RepositoryConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
     const shape = RagRepositoryConfigSchema.innerType().shape;
+    const { data: embeddingModels, isFetching: isFetchingEmbeddingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+        selectFromResult: (state) => ({
+            isFetching: state.isFetching,
+            data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
+        })});
+    const embeddingOptions = useMemo(() => {
+        return embeddingModels?.map((model) => ({value: model.modelId})) || [];
+    }, [embeddingModels]);
+    const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<string>(undefined);
     return (
         <SpaceBetween size={'s'}>
             <FormField label='Repository ID'
@@ -60,6 +71,24 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     onChange={({ detail }) => {
                         setFields({ 'repositoryName': detail.value });
                     }} placeholder='Postgres RAG' />
+            </FormField>
+            <FormField label='Default Embedding Model - optional'
+                errorText={formErrors?.embeddingModelId}
+                description={shape.embeddingModelId.description}>
+                <Autosuggest
+                    statusType={isFetchingEmbeddingModels ? 'loading' : 'finished'}
+                    loadingText='Loading embedding models (might take few seconds)...'
+                    placeholder='Select an embedding model'
+                    empty={<div className='text-gray-500'>No embedding models available.</div>}
+                    filteringType='auto'
+                    value={selectedEmbeddingOption ?? ''}
+                    enteredTextLabel={(text) => `Use: "${text}"`}
+                    onChange={({ detail }) => {
+                        setSelectedEmbeddingOption(detail.value);
+                        setFields({ 'embeddingModelId': detail.value });
+                    }}
+                    options={embeddingOptions}
+                />
             </FormField>
             <FormField label='Repository Type'
                 errorText={formErrors?.type}

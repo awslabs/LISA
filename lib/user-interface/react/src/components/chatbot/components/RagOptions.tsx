@@ -52,10 +52,47 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRepositoryOption, selectedEmbeddingOption]);
 
+    // Sync local state with external ragConfig changes and handle defaults
     useEffect(() => {
-        setSelectedEmbeddingOption(ragConfig?.embeddingModel?.modelId ?? undefined);
-        setSelectedRepositoryOption(ragConfig?.repositoryId ?? undefined);
-    }, [ragConfig]);
+        // Sync repository selection
+        if (ragConfig?.repositoryId !== selectedRepositoryOption) {
+            setSelectedRepositoryOption(ragConfig?.repositoryId ?? undefined);
+        }
+
+        // Sync embedding model selection
+        if (ragConfig?.embeddingModel?.modelId !== selectedEmbeddingOption) {
+            setSelectedEmbeddingOption(ragConfig?.embeddingModel?.modelId ?? undefined);
+        }
+
+        // Handle default embedding model when repository changes
+        if (ragConfig?.repositoryId && !ragConfig?.embeddingModel) {
+            const repository = repositories?.find((repo) => repo.repositoryId === ragConfig.repositoryId);
+            if (repository?.embeddingModelId) {
+                const model = allModels?.find((model) => model.modelId === repository.embeddingModelId);
+                if (model) {
+                    setRagConfig((config) => ({
+                        ...config,
+                        embeddingModel: model,
+                    }));
+                }
+            }
+        }
+
+        // Handle switching to repository with different default embedding model
+        if (ragConfig?.repositoryId) {
+            const repository = repositories?.find((repo) => repo.repositoryId === ragConfig.repositoryId);
+            if (repository?.embeddingModelId) {
+                const defaultModel = allModels?.find((model) => model.modelId === repository.embeddingModelId);
+                if (defaultModel && (!ragConfig?.embeddingModel || ragConfig.embeddingModel.modelId !== defaultModel.modelId)) {
+                    // Auto-switch to the repository's default embedding model
+                    setRagConfig((config) => ({
+                        ...config,
+                        embeddingModel: defaultModel,
+                    }));
+                }
+            }
+        }
+    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, repositories, allModels, selectedEmbeddingOption, selectedRepositoryOption, setRagConfig]);
 
     return (
         <SpaceBetween size='l' direction='vertical'>
@@ -75,12 +112,25 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                     value={selectedRepositoryOption ?? ''}
                     enteredTextLabel={(text) => `Use: "${text}"`}
                     onChange={({ detail }) => {
-                        setSelectedRepositoryOption(detail.value);
-                        setRagConfig((config) => ({
-                            ...config,
-                            repositoryId: detail.value,
-                            repositoryType: detail.value,
-                        }));
+                        const newRepositoryId = detail.value;
+                        setSelectedRepositoryOption(newRepositoryId);
+
+                        if (newRepositoryId) {
+                            const repository = repositories?.find((repo) => repo.repositoryId === newRepositoryId);
+                            setRagConfig((config) => ({
+                                ...config,
+                                repositoryId: newRepositoryId,
+                                repositoryType: repository?.type || 'unknown',
+                            }));
+                        } else {
+                            // Clear repository selection
+                            setRagConfig((config) => ({
+                                ...config,
+                                repositoryId: undefined,
+                                repositoryType: undefined,
+                                embeddingModel: undefined,
+                            }));
+                        }
                     }}
                     options={repositories?.map((repository) => ({value: repository.repositoryId, label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId})) || []}
                 />
@@ -94,13 +144,22 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                     value={selectedEmbeddingOption ?? ''}
                     enteredTextLabel={(text) => `Use: "${text}"`}
                     onChange={({ detail }) => {
-                        setSelectedEmbeddingOption(detail.value);
+                        const newModelId = detail.value;
+                        setSelectedEmbeddingOption(newModelId);
 
-                        const model = allModels.find((model) => model.modelId === detail.value);
-                        if (model) {
+                        if (newModelId) {
+                            const model = allModels.find((model) => model.modelId === newModelId);
+                            if (model) {
+                                setRagConfig((config) => ({
+                                    ...config,
+                                    embeddingModel: model,
+                                }));
+                            }
+                        } else {
+                            // Clear embedding model selection
                             setRagConfig((config) => ({
                                 ...config,
-                                embeddingModel: model,
+                                embeddingModel: undefined,
                             }));
                         }
                     }}

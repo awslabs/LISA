@@ -432,7 +432,9 @@ class RagDocument(BaseModel):
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self.pk = self.createPartitionKey(self.repository_id, self.collection_id)
-        self.chunks = len(self.subdocs)
+        # Only calculate chunks if not explicitly provided in data (for new documents)
+        if "chunks" not in data:
+            self.chunks = len(self.subdocs)
 
     @staticmethod
     def createPartitionKey(repository_id: str, collection_id: str) -> str:

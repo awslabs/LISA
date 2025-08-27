@@ -149,6 +149,11 @@ export class DeleteStoreStateMachine extends Construct {
             role: executionRole,
         });
 
+        // Allow the Step Functions role to invoke the cleanup lambda
+        if (role) {
+            cleanupDocsFunc.grantInvoke(role);
+        }
+
         const hasMoreDocs = new Choice(this, 'HasMoreDocs')
             .when(Condition.isNotNull('$.lastEvaluated'), new LambdaInvoke(this, 'CleanupRepositoryDocsRetry', {
                 lambdaFunction: cleanupDocsFunc,

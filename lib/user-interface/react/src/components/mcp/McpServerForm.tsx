@@ -24,6 +24,8 @@ import {
     Input,
     SpaceBetween,
     Toggle,
+    StatusIndicator,
+    Box,
 } from '@cloudscape-design/components';
 import 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -44,6 +46,7 @@ import {
     useUpdateMcpServerMutation
 } from '@/shared/reducers/mcp-server.reducer';
 import { AttributeEditorSchema, EnvironmentVariables } from '@/shared/form/environment-variables';
+import { useMcp } from 'use-mcp/react';
 
 export type McpServerFormProps = {
     isEdit?: boolean
@@ -122,13 +125,60 @@ export function McpServerForm (props: McpServerFormProps) {
 
     const [sharePublic, setSharePublic] = useState(false);
 
+    // Test connection state
+    const [testConnectionUrl, setTestConnectionUrl] = useState<string>('');
+    const [isTestingConnection, setIsTestingConnection] = useState(false);
+
+    // Test connection using useMcp
+    const {
+        state: connectionState,
+        tools,
+    } = useMcp({
+        url: testConnectionUrl,
+        clientName: state.form.clientConfig?.name || 'Test Client',
+        clientConfig: state.form.clientConfig || {},
+        customHeaders: state.form.customHeaders?.reduce((r,{key,value}) => (r[key] = value,r), {}),
+        autoReconnect: false,
+        autoRetry: false,
+        debug: false,
+    });
+
+    const testConnection = () => {
+        if (state.form.url && String(state.form.url).trim()) {
+            setIsTestingConnection(true);
+            setTestConnectionUrl(String(state.form.url).trim());
+
+            // Add a timeout to prevent infinite loading
+            setTimeout(() => {
+                if (isTestingConnection) {
+                    setIsTestingConnection(false);
+                }
+            }, 30000); // 30 second timeout
+        }
+    };
+
+    // Reset test connection state when URL changes
+    useEffect(() => {
+        if (testConnectionUrl !== state.form.url) {
+            setTestConnectionUrl('');
+            setIsTestingConnection(false);
+        }
+    }, [state.form.url, testConnectionUrl]);
+
+    // Reset testing state when connection completes
+    useEffect(() => {
+        if (testConnectionUrl && (connectionState === 'ready' || connectionState === 'failed')) {
+            setIsTestingConnection(false);
+        }
+    }, [connectionState, testConnectionUrl]);
+
     // create success notification
     useEffect(() => {
         if (isCreatingSuccess || isUpdatingSuccess) {
             const verb = isCreatingSuccess ? 'created' : 'updated';
             const data = isCreatingSuccess ? createData : updateData;
             notificationService.generateNotification(`Successfully ${verb} MCP Connection: ${data.name}`, 'success');
-            navigate('/mcp-connections');
+            navigate(`/mcp-connections/${data.id}`);
         }
     }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate]);
 
@@ -174,11 +224,47 @@ export function McpServerForm (props: McpServerFormProps) {
                         placeholder='Enter MCP connection description' />
                     </FormField>
                     <FormField label='URL' errorText={errors?.url} description={'The URL for your MCP server.'}>
-                        <Input value={state.form.url} inputMode='text' onBlur={() => touchFields(['url'])} onChange={({ detail }) => {
-                            setFields({ 'url': detail.value });
-                        }}
-                        disabled={disabled}
-                        placeholder='Enter MCP server URL' />
+                        <Grid gridDefinition={[{ colspan: 8 }, { colspan: 4 }]}>
+                            <Input value={state.form.url} inputMode='text' onBlur={() => touchFields(['url'])} onChange={({ detail }) => {
+                                setFields({ 'url': detail.value });
+                            }}
+                            disabled={disabled}
+                            placeholder='Enter MCP server URL' />
+                            <Button
+                                onClick={testConnection}
+                                disabled={disabled || !String(state.form.url || '').trim()}
+                                loading={isTestingConnection}
+                                variant='normal'
+                            >
+                                Test Connection
+                            </Button>
+                        </Grid>
+                        {testConnectionUrl && (
+                            <Box margin={{ top: 'xs' }}>
+                                <StatusIndicator
+                                    type={connectionState === 'ready' ? 'success' :
+                                        connectionState === 'failed' ? 'error' :
+                                            connectionState === 'discovering' || connectionState === 'authenticating' || connectionState === 'connecting' || connectionState === 'loading' ? 'pending' : 'error'}
+                                >
+                                    {connectionState === 'ready' ? 'Connection successful' :
+                                        connectionState === 'failed' ? 'Connection failed' :
+                                            connectionState === 'discovering' ? 'Discovering server...' :
+                                                connectionState === 'authenticating' ? 'Authenticating...' :
+                                                    connectionState === 'connecting' || connectionState === 'loading' ? 'Connecting...' :
+                                                        'Connection failed'}
+                                </StatusIndicator>
+                                {connectionState === 'ready' && tools && (
+                                    <Box margin={{ top: 'xs' }}>
+                                        <small>Available tools: {tools.length}</small>
+                                    </Box>
+                                )}
+                                {connectionState === 'failed' && (
+                                    <Box margin={{ top: 'xs' }}>
+                                        <small>Unable to connect to the MCP server. Please check the URL and try again.</small>
+                                    </Box>
+                                )}
+                            </Box>
+                        )}
                     </FormField>
 
                     {isUserAdmin && <Grid gridDefinition={[{colspan: 3}, {colspan: 3}]}>

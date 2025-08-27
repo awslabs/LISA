@@ -97,6 +97,7 @@ export const RagRepositoryConfigSchema = z
             .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
             .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
         repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
+        embeddingModelId: z.string().optional().describe('The default embedding model to be used when selecting repository.'),
         type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),

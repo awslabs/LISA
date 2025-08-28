@@ -32,7 +32,7 @@ import remarkMath from 'remark-math';
 import rehypeMathjax from 'rehype-mathjax';
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
@@ -119,7 +119,81 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     </div>
                 );
             };
+            const CodeBlockWithoutLanguage = ({ code }: { code: string }) => {
+                return (
+                    <div style={{ position: 'relative' }}>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '5px',
+                                right: '5px',
+                                zIndex: 10
+                            }}
+                        >
+                            <ButtonGroup
+                                onItemClick={() =>
+                                    navigator.clipboard.writeText(code)
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
+                                    {
+                                        type: 'icon-button',
+                                        id: 'copy code',
+                                        iconName: 'copy',
+                                        text: 'Copy Code',
+                                        popoverFeedback: (
+                                            <StatusIndicator type='success'>
+                                                Code copied
+                                            </StatusIndicator>
+                                        )
+                                    }
+                                ]}
+                                variant='icon'
+                            />
+                        </div>
+                        <pre
+                            style={{
+                                backgroundColor: '#1e1e1e',
+                                color: '#d4d4d4',
+                                padding: '16px',
+                                borderRadius: '6px',
+                                overflow: 'auto',
+                                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                                fontSize: '14px',
+                                lineHeight: '1.45',
+                                margin: '0'
+                            }}
+                        >
+                            <code style={{ backgroundColor: 'transparent', padding: '0', color: 'inherit' }}>
+                                {code}
+                            </code>
+                        </pre>
+                    </div>
+                );
+            };
+            // Check if this is inline code by examining the props
+            const isInlineCode = !props.node || props.node.position?.start?.line === props.node.position?.end?.line;
 
+            if (isInlineCode) {
+                return (
+                    <code
+                        className='bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
+                        style={{
+                            backgroundColor: 'rgba(209, 213, 219, 0.25)',
+                            border: '1px solid rgba(107, 114, 128, 0.25)',
+                            color: '#dc2626',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace'
+                        }}
+                        {...props}
+                    >
+                        {children}
+                    </code>
+                );
+            }
             return match ? (
                 match[1] === 'mermaid' ? (
                     <MermaidDiagram chart={codeString} isStreaming={isStreaming} />
@@ -130,9 +204,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                     />
                 )
             ) : (
-                <code className={`${className} bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono`} {...props}>
-                    {children}
-                </code>
+                <CodeBlockWithoutLanguage code={codeString} />
             );
         },
     }), [isStreaming]); // Include isStreaming so the component can access it
@@ -302,43 +374,43 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
             {message?.type === 'human' && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <div style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                    <ChatBubble
-                        ariaLabel={currentUser}
-                        type='outgoing'
-                        avatar={
-                            <Avatar
-                                ariaLabel={currentUser}
-                                tooltipText={currentUser}
-                                initials={currentUser?.charAt(0).toUpperCase()}
-                            />
-                        }
-                    >
-                        <div style={{ maxWidth: '60em' }}>
-                            {renderContent(message.type, message.content)}
-                        </div>
-                    </ChatBubble>
-                    <ButtonGroup
-                        onItemClick={({ detail }) =>
-                            ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
-                        }
-                        ariaLabel='Chat actions'
-                        dropdownExpandToViewport
-                        items={[
-                            {
-                                type: 'icon-button',
-                                id: 'copy',
-                                iconName: 'copy',
-                                text: 'Copy Input',
-                                popoverFeedback: (
-                                    <StatusIndicator type='success'>
-                                        Input copied
-                                    </StatusIndicator>
-                                )
+                        <ChatBubble
+                            ariaLabel={currentUser}
+                            type='outgoing'
+                            avatar={
+                                <Avatar
+                                    ariaLabel={currentUser}
+                                    tooltipText={currentUser}
+                                    initials={currentUser?.charAt(0).toUpperCase()}
+                                />
                             }
-                        ]}
-                        variant='icon'
-                    />
+                        >
+                            <div style={{ maxWidth: '60em' }}>
+                                {renderContent(message.type, message.content)}
+                            </div>
+                        </ChatBubble>
+                        <ButtonGroup
+                            onItemClick={({ detail }) =>
+                                ['copy'].includes(detail.id) &&
+                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                            }
+                            ariaLabel='Chat actions'
+                            dropdownExpandToViewport
+                            items={[
+                                {
+                                    type: 'icon-button',
+                                    id: 'copy',
+                                    iconName: 'copy',
+                                    text: 'Copy Input',
+                                    popoverFeedback: (
+                                        <StatusIndicator type='success'>
+                                            Input copied
+                                        </StatusIndicator>
+                                    )
+                                }
+                            ]}
+                            variant='icon'
+                        />
                     </div>
                 </SpaceBetween>
             )}

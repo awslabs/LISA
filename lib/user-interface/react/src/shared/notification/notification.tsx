@@ -36,7 +36,7 @@ function NotificationBanner (): ReactElement {
     return (
         <div role='status' aria-live='polite'>
             <Flashbar
-            stackItems={true}
+                stackItems={true}
                 items={notifications
                     .slice(
                         0,

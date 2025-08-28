@@ -18,11 +18,11 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
 import { ButtonGroup, StatusIndicator } from '@cloudscape-design/components';
 
-interface MermaidDiagramProps {
+type MermaidDiagramProps = {
     chart: string;
     id?: string;
     isStreaming?: boolean;
-}
+};
 
 const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, isStreaming }) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -61,20 +61,20 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
     const isValidMermaidSyntax = useCallback((chartContent: string) => {
         const trimmed = chartContent.trim();
         if (!trimmed) return false;
-        
+
         // Check for common mermaid diagram types and basic structure
         const diagramTypes = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'];
-        const hasValidStart = diagramTypes.some(type => trimmed.toLowerCase().startsWith(type.toLowerCase()));
-        
+        const hasValidStart = diagramTypes.some((type) => trimmed.toLowerCase().startsWith(type.toLowerCase()));
+
         // Basic check: should have at least some content after the diagram type
-        const lines = trimmed.split('\n').filter(line => line.trim());
+        const lines = trimmed.split('\n').filter((line) => line.trim());
         const hasContent = lines.length > 1;
-        
+
         // Check for incomplete syntax patterns that commonly occur during streaming
         const hasIncompleteArrow = /--[^>-]*$/.test(trimmed); // Incomplete arrow like "--"
         const hasIncompleteNode = /\[[^\]]*$/.test(trimmed); // Incomplete node like "[text
         const hasIncompleteConnection = /\([^)]*$/.test(trimmed); // Incomplete connection like "(text
-        
+
         return hasValidStart && hasContent && !hasIncompleteArrow && !hasIncompleteNode && !hasIncompleteConnection;
     }, []);
 
@@ -117,7 +117,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         renderDiagram();
     }, [chart, id, svg, isStreaming, isValidMermaidSyntax]);
 
-    const copyToClipboard = useCallback(async (content: string, type: 'svg' | 'code') => {
+    const copyToClipboard = useCallback(async (content: string) => {
         try {
             await navigator.clipboard.writeText(content);
         } catch (err) {

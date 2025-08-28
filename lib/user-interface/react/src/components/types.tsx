@@ -224,7 +224,6 @@ export enum MessageTypes {
     TOOL = 'tool',
 }
 
-
 /**
  * Model Features
  */
@@ -233,3 +232,18 @@ export enum ModelFeatures {
     IMAGE_INPUT = 'imageInput',
     TOOL_CALLS = 'toolCalls',
 }
+
+/**
+ * Interface for paginated document list response
+ */
+export type PaginatedDocumentResponse = {
+    documents: RagDocument[];
+    lastEvaluated?: {
+        pk: string;
+        document_id: string;
+        repository_id: string;
+    } | null;
+    totalDocuments?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
+};

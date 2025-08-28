@@ -276,7 +276,6 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'
-                                // variant="stacked"
                                 headerText='Metadata'
                             >
                                 <JsonView data={{

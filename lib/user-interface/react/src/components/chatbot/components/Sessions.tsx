@@ -212,7 +212,7 @@ export function Sessions ({ newSession }) {
                                             <Input
                                                 value={searchQuery}
                                                 onChange={({ detail }) => setSearchQuery(detail.value)}
-                                                placeholder='Search sessions by message content...'
+                                                placeholder='Search sessions by name...'
                                                 clearAriaLabel='Clear search'
                                                 type='search'
                                             />

@@ -14,6 +14,10 @@
 
 """Handler for ListModels requests."""
 
+from typing import List, Optional
+
+from utilities.common_functions import user_has_group_access
+
 from ..domain_objects import ListModelsResponse
 from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
@@ -22,7 +26,7 @@ from .utils import to_lisa_model
 class ListModelsHandler(BaseApiHandler):
     """Handler class for ListModels requests."""
 
-    def __call__(self) -> ListModelsResponse:  # type: ignore
+    def __call__(self, user_groups: Optional[List[str]] = None, is_admin: bool = False) -> ListModelsResponse:
         """Call handler to get all models from DynamoDB and transform results into API response format."""
         ddb_models = []
         models_response = self._model_table.scan()
@@ -34,4 +38,11 @@ class ListModelsHandler(BaseApiHandler):
             pagination_key = models_response.get("LastEvaluatedKey", None)
 
         models_list = [to_lisa_model(m) for m in ddb_models]
+
+        # Filter models based on user groups if not admin
+        if not is_admin and user_groups is not None:
+            models_list = [
+                model for model in models_list if user_has_group_access(user_groups, model.allowedGroups or [])
+            ]
+
         return ListModelsResponse(models=models_list)

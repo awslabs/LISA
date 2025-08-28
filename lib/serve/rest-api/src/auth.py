@@ -111,7 +111,7 @@ def id_token_is_valid(
         return None
 
 
-def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
+def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: str) -> bool:
     """Check if the user is an admin."""
     props = jwt_groups_property.split(".")
     current_node = jwt_data
@@ -120,7 +120,7 @@ def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: st
             current_node = current_node[prop]
         else:
             return False
-    return admin_group in current_node
+    return group in current_node
 
 
 def get_authorization_token(headers: Dict[str, str], header_name: str) -> str:

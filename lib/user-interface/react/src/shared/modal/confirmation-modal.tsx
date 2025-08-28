@@ -24,11 +24,12 @@ export type CallbackFunction<T = any, R = void> = (props?: T) => R;
 export type ConfirmationModalProps = {
     action: string;
     resourceName: string;
-    onConfirm: () =>  void;
+    onConfirm: () => void;
     postConfirm?: CallbackFunction;
     description?: string | ReactElement;
     disabled?: boolean;
     onDismiss?: (event?: NonCancelableCustomEvent<ModalProps.DismissDetail>) => void;
+    ignoreResponses?: boolean;
 };
 
 function ConfirmationModal ({
@@ -38,20 +39,27 @@ function ConfirmationModal ({
     postConfirm,
     description,
     disabled,
-    onDismiss
-}: ConfirmationModalProps) : ReactElement{
+    onDismiss,
+    ignoreResponses
+}: ConfirmationModalProps): ReactElement {
     const [processing, setProcessing] = useState(false);
     const dispatch = useAppDispatch();
 
     return (
         <CloudscapeModal
-            onDismiss={(event) => [dispatch(dismissModal()), onDismiss?.(event)]}
+            onDismiss={(event) => {
+                dispatch(dismissModal());
+                onDismiss?.(event);
+            }}
             visible={true}
             closeAriaLabel='Close modal'
             footer={
                 <Box float='right'>
                     <SpaceBetween direction='horizontal' size='xs'>
-                        <Button onClick={() => [dispatch(dismissModal()), onDismiss?.()]}>
+                        <Button onClick={() => {
+                            dispatch(dismissModal());
+                            onDismiss?.();
+                        }}>
                             Cancel
                         </Button>
                         <Button
@@ -59,11 +67,17 @@ function ConfirmationModal ({
                             variant='primary'
                             onClick={async () => {
                                 setProcessing(true);
-                                await onConfirm();
-                                dispatch(dismissModal());
-                                onDismiss?.();
-                                if (postConfirm) {
-                                    postConfirm();
+                                try {
+                                    if (ignoreResponses) {
+                                        onConfirm();
+                                    } else {
+                                        await onConfirm();
+                                    }
+                                } finally {
+                                    dispatch(dismissModal());
+                                    if (postConfirm) {
+                                        postConfirm();
+                                    }
                                 }
                             }}
                             loading={processing}
@@ -74,7 +88,7 @@ function ConfirmationModal ({
                     </SpaceBetween>
                 </Box>
             }
-            header={`${action} "${resourceName}"?`}
+            header={`${action} "${resourceName}"`}
         >
             {description}
         </CloudscapeModal>

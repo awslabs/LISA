@@ -57,10 +57,12 @@ export const sessionApi = createApi({
                             content: elem.content,
                             type: elem.type,
                             metadata: elem.metadata,
+                            toolCalls: elem.toolCalls,
                         };
                         return message;
                     }),
-                    configuration: session.configuration
+                    configuration: session.configuration,
+                    name: session.name
                 }
             }),
             transformErrorResponse: (baseQueryReturnValue) => {
@@ -71,6 +73,23 @@ export const sessionApi = createApi({
                 };
             },
             invalidatesTags: ['sessions'],
+        }),
+        updateSessionName: builder.mutation<LisaChatSession, { sessionId: string, name: string }>({
+            query: (session) => ({
+                url: `/session/${session.sessionId}/name`,
+                method: 'PUT',
+                data: {
+                    name: session.name
+                }
+            }),
+            invalidatesTags: ['sessions'],
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Rename Session Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                };
+            },
         }),
         attachImageToSession: builder.mutation<LisaAttachImageResponse, LisaAttachImageRequest>({
             query: (attachImageRequest) => ({
@@ -125,6 +144,7 @@ export const {
     useDeleteSessionByIdMutation,
     useDeleteAllSessionsForUserMutation,
     useUpdateSessionMutation,
+    useUpdateSessionNameMutation,
     useLazyGetSessionByIdQuery,
     useGetSessionHealthQuery,
     useAttachImageToSessionMutation

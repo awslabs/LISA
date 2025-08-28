@@ -20,23 +20,32 @@ const navLinks = [
   {
     text: 'System Administrator Guide',
     items: [
-      { text: 'What is LISA?', link: '/admin/overview' },
       {
-        text: 'Architecture Overview',
+        text: 'Getting Started', link: '/admin/getting-started',
         items: [
-          { text: 'LISA Components', link: '/admin/architecture#lisa-components' },
-        ],
-        link: '/admin/architecture',
+          { text: 'What is LISA', link: '/admin/getting-started#what-is-lisa' },
+          { text: 'Major Features', link: '/admin/getting-started#major-features' },
+          { text: 'Key Features & Benefits', link: '/admin/getting-started#key-features-benefits' },
+        ]
       },
-      { text: 'Getting Started', link: '/admin/getting-started' },
-      { text: 'Configure IdP: Cognito & Keycloak Examples', link: '/admin/idp-config' },
-      { text: 'Deployment', link: '/admin/deploy' },
-      { text: 'Setting Model Management Admin Group', link: '/admin/model-management-admin' },
-      { text: 'UI Component Configuration', link: '/admin/ui-configuration' },
-      { text: 'LiteLLM', link: '/admin/litellm' },
+      {
+        text: 'Architecture Overview',  link: '/admin/architecture',
+        items: [
+          { text: 'Serve', link: '/admin/architecture#serve' },
+          { text: 'Chat UI', link: '/admin/architecture#chat-ui' },
+          { text: 'Model Management', link: '/admin/architecture#model-management' },
+        ],
+      },
+      { text: 'Deployment', link: '/admin/deploy',
+      items: [
+          { text: 'Prerequisites', link: '/admin/deploy#prerequisites' },
+          { text: 'Software', link: '/admin/deploy#software' },
+          { text: 'Deployment Steps', link: '/admin/deploy#deployment-steps' },
+          { text: 'ADC Region Deployment Tips', link: '/admin/deploy#adc-region-deployment-tips' },
+        ],
+      },
+      { text: 'Example IdP Configurations', link: '/admin/idp-config' },
       { text: 'API Overview', link: '/admin/api-overview' },
-      { text: 'API Request Error Handling', link: '/admin/api-error' },
-      { text: 'Security', link: '/admin/security' },
     ],
   },
   {
@@ -48,7 +57,6 @@ const navLinks = [
       { text: 'Model Management UI', link: '/config/model-management-ui' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Vector Stores', link: '/config/vector-stores' },
-      { text: 'Branding', link: '/config/branding' },
       {
         text: 'Configuration Schema',
         link: '/config/configuration',
@@ -58,6 +66,8 @@ const navLinks = [
           { text: 'Role Overrides', link: '/config/role-overrides' },
         ],
       },
+      { text: 'Model Context Protocol (MCP)', link: '/config/mcp' },
+      { text: 'Usage Analytics', link: '/config/cloudwatch' },
     ],
   },
   {
@@ -65,12 +75,7 @@ const navLinks = [
     items: [
       { text: 'LISA Chat UI', link: '/user/chat' },
       { text: 'Document Library Management', link: '/user/document-library' },
-      { text: 'Context Windows', link: '/user/context-windows' },
-      { text: 'Model KWARGS', link: '/user/model-kwargs' },
-      { text: 'Model Management UI', link: '/user/model-management-ui' },
-      { text: 'Non-RAG in Context File Management', link: '/user/nonrag-management' },
-      { text: 'Prompt Engineering', link: '/user/prompt-engineering' },
-      { text: 'Session History', link: '/user/history' },
+      { text: 'Model Library', link: '/user/model-library' },
       { text: 'Breaking Changes', link: '/user/breaking-changes' },
       { text: 'Change Log', link: 'https://github.com/awslabs/LISA/releases' },
     ],

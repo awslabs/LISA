@@ -22,7 +22,16 @@ import { EbsDeviceVolumeType } from './cdk';
 export enum RagRepositoryType {
     OPENSEARCH = 'opensearch',
     PGVECTOR = 'pgvector',
+    BEDROCK_KNOWLEDGE_BASE = 'bedrock_knowledge_base',
 }
+
+export const BedrockKnowledgeBaseInstanceConfig = z.object({
+    bedrockKnowledgeBaseName: z.string().describe('The name of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeBaseId: z.string().describe('The id of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeDatasourceName: z.string().describe('The name of the Bedrock Knowledge Datasource.'),
+    bedrockKnowledgeDatasourceId: z.string().describe('The id of the Bedrock Knowledge Datasource.'),
+    bedrockKnowledgeDatasourceS3Bucket: z.string().describe('The S3 bucket of the Bedrock Knowledge Base.'),
+});
 
 export const OpenSearchNewClusterConfig = z.object({
     dataNodes: z.number().min(1).default(2).describe('The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.'),
@@ -78,6 +87,8 @@ export const RdsInstanceConfig = z.object({
 
 export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 
+export type BedrockKnowledgeBaseConfig = z.infer<typeof BedrockKnowledgeBaseInstanceConfig>;
+
 export const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string()
@@ -89,6 +100,7 @@ export const RagRepositoryConfigSchema = z
         type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),
+        bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
         allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
     })

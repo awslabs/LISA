@@ -870,6 +870,9 @@ def test_pipeline_embeddings_embed_query_error():
         with pytest.raises(ValidationError, match="Invalid query text"):
             embeddings.embed_query(None)
 
+        with pytest.raises(ValidationError, match="Invalid query text"):
+            embeddings.embed_query("")
+
 
 def test_get_embeddings_pipeline_error():
     """Test error handling in get_embeddings_pipeline function"""
@@ -1586,6 +1589,7 @@ def test_real_download_document_function():
         assert result["body"] == '"https://test-url"'
 
 
+@mock_aws()
 def test_real_list_docs_function():
     """Test the actual list_docs function"""
     from repository.lambda_functions import list_docs
@@ -1599,7 +1603,12 @@ def test_real_list_docs_function():
 
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
 
-        mock_doc_repo.list_all.return_value = ([{"documentId": "test-doc", "name": "Test Document"}], None)
+        # Create a mock document object with model_dump method
+        mock_doc = MagicMock()
+        mock_doc.model_dump.return_value = {"documentId": "test-doc", "name": "Test Document"}
+
+        # Mock list_all to return the correct tuple format: (docs, last_evaluated, total_documents)
+        mock_doc_repo.list_all.return_value = ([mock_doc], None, 1)
 
         event = {
             "requestContext": {
@@ -1613,6 +1622,201 @@ def test_real_list_docs_function():
 
         # Due to mocking complexity, just check it returns a response
         assert result["statusCode"] in [200, 500]
+
+
+@mock_aws()
+def test_list_docs_with_pagination():
+    """Test list_docs function with pagination parameters"""
+    from repository.lambda_functions import list_docs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Create mock documents
+        mock_doc1 = MagicMock()
+        mock_doc1.model_dump.return_value = {"documentId": "doc1", "name": "Document 1"}
+        mock_doc2 = MagicMock()
+        mock_doc2.model_dump.return_value = {"documentId": "doc2", "name": "Document 2"}
+
+        # Mock list_all to return documents with pagination info
+        mock_doc_repo.list_all.return_value = ([mock_doc1, mock_doc2], {"pk": "next-page", "document_id": "doc2"}, 5)
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {
+                "collectionId": "test-collection",
+                "lastEvaluatedKeyPk": "current-page",
+                "lastEvaluatedKeyDocumentId": "doc1",
+                "lastEvaluatedKeyRepositoryId": "test-repo",
+                "pageSize": "2",
+            },
+        }
+
+        result = list_docs(event, SimpleNamespace())
+
+        # Verify the response structure and pagination info
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert len(body["documents"]) == 2
+        assert body["totalDocuments"] == 5
+        assert body["hasNextPage"] is True
+        assert body["hasPreviousPage"] is False  # No 'lastEvaluated' key in queryStringParameters
+        assert body["lastEvaluated"] == {"pk": "next-page", "document_id": "doc2"}
+
+
+@mock_aws()
+def test_list_docs_with_previous_page():
+    """Test list_docs function with previous page indicator"""
+    from repository.lambda_functions import list_docs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        mock_doc = MagicMock()
+        mock_doc.model_dump.return_value = {"documentId": "test-doc", "name": "Test Document"}
+
+        mock_doc_repo.list_all.return_value = ([mock_doc], None, 1)
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {
+                "collectionId": "test-collection",
+                "lastEvaluated": "true",  # This indicates we're on a previous page
+            },
+        }
+
+        result = list_docs(event, SimpleNamespace())
+
+        # Verify the response handles previous page correctly
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["hasPreviousPage"] is True
+
+
+@mock_aws()
+def test_list_docs_with_custom_page_size():
+    """Test list_docs function with custom page size"""
+    from repository.lambda_functions import list_docs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        mock_doc = MagicMock()
+        mock_doc.model_dump.return_value = {"documentId": "test-doc", "name": "Test Document"}
+
+        mock_doc_repo.list_all.return_value = ([mock_doc], None, 1)
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {"collectionId": "test-collection", "pageSize": "50"},
+        }
+
+        result = list_docs(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["hasPreviousPage"] is False  # No pagination parameters
+
+
+@mock_aws()
+def test_list_docs_with_edge_case_page_sizes():
+    """Test list_docs function with edge case page sizes"""
+    from repository.lambda_functions import list_docs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        mock_doc = MagicMock()
+        mock_doc.model_dump.return_value = {"documentId": "test-doc", "name": "Test Document"}
+
+        mock_doc_repo.list_all.return_value = ([mock_doc], None, 1)
+
+        # Test with page size 0 (should be clamped to 1)
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {"collectionId": "test-collection", "pageSize": "0"},
+        }
+
+        result = list_docs(event, SimpleNamespace())
+        assert result["statusCode"] == 200
+
+        # Test with page size > 100 (should be clamped to 100)
+        event["queryStringParameters"]["pageSize"] = "150"
+        result = list_docs(event, SimpleNamespace())
+        assert result["statusCode"] == 200
+
+
+@mock_aws()
+def test_list_docs_with_encoded_pagination_keys():
+    """Test list_docs function with URL-encoded pagination keys"""
+    from repository.lambda_functions import list_docs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        mock_doc = MagicMock()
+        mock_doc.model_dump.return_value = {"documentId": "test-doc", "name": "Test Document"}
+
+        mock_doc_repo.list_all.return_value = ([mock_doc], None, 1)
+
+        # Test with URL-encoded keys
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {
+                "collectionId": "test-collection",
+                "lastEvaluatedKeyPk": "repo%3Atest-collection",
+                "lastEvaluatedKeyDocumentId": "doc%2Fwith%2Fslashes",
+                "lastEvaluatedKeyRepositoryId": "test%2Drepo",
+            },
+        }
+
+        result = list_docs(event, SimpleNamespace())
+
+        # Verify the response handles URL decoding correctly
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["hasPreviousPage"] is False  # No 'lastEvaluated' key
 
 
 def test_real_create_function():

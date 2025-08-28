@@ -33,15 +33,16 @@ enum NagType {
 const nagResults: NagResult = {
     LisaApiBase: [1,7,0,7],
     LisaApiDeployment: [0,0,0,0],
-    LisaChat: [2,41,0,45],
+    LisaChat: [4,62,0,69],
     LisaCore: [0,1,0,6],
     LisaDocs: [1,22,0,12],
     LisaIAM: [0,14,0,0],
-    LisaModels: [1,73,0,60],
+    LisaModels: [1,77,0,64],
     LisaNetworking: [1,2,3,5],
     LisaRAG: [3,53,0,50],
-    LisaServe: [1,21,0,31],
+    LisaServe: [1,24,0,32],
     LisaUI: [0,15,0,7],
+    LisaMetrics: [1,11,0,12]
 };
 
 describe('Nag Pack Tests', () => {

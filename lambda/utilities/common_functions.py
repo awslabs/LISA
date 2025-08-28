@@ -316,6 +316,10 @@ def get_cert_path(iam_client: Any) -> Union[str, bool]:
     if not cert_arn:
         logger.info("No SSL certificate ARN specified, using default verification")
         return True
+    # For ACM certificates, use default verification since they are trusted AWS certificates
+    elif ":acm:" in cert_arn:
+        logger.info("ACM certificate detected, using default SSL verification")
+        return True
 
     try:
         # Clean up previous cert file if it exists
@@ -455,7 +459,7 @@ def _get_lambda_role_arn() -> str:
     str
         The full ARN of the Lambda execution role
     """
-    sts = boto3.client("sts")
+    sts = boto3.client("sts", region_name=os.environ["AWS_REGION"])
     identity = sts.get_caller_identity()
     return cast(str, identity["Arn"])  # This will include the role name
 
@@ -471,3 +475,27 @@ def get_lambda_role_name() -> str:
     arn = _get_lambda_role_arn()
     parts = arn.split(":assumed-role/")[1].split("/")
     return parts[0]  # This is the role name
+
+
+def get_item(response: Any) -> Any:
+    items = response.get("Items", [])
+    return items[0] if items else None
+
+
+def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
+    """
+    Check if user has access based on group membership.
+
+    Args:
+        user_groups: List of groups the user belongs to
+        allowed_groups: List of groups allowed to access the resource
+
+    Returns:
+        True if user has access (either no restrictions or user has required group)
+    """
+    # Public resource (no group restrictions)
+    if not allowed_groups:
+        return True
+
+    # Check if user has at least one matching group
+    return len(set(user_groups).intersection(set(allowed_groups))) > 0

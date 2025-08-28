@@ -437,6 +437,32 @@ export class ModelsApi extends Construct {
                             ],
                             resources: ['*'],  // We do not know the ASG names in advance
                         }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ecs:DescribeTaskDefinition',
+                                'ecs:RegisterTaskDefinition',
+                                'ecs:UpdateService',
+                                'ecs:DescribeServices',
+                            ],
+                            resources: ['*'],  // ECS resources are dynamic and created by CloudFormation
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'cloudformation:DescribeStackResources',
+                            ],
+                            resources: [
+                                'arn:*:cloudformation:*:*:stack/*',
+                            ],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'iam:PassRole',
+                            ],
+                            resources: ['*'],
+                        }),
                     ]
                 }),
             }

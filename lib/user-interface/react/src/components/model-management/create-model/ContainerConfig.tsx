@@ -23,7 +23,11 @@ import { Button, Grid, Header, Icon, SpaceBetween } from '@cloudscape-design/com
 import Container from '@cloudscape-design/components/container';
 import { EnvironmentVariables } from '../../../shared/form/environment-variables';
 
-export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElement {
+type ContainerConfigProps = FormProps<IContainerConfig> & {
+    isEdit: boolean;
+};
+
+export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
     return (
         <SpaceBetween size={'s'}>
             <Container
@@ -34,21 +38,39 @@ export function ContainerConfig (props: FormProps<IContainerConfig>) : ReactElem
                 <SpaceBetween size={'s'}>
                     <FormField label='Shared Memory Size' errorText={props.formErrors?.containerConfig?.sharedMemorySize}>
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.sharedMemorySize.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])} onChange={({ detail }) => {
-                                props.setFields({ 'containerConfig.sharedMemorySize': Number(detail.value) });
-                            }}/>
+                            <Input
+                                value={props.item.sharedMemorySize.toString()}
+                                type='number'
+                                inputMode='numeric'
+                                onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])}
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'containerConfig.sharedMemorySize': Number(detail.value) });
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>MiB</span>
                         </Grid>
                     </FormField>
                     <FormField label='Base Image' errorText={props.formErrors?.containerConfig?.image?.baseImage}>
-                        <Input value={props.item.image.baseImage} inputMode='text' onBlur={() => props.touchFields(['containerConfig.image.baseImage'])} onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.image.baseImage': detail.value });
-                        }}/>
+                        <Input
+                            value={props.item.image.baseImage}
+                            inputMode='text'
+                            disabled={props.isEdit}
+                            onBlur={() => props.touchFields(['containerConfig.image.baseImage'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'containerConfig.image.baseImage': detail.value });
+                            }}
+                        />
                     </FormField>
                     <FormField label='Type' errorText={props.formErrors?.containerConfig?.image?.type}>
-                        <Input value={props.item.image.type} inputMode='text' onBlur={() => props.touchFields(['containerConfig.image.type'])} onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.image.type': detail.value });
-                        }}/>
+                        <Input
+                            value={props.item.image.type}
+                            inputMode='text'
+                            disabled={props.isEdit}
+                            onBlur={() => props.touchFields(['containerConfig.image.type'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'containerConfig.image.type': detail.value });
+                            }}
+                        />
                     </FormField>
                 </SpaceBetween>
             </Container>

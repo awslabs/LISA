@@ -26,17 +26,104 @@ from typing import Any, Dict, List, Tuple
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from utilities.common_functions import api_wrapper, get_session_id, get_username, retry_config
+from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, retry_config
+from utilities.encoders import convert_decimal
 
 logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"])
+sqs_client = boto3.client("sqs", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
 s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
 
+# Get model table for real-time feature validation
+model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
+
 executor = ThreadPoolExecutor(max_workers=10)
+
+
+def _get_current_model_config(model_id: str) -> Any:
+    """Get the current model configuration from the model table.
+
+    Parameters
+    ----------
+    model_id : str
+        The model ID to fetch configuration for.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The current model configuration, or empty dict if not found.
+    """
+    if not model_table or not model_id:
+        return {}
+
+    try:
+        response = model_table.get_item(Key={"model_id": model_id})
+        model_item = response.get("Item", {})
+        return model_item.get("model_config", {})
+    except ClientError as error:
+        logger.warning(f"Could not fetch model config for {model_id}: {error}")
+        return {}
+
+
+def _update_session_with_current_model_config(session_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Update session configuration with the most recent model configuration.
+
+    Parameters
+    ----------
+    session_config : Dict[str, Any]
+        The session configuration containing model information.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Updated configuration with current model settings.
+    """
+    if not session_config:
+        return session_config
+
+    # Extract model ID from selectedModel section
+    selected_model = session_config.get("selectedModel", {})
+
+    # Get the modelId directly
+    model_id = selected_model.get("modelId")
+    if not model_id:
+        logger.warning("No modelId found in session selectedModel")
+        return session_config
+
+    current_model_config = _get_current_model_config(model_id)
+
+    if not current_model_config:
+        logger.warning(f"Could not fetch current config for model {model_id}, using existing session config")
+        return session_config
+
+    # Create updated config with current model settings
+    updated_config = session_config.copy()
+
+    # Update the selectedModel section with current model configuration
+    if "selectedModel" not in updated_config:
+        updated_config["selectedModel"] = {}
+
+    selected_model_section = updated_config["selectedModel"]
+
+    # Update features from current model config
+    if "features" in current_model_config:
+        selected_model_section["features"] = current_model_config["features"]
+
+    # Update streaming setting
+    if "streaming" in current_model_config:
+        selected_model_section["streaming"] = current_model_config["streaming"]
+
+    # Update other model-specific settings that might have changed
+    for key in ["modelType", "modelDescription", "allowedGroups"]:
+        if key in current_model_config:
+            selected_model_section[key] = current_model_config[key]
+
+    logger.info(f"Updated session selectedModel config for model {model_id} with current model settings")
+    return updated_config
 
 
 def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
@@ -113,13 +200,29 @@ def _generate_presigned_image_url(key: str) -> str:
 
 def _map_session(session: dict) -> Dict[str, Any]:
     return {
-        "sessionId": session["sessionId"],
-        "firstHumanMessage": next(
-            (msg["content"] for msg in session.get("history", []) if msg.get("type") == "human"), ""
-        ),
+        "sessionId": session.get("sessionId", None),
+        "name": session.get("name", None),
+        "firstHumanMessage": _find_first_human_message(session),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
     }
+
+
+def _find_first_human_message(session: dict) -> str:
+    for msg in session.get("history", []):
+        if msg.get("type") == "human":
+            content = msg.get("content")
+            if isinstance(content, str):
+                return content
+            elif isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict):
+                        text: str = item.get("text", "")
+                        if text and not text.startswith("File context:"):
+                            return text
+            else:
+                logger.warning(f"Unhandled human message content in session {session['sessionId']}")
+    return ""
 
 
 @api_wrapper
@@ -154,6 +257,19 @@ def get_session(event: dict, context: dict) -> dict:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         resp = response.get("Item", {})
 
+        # Update configuration with current model settings before returning
+        if resp and resp.get("configuration"):
+            configuration = resp.get("configuration", {})
+            # Update the selectedModel within the configuration with current model settings
+            if configuration.get("selectedModel"):
+                temp_config = {"selectedModel": configuration["selectedModel"]}
+                updated_temp_config = _update_session_with_current_model_config(temp_config)
+                configuration["selectedModel"] = updated_temp_config.get(
+                    "selectedModel", configuration["selectedModel"]
+                )
+                # Update the configuration in the response
+                resp["configuration"] = configuration
+
         # Create a list of tasks for parallel processing
         tasks = []
         for message in resp.get("history", []):
@@ -165,7 +281,7 @@ def get_session(event: dict, context: dict) -> dict:
                             tasks.append((item, s3_key))
 
         list(executor.map(_process_image, tasks))
-        return response.get("Item", {})  # type: ignore [no-any-return]
+        return resp  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
@@ -238,6 +354,32 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
+def rename_session(event: dict, context: dict) -> dict:
+    """Update session name in DynamoDB."""
+    try:
+        user_id = get_username(event)
+        session_id = get_session_id(event)
+
+        try:
+            body = json.loads(event.get("body", {}), parse_float=Decimal)
+        except json.JSONDecodeError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
+
+        if "name" not in body:
+            return {"statusCode": 400, "body": json.dumps({"error": "Missing required field: name"})}
+
+        table.update_item(
+            Key={"sessionId": session_id, "userId": user_id},
+            UpdateExpression="SET #name = :name",
+            ExpressionAttributeNames={"#name": "name"},
+            ExpressionAttributeValues={":name": body.get("name")},
+        )
+        return {"statusCode": 200, "body": json.dumps({"message": "Session name updated successfully"})}
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+
+
+@api_wrapper
 def put_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:
@@ -254,19 +396,51 @@ def put_session(event: dict, context: dict) -> dict:
 
         messages = body["messages"]
 
+        # Get the configuration from the request body (what the frontend sends)
+        configuration = body.get("configuration", {})
+
+        # Update the selectedModel within the configuration with current model settings
+        if configuration and configuration.get("selectedModel"):
+            temp_config = {"selectedModel": configuration["selectedModel"]}
+            updated_temp_config = _update_session_with_current_model_config(temp_config)
+            configuration["selectedModel"] = updated_temp_config.get("selectedModel", configuration["selectedModel"])
+
+        # Publish event to SQS queue for metrics processing
+        try:
+            if "USAGE_METRICS_QUEUE_NAME" in os.environ:
+                # Create a copy of the event to send to SQS
+                metrics_event = {
+                    "userId": user_id,
+                    "sessionId": session_id,
+                    "messages": messages,
+                    "userGroups": get_groups(event),
+                    "timestamp": datetime.now().isoformat(),
+                }
+                sqs_client.send_message(
+                    QueueUrl=os.environ["USAGE_METRICS_QUEUE_NAME"],
+                    MessageBody=json.dumps(convert_decimal(metrics_event)),
+                )
+                logger.info(f"Published event to metrics queue for user {user_id}")
+            else:
+                logger.warning("USAGE_METRICS_QUEUE_NAME environment variable not set, metrics not published")
+        except Exception as e:
+            logger.error(f"Failed to publish to metrics queue: {e}")
+
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
-            UpdateExpression="SET #history = :history, #configuration = :configuration, #startTime = :startTime, "
-            + "#createTime = if_not_exists(#createTime, :createTime)",
+            UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
+            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime)",
             ExpressionAttributeNames={
                 "#history": "history",
+                "#name": "name",
                 "#configuration": "configuration",
                 "#startTime": "startTime",
                 "#createTime": "createTime",
             },
             ExpressionAttributeValues={
                 ":history": messages,
-                ":configuration": body.get("configuration", None),
+                ":name": body.get("name", None),
+                ":configuration": configuration,
                 ":startTime": datetime.now().isoformat(),
                 ":createTime": datetime.now().isoformat(),
             },

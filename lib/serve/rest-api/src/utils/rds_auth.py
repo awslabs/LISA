@@ -32,7 +32,7 @@ def _get_lambda_role_arn() -> str:
     str
         The full ARN of the Lambda execution role
     """
-    sts = boto3.client("sts")
+    sts = boto3.client("sts", region_name=os.environ["AWS_REGION"])
     identity = sts.get_caller_identity()
     return cast(str, identity["Arn"])  # This will include the role name
 

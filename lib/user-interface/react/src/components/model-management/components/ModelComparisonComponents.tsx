@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, memo } from 'react';
+import { ReactElement, memo, useCallback, useRef } from 'react';
 import {
     Box,
     SpaceBetween,
@@ -27,17 +27,17 @@ import {
     SelectProps,
     PromptInput
 } from '@cloudscape-design/components';
-import { IModel } from '../../../shared/model/model-management.model';
-import { ComparisonResponse, ModelSelection } from '../hooks/useModelComparison.hook';
+import { IModel } from '@/shared/model/model-management.model';
+import { ComparisonResponse, ModelSelection } from '@/components/model-management/hooks/useModelComparison.hook';
 import {
     MODEL_COMPARISON_CONFIG,
     UI_CONFIG,
     PLACEHOLDERS,
     ARIA_LABELS
-} from '../config/modelComparison.config';
-import { LisaChatMessage, MessageTypes } from '../../types';
-import Message from '../../chatbot/components/Message';
-import { IChatConfiguration } from '../../../shared/model/chat.configurations.model';
+} from '@/components/model-management/config/modelComparison.config';
+import { LisaChatMessage, MessageTypes } from '@/components/types';
+import Message from '@/components/chatbot/components/Message';
+import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 
 type ModelSelectionSectionProps = {
@@ -110,15 +110,68 @@ type PromptInputSectionProps = {
     prompt: string;
     onPromptChange: (value: string) => void;
     onCompare: () => void;
+    onStopComparison: () => void;
     canCompare: boolean;
+    shouldShowStopButton: boolean;
 };
 
 export const PromptInputSection = memo(function PromptInputSection ({
     prompt,
     onPromptChange,
     onCompare,
-    canCompare
+    onStopComparison,
+    canCompare,
+    shouldShowStopButton
 }: PromptInputSectionProps): ReactElement {
+    // Ref to track if we're processing a keyboard event
+    const isKeyboardEventRef = useRef(false);
+
+    // Handle stop functionality similar to Chat.tsx
+    const handleStop = useCallback(() => {
+        onStopComparison();
+    }, [onStopComparison]);
+
+    // Custom action handler that only allows stop on button clicks
+    const handleAction = useCallback(() => {
+        // If this is a keyboard event, don't process it here (it's handled in handleKeyPress)
+        if (isKeyboardEventRef.current) {
+            return;
+        }
+
+        if (shouldShowStopButton) {
+            // Only allow stop action on button clicks (not keyboard events)
+            handleStop();
+        } else {
+            // Normal send functionality - allow both button clicks and Enter key
+            if (prompt.length > 0 && canCompare) {
+                onCompare();
+            }
+        }
+    }, [shouldShowStopButton, handleStop, prompt.length, canCompare, onCompare]);
+
+    // Handle Enter key press
+    const handleKeyPress = useCallback((event: any) => {
+        if (event.detail.key === 'Enter' && !event.detail.shiftKey) {
+            event.preventDefault();
+            isKeyboardEventRef.current = true;
+
+            // Handle the action directly for keyboard events
+            if (shouldShowStopButton) {
+                // Do nothing for stop button when Enter is pressed
+            } else {
+                // Normal send functionality for Enter key
+                if (prompt.length > 0 && canCompare) {
+                    onCompare();
+                }
+            }
+
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                isKeyboardEventRef.current = false;
+            }, 100);
+        }
+    }, [shouldShowStopButton, prompt.length, canCompare, onCompare]);
+
     return (
         <SpaceBetween size='s'>
             <Box variant='h3'>Prompt</Box>
@@ -126,16 +179,18 @@ export const PromptInputSection = memo(function PromptInputSection ({
                 value={prompt}
                 onChange={({ detail }) => onPromptChange(detail.value)}
                 placeholder={PLACEHOLDERS.PROMPT_INPUT}
-                actionButtonIconName='send'
-                actionButtonAriaLabel={ARIA_LABELS.SEND_PROMPT}
-                onAction={onCompare}
-                actionButtonDisabled={!canCompare}
+                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
+                actionButtonAriaLabel={shouldShowStopButton ? 'Stop comparison' : ARIA_LABELS.SEND_PROMPT}
+                onAction={handleAction}
+                onKeyDown={handleKeyPress}
+                maxRows={4}
+                minRows={2}
+                spellcheck={true}
+                disabled={!canCompare && !shouldShowStopButton}
             />
         </SpaceBetween>
     );
 });
-
-
 
 type ComparisonResultsProps = {
     prompt: string;
@@ -172,13 +227,14 @@ export const ComparisonResults = memo(function ComparisonResults ({
             content: response.loading ? '' : response.error ? `Error: ${response.error}` : response.response,
             metadata: {
                 modelName: modelName
-            }
+            },
+            usage: response.usage,
         });
     });
 
     // Dummy functions for Message component (not used in comparison context)
-    const handleSendGenerateRequest = () => {};
-    const setUserPrompt = () => {};
+    const handleSendGenerateRequest = () => { };
+    const setUserPrompt = () => { };
 
     const handleDownloadResults = (): void => {
         const results = responses.map((response) => {
@@ -188,7 +244,8 @@ export const ComparisonResults = memo(function ComparisonResults ({
                 modelName: model?.modelName || response.modelId,
                 response: response.response,
                 error: response.error,
-                loading: response.loading
+                loading: response.loading,
+                usage: response.usage
             };
         });
 
@@ -207,15 +264,13 @@ export const ComparisonResults = memo(function ComparisonResults ({
 
     return (
         <Container header={<Header variant='h2' actions={
-            <SpaceBetween direction='horizontal' size='xs'>
-                <Button
-                    iconName='download'
-                    onClick={handleDownloadResults}
-                    disabled={responses.length === 0 || responses.some((r) => r.loading)}
-                >
-                    Download Results
-                </Button>
-            </SpaceBetween>
+            <Button
+                iconName='download'
+                onClick={handleDownloadResults}
+                disabled={responses.length === 0 || responses.some((r) => r.loading || r.streaming)}
+            >
+                Download Results
+            </Button>
         }>Comparison Results</Header>}>
             <SpaceBetween size='m'>
                 {/* Display user prompt */}
@@ -224,13 +279,14 @@ export const ComparisonResults = memo(function ComparisonResults ({
                         message={userMessage}
                         isRunning={false}
                         callingToolName=''
-                        showMetadata={false}
+                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
                         isStreaming={false}
                         markdownDisplay={markdownDisplay}
                         setChatConfiguration={setChatConfiguration}
                         handleSendGenerateRequest={handleSendGenerateRequest}
                         setUserPrompt={setUserPrompt}
                         chatConfiguration={chatConfiguration}
+                        showUsage={true}
                     />
                 )}
 
@@ -246,13 +302,14 @@ export const ComparisonResults = memo(function ComparisonResults ({
                                     message={aiMessages[index]}
                                     isRunning={response.loading}
                                     callingToolName=''
-                                    showMetadata={false}
-                                    isStreaming={false}
+                                    showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                                    isStreaming={response.streaming}
                                     markdownDisplay={markdownDisplay}
                                     setChatConfiguration={setChatConfiguration}
                                     handleSendGenerateRequest={handleSendGenerateRequest}
                                     setUserPrompt={setUserPrompt}
                                     chatConfiguration={chatConfiguration}
+                                    showUsage={true}
                                 />
                                 {response.error && (
                                     <Alert type='error' header='Error'>

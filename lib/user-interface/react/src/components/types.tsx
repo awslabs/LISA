@@ -61,6 +61,17 @@ export type LisaChatMessageMetadata = {
     imageGenerationParams?: ImageGenerationParams;
 };
 /**
+ * Usage information from OpenAI API responses
+ */
+export type UsageInfo = {
+    completionTokens?: number;
+    responseTime?: number;
+    promptTokens?: number;
+    totalTokens?: number;
+    outputTokens?: number;
+};
+
+/**
  * Interface for storing data for messages
  */
 export type LisaChatMessageFields = {
@@ -68,6 +79,7 @@ export type LisaChatMessageFields = {
     content: MessageContent;
     metadata?: LisaChatMessageMetadata;
     toolCalls?: any[];
+    usage?: UsageInfo;
 } & BaseMessageFields;
 
 /**
@@ -77,12 +89,14 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     type: MessageType;
     metadata?: LisaChatMessageMetadata;
     toolCalls?: any[];
+    usage?: UsageInfo;
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
         this.toolCalls = fields.toolCalls ?? [];
+        this.usage = fields.usage;
     }
 
     static lc_name () {

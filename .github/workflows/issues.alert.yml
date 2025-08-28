@@ -1,4 +1,5 @@
 name: Alert on Issue Creation
+permissions: {}
 on:
   issues:
     types: [opened, reopened]

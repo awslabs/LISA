@@ -342,6 +342,13 @@ export class Ec2Metadata {
             maxThroughput: 400,
             vCpus: 96,
         },
+        'p4de.24xlarge': {
+            memory: 1152 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 400,
+            vCpus: 96,
+        },
         'p5.48xlarge': {
             memory: 2000 * 1000,
             gpuCount: 8,
@@ -664,6 +671,7 @@ const AuthConfigSchema = z.object({
         .describe('URL of OIDC authority.'),
     clientId: z.string().describe('Client ID for OIDC IDP .'),
     adminGroup: z.string().default('').describe('Name of the admin group.'),
+    userGroup: z.string().default('').describe('Name of the user group.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
@@ -805,6 +813,7 @@ export const RawConfigObject = z.object({
     deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+    deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),

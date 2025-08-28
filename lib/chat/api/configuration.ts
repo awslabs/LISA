@@ -106,6 +106,10 @@ export class ConfigurationApi extends Construct {
                                 'uploadRagDocs': {'BOOL': 'True'},
                                 'uploadContextDocs': {'BOOL': 'True'},
                                 'documentSummarization': {'BOOL': 'True'},
+                                'showRagLibrary': {'BOOL': 'True'},
+                                'showPromptTemplateLibrary': {'BOOL': 'True'},
+                                'mcpConnections': {'BOOL': 'True'},
+                                'modelLibrary': {'BOOL': 'True'},
                             }},
                             'systemBanner': {'M': {
                                 'isEnabled': {'BOOL': 'False'},

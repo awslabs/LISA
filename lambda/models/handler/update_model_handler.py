@@ -88,6 +88,19 @@ class UpdateModelHandler(BaseApiHandler):
                 if asg_config.minCapacity is None and asg_config.maxCapacity < model_asg["MinSize"]:
                     raise ValueError(f"Max capacity cannot be less than ASG min of {model_asg['MinSize']}.")
 
+        # Validate containerConfig updates
+        if update_request.containerConfig is not None:
+            current_asg = ddb_item.get("auto_scaling_group", "")
+            if not current_asg:
+                raise ValueError("Cannot update Container Config for model not hosted in LISA infrastructure.")
+
+            # Validate that containerConfig exists in the current model
+            current_container_config = ddb_item.get("model_config", {}).get("containerConfig", None)
+            if not current_container_config:
+                raise ValueError(
+                    "Cannot update Container Config for model that was not originally configured with a container."
+                )
+
         # Post-validation. Send work to state machine.
 
         # package model ID and request payload into single payload for step functions

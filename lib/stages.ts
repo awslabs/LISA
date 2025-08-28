@@ -28,6 +28,7 @@ import {
     StageProps,
     Tags,
 } from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { AwsSolutionsChecks, NagSuppressions, NIST80053R5Checks } from 'cdk-nag';
 
@@ -44,6 +45,7 @@ import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
+import { LisaMetricsStack } from './metrics';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
@@ -120,6 +122,26 @@ class RemoveSecurityGroupAspect implements IAspect {
     }
 }
 
+/**
+ * Removes Tags property from all AWS::Lambda::EventSourceMapping resources in a CDK application.
+ * This is required for AWS GovCloud regions which don't support Tags on EventSourceMapping resources.
+ */
+class RemoveEventSourceMappingTagsAspect implements IAspect {
+    /**
+     * Checks if the given node is an instance of CfnResource and specifically an AWS::Lambda::EventSourceMapping resource.
+     * If true, it removes the Tags property to prevent deployment failures in AWS GovCloud regions.
+     *
+     * @param {Construct} node - The CDK construct being visited.
+     */
+    public visit (node: Construct): void {
+        // Check if the node is a CloudFormation resource of type AWS::Lambda::EventSourceMapping
+        if (node instanceof lambda.CfnEventSourceMapping) {
+            // Remove Tags property for AWS GovCloud compatibility
+            node.addPropertyDeletionOverride('Tags');
+        }
+    }
+}
+
 export type CommonStackProps = {
     synthesizer?: IStackSynthesizer;
 } & BaseProps;
@@ -186,9 +208,10 @@ export class LisaServeApplicationStage extends Stage {
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
             stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
             vpc: networkingStack.vpc,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
         this.stacks.push(serveStack);
-
+        serveStack.addDependency(networkingStack);
         serveStack.addDependency(iamStack);
 
         const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {
@@ -245,6 +268,25 @@ export class LisaServeApplicationStage extends Stage {
             apiDeploymentStack.addDependency(ragStack);
         }
 
+        // Declare metricsStack here so that we can reference it in chatStack
+        let metricsStack: LisaMetricsStack | undefined;
+        if (config.deployMetrics) {
+            metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
+                description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            metricsStack.addDependency(apiBaseStack);
+            metricsStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(metricsStack);
+            this.stacks.push(metricsStack);
+        }
+
         if (config.deployChat) {
             const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
                 ...baseStackProps,
@@ -258,6 +300,9 @@ export class LisaServeApplicationStage extends Stage {
             });
             chatStack.addDependency(apiBaseStack);
             chatStack.addDependency(coreStack);
+            if (metricsStack) {
+                chatStack.addDependency(metricsStack);
+            }
             apiDeploymentStack.addDependency(chatStack);
             this.stacks.push(chatStack);
 
@@ -341,5 +386,11 @@ export class LisaServeApplicationStage extends Stage {
 
         // Enforce updates to EC2 launch templates
         Aspects.of(this).add(new UpdateLaunchTemplateMetadataOptions());
+
+        // Apply EventSourceMapping tags removal aspect for AWS GovCloud regions
+        // AWS GovCloud regions don't support Tags on EventSourceMapping resources
+        if (config.region.includes('gov')) {
+            Aspects.of(this).add(new RemoveEventSourceMappingTagsAspect());
+        }
     }
 }

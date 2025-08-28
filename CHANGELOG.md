@@ -1,3 +1,135 @@
+# v5.1.0
+## Key Features
+### Model Management Enhancements
+We updated LISA's Model Management wizard experience that supports creating and updating configured models.
+
+#### Administrative Enhancements
+- Renamed "Create Model" to "Configure Model" for clarity in the model setup process
+- Improved the model management configuration wizard for more intuitive field organization and workflow:
+    - Moved "LISA Hosted Model" toggle to the top of the wizard to drive workflow
+    - Added a dedicated "Model Description" field to better document model purposes
+    - Decluttered creation wizard for third-party models to only display relevant fields
+- Enhanced post-creation model management:
+    - Administrators can now view all configuration details for both self-hosted and third-party models post creation
+    - Expanded editable fields post-creation for self-hosted and third-party models. This includes model features, streaming capabilities, access controls, and others. See LISA's Documentation for more details.
+
+#### Access Control Improvements
+- Added enterprise group-based access control for models, allowing administrators to:
+    - Restrict model access to specific IdP groups
+    - Configure models with open access when no groups are specified
+
+#### New Model Library for All Users
+- When activated, all users can view the "Model Library" page under the Library menu
+- Users see the models that they have access to in the Model Library. Users have visibility into the features and capabilities that each model supports (e.g., imagegen, MCP, Streaming, Document summarization). This is useful in environments with many available models.
+
+### Amazon Bedrock Knowledge Base Integration
+LISA now supports Amazon Bedrock Knowledge Bases for enhanced RAG capabilities.
+
+#### Administrative Features
+- Bring Your Own Knowledge Base (BYOKB) support:
+    - Administrators can connect pre-created Bedrock Knowledge Bases to LISA. This includes Amazon Neptune, which supports GraphRAG.
+    - Simple configuration requiring only basic BRKB info
+    - Integration available through both UI and API interfaces
+- Granular access control:
+    - Restrict Knowledge Base access to specific user groups
+    - Manage permissions at the Knowledge Base level
+
+#### Document Management
+- Comprehensive document ingestion options:
+    - Automated document ingestion pipeline support
+    - Direct document uploads to Knowledge Bases via the LISA UI leveraging Bedrock's supported chunking strategies
+- Full integration with LISA's Document Library:
+    - View documents stored within Bedrock Knowledge Bases
+    - Download documents for offline use
+
+#### RAG Capabilities
+- Seamless integration with LISA's RAG workflow:
+    - Users can select Bedrock Knowledge Bases as vector stores for RAG prompting
+    - Support for Bedrock's query options for optimized retrieval
+
+### UI Improvements
+We made several user experience enhancements to improve productivity and workflow:
+
+#### Session Management
+- **Session Title Filtering**: Quickly locate specific sessions with new filtering capabilities
+- **Session Renaming**: Easily rename existing sessions through a new action menu item with a simple text input dialog
+- **Persistent Name Changes**: Session name changes are now saved and maintained across sessions
+
+#### Model Preferences
+- **Global Default Model**: Administrators can set a preferred model as the global default from the Model Library view
+- **Automatic Application**: Default model settings are automatically applied to all new sessions
+
+#### Model Comparison Tool
+- **Multi-Model Evaluation**: Select and compare responses from up to 4 models side-by-side. Administrators can activate or deactivate the feature in the Configuration page.
+- **Configurable Prompts**: Apply custom prompt parameters for each comparison session
+- **Ephemeral Results**: View comparison results without creating permanent sessions
+- **Response Format**: Results displayed in a familiar chat-like interface for easy evaluation
+- **Export Capability**: Download comparison results in JSON format for further analysis
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.0.0...v5.1.0
+
+# v5.0.0
+## Model Context Protocol (MCP) Integration
+LISA now supports Model Context Protocol (MCP), a popular open standard that enables developers to securely connect AI assistants with external tools and services! LISA customers can leverage MCP servers and tools directly within LISA's chat assistant user interface, or APIs.
+
+### Administrative Features
+- Control the availability of MCP support via LISA's Configuration page
+- Create, edit, and delete MCP server connections
+- Activate or deactivate specific MCP server connections
+- Choose the MCP server connections for global use in order to support organization-wide availability
+- Identify specific LLMs to support handling of tool calls
+
+### User Experience Enhancements
+- Create, edit, and delete personal MCP server connections
+- Browse the intuitive user interface to view personal and global MCP server connections
+- Activate specific MCP server connections for individual use
+- Real-time visibility into the number of active MCP servers and tools for personal use in chat sessions
+- Seamless integration with existing LLM chat interface to execute MCP tools
+
+### Tool Management Functionality
+- Users individually opt out of specific MCP server tools with simple toggle controls
+- Users  are automatically enrolled in Safe Mode, which requires confirmation for tool execution. Users have the optional to auto-approve specific tool actions
+- Users have the ability to manually stop tool execution at any time via Stop generation button
+
+### Autopilot Mode
+- Users can individually activate Autopilot Mode for streamlined tool execution without confirmation prompts
+- User-specific setting applies across all active MCP server connections
+- Reduces risk of tool timeouts waiting for user confirmation, but maintains users' visibility into actions being executed
+- Beneficial for multi-step workflows involving multiple tools
+
+
+## Usage Analytics Dashboard
+Comprehensive visibility into LISA usage analytics via an Amazon CloudWatch dashboard. The LISA User Metrics Dashboard is automatically created during deployment and can be accessed through the AWS Management Console
+
+## Administrative Insights
+- 12 new metric widgets depict detailed usage to help measure platform adoption and impact
+- Track unique user counts across multiple time periods and features (daily, weekly, monthly, quarterly, YTD)
+- Monitor organization-level engagement through IDP group aggregation
+- Visualize usage trends with interactive time-series graphs
+
+### Detailed Usage Metrics
+- Comprehensive prompt tracking showing total prompts by users and groups
+- RAG utilization metrics showing vector store engagement patterns by users and groups
+- MCP tool call metrics showing total tool usage over time by users and groups
+
+
+## Updated Documentation
+- Updated System Administrator Guides within LISA's documentation. This is accessible via the Document link in the GitHub repo, and also bundled with LISA
+- Additional updates are coming soon for the Advanced Configuration and User Guides sections
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v4.4.4...v5.0.0
+
 # v4.4.4
 ## Bug Fixes
 - Resolved an issue with docker base images

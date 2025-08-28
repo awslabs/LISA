@@ -28,10 +28,12 @@ def main() -> None:
     os.environ["TIKTOKEN_CACHE_DIR"] = sys.argv[1]
     print(f"Environment variable 'TIKTOKEN_CACHE_DIR' set to: {os.environ['TIKTOKEN_CACHE_DIR']}")
 
-    # Iterate over the encoding constructors in 'tiktoken_ext.openai_public.ENCODING_CONSTRUCTORS'
-    for name, func in tiktoken_ext.openai_public.ENCODING_CONSTRUCTORS.items():
-        print(f"Calling function '{name}':")
-        func()  # Call the function
+    # Check if the TIKTOKEN_CACHE_DIR already exists
+    if not os.path.exists(os.environ["TIKTOKEN_CACHE_DIR"]):
+        # Iterate over the encoding constructors in 'tiktoken_ext.openai_public.ENCODING_CONSTRUCTORS'
+        for name, func in tiktoken_ext.openai_public.ENCODING_CONSTRUCTORS.items():
+            print(f"Calling function '{name}':")
+            func()  # Call the function
 
 
 if __name__ == "__main__":

@@ -127,9 +127,9 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
 
     const handleButtonClick = useCallback(({ detail }: { detail: { id: string } }) => {
         if (detail.id === 'copy-svg') {
-            copyToClipboard(svg, 'svg');
+            copyToClipboard(svg);
         } else if (detail.id === 'copy-code') {
-            copyToClipboard(chart, 'code');
+            copyToClipboard(chart);
         }
     }, [svg, chart, copyToClipboard]);
 

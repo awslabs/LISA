@@ -67,6 +67,7 @@ class ModelType(str, Enum):
         return str(self.value)
 
     TEXTGEN = "textgen"
+    IMAGEGEN = "imagegen"
     EMBEDDING = "embedding"
 
 
@@ -121,11 +122,19 @@ class AutoScalingInstanceConfig(BaseModel):
     minCapacity: Optional[PositiveInt] = None
     maxCapacity: Optional[PositiveInt] = None
     desiredCapacity: Optional[PositiveInt] = None
+    cooldown: Optional[PositiveInt] = None
+    defaultInstanceWarmup: Optional[PositiveInt] = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
         """Validates auto-scaling instance configuration parameters."""
-        config_fields = [self.minCapacity, self.maxCapacity, self.desiredCapacity]
+        config_fields = [
+            self.minCapacity,
+            self.maxCapacity,
+            self.desiredCapacity,
+            self.cooldown,
+            self.defaultInstanceWarmup,
+        ]
         if not validate_any_fields_defined(config_fields):
             raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
         if self.desiredCapacity and self.maxCapacity and self.desiredCapacity > self.maxCapacity:
@@ -170,6 +179,27 @@ class ContainerConfig(BaseModel):
         return environment
 
 
+class ContainerConfigUpdatable(BaseModel):
+    """Specifies container configuration fields that can be updated."""
+
+    environment: Optional[Dict[str, str]] = None
+    sharedMemorySize: Optional[PositiveInt] = None
+    healthCheckCommand: Optional[Union[str, List[str]]] = None
+    healthCheckInterval: Optional[PositiveInt] = None
+    healthCheckTimeout: Optional[PositiveInt] = None
+    healthCheckStartPeriod: Optional[PositiveInt] = None
+    healthCheckRetries: Optional[PositiveInt] = None
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
+        """Validates environment variable key names."""
+        if environment:
+            if not all((key for key in environment.keys())):
+                raise ValueError("Empty strings are not allowed for environment variable key names.")
+        return environment
+
+
 class ModelFeature(BaseModel):
     """Defines model feature attributes."""
 
@@ -191,11 +221,13 @@ class LISAModel(BaseModel):
     loadBalancerConfig: Optional[LoadBalancerConfig] = None
     modelId: str
     modelName: str
+    modelDescription: Optional[str] = None
     modelType: ModelType
     modelUrl: Optional[str] = None
     status: ModelStatus
     streaming: bool
     features: Optional[List[ModelFeature]] = None
+    allowedGroups: Optional[List[str]] = None
 
 
 class ApiResponseBase(BaseModel):
@@ -214,10 +246,12 @@ class CreateModelRequest(BaseModel):
     loadBalancerConfig: Optional[LoadBalancerConfig] = None
     modelId: str = Field(min_length=1)
     modelName: str = Field(min_length=1)
+    modelDescription: Optional[str] = None
     modelType: ModelType
     modelUrl: Optional[str] = None
     streaming: Optional[bool] = False
     features: Optional[List[ModelFeature]] = None
+    allowedGroups: Optional[List[str]] = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
@@ -266,7 +300,11 @@ class UpdateModelRequest(BaseModel):
     autoScalingInstanceConfig: Optional[AutoScalingInstanceConfig] = None
     enabled: Optional[bool] = None
     modelType: Optional[ModelType] = None
+    modelDescription: Optional[str] = None
     streaming: Optional[bool] = None
+    allowedGroups: Optional[List[str]] = None
+    features: Optional[List[ModelFeature]] = None
+    containerConfig: Optional[ContainerConfigUpdatable] = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -275,12 +313,16 @@ class UpdateModelRequest(BaseModel):
             self.autoScalingInstanceConfig,
             self.enabled,
             self.modelType,
+            self.modelDescription,
             self.streaming,
+            self.allowedGroups,
+            self.features,
+            self.containerConfig,
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
-                "At least one field out of autoScalingInstanceConfig, enabled, modelType, or "
-                "streaming must be defined in request payload."
+                "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, "
+                "modelDescription, streaming, allowedGroups, or features must be defined in request payload."
             )
 
         if self.modelType == ModelType.EMBEDDING and self.streaming:
@@ -293,6 +335,14 @@ class UpdateModelRequest(BaseModel):
         """Validates auto-scaling instance configuration."""
         if not config:
             raise ValueError("The autoScalingInstanceConfig must not be null if defined in request payload.")
+        return config
+
+    @field_validator("containerConfig")
+    @classmethod
+    def validate_container_config(cls, config: ContainerConfigUpdatable) -> ContainerConfigUpdatable:
+        """Validates container configuration update."""
+        if not config:
+            raise ValueError("The containerConfig must not be null if defined in request payload.")
         return config
 
 
@@ -425,8 +475,8 @@ class IngestionJob(BaseModel):
     collection_id: str
     document_id: Optional[str] = Field(default=None)
     repository_id: str
-    chunk_strategy: Optional[ChunkingStrategy]
-    username: Optional[str] = None
+    chunk_strategy: Optional[ChunkingStrategy] = Field(default=None)
+    username: Optional[str] = Field(default=None)
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    error_message: Optional[str] = None
+    error_message: Optional[str] = Field(default=None)

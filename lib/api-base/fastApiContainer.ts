@@ -26,6 +26,8 @@ import { ECSCluster } from './ecsCluster';
 import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { REST_API_PATH } from '../util';
+import * as child_process from 'child_process';
+import * as path from 'path';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -79,6 +81,7 @@ export class FastApiContainer extends Construct {
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
             LITELLM_KEY: config.litellmConfig.db_key,
+            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE'
         };
 
         if (config.restApiConfig.internetFacing) {
@@ -86,6 +89,7 @@ export class FastApiContainer extends Construct {
             environment.AUTHORITY = config.authConfig!.authority;
             environment.CLIENT_ID = config.authConfig!.clientId;
             environment.ADMIN_GROUP = config.authConfig!.adminGroup;
+            environment.USER_GROUP = config.authConfig!.userGroup;
             environment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
         } else {
             environment.USE_AUTH = 'false';
@@ -94,6 +98,21 @@ export class FastApiContainer extends Construct {
         if (tokenTable) {
             environment.TOKEN_TABLE_NAME = tokenTable.tableName;
         }
+
+        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
+        if (config.restApiConfig.imageConfig === undefined) {
+            const cache_dir = path.join(REST_API_PATH, 'TIKTOKEN_CACHE');
+            // Skip tiktoken cache generation in test environment
+            if (process.env.NODE_ENV !== 'test') {
+                try {
+                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
+                } catch (error) {
+                    console.warn('Failed to generate tiktoken cache:', error);
+                    // Continue execution even if cache generation fails
+                }
+            }
+        }
+
         const image = config.restApiConfig.imageConfig || {
             baseImage: config.baseImage,
             path: REST_API_PATH,

@@ -53,6 +53,8 @@ export class CreateStoreStateMachine extends Construct {
             resultPath: '$.dynamoResult',
         });
 
+        const createVectorStoreInfraChoice = new sfn.Choice(this, 'CreateVectorStoreInfraChoice');
+
         // Task to invoke a Lambda function to deploy the vector store
         const deployVectorStore = new tasks.LambdaInvoke(this, 'DeployVectorStore', {
             lambdaFunction: lambda.Function.fromFunctionArn(this, 'VectorStoreDeployer', vectorStoreDeployerFnArn),
@@ -86,6 +88,17 @@ export class CreateStoreStateMachine extends Construct {
         });
 
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
+        const updateBedrockKBSuccess = new tasks.DynamoUpdateItem(this, 'UpdateBedrockKBSuccess', {
+            table: vectorStoreConfigTable,
+            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
+            updateExpression: 'SET #status = :status',
+            expressionAttributeNames: { '#status': 'status' },
+            expressionAttributeValues: {
+                ':status': tasks.DynamoAttributeValue.fromString('CREATE_COMPLETE')
+            },
+        });
+
+        // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
         const updateSuccessStatus = new tasks.DynamoUpdateItem(this, 'UpdateSuccessStatus', {
             table: vectorStoreConfigTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
@@ -93,7 +106,7 @@ export class CreateStoreStateMachine extends Construct {
             expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
             expressionAttributeValues: {
                 ':status': tasks.DynamoAttributeValue.fromString('CREATE_COMPLETE'),
-                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName'))
+                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName') ?? '')
             },
         });
 
@@ -111,34 +124,37 @@ export class CreateStoreStateMachine extends Construct {
 
         // Define the sequence of tasks and conditions in the state machine
         const definition = createVectorStoreEntry
-            .next(deployVectorStore.addCatch(updateFailureStatus))
-            .next(
-                checkDeploymentStatus.next(
-                    new sfn.Choice(this, 'DeploymentComplete?')
-                        .when(
-                            sfn.Condition.and(
-                                sfn.Condition.isPresent('$.deployResult.status'),
-                                sfn.Condition.or(
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_IN_PROGRESS'),
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_IN_PROGRESS'),
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'),
-                                ),
-                            ),
-                            wait.next(checkDeploymentStatus)
+            .next(createVectorStoreInfraChoice
+                .when(sfn.Condition.and(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
+                    sfn.Condition.isNotPresent('$.body.ragConfig.pipelines[0]')), updateBedrockKBSuccess)
+                .otherwise(deployVectorStore.addCatch(updateFailureStatus)
+                    .next(
+                        checkDeploymentStatus.next(
+                            new sfn.Choice(this, 'DeploymentComplete?')
+                                .when(
+                                    sfn.Condition.and(
+                                        sfn.Condition.isPresent('$.deployResult.status'),
+                                        sfn.Condition.or(
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_IN_PROGRESS'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_IN_PROGRESS'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'),
+                                        ),
+                                    ),
+                                    wait.next(checkDeploymentStatus)
+                                )
+                                .when(
+                                    sfn.Condition.and(
+                                        sfn.Condition.isPresent('$.deployResult.status'),
+                                        sfn.Condition.or(
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_COMPLETE'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE'),
+                                        ),
+                                    ),
+                                    updateSuccessStatus
+                                )
+                                .otherwise(updateFailureStatus)
                         )
-                        .when(
-                            sfn.Condition.and(
-                                sfn.Condition.isPresent('$.deployResult.status'),
-                                sfn.Condition.or(
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_COMPLETE'),
-                                    sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE'),
-                                ),
-                            ),
-                            updateSuccessStatus
-                        )
-                        .otherwise(updateFailureStatus)
-                )
-            );
+                    )));
 
         // Create a new state machine using the definition and roles specified
         this.stateMachine = new sfn.StateMachine(this, 'CreateStoreStateMachine', {

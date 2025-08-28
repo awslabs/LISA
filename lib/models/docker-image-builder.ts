@@ -35,6 +35,7 @@ import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
 import { getDefaultRuntime } from '../api-base/utils';
 import { ECS_MODEL_PATH, LAMBDA_PATH } from '../util';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 export type DockerImageBuilderProps = BaseProps & {
     ecrUri: string;
@@ -53,7 +54,14 @@ export class DockerImageBuilder extends Construct {
 
         const { config } = props;
 
-        const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']));
+        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        );
+
+        const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']), {
+            enforceSSL: true,
+            serverAccessLogsBucket: bucketAccessLogsBucket,
+        });
         const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {
             sources: [Source.asset(ecsModelPath)],
@@ -140,6 +148,13 @@ export class DockerImageBuilder extends Construct {
                         'ecr:CompleteLayerUpload',
                         'ecr:PutImage',
                         'ecr:BatchCheckLayerAvailability',
+                    ],
+                    resources: ['*'],
+                }),
+                new PolicyStatement({
+                    actions: [
+                        'logs:CreateLogStream',
+                        'logs:PutLogEvents',
                     ],
                     resources: ['*'],
                 }),

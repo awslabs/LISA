@@ -16,6 +16,7 @@
 
 import { BaseMessage, BaseMessageFields, MessageContent, MessageType } from '@langchain/core/messages';
 import { IChatConfiguration, IModelConfiguration } from '@/shared/model/chat.configurations.model';
+import { MessageContentComplex } from '@langchain/core/dist/messages/base';
 
 /**
  * Used to specify additional parameters to be passed into OpenAI LLM Model Calls
@@ -38,6 +39,14 @@ export type ModelArgs = {
     seed?: number | null;
 };
 
+
+export type ImageGenerationParams = {
+    size?: string;
+    n?: number;
+    quality?: string;
+    prompt: string;
+};
+
 /**
  * Stores metadata for messages returned from LISA
  */
@@ -48,6 +57,8 @@ export type LisaChatMessageMetadata = {
     messages?: string;
     ragContext?: string;
     ragDocuments?: string;
+    imageGeneration?: boolean;
+    imageGenerationParams?: ImageGenerationParams;
 };
 /**
  * Interface for storing data for messages
@@ -56,6 +67,7 @@ export type LisaChatMessageFields = {
     type: MessageType;
     content: MessageContent;
     metadata?: LisaChatMessageMetadata;
+    toolCalls?: any[];
 } & BaseMessageFields;
 
 /**
@@ -64,11 +76,13 @@ export type LisaChatMessageFields = {
 export class LisaChatMessage extends BaseMessage implements LisaChatMessageFields {
     type: MessageType;
     metadata?: LisaChatMessageMetadata;
+    toolCalls?: any[];
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
+        this.toolCalls = fields.toolCalls ?? [];
     }
 
     static lc_name () {
@@ -88,8 +102,18 @@ export type LisaChatSession = {
     userId: string;
     startTime: string;
     history: LisaChatMessage[];
+    name?: string;
     firstHumanMessage?: MessageContent;
     configuration?: IChatConfiguration & IModelConfiguration;
+};
+
+export type LisaAttachImageRequest = {
+    sessionId: string;
+    message: MessageContentComplex;
+};
+
+export type LisaAttachImageResponse = {
+    body: MessageContentComplex;
 };
 
 /**
@@ -187,4 +211,24 @@ export enum StatusTypes {
     LOADING = 'loading',
     SUCCESS = 'success',
     ERROR = 'error',
+}
+
+/**
+ * Message Types
+ */
+export enum MessageTypes {
+    HUMAN = 'human',
+    SYSTEM = 'system',
+    AI = 'ai',
+    TOOL = 'tool',
+}
+
+
+/**
+ * Model Features
+ */
+export enum ModelFeatures {
+    SUMMARIZATION = 'summarization',
+    IMAGE_INPUT = 'imageInput',
+    TOOL_CALLS = 'toolCalls',
 }

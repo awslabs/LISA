@@ -37,6 +37,7 @@ os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
 os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
+os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"] = "bucket"
 
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
@@ -70,6 +71,20 @@ def dynamodb():
     """Create a mock DynamoDB service."""
     with mock_aws():
         yield boto3.resource("dynamodb", region_name="us-east-1")
+
+
+@pytest.fixture(scope="function")
+def s3():
+    """Create a mock S3 service."""
+    with mock_aws():
+        # Create the bucket that our code expects
+        s3_resource = boto3.resource("s3", region_name="us-east-1")
+        s3_client = boto3.client("s3", region_name="us-east-1")
+
+        # Create the bucket with proper parameters for US region
+        s3_client.create_bucket(Bucket="bucket", CreateBucketConfiguration={"LocationConstraint": "us-east-1"})
+
+        yield s3_resource
 
 
 @pytest.fixture(scope="function")
@@ -216,7 +231,17 @@ def test_missing_username(lambda_context):
     mock_common.get_username.return_value = "test-user"
 
 
-def test_delete_session(dynamodb_table, sample_session, lambda_context):
+@pytest.fixture(autouse=True)
+def mock_s3_operations():
+    """Mock S3 operations to avoid errors."""
+    with patch("session.lambda_functions._delete_user_session") as mock_delete:
+        # Make the mocked function return True by default
+        mock_delete.return_value = {"deleted": True}
+        yield mock_delete
+
+
+def test_delete_session(dynamodb_table, sample_session, lambda_context, mock_s3_operations):
+    """Test deleting a session."""
     dynamodb_table.put_item(Item=sample_session)
 
     event = {
@@ -229,8 +254,12 @@ def test_delete_session(dynamodb_table, sample_session, lambda_context):
     body = json.loads(response["body"])
     assert body["deleted"] is True
 
+    # Verify the mock was called with correct parameters
+    mock_s3_operations.assert_called_once_with("test-session", "test-user")
 
-def test_delete_user_sessions(dynamodb_table, sample_session, lambda_context):
+
+def test_delete_user_sessions(dynamodb_table, sample_session, lambda_context, mock_s3_operations):
+    """Test deleting all sessions for a user."""
     # Create multiple sessions
     dynamodb_table.put_item(Item=sample_session)
 
@@ -246,7 +275,32 @@ def test_delete_user_sessions(dynamodb_table, sample_session, lambda_context):
     assert body["deleted"] is True
 
 
+def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operations):
+    """Test deleting a non-existent session."""
+    # Temporarily change the session ID for this test
+    original_session_id = mock_common.get_session_id.return_value
+    mock_common.get_session_id.return_value = "non-existent-session"
+
+    try:
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+            "pathParameters": {"sessionId": "non-existent-session"},
+        }
+
+        response = delete_session(event, lambda_context)
+        assert response["statusCode"] == 200
+        body = json.loads(response["body"])
+        assert body["deleted"] is True
+
+        # Verify the mock was called with correct parameters
+        mock_s3_operations.assert_called_once_with("non-existent-session", "test-user")
+    finally:
+        # Restore the original session ID
+        mock_common.get_session_id.return_value = original_session_id
+
+
 def test_put_session(dynamodb_table, sample_session, lambda_context):
+    """Test putting a session."""
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"sessionId": "test-session"},
@@ -270,19 +324,6 @@ def test_get_session_not_found(dynamodb_table, lambda_context):
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body == {}
-
-
-def test_delete_session_not_found(dynamodb_table, lambda_context):
-    """Test deleting a non-existent session."""
-    event = {
-        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-        "pathParameters": {"sessionId": "non-existent-session"},
-    }
-
-    response = delete_session(event, lambda_context)
-    assert response["statusCode"] == 200
-    body = json.loads(response["body"])
-    assert body["deleted"] is True
 
 
 def test_put_session_invalid_body(dynamodb_table, lambda_context):

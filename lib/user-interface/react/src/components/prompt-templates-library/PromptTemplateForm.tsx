@@ -14,10 +14,29 @@
  limitations under the License.
  */
 
-import { Button, Container, Form, FormField, Header, Input, SpaceBetween, Textarea, Toggle, TokenGroup } from '@cloudscape-design/components';
+import {
+    Button,
+    Container,
+    Form,
+    FormField,
+    Header,
+    Input,
+    Select,
+    SpaceBetween,
+    Textarea,
+    Toggle,
+    TokenGroup
+} from '@cloudscape-design/components';
 import 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { DefaultPromptTemplate, NewPromptTemplate, useCreatePromptTemplateMutation, useLazyGetPromptTemplateQuery, useUpdatePromptTemplateMutation } from '../../shared/reducers/prompt-templates.reducer';
+import {
+    DefaultPromptTemplate,
+    NewPromptTemplate,
+    PromptTemplateType,
+    useCreatePromptTemplateMutation,
+    useLazyGetPromptTemplateQuery,
+    useUpdatePromptTemplateMutation
+} from '../../shared/reducers/prompt-templates.reducer';
 import { issuesToErrors, scrollToInvalid, useValidationReducer } from '../../shared/validation';
 import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
@@ -27,6 +46,7 @@ import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { ModifyMethod } from '../../shared/validation/modify-method';
 import { selectCurrentUserIsAdmin } from '../../shared/reducers/user.reducer';
+import { findKey } from 'lodash';
 
 export type PromptTemplateFormProps = {
     isEdit?: boolean
@@ -133,7 +153,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
 
     return (
         <Form
-            header={<Header variant='h1'>Persona Template</Header>}
+            header={<Header variant='h1'>Template</Header>}
             actions={
                 <SpaceBetween direction='horizontal' size='s'>
                     <Button onClick={() => navigate(-1)}>Cancel</Button>
@@ -141,19 +161,29 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                         disabled={disabled || !canEdit}
                         disabledReason={!canEdit ? 'You can only edit prompts you created.' : undefined}
                         onClick={() => submit(state.form)}>
-                        { promptTemplateId ? 'Update' : 'Create'} Prompt Template
+                        { promptTemplateId ? 'Update' : 'Create'} Template
                     </Button>
                 </SpaceBetween>
             }
         >
             <Container header={<Header>Details</Header>}>
                 <SpaceBetween direction='vertical' size='s'>
-                    <FormField label='Title' errorText={errors?.title} description={'This will be used to identify your prompt template.'}>
+                    <FormField label='Title' errorText={errors?.title} description={'This will be used to identify your template.'}>
                         <Input value={state.form.title} inputMode='text' onBlur={() => touchFields(['title'])} onChange={({ detail }) => {
                             setFields({ 'title': detail.value });
                         }}
                         disabled={disabled}
-                        placeholder='Enter prompt template title' />
+                        placeholder='Enter template title' />
+                    </FormField>
+
+                    <FormField label='Type' errorText={errors?.type} description={'The type of template you are creating.'}>
+                        <Select
+                            selectedOption={{label: findKey(PromptTemplateType, (type) => type === state.form.type), value: state.form.type}}
+                            onChange={({detail}) => {
+                                setFields({'type': detail.selectedOption.value});
+                            }}
+                            options={Object.entries(PromptTemplateType).map(([key, value]) => ({label: key, value}))}
+                        />
                     </FormField>
 
                     <FormField label='Share with everyone'>
@@ -166,7 +196,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                         disabled={disabled} />
                     </FormField>
 
-                    <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Prompts are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
+                    <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Templates are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
                         <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
                             setTokenText(detail.value);
                             if (detail.value.length === 0) {
@@ -197,11 +227,11 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
 
                     <hr />
 
-                    <FormField label='Body' errorText={errors?.body}>
+                    <FormField label='Prompt' errorText={errors?.body}>
                         <Textarea value={state.form.body} onBlur={() => touchFields(['body'])} onChange={({ detail }) => {
                             setFields({ 'body': detail.value });
                         }}
-                        placeholder='Enter your prompt template content'
+                        placeholder='Enter your template content'
                         disabled={disabled} />
                     </FormField>
                 </SpaceBetween>

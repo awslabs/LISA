@@ -14,9 +14,10 @@
 
 """Lambda handlers for DeleteModel state machine."""
 
+import logging
 import os
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -25,6 +26,9 @@ from models.clients.litellm_client import LiteLLMClient
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 from ..domain_objects import ModelStatus
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Clients
 cloudformation = boto3.client("cloudformation", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -53,6 +57,7 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
     """Start deletion workflow based on user-specified model input."""
     output_dict = deepcopy(event)
     model_id = event["modelId"]
+    logger.info(f"Starting deletion workflow for model: {model_id}")
     model_key = {"model_id": model_id}
     item = ddb_table.get_item(
         Key=model_key,
@@ -68,7 +73,7 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
         Key=model_key,
         UpdateExpression="SET last_modified_date = :lmd, model_status = :ms",
         ExpressionAttributeValues={
-            ":lmd": int(datetime.utcnow().timestamp()),
+            ":lmd": int(datetime.now(UTC).timestamp()),
             ":ms": ModelStatus.DELETING,
         },
     )
@@ -85,6 +90,7 @@ def handle_delete_from_litellm(event: Dict[str, Any], context: Any) -> Dict[str,
 def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Initialize stack deletion."""
     stack_arn = event[CFN_STACK_ARN]
+    logger.info(f"Deleting CloudFormation stack: {stack_arn}")
     client_request_token = str(uuid4())
     cloudformation.delete_stack(
         StackName=stack_arn,

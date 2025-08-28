@@ -35,5 +35,5 @@ const modalSlice = createSlice({
 });
 
 // Reducer
-export const { setConfirmationModal, dismissModal} = modalSlice.actions;
+export const { setConfirmationModal, dismissModal } = modalSlice.actions;
 export default modalSlice.reducer;

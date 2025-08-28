@@ -76,6 +76,7 @@ export class UpdateModelStateMachine extends Construct {
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+            LITELLM_CONFIG_OBJ: JSON.stringify(config.litellmConfig),
         };
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
@@ -112,6 +113,40 @@ export class UpdateModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const handleEcsUpdate = new LambdaInvoke(this, 'HandleEcsUpdate', {
+            lambdaFunction: new Function(this, 'HandleEcsUpdateFunc', {
+                runtime: getDefaultRuntime(),
+                handler: 'models.state_machine.update_model.handle_ecs_update',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
+        const handlePollEcsDeployment = new LambdaInvoke(this, 'HandlePollEcsDeployment', {
+            lambdaFunction: new Function(this, 'HandlePollEcsDeploymentFunc', {
+                runtime: getDefaultRuntime(),
+                handler: 'models.state_machine.update_model.handle_poll_ecs_deployment',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
                 runtime: getDefaultRuntime(),
@@ -133,8 +168,10 @@ export class UpdateModelStateMachine extends Construct {
         const successState = new Succeed(this, 'UpdateSuccess');
 
         // choice states
+        const hasEcsUpdateChoice = new Choice(this, 'HasEcsUpdateChoice');
         const hasCapacityUpdateChoice = new Choice(this, 'HasCapacityUpdateChoice');
         const pollAsgChoice = new Choice(this, 'PollAsgChoice');
+        const pollEcsDeploymentChoice = new Choice(this, 'PollEcsDeploymentChoice');
 
         // wait states
         const waitBeforePollAsg = new Wait(this, 'WaitBeforePollAsg', {
@@ -143,9 +180,26 @@ export class UpdateModelStateMachine extends Construct {
         const waitBeforeModelAvailable = new Wait(this, 'WaitBeforeModelAvailable', {
             time: WaitTime.secondsPath('$.model_warmup_seconds'),
         });
+        const waitBeforePollEcsDeployment = new Wait(this, 'WaitBeforePollEcsDeployment', {
+            time: POLLING_TIMEOUT
+        });
 
         // State Machine definition
-        handleJobIntake.next(hasCapacityUpdateChoice);
+        handleJobIntake.next(hasEcsUpdateChoice);
+
+        // ECS update flow
+        hasEcsUpdateChoice
+            .when(Condition.booleanEquals('$.needs_ecs_update', true), handleEcsUpdate)
+            .otherwise(hasCapacityUpdateChoice);
+
+        handleEcsUpdate.next(handlePollEcsDeployment);
+        handlePollEcsDeployment.next(pollEcsDeploymentChoice);
+        pollEcsDeploymentChoice
+            .when(Condition.booleanEquals('$.should_continue_ecs_polling', true), waitBeforePollEcsDeployment)
+            .otherwise(hasCapacityUpdateChoice);
+        waitBeforePollEcsDeployment.next(handlePollEcsDeployment);
+
+        // Existing capacity update flow
         hasCapacityUpdateChoice
             .when(Condition.booleanEquals('$.has_capacity_update', true), handlePollCapacity)
             .otherwise(handleFinishUpdate);

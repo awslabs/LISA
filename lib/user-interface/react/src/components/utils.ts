@@ -15,6 +15,8 @@
 */
 import { S3UploadRequest } from '../shared/reducers/rag.reducer';
 import { MessageContent } from '@langchain/core/messages';
+import { LisaChatSession } from './types';
+import { truncateText } from '@/shared/util/formats';
 
 const stripTrailingSlash = (str) => {
     return str && str.endsWith('/') ? str.slice(0, -1) : str;
@@ -72,9 +74,48 @@ export const formatDocumentTitlesAsString = (docs: any): string => {
     return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
 };
 
+export const getSessionDisplay = (session: LisaChatSession, maxLength?: number) => {
+    const display = session.name || getDisplayableMessage(session.firstHumanMessage);
+    return maxLength ? truncateText(display, 40, '...') : display;
+};
+
 export const getDisplayableMessage = (content: MessageContent, ragCitations?: string) => {
     if (Array.isArray(content)) {
         return content.find((item) => item.type === 'text' && !item.text.startsWith('File context:'))?.text + (ragCitations ?? '') || '';
     }
     return content + (ragCitations ?? '');
 };
+
+export const fetchImage = async (url: string) => {
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.blob();
+    } catch (error) {
+        console.error('Error fetching image:', error);
+        throw error;
+    }
+};
+
+export function messageContainsImage (content: MessageContent): boolean {
+    if (Array.isArray(content)) {
+        return !!content.find((item) => item.type === 'image_url');
+    }
+    return false;
+}
+
+export function base64ToBlob (base64: string, mimeType: string): Blob {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
+}

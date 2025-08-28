@@ -93,6 +93,7 @@ export class CustomAuthorizer extends Construct {
                 CLIENT_ID: config.authConfig!.clientId,
                 AUTHORITY: config.authConfig!.authority,
                 ADMIN_GROUP: config.authConfig!.adminGroup,
+                USER_GROUP: config.authConfig!.userGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue,
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})

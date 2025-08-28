@@ -23,6 +23,7 @@ import { LisaApiDeploymentStack } from '../../../lib/core/api_deployment';
 import { LisaServeIAMStack } from '../../../lib/iam/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
+import { LisaMetricsStack } from '../../../lib/metrics/index';
 import ConfigParser from './ConfigParser';
 import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
@@ -81,11 +82,22 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaServe',
             vpc: networkingStack.vpc,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
         const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
             tokenTable: serveStack.tokenTable,
             stackName: 'LisaApiBase',
+            vpc: networkingStack.vpc,
+        });
+        const metricsStack = new LisaMetricsStack(app, 'LisaMetrics', {
+            ...baseStackProps,
+            authorizer: apiBaseStack.authorizer!,
+            stackName: 'LisaMetrics',
+            description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
             vpc: networkingStack.vpc,
         });
         const chatStack = new LisaChatApplicationStack(app, 'LisaChat', {
@@ -130,8 +142,6 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaRAG',
             authorizer: apiBaseStack.authorizer!,
-            endpointUrl: serveStack.endpointUrl,
-            modelsPs: serveStack.modelsPs,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
@@ -142,7 +152,6 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaModels',
             authorizer: apiBaseStack.authorizer,
-            lisaServeEndpointUrlPs: serveStack.endpointUrl,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
@@ -154,6 +163,7 @@ export default class MockApp {
             iamStack,
             apiBaseStack,
             apiDeploymentStack,
+            metricsStack,
             chatStack,
             serveStack,
             uiStack,

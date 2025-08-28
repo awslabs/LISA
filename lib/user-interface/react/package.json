@@ -1,11 +1,11 @@
 {
   "name": "lisa-web",
   "private": true,
-  "version": "4.3.0",
+  "version": "5.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ./scripts/set-revision-info.mjs && tsc && vite build",
+    "build": "node ./scripts/set-revision-info.mjs && tsc && vite build && npm run copy-dist",
     "copy-dist": "mkdir -p ../../../dist/lisa-web && cp -r ./dist/* ../../../dist/lisa-web/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
@@ -29,6 +29,7 @@
     "@swc/core": "^1.11.8",
     "axios": "^1.8.2",
     "git-repo-info": "^2.1.1",
+    "jszip": "^3.10.1",
     "langchain": "^0.3.15",
     "lodash": "^4.17.21",
     "luxon": "^3.5.0",
@@ -39,13 +40,16 @@
     "react-oidc-context": "^2.4.0",
     "react-redux": "^8.1.3",
     "react-router-dom": "^6.29.0",
+    "react-syntax-highlighter": "^15.6.1",
     "react-textarea-autosize": "^8.5.7",
     "redux-persist": "^6.0.0",
     "regenerator-runtime": "^0.14.1",
     "remark-breaks": "^4.0.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.1.6",
-    "unraw": "^3.0.0"
+    "unraw": "^3.0.0",
+    "use-mcp": "^0.0.18",
+    "vitepress": "^1.6.4"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",

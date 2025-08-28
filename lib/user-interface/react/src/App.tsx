@@ -28,6 +28,7 @@ import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import ModelLibrary from './pages/ModelLibrary';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
@@ -39,6 +40,8 @@ import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 import { ConfigurationContext } from './shared/configuration.provider';
+import McpServers from '@/pages/Mcp';
+import ModelComparisonPage from './pages/ModelComparison';
 
 
 export type RouteProps = {
@@ -79,7 +82,7 @@ function App () {
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
-    const [ getConfigurationQuery, {data: fullConfig} ] = useLazyGetConfigurationQuery();
+    const [getConfigurationQuery, { data: fullConfig }] = useLazyGetConfigurationQuery();
     const config = fullConfig?.[0];
 
     useEffect(() => {
@@ -145,30 +148,41 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
-                            <Route
-                                path='document-library'
+                            {config?.configuration?.enabledComponents?.modelLibrary && <Route
+                                path='model-library'
                                 element={
-                                    <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                        <RepositoryLibrary setNav={setNav} />
+                                    <PrivateRoute showConfig='modelLibrary' configs={config}>
+                                        <ModelLibrary setNav={setNav} />
                                     </PrivateRoute>
                                 }
-                            />
-                            <Route
-                                path='document-library/:repoId'
-                                element={
-                                    <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                        <DocumentLibrary setNav={setNav} />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
+                            />}
+                            {config?.configuration?.enabledComponents?.showRagLibrary &&
+                                <>
+                                    <Route
+                                        path='document-library'
+                                        element={
+                                            <PrivateRoute showConfig='showRagLibrary' configs={config}>
+                                                <RepositoryLibrary setNav={setNav} />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path='document-library/:repoId'
+                                        element={
+                                            <PrivateRoute showConfig='showRagLibrary' configs={config}>
+                                                <DocumentLibrary setNav={setNav} />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                </>}
+                            {config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <Route
                                 path='prompt-templates/*'
                                 element={
                                     <PrivateRoute showConfig='showPromptTemplates' configs={config}>
                                         <PromptTemplatesLibrary setNav={setNav} />
                                     </PrivateRoute>
                                 }
-                            />
+                            />}
                             <Route
                                 path='configuration'
                                 element={
@@ -177,6 +191,23 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {config?.configuration?.enabledComponents?.mcpConnections && <Route
+                                path='mcp-connections/*'
+                                element={
+                                    <PrivateRoute showConfig='showMcpServers' configs={config}>
+                                        <McpServers setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
+                            {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
+                                path='model-comparison'
+                                element={
+                                    <PrivateRoute>
+                                        <ModelComparisonPage />
+                                    </PrivateRoute>
+                                }
+                            />
+                            }
                         </Routes>
                     }
                 />

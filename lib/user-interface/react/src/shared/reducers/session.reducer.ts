@@ -16,7 +16,12 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { LisaChatMessageFields, LisaChatSession } from '../../components/types';
+import {
+    LisaAttachImageRequest,
+    LisaAttachImageResponse,
+    LisaChatMessageFields,
+    LisaChatSession
+} from '../../components/types';
 import { RESTAPI_URI } from '../../components/utils';
 
 export const sessionApi = createApi({
@@ -52,16 +57,52 @@ export const sessionApi = createApi({
                             content: elem.content,
                             type: elem.type,
                             metadata: elem.metadata,
+                            toolCalls: elem.toolCalls,
                         };
                         return message;
                     }),
-                    configuration: session.configuration
+                    configuration: session.configuration,
+                    name: session.name
                 }
             }),
             transformErrorResponse: (baseQueryReturnValue) => {
                 // transform into SerializedError
                 return {
                     name: 'Update Session Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['sessions'],
+        }),
+        updateSessionName: builder.mutation<LisaChatSession, { sessionId: string, name: string }>({
+            query: (session) => ({
+                url: `/session/${session.sessionId}/name`,
+                method: 'PUT',
+                data: {
+                    name: session.name
+                }
+            }),
+            invalidatesTags: ['sessions'],
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Rename Session Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+                };
+            },
+        }),
+        attachImageToSession: builder.mutation<LisaAttachImageResponse, LisaAttachImageRequest>({
+            query: (attachImageRequest) => ({
+                url: `/session/${attachImageRequest.sessionId}/attachImage`,
+                method: 'PUT',
+                data: {
+                    message: attachImageRequest.message
+                }
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                // transform into SerializedError
+                return {
+                    name: 'Attach Image to Session Error',
                     message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
                 };
             },
@@ -103,6 +144,8 @@ export const {
     useDeleteSessionByIdMutation,
     useDeleteAllSessionsForUserMutation,
     useUpdateSessionMutation,
+    useUpdateSessionNameMutation,
     useLazyGetSessionByIdQuery,
-    useGetSessionHealthQuery
+    useGetSessionHealthQuery,
+    useAttachImageToSessionMutation
 } = sessionApi;

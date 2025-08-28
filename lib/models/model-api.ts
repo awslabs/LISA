@@ -44,7 +44,7 @@ import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { createLambdaRole } from '../core/utils';
+import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
 
@@ -58,7 +58,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
-    lisaServeEndpointUrlPs: StringParameter;
+    lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -72,7 +72,13 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+
+        const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
+            scope,
+            createCdkId(['LisaRestApiUri', 'StringParameter']),
+            `${config.deploymentPrefix}/lisaServeRestApiUri`,
+        );
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -430,6 +436,32 @@ export class ModelsApi extends Construct {
                                 'autoscaling:UpdateAutoScalingGroup',
                             ],
                             resources: ['*'],  // We do not know the ASG names in advance
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ecs:DescribeTaskDefinition',
+                                'ecs:RegisterTaskDefinition',
+                                'ecs:UpdateService',
+                                'ecs:DescribeServices',
+                            ],
+                            resources: ['*'],  // ECS resources are dynamic and created by CloudFormation
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'cloudformation:DescribeStackResources',
+                            ],
+                            resources: [
+                                'arn:*:cloudformation:*:*:stack/*',
+                            ],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'iam:PassRole',
+                            ],
+                            resources: ['*'],
                         }),
                     ]
                 }),

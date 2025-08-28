@@ -25,7 +25,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from ....auth import get_authorization_token, get_jwks_client, id_token_is_valid, is_admin, is_idp_used
+from ....auth import get_authorization_token, get_jwks_client, id_token_is_valid, is_idp_used, is_user_in_group
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
 # port was changed as part of the LiteLLM startup in entrypoint.sh
@@ -62,6 +62,11 @@ OPENAI_ROUTES = (
     "health",
     "health/readiness",
     "health/liveliness",
+    # MCP
+    "mcp/enabled",
+    "mcp/tools/list",
+    "mcp/tools/call",
+    "v1/mcp/server",
 )
 
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a
@@ -102,10 +107,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         # request, otherwise, we will block it. This prevents non-admins from invoking model management APIs
         # directly. If LISA Serve is deployed without an IdP configuration, we cannot determine who is an admin
         # user, so all API routes will default to being openly accessible.
-        if api_path not in OPENAI_ROUTES and is_idp_used():
+        if is_idp_used():
             client_id = os.environ.get("CLIENT_ID", "")
             authority = os.environ.get("AUTHORITY", "")
             admin_group = os.environ.get("ADMIN_GROUP", "")
+            user_group = os.environ.get("USER_GROUP", "")
             jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
             id_token = get_authorization_token(headers=headers, header_name="Authorization")
@@ -113,10 +119,19 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             if jwt_data := id_token_is_valid(
                 id_token=id_token, authority=authority, client_id=client_id, jwks_client=jwks_client
             ):
-                if not is_admin(jwt_data=jwt_data, admin_group=admin_group, jwt_groups_property=jwt_groups_property):
+                if user_group != "" and not is_user_in_group(
+                    jwt_data=jwt_data, group=user_group, jwt_groups_property=jwt_groups_property
+                ):
                     raise HTTPException(
                         status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough"
                     )
+                if api_path not in OPENAI_ROUTES:
+                    if not is_user_in_group(
+                        jwt_data=jwt_data, group=admin_group, jwt_groups_property=jwt_groups_property
+                    ):
+                        raise HTTPException(
+                            status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough"
+                        )
             else:
                 raise HTTPException(
                     status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough"

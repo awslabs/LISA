@@ -342,6 +342,34 @@ export class Ec2Metadata {
             maxThroughput: 400,
             vCpus: 96,
         },
+        'p4de.24xlarge': {
+            memory: 1152 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 400,
+            vCpus: 96,
+        },
+        'p5.48xlarge': {
+            memory: 2000 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 3200,
+            vCpus: 192,
+        },
+        'p5e.48xlarge': {
+            memory: 2000 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 3200,
+            vCpus: 192,
+        },
+        'p5en.48xlarge': {
+            memory: 2000 * 1000,
+            gpuCount: 8,
+            nvmePath: '/dev/nvme1n1',
+            maxThroughput: 3200,
+            vCpus: 192,
+        },
     };
 
     /**
@@ -643,6 +671,7 @@ const AuthConfigSchema = z.object({
         .describe('URL of OIDC authority.'),
     clientId: z.string().describe('Client ID for OIDC IDP .'),
     adminGroup: z.string().default('').describe('Name of the admin group.'),
+    userGroup: z.string().default('').describe('Name of the user group.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
@@ -760,6 +789,7 @@ export const RawConfigObject = z.object({
     subnets: z.array(z.object({
         subnetId: z.string().startsWith('subnet-'),
         ipv4CidrBlock: z.string(),
+        availabilityZone: z.string().describe('Specify the availability zone for the subnet in the format {region}{letter} (e.g., us-east-1a).'),
     })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),
     securityGroupConfig: SecurityGroupConfigSchema.optional(),
     deploymentStage: z.string().default('prod').describe('Deployment stage for the application.'),
@@ -783,6 +813,7 @@ export const RawConfigObject = z.object({
     deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+    deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),
@@ -840,6 +871,7 @@ export const RawConfigObject = z.object({
     stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
+    iamRdsAuth: z.boolean().optional().default(false).describe('Enable IAM authentication for RDS'),
 });
 
 export const RawConfigSchema = RawConfigObject

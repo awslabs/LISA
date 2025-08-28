@@ -24,6 +24,7 @@ import { Roles } from '../../../lib/core/iam/roles';
 import { createCdkId } from '../../../lib/core/utils';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as crypto from 'crypto';
 
 /**
  * Abstract base class for pipeline infrastructure stacks
@@ -53,6 +54,7 @@ export abstract class PipelineStack extends Stack {
         // Process each pipeline configuration
         ragConfig.pipelines?.forEach((pipelineConfig, index) => {
             const bucketActions = ['s3:GetObject'];
+            const hash = crypto.randomBytes(6).toString('hex');
 
             // Add EventBridge Rules based on trigger type specified in the pipeline configuration
             // Create rules based on trigger type
@@ -60,13 +62,13 @@ export abstract class PipelineStack extends Stack {
                 case 'daily': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionScheduleLambda-${index}`, ingestionLambdaArn.stringValue);
-                    this.createDailyLambdaRule(config, ingestionLambda, ragConfig, pipelineConfig, index);
+                    this.createDailyLambdaRule(config, ingestionLambda, ragConfig, pipelineConfig, hash);
                     break;
                 }
                 case 'event': {
                     const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
                     const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionIngestEventLambda-${index}`, ingestionLambdaArn.stringValue);
-                    this.createEventLambdaRule(config, ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', index);
+                    this.createEventLambdaRule(config, ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', hash);
                     break;
                 }
                 default:
@@ -92,7 +94,7 @@ export abstract class PipelineStack extends Stack {
                     ]
                 }));
 
-                this.createEventLambdaRule(config, deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', index);
+                this.createEventLambdaRule(config, deletionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Deleted'], 'Delete', hash);
             }
 
             // Grant the execution role permissions to access specified S3 bucket/prefix
@@ -109,7 +111,7 @@ export abstract class PipelineStack extends Stack {
     /**
      * Creates an EventBridge rule for S3 event-based triggers
      */
-    private createEventLambdaRule (config: PartialConfig, ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, disambiguator: number): Rule {
+    private createEventLambdaRule (config: PartialConfig, ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, disambiguator: string): Rule {
         const detail: any = {
             bucket: {
                 name: [pipelineConfig.s3Bucket]
@@ -163,7 +165,7 @@ export abstract class PipelineStack extends Stack {
     /**
      * Creates an EventBridge rule for daily scheduled triggers
      */
-    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: number): Rule {
+    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: string): Rule {
         return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${disambiguator}`, {
             ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
             // Schedule the rule to run daily at midnight

@@ -1586,6 +1586,7 @@ def test_real_download_document_function():
         assert result["body"] == '"https://test-url"'
 
 
+@mock_aws()
 def test_real_list_docs_function():
     """Test the actual list_docs function"""
     from repository.lambda_functions import list_docs
@@ -1599,7 +1600,12 @@ def test_real_list_docs_function():
 
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
 
-        mock_doc_repo.list_all.return_value = ([{"documentId": "test-doc", "name": "Test Document"}], None)
+        # Create a mock document object with model_dump method
+        mock_doc = MagicMock()
+        mock_doc.model_dump.return_value = {"documentId": "test-doc", "name": "Test Document"}
+
+        # Mock list_all to return the correct tuple format: (docs, last_evaluated, total_documents)
+        mock_doc_repo.list_all.return_value = ([mock_doc], None, 1)
 
         event = {
             "requestContext": {

@@ -28,7 +28,7 @@ class IngestionAction(str, Enum):
 class DocumentIngestionService:
     def _submit_job(self, job: IngestionJob, action: IngestionAction) -> None:
         # Submit AWS Batch job
-        batch_client = boto3.client("batch")
+        batch_client = boto3.client("batch", region_name=os.environ["AWS_REGION"])
         response = batch_client.submit_job(
             jobName=f"document-{action.value}-{job.id}",
             jobQueue=os.environ["LISA_INGESTION_JOB_QUEUE_NAME"],

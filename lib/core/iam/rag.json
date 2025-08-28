@@ -53,6 +53,22 @@
                 "iam:GetServerCertificate"
             ],
             "Resource": "arn:${AWS::Partition}:iam::${AWS::AccountId}:server-certificate/*"
-        }
+        },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ],
+        "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "bedrock:StartIngestionJob",
+          "bedrock:Retrieve"
+        ],
+        "Resource": "*"
+      }
     ]
 }

@@ -459,7 +459,7 @@ def _get_lambda_role_arn() -> str:
     str
         The full ARN of the Lambda execution role
     """
-    sts = boto3.client("sts")
+    sts = boto3.client("sts", region_name=os.environ["AWS_REGION"])
     identity = sts.get_caller_identity()
     return cast(str, identity["Arn"])  # This will include the role name
 
@@ -480,3 +480,22 @@ def get_lambda_role_name() -> str:
 def get_item(response: Any) -> Any:
     items = response.get("Items", [])
     return items[0] if items else None
+
+
+def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
+    """
+    Check if user has access based on group membership.
+
+    Args:
+        user_groups: List of groups the user belongs to
+        allowed_groups: List of groups allowed to access the resource
+
+    Returns:
+        True if user has access (either no restrictions or user has required group)
+    """
+    # Public resource (no group restrictions)
+    if not allowed_groups:
+        return True
+
+    # Check if user has at least one matching group
+    return len(set(user_groups).intersection(set(allowed_groups))) > 0

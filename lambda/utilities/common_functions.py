@@ -365,26 +365,6 @@ def get_username(event: dict) -> str:
     return username
 
 
-def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    admin_group = os.environ.get("ADMIN_GROUP", "")
-    groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
-
-
-def admin_only(func: Callable) -> Callable:
-    """Annotation to wrap is_admin"""
-
-    @wraps(func)
-    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
-        if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
-        return func(event, context, *args, **kwargs)
-
-    return wrapper
-
-
 def get_session_id(event: dict) -> str:
     """Get the session ID from the event."""
     session_id: str = event.get("pathParameters", {}).get("sessionId")

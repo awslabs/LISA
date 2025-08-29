@@ -22,6 +22,10 @@ from typing import Any, Dict
 from uuid import uuid4
 
 import boto3
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 from models.clients.litellm_client import LiteLLMClient
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 

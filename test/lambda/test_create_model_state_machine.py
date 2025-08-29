@@ -110,7 +110,9 @@ mock_secrets.get_secret_value.return_value = {"SecretString": "test-secret"}
 
 
 # Create comprehensive mock for boto3.client to handle all possible service requests
-def mock_boto3_client(service, **kwargs):
+def mock_boto3_client(*args, **kwargs):
+    # Support both (service_name, region_name, config) and (service_name)
+    service = args[0] if args else kwargs.get("service_name", kwargs.get("service"))
     if service == "lambda":
         return mock_lambda
     elif service == "ecr":
@@ -137,6 +139,7 @@ def mock_boto3_client(service, **kwargs):
         return MagicMock()
 
 
+# Note: This module needs global boto3.client patch for import-time dependencies
 patch("boto3.client", side_effect=mock_boto3_client).start()
 
 # Patch the specific clients in the state machine module

@@ -198,7 +198,11 @@ mock_get_vector_store_client = MagicMock(return_value=mock_vector_store)
 
 
 # Mock boto3 client function
-def mock_boto3_client(service_name, region_name=None, config=None):
+def mock_boto3_client(*args, **kwargs):
+    # Support both (service_name, region_name, config) and (service_name)
+    service_name = args[0] if args else kwargs.get("service_name")
+    if not service_name:
+        return MagicMock()  # Fallback for any unexpected calls
     if service_name == "ssm":
         return mock_ssm
     elif service_name == "s3":
@@ -250,11 +254,18 @@ patch("utilities.common_functions.admin_only", mock_admin_only).start()
 # Patch utility functions
 patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
 
-# Ensure mock_boto3_client is used for all boto3.client calls
-patch("boto3.client", side_effect=mock_boto3_client).start()
+# Note: boto3.client will be patched per-test to avoid global conflicts
+# Global boto3.client patch removed to prevent interference with other test modules
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, _ensure_repository_access, presigned_url
+
+
+@pytest.fixture(autouse=True)
+def mock_boto3_client_fixture():
+    """Fixture to patch boto3.client for repository tests with proper isolation."""
+    with patch("boto3.client", side_effect=mock_boto3_client):
+        yield
 
 
 @pytest.fixture

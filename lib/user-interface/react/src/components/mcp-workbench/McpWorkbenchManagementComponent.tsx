@@ -42,7 +42,7 @@ export function McpWorkbenchManagementComponent () {
         <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
             <SpaceBetween size='s' direction='vertical'>
                 <List
-                 
+
                     renderItem={(item: any) => {
                         return {
                             id: item.id,

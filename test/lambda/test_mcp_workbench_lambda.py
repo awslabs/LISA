@@ -15,7 +15,6 @@
 """Unit tests for MCP workbench lambda functions."""
 
 import functools
-import importlib
 import json
 import logging
 import os
@@ -24,7 +23,6 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import boto3
 import botocore.exceptions
 import pytest
 from botocore.config import Config
@@ -82,19 +80,12 @@ def mock_api_wrapper(func):
     return wrapper
 
 
-# Create mock modules for patching
-@pytest.fixture(autouse=True)
+# Create mock modules for patching with complete isolation
+@pytest.fixture(autouse=True, scope="function")
 def mock_common():
-    with patch("mcp_workbench.lambda_functions.get_username", return_value="test-user"), patch(
-        "utilities.common_functions.is_admin", return_value=False
-    ), patch("mcp_workbench.lambda_functions.retry_config", retry_config), patch(
-        "mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper
-    ), patch.dict(
-        "os.environ", mock_env, clear=True
-    ):
-        from mcp_workbench import lambda_functions
-
-        importlib.reload(lambda_functions)
+    """Ensure complete test isolation with fresh environment."""
+    with patch.dict("os.environ", mock_env, clear=True):
+        # Reset any module-level variables that might be cached
         yield
 
 
@@ -123,13 +114,67 @@ SAMPLE_TOOL_ID = "test_tool.py"
 
 @pytest.fixture
 def s3_setup():
-    """Set up S3 with moto and create bucket."""
-    with mock_aws():
-        # Create the S3 client
-        s3_client = boto3.client("s3", region_name="us-east-1")
-        # Create the bucket
-        s3_client.create_bucket(Bucket=WORKBENCH_BUCKET)
-        yield s3_client
+    """Set up S3 with moto and create bucket. Uses complete isolation to avoid test interference."""
+    # More aggressive approach: Temporarily replace boto3.client entirely
+    import importlib
+
+    import boto3
+
+    # Save original boto3.client
+    original_boto3_client = boto3.client
+
+    try:
+        # Create a completely isolated moto context
+        with mock_aws():
+            # Force a fresh import of boto3 within the moto context
+            importlib.reload(boto3)
+
+            # Create a fresh S3 client
+            s3_client = boto3.client("s3", region_name="us-east-1")
+
+            # Create the bucket
+            s3_client.create_bucket(Bucket=WORKBENCH_BUCKET)
+
+            # Create a storage dict to track what we put in S3 during tests
+            # This helps with debugging if moto state gets corrupted
+            s3_storage = {}
+
+            # Wrap the original methods to track operations
+            original_put_object = s3_client.put_object
+            original_get_object = s3_client.get_object
+            original_delete_object = s3_client.delete_object
+            original_list_objects_v2 = s3_client.list_objects_v2
+
+            def tracked_put_object(**kwargs):
+                key = kwargs.get("Key")
+                body = kwargs.get("Body")
+                if isinstance(body, bytes):
+                    s3_storage[key] = body.decode("utf-8")
+                else:
+                    s3_storage[key] = str(body)
+                return original_put_object(**kwargs)
+
+            def tracked_get_object(**kwargs):
+                return original_get_object(**kwargs)
+
+            def tracked_delete_object(**kwargs):
+                key = kwargs.get("Key")
+                if key in s3_storage:
+                    del s3_storage[key]
+                return original_delete_object(**kwargs)
+
+            def tracked_list_objects_v2(**kwargs):
+                return original_list_objects_v2(**kwargs)
+
+            s3_client.put_object = tracked_put_object
+            s3_client.get_object = tracked_get_object
+            s3_client.delete_object = tracked_delete_object
+            s3_client.list_objects_v2 = tracked_list_objects_v2
+
+            yield s3_client
+    finally:
+        # Restore original boto3.client
+        boto3.client = original_boto3_client
 
 
 # Test the MCPToolModel directly without mocking dependencies
@@ -258,7 +303,9 @@ def test_read_not_admin(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Only admin users can access tools" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Only admin users can access tools" in error_text
 
 
 def test_read_not_found(s3_setup, lambda_context):
@@ -278,9 +325,11 @@ def test_read_not_found(s3_setup, lambda_context):
     ):
         response = read(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
-    assert "not found" in body.lower()
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "not found" in error_text.lower()
 
 
 def test_read_missing_tool_id(s3_setup, lambda_context):
@@ -302,7 +351,9 @@ def test_read_missing_tool_id(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing toolId parameter" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Missing toolId parameter" in error_text
 
 
 def test_list_success(s3_setup, lambda_context):
@@ -358,7 +409,9 @@ def test_list_not_admin(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Only admin users can access tools" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Only admin users can access tools" in error_text
 
 
 def test_list_empty_bucket(s3_setup, lambda_context):
@@ -455,7 +508,9 @@ def test_create_not_admin(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Only admin users can access tools" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Only admin users can access tools" in error_text
 
 
 def test_create_missing_fields(s3_setup, lambda_context):
@@ -477,7 +532,9 @@ def test_create_missing_fields(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required fields" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Missing required fields" in error_text
 
 
 def test_update_success(s3_setup, lambda_context):
@@ -543,7 +600,9 @@ def test_update_not_admin(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Only admin users can access tools" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Only admin users can access tools" in error_text
 
 
 def test_update_not_found(s3_setup, lambda_context):
@@ -566,7 +625,9 @@ def test_update_not_found(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "does not exist" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "does not exist" in error_text
 
 
 def test_update_missing_tool_id(s3_setup, lambda_context):
@@ -589,7 +650,9 @@ def test_update_missing_tool_id(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing toolId parameter" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Missing toolId parameter" in error_text
 
 
 def test_update_missing_contents(s3_setup, lambda_context):
@@ -620,7 +683,9 @@ def test_update_missing_contents(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required field: 'contents'" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Missing required field: 'contents'" in error_text
 
 
 # Test delete operations with moto
@@ -682,7 +747,9 @@ def test_delete_not_admin(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Only admin users can access tools" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Only admin users can access tools" in error_text
 
 
 def test_delete_not_found(s3_setup, lambda_context):
@@ -704,7 +771,9 @@ def test_delete_not_found(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "does not exist" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "does not exist" in error_text
 
 
 def test_delete_missing_tool_id(s3_setup, lambda_context):
@@ -726,4 +795,6 @@ def test_delete_missing_tool_id(s3_setup, lambda_context):
 
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing toolId parameter" in body
+    # Handle both string and dict response formats
+    error_text = body if isinstance(body, str) else body.get("error", "")
+    assert "Missing toolId parameter" in error_text

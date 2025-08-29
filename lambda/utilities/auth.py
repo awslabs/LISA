@@ -11,15 +11,19 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
 import logging
-import os
 from functools import wraps
 from typing import Any, Callable, Dict, Tuple
 
+<<<<<<< HEAD
 import boto3
 from botocore.config import Config
 from utilities.common_functions import get_groups
+=======
+>>>>>>> ad9e1a09 (Organize ingestion)
 from utilities.exceptions import HTTPException
+from .brass_client import BrassClient
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +45,17 @@ def get_username(event: dict) -> str:
 
 
 def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    admin_group = os.environ.get("ADMIN_GROUP", "")
-    groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
+    """Get admin status from event using BRASS bindle lock authorization."""
+    username = get_username(event)
+    
+    # Check BRASS admin bindle lock using BrassClient directly
+    brass_client = BrassClient()
+    if brass_client.check_admin_access(username):
+        logger.info(f"User {username} granted admin access via BRASS admin bindle lock")
+        return True
+    
+    logger.info(f"User {username} denied admin access - no valid authorization found")
+    return False
 
 
 def get_user_context(event: Dict[str, Any]) -> Tuple[str, bool]:
@@ -62,6 +72,7 @@ def admin_only(func: Callable) -> Callable:
             raise HTTPException(status_code=403, message="User does not have permission to access this repository")
         return func(event, context, *args, **kwargs)
 
+<<<<<<< HEAD
     return wrapper
 
 
@@ -70,3 +81,6 @@ def get_management_key() -> str:
     secret_name = secret_name_param["Parameter"]["Value"]
     secret_response = secrets_client.get_secret_value(SecretId=secret_name)
     return secret_response["SecretString"]
+=======
+    return wrapper
+>>>>>>> ad9e1a09 (Organize ingestion)

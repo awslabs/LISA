@@ -18,17 +18,20 @@ from typing import List
 
 import boto3
 import requests
+<<<<<<< HEAD
 from pydantic import BaseModel, field_validator
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.validation import validate_model_name, ValidationError
+=======
+from utilities.common_functions import get_cert_path, retry_config
+from utilities.validation import ValidationError
+>>>>>>> ad9e1a09 (Organize ingestion)
 
 logger = logging.getLogger(__name__)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
-
-lisa_api_endpoint = ""
 
 
 class RagEmbeddings(BaseModel):
@@ -156,3 +159,22 @@ class RagEmbeddings(BaseModel):
 
         logger.info("Embedding single query text")
         return self.embed_documents([text])[0]
+<<<<<<< HEAD
+=======
+
+
+def get_embeddings_pipeline(model_name: str) -> Any:
+    """
+    Get embeddings for pipeline requests using management token.
+
+    Args:
+        model_name: Name of the embedding model to use
+
+    Raises:
+        ValidationError: If model name is invalid
+        Exception: If API request fails
+    """
+    logger.info("Starting pipeline embeddings request")
+
+    return PipelineEmbeddings(model_name=model_name)
+>>>>>>> ad9e1a09 (Organize ingestion)

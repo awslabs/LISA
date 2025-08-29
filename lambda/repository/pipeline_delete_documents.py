@@ -25,7 +25,9 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.bedrock_kb import delete_document_from_kb
 from utilities.common_functions import retry_config
-from utilities.repository_types import RepositoryType
+
+from repository.rag_document_repo import RagDocumentRepository
+from repository.ingestion_service import DocumentIngestionService
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()

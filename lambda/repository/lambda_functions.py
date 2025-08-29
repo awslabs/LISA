@@ -37,9 +37,23 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
+<<<<<<< HEAD
 from utilities.auth import admin_only, get_user_context, get_username, is_admin
 from utilities.bedrock_kb import retrieve_documents
 from utilities.common_functions import api_wrapper, get_groups, get_id_token, retry_config, user_has_group_access
+=======
+from utilities.bedrock_kb import is_bedrock_kb_repository, retrieve_documents
+from utilities.auth import admin_only, is_admin
+from utilities.common_functions import (
+    api_wrapper,
+    get_cert_path,
+    get_groups,
+    get_id_token,
+    get_username,
+    retry_config,
+    user_has_group_access,
+)
+>>>>>>> ad9e1a09 (Organize ingestion)
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError

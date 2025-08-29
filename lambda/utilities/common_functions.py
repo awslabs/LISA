@@ -28,7 +28,6 @@ import boto3
 import six
 from botocore.config import Config
 from utilities.exceptions import HTTPException
-from .brass_client import BrassClient
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -370,32 +369,6 @@ def get_username(event: dict) -> str:
     """Get the username from the event."""
     username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
     return username
-
-
-def is_admin(event: dict) -> bool:
-    """Get admin status from event using BRASS bindle lock authorization."""
-    username = get_username(event)
-    
-    # Check BRASS admin bindle lock using BrassClient directly
-    brass_client = BrassClient()
-    if brass_client.check_admin_access(username):
-        logger.info(f"User {username} granted admin access via BRASS admin bindle lock")
-        return True
-    
-    logger.info(f"User {username} denied admin access - no valid authorization found")
-    return False
-
-
-def admin_only(func: Callable) -> Callable:
-    """Annotation to wrap is_admin"""
-
-    @wraps(func)
-    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
-        if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
-        return func(event, context, *args, **kwargs)
-
-    return wrapper
 
 
 def get_session_id(event: dict) -> str:

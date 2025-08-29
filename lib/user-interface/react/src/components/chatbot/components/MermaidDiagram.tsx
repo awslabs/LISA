@@ -125,13 +125,84 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         }
     }, []);
 
-    const handleButtonClick = useCallback(({ detail }: { detail: { id: string } }) => {
-        if (detail.id === 'copy-svg') {
-            copyToClipboard(svg);
-        } else if (detail.id === 'copy-code') {
-            copyToClipboard(chart);
+    const downloadSvgAsPng = useCallback((svgElement: SVGElement, filename = 'mermaid-diagram.png') => {
+        try {
+            // Get dimensions from SVG - use existing dimensions or fallback
+            const parseSize = (value: string | null): number => {
+                if (!value) return 0;
+                return parseFloat(value.replace(/[^\d.]/g, ''));
+            };
+
+            // Try to get dimensions from SVG attributes first
+            let width = parseSize(svgElement.getAttribute('width'));
+            let height = parseSize(svgElement.getAttribute('height'));
+
+            // Single fallback: use viewBox if no width/height
+            if (!width || !height) {
+                const viewBox = svgElement.getAttribute('viewBox');
+                if (viewBox) {
+                    const viewBoxValues = viewBox.split(/\s+/);
+                    if (viewBoxValues.length >= 4) {
+                        width = parseFloat(viewBoxValues[2]) || 800;
+                        height = parseFloat(viewBoxValues[3]) || 600;
+                    }
+                } else {
+                    // Final fallback
+                    width = 800;
+                    height = 600;
+                }
+            }
+
+            // Scale factor for higher quality
+            const scale = 2;
+            
+            // Clone the SVG without modifying dimensions - preserve original
+            const svgClone = svgElement.cloneNode(true) as SVGElement;
+            const svgString = new XMLSerializer().serializeToString(svgClone);
+            const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+            
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                // Set canvas size once - scaled for quality
+                canvas.width = width * scale;
+                canvas.height = height * scale;
+                
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    // High quality rendering
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    
+                    // Draw the image at full canvas size (already scaled)
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    const pngUrl = canvas.toDataURL('image/png', 1.0);
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = pngUrl;
+                    downloadLink.download = filename;
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
+            };
+            img.src = svgDataUrl;
+        } catch (err) {
+            console.error('Failed to download SVG as PNG:', err);
         }
-    }, [svg, chart, copyToClipboard]);
+    }, []);
+
+    const handleButtonClick = useCallback(({ detail }: { detail: { id: string } }) => {
+        if (detail.id === 'copy-code') {
+            copyToClipboard(chart);
+        } else if (detail.id === 'download-png') {
+            // Find the SVG element in the container
+            const svgElement = containerRef.current?.querySelector('svg');
+            if (svgElement) {
+                downloadSvgAsPng(svgElement);
+            }
+        }
+    }, [svg, chart, copyToClipboard, downloadSvgAsPng]);
 
     // Error state - show original code
     if (error) {
@@ -184,23 +255,23 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
     const buttonItems = [
         {
             type: 'icon-button' as const,
-            id: 'copy-svg',
-            iconName: 'copy' as const,
-            text: 'Copy SVG',
-            popoverFeedback: (
-                <StatusIndicator type='success'>
-                    SVG copied
-                </StatusIndicator>
-            )
-        },
-        {
-            type: 'icon-button' as const,
             id: 'copy-code',
             iconName: 'file' as const,
             text: 'Copy Mermaid Code',
             popoverFeedback: (
                 <StatusIndicator type='success'>
                     Mermaid code copied
+                </StatusIndicator>
+            )
+        },
+        {
+            type: 'icon-button' as const,
+            id: 'download-png',
+            iconName: 'download' as const,
+            text: 'Download as PNG',
+            popoverFeedback: (
+                <StatusIndicator type='success'>
+                    PNG downloaded
                 </StatusIndicator>
             )
         }

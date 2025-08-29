@@ -22,14 +22,15 @@ from typing import Any, Dict, List
 import boto3
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
 from repository.ingestion_job_repo import IngestionJobRepository
-from repository.lambda_functions import RagDocumentRepository
+from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.bedrock_kb import ingest_document_to_kb, is_bedrock_kb_repository
 from utilities.common_functions import get_username, retry_config
 from utilities.file_processing import generate_chunks
 from utilities.vector_store import get_vector_store_client
 
-from .lambda_functions import DocumentIngestionService, get_embeddings_pipeline
+from repository.ingestion_service import DocumentIngestionService
+from repository.embeddings import get_embeddings_pipeline
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])

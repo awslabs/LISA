@@ -29,14 +29,13 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.bedrock_kb import is_bedrock_kb_repository, retrieve_documents
+from utilities.auth import admin_only, is_admin
 from utilities.common_functions import (
-    admin_only,
     api_wrapper,
     get_cert_path,
     get_groups,
     get_id_token,
     get_username,
-    is_admin,
     retry_config,
     user_has_group_access,
 )

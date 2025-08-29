@@ -24,7 +24,8 @@ from repository.vector_store_repo import VectorStoreRepository
 from utilities.bedrock_kb import delete_document_from_kb, is_bedrock_kb_repository
 from utilities.common_functions import retry_config
 
-from .lambda_functions import DocumentIngestionService, RagDocumentRepository
+from repository.rag_document_repo import RagDocumentRepository
+from repository.ingestion_service import DocumentIngestionService
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()

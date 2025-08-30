@@ -26,8 +26,9 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.auth import get_username
 from utilities.bedrock_kb import ingest_document_to_kb, is_bedrock_kb_repository
-from utilities.common_functions import get_username, retry_config
+from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.vector_store import get_vector_store_client
 

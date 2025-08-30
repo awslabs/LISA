@@ -237,15 +237,15 @@ patch.dict(
     },
 ).start()
 
-# Patch specific functions from utilities.common_functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
+# Patch specific functions from utilities.common_functions and utilities.auth
+patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.common_functions.get_groups", mock_common.get_groups).start()
-patch("utilities.common_functions.is_admin", mock_common.is_admin).start()
+patch("utilities.auth.is_admin", mock_common.is_admin).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.common_functions.admin_only", mock_admin_only).start()
+patch("utilities.auth.admin_only", mock_admin_only).start()
 
 # Patch utility functions
 patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()

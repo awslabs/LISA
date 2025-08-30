@@ -212,7 +212,7 @@ class RagDocumentRepository:
         last_evaluated_key: Optional[dict] = None,
         limit: int = 100,
         join_docs: bool = False,
-    ) -> tuple[list[RagDocument], Optional[dict]]:
+    ) -> tuple[list[RagDocument], Optional[dict], int]:
         """List all documents in a collection.
 
         Args:
@@ -252,11 +252,36 @@ class RagDocumentRepository:
                     subdocs = self._get_subdoc_ids(self.find_subdocs_by_id(doc.document_id))
                     doc.subdocs = subdocs
 
-            return docs, next_key
+            total_documents = self.count_documents(repository_id=repository_id, collection_id=collection_id)
+
+            return docs, next_key, total_documents
 
         except ClientError as e:
             logging.error(f"Error listing documents: {e.response['Error']['Message']}")
             raise
+
+    def count_documents(self, repository_id: str, collection_id: Optional[str] = None) -> int:
+        """Count total documents in a repository/collection.
+        Args:
+            repository_id: Repository ID
+            collection_id?: Collection ID
+        Returns:
+            Total number of documents
+        """
+        count = 0
+        # Count all rag documents using repo id only
+        if not collection_id:
+            response = self.doc_table.query(
+                IndexName="repository_index",
+                KeyConditionExpression=Key("repository_id").eq(repository_id),
+                Select="COUNT",
+            )
+            count = response.get("Count", 0)
+        else:
+            pk = RagDocument.createPartitionKey(repository_id, collection_id)
+            response = self.doc_table.query(KeyConditionExpression=Key("pk").eq(pk), Select="COUNT")
+            count = response.get("Count", 0)
+        return count
 
     def find_subdocs_by_id(self, document_id: str) -> list[RagSubDocument]:
         """Query subdocuments using GSI.

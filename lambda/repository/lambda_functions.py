@@ -16,7 +16,8 @@
 import json
 import logging
 import os
-from typing import Any, cast, Dict, List
+import urllib.parse
+from typing import Any, cast, Dict, List, Optional
 
 import boto3
 import requests
@@ -552,7 +553,7 @@ def presigned_url(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def list_docs(event: dict, context: dict) -> dict[str, list[dict] | str | None]:
+def list_docs(event: dict, context: dict) -> dict[str, Any]:
     """List all documents for a given repository/collection.
 
     Args:
@@ -562,8 +563,7 @@ def list_docs(event: dict, context: dict) -> dict[str, list[dict] | str | None]:
         context (dict): The Lambda context object
 
     Returns:
-        Tuple list[RagDocument], dict[lastEvaluatedKey]: A list of RagDocument objects representing all documents
-            in the specified collection and the last evaluated key for pagination
+        Dict containing documents, pagination info, and metadata
 
     Raises:
         KeyError: If collectionId is not provided in queryStringParameters
@@ -574,12 +574,44 @@ def list_docs(event: dict, context: dict) -> dict[str, list[dict] | str | None]:
 
     query_string_params = event.get("queryStringParameters", {}) or {}
     collection_id = query_string_params.get("collectionId")
-    last_evaluated = query_string_params.get("lastEvaluated")
+    last_evaluated: Optional[dict[str, Optional[str]]] = None
 
-    docs, last_evaluated = doc_repo.list_all(
-        repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated
+    if "lastEvaluatedKeyPk" in query_string_params:
+        last_evaluated = {
+            "pk": (
+                urllib.parse.unquote(query_string_params["lastEvaluatedKeyPk"])
+                if "lastEvaluatedKeyPk" in query_string_params
+                else None
+            ),
+            "document_id": (
+                urllib.parse.unquote(query_string_params["lastEvaluatedKeyDocumentId"])
+                if "lastEvaluatedKeyDocumentId" in query_string_params
+                else None
+            ),
+            "repository_id": (
+                urllib.parse.unquote(query_string_params["lastEvaluatedKeyRepositoryId"])
+                if "lastEvaluatedKeyRepositoryId" in query_string_params
+                else None
+            ),
+        }
+
+    page_size = int(query_string_params.get("pageSize", "10"))
+
+    if page_size < 1:
+        page_size = 1
+    elif page_size > 100:  # Cap at 100 to prevent abuse
+        page_size = 100
+
+    docs, last_evaluated, total_documents = doc_repo.list_all(
+        repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated, limit=page_size
     )
-    return {"documents": [doc.model_dump() for doc in docs], "lastEvaluated": last_evaluated}
+    return {
+        "documents": [doc.model_dump() for doc in docs],
+        "lastEvaluated": last_evaluated,
+        "totalDocuments": total_documents,
+        "hasNextPage": last_evaluated is not None,
+        "hasPreviousPage": "lastEvaluated" in query_string_params,
+    }
 
 
 @api_wrapper

@@ -77,6 +77,7 @@ export const useChatGeneration = ({
     const generateResponse = async (params: GenerateLLMRequestParams) => {
         setIsRunning(true);
         stopRequested.current = false;
+        const startTime = performance.now(); // Start client timer
         try {
             // Handle image generation mode specifically
             if (isImageGenerationMode) {
@@ -114,6 +115,9 @@ export const useChatGeneration = ({
                         type: 'image_url'
                     }));
 
+                    // Calculate response time
+                    const responseTime = (performance.now() - startTime) / 1000;
+
                     // Save the response to the chat history
                     setSession((prev) => ({
                         ...prev,
@@ -124,6 +128,9 @@ export const useChatGeneration = ({
                                 ...metadata,
                                 imageGeneration: true,
                                 imageGenerationParams: imageGenParams
+                            },
+                            usage: {
+                                responseTime: parseFloat(responseTime.toFixed(2))
                             }
                         })],
                     }));
@@ -343,6 +350,27 @@ export const useChatGeneration = ({
                             });
                         }
 
+                        // Calculate response time and update the final message with usage info
+                        const responseTime = (performance.now() - startTime) / 1000;
+                        setSession((prev) => {
+                            const lastMessage = prev.history[prev.history.length - 1];
+                            if (lastMessage?.type === MessageTypes.AI) {
+                                return {
+                                    ...prev,
+                                    history: [...prev.history.slice(0, -1),
+                                        new LisaChatMessage({
+                                            ...lastMessage,
+                                            usage: {
+                                                ...lastMessage.usage,
+                                                responseTime: parseFloat(responseTime.toFixed(2))
+                                            }
+                                        })
+                                    ],
+                                };
+                            }
+                            return prev;
+                        });
+
                         await memory.saveContext({ input: params.input }, { output: resp.join('') });
                         setIsStreaming(false);
                     } catch (exception) {
@@ -355,10 +383,24 @@ export const useChatGeneration = ({
                 } else {
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                     const content = response.content as string;
+                    const usage = response.response_metadata.tokenUsage;
+
+                    // Calculate response time
+                    const responseTime = (performance.now() - startTime) / 1000;
+
                     await memory.saveContext({ input: params.input }, { output: content });
                     setSession((prev) => ({
                         ...prev,
-                        history: [...prev.history, new LisaChatMessage({ type: 'ai', content, metadata, toolCalls: [...(response.tool_calls ?? [])] })],
+                        history: [...prev.history, new LisaChatMessage({
+                            type: 'ai',
+                            content,
+                            metadata,
+                            toolCalls: [...(response.tool_calls ?? [])],
+                            usage: {
+                                ...usage,
+                                responseTime: parseFloat(responseTime.toFixed(2))
+                            }
+                        })],
                     }));
                 }
             }

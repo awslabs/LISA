@@ -29,7 +29,6 @@ import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -38,7 +37,6 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
-import { ContainerImage } from 'aws-cdk-lib/aws-ecs';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -49,7 +47,7 @@ export type IngestionJobConstructProps = StackProps & BaseProps & {
 };
 
 export class IngestionJobConstruct extends Construct {
-    constructor(scope: Construct, id: string, props: IngestionJobConstructProps) {
+    constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
         const { config, vpc, lambdaRole, layers, baseEnvironment } = props;

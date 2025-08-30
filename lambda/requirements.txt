@@ -1,1 +1,1 @@
-# All required depenedencies are pulled in via layer
+# All required dependencies are pulled in via layer

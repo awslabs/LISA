@@ -11,11 +11,12 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
 import logging
+import os
 from functools import wraps
 from typing import Any, Callable, Dict
 
+from utilities.common_functions import get_groups
 from utilities.exceptions import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -45,4 +46,3 @@ def admin_only(func: Callable) -> Callable:
         return func(event, context, *args, **kwargs)
 
     return wrapper
-

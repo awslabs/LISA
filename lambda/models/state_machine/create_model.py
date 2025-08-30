@@ -22,10 +22,6 @@ from datetime import datetime, UTC
 from typing import Any, Dict
 
 import boto3
-
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import CreateModelRequest, InferenceContainer, ModelStatus

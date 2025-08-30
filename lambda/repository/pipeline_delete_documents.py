@@ -19,13 +19,12 @@ from typing import Any, Dict
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
 from repository.ingestion_job_repo import IngestionJobRepository
+from repository.ingestion_service import DocumentIngestionService
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore
+from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.bedrock_kb import delete_document_from_kb, is_bedrock_kb_repository
 from utilities.common_functions import retry_config
-
-from repository.rag_document_repo import RagDocumentRepository
-from repository.ingestion_service import DocumentIngestionService
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()

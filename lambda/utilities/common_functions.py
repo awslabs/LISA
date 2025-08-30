@@ -21,12 +21,11 @@ import os
 import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
-from functools import cache, wraps
+from functools import cache
 from typing import Any, Callable, cast, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
-from utilities.exceptions import HTTPException
 
 from . import create_env_variables  # noqa type: ignore
 

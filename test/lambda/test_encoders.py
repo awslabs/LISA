@@ -55,10 +55,7 @@ def test_convert_decimal_with_dict():
         "quantity": Decimal("5"),
         "name": "Product",
         "active": True,
-        "nested": {
-            "cost": Decimal("50.25"),
-            "tax": Decimal("7.5")
-        }
+        "nested": {"cost": Decimal("50.25"), "tax": Decimal("7.5")},
     }
 
     result = convert_decimal(input_dict)
@@ -77,13 +74,7 @@ def test_convert_decimal_with_dict():
 
 def test_convert_decimal_with_list():
     """Test convert_decimal with list containing Decimals"""
-    input_list = [
-        Decimal("10.5"),
-        "string_value",
-        42,
-        [Decimal("3.14"), "nested"],
-        {"amount": Decimal("100.00")}
-    ]
+    input_list = [Decimal("10.5"), "string_value", 42, [Decimal("3.14"), "nested"], {"amount": Decimal("100.00")}]
 
     result = convert_decimal(input_list)
 
@@ -141,18 +132,12 @@ def test_convert_decimal_with_complex_nested_structure():
                 "balance": Decimal("1000.50"),
                 "transactions": [
                     {"amount": Decimal("50.25"), "type": "debit"},
-                    {"amount": Decimal("100.75"), "type": "credit"}
+                    {"amount": Decimal("100.75"), "type": "credit"},
                 ],
-                "metadata": {
-                    "scores": [Decimal("95.5"), Decimal("87.2")],
-                    "rating": Decimal("4.8")
-                }
+                "metadata": {"scores": [Decimal("95.5"), Decimal("87.2")], "rating": Decimal("4.8")},
             }
         ],
-        "totals": {
-            "sum": Decimal("2000.00"),
-            "average": Decimal("666.67")
-        }
+        "totals": {"sum": Decimal("2000.00"), "average": Decimal("666.67")},
     }
 
     result = convert_decimal(complex_data)
@@ -198,7 +183,7 @@ def test_convert_decimal_with_mixed_types_in_list():
         "plain_string",
         42,
         None,
-        True
+        True,
     ]
 
     result = convert_decimal(mixed_list)
@@ -221,16 +206,7 @@ def test_convert_decimal_with_mixed_types_in_list():
 
 def test_convert_decimal_preserves_original_structure():
     """Test that convert_decimal preserves the original data structure"""
-    original = {
-        "level1": {
-            "level2": {
-                "level3": [
-                    {"value": Decimal("42.0")},
-                    {"value": Decimal("84.0")}
-                ]
-            }
-        }
-    }
+    original = {"level1": {"level2": {"level3": [{"value": Decimal("42.0")}, {"value": Decimal("84.0")}]}}}
 
     result = convert_decimal(original)
 

@@ -69,6 +69,7 @@ export default function ModelComparisonPage (): ReactElement {
         responses,
         availableModels,
         canCompare,
+        shouldShowStopButton,
 
         // Actions
         setPrompt,
@@ -77,6 +78,7 @@ export default function ModelComparisonPage (): ReactElement {
         updateModelSelection,
         getAvailableModelsForSelection,
         handleCompare,
+        stopComparison,
     } = useModelComparison(models, modelConfiguration);
 
     const handleBack = () => {
@@ -132,7 +134,9 @@ export default function ModelComparisonPage (): ReactElement {
                             prompt={prompt}
                             onPromptChange={setPrompt}
                             onCompare={handleCompare}
+                            onStopComparison={stopComparison}
                             canCompare={canCompare}
+                            shouldShowStopButton={shouldShowStopButton}
                         />
 
                         {responses.length > 0 && (

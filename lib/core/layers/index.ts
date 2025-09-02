@@ -83,7 +83,7 @@ export class Layer extends Construct {
                         platform: architecture.dockerPlatform,
                         commandHooks: (packagesExists || afterBundle) ? {
                             beforeBundling (inputDir: string, outputDir: string): string[] {
-                                return [`touch ${outputDir}/requirements.txt`];
+                                return [`mkdir -p ${outputDir}/python && touch ${outputDir}/python/requirements.txt`];
                             },
                             afterBundling (inputDir: string, outputDir: string): string[] {
                                 const commands = [];

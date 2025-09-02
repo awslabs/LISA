@@ -1,0 +1,154 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-dependencies:
+    name: Check for Dependency Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for NPM updates
+        id: npm-updates
+        run: |
+          # Check for outdated packages
+          npm outdated --json > outdated-packages.json || true
+          
+          # Check for security updates
+          npm audit --audit-level=moderate --json > security-audit.json
+          
+          # Count security vulnerabilities
+          HIGH_VULNS=$(jq '.metadata.vulnerabilities.high // 0' security-audit.json)
+          CRITICAL_VULNS=$(jq '.metadata.vulnerabilities.critical // 0' security-audit.json)
+          
+          echo "high_vulns=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "critical_vulns=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          
+          # Check if there are outdated packages
+          if [ -f "outdated-packages.json" ]; then
+            OUTDATED_COUNT=$(jq 'length' outdated-packages.json)
+            echo "outdated_count=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+          else
+            echo "outdated_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for Python updates
+        id: python-updates
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -e ./lisa-sdk
+          
+          # Check for outdated packages
+          pip list --outdated --format=json > python-outdated.json || true
+          
+          if [ -f "python-outdated.json" ]; then
+            PYTHON_OUTDATED=$(jq 'length' python-outdated.json)
+            echo "outdated_count=$PYTHON_OUTDATED" >> $GITHUB_OUTPUT
+          else
+            echo "outdated_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Dependency Update PR
+        if: steps.npm-updates.outputs.high_vulns > '0' || steps.npm-updates.outputs.critical_vulns > '0' || steps.npm-updates.outputs.outdated_count > '0'
+        run: |
+          # Create a new branch for dependency updates
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          BRANCH_NAME="deps/security-updates-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          
+          # Update package-lock.json if there are security vulnerabilities
+          if [ "${{ steps.npm-updates.outputs.high_vulns }}" -gt 0 ] || [ "${{ steps.npm-updates.outputs.critical_vulns }}" -gt 0 ]; then
+            echo "Updating dependencies to fix security vulnerabilities..."
+            npm audit fix
+          fi
+          
+          # Commit changes
+          if ! git diff --quiet; then
+            git add .
+            git commit -m "🔒 Update dependencies to fix security vulnerabilities
+            
+            - High vulnerabilities: ${{ steps.npm-updates.outputs.high_vulns }}
+            - Critical vulnerabilities: ${{ steps.npm-updates.outputs.critical_vulns }}
+            - Outdated packages: ${{ steps.npm-updates.outputs.outdated_count }}
+            
+            Automated security update by GitHub Actions"
+            
+            git push origin "$BRANCH_NAME"
+            
+            # Create PR
+            gh pr create \
+              --title "🔒 Security: Update dependencies to fix vulnerabilities" \
+              --body "## Security Dependency Updates
+              
+              This PR updates dependencies to fix security vulnerabilities detected by automated scanning.
+              
+              **Security Issues Fixed:**
+              - High vulnerabilities: ${{ steps.npm-updates.outputs.high_vulns }}
+              - Critical vulnerabilities: ${{ steps.npm-updates.outputs.critical_vulns }}
+              - Outdated packages: ${{ steps.npm-updates.outputs.outdated_count }}
+              
+              **Changes Made:**
+              - Updated vulnerable dependencies
+              - Regenerated package-lock.json
+              - Applied security patches
+              
+              **Testing Required:**
+              - [ ] Run full test suite
+              - [ ] Verify functionality
+              - [ ] Check for breaking changes
+              
+              **Security Impact:**
+              - Reduces attack surface
+              - Fixes known vulnerabilities
+              - Improves overall security posture
+              
+              > **Note:** This is an automated security update. Please review and test thoroughly before merging."
+              --base develop \
+              --head "$BRANCH_NAME" \
+              --label "security" \
+              --label "dependencies" \
+              --label "automated"
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Comment on existing PRs
+        if: steps.npm-updates.outputs.high_vulns > '0' || steps.npm-updates.outputs.critical_vulns > '0'
+        run: |
+          # Find existing dependency update PRs
+          EXISTING_PRS=$(gh pr list --base develop --label "dependencies" --json number,title)
+          
+          if [ "$(echo "$EXISTING_PRS" | jq 'length')" -gt 0 ]; then
+            echo "Found existing dependency PRs, commenting with security info..."
+            
+            SECURITY_INFO="🔒 **Security Alert:** ${{ steps.npm-updates.outputs.high_vulns }} high and ${{ steps.npm-updates.outputs.critical_vulns }} critical vulnerabilities detected. Consider updating this PR to include security fixes."
+            
+            echo "$EXISTING_PRS" | jq -r '.[] | @base64' | while read -r pr; do
+              PR_NUMBER=$(echo "$pr" | base64 --decode | jq -r '.number')
+              gh pr comment "$PR_NUMBER" --body "$SECURITY_INFO"
+            done
+          fi

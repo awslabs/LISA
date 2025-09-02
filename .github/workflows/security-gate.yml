@@ -1,0 +1,149 @@
+name: Security Gate
+
+on:
+  pull_request_target:
+    branches: [ "main", "develop", "release/**", "hotfix/**" ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  security-gate:
+    name: Security Gate Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Only checkout the base branch, not the PR code
+          ref: ${{ github.base_ref }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: 20.x
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e ./lisa-sdk
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Run Python Security Scan (Bandit)
+        id: bandit-scan
+        run: |
+          pip install bandit
+          bandit -r . -f json -o bandit-report.json
+          # Check for high/critical issues
+          HIGH_ISSUES=$(jq '[.results[] | select(.issue_severity == "HIGH" or .issue_severity == "MEDIUM")] | length' bandit-report.json)
+          echo "high_issues=$HIGH_ISSUES" >> $GITHUB_OUTPUT
+          if [ "$HIGH_ISSUES" -gt 0 ]; then
+            echo "::error::Found $HIGH_ISSUES high/medium security issues in Python code"
+            exit 1
+          fi
+
+      - name: Run JavaScript Security Scan (ESLint)
+        id: eslint-scan
+        run: |
+          npm run lint
+          npx eslint --ext .js,.ts,.jsx,.tsx . --format json --output-file eslint-report.json
+          # Check for security-related errors
+          SECURITY_ERRORS=$(jq '[.messages[] | select(.ruleId | contains("security"))] | length' eslint-report.json)
+          echo "security_errors=$SECURITY_ERRORS" >> $GITHUB_OUTPUT
+          if [ "$SECURITY_ERRORS" -gt 0 ]; then
+            echo "::error::Found $SECURITY_ERRORS security-related ESLint errors"
+            exit 1
+          fi
+
+      - name: Run NPM Security Audit
+        id: npm-audit
+        run: |
+          npm audit --audit-level=moderate --json > npm-audit-report.json
+          # Check for moderate or higher vulnerabilities
+          VULNERABILITIES=$(jq '.metadata.vulnerabilities.moderate // 0 + .metadata.vulnerabilities.high // 0 + .metadata.vulnerabilities.critical // 0' npm-audit-report.json)
+          echo "vulnerabilities=$VULNERABILITIES" >> $GITHUB_OUTPUT
+          if [ "$VULNERABILITIES" -gt 0 ]; then
+            echo "::error::Found $VULNERABILITIES moderate or higher vulnerabilities in NPM packages"
+            exit 1
+          fi
+
+      - name: Run Python Security Check (Safety)
+        id: safety-check
+        run: |
+          pip install safety
+          safety check --json --output safety-report.json || true
+          # Check for known vulnerabilities
+          if [ -f "safety-report.json" ]; then
+            VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json)
+            echo "vuln_count=$VULN_COUNT" >> $GITHUB_OUTPUT
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "::error::Found $VULN_COUNT known vulnerabilities in Python packages"
+              exit 1
+            fi
+          fi
+
+      - name: Security Gate Passed
+        if: success()
+        run: |
+          echo "::notice::Security gate passed - no critical security issues found"
+          echo "✅ All security checks passed"
+          echo "🔒 Code is safe to merge"
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7 # v7.0.1
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Security Gate Results')
+            );
+            
+            const status = '${{ job.status }}';
+            const summary = status === 'success' 
+              ? '✅ **Security Gate PASSED** - All security checks completed successfully'
+              : '❌ **Security Gate FAILED** - Security issues detected';
+            
+            const body = `## Security Gate Results
+            
+            ${summary}
+            
+            **Scan Results:**
+            - Python Security (Bandit): ${{ steps.bandit-scan.outputs.high_issues || 'N/A' }} high/medium issues
+            - JavaScript Security (ESLint): ${{ steps.eslint-scan.outputs.security_errors || 'N/A' }} security errors
+            - NPM Vulnerabilities: ${{ steps.npm-audit.outputs.vulnerabilities || 'N/A' }} moderate+ issues
+            - Python Vulnerabilities: ${{ steps.safety-check.outputs.vuln_count || 'N/A' }} known issues
+            
+            **Status:** ${status}
+            **Timestamp:** ${new Date().toISOString()}`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }

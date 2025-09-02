@@ -1,5 +1,5 @@
 name: 'Dependency Review'
-on: [pull_request]
+on: [pull_request_target]
 
 permissions:
   contents: read
@@ -12,6 +12,12 @@ jobs:
       pull-requests: write
     steps:
       - name: 'Checkout Repository'
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@v4
+        with:
+          # Only checkout the base branch, not the PR code
+          ref: ${{ github.base_ref }}
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@5a2ce3f5b92ee19cbb1541a4984c76d921601d7c # v4.3.4
+        with:
+          # Only review dependencies, don't execute PR code
+          fail-on-severity: moderate

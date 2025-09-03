@@ -7,11 +7,11 @@ cryptography>=43.0.1,<44.0.0
 fastapi==0.115.11
 fastapi_utils==0.7.0
 gunicorn==23.0.0
-litellm[proxy]==1.72.4
+litellm[proxy]==1.76.1
 loguru==0.7.2
 pydantic==2.8.2
-PyJWT==2.9.0
-text-generation==0.7.0
+PyJWT>=2.10.1
+text-generation==0.7.0  # WARNING: Contains medium-severity CVE-2024-3924 (GitHub Actions only, low runtime risk)
 prisma==0.13.1
 pynacl==1.5.0
 uvicorn==0.29.0

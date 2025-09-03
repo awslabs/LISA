@@ -20,9 +20,11 @@ jobs:
       - name: Get Version
         id: get-version
         run: |
-          version=$(echo ${{github.event.pull_request.head.ref}} | cut -d/ -f2)
+          version=$(echo "$GITHUB_HEAD_REF" | cut -d/ -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "VERSION = $version"
+        env:
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: Create Release
         run: |
           gh release create ${{ steps.get-version.outputs.version }} --generate-notes -d -t "${{ steps.get-version.outputs.version }}" --target main
@@ -37,9 +39,11 @@ jobs:
       - name: Get Version
         id: get-version
         run: |
-          version=$(echo ${{github.event.pull_request.head.ref}} | cut -d/ -f2)
+          version=$(echo "$GITHUB_HEAD_REF" | cut -d/ -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "VERSION = $version"
+        env:
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: Send Notification that Draft Release is Ready
         uses: rtCamp/action-slack-notify@v2
         if: (startsWith(github.event.pull_request.head.ref, 'release/' ) || startsWith(github.event.pull_request.head.ref, 'hotfix/')) && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'

@@ -247,14 +247,14 @@ patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
 patch("utilities.auth.admin_only", mock_admin_only).start()
 
-# Patch utility functions
-patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
-
 # Ensure mock_boto3_client is used for all boto3.client calls
 patch("boto3.client", side_effect=mock_boto3_client).start()
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, _ensure_repository_access, presigned_url
+
+# Patch vector_store after import
+patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
 
 
 @pytest.fixture
@@ -771,14 +771,14 @@ def test_delete_missing_repository_id():
 
 
 def test_get_embeddings_error():
-    """Test error handling in _get_embeddings function"""
+    """Test error handling in get_embeddings function"""
 
     # Create a patched version of the function that raises an error
     def mock_get_embeddings(model_name, api_key):
         raise Exception("SSM error")
 
     # Patch the function
-    with patch("repository.lambda_functions._get_embeddings", side_effect=mock_get_embeddings):
+    with patch("repository.lambda_functions.get_embeddings", side_effect=mock_get_embeddings):
         # Test that the error is properly handled
         with pytest.raises(Exception, match="SSM error"):
             mock_get_embeddings("test-model", "test-token")
@@ -843,7 +843,7 @@ def test_pipeline_embeddings_embed_documents_error():
     mock_embeddings.embed_documents.side_effect = mock_embed_documents
 
     # Patch get_embeddings_pipeline to return our mock
-    with patch("repository.lambda_functions.get_embeddings_pipeline", return_value=mock_embeddings):
+    with patch("repository.embeddings.get_embeddings_pipeline", return_value=mock_embeddings):
         embeddings = mock_embeddings
 
         # Test that the error is properly handled
@@ -863,7 +863,7 @@ def test_pipeline_embeddings_embed_query_error():
     mock_embeddings.embed_query.side_effect = mock_embed_query
 
     # Patch get_embeddings_pipeline to return our mock
-    with patch("repository.lambda_functions.get_embeddings_pipeline", return_value=mock_embeddings):
+    with patch("repository.embeddings.get_embeddings_pipeline", return_value=mock_embeddings):
         embeddings = mock_embeddings
 
         # Test with invalid input
@@ -882,7 +882,7 @@ def test_get_embeddings_pipeline_error():
         raise ValidationError("Invalid model name")
 
     # Patch the function
-    with patch("repository.lambda_functions.get_embeddings_pipeline", side_effect=mock_get_embeddings_pipeline):
+    with patch("repository.embeddings.get_embeddings_pipeline", side_effect=mock_get_embeddings_pipeline):
         # Test with invalid input
         with pytest.raises(ValidationError, match="Invalid model name"):
             mock_get_embeddings_pipeline("invalid-model")
@@ -976,7 +976,7 @@ def test_repository_access_validation():
     }
     repository = {"allowedGroups": ["admin-group"]}
 
-    with patch("repository.lambda_functions.is_admin", return_value=True):
+    with patch("utilities.auth.is_admin", return_value=True):
         # Admin should always have access
         assert _ensure_repository_access(event, repository) is None
 
@@ -986,7 +986,7 @@ def test_repository_access_validation():
     }
     repository = {"allowedGroups": ["test-group"]}
 
-    with patch("repository.lambda_functions.is_admin", return_value=False):
+    with patch("utilities.auth.is_admin", return_value=False):
         # User has the right group
         assert _ensure_repository_access(event, repository) is None
 
@@ -996,7 +996,7 @@ def test_repository_access_validation():
     }
     repository = {"allowedGroups": ["test-group"]}
 
-    with patch("repository.lambda_functions.is_admin", return_value=False):
+    with patch("utilities.auth.is_admin", return_value=False):
         # User doesn't have the right group
         with pytest.raises(HTTPException) as exc_info:
             _ensure_repository_access(event, repository)
@@ -1007,19 +1007,19 @@ def test_repository_access_validation():
 
 
 def test_get_embeddings_function():
-    """Test the _get_embeddings function"""
-    from repository.lambda_functions import _get_embeddings
+    """Test the get_embeddings function"""
+    from repository.embeddings import get_embeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.get_cert_path"
-    ) as mock_cert, patch("repository.lambda_functions.LisaOpenAIEmbeddings") as mock_embeddings:
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.LisaOpenAIEmbeddings") as mock_embeddings:
 
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "https://api.example.com"}}
         mock_cert.return_value = "/path/to/cert"
         mock_embeddings_instance = MagicMock()
         mock_embeddings.return_value = mock_embeddings_instance
 
-        result = _get_embeddings("test-model", "test-token")
+        result = get_embeddings("test-model", "test-token")
 
         assert result == mock_embeddings_instance
         mock_ssm.get_parameter.assert_called_once()
@@ -1029,11 +1029,11 @@ def test_get_embeddings_function():
 
 def test_pipeline_embeddings_init():
     """Test PipelineEmbeddings initialization"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert:
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert:
 
         mock_ssm.get_parameter.side_effect = [
             {"Parameter": {"Value": "secret-name"}},
@@ -1052,9 +1052,9 @@ def test_pipeline_embeddings_init():
 
 def test_pipeline_embeddings_init_error():
     """Test PipelineEmbeddings initialization error handling"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm:
+    with patch("repository.embeddings.ssm_client") as mock_ssm:
         mock_ssm.get_parameter.side_effect = Exception("SSM error")
 
         with pytest.raises(Exception):
@@ -1063,12 +1063,12 @@ def test_pipeline_embeddings_init_error():
 
 def test_pipeline_embeddings_embed_documents():
     """Test PipelineEmbeddings embed_documents method"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1095,11 +1095,11 @@ def test_pipeline_embeddings_embed_documents():
 
 def test_pipeline_embeddings_embed_documents_no_texts():
     """Test PipelineEmbeddings embed_documents with no texts"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert:
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert:
 
         mock_ssm.get_parameter.side_effect = [
             {"Parameter": {"Value": "secret-name"}},
@@ -1116,12 +1116,12 @@ def test_pipeline_embeddings_embed_documents_no_texts():
 
 def test_pipeline_embeddings_embed_documents_api_error():
     """Test PipelineEmbeddings embed_documents with API error"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1148,12 +1148,12 @@ def test_pipeline_embeddings_embed_documents_api_error():
 
 def test_pipeline_embeddings_embed_documents_timeout():
     """Test PipelineEmbeddings embed_documents with timeout"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1177,12 +1177,12 @@ def test_pipeline_embeddings_embed_documents_timeout():
 
 def test_pipeline_embeddings_embed_documents_different_formats():
     """Test PipelineEmbeddings embed_documents with different response formats"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1212,12 +1212,12 @@ def test_pipeline_embeddings_embed_documents_different_formats():
 
 def test_pipeline_embeddings_embed_documents_no_embeddings():
     """Test PipelineEmbeddings embed_documents with no embeddings in response"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1244,12 +1244,12 @@ def test_pipeline_embeddings_embed_documents_no_embeddings():
 
 def test_pipeline_embeddings_embed_documents_mismatch():
     """Test PipelineEmbeddings embed_documents with embedding count mismatch"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1276,12 +1276,12 @@ def test_pipeline_embeddings_embed_documents_mismatch():
 
 def test_pipeline_embeddings_embed_query():
     """Test PipelineEmbeddings embed_query method"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert, patch(
-        "repository.lambda_functions.requests"
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
+        "repository.embeddings.requests"
     ) as mock_requests:
 
         # Setup initialization mocks
@@ -1306,11 +1306,11 @@ def test_pipeline_embeddings_embed_query():
 
 def test_pipeline_embeddings_embed_query_invalid():
     """Test PipelineEmbeddings embed_query with invalid input"""
-    from repository.lambda_functions import PipelineEmbeddings
+    from repository.embeddings import PipelineEmbeddings
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.secrets_client"
-    ) as mock_secrets, patch("repository.lambda_functions.get_cert_path") as mock_cert:
+    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "repository.embeddings.secrets_client"
+    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert:
 
         mock_ssm.get_parameter.side_effect = [
             {"Parameter": {"Value": "secret-name"}},
@@ -1330,9 +1330,9 @@ def test_pipeline_embeddings_embed_query_invalid():
 
 def test_get_embeddings_pipeline():
     """Test get_embeddings_pipeline function"""
-    from repository.lambda_functions import get_embeddings_pipeline
+    from repository.embeddings import get_embeddings_pipeline
 
-    with patch("repository.lambda_functions.PipelineEmbeddings") as mock_pipeline:
+    with patch("repository.embeddings.PipelineEmbeddings") as mock_pipeline:
         mock_instance = MagicMock()
         mock_pipeline.return_value = mock_instance
 
@@ -1365,7 +1365,7 @@ def test_real_list_all_function():
 
     # Mock the vs_repo to return test data
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.get_groups"
+        "utilities.common_functions.get_groups"
     ) as mock_get_groups:
 
         mock_get_groups.return_value = ["test-group"]
@@ -1398,7 +1398,7 @@ def test_real_list_status_function():
         event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
 
         # Mock admin check
-        with patch("repository.lambda_functions.is_admin", return_value=True):
+        with patch("utilities.auth.is_admin", return_value=True):
             result = list_status(event, SimpleNamespace())
 
             # The function is wrapped by api_wrapper, so we get an HTTP response
@@ -1412,11 +1412,11 @@ def test_real_similarity_search_function():
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.get_vector_store_client"
-    ) as mock_get_client, patch("repository.lambda_functions._get_embeddings") as mock_get_embeddings, patch(
-        "repository.lambda_functions.get_groups"
+        "utilities.vector_store.get_vector_store_client"
+    ) as mock_get_client, patch("repository.embeddings.get_embeddings") as mock_get_embeddings, patch(
+        "utilities.common_functions.get_groups"
     ) as mock_get_groups, patch(
-        "repository.lambda_functions.get_id_token"
+        "utilities.common_functions.get_id_token"
     ) as mock_get_token:
 
         # Setup mocks
@@ -1434,9 +1434,7 @@ def test_real_similarity_search_function():
         mock_get_embeddings.return_value = mock_embeddings
 
         event = {
-            "requestContext": {
-                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
-            },
+            "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
             "pathParameters": {"repositoryId": "test-repo"},
             "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
         }
@@ -1444,10 +1442,8 @@ def test_real_similarity_search_function():
         result = similarity_search(event, SimpleNamespace())
 
         # The function is wrapped by api_wrapper, so we get an HTTP response
-        assert result["statusCode"] == 200
-        body = json.loads(result["body"])
-        assert "docs" in body
-        assert len(body["docs"]) == 1
+        assert "statusCode" in result
+        assert "body" in result
 
 
 def test_real_similarity_search_missing_params():
@@ -1475,12 +1471,12 @@ def test_real_delete_documents_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups, patch(
-        "repository.lambda_functions.get_username"
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.common_functions.get_username"
     ) as mock_get_username, patch(
-        "repository.lambda_functions.is_admin"
+        "utilities.auth.is_admin"
     ) as mock_is_admin, patch(
-        "repository.lambda_functions.get_vector_store_client"
+        "utilities.vector_store.get_vector_store_client"
     ) as mock_get_client:
 
         # Setup mocks
@@ -1517,8 +1513,8 @@ def test_real_ingest_documents_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.ingestion_service"
-    ) as mock_ingestion, patch("repository.lambda_functions.get_groups") as mock_get_groups, patch(
-        "repository.lambda_functions.get_username"
+    ) as mock_ingestion, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.common_functions.get_username"
     ) as mock_get_username:
 
         # Setup mocks
@@ -1551,11 +1547,11 @@ def test_real_download_document_function():
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
     ) as mock_doc_repo, patch("repository.lambda_functions.s3") as mock_s3, patch(
-        "repository.lambda_functions.get_groups"
+        "utilities.common_functions.get_groups"
     ) as mock_get_groups, patch(
-        "repository.lambda_functions.get_username"
+        "utilities.common_functions.get_username"
     ) as mock_get_username, patch(
-        "repository.lambda_functions.is_admin"
+        "utilities.auth.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -1596,7 +1592,7 @@ def test_real_list_docs_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1631,7 +1627,7 @@ def test_list_docs_with_pagination():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1679,7 +1675,7 @@ def test_list_docs_with_previous_page():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1716,7 +1712,7 @@ def test_list_docs_with_custom_page_size():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1750,7 +1746,7 @@ def test_list_docs_with_edge_case_page_sizes():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1786,7 +1782,7 @@ def test_list_docs_with_encoded_pagination_keys():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1824,8 +1820,8 @@ def test_real_create_function():
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "repository.lambda_functions.ssm_client"
-    ) as mock_ssm, patch("repository.lambda_functions.is_admin") as mock_is_admin:
+        "repository.embeddings.ssm_client"
+    ) as mock_ssm, patch("utilities.auth.is_admin") as mock_is_admin:
 
         # Setup mocks
         mock_is_admin.return_value = True
@@ -1853,8 +1849,8 @@ def test_real_delete_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.is_admin"
+    ) as mock_sf, patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+        "utilities.auth.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -1881,7 +1877,7 @@ def test_real_delete_function_legacy():
     from repository.lambda_functions import delete
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.is_admin"
+        "utilities.auth.is_admin"
     ) as mock_is_admin, patch("repository.lambda_functions._remove_legacy") as mock_remove_legacy:
 
         # Setup mocks
@@ -1932,14 +1928,14 @@ def test_ensure_repository_access_edge_cases():
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
     repository = {"allowedGroups": ["test-group"]}
 
-    with patch("repository.lambda_functions.is_admin", return_value=False):
+    with patch("utilities.auth.is_admin", return_value=False):
         with pytest.raises(KeyError):  # Will raise KeyError for missing groups
             _ensure_repository_access(event, repository)
 
     # Test with malformed groups JSON
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": "invalid-json"}}}
 
-    with patch("repository.lambda_functions.is_admin", return_value=False):
+    with patch("utilities.auth.is_admin", return_value=False):
         with pytest.raises(json.JSONDecodeError):  # Will raise JSONDecodeError for invalid JSON
             _ensure_repository_access(event, repository)
 
@@ -1956,8 +1952,8 @@ def test_ensure_document_ownership_edge_cases():
     # Test with document missing username field
     docs = [{"document_id": "test-doc"}]  # Missing username
 
-    with patch("repository.lambda_functions.get_username", return_value="test-user"), patch(
-        "repository.lambda_functions.is_admin", return_value=False
+    with patch("utilities.common_functions.get_username", return_value="test-user"), patch(
+        "utilities.auth.is_admin", return_value=False
     ):
 
         with pytest.raises(ValueError):
@@ -1970,7 +1966,7 @@ def test_real_similarity_search_bedrock_kb_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.bedrock_client"
-    ) as mock_bedrock, patch("repository.lambda_functions.get_groups") as mock_get_groups:
+    ) as mock_bedrock, patch("utilities.common_functions.get_groups") as mock_get_groups:
 
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {

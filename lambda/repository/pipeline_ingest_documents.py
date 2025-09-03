@@ -27,9 +27,10 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
-from utilities.bedrock_kb import ingest_document_to_kb, is_bedrock_kb_repository
+from utilities.bedrock_kb import ingest_document_to_kb
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
+from utilities.repository_types import RepositoryType
 from utilities.vector_store import get_vector_store_client
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -51,7 +52,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         all_ids = []
-        if is_bedrock_kb_repository(repository):
+        if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             ingest_document_to_kb(
                 s3_client=s3,
                 bedrock_agent_client=bedrock_agent,
@@ -71,7 +72,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
 
             if prev_job:
                 ingestion_job_repository.update_status(prev_job, IngestionStatus.DELETE_IN_PROGRESS)
-            if not is_bedrock_kb_repository(repository):
+            if not RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
                 remove_document_from_vectorstore(rag_document)
             rag_document_repository.delete_by_id(rag_document.document_id)
 

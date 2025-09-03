@@ -91,14 +91,14 @@ def test_vector_store_pgvector_basic():
 
     mock_embeddings = MagicMock()
 
-    with patch("utilities.vector_store.ssm_client") as mock_ssm_client, patch(
+    with patch("utilities.vector_store.ssm_client") as mock_ssm, patch(
         "utilities.vector_store.PGVector"
     ) as mock_pgvector, patch("utilities.vector_store.get_lambda_role_name") as mock_get_role, patch(
         "utilities.vector_store.generate_auth_token"
     ) as mock_generate_token:
 
-        # Mock SSM client
-        mock_ssm_client.get_parameter.return_value = {
+        # Mock SSM fallback since new repo system will fail
+        mock_ssm.get_parameter.return_value = {
             "Parameter": {
                 "Value": json.dumps({"type": "pgvector", "dbHost": "localhost", "dbPort": 5432, "dbName": "testdb"})
             }

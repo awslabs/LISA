@@ -18,6 +18,7 @@ from typing import Any, List
 
 import boto3
 import requests
+from lisapy.langchain import LisaOpenAIEmbeddings
 from utilities.common_functions import get_cert_path, retry_config
 from utilities.validation import ValidationError
 
@@ -25,6 +26,8 @@ logger = logging.getLogger(__name__)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+lisa_api_endpoint = ""
 
 
 class PipelineEmbeddings:
@@ -161,3 +164,29 @@ def get_embeddings_pipeline(model_name: str) -> Any:
     logger.info("Starting pipeline embeddings request")
 
     return PipelineEmbeddings(model_name=model_name)
+
+
+def get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
+    """
+    Initialize and return an embeddings client for the specified model.
+
+    Args:
+        model_name: Name of the embedding model to use
+        id_token: Authentication token for API access
+
+    Returns:
+        LisaOpenAIEmbeddings: Configured embeddings client
+    """
+    global lisa_api_endpoint
+
+    if not lisa_api_endpoint:
+        lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
+        lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
+
+    base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
+    cert_path = get_cert_path(iam_client)
+
+    embedding = LisaOpenAIEmbeddings(
+        lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=cert_path
+    )
+    return embedding

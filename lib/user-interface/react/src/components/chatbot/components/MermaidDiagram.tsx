@@ -17,6 +17,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
 import { ButtonGroup, StatusIndicator } from '@cloudscape-design/components';
+import { downloadSvgAsPng } from '../../../shared/util/downloader';
 
 type MermaidDiagramProps = {
     chart: string;
@@ -125,72 +126,6 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         }
     }, []);
 
-    const downloadSvgAsPng = useCallback((svgElement: SVGElement, filename = 'mermaid-diagram.png') => {
-        try {
-            // Get dimensions from SVG - use existing dimensions or fallback
-            const parseSize = (value: string | null): number => {
-                if (!value) return 0;
-                return parseFloat(value.replace(/[^\d.]/g, ''));
-            };
-
-            // Try to get dimensions from SVG attributes first
-            let width = parseSize(svgElement.getAttribute('width'));
-            let height = parseSize(svgElement.getAttribute('height'));
-
-            // Single fallback: use viewBox if no width/height
-            if (!width || !height) {
-                const viewBox = svgElement.getAttribute('viewBox');
-                if (viewBox) {
-                    const viewBoxValues = viewBox.split(/\s+/);
-                    if (viewBoxValues.length >= 4) {
-                        width = parseFloat(viewBoxValues[2]) || 800;
-                        height = parseFloat(viewBoxValues[3]) || 600;
-                    }
-                } else {
-                    // Final fallback
-                    width = 800;
-                    height = 600;
-                }
-            }
-
-            // Scale factor for higher quality
-            const scale = 2;
-
-            // Clone the SVG without modifying dimensions - preserve original
-            const svgClone = svgElement.cloneNode(true) as SVGElement;
-            const svgString = new XMLSerializer().serializeToString(svgClone);
-            const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
-
-            const img = new Image();
-            img.onload = function () {
-                const canvas = document.createElement('canvas');
-                // Set canvas size once - scaled for quality
-                canvas.width = width * scale;
-                canvas.height = height * scale;
-
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    // High quality rendering
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-
-                    // Draw the image at full canvas size (already scaled)
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    const pngUrl = canvas.toDataURL('image/png', 1.0);
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = pngUrl;
-                    downloadLink.download = filename;
-                    document.body.appendChild(downloadLink);
-                    downloadLink.click();
-                    document.body.removeChild(downloadLink);
-                }
-            };
-            img.src = svgDataUrl;
-        } catch (err) {
-            console.error('Failed to download SVG as PNG:', err);
-        }
-    }, []);
 
     const handleButtonClick = useCallback(({ detail }: { detail: { id: string } }) => {
         if (detail.id === 'copy-code') {
@@ -199,10 +134,10 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
             // Find the SVG element in the container
             const svgElement = containerRef.current?.querySelector('svg');
             if (svgElement) {
-                downloadSvgAsPng(svgElement);
+                downloadSvgAsPng(svgElement, 'mermaid-diagram.png');
             }
         }
-    }, [chart, copyToClipboard, downloadSvgAsPng]);
+    }, [chart, copyToClipboard]);
 
     // Error state - show original code
     if (error) {

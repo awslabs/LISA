@@ -284,7 +284,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2 pl-52' style={{ overflow: 'hidden' }}>
+        <div className='mt-2' style={{ overflow: 'hidden' }}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName) && (
                 <ChatBubble

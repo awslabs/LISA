@@ -17,6 +17,7 @@
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
+import ExpandableSection from '@cloudscape-design/components/expandable-section';
 import { ButtonDropdown, Input, Popover, Modal, FormField, Grid } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 
@@ -288,10 +289,11 @@ export function Sessions ({ newSession }) {
                             if (sessions.length === 0) return null;
 
                             return (
-                                <SpaceBetween key={timeGroup} size='xs'>
-                                    <Header variant='h4'>
-                                        {timeGroup} ({sessions.length})
-                                    </Header>
+                                <ExpandableSection
+                                    key={timeGroup}
+                                    headerText={timeGroup}
+                                    defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
+                                >
                                     <SpaceBetween size='xxs'>
                                         {sessions.map((item) => (
                                             <Box key={item.sessionId} padding='xxs'>
@@ -376,7 +378,7 @@ export function Sessions ({ newSession }) {
                                             </Box>
                                         ))}
                                     </SpaceBetween>
-                                </SpaceBetween>
+                                </ExpandableSection>
                             );
                         });
                     })()}

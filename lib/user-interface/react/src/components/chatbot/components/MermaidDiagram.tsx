@@ -155,28 +155,28 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
 
             // Scale factor for higher quality
             const scale = 2;
-            
+
             // Clone the SVG without modifying dimensions - preserve original
             const svgClone = svgElement.cloneNode(true) as SVGElement;
             const svgString = new XMLSerializer().serializeToString(svgClone);
             const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
-            
+
             const img = new Image();
-            img.onload = function() {
+            img.onload = function () {
                 const canvas = document.createElement('canvas');
                 // Set canvas size once - scaled for quality
                 canvas.width = width * scale;
                 canvas.height = height * scale;
-                
+
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
                     // High quality rendering
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
-                    
+
                     // Draw the image at full canvas size (already scaled)
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    
+
                     const pngUrl = canvas.toDataURL('image/png', 1.0);
                     const downloadLink = document.createElement('a');
                     downloadLink.href = pngUrl;
@@ -202,7 +202,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 downloadSvgAsPng(svgElement);
             }
         }
-    }, [svg, chart, copyToClipboard, downloadSvgAsPng]);
+    }, [chart, copyToClipboard, downloadSvgAsPng]);
 
     // Error state - show original code
     if (error) {

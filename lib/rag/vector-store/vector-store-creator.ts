@@ -60,6 +60,7 @@ export class VectorStoreCreatorStack extends Construct {
             actions: [
                 's3:*',
                 'ec2:*',
+                'es:*',
                 'rds:*',
                 'opensearch:*',
                 'ssm:*',

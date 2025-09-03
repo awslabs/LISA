@@ -14,72 +14,395 @@
  limitations under the License.
  */
 
-import { Button, CodeEditor, Grid, SpaceBetween, List, ButtonDropdown } from '@cloudscape-design/components';
+import { Button, CodeEditor, Grid, SpaceBetween, List, ButtonDropdown, Header, Box, Icon, Input, FormField, Alert, TextFilter, Pagination } from '@cloudscape-design/components';
 import 'react';
 import 'ace-builds/css/ace.css';
 import 'ace-builds/css/theme/cloud_editor.css';
 import 'ace-builds/css/theme/cloud_editor_dark.css';
 import * as ace from 'ace-builds';
 import 'ace-builds/src-noconflict/mode-python';
-import { useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
+import { useAppDispatch } from '@/config/store';
+import { useNotificationService } from '@/shared/util/hooks';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import {
+    useListMcpToolsQuery,
+    useGetMcpToolQuery,
+    useCreateMcpToolMutation,
+    useUpdateMcpToolMutation,
+    useDeleteMcpToolMutation
+} from '@/shared/reducers/mcp-tools.reducer';
+import { IMcpTool, DefaultMcpTool } from '@/shared/model/mcp-tools.model';
 
-export function McpWorkbenchManagementComponent () {
-    const [files, setFiles] = useState([]);
-    // const [loading, setLoading] = useState(true);
-    // const [ace, setAce] = useState<any>();
+export function McpWorkbenchManagementComponent(): ReactElement {
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
+    
+    // API hooks
+    const { data: tools = [], isFetching: isLoadingTools, refetch } = useListMcpToolsQuery();
+    const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
+    const { data: selectedToolData, isFetching: isLoadingTool } = useGetMcpToolQuery(selectedToolId!, {  });
+    
+    const [createToolMutation, { isLoading: isCreating }] = useCreateMcpToolMutation();
+    const [updateToolMutation, { isLoading: isUpdating }] = useUpdateMcpToolMutation();
+    const [deleteToolMutation, { isLoading: isDeleting }] = useDeleteMcpToolMutation();
+    
+    // Local state
+    const defaultContent = '# Welcome to MCP Workbench\n# Write your Python code here\n\ndef my_tool():\n    """Your MCP tool function."""\n    return "Hello from MCP Tool!"';
+    const [editorContent, setEditorContent] = useState<string>('');
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
+    const [newToolName, setNewToolName] = useState<string>('');
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+    
+    // Filtering and pagination state
+    const [filterText, setFilterText] = useState<string>('');
+    const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
+    const pageSize = 5;
+    
+    // Filter and paginate tools
+    const filteredTools = tools.filter(tool => 
+        tool.id.toLowerCase().includes(filterText.toLowerCase()) ||
+        tool.contents?.toLowerCase().includes(filterText.toLowerCase())
+    );
+    
+    const totalPages = Math.ceil(filteredTools.length / pageSize);
+    const paginatedTools = filteredTools.slice(
+        (currentPageIndex - 1) * pageSize,
+        currentPageIndex * pageSize
+    );
+    
+    // Reset pagination when filter changes
+    useEffect(() => {
+        setCurrentPageIndex(1);
+    }, [filterText]);
 
-    // useEffect(() => {
-    //     aceLoader()
-    //         .then(ace => {
-    //             setAce(ace);
-    //         })
-    //         .finally(() => {
-    //             setLoading(false);
-    //         });
-    // }, []);
+    // Update editor content when a tool is selected
+    useEffect(() => {
+        if (selectedToolData && !isCreatingNew) {
+            setEditorContent(selectedToolData.contents);
+            setIsEditing(true);
+            setHasUnsavedChanges(false);
+        }
+    }, [selectedToolData, isCreatingNew]);
+
+    // Handle tool selection
+    const handleToolSelect = (tool: IMcpTool) => {
+        if (hasUnsavedChanges) {
+            dispatch(
+                setConfirmationModal({
+                    action: 'Switch Tool',
+                    resourceName: selectedToolId,
+                    onConfirm: () => {
+                        setSelectedToolId(tool.id);
+                        setIsCreatingNew(false);
+                        setHasUnsavedChanges(false);
+                    },
+                    description: 'You have unsaved changes. Switching tools will lose these changes.'
+                })
+            );
+        } else {
+            setSelectedToolId(tool.id);
+            setIsCreatingNew(false);
+        }
+    };
+
+    // Handle editor content change
+    const handleEditorChange = (value: string) => {
+        setEditorContent(value);
+        if (!isCreatingNew && selectedToolData && value !== selectedToolData.contents) {
+            setHasUnsavedChanges(true);
+        } else if (isCreatingNew && value !== defaultContent) {
+            setHasUnsavedChanges(true);
+        }
+    };
+
+    // Handle creating new tool
+    const handleCreateNew = () => {
+        if (hasUnsavedChanges && selectedToolId) {
+            dispatch(
+                setConfirmationModal({
+                    action: 'Create New Tool',
+                    resourceName: '',
+                    onConfirm: () => {
+                        setIsCreatingNew(true);
+                        setSelectedToolId(null);
+                        setNewToolName('');
+                        setEditorContent(defaultContent);
+                        setHasUnsavedChanges(false);
+                        setIsEditing(false);
+                    },
+                    description: 'You have unsaved changes. Creating a new tool will lose these changes.'
+                })
+            );
+        } else {
+            setIsCreatingNew(true);
+            setSelectedToolId(null);
+            setNewToolName('');
+            setEditorContent(defaultContent);
+            setHasUnsavedChanges(false);
+            setIsEditing(false);
+        }
+    };
+
+    // Handle create tool
+    const handleCreateTool = async () => {
+        if (!newToolName.trim()) {
+            notificationService.generateNotification('Please enter a tool name', 'error');
+            return;
+        }
+
+        try {
+            const toolName = newToolName.endsWith('.py') ? newToolName : `${newToolName}.py`;
+            await createToolMutation({
+                id: toolName,
+                contents: editorContent
+            }).unwrap();
+            
+            notificationService.generateNotification(`Successfully created tool: ${toolName}`, 'success');
+            setIsCreatingNew(false);
+            setNewToolName('');
+            setHasUnsavedChanges(false);
+            refetch();
+        } catch (error: any) {
+            const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
+            notificationService.generateNotification(`Error creating tool: ${errorMessage}`, 'error');
+        }
+    };
+
+    // Handle update tool
+    const handleUpdateTool = async () => {
+        if (!selectedToolId || !selectedToolData) return;
+
+        try {
+            await updateToolMutation({
+                toolId: selectedToolId,
+                tool: { contents: editorContent }
+            }).unwrap();
+            
+            notificationService.generateNotification(`Successfully updated tool: ${selectedToolId}`, 'success');
+            setHasUnsavedChanges(false);
+        } catch (error: any) {
+            const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
+            notificationService.generateNotification(`Error updating tool: ${errorMessage}`, 'error');
+        }
+    };
+
+    // Handle delete tool
+    const handleDeleteTool = (tool: IMcpTool) => {
+        dispatch(
+            setConfirmationModal({
+                action: 'Delete',
+                resourceName: 'Tool',
+                onConfirm: async () => {
+                    try {
+                        await deleteToolMutation(tool.id).unwrap();
+                        notificationService.generateNotification(`Successfully deleted tool: ${tool.id}`, 'success');
+                        
+                        // Reset selection if the deleted tool was selected
+                        if (selectedToolId === tool.id) {
+                            setSelectedToolId(null);
+                            setEditorContent('');
+                            setIsEditing(false);
+                            setHasUnsavedChanges(false);
+                        }
+                        
+                        refetch();
+                    } catch (error: any) {
+                        const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
+                        notificationService.generateNotification(`Error deleting tool: ${errorMessage}`, 'error');
+                    }
+                },
+                description: `This will permanently delete the tool: ${tool.id}`
+            })
+        );
+    };
+
+    const getCurrentToolName = () => {
+        if (isCreatingNew) return 'New Tool';
+        if (selectedToolData) return selectedToolData.id;
+        return 'MCP Workbench';
+    };
 
     return (
         <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
             <SpaceBetween size='s' direction='vertical'>
-                <List
+                <Header
+                    variant="h3"
+                    actions={
+                        <Button
+                            onClick={() => refetch()}
+                            ariaLabel="Refresh tools"
+                            disabled={isLoadingTools}
+                        >
+                            <Icon name='refresh' />
+                        </Button>
+                    }
+                >
+                    MCP Tools ({tools.length})
+                </Header>
 
-                    renderItem={(item: any) => {
-                        return {
-                            id: item.id,
-                            content: item.filename,
-                            actions: (<ButtonDropdown
-                                items={[
-                                    { id: '1', text: 'Action one' },
-                                    { id: '2', text: 'Action two' },
-                                    { id: '3', text: 'Action three' }
-                                ]}
-                                variant='icon'
-                                ariaLabel={`Actions for ${item.content}`}
-                            />)
-                        };
-                    }}
-                    items={files}>
-                </List>
-                <Button onClick={() => setFiles([...files, {id: files.length + 1, filename: 'my_test.py'}])}>
-                    Add File
-                </Button>
+                {tools.length > 0 && (
+                    <TextFilter
+                        filteringText={filterText}
+                        filteringPlaceholder="Find tools..."
+                        filteringAriaLabel="Find tools"
+                        onChange={({ detail }) => setFilterText(detail.filteringText)}
+                    />
+                )}
+
+                {isLoadingTools ? (
+                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                        <SpaceBetween size='m'>
+                            <b>Loading tools...</b>
+                        </SpaceBetween>
+                    </Box>
+                ) : tools.length === 0 ? (
+                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                        <SpaceBetween size='m'>
+                            <b>No MCP tools</b>
+                            <p>Create your first MCP tool to get started.</p>
+                        </SpaceBetween>
+                    </Box>
+                ) : filteredTools.length === 0 ? (
+                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                        <SpaceBetween size='m'>
+                            <b>No tools match your search</b>
+                            <p>Try adjusting your search criteria.</p>
+                        </SpaceBetween>
+                    </Box>
+                ) : (
+                    <>
+                        <List
+                            renderItem={(item: IMcpTool) => ({
+                                id: item.id,
+                                content: (
+                                    <Box>
+                                        <Button
+                                            variant="inline-link"
+                                            onClick={() => handleToolSelect(item)}
+                                            disabled={selectedToolId === item.id && !isCreatingNew}
+                                            ariaLabel={`Load ${item.id} in editor`}
+                                        >
+                                            <div style={{ fontWeight: 'bold' }}>{item.id}</div>
+                                        </Button>
+                                        {item.updated_at && (
+                                            <div style={{ fontSize: '0.875rem', color: '#555' }}>
+                                                Updated: {new Date(item.updated_at).toLocaleString()}
+                                            </div>
+                                        )}
+                                        {item.size && (
+                                            <div style={{ fontSize: '0.875rem', color: '#555' }}>
+                                                Size: {item.size} bytes
+                                            </div>
+                                        )}
+                                    </Box>
+                                ),
+                                actions: (
+                                    <Button
+                                        variant='icon'
+                                        iconName='remove'
+                                        ariaLabel={`Delete ${item.id}`}
+                                        onClick={() => handleDeleteTool(item)}
+                                    />
+                                )
+                            })}
+                            items={paginatedTools}
+                        />
+                        
+                        {totalPages > 1 && (
+                            <Box textAlign="center">
+                                <Pagination
+                                    currentPageIndex={currentPageIndex}
+                                    pagesCount={totalPages}
+                                    onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
+                                />
+                            </Box>
+                        )}
+                    </>
+                )}
+
+                <Box textAlign="center">
+                    <Button 
+                        variant="primary"
+                        onClick={handleCreateNew}
+                        disabled={isCreating}
+                    >
+                        Add New Tool
+                    </Button>
+                </Box>
             </SpaceBetween>
-            <CodeEditor
-                language='python'
-                value='const pi = 3.14;'
-                ace={ace}
-                // preferences={preferences}
-                onDelayedChange={({detail}) => {
-                    console.log(detail.value);
-                }}
-                onPreferencesChange={() => {}}
-            // loading={loading}
-            // themes={{
-            //     light: ["cloud_editor"],
-            //     dark: ["cloud_editor_dark"]
-            // }}
-            />
-        </Grid >
+
+            <SpaceBetween size='s' direction='vertical'>
+                <Header
+                    variant="h3"
+                    description={isCreatingNew ? "Create a new MCP tool" : isEditing ? "Edit the selected tool" : "Select a tool to edit"}
+                >
+                    {getCurrentToolName()}
+                </Header>
+
+                {isCreatingNew && (
+                    <FormField
+                        label="Tool Name"
+                        description="Enter a name for your MCP tool. Extension '.py' will be added automatically if omitted."
+                        errorText={!newToolName.trim() ? "Tool name is required" : ""}
+                    >
+                        <Input
+                            value={newToolName}
+                            onChange={({ detail }) => {
+                                let value = detail.value;
+                                // Remove .py if user types it, we'll add it automatically
+                                if (value.endsWith('.py')) {
+                                    value = value.slice(0, -3);
+                                }
+                                setNewToolName(value);
+                            }}
+                            placeholder="my_tool"
+                        />
+                    </FormField>
+                )}
+
+                <CodeEditor
+                    language='python'
+                    value={editorContent}
+                    ace={ace}
+                    loading={isLoadingTool}
+                    onDelayedChange={({ detail }) => {
+                        // Only allow changes if we're creating new or editing
+                        if (isCreatingNew || isEditing) {
+                            handleEditorChange(detail.value);
+                        }
+                    }}
+                    onPreferencesChange={() => {}}
+                    themes={{
+                        light: ["cloud_editor"],
+                        dark: ["cloud_editor_dark"]
+                    }}
+                />
+
+                <Box float="right">
+                    {isCreatingNew ? (
+                        <Button 
+                            variant="primary"
+                            onClick={handleCreateTool}
+                            loading={isCreating}
+                            disabled={!newToolName.trim() || !editorContent.trim()}
+                        >
+                            Create Tool
+                        </Button>
+                    ) : isEditing ? (
+                        <Button 
+                            variant="primary"
+                            onClick={handleUpdateTool}
+                            loading={isUpdating}
+                            disabled={!hasUnsavedChanges}
+                        >
+                            Save Changes
+                        </Button>
+                    ) : null}
+                </Box>
+            </SpaceBetween>
+        </Grid>
     );
 }
 

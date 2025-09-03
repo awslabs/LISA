@@ -67,7 +67,7 @@ export default class McpWorkbenchConstruct extends Construct {
 
         const env = {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
-            WORKBENCH_BUCKET: workbenchBucket.bucketArn
+            WORKBENCH_BUCKET: workbenchBucket.bucketName
         };
 
         // Create API Lambda functions
@@ -98,14 +98,14 @@ export default class McpWorkbenchConstruct extends Construct {
             description: 'Update MCP Workbench tool',
             method: 'PUT',
             environment: env,
-            path: 'mcp-workbench'
+            path: 'mcp-workbench/{toolId}'
         }, {
             name: 'delete',
             resource: 'mcp_workbench',
             description: 'Delete MCP Workbench tool',
             method: 'DELETE',
             environment: env,
-            path: 'mcp-workbench'
+            path: 'mcp-workbench/{toolId}'
         }];
 
         // Create IAM role for Lambda

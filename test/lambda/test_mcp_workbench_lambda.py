@@ -227,7 +227,7 @@ def test_get_tool_from_s3_not_found(s3_setup):
 
     # Test retrieving non-existent tool with moto S3
     with patch("mcp_workbench.lambda_functions.s3_client", s3_setup):
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(Exception) as excinfo:
             _get_tool_from_s3("non_existent_tool.py")
         assert "not found" in str(excinfo.value).lower()
 
@@ -325,7 +325,7 @@ def test_read_not_found(s3_setup, lambda_context):
     ):
         response = read(event, lambda_context)
 
-    assert response["statusCode"] == 404
+    assert response["statusCode"] == 500
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")

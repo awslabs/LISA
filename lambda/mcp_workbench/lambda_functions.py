@@ -24,6 +24,7 @@ import boto3
 import botocore.exceptions
 from pydantic import BaseModel, Field
 from utilities.common_functions import api_wrapper, is_admin, retry_config
+from utilities.exceptions import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def _get_tool_from_s3(tool_id: str) -> MCPToolModel:
     except botocore.exceptions.ClientError as e:
         code = e.response.get("Error", {}).get("Code")
         if code in ("NoSuchKey", "404"):
-            raise ValueError(f"Tool {tool_id} not found in S3 bucket.") from e
+            raise HTTPException(status_code=404, message=f"Tool {tool_id} not found in S3 bucket.") from e
         # Log and re-raise as ValueError to keep the function's contract
         logger.error("Error retrieving tool from S3: %s", e, exc_info=True)
         raise ValueError(f"Failed to retrieve tool: {e}") from e
@@ -94,6 +95,9 @@ def read(event: dict, context: dict) -> Any:
     try:
         tool = _get_tool_from_s3(tool_id)
         return tool.model_dump()
+    except HTTPException:
+        # Let HTTPException pass through for proper status codes
+        raise
     except ValueError as e:
         # This is likely from _get_tool_from_s3 already properly formatted
         raise e
@@ -190,8 +194,8 @@ def update(event: dict, context: dict) -> Any:
         # Check if the tool exists
         try:
             _get_tool_from_s3(tool_id)
-        except ValueError:
-            raise ValueError(f"Tool {tool_id} does not exist.")
+        except HTTPException:
+            raise HTTPException(status_code=404, message=f"Tool {tool_id} does not exist.")
 
         # Create updated tool model
         tool_model = MCPToolModel(id=tool_id, contents=body["contents"])
@@ -234,8 +238,8 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
         # Check if the tool exists before deletion
         try:
             _get_tool_from_s3(tool_id)
-        except ValueError:
-            raise ValueError(f"Tool {tool_id} does not exist.")
+        except HTTPException:
+            raise HTTPException(status_code=404, message=f"Tool {tool_id} does not exist.")
 
         # Delete from S3
         s3_client.delete_object(Bucket=WORKBENCH_BUCKET, Key=tool_id)

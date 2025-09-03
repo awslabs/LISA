@@ -270,6 +270,11 @@ def generate_exception_response(
         logger.exception(e)
     elif hasattr(e, "http_status_code"):
         status_code = e.http_status_code
+        e = e.message  # type: ignore [assignment]
+        logger.exception(e)
+    elif hasattr(e, "status_code"):
+        status_code = e.status_code
+        e = e.message  # type: ignore [assignment]
         logger.exception(e)
     else:
         error_msg = str(e)

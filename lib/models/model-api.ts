@@ -29,8 +29,10 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { CustomResource, Duration } from 'aws-cdk-lib';
+import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
@@ -330,6 +332,37 @@ export class ModelsApi extends Construct {
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
+
+        // Minimal migration to fix Bedrock models on deployment
+        const bedrockCleanupLambda = new Function(this, 'BedrockAuthCleanup', {
+            runtime: getDefaultRuntime(),
+            handler: 'models.bedrock_auth_cleanup.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Remove api_key from existing Bedrock models to enable AWS credential auto-detection',
+        });
+
+        // Run cleanup automatically during deployment
+        const cleanupProvider = new Provider(this, 'BedrockCleanupProvider', {
+            onEventHandler: bedrockCleanupLambda,
+        });
+
+        new CustomResource(this, 'BedrockCleanupResource', {
+            serviceToken: cleanupProvider.serviceToken,
+            properties: {
+                // Trigger on every deployment to clean up any problematic models
+                DeploymentTimestamp: Date.now().toString(),
+            },
+        });
     }
 
     /**
@@ -462,6 +495,14 @@ export class ModelsApi extends Construct {
                                 'iam:PassRole',
                             ],
                             resources: ['*'],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'bedrock:InvokeModel',
+                                'bedrock:InvokeModelWithResponseStream',
+                            ],
+                            resources: ['*'],  // Bedrock model ARNs are dynamic and region-specific
                         }),
                     ]
                 }),

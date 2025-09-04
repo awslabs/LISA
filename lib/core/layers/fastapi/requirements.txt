@@ -3,3 +3,4 @@ fastapi==0.111.0
 mangum==0.17.0
 pydantic==2.8.2
 requests==2.32.4
+cryptography==44.0.1

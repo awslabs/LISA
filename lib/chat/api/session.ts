@@ -66,6 +66,13 @@ export class SessionApi extends Construct {
             StringParameter.fromStringParameterName(this, 'session-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
 
+        // Get FastAPI layer for cryptography support
+        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'session-fastapi-lambda-layer',
+            StringParameter.fromStringParameterName(this, 'session-fastapi-layer-param', `${config.deploymentPrefix}/layerVersion/fastapi`).stringValue,
+        );
+
         // Create DynamoDB table to handle chat sessions
         const sessionTable = new dynamodb.Table(this, 'SessionsTable', {
             partitionKey: {
@@ -296,7 +303,7 @@ export class SessionApi extends Construct {
                 this,
                 restApi,
                 lambdaPath,
-                [commonLambdaLayer],
+                [commonLambdaLayer, fastapiLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,

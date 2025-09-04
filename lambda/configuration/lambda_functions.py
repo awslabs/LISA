@@ -52,11 +52,27 @@ def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
     return response.get("Items", {})  # type: ignore [no-any-return]
 
 
+def _convert_floats_to_decimals(obj):
+    """Recursively convert float values to Decimal for DynamoDB compatibility."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {key: _convert_floats_to_decimals(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_floats_to_decimals(item) for item in obj]
+    else:
+        return obj
+
+
 @api_wrapper
 def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
-    # from https://stackoverflow.com/a/71446846
-    body = json.loads(event["body"], parse_float=Decimal)
+    # Parse JSON with float/int types for proper type preservation
+    body = json.loads(event["body"], parse_float=float, parse_int=int)
+    
+    # Convert floats to Decimals for DynamoDB compatibility
+    body = _convert_floats_to_decimals(body)
+    
     body["created_at"] = str(Decimal(time.time()))
 
     try:

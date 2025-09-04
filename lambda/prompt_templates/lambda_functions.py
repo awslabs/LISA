@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-from decimal import Decimal
 from functools import reduce
 from typing import Any, Dict, List, Optional
 
@@ -137,7 +136,7 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
 def create(event: dict, context: dict) -> Any:
     """Create a new prompt template in DynamoDB."""
     user_id = get_username(event)
-    body = json.loads(event["body"], parse_float=Decimal)
+    body = json.loads(event["body"], parse_float=float, parse_int=int)
     body["owner"] = user_id  # Set the owner of the prompt template
     prompt_template_model = PromptTemplateModel(**body)
 
@@ -151,7 +150,7 @@ def update(event: dict, context: dict) -> Any:
     """Update an existing prompt template in DynamoDB."""
     user_id = get_username(event)
     prompt_template_id = get_prompt_template_id(event)
-    body = json.loads(event["body"], parse_float=Decimal)
+    body = json.loads(event["body"], parse_float=float, parse_int=int)
     prompt_template_model = PromptTemplateModel(**body)
 
     if prompt_template_id != prompt_template_model.id:

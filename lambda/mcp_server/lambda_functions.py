@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-from decimal import Decimal
 from typing import Any, Dict, Optional
 
 import boto3
@@ -110,7 +109,7 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
 def create(event: dict, context: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id = get_username(event)
-    body = json.loads(event["body"], parse_float=Decimal)
+    body = json.loads(event["body"], parse_float=float, parse_int=int)
     body["owner"] = user_id if body.get("owner", None) is None else body["owner"]  # Set the owner of the mcp server
     mcp_server_model = McpServerModel(**body)
 
@@ -124,7 +123,7 @@ def update(event: dict, context: dict) -> Any:
     """Update an existing mcp server in DynamoDB."""
     user_id = get_username(event)
     mcp_server_id = get_mcp_server_id(event)
-    body = json.loads(event["body"], parse_float=Decimal)
+    body = json.loads(event["body"], parse_float=float, parse_int=int)
     mcp_server_model = McpServerModel(**body)
 
     if mcp_server_id != mcp_server_model.id:

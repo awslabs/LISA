@@ -58,6 +58,12 @@ def mock_api_wrapper(func):
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps(result, default=str),
             }
+        except ValueError as e:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                "body": json.dumps({"error": str(e)}),
+            }
         except Exception as e:
             logging.error(f"Error in {func.__name__}: {str(e)}")
             return {
@@ -132,7 +138,7 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
+patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.common_functions.get_session_id", mock_common.get_session_id).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()

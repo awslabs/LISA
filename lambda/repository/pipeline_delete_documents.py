@@ -19,12 +19,13 @@ from typing import Any, Dict
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus, IngestionType
 from repository.ingestion_job_repo import IngestionJobRepository
+from repository.ingestion_service import DocumentIngestionService
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore
+from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.bedrock_kb import delete_document_from_kb, is_bedrock_kb_repository
+from utilities.bedrock_kb import delete_document_from_kb
 from utilities.common_functions import retry_config
-
-from .lambda_functions import DocumentIngestionService, RagDocumentRepository
+from utilities.repository_types import RepositoryType
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
@@ -47,7 +48,7 @@ def pipeline_delete(job: IngestionJob) -> None:
         if rag_document:
             # Actually remove from vector store
             repository = vs_repo.find_repository_by_id(job.repository_id)
-            if is_bedrock_kb_repository(repository):
+            if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
                 delete_document_from_kb(
                     s3_client=s3,
                     bedrock_agent_client=bedrock_agent,

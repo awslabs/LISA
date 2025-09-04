@@ -26,6 +26,7 @@ from opensearchpy import RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from utilities.common_functions import get_lambda_role_name, retry_config
 from utilities.rds_auth import generate_auth_token
+from utilities.repository_types import RepositoryType
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -44,7 +45,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
     prefix = os.environ.get("REGISTERED_REPOSITORIES_PS_PREFIX")
     connection_info = ssm_client.get_parameter(Name=f"{prefix}{repository_id}")
     connection_info = json.loads(connection_info["Parameter"]["Value"])
-    if connection_info.get("type") == "opensearch":
+    if RepositoryType.is_type(connection_info, RepositoryType.OPENSEARCH):
         service = "es"
         credentials = session.get_credentials()
 
@@ -60,7 +61,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
-            index_name=index,
+            index_name=index.lower(),
             embedding_function=embeddings,
             http_auth=auth,
             timeout=300,
@@ -69,7 +70,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             connection_class=RequestsHttpConnection,
         )
 
-    elif connection_info.get("type") == "pgvector":
+    elif RepositoryType.is_type(connection_info, RepositoryType.PGVECTOR):
         if "passwordSecretId" in connection_info:
             # provides backwards compatibility to non-iam authenticated vector stores
             secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))

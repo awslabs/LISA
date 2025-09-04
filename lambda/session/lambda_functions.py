@@ -26,7 +26,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from utilities.common_functions import api_wrapper, get_groups, get_session_id, get_username, retry_config
+from utilities.auth import get_username
+from utilities.common_functions import api_wrapper, get_groups, get_session_id, retry_config
 from utilities.encoders import convert_decimal
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 

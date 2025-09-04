@@ -225,8 +225,7 @@ export class LisaRagConstruct extends Construct {
             autoUpgrade: true,
             assetPath: config.lambdaLayerAssets?.ragLayerPath,
             afterBundle: (inputDir: string, outputDir: string) => [
-                `mkdir -p ${outputDir}/python/TIKTOKEN_CACHE`,
-                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/python/TIKTOKEN_CACHE/`
+                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/TIKTOKEN_CACHE/`
             ],
         });
 

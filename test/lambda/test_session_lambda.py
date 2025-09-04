@@ -38,6 +38,9 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
 os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
 os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"] = "bucket"
+os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["SESSION_ENCRYPTION_KEY_ARN"] = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+os.environ["SESSION_ENCRYPTION_ENABLED"] = "false"
 
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
@@ -321,9 +324,9 @@ def test_get_session_not_found(dynamodb_table, lambda_context):
     }
 
     response = get_session(event, lambda_context)
-    assert response["statusCode"] == 200
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
-    assert body == {}
+    assert "error" in body
 
 
 def test_put_session_invalid_body(dynamodb_table, lambda_context):

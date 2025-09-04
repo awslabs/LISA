@@ -29,6 +29,7 @@ import { getJsonDifference } from '../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useNotificationService } from '../../shared/util/hooks';
 import RepositoryTable from './RepositoryTable';
+import SessionEncryptionConfiguration from './SessionEncryptionConfiguration';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -156,6 +157,11 @@ export function ConfigurationComponent (): ReactElement {
                 backgroundColor={state.form.systemBanner.backgroundColor}
                 text={state.form.systemBanner.text}
                 isEnabled={state.form.systemBanner.isEnabled}
+                touchFields={touchFields}
+                errors={errors} />
+            <SessionEncryptionConfiguration
+                setFields={setFields}
+                encryptionEnabled={state.form.sessionEncryption?.enabled || false}
                 touchFields={touchFields}
                 errors={errors} />
             <SpaceBetween alignItems='end' direction='vertical' size={'s'}>

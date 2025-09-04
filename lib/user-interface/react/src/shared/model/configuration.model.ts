@@ -18,7 +18,8 @@ import { z } from 'zod';
 export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
     enabledComponents: IEnabledComponents,
-    global: IGlobalConfiguration
+    global: IGlobalConfiguration,
+    sessionEncryption: ISessionEncryptionConfiguration
 };
 
 export type IEnabledComponents = {
@@ -47,6 +48,10 @@ export type ISystemBannerConfiguration = {
 
 export type IGlobalConfiguration = {
     defaultModel: string;
+};
+
+export type ISessionEncryptionConfiguration = {
+    enabled: boolean;
 };
 
 export type BaseConfiguration = {
@@ -92,8 +97,13 @@ export const globalConfigSchema = z.object({
     defaultModel: z.string().optional()
 });
 
+export const sessionEncryptionConfigSchema = z.object({
+    enabled: z.boolean().default(false)
+});
+
 export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
     enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
     global: globalConfigSchema.default(globalConfigSchema.parse({})),
+    sessionEncryption: sessionEncryptionConfigSchema.default(sessionEncryptionConfigSchema.parse({})),
 });

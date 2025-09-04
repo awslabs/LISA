@@ -20,6 +20,7 @@ import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
@@ -90,6 +91,19 @@ export class SessionApi extends Construct {
             indexName: byUserIdIndexSorted,
             partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
             sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
+        });
+
+        // Create KMS key for session data encryption
+        const sessionEncryptionKey = new Key(this, 'SessionEncryptionKey', {
+            description: 'KMS key for encrypting session data at rest',
+            enableKeyRotation: true,
+            removalPolicy: config.removalPolicy,
+        });
+
+        // Store KMS key ARN in SSM parameter for cross-stack access
+        new StringParameter(this, 'SessionEncryptionKeyArnParameter', {
+            parameterName: `${config.deploymentPrefix}/sessionEncryptionKeyArn`,
+            stringValue: sessionEncryptionKey.keyArn,
         });
 
         const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
@@ -166,6 +180,25 @@ export class SessionApi extends Construct {
             Object.assign(env, { USAGE_METRICS_QUEUE_NAME: usageMetricsQueueName });
         }
 
+        // Add KMS permissions for session encryption
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'kms:GenerateDataKey',
+                    'kms:Decrypt',
+                    'kms:DescribeKey'
+                ],
+                resources: [sessionEncryptionKey.keyArn]
+            })
+        );
+
+        // Add KMS key ARN and encryption settings to environment variables
+        Object.assign(env, {
+            SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
+            SESSION_ENCRYPTION_ENABLED: 'true' // Can be overridden via configuration
+        });
+
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
@@ -220,6 +253,38 @@ export class SessionApi extends Construct {
                 resource: 'session',
                 description: 'Attaches image to session',
                 path: 'session/{sessionId}/attachImage',
+                method: 'PUT',
+                environment: env,
+            },
+            {
+                name: 'generate_data_key',
+                resource: 'session/encryption',
+                description: 'Generates data key for session encryption',
+                path: 'session/encryption/generate-key',
+                method: 'POST',
+                environment: env,
+            },
+            {
+                name: 'decrypt_data_key',
+                resource: 'session/encryption',
+                description: 'Decrypts data key for session decryption',
+                path: 'session/encryption/decrypt-key',
+                method: 'POST',
+                environment: env,
+            },
+            {
+                name: 'get_encryption_config',
+                resource: 'session/encryption',
+                description: 'Gets encryption configuration',
+                path: 'session/encryption/config',
+                method: 'GET',
+                environment: env,
+            },
+            {
+                name: 'update_encryption_config',
+                resource: 'session/encryption',
+                description: 'Updates encryption configuration',
+                path: 'session/encryption/config',
                 method: 'PUT',
                 environment: env,
             },

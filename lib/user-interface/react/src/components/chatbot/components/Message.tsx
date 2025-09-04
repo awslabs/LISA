@@ -354,7 +354,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                     ...message.metadata,
                                     ...(message.usage && { usage: message.usage })
                                 }} style={darkStyles} />
-                        </ExpandableSection>}
+                            </ExpandableSection>}
                     </ChatBubble>
                     {!isStreaming && !messageContainsImage(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>

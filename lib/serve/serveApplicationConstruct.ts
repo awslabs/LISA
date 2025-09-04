@@ -365,7 +365,7 @@ export class LisaServeApplicationConstruct extends Construct {
         return LayerVersion.fromLayerVersionArn(
             scope,
             'LISAServeCommonLayerVersion',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(scope, 'serve-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
     }
 }

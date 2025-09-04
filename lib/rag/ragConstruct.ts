@@ -193,13 +193,13 @@ export class LisaRagConstruct extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             scope,
             'rag-common-lambda-layer',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(scope, 'rag-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
 
         const sdkLayer = LayerVersion.fromLayerVersionArn(
             scope,
             'rag-sdk-lambda-layer',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/lisa-sdk`),
+            StringParameter.fromStringParameterName(scope, 'rag-sdk-layer-param', `${config.deploymentPrefix}/layerVersion/lisa-sdk`).stringValue,
         );
 
         // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
@@ -686,7 +686,7 @@ export class LisaRagConstruct extends Construct {
         return LayerVersion.fromLayerVersionArn(
             this.scope,
             createCdkId([repositoryId, 'CommonLayerVersion']),
-            StringParameter.valueForStringParameter(this.scope, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(this.scope, createCdkId([repositoryId, 'CommonLayerParam']), `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
     }
 

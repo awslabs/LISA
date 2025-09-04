@@ -63,7 +63,7 @@ export class SessionApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'session-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(this, 'session-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
 
         // Create DynamoDB table to handle chat sessions

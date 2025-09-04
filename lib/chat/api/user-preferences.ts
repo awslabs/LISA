@@ -60,13 +60,13 @@ export class UserPreferencesApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'user-preferences-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(this, 'user-preferences-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
 
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'user-preferences-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
+            StringParameter.fromStringParameterName(this, 'user-preferences-fastapi-layer-param', `${config.deploymentPrefix}/layerVersion/fastapi`).stringValue,
         );
 
         // Create DynamoDB table to handle user preferences

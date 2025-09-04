@@ -60,7 +60,7 @@ export class ConfigurationApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'configuration-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(this, 'configuration-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
 
         // Create DynamoDB table to handle config data

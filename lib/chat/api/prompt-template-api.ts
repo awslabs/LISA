@@ -51,13 +51,13 @@ export class PromptTemplateApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'session-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            StringParameter.fromStringParameterName(this, 'prompt-template-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
         );
 
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'models-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
+            StringParameter.fromStringParameterName(this, 'prompt-template-fastapi-layer-param', `${config.deploymentPrefix}/layerVersion/fastapi`).stringValue,
         );
 
         const promptTemplatesTable = new Table(this, 'PromptTemplatesTable', {

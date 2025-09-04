@@ -1,0 +1,49 @@
+#!/command/with-contenv bash
+
+# Get environment variables with defaults
+TOOLS_DIR="${TOOLS_DIR:-/workspace/tools}"
+HOST="${HOST:-0.0.0.0}"
+PORT="${PORT:-8000}"
+MCP_ROUTE="${MCP_ROUTE:-/mcp}"
+RESCAN_ROUTE="${RESCAN_ROUTE:-}"
+EXIT_ROUTE="${EXIT_ROUTE:-}"
+CORS_ORIGINS="${CORS_ORIGINS:-*}"
+LOG_LEVEL="${LOG_LEVEL:-info}"
+
+# Build command arguments
+ARGS="--tools-dir ${TOOLS_DIR} --host ${HOST} --port ${PORT} --mcp-route ${MCP_ROUTE}"
+
+# Add optional routes if set
+if [ -n "${RESCAN_ROUTE}" ]; then
+    ARGS="${ARGS} --rescan-route ${RESCAN_ROUTE}"
+fi
+
+if [ -n "${EXIT_ROUTE}" ]; then
+    ARGS="${ARGS} --exit-route ${EXIT_ROUTE}"
+fi
+
+# Add CORS origins
+ARGS="${ARGS} --cors-origins ${CORS_ORIGINS}"
+
+# Add verbosity based on log level
+case "${LOG_LEVEL}" in
+    debug)
+        ARGS="${ARGS} --debug"
+        ;;
+    verbose)
+        ARGS="${ARGS} --verbose"
+        ;;
+esac
+
+# Log startup
+echo "[mcpworkbench] Starting MCP Workbench server..."
+echo "[mcpworkbench] Tools directory: ${TOOLS_DIR}"
+echo "[mcpworkbench] Server: ${HOST}:${PORT}"
+echo "[mcpworkbench] MCP route: ${MCP_ROUTE}"
+echo "[mcpworkbench] Arguments: ${ARGS}"
+
+# Create tools directory if it doesn't exist
+mkdir -p "${TOOLS_DIR}"
+
+# Start the MCP workbench server
+exec s6-setuidgid root mcpworkbench ${ARGS}

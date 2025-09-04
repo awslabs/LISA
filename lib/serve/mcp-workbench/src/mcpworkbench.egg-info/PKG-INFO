@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: mcpworkbench
+Version: 0.1.0
+Summary: A dynamic host for python files used as MCP tools
+Author-email: Dustin Sweigart <dustinps@amazon.com>
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: click>=8.0.0
+Requires-Dist: starlette>=0.27.0
+Requires-Dist: uvicorn>=0.23.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: requests>=2.28.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.1.0; extra == "dev"

@@ -27,5 +27,5 @@ lxml==5.1.0
 python-docx==1.1.0
 requests-aws4auth==1.2.3
 requests==2.32.4
-# text-generation==0.7.0  # REMOVED: Contains unfixable vulnerability GHSA-qq99-p57r-g3v7 (requires v2.0.0, but max available is v0.7.0)
+text-generation==0.7.0  # CVE-2024-3924: GitHub Actions only, required for TGI functionality
 uvicorn==0.29.0

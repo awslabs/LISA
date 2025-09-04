@@ -35,6 +35,8 @@ install_requirements() {
     echo "installing requirements"
     rm -rf "$BUILD_DIR"
     mkdir -p "$BUILD_DIR/python"
+    # Install with version pinning for security
+    python3 -m pip install --upgrade pip==24.3.1
     python3 -m pip install "$SRC_ROOT" --target "${BUILD_DIR}/python"
 }
 

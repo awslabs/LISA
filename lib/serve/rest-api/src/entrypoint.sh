@@ -5,7 +5,7 @@ set -e
 HOST="0.0.0.0"
 PORT="8080"
 
-# Prisma client is generated during build
+# Prisma client is now generated during build from LiteLLM's schema
 echo "Prisma client already generated during build"
 
 # Update LiteLLM config that was already copied from config.yaml with runtime-deployed models.
@@ -18,7 +18,8 @@ python ./src/utils/generate_litellm_config.py -f litellm_config.yaml
 # Start LiteLLM in the background, default port 4000, not exposed outside of container.
 # If you need to change the port, you can specify the --port option, and then the port needs to be updated in
 # src/api/endpoints/v2/litellm_passthrough.py for the LiteLLM URI
-litellm -c litellm_config.yaml &
+# --use_prisma_db_push enables automatic Prisma schema management
+litellm -c litellm_config.yaml --use_prisma_db_push &
 
 echo "Starting Gunicorn with $THREADS workers..."
 

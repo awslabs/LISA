@@ -7,7 +7,13 @@ function install_python_deps() {
 
     echo "Installing Python dependencies for $package"
     mkdir -p "${output_path}"
-    if ! pip install -r ${input_path}/requirements.txt --target $output_path --platform manylinux2014_x86_64 --only-binary=:all: --no-deps --no-cache-dir; then
+    # Try with hash verification first, fall back to regular install
+    if [ -f "${input_path}/requirements-hashes.txt" ]; then
+        pip_cmd="pip install --require-hashes -r ${input_path}/requirements-hashes.txt --target $output_path --platform manylinux2014_x86_64 --only-binary=:all: --no-deps --no-cache-dir"
+    else
+        pip_cmd="pip install -r ${input_path}/requirements.txt --target $output_path --platform manylinux2014_x86_64 --only-binary=:all: --no-deps --no-cache-dir"
+    fi
+    if ! $pip_cmd; then
         echo "Failed to install Python dependencies for ${package}"
         exit 1
     fi

@@ -91,12 +91,12 @@ dev:
   ecsModels:
     - modelName: mistralai/Mistral-7B-Instruct-v0.2
       inferenceContainer: tgi
-      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1@sha256:cabd2a49a3afa7106aaa0bb3458c11904007fcd0369a83fcc1fa2fab76d444b4
     - modelName: intfloat/e5-large-v2
       inferenceContainer: tei
-      baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
+      baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3@sha256:ad6a9a4f80be66604962893bf24d6820b952ce5b5a67bce31c4fbb47a317e25a
     # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
     #   inferenceContainer: tgi
-    #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+    #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1@sha256:cabd2a49a3afa7106aaa0bb3458c11904007fcd0369a83fcc1fa2fab76d444b4
   litellmConfig:
     db_key: sk-012345 #pragma: allowlist secret

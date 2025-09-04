@@ -823,7 +823,7 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
-    baseImage: z.string().default('python:3.11').describe('Base image used for LISA serve components'),
+    baseImage: z.string().default('python:3.11@sha256:1d6131b5d479888b43200645e03a78443c7157efbdb730e6b48129740727c312').describe('Base image used for LISA serve components'),
     nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:18').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),

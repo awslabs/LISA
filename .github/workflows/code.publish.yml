@@ -4,19 +4,18 @@ on:
     types: [released]
 
 permissions:
-  contents: read
-  packages: write
+  contents: read  # Default read-only
 
 jobs:
   PublishLISA:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: write  # Required for npm package publishing
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
       # Setup .npmrc file to publish to GitHub Packages
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
@@ -30,9 +29,11 @@ jobs:
     needs: [ PublishLISA ]
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      contents: read
     steps:
       - name: Send Notification that package has published
-        uses: rtCamp/action-slack-notify@v2
+        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
         env:
           SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}

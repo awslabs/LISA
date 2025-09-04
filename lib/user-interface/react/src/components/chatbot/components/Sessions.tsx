@@ -151,12 +151,12 @@ export function Sessions ({ newSession }) {
             if (sessionBeingDeleted === currentSessionId || !currentSessionId) {
                 newSession();
             }
-        
+
             // Reset the tracking state
             setSessionBeingDeleted(null);
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
             notificationService.generateNotification(`Error deleting session: ${deleteByIdError.data?.message ?? deleteByIdError.data}`, 'error');
-            
+
             // Reset the tracking state on error too
             setSessionBeingDeleted(null);
         }

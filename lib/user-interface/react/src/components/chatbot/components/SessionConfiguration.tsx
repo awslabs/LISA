@@ -70,17 +70,17 @@ export default function SessionConfiguration ({
             ...chatConfiguration,
             sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
         };
-        
+
         setChatConfiguration(updatedConfiguration);
-        
+
         // Immediately persist the configuration to the session if available
         if (session && updateSession) {
             updateSession({
                 ...session,
-                configuration: { 
-                    ...updatedConfiguration, 
-                    selectedModel: selectedModel, 
-                    ragConfig: ragConfig 
+                configuration: {
+                    ...updatedConfiguration,
+                    selectedModel: selectedModel,
+                    ragConfig: ragConfig
                 }
             });
         }

@@ -1,4 +1,20 @@
 /**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+/**
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
@@ -31,16 +47,14 @@ import { useSessionEncryptionState } from '../../shared/util/sessionEncryption';
 import { useNotificationService } from '../../shared/util/hooks';
 import { useAppDispatch } from '../../config/store';
 
-interface SessionEncryptionConfigurationProps {
+type SessionEncryptionConfigurationProps = {
     setFields: (fields: Record<string, any>) => void;
-    encryptionEnabled: boolean;
     touchFields: (fields: string[]) => void;
     errors: Record<string, string>;
-}
+};
 
-export function SessionEncryptionConfiguration({
+export function SessionEncryptionConfiguration ({
     setFields,
-    encryptionEnabled,
     touchFields,
     errors,
 }: SessionEncryptionConfigurationProps): ReactElement {
@@ -106,22 +120,22 @@ export function SessionEncryptionConfiguration({
         <Container
             header={
                 <Header
-                    variant="h2"
-                    description="Configure session data encryption at rest"
+                    variant='h2'
+                    description='Configure session data encryption at rest'
                 >
                     Session Encryption
                 </Header>
             }
         >
-            <SpaceBetween size="m">
+            <SpaceBetween size='m'>
                 {showMigrationWarning && (
                     <Alert
-                        type="warning"
+                        type='warning'
                         dismissible
                         onDismiss={handleCancelMigration}
-                        header="Enable Session Encryption"
+                        header='Enable Session Encryption'
                     >
-                        <SpaceBetween size="s">
+                        <SpaceBetween size='s'>
                             <Box>
                                 Enabling session encryption will encrypt all new session data at rest in DynamoDB.
                                 Existing sessions will be encrypted when they are next accessed or updated.
@@ -130,16 +144,16 @@ export function SessionEncryptionConfiguration({
                                 <strong>Important:</strong> This action cannot be easily undone. Make sure you have
                                 proper backup and recovery procedures in place.
                             </Box>
-                            <SpaceBetween direction="horizontal" size="s">
+                            <SpaceBetween direction='horizontal' size='s'>
                                 <Button
-                                    variant="primary"
+                                    variant='primary'
                                     onClick={handleConfirmMigration}
                                     loading={isLoading || migrationInProgress}
                                 >
                                     Enable Encryption
                                 </Button>
                                 <Button
-                                    variant="normal"
+                                    variant='normal'
                                     onClick={handleCancelMigration}
                                     disabled={isLoading || migrationInProgress}
                                 >
@@ -151,11 +165,11 @@ export function SessionEncryptionConfiguration({
                 )}
 
                 <FormField
-                    label="Session Data Encryption"
-                    description="Encrypt session data at rest in DynamoDB to prevent unauthorized access"
+                    label='Session Data Encryption'
+                    description='Encrypt session data at rest in DynamoDB to prevent unauthorized access'
                     errorText={errors.sessionEncryption?.enabled}
                 >
-                    <SpaceBetween direction="horizontal" size="s">
+                    <SpaceBetween direction='horizontal' size='s'>
                         <Toggle
                             checked={currentEncryptionEnabled}
                             onChange={({ detail }) => {
@@ -166,7 +180,7 @@ export function SessionEncryptionConfiguration({
                         >
                             {currentEncryptionEnabled ? 'Enabled' : 'Disabled'}
                         </Toggle>
-                        {(isLoading || migrationInProgress) && <Spinner size="normal" />}
+                        {(isLoading || migrationInProgress) && <Spinner size='normal' />}
                         {!isLoading && !migrationInProgress && (
                             <StatusIndicator
                                 type={currentEncryptionEnabled ? 'success' : 'stopped'}
@@ -179,8 +193,8 @@ export function SessionEncryptionConfiguration({
 
                 {currentEncryptionEnabled && (
                     <Box>
-                        <Header variant="h3">Encryption Details</Header>
-                        <SpaceBetween size="s">
+                        <Header variant='h3'>Encryption Details</Header>
+                        <SpaceBetween size='s'>
                             <Box>
                                 <strong>Encryption Method:</strong> AWS KMS with envelope encryption
                             </Box>
@@ -198,7 +212,7 @@ export function SessionEncryptionConfiguration({
                 )}
 
                 {!currentEncryptionEnabled && (
-                    <Alert type="info" header="Session Data Security">
+                    <Alert type='info' header='Session Data Security'>
                         <Box>
                             When disabled, session data is stored in DynamoDB with AWS-managed encryption at rest.
                             However, users with console access can still view session content. Enable encryption

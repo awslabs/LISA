@@ -21,7 +21,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -199,11 +199,11 @@ def _generate_presigned_image_url(key: str) -> str:
     return url
 
 
-def _map_session(session: dict) -> Dict[str, Any]:
+def _map_session(session: dict, user_id: Optional[str] = None) -> Dict[str, Any]:
     return {
         "sessionId": session.get("sessionId", None),
         "name": session.get("name", None),
-        "firstHumanMessage": _find_first_human_message(session),
+        "firstHumanMessage": _find_first_human_message(session, user_id),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
         "lastUpdated": session.get(
@@ -213,14 +213,27 @@ def _map_session(session: dict) -> Dict[str, Any]:
     }
 
 
-def _find_first_human_message(session: dict) -> str:
+def _find_first_human_message(session: dict, user_id: Optional[str] = None) -> str:
     # Check if session is encrypted
     if session.get("is_encrypted", False):
-        # For encrypted sessions, we can't decrypt just to get the first message
-        # Return a placeholder or empty string
-        return "[Encrypted Session]"
+        # For encrypted sessions, decrypt to get the first message
+        try:
+            if user_id:
+                logging.info(
+                    f"Decrypting encrypted session {session.get('sessionId', 'unknown')} "
+                    f"to find first message for user {user_id}"
+                )
+                decrypted_session = decrypt_session_fields(session, user_id, session.get("sessionId", ""))
+                # Use the decrypted session for finding the first message
+                session = decrypted_session
+            else:
+                # If no user_id provided, return placeholder
+                return "[Encrypted Session - User ID required]"
+        except SessionEncryptionError as e:
+            logging.error(f"Failed to decrypt session {session.get('sessionId', 'unknown')} to find first message: {e}")
+            return "[Encrypted Session - Decryption failed]"
 
-    # For unencrypted sessions, proceed as before
+    # For unencrypted sessions (or successfully decrypted sessions), proceed as before
     for msg in session.get("history", []):
         if msg.get("type") == "human":
             content = msg.get("content")
@@ -233,7 +246,7 @@ def _find_first_human_message(session: dict) -> str:
                         if text and not text.startswith("File context:"):
                             return text
             else:
-                logger.warning(f"Unhandled human message content in session {session['sessionId']}")
+                logger.warning(f"Unhandled human message content in session {session.get('sessionId', 'unknown')}")
     return ""
 
 
@@ -245,7 +258,7 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
 
-    return list(executor.map(_map_session, sessions))
+    return list(executor.map(lambda session: _map_session(session, user_id), sessions))
 
 
 def _process_image(task: Tuple[dict, str]) -> None:

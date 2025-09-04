@@ -24,7 +24,7 @@ graph TD
     C --> E[Encrypt with AES-256-GCM]
     E --> F[Store Encrypted Data + Encrypted Key]
     F --> G[DynamoDB]
-    
+
     H[Retrieve Session] --> I{Is Encrypted?}
     I -->|Yes| J[Decrypt Data Key with KMS]
     I -->|No| K[Return Unencrypted Data]

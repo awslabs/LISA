@@ -2,3 +2,4 @@
 # botocore>=1.34.131 // Provided by Lambda
 # urllib3<2 // Provided by Lambda
 psycopg2-binary==2.9.9
+cryptography==44.0.1

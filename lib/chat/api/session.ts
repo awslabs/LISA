@@ -258,7 +258,7 @@ export class SessionApi extends Construct {
             },
             {
                 name: 'generate_data_key',
-                resource: 'session/encryption',
+                resource: 'session-encryption',
                 description: 'Generates data key for session encryption',
                 path: 'session/encryption/generate-key',
                 method: 'POST',
@@ -266,7 +266,7 @@ export class SessionApi extends Construct {
             },
             {
                 name: 'decrypt_data_key',
-                resource: 'session/encryption',
+                resource: 'session-encryption',
                 description: 'Decrypts data key for session decryption',
                 path: 'session/encryption/decrypt-key',
                 method: 'POST',
@@ -274,7 +274,7 @@ export class SessionApi extends Construct {
             },
             {
                 name: 'get_encryption_config',
-                resource: 'session/encryption',
+                resource: 'session-encryption',
                 description: 'Gets encryption configuration',
                 path: 'session/encryption/config',
                 method: 'GET',
@@ -282,7 +282,7 @@ export class SessionApi extends Construct {
             },
             {
                 name: 'update_encryption_config',
-                resource: 'session/encryption',
+                resource: 'session-encryption',
                 description: 'Updates encryption configuration',
                 path: 'session/encryption/config',
                 method: 'PUT',

@@ -38,6 +38,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
 os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
 os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"] = "bucket"
+os.environ["MODEL_TABLE_NAME"] = "model-table"
 
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
@@ -54,6 +55,12 @@ def mock_api_wrapper(func):
                 "statusCode": 200,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps(result, default=str),
+            }
+        except ValueError as e:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                "body": json.dumps({"error": str(e)}),
             }
         except Exception as e:
             logging.error(f"Error in {func.__name__}: {str(e)}")
@@ -129,7 +136,7 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
+patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.common_functions.get_session_id", mock_common.get_session_id).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()

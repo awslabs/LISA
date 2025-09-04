@@ -472,10 +472,10 @@ def test_list_all_with_repository_id_only(sample_rag_document):
         repo.subdoc_table = mock_subdoc_table
 
         # Call the function
-        result, last_evaluated = repo.list_all("test-repo")
+        result, last_evaluated, total_documents = repo.list_all("test-repo")
 
         # Verify calls
-        mock_doc_table.query.assert_called_once()
+        assert mock_doc_table.query.call_count == 2
         assert len(result) == 1
         assert result[0].document_id == "test-doc-id"
 
@@ -503,10 +503,10 @@ def test_list_all_with_collection_id(sample_rag_document):
         repo.subdoc_table = mock_subdoc_table
 
         # Call the function
-        result, last_evaluated = repo.list_all("test-repo", collection_id="test-collection")
+        result, last_evaluated, total_documents = repo.list_all("test-repo", collection_id="test-collection")
 
         # Verify calls
-        mock_doc_table.query.assert_called_once()
+        assert mock_doc_table.query.call_count == 2
         assert len(result) == 1
         assert result[0].document_id == "test-doc-id"
 
@@ -537,10 +537,10 @@ def test_list_all_with_pagination(sample_rag_document):
         repo.subdoc_table = mock_subdoc_table
 
         # Call the function
-        result, last_evaluated = repo.list_all("test-repo")
+        result, last_evaluated, total_documents = repo.list_all("test-repo")
 
         # Verify calls
-        mock_doc_table.query.assert_called_once()
+        assert mock_doc_table.query.call_count == 2
         assert len(result) == 1
         assert result[0].document_id == "test-doc-id"
         assert last_evaluated == {"document_id": "next-key"}
@@ -577,12 +577,12 @@ def test_list_all_with_join_docs(sample_rag_document):
         # (Assume this is done in the code or monkeypatch here if needed)
 
         # Call the function
-        result, last_evaluated = repo.list_all("test-repo", join_docs=True)
+        result, last_evaluated, total_documents = repo.list_all("test-repo", join_docs=True)
 
         # Verify result
         assert len(result) == 1
         assert result[0].document_id == sample_rag_document.document_id
-        mock_doc_table.query.assert_called_once()
+        assert mock_doc_table.query.call_count == 2
 
 
 def test_find_subdocs_by_id_success(sample_rag_sub_document):

@@ -24,7 +24,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.common_functions import get_groups, is_admin, retry_config
+from utilities.auth import is_admin
+from utilities.common_functions import get_groups, retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (

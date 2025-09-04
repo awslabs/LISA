@@ -112,9 +112,9 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
+patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.common_functions.get_groups", mock_common.get_groups).start()
-patch("utilities.common_functions.is_admin", mock_common.is_admin).start()
+patch("utilities.auth.is_admin", mock_common.is_admin).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
 

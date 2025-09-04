@@ -591,6 +591,9 @@ export default function Chat ({ sessionId }) {
                 visible={modals.sessionConfiguration}
                 setVisible={(show) => show ? openModal('sessionConfiguration') : closeModal('sessionConfiguration')}
                 systemConfig={config}
+                session={session}
+                updateSession={updateSession}
+                ragConfig={ragConfig}
             />
             <RagUploadModal
                 ragConfig={ragConfig}

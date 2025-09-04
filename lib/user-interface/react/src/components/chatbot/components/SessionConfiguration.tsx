@@ -31,6 +31,7 @@ import Toggle from '@cloudscape-design/components/toggle';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
+import { LisaChatSession } from '@/components/types';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -41,7 +42,10 @@ export type SessionConfigurationProps = {
     selectedModel: IModel;
     isRunning: boolean;
     systemConfig: IConfiguration;
-    modelOnly?: boolean
+    modelOnly?: boolean;
+    session?: LisaChatSession;
+    updateSession?: (session: LisaChatSession) => void;
+    ragConfig?: any;
 };
 
 export default function SessionConfiguration ({
@@ -53,16 +57,33 @@ export default function SessionConfiguration ({
     visible,
     setVisible,
     systemConfig,
-    modelOnly = false
+    modelOnly = false,
+    session,
+    updateSession,
+    ragConfig
 }: SessionConfigurationProps) {
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
     const updateSessionConfiguration = (property: string, value: any): void => {
-        setChatConfiguration({
+        const updatedConfiguration = {
             ...chatConfiguration,
             sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
-        });
+        };
+        
+        setChatConfiguration(updatedConfiguration);
+        
+        // Immediately persist the configuration to the session if available
+        if (session && updateSession) {
+            updateSession({
+                ...session,
+                configuration: { 
+                    ...updatedConfiguration, 
+                    selectedModel: selectedModel, 
+                    ragConfig: ragConfig 
+                }
+            });
+        }
     };
 
     const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
@@ -325,10 +346,14 @@ export default function SessionConfiguration ({
                             <Container>
                                 <AttributeEditor
                                     addButtonText='Add'
-                                    onAddButtonClick={() => updateSessionConfiguration('modelArgs', {
-                                        ...chatConfiguration.sessionConfiguration.modelArgs,
-                                        stop: chatConfiguration.sessionConfiguration.modelArgs.stop.concat(''),
-                                    })}
+                                    onAddButtonClick={() => {
+                                        if (chatConfiguration.sessionConfiguration.modelArgs.stop.length < 4) {
+                                            updateSessionConfiguration('modelArgs', {
+                                                ...chatConfiguration.sessionConfiguration.modelArgs,
+                                                stop: chatConfiguration.sessionConfiguration.modelArgs.stop.concat(''),
+                                            });
+                                        }
+                                    }}
                                     removeButtonText='Remove'
                                     onRemoveButtonClick={(event) =>
                                         updateSessionConfiguration('modelArgs', {

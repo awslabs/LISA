@@ -22,14 +22,13 @@
  */
 import { Duration, Size, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { BaseProps } from '../../schema';
+import { BaseProps, EcsSourceType } from '../../schema';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -37,6 +36,7 @@ import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -103,11 +103,10 @@ export class IngestionJobConstruct extends Construct {
         baseEnvironment['LISA_INGESTION_JOB_QUEUE_NAME'] = jobQueue.jobQueueName;
 
         // Set up build directory for Docker image
-        const ingestionImageRoot = path.join(__dirname, 'ingestion-image');
         const buildDirName = 'build';
-        const buildDir = path.join(ingestionImageRoot, buildDirName);
+        const buildDir = path.join(BATCH_INGESTION_PATH, buildDirName);
 
-        fs.mkdirSync(buildDir, {recursive: true});
+        fs.mkdirSync(buildDir, { recursive: true });
 
         const copyOptions = {
             recursive: true,
@@ -136,12 +135,16 @@ export class IngestionJobConstruct extends Construct {
             });
         }
 
-        // Build Docker image for batch jobs
-        const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
-            directory: ingestionImageRoot,
+        const imageConfig = config.batchIngestionConfig || {
+            baseImage: config.baseImage,
+            path: BATCH_INGESTION_PATH,
+            type: EcsSourceType.ASSET,
             buildArgs: {
                 'BUILD_DIR': buildDirName
             },
+        };
+        const image = CodeFactory.createImage(imageConfig, this, 'BatchIngestionContainer', {
+            'BUILD_DIR': buildDirName
         });
 
         // AWS Batch job definition specifying container configuration
@@ -149,7 +152,7 @@ export class IngestionJobConstruct extends Construct {
             jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
-                image: ecs.ContainerImage.fromDockerImageAsset(dockerImageAsset),
+                image,
                 memory: Size.mebibytes(4096),
                 cpu: 2,
                 command: ['-m', 'repository.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],

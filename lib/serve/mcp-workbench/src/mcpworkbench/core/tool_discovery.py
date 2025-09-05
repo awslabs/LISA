@@ -183,7 +183,6 @@ class ToolDiscovery:
                     # Get tool metadata
                     tool_name = getattr(instance, 'name', name.lower())
                     tool_description = getattr(instance, 'description', f"Tool: {name}")
-                    parameters = instance.get_parameters() if hasattr(instance, 'get_parameters') else {}
                     
                     tool_info = ToolInfo(
                         name=tool_name,
@@ -192,8 +191,7 @@ class ToolDiscovery:
                         file_path=str(file_path),
                         module_name=module_name,
                         class_name=name,
-                        tool_instance=instance,
-                        parameters=parameters
+                        tool_instance=instance
                     )
                     
                     tools.append(tool_info)
@@ -224,8 +222,7 @@ class ToolDiscovery:
                         file_path=str(file_path),
                         module_name=module_name,
                         function_name=name,
-                        tool_instance=obj,
-                        parameters=metadata['parameters']
+                        tool_instance=obj
                     )
                     
                     tools.append(tool_info)

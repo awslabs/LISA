@@ -1,17 +1,17 @@
 # MCP Workbench
 
-A dynamic host for Python files used as MCP (Model Context Protocol) tools. MCP Workbench allows you to dynamically load and serve Python tools as MCP tools through an HTTP server.
+A dynamic host for Python files used as MCP (Model Context Protocol) tools. MCP Workbench allows you to dynamically load and serve Python tools as MCP tools through a pure FastMCP 2.0 server.
 
 ## Features
 
 - **Dynamic Tool Discovery**: Automatically discovers tools from Python files in a configurable directory
 - **Two Tool Types**: Supports both class-based tools (inheriting from `BaseTool`) and function-based tools (using `@mcp_tool` decorator)
-- **HTTP Server**: Serves tools via HTTP endpoints with full MCP protocol support
-- **Hot Reloading**: Optional HTTP endpoint to rescan and reload tools without server restart
+- **Pure MCP Protocol**: Native MCP protocol implementation via FastMCP 2.0
+- **Hot Reloading**: MCP tool to rescan and reload tools without server restart
 - **Professional Module Loading**: Uses `importlib` and `inspect` for safe module analysis
 - **Configurable**: Support for YAML configuration files and CLI arguments
-- **CORS Support**: Configurable CORS settings for web integration
-- **Clean Architecture**: Modular design with dependency injection
+- **Better Parameter Support**: Leverages FastMCP 2.0's improved JSON schema handling
+- **Clean Architecture**: Simplified single-protocol design
 
 ## Installation
 
@@ -55,17 +55,9 @@ def say_hello(name: str):
 mcpworkbench --tools-dir /tmp/my-tools --port 8000
 ```
 
-4. **Test the tool:**
+4. **Connect with an MCP client:**
 
-```bash
-# List available tools
-curl http://localhost:8000/mcp/tools
-
-# Call the hello tool
-curl -X POST http://localhost:8000/mcp/tools/hello/call \
-  -H "Content-Type: application/json" \
-  -d '{"arguments": {"name": "World"}}'
-```
+The server exposes a pure MCP protocol endpoint that MCP clients can connect to for tool discovery and execution.
 
 ## Tool Development
 
@@ -131,9 +123,8 @@ Options:
   -t, --tools-dir PATH       Directory containing tool files
   --host TEXT                Server host address (default: 127.0.0.1)
   -p, --port INTEGER         Server port (default: 8000)
-  --mcp-route TEXT           URL path for MCP endpoints (default: /mcp)
-  --exit-route TEXT          URL path to exit application (optional)
-  --rescan-route TEXT        URL path to trigger tool rescanning (optional)
+  --exit-route TEXT          Enable exit_server MCP tool (optional)
+  --rescan-route TEXT        Enable rescan_tools MCP tool (optional)
   --cors-origins TEXT        Comma-separated list of allowed CORS origins
   -v, --verbose              Enable verbose logging
   --debug                    Enable debug logging
@@ -149,10 +140,9 @@ port: 8000
 # Tool settings
 tools_dir: "/path/to/tools"
 
-# Route settings
-mcp_route: "/mcp"
-exit_route: "/shutdown"     # Optional
-rescan_route: "/rescan"     # Optional
+# Management tools (optional)
+exit_route: "/shutdown"     # Enables exit_server MCP tool
+rescan_route: "/rescan"     # Enables rescan_tools MCP tool
 
 # CORS settings (simple format)
 cors_origins: ["*"]
@@ -166,88 +156,57 @@ cors_settings:
   max_age: 600
 ```
 
-## API Endpoints
+## Architecture
 
-### Tool Management
+**Pure FastMCP 2.0 Server:**
+- **Native MCP Protocol**: 100% MCP protocol implementation via FastMCP 2.0
+- **Dynamic Tool Registration**: Tools discovered and registered as native FastMCP tools
+- **Management Tools**: Rescan and exit functionality as MCP tools (not HTTP routes)
+- **Better Parameter Support**: Leverages FastMCP 2.0's improved JSON schema handling
+- **Simplified Codebase**: Single protocol, no adapter layer needed
 
-- `GET /mcp/tools` - List all available tools
-- `GET /mcp/tools/{tool_name}` - Get information about a specific tool
-- `POST /mcp/tools/{tool_name}/call` - Execute a tool
+## MCP Tools
 
-### Management Endpoints (Optional)
+### Discovered Tools
 
-- `POST /rescan` - Rescan tools directory and reload tools
-- `POST /shutdown` - Shutdown the server gracefully
+All Python tools from your tools directory are automatically registered as MCP tools with their:
+- Original names and descriptions
+- Parameter schemas
+- Execution capabilities
 
-### MCP Protocol
+### Built-in Management Tools
 
-- `POST /mcp/mcp` - Handle MCP protocol requests (when MCP SDK is available)
+**rescan_tools** (when enabled):
+- Rescans the tools directory for new/updated tools
+- Returns status of changes made
+- Accessible via standard MCP tool calls
 
-## Example API Usage
+**exit_server** (when enabled):
+- Gracefully shuts down the MCP Workbench server
+- Returns confirmation before shutdown
+- Useful for remote management
 
-### List Tools
+## Example Usage
 
-```bash
-curl http://localhost:8000/mcp/tools
-```
+### Using an MCP Client
 
-Response:
-```json
-{
-  "tools": [
-    {
-      "name": "calculator",
-      "description": "Performs basic arithmetic operations",
-      "parameters": {...}
-    }
-  ],
-  "count": 1
-}
-```
+```python
+# Example MCP client usage (pseudocode)
+import mcp_client
 
-### Execute Tool
+client = mcp_client.connect("http://localhost:8000")
 
-```bash
-curl -X POST http://localhost:8000/mcp/tools/calculator/call \
-  -H "Content-Type: application/json" \
-  -d '{
-    "arguments": {
-      "operation": "add",
-      "a": 5,
-      "b": 3
-    }
-  }'
-```
+# List available tools
+tools = client.list_tools()
+print(f"Available tools: {[tool.name for tool in tools]}")
 
-Response:
-```json
-{
-  "result": {
-    "operation": "add",
-    "a": 5,
-    "b": 3,
-    "result": 8
-  },
-  "tool": "calculator"
-}
-```
+# Call a tool
+result = client.call_tool("hello", {"name": "World"})
+print(f"Result: {result}")
 
-### Rescan Tools
-
-```bash
-curl -X POST http://localhost:8000/rescan
-```
-
-Response:
-```json
-{
-  "status": "success",
-  "tools_added": ["new_tool"],
-  "tools_updated": ["existing_tool"],
-  "tools_removed": [],
-  "total_tools": 5,
-  "timestamp": "2025-01-04T16:32:00Z"
-}
+# Rescan for new tools (if enabled)
+rescan_result = client.call_tool("rescan_tools", {})
+print(f"Rescan result: {rescan_result}")
 ```
 
 ## Docker Usage
@@ -274,9 +233,8 @@ The container supports the following environment variables:
 - `TOOLS_DIR` - Directory containing tool files (default: `/workspace/tools`)
 - `HOST` - Server host address (default: `0.0.0.0`)
 - `PORT` - Server port (default: `8000`)
-- `MCP_ROUTE` - URL path for MCP endpoints (default: `/mcp`)
-- `RESCAN_ROUTE` - URL path to trigger tool rescanning (optional)
-- `EXIT_ROUTE` - URL path to exit application (optional)
+- `RESCAN_ROUTE` - Enable rescan_tools MCP tool (optional)
+- `EXIT_ROUTE` - Enable exit_server MCP tool (optional)
 - `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (default: `*`)
 - `LOG_LEVEL` - Logging level: `info`, `verbose`, or `debug` (default: `info`)
 
@@ -299,7 +257,7 @@ This project is designed to work with the existing LISA MCP infrastructure:
 2. Tools are stored in S3 via the existing Lambda functions
 3. S3 bucket is mounted to the container filesystem
 4. MCP Workbench reads tools from the mounted location
-5. External processes can trigger rescans via HTTP
+5. External processes can trigger rescans via MCP tool calls
 
 ## Development
 
@@ -320,11 +278,11 @@ src/mcpworkbench/
 │   └── annotations.py       # Tool function annotations
 ├── server/
 │   ├── __init__.py
-│   ├── mcp_server.py        # MCP server implementation
-│   └── middleware.py        # CORS and other middleware
+│   ├── mcp_server.py        # FastMCP 2.0 server implementation
+│   └── middleware.py        # Legacy middleware (may be removed)
 └── adapters/
     ├── __init__.py
-    └── tool_adapter.py      # Adapters for wrapping tools
+    └── tool_adapter.py      # Legacy adapters (may be removed)
 ```
 
 ### Testing
@@ -379,6 +337,23 @@ mcpworkbench --tools-dir src/examples/sample_tools --port 8001 --debug
 - `tests/test_integration.py` - Full integration tests with running server
 - `tests/test_manual.py` - Interactive manual testing script
 - `tests/conftest.py` - Pytest fixtures and configuration
+
+## Migration from Hybrid Architecture
+
+If migrating from the previous hybrid REST API + MCP architecture:
+
+### What Changed
+- **Removed REST API**: No more `/mcp/tools` HTTP endpoints
+- **Pure MCP Protocol**: All communication via MCP protocol
+- **Management as Tools**: Rescan/exit are now MCP tools, not HTTP routes
+- **Simplified Dependencies**: No more Starlette/Uvicorn dependencies
+- **FastMCP 2.0**: Better parameter support and native MCP integration
+
+### What Stayed the Same
+- **Tool Discovery**: Same Python file scanning and tool detection
+- **Tool Types**: Both class-based and function-based tools still supported
+- **Configuration**: Same YAML and CLI configuration options
+- **Docker Support**: Same containerization and s6-overlay integration
 
 ## License
 

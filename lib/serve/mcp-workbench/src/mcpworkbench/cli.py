@@ -74,19 +74,14 @@ def merge_config(file_config: dict, cli_overrides: dict) -> dict:
     help='Server port (default: 8000)'
 )
 @click.option(
-    '--mcp-route',
-    default=None,
-    help='URL path for MCP endpoints (default: /mcp)'
-)
-@click.option(
     '--exit-route',
     default=None,
-    help='URL path to exit application (optional)'
+    help='Enable exit_server MCP tool (optional)'
 )
 @click.option(
     '--rescan-route',
     default=None,
-    help='URL path to trigger tool rescanning (optional)'
+    help='Enable rescan_tools MCP tool (optional)'
 )
 @click.option(
     '--cors-origins',
@@ -108,7 +103,6 @@ def main(
     tools_dir: Optional[Path],
     host: Optional[str],
     port: Optional[int],
-    mcp_route: Optional[str],
     exit_route: Optional[str],
     rescan_route: Optional[str],
     cors_origins: Optional[str],
@@ -140,8 +134,6 @@ def main(
         cli_overrides['host'] = host
     if port:
         cli_overrides['port'] = port
-    if mcp_route:
-        cli_overrides['mcp_route'] = mcp_route
     if exit_route:
         cli_overrides['exit_route'] = exit_route
     if rescan_route:
@@ -170,11 +162,11 @@ def main(
     logger.info(f"Configuration loaded:")
     logger.info(f"  Tools directory: {server_config.tools_directory}")
     logger.info(f"  Server: {server_config.server_host}:{server_config.server_port}")
-    logger.info(f"  MCP route: {server_config.mcp_route_path}")
+    logger.info(f"  Protocol: Pure MCP via FastMCP 2.0")
     if server_config.exit_route_path:
-        logger.info(f"  Exit route: {server_config.exit_route_path}")
+        logger.info(f"  Exit tool enabled: {server_config.exit_route_path}")
     if server_config.rescan_route_path:
-        logger.info(f"  Rescan route: {server_config.rescan_route_path}")
+        logger.info(f"  Rescan tool enabled: {server_config.rescan_route_path}")
     
     # Initialize components
     try:

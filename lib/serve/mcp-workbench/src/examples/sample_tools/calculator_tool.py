@@ -1,3 +1,5 @@
+from typing import Annotated
+
 """Example class-based MCP tool for basic calculations."""
 
 # Note: In a real deployment, you would need to ensure mcpworkbench is available
@@ -20,51 +22,33 @@ class CalculatorTool(BaseTool):
             name="calculator",
             description="Performs basic arithmetic operations (add, subtract, multiply, divide)"
         )
+
+    async def execute(self):
+        return self.calculate
     
-    def get_parameters(self):
-        """Define the parameters schema for this tool."""
-        return {
-            "type": "object",
-            "properties": {
-                "operation": {
-                    "type": "string",
-                    "enum": ["add", "subtract", "multiply", "divide"],
-                    "description": "The arithmetic operation to perform"
-                },
-                "a": {
-                    "type": "number",
-                    "description": "The first number"
-                },
-                "b": {
-                    "type": "number",
-                    "description": "The second number"
-                }
-            },
-            "required": ["operation", "a", "b"]
-        }
-    
-    async def execute(self, **kwargs):
-        """Execute the calculator operation."""
-        operation = kwargs["operation"]
-        a = float(kwargs["a"])
-        b = float(kwargs["b"])
-        
-        if operation == "add":
-            result = a + b
-        elif operation == "subtract":
-            result = a - b
-        elif operation == "multiply":
-            result = a * b
-        elif operation == "divide":
-            if b == 0:
+    async def calculate(
+        self,
+        operator: Annotated[str, "add, subtract, multiply, or divide"],
+        left_operand: Annotated[float, "The first number"],
+        right_operand: Annotated[float, "The second number"]
+    ):
+        """Execute the calculator operation."""        
+        if operator == "add":
+            result = left_operand + right_operand
+        elif operator == "subtract":
+            result = left_operand - right_operand
+        elif operator == "multiply":
+            result = left_operand * right_operand
+        elif operator == "divide":
+            if right_operand == 0:
                 raise ValueError("Cannot divide by zero")
-            result = a / b
+            result = left_operand / right_operand
         else:
-            raise ValueError(f"Unknown operation: {operation}")
+            raise ValueError(f"Unknown operator: {operator}")
         
         return {
-            "operation": operation,
-            "a": a,
-            "b": b,
+            "operator": operator,
+            "left_operand": left_operand,
+            "right_operand": right_operand,
             "result": result
         }

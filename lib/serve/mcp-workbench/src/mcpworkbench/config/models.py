@@ -25,10 +25,9 @@ class ServerConfig(BaseModel):
     # Tool settings
     tools_directory: str = Field(..., description="Directory containing tool files")
     
-    # Route settings
-    mcp_route_path: str = Field(default="/mcp", description="URL path for MCP endpoints")
-    exit_route_path: Optional[str] = Field(default=None, description="URL path to exit application")
-    rescan_route_path: Optional[str] = Field(default=None, description="URL path to trigger tool rescanning")
+    # Management tool settings
+    exit_route_path: Optional[str] = Field(default=None, description="Enable exit_server MCP tool when set")
+    rescan_route_path: Optional[str] = Field(default=None, description="Enable rescan_tools MCP tool when set")
     
     # CORS settings
     cors_settings: CORSConfig = Field(default_factory=CORSConfig, description="CORS configuration")

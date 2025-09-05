@@ -1,5 +1,7 @@
 """Example function-based MCP tools for text manipulation."""
 
+from typing import Annotated
+
 # Note: In a real deployment, you would need to ensure mcpworkbench is available
 # For development, you might need to adjust the import path or install the package
 try:
@@ -15,18 +17,8 @@ except ImportError:
 @mcp_tool(
     name="text_length",
     description="Count the number of characters in a text string",
-    parameters={
-        "type": "object",
-        "properties": {
-            "text": {
-                "type": "string",
-                "description": "The text to count characters for"
-            }
-        },
-        "required": ["text"]
-    }
 )
-async def count_characters(text: str):
+async def count_characters(text: Annotated[str, "The text string to analyze"]):
     """Count the number of characters in the given text."""
     return {
         "text": text,
@@ -39,23 +31,11 @@ async def count_characters(text: str):
 @mcp_tool(
     name="text_transform",
     description="Transform text to uppercase, lowercase, or title case",
-    parameters={
-        "type": "object",
-        "properties": {
-            "text": {
-                "type": "string",
-                "description": "The text to transform"
-            },
-            "transformation": {
-                "type": "string",
-                "enum": ["upper", "lower", "title", "capitalize"],
-                "description": "The type of transformation to apply"
-            }
-        },
-        "required": ["text", "transformation"]
-    }
 )
-def transform_text(text: str, transformation: str):
+def transform_text(
+    text: Annotated[str, "The text string to transform"], 
+    transformation: Annotated[str, "Type of transformation: 'upper', 'lower', 'title', or 'capitalize'"]
+):
     """Transform the given text according to the specified transformation."""
     if transformation == "upper":
         result = text.upper()
@@ -78,18 +58,8 @@ def transform_text(text: str, transformation: str):
 @mcp_tool(
     name="text_reverse",
     description="Reverse the characters in a text string",
-    parameters={
-        "type": "object",
-        "properties": {
-            "text": {
-                "type": "string",
-                "description": "The text to reverse"
-            }
-        },
-        "required": ["text"]
-    }
 )
-def reverse_text(text: str):
+def reverse_text(text: Annotated[str, "The text string to reverse"]):
     """Reverse the characters in the given text."""
     return {
         "original": text,

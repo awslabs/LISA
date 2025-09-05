@@ -6,7 +6,8 @@ import asyncio
 import inspect
 import logging
 
-from ..core.base_tool import BaseTool, ToolInfo, ToolType
+from ..core.base_tool import BaseTool
+from ..core.tool_discovery import ToolInfo, ToolType
 
 
 logger = logging.getLogger(__name__)
@@ -32,11 +33,6 @@ class ToolAdapter(ABC):
     def description(self) -> str:
         """Get the tool description."""
         return self.tool_info.description
-    
-    @property
-    def parameters(self) -> Dict[str, Any]:
-        """Get the tool parameters schema."""
-        return self.tool_info.parameters
 
 
 class BaseToolAdapter(ToolAdapter):
@@ -98,10 +94,13 @@ def create_adapter(tool_info: ToolInfo) -> ToolAdapter:
     Create the appropriate adapter for a tool.
     
     Args:
-        tool_info: Information about the tool
-        
+        tool_info: Information about the tool to create an adapter for
+    
     Returns:
-        Appropriate adapter instance
+        A ToolAdapter instance for the given tool
+    
+    Raises:
+        ValueError: If the tool type is unknown or unsupported
     """
     if tool_info.tool_type == ToolType.CLASS_BASED:
         return BaseToolAdapter(tool_info)

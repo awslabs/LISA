@@ -21,6 +21,9 @@ class TestBaseTool:
         """Test concrete implementation of BaseTool."""
         
         class ConcreteTool(BaseTool):
+            def get_parameters(self):
+                return {}
+            
             async def execute(self, **kwargs):
                 return {"result": "test"}
         

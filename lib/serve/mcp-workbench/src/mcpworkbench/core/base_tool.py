@@ -29,9 +29,6 @@ class ToolInfo(BaseModel):
     
     # Tool instance or function reference (not serialized)
     tool_instance: Optional[Union[Any, Callable]] = Field(default=None, exclude=True, description="Tool instance or function")
-    
-    # Optional parameter schema
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Parameter schema for the tool")
 
 
 class BaseTool(ABC):
@@ -49,24 +46,11 @@ class BaseTool(ABC):
         self.description = description
     
     @abstractmethod
-    async def execute(self, **kwargs) -> Any:
+    async def execute(self) -> Callable[..., Any]:
         """
-        Execute the tool with the given parameters.
-        
-        Args:
-            **kwargs: Tool-specific parameters
+        Returns an function to be executed as the tool.
             
         Returns:
-            The result of executing the tool
+            The function to be executed
         """
         pass
-    
-    def get_parameters(self) -> Dict[str, Any]:
-        """
-        Get the parameter schema for this tool.
-        
-        Returns:
-            A dictionary describing the parameters this tool accepts.
-            Override this method to provide parameter validation schema.
-        """
-        return {}

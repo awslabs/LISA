@@ -4,14 +4,13 @@ from typing import Any, Callable, Dict, Optional
 from functools import wraps
 
 
-def mcp_tool(name: str, description: str, parameters: Optional[Dict[str, Any]] = None):
+def mcp_tool(name: str, description: str):
     """
     Decorator to mark a function as an MCP tool.
     
     Args:
         name: The name of the tool
         description: A description of what the tool does
-        parameters: Optional parameter schema for the tool
         
     Returns:
         The decorated function with MCP tool metadata
@@ -20,7 +19,6 @@ def mcp_tool(name: str, description: str, parameters: Optional[Dict[str, Any]] =
         # Store metadata as function attributes
         func._mcp_tool_name = name
         func._mcp_tool_description = description
-        func._mcp_tool_parameters = parameters or {}
         func._is_mcp_tool = True
         
         @wraps(func)
@@ -34,7 +32,6 @@ def mcp_tool(name: str, description: str, parameters: Optional[Dict[str, Any]] =
         # Copy metadata to wrapper
         wrapper._mcp_tool_name = name
         wrapper._mcp_tool_description = description
-        wrapper._mcp_tool_parameters = parameters or {}
         wrapper._is_mcp_tool = True
         wrapper._original_func = func
         
@@ -56,5 +53,4 @@ def get_tool_metadata(func: Callable) -> Dict[str, Any]:
     return {
         'name': getattr(func, '_mcp_tool_name', ''),
         'description': getattr(func, '_mcp_tool_description', ''),
-        'parameters': getattr(func, '_mcp_tool_parameters', {})
     }

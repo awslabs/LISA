@@ -12,26 +12,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Public imports.
+"""Utility decorators."""
+from typing import Any, Callable, cast, Dict, TypeVar
 
-"""
-import os
-import sys
+T = TypeVar("T")
 
-from loguru import logger
 
-from .ecs import *  # noqa: F403,F401
+def singleton(cls: type[T]) -> Callable[..., T]:
+    """Singleton decorator."""
+    instances: Dict[type, Any] = {}
 
-# Configure custom logger
-logger.remove()
-logger_level = os.environ.get("LOG_LEVEL", "INFO")
-logger.configure(
-    handlers=[
-        {
-            "sink": sys.stdout,
-            "format": "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | "
-            "<cyan>{extra[request_id]}</cyan> | {message}",
-            "level": logger_level.upper(),
-        }
-    ]
-)
+    def get_instance(*args: Any, **kwargs: Any) -> T:
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return cast(T, instances[cls])
+
+    return get_instance

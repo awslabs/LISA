@@ -11,9 +11,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic = "^2.0.0"
-langchain = "*"
-langchain-community = "*"
-langchain-openai = "*"
+langchain-community = "0.3.9"
+langchain-openai = "0.2.11"
+langchain = "0.3.9"
 
 [tool.poetry.group.dev.dependencies]
 boto3 = "*"

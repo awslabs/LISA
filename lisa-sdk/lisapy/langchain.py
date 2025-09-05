@@ -163,7 +163,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
     """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""
 
     model_name: str
-    """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1"""
+    """Name of LISA serve model e.g. Mistral-8x7B-Instruct-v0.1"""
 
     client: LisaLlm
     """An instance of the Lisa client."""

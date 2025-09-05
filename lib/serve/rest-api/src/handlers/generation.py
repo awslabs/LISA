@@ -26,9 +26,12 @@ logger = logging.getLogger(__name__)
 async def handle_generate(request_data: Dict[str, Any]) -> Dict[str, Any]:
     """Handle for generate endpoint."""
     model, model_kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE)
-    response = await model.generate(text=text, model_kwargs=model_kwargs)
-
-    return response.dict()  # type: ignore
+    try:
+        response = await model.generate(text=text, model_kwargs=model_kwargs)
+        return response.dict()  # type: ignore
+    except Exception as e:
+        logger.error(f"Model generation failed: {e}")
+        raise
 
 
 @handle_stream_exceptions

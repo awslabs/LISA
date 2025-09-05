@@ -15,6 +15,7 @@
  */
 import { z } from 'zod';
 import { AttributeEditorSchema } from '../form/environment-variables';
+import { IChatConfiguration } from './chat.configurations.model';
 
 export enum ModelStatus {
     Creating = 'Creating',
@@ -94,7 +95,9 @@ export type IModel = {
     features?: ModelFeature[];
     modelId: string;
     modelName: string;
+    modelDescription?: string;
     modelUrl: string;
+    modelConfig: IChatConfiguration;
     streaming: boolean;
     modelType: ModelType;
     instanceType: string;
@@ -102,6 +105,7 @@ export type IModel = {
     containerConfig: IContainerConfig;
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
+    allowedGroups?: string[];
 };
 
 export type IModelListResponse = {
@@ -112,6 +116,7 @@ export type IModelRequest = {
     features: ModelFeature[];
     modelId: string;
     modelName: string;
+    modelDescription?: string;
     modelUrl: string;
     streaming: boolean;
     multiModal: boolean;
@@ -122,6 +127,7 @@ export type IModelRequest = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     lisaHostedModel: boolean;
+    allowedGroups?: string[];
 };
 
 export type ModelFeature = {
@@ -129,12 +135,24 @@ export type ModelFeature = {
     overview: string;
 };
 
+export type IAutoScalingInstanceConfig = {
+    minCapacity?: number;
+    maxCapacity?: number;
+    desiredCapacity?: number;
+    cooldown?: number;
+    defaultInstanceWarmup?: number;
+};
+
 export type IModelUpdateRequest = {
     modelId: string;
     streaming?: boolean;
     enabled?: boolean;
     modelType?: ModelType;
-    autoScalingInstanceConfig?: IAutoScalingConfig;
+    modelDescription?: string;
+    allowedGroups?: string[];
+    features?: ModelFeature[];
+    autoScalingInstanceConfig?: IAutoScalingInstanceConfig;
+    containerConfig?: IContainerConfig;
 };
 
 const containerHealthCheckConfigSchema = z.object({
@@ -207,6 +225,7 @@ export const ModelRequestSchema = z.object({
         .regex(/^[a-z0-9].*[a-z0-9]$/i, {message: 'Must start and end with an alphanumeric character.'})
         .default(''),
     modelName: z.string().min(1).default(''),
+    modelDescription: z.string().default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
     features: z.array(z.object({
@@ -220,6 +239,7 @@ export const ModelRequestSchema = z.object({
     containerConfig: containerConfigSchema.default(containerConfigSchema.parse({})),
     autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
+    allowedGroups: z.array(z.string()).default([]),
 }).superRefine((value, context) => {
     if (value.lisaHostedModel) {
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});

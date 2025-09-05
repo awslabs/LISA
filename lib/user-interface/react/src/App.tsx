@@ -28,6 +28,7 @@ import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import ModelLibrary from './pages/ModelLibrary';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
@@ -40,6 +41,7 @@ import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-ch
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 import { ConfigurationContext } from './shared/configuration.provider';
 import McpServers from '@/pages/Mcp';
+import ModelComparisonPage from './pages/ModelComparison';
 
 
 export type RouteProps = {
@@ -80,7 +82,7 @@ function App () {
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
-    const [ getConfigurationQuery, {data: fullConfig} ] = useLazyGetConfigurationQuery();
+    const [getConfigurationQuery, { data: fullConfig }] = useLazyGetConfigurationQuery();
     const config = fullConfig?.[0];
 
     useEffect(() => {
@@ -146,6 +148,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {config?.configuration?.enabledComponents?.modelLibrary && <Route
+                                path='model-library'
+                                element={
+                                    <PrivateRoute showConfig='modelLibrary' configs={config}>
+                                        <ModelLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
                             {config?.configuration?.enabledComponents?.showRagLibrary &&
                                 <>
                                     <Route
@@ -189,6 +199,15 @@ function App () {
                                     </PrivateRoute>
                                 }
                             />}
+                            {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
+                                path='model-comparison'
+                                element={
+                                    <PrivateRoute>
+                                        <ModelComparisonPage />
+                                    </PrivateRoute>
+                                }
+                            />
+                            }
                         </Routes>
                     }
                 />

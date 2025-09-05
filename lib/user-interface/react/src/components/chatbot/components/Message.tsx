@@ -30,11 +30,12 @@ import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
 import ImageViewer from '@/components/chatbot/components/ImageViewer';
+import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
 
 type MessageProps = {
@@ -48,9 +49,10 @@ type MessageProps = {
     handleSendGenerateRequest: () => void;
     setUserPrompt: (state: string) => void;
     chatConfiguration: IChatConfiguration;
+    showUsage?: boolean;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -66,7 +68,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resend]);
 
-    const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
+    const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item, index) => {
                 if (item.type === 'text') {
@@ -227,6 +229,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             tooltipText='Generative AI assistant'
                         />
                     }
+                    actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
                     <Box color='text-status-inactive'>
                         Generating response
@@ -246,6 +249,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             tooltipText='Generative AI assistant'
                         />
                     }
+                    actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
                     <Box color='text-status-inactive'>
                         🔨Calling {callingToolName} tool 🔨
@@ -266,11 +270,19 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                 tooltipText='Generative AI assistant'
                             />
                         }
+                        actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.type, message.content, message.metadata)}
-                        {showMetadata && !isStreaming && <ExpandableSection variant='footer' headerText='Metadata'>
-                            <JsonView data={message.metadata} style={darkStyles} />
-                        </ExpandableSection>}
+                        {renderContent(message.content, message.metadata)}
+                        {showMetadata && !isStreaming &&
+                            <ExpandableSection
+                                variant='footer'
+                                headerText='Metadata'
+                            >
+                                <JsonView data={{
+                                    ...message.metadata,
+                                    ...(message.usage && { usage: message.usage })
+                                }} style={darkStyles} />
+                            </ExpandableSection>}
                     </ChatBubble>
                     {!isStreaming && !messageContainsImage(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
@@ -300,21 +312,45 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 </SpaceBetween>
             )}
             {message?.type === 'human' && (
-                <ChatBubble
-                    ariaLabel={currentUser}
-                    type='outgoing'
-                    avatar={
-                        <Avatar
-                            ariaLabel={currentUser}
-                            tooltipText={currentUser}
-                            initials={currentUser?.charAt(0).toUpperCase()}
-                        />
-                    }
-                >
-                    <div style={{ maxWidth: '60em' }}>
-                        {renderContent(message.type, message.content)}
-                    </div>
-                </ChatBubble>
+                <SpaceBetween direction='horizontal' size='m'>
+                    <ChatBubble
+                        ariaLabel={currentUser}
+                        type='outgoing'
+                        avatar={
+                            <Avatar
+                                ariaLabel={currentUser}
+                                tooltipText={currentUser}
+                                initials={currentUser?.charAt(0).toUpperCase()}
+                            />
+                        }
+                    >
+                        <div style={{ maxWidth: '60em' }}>
+                            {renderContent(message.content)}
+                        </div>
+                    </ChatBubble>
+                    <ButtonGroup
+                        onItemClick={({ detail }) =>
+                            ['copy'].includes(detail.id) &&
+                            navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                        }
+                        ariaLabel='Chat actions'
+                        dropdownExpandToViewport
+                        items={[
+                            {
+                                type: 'icon-button',
+                                id: 'copy',
+                                iconName: 'copy',
+                                text: 'Copy Input',
+                                popoverFeedback: (
+                                    <StatusIndicator type='success'>
+                                        Input copied
+                                    </StatusIndicator>
+                                )
+                            }
+                        ]}
+                        variant='icon'
+                    />
+                </SpaceBetween>
             )}
             {message?.type === MessageTypes.TOOL && (
                 <ExpandableSection variant='footer' headerText={`🔨Called Tool - ${message?.metadata?.toolName} 🔨`}>

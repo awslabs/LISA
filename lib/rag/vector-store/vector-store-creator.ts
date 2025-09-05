@@ -56,6 +56,17 @@ export class VectorStoreCreatorStack extends Construct {
             ],
         });
 
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                's3:*',
+                'ec2:*',
+                'rds:*',
+                'opensearch:*',
+                'ssm:*',
+            ],
+            resources: ['*']
+        }));// Additional CloudFormation permissions that might be needed
+
         const lambdaExecutionRole = iam.Role.fromRoleArn(
             this,
             `${Roles.RAG_LAMBDA_EXECUTION_ROLE}-VectorStore`,
@@ -65,25 +76,65 @@ export class VectorStoreCreatorStack extends Construct {
             ),
         );
 
-        // Add permissions to create resources that will be in the dynamic stacks
+        // IAM: service-linked role creation for required services
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['iam:CreateServiceLinkedRole'],
+            resources: ['*'],
+            conditions: {
+                StringEquals: {
+                    'iam:AWSServiceName': ['opensearchservice.amazonaws.com', 'rds.amazonaws.com']
+                }
+            }
+        }));
+
+        // IAM: manage roles created within the dynamic stacks and allow passing to services
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: [
-                's3:*',
-                'ec2:*',
-                'rds:*',
-                'opensearch:*',
-                'ssm:*',
-                'iam:*'
+                'iam:CreateRole',
+                'iam:DeleteRole',
+                'iam:AttachRolePolicy',
+                'iam:DetachRolePolicy',
+                'iam:PutRolePolicy',
+                'iam:DeleteRolePolicy',
+                'iam:TagRole',
+                'iam:UntagRole',
+                'iam:GetRole',
+                'iam:GetRolePolicy',
+                'iam:ListRolePolicies',
+                'iam:ListAttachedRolePolicies',
+                'iam:ListRoleTags',
+                'iam:UpdateAssumeRolePolicy',
+                'iam:ListRoles'
             ],
             resources: ['*'],
         }));
 
+        // IAM: assume CDK bootstrap roles for deployment
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['iam:AssumeRole'],
+            resources: [
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-*-deploy-role-${config.accountNumber}-${config.region}`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/cdk-hnb659fds-deploy-role-${config.accountNumber}-${config.region}`
+            ],
+        }));
+
+
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['iam:PassRole'],
+            resources: ['*'],
+            conditions: {
+                StringEquals: {
+                    'iam:PassedToService': [
+                        'cloudformation.amazonaws.com',
+                        'lambda.amazonaws.com',
+                        'events.amazonaws.com'
+                    ]
+                }
+            }
+        }));
+
         const stateMachineRole = new iam.Role(this, createCdkId([config.deploymentName, config.deploymentStage, 'StateMachineRole']), {
             assumedBy: new iam.ServicePrincipal('states.amazonaws.com'),
-            managedPolicies: [
-                iam.ManagedPolicy.fromAwsManagedPolicyName('AWSStepFunctionsFullAccess'),
-                iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationFullAccess'),
-            ],
         });
         vectorStoreTable.grantReadWriteData(stateMachineRole);
 
@@ -124,6 +175,23 @@ export class VectorStoreCreatorStack extends Construct {
             vpc: props.vpc.vpc,
             securityGroups: [props.vpc.securityGroups.lambdaSg],
         });
+
+        // Allow the state machine to invoke the deployer Lambda
+        this.vectorStoreCreatorFn.grantInvoke(stateMachineRole);
+
+        // Minimal policies for state machine role
+        stateMachineRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['lambda:InvokeFunction'],
+            resources: [this.vectorStoreCreatorFn.functionArn],
+        }));
+        stateMachineRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['cloudformation:DescribeStacks', 'cloudformation:DeleteStack'],
+            resources: ['*'],
+        }));
+        stateMachineRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:GetItem', 'dynamodb:DeleteItem'],
+            resources: [vectorStoreTable.tableArn],
+        }));
 
         new CreateStoreStateMachine(this, 'CreateVectorStoreStateMachine', {
             config: props.config,

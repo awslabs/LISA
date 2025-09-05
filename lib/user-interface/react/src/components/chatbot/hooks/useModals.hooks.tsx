@@ -22,6 +22,7 @@ export type ModalState = {
     ragUpload: boolean;
     documentSummarization: boolean;
     promptTemplate: boolean;
+    modelComparison: boolean
 };
 
 export const useModals = () => {
@@ -31,6 +32,7 @@ export const useModals = () => {
         ragUpload: false,
         documentSummarization: false,
         promptTemplate: false,
+        modelComparison: false,
     });
 
     const [promptTemplateKey, setPromptTemplateKey] = useState(new Date().toISOString());

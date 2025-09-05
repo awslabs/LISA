@@ -21,12 +21,11 @@ import os
 import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
-from functools import cache, wraps
+from functools import cache
 from typing import Any, Callable, cast, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
-from utilities.exceptions import HTTPException
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -365,26 +364,6 @@ def get_username(event: dict) -> str:
     return username
 
 
-def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    admin_group = os.environ.get("ADMIN_GROUP", "")
-    groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
-
-
-def admin_only(func: Callable) -> Callable:
-    """Annotation to wrap is_admin"""
-
-    @wraps(func)
-    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
-        if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
-        return func(event, context, *args, **kwargs)
-
-    return wrapper
-
-
 def get_session_id(event: dict) -> str:
     """Get the session ID from the event."""
     session_id: str = event.get("pathParameters", {}).get("sessionId")
@@ -480,3 +459,22 @@ def get_lambda_role_name() -> str:
 def get_item(response: Any) -> Any:
     items = response.get("Items", [])
     return items[0] if items else None
+
+
+def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
+    """
+    Check if user has access based on group membership.
+
+    Args:
+        user_groups: List of groups the user belongs to
+        allowed_groups: List of groups allowed to access the resource
+
+    Returns:
+        True if user has access (either no restrictions or user has required group)
+    """
+    # Public resource (no group restrictions)
+    if not allowed_groups:
+        return True
+
+    # Check if user has at least one matching group
+    return len(set(user_groups).intersection(set(allowed_groups))) > 0

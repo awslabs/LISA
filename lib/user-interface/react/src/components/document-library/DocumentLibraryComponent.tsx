@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { ReactElement } from 'react';
+import { ReactElement, useState } from 'react';
 import {
     Button,
     ButtonDropdownProps,
@@ -61,15 +61,39 @@ function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
 }
 
 export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryComponentProps): ReactElement {
-    const { data: allDocs, isFetching } = useListRagDocumentsQuery({ repositoryId }, { refetchOnMountOrArgChange: 5 });
     const [deleteMutation, { isLoading: isDeleteLoading }] = useDeleteRagDocumentsMutation();
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [lastEvaluatedKey, setLastEvaluatedKey] = useState<{
+        pk: string;
+        document_id: string;
+        repository_id: string;
+    } | null>(null);
+    const [pageHistory, setPageHistory] = useState<Array<{
+        pk: string;
+        document_id: string;
+        repository_id: string;
+    } | null>>([]);
 
     const currentUser = useAppSelector(selectCurrentUsername);
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
-    const { items, actions, filteredItemsCount, collectionProps, filterProps, paginationProps } = useCollection(
+    const { data: paginatedDocs, isFetching } = useListRagDocumentsQuery(
+        {
+            repositoryId,
+            lastEvaluatedKey: lastEvaluatedKey || undefined,
+            pageSize: preferences.pageSize
+        },
+        { refetchOnMountOrArgChange: 5 }
+    );
+
+    const allDocs = paginatedDocs?.documents || [];
+    const totalDocuments = paginatedDocs?.totalDocuments || 0;
+    const hasNextPage = paginatedDocs?.hasNextPage || false;
+
+    const { items, actions, filteredItemsCount, collectionProps, filterProps } = useCollection(
         allDocs ?? [], {
             filtering: {
                 empty: (
@@ -156,11 +180,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             }
             header={
                 <Header
-                    counter={
-                        collectionProps.selectedItems.length
-                            ? `(${collectionProps.selectedItems.length}/${allDocs.length})`
-                            : `${allDocs?.length || 0}`
-                    }
+                    counter={`(${totalDocuments})`}
                     actions={
                         <SpaceBetween
                             direction='horizontal'
@@ -171,7 +191,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                                     actions.setSelectedItems([]);
                                     dispatch(ragApi.util.invalidateTags(['docs']));
                                 }}
-                                ariaLabel={'Refresh models cards'}
+                                ariaLabel={'Refresh documents'}
                             >
                                 <Icon name='refresh' />
                             </Button>
@@ -190,7 +210,38 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                 </Header>
             }
             pagination={
-                <Pagination {...paginationProps} />
+                <Pagination
+                    currentPageIndex={currentPage}
+                    pagesCount={Math.ceil(totalDocuments / (preferences.pageSize || 10))}
+                    onNextPageClick={() => {
+                        if (hasNextPage && paginatedDocs?.lastEvaluated) {
+                            // Add current key to history before moving to next page
+                            setPageHistory([...pageHistory, lastEvaluatedKey]);
+                            setLastEvaluatedKey(paginatedDocs.lastEvaluated);
+                            // Update current page to reflect the navigation
+                            setCurrentPage((prev) => prev + 1);
+                        }
+                    }}
+                    onPreviousPageClick={() => {
+                        if (pageHistory.length > 0) {
+                            // Go back one page by popping from history
+                            const previousKey = pageHistory[pageHistory.length - 1];
+                            setPageHistory(pageHistory.slice(0, -1));
+                            setLastEvaluatedKey(previousKey);
+                            // Update current page to reflect the navigation
+                            setCurrentPage((prev) => prev - 1);
+                        } else {
+                            // If no history, go to first page
+                            setLastEvaluatedKey(null);
+                            setCurrentPage(1);
+                        }
+                    }}
+                    ariaLabels={{
+                        nextPageLabel: 'Next page',
+                        previousPageLabel: 'Previous page',
+                        pageLabel: (pageNumber) => `Page ${pageNumber} of ${Math.ceil(totalDocuments / (preferences.pageSize || 10))}`,
+                    }}
+                />
             }
             preferences={
                 <CollectionPreferences

@@ -32,6 +32,6 @@ class BaseApiHandler:
         self._stepfunctions = stepfunctions_client
         self._model_table = model_table_resource
 
-    def __call__(self, *args: Any, **kwargs: Any) -> None:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """All handlers must implement the __call__ method."""
         raise NotImplementedError("__call__ method must be defined in child API Handler class.")

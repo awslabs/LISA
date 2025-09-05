@@ -38,6 +38,7 @@ type LayerProps = {
     slimDeployment?: boolean;
     removePackages?: string[];
     assetPath?: string;
+    afterBundle?: (inputDir: string, outputDir: string) => string[];
 } & BaseProps;
 
 /**
@@ -55,7 +56,7 @@ export class Layer extends Construct {
     constructor (scope: Construct, id: string, props: LayerProps) {
         super(scope, id);
 
-        const { assetPath, config, path: layerPath, description, architecture } = props;
+        const { assetPath, config, path: layerPath, description, architecture, afterBundle } = props;
 
         if (!fs.existsSync(`${layerPath}/requirements.txt`)) {
             throw new Error(`requirements.txt not found in ${layerPath}`);
@@ -80,12 +81,19 @@ export class Layer extends Construct {
                     removalPolicy: config.removalPolicy,
                     bundling: {
                         platform: architecture.dockerPlatform,
-                        commandHooks: packagesExists ? {
+                        commandHooks: (packagesExists || afterBundle) ? {
                             beforeBundling (inputDir: string, outputDir: string): string[] {
-                                return [`touch ${outputDir}/requirements.txt`];
+                                return [`mkdir -p ${outputDir}/python && touch ${outputDir}/python/requirements.txt`];
                             },
                             afterBundling (inputDir: string, outputDir: string): string[] {
-                                return [`cp -r ${inputDir}/packages/* ${outputDir}/python/`];
+                                const commands = [];
+                                if (packagesExists) {
+                                    commands.push(`cp -r ${inputDir}/packages/* ${outputDir}/python/`);
+                                }
+                                if (afterBundle) {
+                                    commands.push(...afterBundle(inputDir, outputDir));
+                                }
+                                return commands;
                             },
                         } : undefined
                     },

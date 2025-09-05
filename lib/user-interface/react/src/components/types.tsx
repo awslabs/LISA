@@ -61,6 +61,17 @@ export type LisaChatMessageMetadata = {
     imageGenerationParams?: ImageGenerationParams;
 };
 /**
+ * Usage information from OpenAI API responses
+ */
+export type UsageInfo = {
+    completionTokens?: number;
+    responseTime?: number;
+    promptTokens?: number;
+    totalTokens?: number;
+    outputTokens?: number;
+};
+
+/**
  * Interface for storing data for messages
  */
 export type LisaChatMessageFields = {
@@ -68,6 +79,7 @@ export type LisaChatMessageFields = {
     content: MessageContent;
     metadata?: LisaChatMessageMetadata;
     toolCalls?: any[];
+    usage?: UsageInfo;
 } & BaseMessageFields;
 
 /**
@@ -77,12 +89,14 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     type: MessageType;
     metadata?: LisaChatMessageMetadata;
     toolCalls?: any[];
+    usage?: UsageInfo;
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
         this.type = fields.type;
         this.metadata = fields.metadata ?? {};
         this.toolCalls = fields.toolCalls ?? [];
+        this.usage = fields.usage;
     }
 
     static lc_name () {
@@ -101,7 +115,9 @@ export type LisaChatSession = {
     sessionId: string;
     userId: string;
     startTime: string;
+    lastUpdated?: string;  // Optional for backward compatibility
     history: LisaChatMessage[];
+    name?: string;
     firstHumanMessage?: MessageContent;
     configuration?: IChatConfiguration & IModelConfiguration;
 };
@@ -222,7 +238,6 @@ export enum MessageTypes {
     TOOL = 'tool',
 }
 
-
 /**
  * Model Features
  */
@@ -231,3 +246,18 @@ export enum ModelFeatures {
     IMAGE_INPUT = 'imageInput',
     TOOL_CALLS = 'toolCalls',
 }
+
+/**
+ * Interface for paginated document list response
+ */
+export type PaginatedDocumentResponse = {
+    documents: RagDocument[];
+    lastEvaluated?: {
+        pk: string;
+        document_id: string;
+        repository_id: string;
+    } | null;
+    totalDocuments?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
+};

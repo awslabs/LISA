@@ -103,7 +103,7 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_username", mock_common.get_username).start()
+patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 patch("utilities.common_functions.get_item", mock_common.get_item).start()

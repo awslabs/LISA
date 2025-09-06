@@ -1,5 +1,6 @@
 """Tool discovery component for MCP Workbench."""
 
+import importlib
 import importlib.util
 import inspect
 import os
@@ -83,7 +84,10 @@ class ToolDiscovery:
         # Store current tool names for comparison
         old_tool_names = set(self.current_tools.keys())
         
-        # Clear loaded modules to force reload
+        # Reload all previously loaded modules to pick up changes
+        self._reload_modules()
+        
+        # Clear loaded modules tracking to force fresh discovery
         self.loaded_modules.clear()
         
         # Discover tools fresh
@@ -107,6 +111,30 @@ class ToolDiscovery:
             logger.error(f"Error during rescan: {e}")
         
         return result
+    
+    def _reload_modules(self):
+        """Reload all previously loaded modules to pick up file changes."""
+        modules_to_reload = []
+        
+        # Find all modules that match our naming pattern
+        for module_name in list(sys.modules.keys()):
+            if module_name.startswith("mcpworkbench_tools_"):
+                modules_to_reload.append(module_name)
+        
+        # Reload each module
+        for module_name in modules_to_reload:
+            try:
+                module = sys.modules[module_name]
+                importlib.reload(module)
+                logger.debug(f"Reloaded module: {module_name}")
+            except Exception as e:
+                logger.warning(f"Failed to reload module {module_name}: {e}")
+                # Remove the module from sys.modules if reload fails
+                # This will force a fresh load on next discovery
+                try:
+                    del sys.modules[module_name]
+                except KeyError:
+                    pass
     
     def _discover_tools_in_file(self, file_path: Path) -> List[ToolInfo]:
         """

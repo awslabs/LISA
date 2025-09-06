@@ -1,6 +1,7 @@
 """MCP Workbench FastMCP 2.0 server implementation."""
 
 import asyncio
+import contextlib
 import inspect
 import logging
 import os
@@ -15,14 +16,17 @@ from ..core.tool_registry import ToolRegistry
 from ..core.tool_discovery import ToolInfo, ToolType
 from ..core.base_tool import BaseTool
 
-# Import FastMCP 2.0
+# Import FastMCP 2.0 and Starlette for HTTP routes
 try:
     from fastmcp import FastMCP
+    from starlette.applications import Starlette
+    from starlette.routing import Mount, Route
+    from starlette.responses import JSONResponse
     FASTMCP_AVAILABLE = True
 except ImportError:
     # Fallback for development/testing
     FASTMCP_AVAILABLE = False
-    logging.warning("FastMCP 2.0 not available")
+    logging.warning("FastMCP 2.0 or Starlette not available")
 
 
 logger = logging.getLogger(__name__)
@@ -56,68 +60,63 @@ class MCPWorkbenchServer:
         self._register_management_tools()
     
     def _register_management_tools(self):
-        """Register built-in management tools for rescan and exit functionality."""
+        """Register built-in management tools - now removed as they are HTTP routes."""
+        # Management functionality moved to HTTP GET endpoints
+        pass
+    
+    def _create_http_routes(self):
+        """Create HTTP routes for management functionality."""
+        routes = []
         
         if self.config.rescan_route_path:
-            @self.app.tool(
-                name="rescan_tools",
-                description="Rescan the tools directory and reload all available tools"
-            )
-            async def rescan_tools() -> dict:
-                """Rescan tools directory and reload tools."""
+            async def rescan_endpoint(request):
+                """HTTP GET endpoint to rescan tools directory and reload tools."""
                 try:
-                    logger.info("Rescanning tools directory...")
+                    logger.info("Rescanning tools directory via HTTP...")
                     
-                    # Discover new tools
-                    tools = self.tool_discovery.discover_tools()
-                    old_count = len(self.registered_tools)
+                    # Use the enhanced rescan_tools method which includes module reloading
+                    rescan_result = self.tool_discovery.rescan_tools()
                     
-                    # Clear existing registered tools (except management tools)
-                    management_tools = {"rescan_tools", "exit_server"}
-                    tools_to_remove = [name for name in self.registered_tools.keys() 
-                                     if name not in management_tools]
+                    # Clear existing registered tools tracking
+                    # Note: FastMCP 2.0 may not have tool unregistration
+                    # This is a limitation we'll document
+                    old_registered_tools = self.registered_tools.copy()
+                    self.registered_tools.clear()
                     
-                    for tool_name in tools_to_remove:
-                        # Note: FastMCP 2.0 may not have tool unregistration
-                        # This is a limitation we'll document
-                        pass
-                    
-                    # Register new tools
+                    # Get the newly discovered tools and register them
+                    tools = list(self.tool_discovery.current_tools.values())
                     self.tool_registry.register_tools(tools)
                     await self._register_discovered_tools(tools)
                     
-                    # Calculate changes
-                    new_tools = [tool.name for tool in tools if tool.name not in self.registered_tools]
-                    updated_tools = [tool.name for tool in tools if tool.name in self.registered_tools]
-                    
+                    # Build result using the rescan_result data
                     result = {
                         "status": "success",
-                        "tools_added": new_tools,
-                        "tools_updated": updated_tools,
-                        "tools_removed": [],  # FastMCP limitation
-                        "total_tools": len(tools),
+                        "tools_added": rescan_result.tools_added,
+                        "tools_updated": rescan_result.tools_updated,
+                        "tools_removed": rescan_result.tools_removed,
+                        "total_tools": rescan_result.total_tools,
+                        "errors": rescan_result.errors,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
                     }
                     
                     logger.info(f"Rescan completed: {result}")
-                    return result
+                    return JSONResponse(result)
                     
                 except Exception as e:
                     logger.error(f"Error during rescan: {e}")
-                    return {
+                    error_result = {
                         "status": "error",
                         "error": str(e),
                         "timestamp": datetime.utcnow().isoformat() + "Z"
                     }
+                    return JSONResponse(error_result, status_code=500)
+            
+            routes.append(Route(self.config.rescan_route_path, rescan_endpoint, methods=["GET"]))
         
         if self.config.exit_route_path:
-            @self.app.tool(
-                name="exit_server",
-                description="Gracefully shutdown the MCP Workbench server"
-            )
-            async def exit_server() -> dict:
-                """Exit the server gracefully."""
-                logger.info("Exit requested via MCP tool")
+            async def exit_endpoint(request):
+                """HTTP GET endpoint to gracefully shutdown the server."""
+                logger.info("Exit requested via HTTP endpoint")
                 
                 # Schedule shutdown after response is sent
                 async def delayed_shutdown():
@@ -127,11 +126,39 @@ class MCPWorkbenchServer:
                 
                 asyncio.create_task(delayed_shutdown())
                 
-                return {
+                result = {
                     "status": "success",
                     "message": "Server shutdown initiated",
                     "timestamp": datetime.utcnow().isoformat() + "Z"
                 }
+                return JSONResponse(result)
+            
+            routes.append(Route(self.config.exit_route_path, exit_endpoint, methods=["GET"]))
+        
+        return routes
+    
+    def _create_starlette_app(self):
+        """Create Starlette application with MCP and HTTP routes."""
+        # Create HTTP routes for management
+        http_routes = self._create_http_routes()
+
+        mcp_app = self.app.http_app(path="/", transport="streamable-http")
+        
+        # Add MCP mount
+        routes = [
+            Mount("/mcp", app=mcp_app),
+        ]
+        
+        # Add HTTP management routes
+        routes.extend(http_routes)
+        
+        # # Create lifespan manager for FastMCP
+        # @contextlib.asynccontextmanager
+        # async def lifespan(app: Starlette):
+        #     async with self.app.session_manager.run():
+        #         yield
+        
+        return Starlette(routes=routes, lifespan=mcp_app.lifespan)
     
     async def _register_discovered_tools(self, tools: List[ToolInfo]):
         """Register discovered tools with FastMCP."""
@@ -217,30 +244,29 @@ class MCPWorkbenchServer:
         # Discover and register tools
         await self.discover_and_register_tools()
         
-        # Start FastMCP server
-        logger.info(f"Starting MCP Workbench server on {self.config.server_host}:{self.config.server_port}")
+        # Create Starlette app with both MCP and HTTP routes
+        starlette_app = self._create_starlette_app()
         
-        # FastMCP 2.0 server startup (API may vary)
-        try:
-            # This API might be different in FastMCP 2.0
-            await self.app.run_http_async(
-                transport="streamable-http",
-                host=self.config.server_host,
-                port=self.config.server_port
-            )
-        except AttributeError as e:
-            # Fallback if API is different
-            logger.info(f"Using alternative FastMCP startup method: {e.message}")
-            # Alternative startup method - this will need to be adjusted based on actual API
-            import uvicorn
-            config = uvicorn.Config(
-                self.app,
-                host=self.config.server_host,
-                port=self.config.server_port,
-                log_level="info"
-            )
-            server = uvicorn.Server(config)
-            await server.serve()
+        # Start server with Starlette app
+        logger.info(f"Starting MCP Workbench server on {self.config.server_host}:{self.config.server_port}")
+        logger.info("Available endpoints:")
+        logger.info("  - MCP Protocol: /mcp")
+        
+        if self.config.rescan_route_path:
+            logger.info(f"  - Rescan Tools: GET {self.config.rescan_route_path}")
+        if self.config.exit_route_path:
+            logger.info(f"  - Exit Server: GET {self.config.exit_route_path}")
+        
+        # Use uvicorn to serve the Starlette app
+        import uvicorn
+        config = uvicorn.Config(
+            starlette_app,
+            host=self.config.server_host,
+            port=self.config.server_port,
+            log_level="info"
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
     
     def run(self):
         """Run the server (blocking)."""

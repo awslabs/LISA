@@ -7,7 +7,7 @@ A dynamic host for Python files used as MCP (Model Context Protocol) tools. MCP 
 - **Dynamic Tool Discovery**: Automatically discovers tools from Python files in a configurable directory
 - **Two Tool Types**: Supports both class-based tools (inheriting from `BaseTool`) and function-based tools (using `@mcp_tool` decorator)
 - **Pure MCP Protocol**: Native MCP protocol implementation via FastMCP 2.0
-- **Hot Reloading**: MCP tool to rescan and reload tools without server restart
+- **Hot Reloading**: HTTP GET endpoint to rescan and reload tools without server restart
 - **Professional Module Loading**: Uses `importlib` and `inspect` for safe module analysis
 - **Configurable**: Support for YAML configuration files and CLI arguments
 - **Better Parameter Support**: Leverages FastMCP 2.0's improved JSON schema handling
@@ -123,8 +123,8 @@ Options:
   -t, --tools-dir PATH       Directory containing tool files
   --host TEXT                Server host address (default: 127.0.0.1)
   -p, --port INTEGER         Server port (default: 8000)
-  --exit-route TEXT          Enable exit_server MCP tool (optional)
-  --rescan-route TEXT        Enable rescan_tools MCP tool (optional)
+  --exit-route TEXT          Enable exit_server HTTP GET endpoint (optional)
+  --rescan-route TEXT        Enable rescan_tools HTTP GET endpoint (optional)
   --cors-origins TEXT        Comma-separated list of allowed CORS origins
   -v, --verbose              Enable verbose logging
   --debug                    Enable debug logging
@@ -140,9 +140,9 @@ port: 8000
 # Tool settings
 tools_dir: "/path/to/tools"
 
-# Management tools (optional)
-exit_route: "/shutdown"     # Enables exit_server MCP tool
-rescan_route: "/rescan"     # Enables rescan_tools MCP tool
+# Management routes (optional)
+exit_route: "/shutdown"     # Enables exit_server HTTP GET endpoint
+rescan_route: "/rescan"     # Enables rescan_tools HTTP GET endpoint
 
 # CORS settings (simple format)
 cors_origins: ["*"]
@@ -161,7 +161,7 @@ cors_settings:
 **Pure FastMCP 2.0 Server:**
 - **Native MCP Protocol**: 100% MCP protocol implementation via FastMCP 2.0
 - **Dynamic Tool Registration**: Tools discovered and registered as native FastMCP tools
-- **Management Tools**: Rescan and exit functionality as MCP tools (not HTTP routes)
+- **Management Routes**: Rescan and exit functionality as HTTP GET endpoints
 - **Better Parameter Support**: Leverages FastMCP 2.0's improved JSON schema handling
 - **Simplified Codebase**: Single protocol, no adapter layer needed
 
@@ -174,16 +174,16 @@ All Python tools from your tools directory are automatically registered as MCP t
 - Parameter schemas
 - Execution capabilities
 
-### Built-in Management Tools
+### Built-in Management Routes
 
-**rescan_tools** (when enabled):
+**GET /rescan** (when enabled):
 - Rescans the tools directory for new/updated tools
-- Returns status of changes made
-- Accessible via standard MCP tool calls
+- Returns JSON status of changes made
+- Accessible via HTTP GET requests
 
-**exit_server** (when enabled):
+**GET /shutdown** (when enabled):
 - Gracefully shuts down the MCP Workbench server
-- Returns confirmation before shutdown
+- Returns JSON confirmation before shutdown
 - Useful for remote management
 
 ## Example Usage
@@ -204,9 +204,10 @@ print(f"Available tools: {[tool.name for tool in tools]}")
 result = client.call_tool("hello", {"name": "World"})
 print(f"Result: {result}")
 
-# Rescan for new tools (if enabled)
-rescan_result = client.call_tool("rescan_tools", {})
-print(f"Rescan result: {rescan_result}")
+# Rescan for new tools via HTTP GET (if enabled)
+import requests
+rescan_result = requests.get("http://localhost:8000/rescan")
+print(f"Rescan result: {rescan_result.json()}")
 ```
 
 ## Docker Usage
@@ -233,8 +234,8 @@ The container supports the following environment variables:
 - `TOOLS_DIR` - Directory containing tool files (default: `/workspace/tools`)
 - `HOST` - Server host address (default: `0.0.0.0`)
 - `PORT` - Server port (default: `8000`)
-- `RESCAN_ROUTE` - Enable rescan_tools MCP tool (optional)
-- `EXIT_ROUTE` - Enable exit_server MCP tool (optional)
+- `RESCAN_ROUTE` - Enable rescan_tools HTTP GET endpoint (optional)
+- `EXIT_ROUTE` - Enable exit_server HTTP GET endpoint (optional)
 - `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (default: `*`)
 - `LOG_LEVEL` - Logging level: `info`, `verbose`, or `debug` (default: `info`)
 
@@ -257,7 +258,7 @@ This project is designed to work with the existing LISA MCP infrastructure:
 2. Tools are stored in S3 via the existing Lambda functions
 3. S3 bucket is mounted to the container filesystem
 4. MCP Workbench reads tools from the mounted location
-5. External processes can trigger rescans via MCP tool calls
+5. External processes can trigger rescans via HTTP GET requests
 
 ## Development
 
@@ -343,10 +344,9 @@ mcpworkbench --tools-dir src/examples/sample_tools --port 8001 --debug
 If migrating from the previous hybrid REST API + MCP architecture:
 
 ### What Changed
-- **Removed REST API**: No more `/mcp/tools` HTTP endpoints
-- **Pure MCP Protocol**: All communication via MCP protocol
-- **Management as Tools**: Rescan/exit are now MCP tools, not HTTP routes
-- **Simplified Dependencies**: No more Starlette/Uvicorn dependencies
+- **Management as HTTP Routes**: Rescan/exit are now HTTP GET endpoints, not MCP tools
+- **Added Dependencies**: Added Starlette/Uvicorn dependencies for HTTP route support
+- **Hybrid Architecture**: MCP protocol for tools + HTTP GET endpoints for management
 - **FastMCP 2.0**: Better parameter support and native MCP integration
 
 ### What Stayed the Same

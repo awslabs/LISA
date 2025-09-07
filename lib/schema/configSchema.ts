@@ -462,6 +462,8 @@ export const ContainerConfigSchema = z.object({
     healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
 }).describe('Configuration for the container.');
 
+export type ContainerConfig = z.infer<typeof ContainerConfigSchema>
+
 const HealthCheckConfigSchema = z.object({
     path: z.string().describe('Path for the health check.'),
     interval: z.number().default(30).describe('Interval in seconds between health checks.'),
@@ -524,6 +526,8 @@ export const EcsBaseConfigSchema = z.object({
     containerMemoryBuffer: z.number().default(1024 * 2)
         .describe('This is the amount of memory to buffer (or subtract off)  from the total instance memory, ' +
             'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
+    containerMemoryReservationMiB: z.number().default(1024 * 2)
+        .describe('The amount (in MiB) of memory to present to the container.').optional(),
     environment: z.record(z.string()).describe('Environment variables set on the task container'),
     identifier: z.string(),
     instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),

@@ -23,15 +23,16 @@ import { Construct } from 'constructs';
 import { dump as yamlDump } from 'js-yaml';
 
 import { ECSCluster } from './ecsCluster';
-import { BaseProps, Ec2Metadata, EcsSourceType } from '../schema';
+import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { REST_API_PATH } from '../util';
+import { MCP_WORKBENCH_PATH, REST_API_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
-const CONTAINER_MEMORY_BUFFER = 1024 * 2;
+const SERVE_CONTAINER_MEMORY_BUFFER = 1024 * 2;
+const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024;
 
 /**
  * Properties for FastApiContainer Construct.
@@ -113,57 +114,85 @@ export class FastApiContainer extends Construct {
             }
         }
 
-        const image = config.restApiConfig.imageConfig || {
+        const restApiImage = config.restApiConfig.imageConfig || {
             baseImage: config.baseImage,
             path: REST_API_PATH,
             type: EcsSourceType.ASSET
         };
+        const instanceType = 'm5.large';
+        const serveConfig: ECSConfig = {
+            amiHardwareType: AmiHardwareType.STANDARD,
+            autoScalingConfig: {
+                blockDeviceVolumeSize: 30,
+                minCapacity: 1,
+                maxCapacity: 1,
+                cooldown: 60,
+                defaultInstanceWarmup: 60,
+                metricConfig: {
+                    albMetricName: 'RequestCountPerTarget',
+                    targetValue: 1000,
+                    duration: 60,
+                    estimatedInstanceWarmup: 30
+                }
+            },
+            buildArgs,
+            containerConfig: {
+                image: restApiImage,
+                healthCheckConfig: {
+                    command: ['CMD-SHELL', 'exit 0'],
+                    interval: 10,
+                    startPeriod: 30,
+                    timeout: 5,
+                    retries: 3
+                },
+                environment: {},
+                sharedMemorySize: 0
+            },
+            containerMemoryBuffer: SERVE_CONTAINER_MEMORY_BUFFER,
+            containerMemoryReservationMiB: Ec2Metadata.get(instanceType).memory - SERVE_CONTAINER_MEMORY_BUFFER - WORKBENCH_CONTAINER_MEMORY_RESERVATION,
+            environment,
+            identifier: props.apiName,
+            instanceType,
+            internetFacing: config.restApiConfig.internetFacing,
+            loadBalancerConfig: {
+                healthCheckConfig: {
+                    path: '/health',
+                    interval: 60,
+                    timeout: 30,
+                    healthyThresholdCount: 2,
+                    unhealthyThresholdCount: 10
+                },
+                domainName: config.restApiConfig.domainName,
+                sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,
+            },
+        };
+
         const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
+            identifier: props.apiName,
             config,
             ecsConfig: {
-                amiHardwareType: AmiHardwareType.STANDARD,
-                autoScalingConfig: {
-                    blockDeviceVolumeSize: 30,
-                    minCapacity: 1,
-                    maxCapacity: 1,
-                    cooldown: 60,
-                    defaultInstanceWarmup: 60,
-                    metricConfig: {
-                        albMetricName: 'RequestCountPerTarget',
-                        targetValue: 1000,
-                        duration: 60,
-                        estimatedInstanceWarmup: 30
-                    }
-                },
-                buildArgs,
-                containerConfig: {
-                    image,
-                    healthCheckConfig: {
-                        command: ['CMD-SHELL', 'exit 0'],
-                        interval: 10,
-                        startPeriod: 30,
-                        timeout: 5,
-                        retries: 3
+                serveConfig,
+                workbenchConfig: {
+                    ...serveConfig,
+                    identifier: 'mcpworkbench',
+                    containerConfig: {
+                        image: {
+                            baseImage: config.baseImage,
+                            path: MCP_WORKBENCH_PATH,
+                            type: EcsSourceType.ASSET
+                        },
+                        healthCheckConfig: {
+                            command: ['CMD-SHELL', 'exit 0'],
+                            interval: 10,
+                            startPeriod: 30,
+                            timeout: 5,
+                            retries: 3
+                        },
+                        environment: {},
+                        sharedMemorySize: 0
                     },
-                    environment: {},
-                    sharedMemorySize: 0
-                },
-                containerMemoryBuffer: CONTAINER_MEMORY_BUFFER,
-                environment,
-                identifier: props.apiName,
-                instanceType: 'm5.large',
-                internetFacing: config.restApiConfig.internetFacing,
-                loadBalancerConfig: {
-                    healthCheckConfig: {
-                        path: '/health',
-                        interval: 60,
-                        timeout: 30,
-                        healthyThresholdCount: 2,
-                        unhealthyThresholdCount: 10
-                    },
-                    domainName: config.restApiConfig.domainName,
-                    sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,
-                },
+                    containerMemoryReservationMiB: WORKBENCH_CONTAINER_MEMORY_RESERVATION,
+                }
             },
             securityGroup,
             vpc

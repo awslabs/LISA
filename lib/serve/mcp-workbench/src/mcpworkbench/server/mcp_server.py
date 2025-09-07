@@ -134,6 +134,14 @@ class MCPWorkbenchServer:
                 return JSONResponse(result)
             
             routes.append(Route(self.config.exit_route_path, exit_endpoint, methods=["GET"]))
+
+
+        async def health_check(request):
+            """Health check endpoint for Docker health checks."""
+            return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
+
+        # Add the health check route to the app
+        http_app.routes.append(Route("/health", health_check))
         
         return routes
     

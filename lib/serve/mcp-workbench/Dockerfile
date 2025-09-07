@@ -35,8 +35,8 @@ COPY . /workspace/mcpworkbench-src/
 RUN pip install -e /workspace/mcpworkbench-src/
 
 # Copy s6-overlay service definitions
-COPY s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d/
-RUN chmod +x /etc/s6-overlay/s6-rc.d/mcpworkbench/run
+COPY s6-overlay/services.d /etc/services.d
+RUN chmod +x /etc/services.d/mcpworkbench/run
 
 # Create tools directory
 RUN mkdir -p /workspace/tools

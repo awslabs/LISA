@@ -28,6 +28,7 @@ export const RAG_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'rag', 'layer');
 
 export const REST_API_PATH = path.join(ROOT_PATH, 'lib', 'serve', 'rest-api');
 export const ECS_MODEL_PATH = path.join(ROOT_PATH, 'lib', 'serve', 'ecs-model');
+export const MCP_WORKBENCH_PATH = path.join(ROOT_PATH, 'lib', 'serve', 'mcp-workbench');
 
 export const WEBAPP_PATH = path.join(ROOT_PATH, 'lib', 'user-interface', 'react');
 export const WEBAPP_DIST_PATH = path.join(WEBAPP_PATH, 'dist');

@@ -33,7 +33,8 @@ import {
     LisaAttachImageResponse,
     LisaChatMessage,
     LisaChatSession,
-    MessageTypes
+    MessageTypes,
+    ModelFeatures
 } from '../types';
 import RagControls from './components/RagOptions';
 import { ContextUploadModal, RagUploadModal } from './components/FileUploadModals';
@@ -752,11 +753,15 @@ export default function Chat ({ sessionId }) {
                             />
                             <SpaceBetween direction='vertical' size='xs'>
                                 <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
-                                    {enabledServers && enabledServers.length > 0 ? (
+                                    {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (
                                         <Box>
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
                                         </Box>
-                                    ) : (<div></div>)}
+                                    )
+                                        : !selectedModel ? (<div></div>)
+                                            : (<Box>
+                                                <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
+                                            </Box>)}
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>
                                             {isConnected ? 'Connected' : 'Disconnected'}

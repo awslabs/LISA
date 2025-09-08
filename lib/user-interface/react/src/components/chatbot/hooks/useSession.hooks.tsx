@@ -39,7 +39,6 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
     const [selectedModel, setSelectedModel] = useState<IModel>();
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
-    const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
 
     useEffect(() => {
         // always hide breadcrumbs
@@ -64,10 +63,6 @@ export const useSession = (sessionId: string, getSessionById: any) => {
                 setSession(sess);
                 setChatConfiguration(sess.configuration ?? baseConfig);
                 setSelectedModel(sess.configuration?.selectedModel ?? undefined);
-                // If session has a pre-selected model, consider it as user interaction
-                if (sess.configuration?.selectedModel) {
-                    setHasUserInteractedWithModel(true);
-                }
                 setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
                 setLoadingSession(false);
             });
@@ -87,11 +82,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
 
 
 
-    // Wrapper function to track user interaction with model selection
-    const handleSetSelectedModel = (model: IModel | undefined) => {
-        setHasUserInteractedWithModel(true);
-        setSelectedModel(model);
-    };
+
 
     return {
         session,
@@ -102,7 +93,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         chatConfiguration,
         setChatConfiguration,
         selectedModel,
-        setSelectedModel: handleSetSelectedModel,
+        setSelectedModel,
         ragConfig,
         setRagConfig,
     };

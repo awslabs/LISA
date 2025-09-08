@@ -116,6 +116,8 @@ export default function Chat ({ sessionId }) {
     const [useRag, setUseRag] = useState(false);
     const [openAiTools, setOpenAiTools] = useState(undefined);
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
+    const [modelFilterValue, setModelFilterValue] = useState('');
+    const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
@@ -168,13 +170,25 @@ export default function Chat ({ sessionId }) {
         setChatConfiguration
     );
 
-    // Set default model if none is selected and default model is configured
+    // Set default model if none is selected, default model is configured, and user hasn't interacted
     useEffect(() => {
-        if (!selectedModel && config?.configuration?.global?.defaultModel && allModels) {
+        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && allModels) {
             const defaultModelId = config.configuration.global.defaultModel;
             handleModelChange(defaultModelId, selectedModel, setSelectedModel);
         }
-    }, [selectedModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+
+    // Wrapper for handleModelChange that tracks user interaction
+    const handleUserModelChange = (value: string) => {
+        setHasUserInteractedWithModel(true);
+        setModelFilterValue(value);
+        handleModelChange(value, selectedModel, setSelectedModel);
+    };
+
+    // Update filter value when selected model changes
+    useEffect(() => {
+        setModelFilterValue(selectedModel?.modelId ?? '');
+    }, [selectedModel]);
 
     const { memory, setMemory, metadata } = useMemory(
         session,
@@ -712,9 +726,9 @@ export default function Chat ({ sessionId }) {
                                         placeholder='Select a model'
                                         empty={<div className='text-gray-500'>No models available.</div>}
                                         filteringType='auto'
-                                        value={selectedModel?.modelId ?? ''}
+                                        value={modelFilterValue}
                                         enteredTextLabel={(text) => `Use: "${text}"`}
-                                        onChange={({ detail: { value } }) => handleModelChange(value, selectedModel, setSelectedModel)}
+                                        onChange={({ detail: { value } }) => handleUserModelChange(value)}
                                         options={modelsOptions}
                                         ref={modelSelectRef}
                                     />

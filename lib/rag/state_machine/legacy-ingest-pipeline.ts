@@ -104,7 +104,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
             const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionScheduleLambda', hash]), ingestionLambdaArn.stringValue);
 
             // Create daily cron trigger with input template
-            new Rule(this, createCdkId(['DailyIngestRule', hash]), {
+            const dailyRule = new Rule(this, createCdkId(['DailyIngestRule', hash]), {
                 ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyDailyIngestRule-${hash}`,
                 schedule: Schedule.cron({
                     minute: '0',
@@ -128,8 +128,12 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                     })
                 })]
             });
+
+            // Ensure rule is created after Lambda function parameter is available
+            dailyRule.node.addDependency(ingestionLambdaArn);
         } else if (pipelineConfig.trigger === 'event') {
             const ingestionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionChangeEventLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/ingest/event`);
+
             const ingestionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionIngestEventLambda', hash]), ingestionLambdaArn.stringValue);
 
             // Create S3 event trigger with complete event pattern and transform input
@@ -154,8 +158,8 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, createCdkId(['S3EventIngestRule', hash]), {
-                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule-${hash}`,
+            const s3EventRule = new Rule(this, createCdkId(['S3EventIngestRule', hash]), {
+                ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventIngestRule-${hash}}`,
                 eventPattern,
                 targets: [new LambdaFunction(ingestionLambda, {
                     event: RuleTargetInput.fromObject({
@@ -176,10 +180,14 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                     })
                 })]
             });
+
+            // Ensure rule is created after Lambda function parameter is available
+            s3EventRule.node.addDependency(ingestionLambdaArn);
         }
 
         if (pipelineConfig.autoRemove) {
             const deletionLambdaArn = StringParameter.fromStringParameterName(this, createCdkId(['IngestionDeleteEventLambdaStringParameter', hash]), `${config.deploymentPrefix}/ingestion/delete/event`);
+
             const deletionLambda = lambda.Function.fromFunctionArn(this, createCdkId(['IngestionDeleteEventLambda', hash]), deletionLambdaArn.stringValue);
             console.log('Creating autodelete rule...');
 
@@ -216,7 +224,7 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                 detail
             };
 
-            new Rule(this, createCdkId(['S3EventDeleteRule', hash]), {
+            const s3DeleteRule = new Rule(this, createCdkId(['S3EventDeleteRule', hash]), {
                 ruleName: `${config.deploymentName}-${config.deploymentStage}-LegacyS3EventDeleteRule-${hash}`,
                 eventPattern,
                 targets: [new LambdaFunction(deletionLambda, {
@@ -238,6 +246,9 @@ export class LegacyIngestPipelineStateMachine extends Construct {
                     })
                 })]
             });
+
+            // Ensure rule is created after Lambda function parameter is available
+            s3DeleteRule.node.addDependency(deletionLambdaArn);
         }
 
         // Grant the execution role permissions to access specified S3 bucket/prefix

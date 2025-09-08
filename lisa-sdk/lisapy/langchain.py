@@ -131,8 +131,8 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
             model_kwargs={
                 "encoding_format": "float",  # keep values as floats because base64 is not widely supported
             },
-            http_async_client=HttpAsyncClient(verify=self.verify),
-            http_client=HttpClient(verify=self.verify),
+            http_async_client=HttpAsyncClient(verify=self.verify, timeout=120.0),
+            http_client=HttpClient(verify=self.verify, timeout=120.0),
         )
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:

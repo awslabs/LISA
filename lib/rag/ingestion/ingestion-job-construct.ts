@@ -47,6 +47,19 @@ export type IngestionJobConstructProps = StackProps & BaseProps & {
 };
 
 export class IngestionJobConstruct extends Construct {
+    private getMaxCpus(vpc: Vpc): number {
+        // Calculate maxvCpus based on available IPs in subnets to prevent IP exhaustion
+        // Each task uses 2 vCPUs, so maxvCpus = available_ips * 2 vCPUs per task
+        const availableIps = vpc.subnetSelection?.subnets?.reduce((total, subnet) => {
+            // Each subnet reserves 5 IPs (network, broadcast, gateway, DNS, future use)
+            const subnetSize = Math.pow(2, 32 - parseInt(subnet.ipv4CidrBlock.split('/')[1]));
+            return total + Math.max(0, subnetSize - 5);
+        }, 0) || 64; // Default to 64 if calculation fails
+
+        const maxTasks = Math.min(availableIps, 256); // Cap at 256 for reasonable limits
+        return maxTasks * 2; // Each task uses 2 vCPUs
+    }
+
     constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
@@ -84,10 +97,12 @@ export class IngestionJobConstruct extends Construct {
         });
 
         // AWS Batch Fargate compute environment for running ingestion jobs
+        const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
             computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             vpc: vpc.vpc,
-
+            vpcSubnets: vpc.subnetSelection,
+            maxvCpus: maxvCpus,
         });
 
         // AWS Batch job queue that uses the Fargate compute environment
@@ -188,8 +203,9 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const scheduleParameterName = `${config.deploymentPrefix}/ingestion/ingest/schedule`;
         new StringParameter(this, 'IngestionJobScheduleLambdaArn', {
-            parameterName: `${config.deploymentPrefix}/ingestion/ingest/schedule`,
+            parameterName: scheduleParameterName,
             stringValue: handlePipelineIngestScheduleLambda.functionArn
         });
         handlePipelineIngestScheduleLambda.addPermission('AllowEventBridgeInvoke', {
@@ -210,8 +226,9 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const eventParameterName = `${config.deploymentPrefix}/ingestion/ingest/event`;
         new StringParameter(this, 'IngestionJobEventLambdaArn', {
-            parameterName: `${config.deploymentPrefix}/ingestion/ingest/event`,
+            parameterName: eventParameterName,
             stringValue: handlePipelineIngestEvent.functionArn
         });
         handlePipelineIngestEvent.addPermission('AllowEventBridgeInvoke', {
@@ -232,8 +249,9 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const deleteParameterName = `${config.deploymentPrefix}/ingestion/delete/event`;
         new StringParameter(this, 'DeletionJobEventLambdaArn', {
-            parameterName: `${config.deploymentPrefix}/ingestion/delete/event`,
+            parameterName: deleteParameterName,
             stringValue: handlePipelineDeleteEvent.functionArn
         });
 

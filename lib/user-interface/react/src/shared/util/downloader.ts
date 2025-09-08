@@ -88,12 +88,7 @@ export function downloadSvgAsPng (svgElement: SVGElement, filename = 'diagram.pn
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                 const pngUrl = canvas.toDataURL('image/png', 1.0);
-                const downloadLink = document.createElement('a');
-                downloadLink.href = pngUrl;
-                downloadLink.download = filename;
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
+                downloadFile(pngUrl, filename);
             }
         };
         img.src = svgDataUrl;

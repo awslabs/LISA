@@ -17,8 +17,7 @@
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
-import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, Input, Popover, Modal, FormField, Grid } from '@cloudscape-design/components';
+import { ButtonDropdown, Input, Popover, Modal, FormField, Grid, ExpandableSection } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';

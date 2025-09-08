@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { v4 as uuidv4 } from 'uuid';
 import { LisaChatSession } from '@/components/types';
@@ -23,15 +23,10 @@ import { RagConfig } from '../components/RagOptions';
 import { IModel } from '@/shared/model/model-management.model';
 import { useAppDispatch } from '@/config/store';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
-import ConfigurationContext from '@/shared/configuration.provider';
-import { IConfiguration } from '@/shared/model/configuration.model';
-import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 
 export const useSession = (sessionId: string, getSessionById: any) => {
     const dispatch = useAppDispatch();
     const auth = useAuth();
-    const config: IConfiguration = useContext(ConfigurationContext);
-    const { data: allModels } = useGetAllModelsQuery();
 
     const [session, setSession] = useState<LisaChatSession>({
         history: [],
@@ -90,15 +85,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         }
     }, [sessionId, dispatch, auth.user?.profile.sub, getSessionById]);
 
-    // Set default model if none is selected, default model is configured, and user hasn't interacted with model selection
-    useEffect(() => {
-        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && allModels) {
-            const defaultModel = allModels.find((model) => model.modelId === config.configuration.global.defaultModel);
-            if (defaultModel) {
-                setSelectedModel(defaultModel);
-            }
-        }
-    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, allModels]);
+
 
     // Wrapper function to track user interaction with model selection
     const handleSetSelectedModel = (model: IModel | undefined) => {

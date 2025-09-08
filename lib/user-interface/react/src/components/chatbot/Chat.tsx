@@ -168,6 +168,14 @@ export default function Chat ({ sessionId }) {
         setChatConfiguration
     );
 
+    // Set default model if none is selected and default model is configured
+    useEffect(() => {
+        if (!selectedModel && config?.configuration?.global?.defaultModel && allModels) {
+            const defaultModelId = config.configuration.global.defaultModel;
+            handleModelChange(defaultModelId, selectedModel, setSelectedModel);
+        }
+    }, [selectedModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+
     const { memory, setMemory, metadata } = useMemory(
         session,
         chatConfiguration,

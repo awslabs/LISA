@@ -47,7 +47,7 @@ export type IngestionJobConstructProps = StackProps & BaseProps & {
 };
 
 export class IngestionJobConstruct extends Construct {
-    private getMaxCpus(vpc: Vpc): number {
+    private getMaxCpus (vpc: Vpc): number {
         // Calculate maxvCpus based on available IPs in subnets to prevent IP exhaustion
         // Each task uses 2 vCPUs, so maxvCpus = available_ips * 2 vCPUs per task
         const availableIps = vpc.subnetSelection?.subnets?.reduce((total, subnet) => {

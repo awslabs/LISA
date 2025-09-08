@@ -15,12 +15,13 @@
  */
 
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { SYSTEM_PROMPT } from '@/shared/constants/systemPrompt';
 
 export const MODEL_COMPARISON_CONFIG = {
     MAX_MODELS: 4,
     MIN_MODELS: 2,
     DEFAULT_MAX_TOKENS: 2000,
-    DEFAULT_SYSTEM_MESSAGE: 'You are a helpful AI assistant. Provide clear, concise, and accurate responses.',
+    DEFAULT_SYSTEM_MESSAGE: SYSTEM_PROMPT,
     RETRY_ATTEMPTS: 3,
     TIMEOUT_MS: 30000,
 } as const;

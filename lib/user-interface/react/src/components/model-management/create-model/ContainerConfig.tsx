@@ -70,8 +70,8 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                                 props.setFields({ 'containerConfig.image.type': detail.selectedOption.value });
                             }}
                             options={[
-                                { label: 'Asset', value: EcsSourceType.ASSET },
-                                { label: 'ECR', value: EcsSourceType.ECR },
+                                { label: 'asset', value: EcsSourceType.ASSET, description: 'Base container image used to build model hosting image, e.g. \'vllm/vllm-openai\'' },
+                                { label: 'ecr', value: EcsSourceType.ECR, description: 'Prebuilt ECR image url used when deploying to ECS' },
                             ]}
                         />
                     </FormField>

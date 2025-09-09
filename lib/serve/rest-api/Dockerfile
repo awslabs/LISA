@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=python:3.11
 FROM ${BASE_IMAGE}
 
 # Copy LiteLLM config directly out of the LISA config.yaml file

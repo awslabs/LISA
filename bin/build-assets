@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+
+ROOT=$(pwd)
+
+./bin/build-Lambdas
+./bin/build-images --export

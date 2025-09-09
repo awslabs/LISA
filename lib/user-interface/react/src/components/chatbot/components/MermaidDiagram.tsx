@@ -41,6 +41,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 theme: 'dark',
                 securityLevel: 'loose',
                 fontFamily: 'Arial, sans-serif',
+                suppressErrorRendering: true,
                 fontSize: 14,
                 flowchart: {
                     useMaxWidth: true,

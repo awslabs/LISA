@@ -780,7 +780,7 @@ export default function Chat ({ sessionId }) {
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
                                         </Box>
                                     )
-                                        : !selectedModel ? (<div></div>)
+                                        : !selectedModel || !enabledServers || enabledServers.length === 0 ? (<div></div>)
                                             : (<Box>
                                                 <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
                                             </Box>)}

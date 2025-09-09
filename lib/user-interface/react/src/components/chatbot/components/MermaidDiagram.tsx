@@ -58,26 +58,6 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         }
     }, []);
 
-    // Basic validation to check if mermaid syntax appears complete
-    const isValidMermaidSyntax = useCallback((chartContent: string) => {
-        const trimmed = chartContent.trim();
-        if (!trimmed) return false;
-
-        // Check for common mermaid diagram types and basic structure
-        const diagramTypes = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'];
-        const hasValidStart = diagramTypes.some((type) => trimmed.toLowerCase().startsWith(type.toLowerCase()));
-
-        // Basic check: should have at least some content after the diagram type
-        const lines = trimmed.split('\n').filter((line) => line.trim());
-        const hasContent = lines.length > 1;
-
-        // Check for incomplete syntax patterns that commonly occur during streaming
-        const hasIncompleteArrow = /--[^>-]*$/.test(trimmed); // Incomplete arrow like "--"
-        const hasIncompleteNode = /\[[^\]]*$/.test(trimmed); // Incomplete node like "[text
-        const hasIncompleteConnection = /\([^)]*$/.test(trimmed); // Incomplete connection like "(text
-
-        return hasValidStart && hasContent && !hasIncompleteArrow && !hasIncompleteNode && !hasIncompleteConnection;
-    }, []);
 
     // Render the diagram once
     useEffect(() => {
@@ -94,7 +74,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
             }
 
             // Don't render during streaming or if syntax appears incomplete
-            if (isStreaming || !isValidMermaidSyntax(chart)) {
+            if (isStreaming) {
                 setIsLoading(true);
                 return;
             }
@@ -116,7 +96,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         };
 
         renderDiagram();
-    }, [chart, id, svg, isStreaming, isValidMermaidSyntax]);
+    }, [chart, id, svg, isStreaming]);
 
     const copyToClipboard = useCallback(async (content: string) => {
         try {

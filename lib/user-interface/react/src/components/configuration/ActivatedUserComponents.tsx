@@ -20,12 +20,12 @@ import { SetFieldsFunction } from '../../shared/validation';
 
 const ragOptions = {
     uploadRagDocs: 'Allow document upload from Chat',
-    showRagLibrary: 'Show Document Library',
     editNumOfRagDocument: 'Edit number of referenced documents',
 };
 
 const libraryOptions = {
     modelLibrary: 'Show Model Library',
+    showRagLibrary: 'Show Document Library',
     showPromptTemplateLibrary: 'Show Prompt Template Library'
 };
 
@@ -41,7 +41,6 @@ const advancedOptions = {
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
-    showPromptTemplateLibrary: 'Show Prompt Template Library',
     enableModelComparisonUtility: 'Enable Model Comparison Utility'
 };
 

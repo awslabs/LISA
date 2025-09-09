@@ -220,11 +220,15 @@ export class LisaRagConstruct extends Construct {
         const ragLambdaLayer = new Layer(scope, 'RagLayer', {
             config: config,
             path: RAG_LAYER_PATH,
-            description: 'Lambad dependencies for RAG API',
+            description: 'Lambda dependencies for RAG API',
             architecture: ARCHITECTURE,
             autoUpgrade: true,
             assetPath: config.lambdaLayerAssets?.ragLayerPath,
+            afterBundle: (inputDir: string, outputDir: string) => [
+                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/TIKTOKEN_CACHE/`
+            ],
         });
+
         new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'RagLayer']), {
             parameterName: `${config.deploymentPrefix}/layerVersion/rag`,
             stringValue: ragLambdaLayer.layer.layerVersionArn

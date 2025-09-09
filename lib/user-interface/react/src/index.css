@@ -1,2 +1,6 @@
 @tailwind components;
 @tailwind utilities;
+
+div :first-child {
+    margin-top: 0;
+}

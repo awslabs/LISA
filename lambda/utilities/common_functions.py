@@ -21,12 +21,11 @@ import os
 import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
-from functools import cache, wraps
+from functools import cache
 from typing import Any, Callable, cast, Dict, List, TypeVar, Union
 
 import boto3
 from botocore.config import Config
-from utilities.exceptions import HTTPException
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -363,26 +362,6 @@ def get_username(event: dict) -> str:
     """Get the username from the event."""
     username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
     return username
-
-
-def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    admin_group = os.environ.get("ADMIN_GROUP", "")
-    groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
-
-
-def admin_only(func: Callable) -> Callable:
-    """Annotation to wrap is_admin"""
-
-    @wraps(func)
-    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
-        if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
-        return func(event, context, *args, **kwargs)
-
-    return wrapper
 
 
 def get_session_id(event: dict) -> str:

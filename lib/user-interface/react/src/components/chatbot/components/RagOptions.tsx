@@ -15,7 +15,7 @@
 */
 
 import { Autosuggest, Grid, SpaceBetween } from '@cloudscape-design/components';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { useListRagRepositoriesQuery } from '@/shared/reducers/rag.reducer';
@@ -35,64 +35,109 @@ type RagControlProps = {
 
 export default function RagControls ({isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
     const { data: repositories, isFetching: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {refetchOnMountOrArgChange: true});
-    const [selectedEmbeddingOption, setSelectedEmbeddingOption] = useState<string>(undefined);
-    const [selectedRepositoryOption, setSelectedRepositoryOption] = useState<string>(undefined);
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
             data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
         })});
+
+    const [userHasSelectedModel, setUserHasSelectedModel] = useState<boolean>(false);
+
+    const lastRepositoryIdRef = useRef<string>(undefined);
+
+    const selectedRepositoryOption = ragConfig?.repositoryId ?? '';
+    const selectedEmbeddingOption = ragConfig?.embeddingModel?.modelId ?? '';
+
     const embeddingOptions = useMemo(() => {
-        return allModels?.map((model) => ({value: model.modelId})) || [];
-    }, [allModels]);
+        if (!allModels || !selectedRepositoryOption) return [];
+
+        const repository = repositories?.find((repo) => repo.repositoryId === selectedRepositoryOption);
+        const defaultModelId = repository?.embeddingModelId;
+
+        return allModels.map((model) => ({
+            value: model.modelId,
+            label: model.modelId + (model.modelId === defaultModelId ? ' (default)' : '')
+        }));
+    }, [allModels, repositories, selectedRepositoryOption]);
 
     useEffect(() => {
         setUseRag(!!selectedEmbeddingOption && !!selectedRepositoryOption);
-    // setUseRag is never going to change as it's just a setState function
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedRepositoryOption, selectedEmbeddingOption]);
+    }, [selectedRepositoryOption, selectedEmbeddingOption, setUseRag]);
 
-    // Sync local state with external ragConfig changes and handle defaults
+    // Effect for handling repository changes and auto-selection
     useEffect(() => {
-        // Sync repository selection
-        if (ragConfig?.repositoryId !== selectedRepositoryOption) {
-            setSelectedRepositoryOption(ragConfig?.repositoryId ?? undefined);
+        const currentRepositoryId = ragConfig?.repositoryId;
+        const repositoryHasChanged = currentRepositoryId !== lastRepositoryIdRef.current;
+
+        // Update tracking and reset user selection flag when repository changes
+        if (repositoryHasChanged) {
+            lastRepositoryIdRef.current = currentRepositoryId;
+            setUserHasSelectedModel(false);
         }
 
-        // Sync embedding model selection
-        if (ragConfig?.embeddingModel?.modelId !== selectedEmbeddingOption) {
-            setSelectedEmbeddingOption(ragConfig?.embeddingModel?.modelId ?? undefined);
-        }
+        // Auto-select default model when repository changes or no model is set
+        if (currentRepositoryId && repositories && allModels) {
+            const repository = repositories.find((repo) => repo.repositoryId === currentRepositoryId);
 
-        // Handle default embedding model when repository changes
-        if (ragConfig?.repositoryId && !ragConfig?.embeddingModel) {
-            const repository = repositories?.find((repo) => repo.repositoryId === ragConfig.repositoryId);
             if (repository?.embeddingModelId) {
-                const model = allModels?.find((model) => model.modelId === repository.embeddingModelId);
-                if (model) {
-                    setRagConfig((config) => ({
-                        ...config,
-                        embeddingModel: model,
-                    }));
+                const defaultModel = allModels.find((model) => model.modelId === repository.embeddingModelId);
+
+                if (defaultModel) {
+                    const shouldAutoSwitch = repositoryHasChanged ||
+                        (!ragConfig?.embeddingModel && !userHasSelectedModel);
+
+                    if (shouldAutoSwitch) {
+                        setRagConfig((config) => ({
+                            ...config,
+                            embeddingModel: defaultModel,
+                        }));
+                    }
                 }
             }
         }
+    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, repositories, allModels, userHasSelectedModel, setRagConfig]);
 
-        // Handle switching to repository with different default embedding model
-        if (ragConfig?.repositoryId) {
-            const repository = repositories?.find((repo) => repo.repositoryId === ragConfig.repositoryId);
-            if (repository?.embeddingModelId) {
-                const defaultModel = allModels?.find((model) => model.modelId === repository.embeddingModelId);
-                if (defaultModel && (!ragConfig?.embeddingModel || ragConfig.embeddingModel.modelId !== defaultModel.modelId)) {
-                    // Auto-switch to the repository's default embedding model
-                    setRagConfig((config) => ({
-                        ...config,
-                        embeddingModel: defaultModel,
-                    }));
-                }
-            }
+    const handleRepositoryChange = ({ detail }) => {
+        const newRepositoryId = detail.value;
+        setUserHasSelectedModel(false); // Reset when repository changes
+
+        if (newRepositoryId) {
+            const repository = repositories?.find((repo) => repo.repositoryId === newRepositoryId);
+            setRagConfig((config) => ({
+                ...config,
+                repositoryId: newRepositoryId,
+                repositoryType: repository?.type || 'unknown',
+                embeddingModel: undefined, // Clear current model so useEffect can set default
+            }));
+        } else {
+            setRagConfig((config) => ({
+                ...config,
+                repositoryId: undefined,
+                repositoryType: undefined,
+                embeddingModel: undefined,
+            }));
         }
-    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, repositories, allModels, selectedEmbeddingOption, selectedRepositoryOption, setRagConfig]);
+    };
+
+    const handleModelChange = ({ detail }) => {
+        const newModelId = detail.value;
+        setUserHasSelectedModel(true); // Mark that user has made an explicit choice
+
+        if (newModelId) {
+            const model = allModels.find((model) => model.modelId === newModelId);
+            if (model) {
+                setRagConfig((config) => ({
+                    ...config,
+                    embeddingModel: model,
+                }));
+            }
+        } else {
+            setRagConfig((config) => ({
+                ...config,
+                embeddingModel: undefined,
+            }));
+        }
+    };
 
     return (
         <SpaceBetween size='l' direction='vertical'>
@@ -109,30 +154,13 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                     placeholder='Select a RAG Repository'
                     empty={<div className='text-gray-500'>No repositories available.</div>}
                     filteringType='auto'
-                    value={selectedRepositoryOption ?? ''}
+                    value={selectedRepositoryOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}
-                    onChange={({ detail }) => {
-                        const newRepositoryId = detail.value;
-                        setSelectedRepositoryOption(newRepositoryId);
-
-                        if (newRepositoryId) {
-                            const repository = repositories?.find((repo) => repo.repositoryId === newRepositoryId);
-                            setRagConfig((config) => ({
-                                ...config,
-                                repositoryId: newRepositoryId,
-                                repositoryType: repository?.type || 'unknown',
-                            }));
-                        } else {
-                            // Clear repository selection
-                            setRagConfig((config) => ({
-                                ...config,
-                                repositoryId: undefined,
-                                repositoryType: undefined,
-                                embeddingModel: undefined,
-                            }));
-                        }
-                    }}
-                    options={repositories?.map((repository) => ({value: repository.repositoryId, label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId})) || []}
+                    onChange={handleRepositoryChange}
+                    options={repositories?.map((repository) => ({
+                        value: repository.repositoryId,
+                        label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId
+                    })) || []}
                 />
                 <Autosuggest
                     disabled={!selectedRepositoryOption || isRunning}
@@ -141,28 +169,9 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                     placeholder='Select an embedding model'
                     empty={<div className='text-gray-500'>No embedding models available.</div>}
                     filteringType='auto'
-                    value={selectedEmbeddingOption ?? ''}
+                    value={selectedEmbeddingOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}
-                    onChange={({ detail }) => {
-                        const newModelId = detail.value;
-                        setSelectedEmbeddingOption(newModelId);
-
-                        if (newModelId) {
-                            const model = allModels.find((model) => model.modelId === newModelId);
-                            if (model) {
-                                setRagConfig((config) => ({
-                                    ...config,
-                                    embeddingModel: model,
-                                }));
-                            }
-                        } else {
-                            // Clear embedding model selection
-                            setRagConfig((config) => ({
-                                ...config,
-                                embeddingModel: undefined,
-                            }));
-                        }
-                    }}
+                    onChange={handleModelChange}
                     options={embeddingOptions}
                 />
             </Grid>

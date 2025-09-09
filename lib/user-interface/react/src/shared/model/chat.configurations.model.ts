@@ -16,6 +16,7 @@
 import { LisaChatMessage } from '../../components/types';
 import { IModel } from '@/shared/model/model-management.model';
 import { RagConfig } from '@/components/chatbot/components/RagOptions';
+import { SYSTEM_PROMPT } from '@/shared/constants/systemPrompt';
 
 export type IChatConfiguration = {
     promptConfiguration: IPromptConfiguration,
@@ -59,7 +60,7 @@ export type GenerateLLMRequestParams = {
     message: LisaChatMessage[]
 };
 
-export const DEFAULT_PROMPT_TEMPLATE = 'The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.';
+export const DEFAULT_PROMPT_TEMPLATE = SYSTEM_PROMPT;
 
 export const baseConfig: IChatConfiguration = {
     promptConfiguration: {
@@ -79,7 +80,7 @@ export const baseConfig: IChatConfiguration = {
             presence_penalty: null,
             temperature: null,
             seed: null,
-            stop: ['\nUser:', '\n User:', 'User:', 'User'],
+            stop: [],
         },
         imageGenerationArgs: {
             size: '1024x1024',

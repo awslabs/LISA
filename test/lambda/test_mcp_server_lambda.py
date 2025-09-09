@@ -81,8 +81,8 @@ mock_create_env = MagicMock()
 # Setup patches without .start() to avoid global interference
 patches = [
     patch.dict("sys.modules", {"create_env_variables": mock_create_env}),
-    patch("utilities.common_functions.get_username", mock_common.get_username),
-    patch("utilities.common_functions.is_admin", mock_common.is_admin),
+    patch("utilities.auth.get_username", mock_common.get_username),
+    patch("utilities.auth.is_admin", mock_common.is_admin),
     patch("utilities.common_functions.retry_config", retry_config),
     patch("utilities.common_functions.api_wrapper", mock_api_wrapper),
 ]
@@ -103,8 +103,8 @@ for p in patches:
 def setup_mcp_mocks():
     """Setup mocks for MCP server tests with proper cleanup."""
     patches = [
-        patch("utilities.common_functions.get_username", mock_common.get_username),
-        patch("utilities.common_functions.is_admin", mock_common.is_admin),
+        patch("utilities.auth.get_username", mock_common.get_username),
+        patch("utilities.auth.is_admin", mock_common.is_admin),
         patch("utilities.common_functions.retry_config", retry_config),
         patch("utilities.common_functions.api_wrapper", mock_api_wrapper),
     ]

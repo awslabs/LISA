@@ -23,13 +23,6 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List
 
-BEDROCK_KB_TYPE = "bedrock_knowledge_base"
-
-
-def is_bedrock_kb_repository(repository: Dict[str, Any]) -> Any:
-    """Return True if the repository is a Bedrock Knowledge Base."""
-    return bool(repository.get("type", "") == BEDROCK_KB_TYPE)
-
 
 def retrieve_documents(
     bedrock_runtime_client: Any,

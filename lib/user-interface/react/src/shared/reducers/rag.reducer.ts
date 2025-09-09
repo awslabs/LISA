@@ -16,7 +16,7 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
-import { Model, RagDocument } from '../../components/types';
+import { Model, PaginatedDocumentResponse } from '../../components/types';
 import { Document } from '@langchain/core/documents';
 import { RagRepositoryConfig } from '#root/lib/schema';
 import { RagStatus } from '../model/rag.model';
@@ -46,7 +46,12 @@ type RelevantDocRequest = {
 type ListRagDocumentRequest = {
     repositoryId: string,
     collectionId?: string,
-    lastEvaluatedKey?: string
+    lastEvaluatedKey?: {
+        pk: string;
+        document_id: string;
+        repository_id: string;
+    } | null,
+    pageSize?: number
 };
 
 type DeleteRagDocumentRequest = {
@@ -137,12 +142,29 @@ export const ragApi = createApi({
                 };
             },
         }),
-        listRagDocuments: builder.query<RagDocument[], ListRagDocumentRequest>({
-            query: (request) => ({
-                url: `/repository/${request.repositoryId}/document`,
-                params: { collectionId: request.collectionId, lastEvaluatedKey: request.lastEvaluatedKey },
-            }),
-            transformResponse: (response) => response.documents,
+        listRagDocuments: builder.query<PaginatedDocumentResponse, ListRagDocumentRequest>({
+            query: (request) => {
+                const params: any = { collectionId: request.collectionId };
+
+                // Add pageSize parameter if provided
+                if (request.pageSize) {
+                    params.pageSize = request.pageSize;
+                }
+
+                // Construct lastEvaluatedKey parameters in the format the API expects
+                // Note: Using dot notation instead of brackets to avoid API Gateway limitations
+                if (request.lastEvaluatedKey) {
+                    params['lastEvaluatedKeyPk'] = request.lastEvaluatedKey.pk;
+                    params['lastEvaluatedKeyDocumentId'] = request.lastEvaluatedKey.document_id;
+                    params['lastEvaluatedKeyRepositoryId'] = request.lastEvaluatedKey.repository_id;
+                }
+
+                return {
+                    url: `/repository/${request.repositoryId}/document`,
+                    params,
+                };
+            },
+            transformResponse: (response) => response,
             providesTags: ['docs'],
         }),
         deleteRagDocuments: builder.mutation<undefined, DeleteRagDocumentRequest>({

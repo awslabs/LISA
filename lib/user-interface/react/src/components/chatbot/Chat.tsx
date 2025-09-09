@@ -24,7 +24,6 @@ import {
     ButtonGroup, Checkbox,
     Grid,
     PromptInput,
-    TextContent,
     Icon,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
@@ -34,7 +33,8 @@ import {
     LisaAttachImageResponse,
     LisaChatMessage,
     LisaChatSession,
-    MessageTypes
+    MessageTypes,
+    ModelFeatures
 } from '../types';
 import RagControls from './components/RagOptions';
 import { ContextUploadModal, RagUploadModal } from './components/FileUploadModals';
@@ -117,6 +117,8 @@ export default function Chat ({ sessionId }) {
     const [useRag, setUseRag] = useState(false);
     const [openAiTools, setOpenAiTools] = useState(undefined);
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
+    const [modelFilterValue, setModelFilterValue] = useState('');
+    const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
@@ -153,7 +155,6 @@ export default function Chat ({ sessionId }) {
     const {
         session,
         setSession,
-        internalSessionId,
         setInternalSessionId,
         loadingSession,
         chatConfiguration,
@@ -169,6 +170,26 @@ export default function Chat ({ sessionId }) {
         chatConfiguration,
         setChatConfiguration
     );
+
+    // Set default model if none is selected, default model is configured, and user hasn't interacted
+    useEffect(() => {
+        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && allModels) {
+            const defaultModelId = config.configuration.global.defaultModel;
+            handleModelChange(defaultModelId, selectedModel, setSelectedModel);
+        }
+    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+
+    // Wrapper for handleModelChange that tracks user interaction
+    const handleUserModelChange = (value: string) => {
+        setHasUserInteractedWithModel(true);
+        setModelFilterValue(value);
+        handleModelChange(value, selectedModel, setSelectedModel);
+    };
+
+    // Update filter value when selected model changes
+    useEffect(() => {
+        setModelFilterValue(selectedModel?.modelId ?? '');
+    }, [selectedModel]);
 
     const { memory, setMemory, metadata } = useMemory(
         session,
@@ -425,10 +446,10 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (bottomRef) {
-            bottomRef?.current.scrollIntoView({ behavior: 'smooth' });
+        if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [session.history.length]);
+    }, [session.history.length, isStreaming, isRunning, generateResponse]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -593,6 +614,9 @@ export default function Chat ({ sessionId }) {
                 visible={modals.sessionConfiguration}
                 setVisible={(show) => show ? openModal('sessionConfiguration') : closeModal('sessionConfiguration')}
                 systemConfig={config}
+                session={session}
+                updateSession={updateSession}
+                ragConfig={ragConfig}
             />
             <RagUploadModal
                 ragConfig={ragConfig}
@@ -646,7 +670,7 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-25rem)] bottom-8'>
+            <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {session.history.map((message, idx) => (
                         <Message
@@ -706,9 +730,9 @@ export default function Chat ({ sessionId }) {
                                         placeholder='Select a model'
                                         empty={<div className='text-gray-500'>No models available.</div>}
                                         filteringType='auto'
-                                        value={selectedModel?.modelId ?? ''}
+                                        value={modelFilterValue}
                                         enteredTextLabel={(text) => `Use: "${text}"`}
-                                        onChange={({ detail: { value } }) => handleModelChange(value, selectedModel, setSelectedModel)}
+                                        onChange={({ detail: { value } }) => handleUserModelChange(value)}
                                         options={modelsOptions}
                                         ref={modelSelectRef}
                                     />
@@ -725,7 +749,7 @@ export default function Chat ({ sessionId }) {
                             <PromptInput
                                 value={userPrompt}
                                 actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
-                                actionButtonIconName={shouldShowStopButton ? 'status-stopped' : 'send'}
+                                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
                                 maxRows={4}
                                 minRows={2}
                                 spellcheck={true}
@@ -750,19 +774,16 @@ export default function Chat ({ sessionId }) {
                                 }
                             />
                             <SpaceBetween direction='vertical' size='xs'>
-                                <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
-                                    <Box float='left' variant='div'>
-                                        <TextContent>
-                                            <div style={{ paddingBottom: 8 }} className='text-xs text-gray-500'>
-                                                Session ID: {internalSessionId}
-                                            </div>
-                                        </TextContent>
-                                    </Box>
-                                    {enabledServers && enabledServers.length > 0 ? (
+                                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                                    {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (
                                         <Box>
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
                                         </Box>
-                                    ) : (<div></div>)}
+                                    )
+                                        : !selectedModel || !enabledServers || enabledServers.length === 0 ? (<div></div>)
+                                            : (<Box>
+                                                <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
+                                            </Box>)}
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>
                                             {isConnected ? 'Connected' : 'Disconnected'}

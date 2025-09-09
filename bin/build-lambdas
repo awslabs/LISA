@@ -13,11 +13,11 @@ build_layer() {
   local source_path=$2
   local pre_build_cmd=$3
   echo "Building Lambda Layer $package_name from $source_path..."
-  
+
   if [ -n "$pre_build_cmd" ]; then
     eval "$pre_build_cmd"
   fi
-  
+
   cd $source_path
   $ROOT/bin/package-lambda-layer --src . --output "$package_name.zip" --pypi $PYPI_URL --layer
   mv ./build/"$package_name.zip" $OUTPUT_DIR/

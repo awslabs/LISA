@@ -3,5 +3,5 @@ set -e
 
 ROOT=$(pwd)
 
-./bin/build-Lambdas
+./bin/build-lambdas
 ./bin/build-images --export

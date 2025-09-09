@@ -195,77 +195,144 @@ make bootstrap
 ```
 ## ADC Region Deployment Tips
 
-If you are deploying LISA into an ADC region with limited access to dependencies, we recommend that you build LISA in a
-commercial region first, and then bring it up into your ADC region to deploy. First, do the npm and pip installs on a
-computer with access to the dependencies. Then bundle it up with the libraries included and move into the ADC region.
-Some properties will need to be set in the deployment file pointing to the built artifacts. From there the deployment
-process is the same.
+Amazon Dedicated Cloud (ADC) regions are isolated AWS environments designed for government customers' most sensitive workloads. These regions have restricted internet access and limited external dependencies, requiring special deployment considerations for LISA.
 
-### Using pre-built resources
+There are two deployment approaches for ADC regions:
 
-A default configuration will build the necessary containers, lambda layers, and production optimized
-web application at build time. In the event that you would like to use pre-built resources due to
-network connectivity reasons or other concerns with the environment where you'll be deploying LISA
-you can do so.
+1. **Pre-built Resources (Recommended)**: Build all components in a commercial region, then transfer to ADC
+2. **In-Region Building**: Configure LISA to use ADC-accessible repositories for building components
 
-- For ECS containers (Models, APIs, etc) you can modify the `containerConfig` block of
-  the corresponding entry in `config.yaml`. For container images you can provide a path to a directory
-  from which a docker container will be built (default), a path to a tarball, an ECR repository arn and
-  optional tag, or a public registry path.
-    - We provide immediate support for HuggingFace TGI and TEI containers and for vLLM containers. The `example_config.yaml`
-      file provides examples for TGI and TEI, and the only difference for using vLLM is to change the
-      `inferenceContainer`, `baseImage`, and `path` options, as indicated in the snippet below. All other options can
-      remain the same as the model definition examples we have for the TGI or TEI models. vLLM can also support embedding
-      models in this way, so all you need to do is refer to the embedding model artifacts and remove the `streaming` field
-      to deploy the embedding model.
-    - vLLM has support for the OpenAI Embeddings API, but model support for it is limited because the feature is new. Currently,
-      the only supported embedding model with vLLM is [intfloat/e5-mistral-7b-instruct](https://huggingface.co/intfloat/e5-mistral-7b-instruct),
-      but this list is expected to grow over time as vLLM updates.
-      ```yaml
-      ecsModels:
-        - modelName: your-model-name
-          inferenceContainer: tgi
-          baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
-      ```
-- If you are deploying the LISA Chat User Interface you can optionally specify the path to the pre-built
-  website assets using the top level `webAppAssetsPath` parameter in `config.yaml`. Specifying this path
-  (typically `lib/user-interface/react/dist`) will avoid using a container to build and bundle the assets
-  at CDK build time.
-- For the lambda layers you can specify the path to a local zip archive of the layer code by including
-  the optional `lambdaLayerAssets` block in `config.yaml` similar to the following:
+### Approach 1: Pre-built Resources (Recommended)
 
-```
+This approach builds all necessary components in a commercial region with full internet access, then transfers them to the ADC region.
+
+#### Step 1: Build Components in Commercial Region
+
+1. Set up LISA in a commercial AWS region with internet access
+2. Build all components:
+   ```bash
+   make buildArchive
+   ```
+   This generates:
+   - Lambda function zip files in `./dist/layers/*.zip`
+   - Docker images exported as `./dist/images/*.tar` files
+
+#### Step 2: Transfer to ADC Region
+
+1. Upload Docker images to ECR in your ADC region:
+   ```bash
+   # Load and tag images
+   docker load -i lisa-rest-api.tar
+   docker tag lisa-rest-api:latest <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com/lisa-rest-api:latest
+
+   # Push to ADC ECR
+   aws ecr get-login-password --region <adc-region> | docker login --username AWS --password-stdin <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com
+   docker push <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com/lisa-rest-api:latest
+   ```
+   You'll want to repeat this for lisa-batch-ingestion, as well as any of the LISA base model hosting containers (lisa-vllm, lisa-tgi, lisa-tei)
+
+2. Transfer built artifacts to ADC environment
+
+#### Step 3: Configure LISA for Pre-built Resources
+
+Update your `config-custom.yaml` in the ADC region:
+
+```yaml
+# Lambda layers from pre-built archives
 lambdaLayerAssets:
-  authorizerLayerPath: lib/core/layers/authorizer_layer.zip
-  commonLayerPath: lib/core/layers/common_layer.zip
-  fastapiLayerPath: /path/to/fastapi_layer.zip
-  sdkLayerPath: lib/rag/layers/sdk_layer.zip
+  authorizerLayerPath: './dist/layers/AimlAdcLisaAuthLayer.zip'
+  commonLayerPath: './dist/layers/AimlAdcLisaCommonLayer.zip'
+  fastapiLayerPath: './dist/layers/AimlAdcLisaFastApiLayer.zip'
+  ragLayerPath: './dist/layers/AimlAdcLisaRag.zip'
+  sdkLayerPath: './dist/layers/AimlAdcLisaSdk.zip'
+
+# Lambda functions
+lambdaPath: './dist/layers/AimlAdcLisaLambda.zip'
+
+# Pre-built web assets
+webAppAssetsPath: './dist/lisa-web'
+documentsPath: './dist/docs'
+ecsModelDeployerPath: './dist/ecs_model_deployer'
+vectorStoreDeployerPath: './dist/vector_store_deployer'
+
+# Container images from ECR
+batchIngestionConfig:
+  type: external
+  code: <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com/lisa-batch-ingestion:latest
+
+restApiConfig:
+  imageConfig:
+    type: external
+    code: <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com/lisa-rest-api:latest
 ```
 
-### Deploying in ADC region
 
-Now that we have everything setup we are ready to deploy.
+
+### Approach 2: In-Region Building
+
+This approach configures LISA to build components using repositories accessible from within the ADC region.
+
+#### Prerequisites
+- ADC-accessible package repositories (PyPI mirror, npm registry, container registry)
+- ADC-accessible container registries
+- Network connectivity to required build dependencies
+
+#### Configuration
+
+Update your `config-custom.yaml` to point to ADC-accessible repositories:
+
+```yaml
+# Configure pip to use ADC-accessible PyPI mirror
+pipConfig:
+  indexUrl: https://your-adc-pypi-mirror.com/simple
+  trustedHost: your-adc-pypi-mirror.com
+
+# Configure npm to use ADC-accessible registry
+npmConfig:
+  registry: https://your-adc-npm-registry.com
+
+# Use ADC-accessible base images for LISA-Serve and Batch Ingestion
+baseImage: <adc-registry>/python:3.11
+```
+You'll also want any model hosting base containers available, e.g. vllm/vllm-openai:latest and ghcr.io/huggingface/text-embeddings-inference:latest
+
+To utilize the prebuilt hosting model containers with self-hosted models, select `type: ecr` in the Model Deployment > Container Configs.
+
+### Deployment Steps
+
+Once your configuration is complete:
+
+1. Bootstrap CDK (if not already done):
+   ```bash
+   make bootstrap
+   ```
+
+2. Deploy LISA:
+   ```bash
+   make deploy
+   ```
+
+3. Deploy specific stacks if needed:
+   ```bash
+   make deploy STACK=LisaServe
+   ```
+
+4. List available stacks:
+   ```bash
+   make listStacks
+   ```
+
+### Testing Your Deployment
+
+After deployment completes (10-15 minutes), test with:
 
 ```bash
-make deploy
+pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.crt>
 ```
 
-By default, all stacks will be deployed but a particular stack can be deployed by providing the `STACK` argument to the `deploy` target.
+### Troubleshooting ADC Deployments
 
-```bash
-make deploy STACK=LisaServe
-```
-
-Available stacks can be listed by running:
-
-```bash
-make listStacks
-```
-
-After the `deploy` command is run, you should see many docker build outputs and eventually a CDK progress bar. The deployment should take about 10-15 minutes and will produce a single cloud formation output for the websocket URL.
-
-You can test the deployment with the integration test:
-
-```bash
-pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.crt> | false
-```
+- **Build failures**: Ensure all dependencies are accessible from ADC region
+- **Container pull errors**: Verify ECR repositories exist and have correct permissions
+- **Lambda deployment issues**: Check that lambda zip files are properly formatted and accessible
+- **Network connectivity**: Confirm VPC configuration allows required outbound connections

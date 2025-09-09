@@ -24,7 +24,7 @@ for arg in "$@"; do
 done
 
 # Default LISA_VERSION if not set
-LISA_VERSION=${LISA_VERSION:-"latest"}
+LISA_VERSION=${LISA_VERSION:-$(cat ./VERSION 2>/dev/null || echo "latest")}
 
 # ECR configuration
 ACCOUNT=${AWS_ACCOUNT:-""}
@@ -111,8 +111,12 @@ build_all_images() {
         "BASE_IMAGE=python:3.11"
 
     # lisa-batch-ingestion
-    build_image "Dockerfile" "lisa-batch-ingestion" "$LISA_VERSION" "./lib/rag/ingestion/ingestion-image" \
-        "NODE_ENV=production"
+    RAG_DIR="./lib/rag/ingestion/ingestion-image"
+    BUILD_DIR="${RAG_DIR}/build"
+    mkdir -p "$BUILD_DIR"
+    rsync -av --exclude='__pycache__' ./lambda/ "$BUILD_DIR/"
+    rsync -av --exclude='__pycache__' ./lisa-sdk/lisapy/ "$BUILD_DIR/lisapy/"
+    build_image "Dockerfile" "lisa-batch-ingestion" "$LISA_VERSION" "$RAG_DIR" "NODE_ENV=production"
 
     # lisa-tei
     build_image "Dockerfile" "lisa-tei" "latest" "./lib/serve/ecs-model/embedding/tei" \

@@ -269,6 +269,9 @@ listStacks:
 buildNpmModules:
 	npm run build
 
+buildArchive:
+	BUILD_ASSETS=true npm run build
+
 define print_config
     @printf "\n \
     DEPLOYING $(STACK) STACK APP INFRASTRUCTURE \n \

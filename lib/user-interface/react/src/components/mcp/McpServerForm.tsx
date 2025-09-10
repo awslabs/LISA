@@ -93,13 +93,13 @@ export function McpServerForm (props: McpServerFormProps) {
         validateAll: false
     });
 
-     // handle separate token text validation
-     const [tokenText, setTokenText] = useState('');
-     const tokenTextSchema = z.object({'groups': z.string().trim().max(0, {message: 'You must press return to add a group.'})});
-     const tokenTextResult = tokenTextSchema.safeParse({'groups': tokenText});
-     const tokenTextErrors = tokenTextResult.success ? undefined : issuesToErrors(tokenTextResult?.error?.issues || [], state.touched);
+    // handle separate token text validation
+    const [tokenText, setTokenText] = useState('');
+    const tokenTextSchema = z.object({'groups': z.string().trim().max(0, {message: 'You must press return to add a group.'})});
+    const tokenTextResult = tokenTextSchema.safeParse({'groups': tokenText});
+    const tokenTextErrors = tokenTextResult.success ? undefined : issuesToErrors(tokenTextResult?.error?.issues || [], state.touched);
 
-     // memoize conversion to tokens
+    // memoize conversion to tokens
     const tokens = useMemo(() => {
         return state.form.groups
             .filter((group) => group !== 'lisa:public')
@@ -302,34 +302,34 @@ export function McpServerForm (props: McpServerFormProps) {
                             </FormField>
                         </Grid>
                         <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Templates are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
-                        <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
-                            setTokenText(detail.value);
-                            if (detail.value.length === 0) {
-                                touchFields(['groups'], ModifyMethod.Unset);
-                            }
-                        }} onKeyDown={({detail}) => {
-                            if (detail.keyCode === KeyCode.enter) {
-                                setFields({groups: state.form.groups?.concat(`group:${tokenText}`) ?? [`group:${tokenText}`]});
-                                touchFields(['groups'], ModifyMethod.Unset);
-                                setTokenText('');
-                            }
-                        }}
-                        onBlur={() => {
-                            if (tokenText.length === 0) {
-                                touchFields(['groups'], ModifyMethod.Unset);
-                            } else {
-                                touchFields(['groups']);
-                            }
-                        }}
+                            <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
+                                setTokenText(detail.value);
+                                if (detail.value.length === 0) {
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                }
+                            }} onKeyDown={({detail}) => {
+                                if (detail.keyCode === KeyCode.enter) {
+                                    setFields({groups: state.form.groups?.concat(`group:${tokenText}`) ?? [`group:${tokenText}`]});
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                    setTokenText('');
+                                }
+                            }}
+                            onBlur={() => {
+                                if (tokenText.length === 0) {
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                } else {
+                                    touchFields(['groups']);
+                                }
+                            }}
 
-                        placeholder='Enter group name'
-                        disabled={disabled || sharePublic} />
-                        <TokenGroup items={tokens} onDismiss={({detail}) => {
-                        const newTokens = [...state.form.groups];
-                        newTokens.splice(detail.itemIndex, 1);
-                        setFields({groups: newTokens});
-                    }} readOnly={disabled || sharePublic} />
-                    </FormField>
+                            placeholder='Enter group name'
+                            disabled={disabled || sharePublic} />
+                            <TokenGroup items={tokens} onDismiss={({detail}) => {
+                                const newTokens = [...state.form.groups];
+                                newTokens.splice(detail.itemIndex, 1);
+                                setFields({groups: newTokens});
+                            }} readOnly={disabled || sharePublic} />
+                        </FormField>
                     </Box>}
                     <hr />
                     <Container

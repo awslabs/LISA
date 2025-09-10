@@ -17,12 +17,13 @@ import json
 import logging
 import os
 from decimal import Decimal
+from functools import reduce
 from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
-from utilities.common_functions import api_wrapper, get_item, retry_config, get_groups
+from utilities.common_functions import api_wrapper, get_groups, get_item, retry_config
 
 from .models import McpServerModel, McpServerStatus
 

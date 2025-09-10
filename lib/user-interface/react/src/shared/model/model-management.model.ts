@@ -128,6 +128,7 @@ export type IModelRequest = {
     loadBalancerConfig: ILoadBalancerConfig;
     lisaHostedModel: boolean;
     allowedGroups?: string[];
+    apiKey?: string;
 };
 
 export type ModelFeature = {

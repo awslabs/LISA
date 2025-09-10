@@ -17,12 +17,12 @@ import json
 import logging
 import os
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
-from utilities.common_functions import api_wrapper, get_item, retry_config
+from utilities.common_functions import api_wrapper, get_item, retry_config, get_groups
 
 from .models import McpServerModel, McpServerStatus
 
@@ -36,6 +36,7 @@ table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 def _get_mcp_servers(
     user_id: Optional[str] = None,
     active: Optional[bool] = None,
+    groups: Optional[List] = None,
 ) -> Dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
@@ -46,6 +47,12 @@ def _get_mcp_servers(
         filter_expression = condition if filter_expression is None else filter_expression & condition
     if active:
         condition = Attr("status").eq(McpServerStatus.ACTIVE)
+        filter_expression = condition if filter_expression is None else filter_expression & condition
+    # Filter by user groups if provided
+    if groups is not None:
+        if len(groups) > 0:
+            conditions = [Attr("groups").contains(f"group:{group}") for group in groups]
+            condition = reduce(lambda a, b: a | b, conditions, condition)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     scan_arguments = {
@@ -85,13 +92,18 @@ def get(event: dict, context: dict) -> Any:
 
     # Check if the user is authorized to get the mcp server
     is_owner = item["owner"] == user_id or item["owner"] == "lisa:public"
-    if is_owner or is_admin(event):
+    groups = item.get("groups", [])
+    if is_owner or is_admin(event) or _is_member(get_groups(event), groups):
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
             item["isOwner"] = True
         return item
 
     raise ValueError(f"Not authorized to get {mcp_server_id}.")
+
+
+def _is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
+    return bool(set(user_groups) & set(prompt_groups))
 
 
 @api_wrapper
@@ -103,7 +115,8 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
         logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
         return _get_mcp_servers()
     logger.info(f"Listing mcp servers for user {user_id}")
-    return _get_mcp_servers(user_id=user_id, active=True)
+    groups = get_groups(event)
+    return _get_mcp_servers(user_id=user_id, active=True, groups=groups)
 
 
 @api_wrapper

@@ -282,7 +282,7 @@ export function McpServerForm (props: McpServerFormProps) {
                         )}
                     </FormField>
 
-                    {isUserAdmin && <Box>
+                    {isUserAdmin && <SpaceBetween direction='vertical' size='s'>
                         <Grid gridDefinition={[{colspan: 3}, {colspan: 3}]}>
                             <FormField label='Share with everyone'>
                                 <Toggle checked={sharePublic} onChange={({detail}) => {
@@ -330,7 +330,7 @@ export function McpServerForm (props: McpServerFormProps) {
                                 setFields({groups: newTokens});
                             }} readOnly={disabled || sharePublic} />
                         </FormField>
-                    </Box>}
+                    </SpaceBetween>}
                     <hr />
                     <Container
                         header={

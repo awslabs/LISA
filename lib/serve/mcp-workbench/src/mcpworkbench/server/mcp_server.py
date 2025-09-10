@@ -22,6 +22,8 @@ try:
     from starlette.applications import Starlette
     from starlette.routing import Mount, Route
     from starlette.responses import JSONResponse
+    from starlette.middleware import Middleware
+    from starlette.middleware.cors import CORSMiddleware
     FASTMCP_AVAILABLE = True
 except ImportError:
     # Fallback for development/testing
@@ -141,7 +143,7 @@ class MCPWorkbenchServer:
             return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
 
         # Add the health check route to the app
-        http_app.routes.append(Route("/health", health_check))
+        routes.append(Route("/health", health_check))
         
         return routes
     
@@ -150,11 +152,22 @@ class MCPWorkbenchServer:
         # Create HTTP routes for management
         http_routes = self._create_http_routes()
 
-        mcp_app = self.app.http_app(path="/", transport="streamable-http")
+        mcp_app = self.app.http_app(
+            path="/",
+            transport="streamable-http",
+            stateless_http=True
+        )
+
+        mcp_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=self.config.cors_settings.allow_origins,
+            allow_methods=self.config.cors_settings.allow_methods,
+            allow_headers=self.config.cors_settings.allow_headers,
+        )
         
         # Add MCP mount
         routes = [
-            Mount("/mcp", app=mcp_app),
+            Mount("/v2/mcp", mcp_app),
         ]
         
         # Add HTTP management routes
@@ -258,7 +271,7 @@ class MCPWorkbenchServer:
         # Start server with Starlette app
         logger.info(f"Starting MCP Workbench server on {self.config.server_host}:{self.config.server_port}")
         logger.info("Available endpoints:")
-        logger.info("  - MCP Protocol: /mcp")
+        logger.info("  - MCP Protocol: /v2/mcp")
         
         if self.config.rescan_route_path:
             logger.info(f"  - Rescan Tools: GET {self.config.rescan_route_path}")

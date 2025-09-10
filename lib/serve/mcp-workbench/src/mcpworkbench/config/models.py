@@ -8,7 +8,7 @@ class CORSConfig(BaseModel):
     """CORS configuration settings."""
     
     allow_origins: List[str] = Field(default=["*"], description="Allowed origins for CORS")
-    allow_methods: List[str] = Field(default=["GET", "POST"], description="Allowed HTTP methods")
+    allow_methods: List[str] = Field(default=["GET", "POST", "OPTIONS"], description="Allowed HTTP methods")
     allow_headers: List[str] = Field(default=["*"], description="Allowed headers")
     allow_credentials: bool = Field(default=False, description="Allow credentials in CORS requests")
     expose_headers: List[str] = Field(default=[], description="Headers to expose to the browser")

@@ -160,6 +160,7 @@ export default class McpWorkbenchConstruct extends Construct {
         );
 
         return new s3.Bucket(scope, createCdkId(['LISA', 'MCPWorkbench', config.deploymentName, config.deploymentStage]), {
+            bucketName: [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase(),
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             enforceSSL: true,

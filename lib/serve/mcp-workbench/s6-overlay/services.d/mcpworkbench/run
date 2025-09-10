@@ -44,5 +44,7 @@ echo "[mcpworkbench] Arguments: ${ARGS}"
 # Create tools directory if it doesn't exist
 mkdir -p "${TOOLS_DIR}"
 
+s6-svwait -U /run/service/s3mount
+
 # Start the MCP workbench server
 exec s6-setuidgid root mcpworkbench ${ARGS}

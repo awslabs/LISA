@@ -17,6 +17,7 @@ import { Stack } from 'aws-cdk-lib';
 import { Authorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 import { LisaApiBaseConstruct, LisaApiBaseProps } from './apiBaseConstruct';
+import McpWorkbenchConstruct from '../serve/mcpWorkbenchConstruct';
 
 /**
  * LisaApiBase Stack
@@ -32,7 +33,14 @@ export class LisaApiBaseStack extends Stack {
         super(scope, id, props);
 
         const api = new LisaApiBaseConstruct(this, id + 'Resources', props);
-        api.node.addMetadata('aws:cdk:path', this.node.path);
+        // const workbnech = new McpWorkbenchConstruct(this, id + 'McpWorkbench', {
+        //     ...props,
+        //     authorizer: api.authorizer!,
+        //     restApiId: api.restApiId,
+        //     rootResourceId: api.rootResourceId,
+        //     securityGroups: [props.vpc.securityGroups.ecsModelAlbSg],
+        // });
+
         this.authorizer = api.authorizer;
         this.restApi = api.restApi;
         this.restApiId = api.restApi.restApiId;

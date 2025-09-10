@@ -16,12 +16,13 @@
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
+import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, CapacityDistributionStrategy, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import {
     AmiHardwareType,
+    AsgCapacityProvider,
     Cluster,
     ContainerDefinition,
     ContainerInsights,
@@ -39,6 +40,7 @@ import {
 } from 'aws-cdk-lib/aws-ecs';
 import {
     ApplicationLoadBalancer,
+    ApplicationTargetGroup,
     BaseApplicationListenerProps,
     ListenerCondition,
     SslPolicy,
@@ -48,9 +50,14 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { createCdkId } from '../core/utils';
-import { BaseProps, Ec2Metadata, ECSConfig } from '../schema';
+import { BaseProps, Config, Ec2Metadata, ECSConfig, TaskDefinition } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { CodeFactory } from '../util';
+
+export enum ECSTasks {
+    REST = "REST",
+    MCPWORKBENCH = "MCPWORKBENCH",
+}
 
 /**
  * Properties for the ECSCluster Construct.
@@ -61,7 +68,7 @@ import { CodeFactory } from '../util';
  */
 type ECSClusterProps = {
     identifier: string,
-    ecsConfig: {serveConfig: ECSConfig, workbenchConfig: ECSConfig};
+    ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: Vpc;
 } & BaseProps;
@@ -70,30 +77,27 @@ type ECSClusterProps = {
  * Create an ECS model.
  */
 export class ECSCluster extends Construct {
-    /** ECS Cluster container definition (primary task for backward compatibility) */
-    public readonly container: ContainerDefinition;
-
-    /** IAM role associated with the ECS Cluster task (primary task for backward compatibility) */
-    public readonly taskRole: IRole;
 
     /** Endpoint URL of application load balancer for the cluster. */
     public readonly endpointUrl: string;
 
     /** Map of all container definitions by identifier */
-    public readonly containers: Map<string, ContainerDefinition> = new Map();
+    public readonly containers: Partial<Record<ECSTasks, ContainerDefinition>> = {};
 
     /** Map of all task roles by identifier */
-    public readonly taskRoles: Map<string, IRole> = new Map();
+    public readonly taskRoles: Partial<Record<ECSTasks, IRole>> = {};
 
     /** Map of all services by identifier */
-    public readonly services: Map<string, Ec2Service> = new Map();
+    public readonly services: Partial<Record<ECSTasks, Ec2Service>> = {};
+
+    private readonly targetGroups: Partial<Record<ECSTasks, ApplicationTargetGroup>> = {};
 
     /**
      * Creates a task definition with its associated container and IAM role (base method).
      *
      * @param identifier - The identifier for the task (e.g., 'fastapi', 'workbenchHosting')
      * @param config - The base configuration
-     * @param ecsConfig - The ECS configuration
+     * @param taskDefinition - The ECS configuration
      * @param volumes - Array of volumes to mount
      * @param mountPoints - Array of mount points for the container
      * @param logGroup - CloudWatch log group for container logs
@@ -101,18 +105,19 @@ export class ECSCluster extends Construct {
      * @returns Object containing task definition, container, and task role
      */
     private createTaskDefinition(
-        config: any,
+        taskDefinitionName: string,
+        config: Config,
+        taskDefinition: TaskDefinition,
         ecsConfig: ECSConfig,
         volumes: Volume[],
         mountPoints: MountPoint[],
         logGroup: LogGroup,
-        hostPort: number,
+        // hostPort: number,
         taskRole: IRole,
-        executionRole?: IRole,
-        buildArgs?: Record<string, string>
-    ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition, taskRole: IRole } {
-        const taskDefinition = new Ec2TaskDefinition(this, createCdkId([ecsConfig.identifier, 'Ec2TaskDefinition']), {
-            family: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+        executionRole?: IRole
+    ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition } {
+        const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([taskDefinitionName, 'Ec2TaskDefinition']), {
+            family: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             volumes,
             ...(taskRole && { taskRole }),
             ...(executionRole && { executionRole }),
@@ -125,7 +130,7 @@ export class ECSCluster extends Construct {
         } else {
             // If no custom execution role, ensure the default execution role has CloudWatch permissions
             // This is critical for log stream creation during container startup
-            taskDefinition.addToExecutionRolePolicy(new PolicyStatement({
+            ec2TaskDefinition.addToExecutionRolePolicy(new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: [
                     'logs:CreateLogGroup',
@@ -138,7 +143,7 @@ export class ECSCluster extends Construct {
         }
 
         // Add container to task definition
-        const containerHealthCheckConfig = ecsConfig.containerConfig.healthCheckConfig;
+        const containerHealthCheckConfig = taskDefinition.containerConfig.healthCheckConfig;
         const containerHealthCheck: HealthCheck = {
             command: containerHealthCheckConfig.command,
             interval: Duration.seconds(containerHealthCheckConfig.interval),
@@ -148,159 +153,34 @@ export class ECSCluster extends Construct {
         };
 
         const linuxParameters =
-            ecsConfig.containerConfig.sharedMemorySize > 0
-                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
-                    sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
+            taskDefinition.containerConfig.sharedMemorySize > 0
+                ? new LinuxParameters(this, createCdkId([taskDefinitionName, 'LinuxParameters']), {
+                    sharedMemorySize: taskDefinition.containerConfig.sharedMemorySize,
                 })
                 : undefined;
 
-        const image = CodeFactory.createImage(ecsConfig.containerConfig.image, this, ecsConfig.identifier, buildArgs);
+        const image = CodeFactory.createImage(taskDefinition.containerConfig.image, this, taskDefinitionName, ecsConfig.buildArgs);
 
-        const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
-            containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+        const container = ec2TaskDefinition.addContainer(createCdkId([taskDefinitionName, 'Container']), {
+            containerName: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             image,
-            environment: ecsConfig.environment,
+            environment: taskDefinition.environment,
             logging: LogDriver.awsLogs({
                 logGroup: logGroup,
-                streamPrefix: ecsConfig.identifier
+                streamPrefix: taskDefinitionName
             }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
-            memoryReservationMiB: ecsConfig.containerMemoryReservationMiB,
-            portMappings: [{ hostPort, containerPort: 8080, protocol: Protocol.TCP }],
+            memoryReservationMiB: taskDefinition.containerMemoryReservationMiB,
+            memoryLimitMiB: ecsConfig.containerMemoryBuffer,
+            portMappings: [{ hostPort: 0, containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
-            privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
+            privileged: taskDefinition.containerConfig.privileged ?? ecsConfig.amiHardwareType === AmiHardwareType.GPU,
             ...(linuxParameters && { linuxParameters }),
         });
         container.addMountPoints(...mountPoints);
 
-        return { taskDefinition, container, taskRole };
-    }
-
-    /**
-     * Creates the serve/primary task definition and service.
-     * 
-     * @param config - The base configuration
-     * @param ecsConfig - The ECS configuration
-     * @param volumes - Array of volumes to mount
-     * @param mountPoints - Array of mount points for the container
-     * @param logGroup - CloudWatch log group for container logs
-     * @param cluster - The ECS cluster
-     * @param autoScalingGroup - The auto-scaling group for dependency
-     * @returns Object containing task definition, container, task role, and service
-     */
-    private createServeTaskDefinition(
-        config: any,
-        ecsConfig: ECSConfig,
-        volumes: Volume[],
-        mountPoints: MountPoint[],
-        logGroup: LogGroup,
-        cluster: Cluster,
-        autoScalingGroup: any,
-        taskRole: IRole,
-        executionRole?: IRole,
-        memoryReservationMiB?: number
-    ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition, taskRole: IRole, service: Ec2Service } {
-        // Create task definition using the base method
-        const taskResult = this.createTaskDefinition(
-            config,
-            ecsConfig,
-            volumes,
-            mountPoints,
-            logGroup,
-            80,
-            taskRole,
-            executionRole,
-            ecsConfig.buildArgs
-        );
-        const { taskDefinition, container } = taskResult;
-
-        // Store in maps for future reference
-        this.containers.set(ecsConfig.identifier, container);
-        this.taskRoles.set(ecsConfig.identifier, taskRole);
-
-        // Create ECS service for primary task
-        const serviceProps: Ec2ServiceProps = {
-            cluster: cluster,
-            daemon: true,
-            serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            taskDefinition: taskDefinition,
-            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
-        };
-
-        const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
-        service.node.addDependency(autoScalingGroup);
-
-        // Store primary service in map
-        this.services.set(ecsConfig.identifier, service);
-
-        return { taskDefinition, container, taskRole, service };
-    }
-
-    /**
-     * Creates the workbench hosting task definition and service (stubbed for now).
-     * 
-     * @param config - The base configuration
-     * @param ecsConfig - The ECS configuration (used as template)
-     * @param volumes - Array of volumes to mount
-     * @param mountPoints - Array of mount points for the container
-     * @param logGroup - CloudWatch log group for container logs
-     * @param cluster - The ECS cluster
-     * @param autoScalingGroup - The auto-scaling group for dependency
-     * @returns Object containing task definition, container, task role, and service
-     */
-    private createWorkbenchHostingTaskDefinition(
-        config: any,
-        ecsConfig: ECSConfig,
-        volumes: Volume[],
-        mountPoints: MountPoint[],
-        logGroup: LogGroup,
-        cluster: Cluster,
-        autoScalingGroup: any,
-        taskRole: IRole,
-        executionRole?: IRole,
-    ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition, taskRole: IRole, service: Ec2Service } {        
-        // TODO: For now, this is stubbed to use the same configuration as the primary task
-        // In the future, this should have its own configuration for:
-        // - Different container image
-        // - Different environment variables
-        // - Different health check configuration
-        // - Different resource requirements
-        
-        // Create task definition using the base method
-        const taskResult = this.createTaskDefinition(
-            config,
-            ecsConfig, // TODO: Replace with workbench-specific config
-            volumes,
-            mountPoints,
-            logGroup,
-            80,
-            taskRole,
-            executionRole,
-            ecsConfig.buildArgs
-        );
-        const { taskDefinition, container } = taskResult;
-
-        // Store in maps for future reference
-        this.containers.set(ecsConfig.identifier, container);
-        this.taskRoles.set(ecsConfig.identifier, taskRole);
-
-        // Create ECS service for workbench hosting task
-        const serviceProps: Ec2ServiceProps = {
-            cluster: cluster,
-            daemon: true,
-            serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            taskDefinition: taskDefinition,
-            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
-        };
-
-        const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
-        service.node.addDependency(autoScalingGroup);
-
-        // Store workbench service in map
-        this.services.set(ecsConfig.identifier, service);
-
-        return { taskDefinition, container, taskRole, service };
+        return { taskDefinition: ec2TaskDefinition, container };
     }
 
     /**
@@ -308,7 +188,7 @@ export class ECSCluster extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor (scope: Construct, id: string, props: ECSClusterProps) {
+    constructor(scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, identifier, vpc, securityGroup, ecsConfig } = props;
 
@@ -328,42 +208,92 @@ export class ECSCluster extends Construct {
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId(['Cl']), {
-            clusterName: createCdkId([config.deploymentName, ecsConfig.serveConfig.identifier], 32, 2),
+            clusterName: createCdkId([config.deploymentName, identifier], 32, 2),
             vpc: vpc.vpc,
             containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
         // Create auto-scaling group
-        const autoScalingGroup = cluster.addCapacity(createCdkId(['ASG']), {
+        const autoScalingGroup = new AutoScalingGroup(this, createCdkId(['ASG']), {
+            vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
-            instanceType: new InstanceType(ecsConfig.serveConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.serveConfig.amiHardwareType),
-            minCapacity: ecsConfig.serveConfig.autoScalingConfig.minCapacity,
-            maxCapacity: ecsConfig.serveConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.serveConfig.autoScalingConfig.cooldown),
+            instanceType: new InstanceType(ecsConfig.instanceType),
+            machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
+            minCapacity: ecsConfig.autoScalingConfig.minCapacity,
+            maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
+            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
-            newInstancesProtectedFromScaleIn: false,
-            defaultInstanceWarmup: Duration.seconds(ecsConfig.serveConfig.autoScalingConfig.defaultInstanceWarmup),
+            defaultInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.defaultInstanceWarmup),
             blockDevices: [
                 {
                     deviceName: '/dev/xvda',
-                    volume: BlockDeviceVolume.ebs(ecsConfig.serveConfig.autoScalingConfig.blockDeviceVolumeSize, {
+                    volume: BlockDeviceVolume.ebs(ecsConfig.autoScalingConfig.blockDeviceVolumeSize, {
                         encrypted: true,
                     }),
                 },
             ],
         });
 
-        const environment = ecsConfig.serveConfig.environment;
+        const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId(['AsgCapacityProvider']), {
+            autoScalingGroup,
+            // Managed scaling tracks cluster reservation to add/remove instances automatically
+            // when services want more tasks than the cluster can fit.
+            // targetCapacityPercent ~ how "full" you want the cluster (by CPU/memory reservation).
+            // 90 means try to keep instances ~90% reserved before adding more.
+            capacityProviderName: 'cp-ec2',
+
+            // disable managed scaling becuase we are going to setup rules to do it
+            enableManagedScaling: false,
+            enableManagedTerminationProtection: false,
+        });
+        cluster.addAsgCapacityProvider(asgCapacityProvider);
+
+        const reservationMetric = new Metric({
+            namespace: 'AWS/ECS/CapacityProvider',
+            metricName: 'CapacityProviderReservation',
+            // The dimensions are crucial to target the specific cluster and capacity provider
+            dimensionsMap: {
+                ClusterName: cluster.clusterName,
+                CapacityProviderName: asgCapacityProvider.capacityProviderName,
+            },
+            statistic: 'Average',
+            period: Duration.minutes(1),
+        });
+
+        autoScalingGroup.scaleOnMetric(createCdkId(['ASG', identifier, 'ScaleIn']), {
+            metric: reservationMetric,
+            scalingSteps: [
+                { lower: 60, change: 1 },
+                { lower: 40, change: 2 }
+            ],
+            evaluationPeriods: 5,
+            adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
+            cooldown: Duration.seconds(300)
+        });
+
+        autoScalingGroup.scaleOnMetric(createCdkId(['ASG', identifier, 'ScaleOut']), {
+            metric: reservationMetric,
+            scalingSteps: [
+                { upper: 80, change: 1 },
+                { upper: 90, change: 2 }
+            ],
+            evaluationPeriods: 2,
+            adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
+            cooldown: Duration.seconds(120)
+        });
+
+        const baseEnvironment: {
+            [key: string]: string;
+        } = {};
         const volumes: Volume[] = [];
         const mountPoints: MountPoint[] = [];
 
         // If NVMe drive available, mount and use it
-        if (Ec2Metadata.get(ecsConfig.serveConfig.instanceType).nvmePath) {
+        if (Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
             // EC2 user data to mount ephemeral NVMe drive
             const MOUNT_PATH = config.nvmeHostMountPath;
-            const NVME_PATH = Ec2Metadata.get(ecsConfig.serveConfig.instanceType).nvmePath;
+            const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
             /* eslint-disable no-useless-escape */
             const rawUserData = `#!/bin/bash
     set -e
@@ -420,55 +350,25 @@ export class ECSCluster extends Construct {
             volumes.push(pkiVolume);
             mountPoints.push(pkiMountPoint);
             // Requires mount point /etc/pki from host
-            environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
-            environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
-            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle;
-            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle;
-            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
+            baseEnvironment.SSL_CERT_DIR = '/etc/pki/tls/certs';
+            baseEnvironment.SSL_CERT_FILE = config.certificateAuthorityBundle;
+            baseEnvironment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle;
+            baseEnvironment.AWS_CA_BUNDLE = config.certificateAuthorityBundle;
+            baseEnvironment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
         }
 
         // Create CloudWatch log group with explicit retention
-        const logGroup = new LogGroup(this, createCdkId([ecsConfig.serveConfig.identifier, 'LogGroup']), {
-            logGroupName: `/aws/ecs/${config.deploymentName}-${ecsConfig.serveConfig.identifier}`,
+        const logGroup = new LogGroup(this, createCdkId([identifier, 'LogGroup']), {
+            logGroupName: `/aws/ecs/${config.deploymentName}-${identifier}`,
             retention: RetentionDays.ONE_WEEK,
             removalPolicy: config.removalPolicy
         });
 
-        const memoryReservationMiB = ecsConfig.serveConfig.containerMemoryBuffer + ecsConfig.workbenchConfig.containerMemoryBuffer;
-
-        // Create primary/serve task definition and service
-        const primaryTaskResult = this.createServeTaskDefinition(
-            config,
-            ecsConfig.serveConfig,
-            volumes,
-            mountPoints,
-            logGroup,
-            cluster,
-            autoScalingGroup,
-            taskRole,
-            executionRole
-        );
-        const { taskDefinition, container, service } = primaryTaskResult;
-
-        // Create workbench hosting task definition (stubbed for now)
-        const workbenchHostingTaskResult = this.createWorkbenchHostingTaskDefinition(
-            config,
-            ecsConfig.workbenchConfig,
-            volumes,
-            mountPoints,
-            logGroup,
-            cluster,
-            autoScalingGroup,
-            taskRole,
-            executionRole
-        );
-        const { service: workbenchService } = workbenchHostingTaskResult;
-
         // Create application load balancer
-        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.serveConfig.identifier, 'ALB']), {
+        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-            internetFacing: ecsConfig.serveConfig.internetFacing,
-            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.serveConfig.identifier], 32, 2).toLowerCase(),
+            internetFacing: ecsConfig.internetFacing,
+            loadBalancerName: createCdkId([config.deploymentName, identifier], 32, 2).toLowerCase(),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc: vpc.vpc,
@@ -478,86 +378,100 @@ export class ECSCluster extends Construct {
 
         // Add listener
         const listenerProps: BaseApplicationListenerProps = {
-            port: ecsConfig.serveConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
-            open: ecsConfig.serveConfig.internetFacing,
-            certificates: ecsConfig.serveConfig.loadBalancerConfig.sslCertIamArn
-                ? [{ certificateArn: ecsConfig.serveConfig.loadBalancerConfig.sslCertIamArn }]
+            port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
+            open: ecsConfig.internetFacing,
+            certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
+                ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
                 : undefined,
-            sslPolicy: ecsConfig.serveConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.RECOMMENDED_TLS : SslPolicy.RECOMMENDED,
+            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.RECOMMENDED_TLS : SslPolicy.RECOMMENDED,
         };
 
         const listener = loadBalancer.addListener(
-            createCdkId([ecsConfig.serveConfig.identifier, 'ApplicationListener']),
+            createCdkId([identifier, 'ApplicationListener']),
             listenerProps,
         );
         const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
-        // Create target groups for both services
-        const loadBalancerHealthCheckConfig = ecsConfig.serveConfig.loadBalancerConfig.healthCheckConfig;
-        
-        // Primary service target group (default rule)
-        const primaryTargetGroup = listener.addTargets(createCdkId([ecsConfig.serveConfig.identifier, 'TgtGrp']), {
-            targetGroupName: createCdkId([config.deploymentName, ecsConfig.serveConfig.identifier], 32, 2).toLowerCase(),
-            healthCheck: {
-                path: loadBalancerHealthCheckConfig.path,
-                interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
-                timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
-                healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
-                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
-            },
-            port: 80,
-            targets: [service],
-        });
+        //todo fix memory reservation
 
-        // Create separate target group for workbench hosting service
-        const workbenchTargetGroup = listener.addTargets(createCdkId(['workbenchHosting', 'TgtGrp']), {
-            targetGroupName: createCdkId([config.deploymentName, 'workbenchHosting'], 32, 2).toLowerCase(),
-            healthCheck: {
-                path: loadBalancerHealthCheckConfig.path, // TODO: Use workbench-specific health check path
-                interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
-                timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
-                healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
-                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
-            },
-            port: 80,
-            targets: [workbenchService],
-            priority: 100, // Higher priority than default rule
-            conditions: [
-                ListenerCondition.pathPatterns(['/api/v2/workbench*'])
-            ]
-        });
+        Object.entries(ecsConfig.tasks).forEach(([name, definition]) => {
+            const taskResult = this.createTaskDefinition(
+                name,
+                config,
+                definition,
+                ecsConfig,
+                volumes,
+                mountPoints,
+                logGroup,
+                taskRole,
+                executionRole
+            );
+            const { taskDefinition, container } = taskResult;
 
-        // Use primary target group for metrics (backward compatibility)
-        const targetGroup = primaryTargetGroup;
+            // Create ECS service for primary task
+            const serviceProps: Ec2ServiceProps = {
+                cluster: cluster,
+                serviceName: createCdkId([name], 32, 2),
+                taskDefinition: taskDefinition,
+                circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
+                capacityProviderStrategies: [
+                    { capacityProvider: asgCapacityProvider.capacityProviderName, weight: 1 }
+                ]
+            };
 
-        // ALB metric for ASG to use for auto scaling EC2 instances
-        // TODO: Update this to step scaling for embedding models??
-        const requestCountPerTargetMetric = new Metric({
-            metricName: ecsConfig.serveConfig.autoScalingConfig.metricConfig.albMetricName,
-            namespace: 'AWS/ApplicationELB',
-            dimensionsMap: {
-                TargetGroup: targetGroup.targetGroupFullName,
-                LoadBalancer: loadBalancer.loadBalancerFullName,
-            },
-            statistic: Stats.SAMPLE_COUNT,
-            period: Duration.seconds(ecsConfig.serveConfig.autoScalingConfig.metricConfig.duration),
-        });
+            const service = new Ec2Service(this, createCdkId([config.deploymentName, name, 'Ec2Svc']), serviceProps);
+            const scalableTaskCount = service.autoScaleTaskCount({
+                minCapacity: 1,
+                // 10 is just a magic number we don't expect to hit because we don't have better data on this
+                maxCapacity: 10
+            });
+            service.node.addDependency(autoScalingGroup);
 
-        // Create hook to scale on ALB metric count exceeding thresholds
-        autoScalingGroup.scaleToTrackMetric(createCdkId([ecsConfig.serveConfig.identifier, 'ScalingPolicy']), {
-            metric: requestCountPerTargetMetric,
-            targetValue: ecsConfig.serveConfig.autoScalingConfig.metricConfig.targetValue,
-            estimatedInstanceWarmup: Duration.seconds(ecsConfig.serveConfig.autoScalingConfig.metricConfig.duration),
+            // since our contianers are using ephemeral ports, the load balancer must be allowed to access them
+            service.connections.allowFrom(loadBalancer, Port.allTcp());
+
+            // Create target groups for both services
+            const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
+
+            const targetGroup = listener.addTargets(createCdkId([identifier, name, 'TgtGrp']), {
+                targetGroupName: createCdkId([config.deploymentName, identifier, name], 32, 2).toLowerCase(),
+                healthCheck: {
+                    path: loadBalancerHealthCheckConfig.path,
+                    interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
+                    timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
+                    healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
+                    unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
+                },
+                port: 80,
+                targets: [service],
+                priority: definition.applicationTarget?.priority,
+                conditions: definition.applicationTarget?.conditions?.map(({ type, values }) => {
+                    switch (type) {
+                        case 'pathPatterns':
+                            return ListenerCondition.pathPatterns(values);
+                    }
+                })
+            });
+
+            scalableTaskCount.scaleOnRequestCount(createCdkId([identifier, 'ScalingPolicy']), {
+                requestsPerTarget: ecsConfig.autoScalingConfig.metricConfig.targetValue,
+                targetGroup,
+                scaleInCooldown: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+                scaleOutCooldown: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration)
+            });
+
+            // Store in maps for future reference
+            const ecsTasksKey = name as keyof typeof ECSTasks;
+            this.containers[ecsTasksKey] = container;
+            this.taskRoles[ecsTasksKey] = taskRole;
+            this.services[ecsTasksKey] = service;
+            this.targetGroups[ecsTasksKey] = targetGroup;
         });
 
         const domain =
-            ecsConfig.serveConfig.loadBalancerConfig.domainName !== null
-                ? ecsConfig.serveConfig.loadBalancerConfig.domainName
+            ecsConfig.loadBalancerConfig.domainName !== null
+                ? ecsConfig.loadBalancerConfig.domainName
                 : loadBalancer.loadBalancerDnsName;
         this.endpointUrl = `${protocol}://${domain}`;
-
-        // Update
-        this.container = container;
-        this.taskRole = taskRole;
     }
 }

@@ -53,9 +53,10 @@ type MessageProps = {
     setUserPrompt: (state: string) => void;
     chatConfiguration: IChatConfiguration;
     showUsage?: boolean;
+    onMermaidRenderComplete?: () => void;
 };
 
-export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false }: MessageProps) {
+export default function Message ({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete }: MessageProps) {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -198,7 +199,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
             }
             return match ? (
                 match[1] === 'mermaid' ? (
-                    <MermaidDiagram chart={codeString} isStreaming={isStreaming} />
+                    <MermaidDiagram chart={codeString} isStreaming={isStreaming} onRenderComplete={onMermaidRenderComplete} />
                 ) : (
                     <CodeBlockWithCopyButton
                         language={match[1]}
@@ -209,7 +210,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                 <CodeBlockWithoutLanguage code={codeString} />
             );
         },
-    }), [isStreaming]); // Include isStreaming so the component can access it
+    }), [isStreaming, onMermaidRenderComplete]); // Include isStreaming and onMermaidRenderComplete so the component can access them
 
     const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {

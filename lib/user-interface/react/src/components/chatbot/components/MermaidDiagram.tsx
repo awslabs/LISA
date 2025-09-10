@@ -23,9 +23,10 @@ type MermaidDiagramProps = {
     chart: string;
     id?: string;
     isStreaming?: boolean;
+    onRenderComplete?: () => void;
 };
 
-const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, isStreaming }) => {
+const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, isStreaming, onRenderComplete }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string>('');
     const [svg, setSvg] = useState<string>('');
@@ -93,11 +94,15 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 setError(`Failed to render diagram: ${err instanceof Error ? err.message : 'Unknown error'}`);
             } finally {
                 setIsLoading(false);
+                // Call the callback when rendering is complete (success or error)
+                if (onRenderComplete) {
+                    onRenderComplete();
+                }
             }
         };
 
         renderDiagram();
-    }, [chart, id, svg, isStreaming]);
+    }, [chart, id, svg, isStreaming, onRenderComplete]);
 
     const copyToClipboard = useCallback(async (content: string) => {
         try {

@@ -68,11 +68,19 @@ def _get_mcp_servers(
             user_owns = Attr("owner").eq(user_id)
 
             # Public server with groups filtering
-            groups_condition = _build_groups_condition(groups)
-            public_with_groups_ok = Attr("owner").eq("lisa:public") & groups_condition
+            # Public servers should be included if they have no groups OR matching groups
+            public_no_groups = Attr("owner").eq("lisa:public") & (
+                Attr("groups").not_exists() | Attr("groups").eq(None) | Attr("groups").eq([])
+            )
+            public_matching_groups = Attr("owner").eq("lisa:public") & reduce(
+                lambda a, b: a | b, [Attr("groups").contains(f"group:{group}") for group in groups]
+            )
+            public_with_groups_ok = public_no_groups | public_matching_groups
 
             # Any server with matching groups (regardless of owner)
-            any_matching_groups = groups_condition
+            # Only include servers that actually have groups and match
+            group_conditions = [Attr("groups").contains(f"group:{group}") for group in groups]
+            any_matching_groups = reduce(lambda a, b: a | b, group_conditions)
 
             # Combine: user owns OR (public with groups ok) OR (any matching groups)
             condition = user_owns | public_with_groups_ok | any_matching_groups

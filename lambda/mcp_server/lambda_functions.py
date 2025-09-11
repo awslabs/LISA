@@ -16,12 +16,14 @@
 import json
 import logging
 import os
-from typing import Any, Dict, Optional
+from decimal import Decimal
+from functools import reduce
+from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
-from utilities.common_functions import api_wrapper, get_item, retry_config
+from utilities.common_functions import api_wrapper, get_groups, get_item, retry_config
 
 from .models import McpServerModel, McpServerStatus
 
@@ -32,19 +34,70 @@ dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], conf
 table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 
 
+def _build_groups_condition(groups: List[str]) -> Any:
+    """Build DynamoDB condition for groups filtering."""
+    # Servers with no groups (groups attribute doesn't exist, is null, or is empty array) should be included
+    no_groups_condition = Attr("groups").not_exists() | Attr("groups").eq(None) | Attr("groups").eq([])
+
+    # Servers with at least one matching group
+    group_conditions = [Attr("groups").contains(f"group:{group}") for group in groups]
+    has_matching_group_condition = reduce(lambda a, b: a | b, group_conditions)
+
+    # Combine: no groups OR has matching group
+    return no_groups_condition | has_matching_group_condition
+
+
 def _get_mcp_servers(
     user_id: Optional[str] = None,
     active: Optional[bool] = None,
+    groups: Optional[List] = None,
 ) -> Dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
+    condition = None
 
     # Filter by user_id if provided
     if user_id:
-        condition = Attr("owner").eq(user_id) | Attr("owner").eq("lisa:public")
+        if groups is not None and len(groups) > 0:
+            # Complex logic when groups are provided:
+            # 1. User owns server (regardless of groups) OR
+            # 2. Public server AND (no groups OR has matching groups) OR
+            # 3. Any server with matching groups (regardless of owner)
+
+            # User owns server (no group restrictions)
+            user_owns = Attr("owner").eq(user_id)
+
+            # Public server with groups filtering
+            # Public servers should be included if they have no groups OR matching groups
+            public_no_groups = Attr("owner").eq("lisa:public") & (
+                Attr("groups").not_exists() | Attr("groups").eq(None) | Attr("groups").eq([])
+            )
+            public_matching_groups = Attr("owner").eq("lisa:public") & reduce(
+                lambda a, b: a | b, [Attr("groups").contains(f"group:{group}") for group in groups]
+            )
+            public_with_groups_ok = public_no_groups | public_matching_groups
+
+            # Any server with matching groups (regardless of owner)
+            # Only include servers that actually have groups and match
+            group_conditions = [Attr("groups").contains(f"group:{group}") for group in groups]
+            any_matching_groups = reduce(lambda a, b: a | b, group_conditions)
+
+            # Combine: user owns OR (public with groups ok) OR (any matching groups)
+            condition = user_owns | public_with_groups_ok | any_matching_groups
+        else:
+            # Simple logic when no groups: user owns OR public
+            condition = Attr("owner").eq(user_id) | Attr("owner").eq("lisa:public")
+
         filter_expression = condition if filter_expression is None else filter_expression & condition
+
+    # Filter by active status if provided
     if active:
         condition = Attr("status").eq(McpServerStatus.ACTIVE)
+        filter_expression = condition if filter_expression is None else filter_expression & condition
+
+    # Filter by user groups if provided (only if not already handled in user_id filter)
+    if groups is not None and len(groups) > 0 and not user_id:
+        condition = _build_groups_condition(groups)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
     scan_arguments = {
@@ -60,7 +113,9 @@ def _get_mcp_servers(
     items = []
     while True:
         response = table.scan(**scan_arguments)
-        items.extend(response.get("Items", []))
+        batch_items = response.get("Items", [])
+        items.extend(batch_items)
+
         if "LastEvaluatedKey" in response:
             scan_arguments["ExclusiveStartKey"] = response["LastEvaluatedKey"]
         else:
@@ -84,7 +139,8 @@ def get(event: dict, context: dict) -> Any:
 
     # Check if the user is authorized to get the mcp server
     is_owner = item["owner"] == user_id or item["owner"] == "lisa:public"
-    if is_owner or is_admin(event):
+    groups = item.get("groups", [])
+    if is_owner or is_admin(event) or _is_member(get_groups(event), groups):
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
             item["isOwner"] = True
@@ -93,16 +149,21 @@ def get(event: dict, context: dict) -> Any:
     raise ValueError(f"Not authorized to get {mcp_server_id}.")
 
 
+def _is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
+    return bool(set(user_groups) & set(prompt_groups))
+
+
 @api_wrapper
 def list(event: dict, context: dict) -> Dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id = get_username(event)
 
     if is_admin(event):
-        logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
         return _get_mcp_servers()
-    logger.info(f"Listing mcp servers for user {user_id}")
-    return _get_mcp_servers(user_id=user_id, active=True)
+
+    groups = get_groups(event)
+    result = _get_mcp_servers(user_id=user_id, active=True, groups=groups)
+    return result
 
 
 @api_wrapper

@@ -17,6 +17,7 @@
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
+import ExpandableSection from '@cloudscape-design/components/expandable-section';
 import { ButtonDropdown, Input, Popover, Modal, FormField, Grid } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 
@@ -79,6 +80,7 @@ export function Sessions ({ newSession }) {
     const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
+    const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
     const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
 
     // Filter sessions based on search query
@@ -145,9 +147,18 @@ export function Sessions ({ newSession }) {
     useEffect(() => {
         if (!isDeleteByIdLoading && isDeleteByIdSuccess) {
             notificationService.generateNotification('Successfully deleted session', 'success');
-            newSession();
+            // Only reload if we are deleting the current session or there is no current session (/ai-assistant with no session ID)
+            if (sessionBeingDeleted === currentSessionId || !currentSessionId) {
+                newSession();
+            }
+
+            // Reset the tracking state
+            setSessionBeingDeleted(null);
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
             notificationService.generateNotification(`Error deleting session: ${deleteByIdError.data?.message ?? deleteByIdError.data}`, 'error');
+
+            // Reset the tracking state on error too
+            setSessionBeingDeleted(null);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteByIdSuccess, isDeleteByIdError, deleteByIdError, isDeleteByIdLoading]);
@@ -212,7 +223,7 @@ export function Sessions ({ newSession }) {
                                             <Input
                                                 value={searchQuery}
                                                 onChange={({ detail }) => setSearchQuery(detail.value)}
-                                                placeholder='Search sessions by message content...'
+                                                placeholder='Search sessions by name...'
                                                 clearAriaLabel='Clear search'
                                                 type='search'
                                             />
@@ -288,10 +299,11 @@ export function Sessions ({ newSession }) {
                             if (sessions.length === 0) return null;
 
                             return (
-                                <SpaceBetween key={timeGroup} size='xs'>
-                                    <Header variant='h4'>
-                                        {timeGroup} ({sessions.length})
-                                    </Header>
+                                <ExpandableSection
+                                    key={timeGroup}
+                                    headerText={timeGroup}
+                                    defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
+                                >
                                     <SpaceBetween size='xxs'>
                                         {sessions.map((item) => (
                                             <Box key={item.sessionId} padding='xxs'>
@@ -322,7 +334,10 @@ export function Sessions ({ newSession }) {
                                                                         setConfirmationModal({
                                                                             action: 'Delete',
                                                                             resourceName: 'Session',
-                                                                            onConfirm: () => deleteById(item.sessionId),
+                                                                            onConfirm: () => {
+                                                                                setSessionBeingDeleted(item.sessionId);
+                                                                                deleteById(item.sessionId);
+                                                                            },
                                                                             description: `This will delete the Session: ${item.sessionId}.`
                                                                         })
                                                                     );
@@ -376,7 +391,7 @@ export function Sessions ({ newSession }) {
                                             </Box>
                                         ))}
                                     </SpaceBetween>
-                                </SpaceBetween>
+                                </ExpandableSection>
                             );
                         });
                     })()}

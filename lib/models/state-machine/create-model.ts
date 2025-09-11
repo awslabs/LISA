@@ -74,6 +74,7 @@ export class CreateModelStateMachine extends Construct {
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             LITELLM_CONFIG_OBJ: JSON.stringify(config.litellmConfig),
+            AWS_ACCOUNT_ID: config.accountNumber,
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
@@ -212,14 +213,25 @@ export class CreateModelStateMachine extends Construct {
         const successState = new Succeed(this, 'CreateSuccess');
         const failState = new Fail(this, 'CreateFailed');
 
+        // Check if image is pre-existing ECR image
+        const checkImageTypeChoice = new Choice(this, 'CheckImageTypeChoice');
+
         // State Machine definition
         setModelToCreating.next(createModelInfraChoice);
         createModelInfraChoice
             .when(Condition.booleanEquals('$.create_infra', true), startCopyDockerImage)
             .otherwise(addModelToLitellm);
 
+        // Check if we need to poll for docker image or skip directly to stack creation
+        startCopyDockerImage.next(checkImageTypeChoice);
+        startCopyDockerImage.addCatch(handleFailureState, {  // fail if ECR image verification fails
+            errors: ['States.TaskFailed'],
+        });
+        checkImageTypeChoice
+            .when(Condition.stringEquals('$.image_info.image_status', 'prebuilt'), startCreateStack)
+            .otherwise(pollDockerImageAvailable);
+
         // poll ECR image copy status loop
-        startCopyDockerImage.next(pollDockerImageAvailable);
         pollDockerImageAvailable.next(pollDockerImageChoice);
         pollDockerImageAvailable.addCatch(handleFailureState, {  // fail if exception thrown from code
             errors: ['MaxPollsExceededException'],

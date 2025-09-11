@@ -26,12 +26,14 @@ import {
     Toggle,
     StatusIndicator,
     Box,
+    TokenGroup,
 } from '@cloudscape-design/components';
+import { KeyCode } from '@cloudscape-design/component-toolkit/internal';
 import 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { scrollToInvalid, useValidationReducer } from '../../shared/validation';
+import { issuesToErrors, scrollToInvalid, useValidationReducer } from '../../shared/validation';
 import { z } from 'zod';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { setBreadcrumbs } from '../../shared/reducers/breadcrumbs.reducer';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
@@ -90,6 +92,19 @@ export function McpServerForm (props: McpServerFormProps) {
         touched: {},
         validateAll: false
     });
+
+    // handle separate token text validation
+    const [tokenText, setTokenText] = useState('');
+    const tokenTextSchema = z.object({'groups': z.string().trim().max(0, {message: 'You must press return to add a group.'})});
+    const tokenTextResult = tokenTextSchema.safeParse({'groups': tokenText});
+    const tokenTextErrors = tokenTextResult.success ? undefined : issuesToErrors(tokenTextResult?.error?.issues || [], state.touched);
+
+    // memoize conversion to tokens
+    const tokens = useMemo(() => {
+        return state.form.groups
+            .filter((group) => group !== 'lisa:public')
+            .map((group) => ({label: group.replace(/^\w+:/, '')}));
+    }, [state.form.groups]);
 
     const canEdit = mcpServerId ? (isUserAdmin || data?.isOwner) : true;
     const disabled = isFetching || isCreating || isUpdating;
@@ -267,23 +282,55 @@ export function McpServerForm (props: McpServerFormProps) {
                         )}
                     </FormField>
 
-                    {isUserAdmin && <Grid gridDefinition={[{colspan: 3}, {colspan: 3}]}>
-                        <FormField label='Share with everyone'>
-                            <Toggle checked={sharePublic} onChange={({detail}) => {
-                                setSharePublic(detail.checked);
-                                setFields({owner: detail.checked ? 'lisa:public' : userName});
-                                touchFields(['owner'], ModifyMethod.Unset);
+                    {isUserAdmin && <SpaceBetween direction='vertical' size='s'>
+                        <Grid gridDefinition={[{colspan: 3}, {colspan: 3}]}>
+                            <FormField label='Share with everyone'>
+                                <Toggle checked={sharePublic} onChange={({detail}) => {
+                                    setSharePublic(detail.checked);
+                                    setFields({owner: detail.checked ? 'lisa:public' : userName});
+                                    setFields({groups: detail.checked ? [] : state.form.groups});
+                                    touchFields(['owner'], ModifyMethod.Unset);
+                                }}
+                                disabled={disabled} />
+                            </FormField>
+                            <FormField label='Active'>
+                                <Toggle checked={state.form.status === McpServerStatus.Active} onChange={({detail}) => {
+                                    setFields({status: detail.checked ? McpServerStatus.Active : McpServerStatus.Inactive});
+                                    touchFields(['status'], ModifyMethod.Unset);
+                                }}
+                                disabled={disabled} />
+                            </FormField>
+                        </Grid>
+                        <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Templates are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
+                            <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
+                                setTokenText(detail.value);
+                                if (detail.value.length === 0) {
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                }
+                            }} onKeyDown={({detail}) => {
+                                if (detail.keyCode === KeyCode.enter) {
+                                    setFields({groups: state.form.groups?.concat(`group:${tokenText}`) ?? [`group:${tokenText}`]});
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                    setTokenText('');
+                                }
                             }}
-                            disabled={disabled} />
-                        </FormField>
-                        <FormField label='Active'>
-                            <Toggle checked={state.form.status === McpServerStatus.Active} onChange={({detail}) => {
-                                setFields({status: detail.checked ? McpServerStatus.Active : McpServerStatus.Inactive});
-                                touchFields(['status'], ModifyMethod.Unset);
+                            onBlur={() => {
+                                if (tokenText.length === 0) {
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                } else {
+                                    touchFields(['groups']);
+                                }
                             }}
-                            disabled={disabled} />
+
+                            placeholder='Enter group name'
+                            disabled={disabled || sharePublic} />
+                            <TokenGroup items={tokens} onDismiss={({detail}) => {
+                                const newTokens = [...state.form.groups];
+                                newTokens.splice(detail.itemIndex, 1);
+                                setFields({groups: newTokens});
+                            }} readOnly={disabled || sharePublic} />
                         </FormField>
-                    </Grid>}
+                    </SpaceBetween>}
                     <hr />
                     <Container
                         header={

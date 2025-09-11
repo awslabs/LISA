@@ -15,7 +15,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -63,3 +63,6 @@ class McpServerModel(BaseModel):
 
     # Status of the server set by admins
     status: Optional[McpServerStatus] = Field(default=McpServerStatus.INACTIVE)
+
+    # Groups of the MCP server
+    groups: Optional[List[str]] = Field(default_factory=lambda: None)

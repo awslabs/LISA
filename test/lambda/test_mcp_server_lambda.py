@@ -705,3 +705,85 @@ def test_get_mcp_server_global_non_owner_access(mcp_servers_table, sample_global
 
     # Reset mock
     mock_common.get_username.return_value = "test-user"
+
+
+def test_get_mcp_servers_groups_filtering(mcp_servers_table, lambda_context):
+    """Test groups filtering logic in _get_mcp_servers function."""
+    from mcp_server.lambda_functions import _get_mcp_servers
+
+    # Create test servers with different group configurations
+    test_servers = [
+        # Server owned by user with no groups - should be included
+        {"id": "server1", "owner": "test-user", "status": "active", "groups": None},
+        # Server owned by user with matching groups - should be included
+        {"id": "server2", "owner": "test-user", "status": "active", "groups": ["group:admin", "group:user"]},
+        # Server owned by user with non-matching groups - should be excluded
+        {"id": "server3", "owner": "test-user", "status": "active", "groups": ["group:other"]},
+        # Public server with no groups - should be included
+        {"id": "server4", "owner": "lisa:public", "status": "active", "groups": None},
+        # Public server with matching groups - should be included
+        {"id": "server5", "owner": "lisa:public", "status": "active", "groups": ["group:admin"]},
+        # Public server with non-matching groups - should be excluded
+        {"id": "server6", "owner": "lisa:public", "status": "active", "groups": ["group:other"]},
+        # Inactive server - should be excluded
+        {"id": "server7", "owner": "test-user", "status": "inactive", "groups": ["group:admin"]},
+    ]
+
+    # Insert test servers into the table
+    for server in test_servers:
+        mcp_servers_table.put_item(Item=server)
+
+    # Test with groups filter
+    result = _get_mcp_servers(user_id="test-user", active=True, groups=["admin", "user"])
+
+    # Should include: server1 (user owns, no groups), server2 (user owns, matching groups),
+    # server3 (user owns, non-matching groups), server4 (public, no groups), server5 (public, matching groups)
+    # Should exclude: server6 (public, non-matching groups), server7 (inactive)
+    expected_ids = {"server1", "server2", "server3", "server4", "server5"}
+    actual_ids = {item["id"] for item in result["Items"]}
+
+    assert actual_ids == expected_ids, f"Expected {expected_ids}, got {actual_ids}"
+
+
+def test_get_mcp_servers_no_groups_filter(mcp_servers_table, lambda_context):
+    """Test behavior when no groups are provided."""
+    from mcp_server.lambda_functions import _get_mcp_servers
+
+    test_servers = [
+        {"id": "server1", "owner": "test-user", "status": "active", "groups": None},
+        {"id": "server2", "owner": "test-user", "status": "active", "groups": ["group:admin"]},
+    ]
+
+    for server in test_servers:
+        mcp_servers_table.put_item(Item=server)
+
+    # Test without groups filter
+    result = _get_mcp_servers(user_id="test-user", active=True, groups=None)
+
+    # Should include all servers (no groups filtering)
+    expected_ids = {"server1", "server2"}
+    actual_ids = {item["id"] for item in result["Items"]}
+
+    assert actual_ids == expected_ids
+
+
+def test_get_mcp_servers_empty_groups_filter(mcp_servers_table, lambda_context):
+    """Test behavior when empty groups list is provided."""
+    from mcp_server.lambda_functions import _get_mcp_servers
+
+    test_servers = [
+        {"id": "server1", "owner": "test-user", "status": "active", "groups": None},
+        {"id": "server2", "owner": "test-user", "status": "active", "groups": ["group:admin"]},
+    ]
+
+    for server in test_servers:
+        mcp_servers_table.put_item(Item=server)
+
+    # Test with empty groups list
+    result = _get_mcp_servers(user_id="test-user", active=True, groups=[])
+
+    # Should include all servers (empty groups list means no filtering)
+    expected_ids = {"server1", "server2"}
+    actual_ids = {item["id"] for item in result["Items"]}
+
+    assert actual_ids == expected_ids

@@ -35,7 +35,7 @@ export type IEnabledComponents = {
     showPromptTemplateLibrary: boolean;
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
-    mcpWorkbench: boolean;
+    showMcpWorkbench: boolean;
     modelLibrary: boolean;
 };
 

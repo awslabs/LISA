@@ -4,8 +4,8 @@
 TOOLS_DIR="${TOOLS_DIR:-/workspace/tools}"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
-RESCAN_ROUTE="${RESCAN_ROUTE:-}"
-EXIT_ROUTE="${EXIT_ROUTE:-}"
+RESCAN_ROUTE="${RESCAN_ROUTE:-/rescan}"
+EXIT_ROUTE="${EXIT_ROUTE:-/exit}"
 CORS_ORIGINS="${CORS_ORIGINS:-*}"
 LOG_LEVEL="${LOG_LEVEL:-info}"
 
@@ -22,7 +22,9 @@ if [ -n "${EXIT_ROUTE}" ]; then
 fi
 
 # Add CORS origins
-ARGS="${ARGS} --cors-origins \"${CORS_ORIGINS}\""
+if [ -n "${EXIT_ROUTE}" ]; then
+    ARGS="${ARGS} --cors-origins \"${CORS_ORIGINS}\""
+fi
 
 # Add verbosity based on log level
 case "${LOG_LEVEL}" in

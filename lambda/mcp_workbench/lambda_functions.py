@@ -23,14 +23,18 @@ from typing import Any, Dict, Optional
 import boto3
 import botocore.exceptions
 from pydantic import BaseModel, Field
+from mcp_server.models import McpServerModel
 from utilities.common_functions import api_wrapper, is_admin, retry_config
 from utilities.exceptions import HTTPException
+import uuid
 
 logger = logging.getLogger(__name__)
 
 # Initialize the S3 resource using environment variables
 s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 WORKBENCH_BUCKET = os.environ.get("WORKBENCH_BUCKET", "")
+
+MCPWORKBENCH_UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "LISA_MCP_WORKBENCH"))
 
 
 class MCPToolModel(BaseModel):

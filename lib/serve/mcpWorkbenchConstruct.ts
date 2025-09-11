@@ -14,19 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { IAuthorizer, IRestApi, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config } from '../schema';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH } from '../util';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as path from 'path';
 
 export type McpWorkbenchConstructProps = {
     authorizer: IAuthorizer;
@@ -43,14 +45,6 @@ export default class McpWorkbenchConstruct extends Construct {
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         const workbenchBucket = this.createWorkbenchBucket(scope, config);
-        this.createWorkbenchApi(restApiId, rootResourceId, config, vpc, securityGroups, authorizer, workbenchBucket);
-    }
-
-    private createWorkbenchApi (restApiId: string, rootResourceId: string, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], authorizer: IAuthorizer, workbenchBucket: s3.Bucket) {
-        const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
-            restApiId: restApiId,
-            rootResourceId: rootResourceId,
-        });
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
@@ -64,6 +58,20 @@ export default class McpWorkbenchConstruct extends Construct {
             'mcp-fastapi-lambda-layer',
             ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
+
+        const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
+            restApiId: restApiId,
+            rootResourceId: rootResourceId,
+        });
+
+        const lambdaLayers = [commonLambdaLayer,  fastapiLambdaLayer];
+
+        this.createWorkbenchApi(restApi, rootResourceId, config, vpc, securityGroups, authorizer, workbenchBucket, lambdaLayers);
+
+        const managementKeySecretName = ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
+    }
+
+    private createWorkbenchApi (restApi: IRestApi, rootResourceId: string, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], authorizer: IAuthorizer, workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[]) {
 
         const env = {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
@@ -136,7 +144,7 @@ export default class McpWorkbenchConstruct extends Construct {
                 this,
                 restApi,
                 lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                lambdaLayers,
                 f,
                 getDefaultRuntime(),
                 vpc,

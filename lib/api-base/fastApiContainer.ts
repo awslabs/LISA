@@ -28,6 +28,9 @@ import { Vpc } from '../networking/vpc';
 import { MCP_WORKBENCH_PATH, REST_API_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
+import { letIfDefined } from '../util/common-functions';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -159,7 +162,7 @@ export class FastApiContainer extends Construct {
                 [ECSTasks.MCPWORKBENCH]: {
                     environment: {...baseEnvironment,
                         RCLONE_CONFIG_S3_REGION: config.region,
-                        MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase()
+                        MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase(),
                     },
                     containerConfig: {
                         image: {
@@ -213,7 +216,18 @@ export class FastApiContainer extends Construct {
             })
         }
 
+        letIfDefined(apiCluster.taskRoles.MCPWORKBENCH, (taskRole) => {
+            const bucketName = [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase();
+            const workbenchBucket = Bucket.fromBucketName(scope, 'MCPWorkbenchBucket', bucketName);
+            workbenchBucket.grantRead(taskRole);
+        })
+
         this.endpoint = apiCluster.endpointUrl;
+
+        new StringParameter(scope, 'FastApiEndpoint', {
+            parameterName: `${config.deploymentPrefix}/serve/endpoint`,
+            stringValue: this.endpoint
+        })
 
         // Update
         this.containers = Object.values(apiCluster.containers);

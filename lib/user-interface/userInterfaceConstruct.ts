@@ -238,6 +238,7 @@ export class UserInterfaceConstruct extends Construct {
             sources: [webappAssets, appEnvSource],
             retainOnDelete: false,
             destinationBucket: websiteBucket,
+            memoryLimit: 512,
             ...(config.roles?.UIDeploymentRole &&
                 {
                     role: Role.fromRoleName(scope, createCdkId(['LisaRestApiUri', Roles.UI_DEPLOYMENT_ROLE]), config.roles.UIDeploymentRole),

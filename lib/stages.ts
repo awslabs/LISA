@@ -233,16 +233,6 @@ export class LisaServeApplicationStage extends Stage {
         });
         apiDeploymentStack.addDependency(apiBaseStack);
 
-        // const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
-        //     ...baseStackProps,
-        //     authorizer: apiBaseStack.authorizer!,
-        //     restApiId: apiBaseStack.restApiId,
-        //     rootResourceId: apiBaseStack.rootResourceId,
-        //     securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
-        //     vpc: networkingStack.vpc,
-        // });
-        // mcpWorkbenchStack.addDependency(apiBaseStack);
-
         const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
             ...baseStackProps,
             authorizer: apiBaseStack.authorizer,

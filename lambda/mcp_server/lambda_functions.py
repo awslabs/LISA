@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
-from utilities.common_functions import api_wrapper, get_item, get_username, is_admin, retry_config
+from utilities.common_functions import api_wrapper, get_bearer_token, get_item, get_username, is_admin, retry_config
 
 from .models import McpServerModel, McpServerStatus
 
@@ -35,6 +35,7 @@ table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 def _get_mcp_servers(
     user_id: Optional[str] = None,
     active: Optional[bool] = None,
+    replace_bearer_token: Optional[str] = None
 ) -> Dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
@@ -65,6 +66,15 @@ def _get_mcp_servers(
             scan_arguments["ExclusiveStartKey"] = response["LastEvaluatedKey"]
         else:
             break
+    
+    # Look through the headers, and replace {LISA_BEARER_TOKEN} with the users
+    if replace_bearer_token:
+        for mcp_server in items:
+            custom_headers = mcp_server.get("customHeaders", {})
+            for key, value in custom_headers.items():
+                if key.lower() == 'authentication' and '{LISA_BEARER_TOKEN}' in value:
+                    custom_headers[key] = value.replace('{LISA_BEARER_TOKEN}', replace_bearer_token)
+
 
     return {"Items": items}
 
@@ -98,11 +108,13 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id = get_username(event)
 
+    bearer_token = get_bearer_token(event)
+
     if is_admin(event):
         logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
-        return _get_mcp_servers()
+        return _get_mcp_servers(replace_bearer_token=bearer_token)
     logger.info(f"Listing mcp servers for user {user_id}")
-    return _get_mcp_servers(user_id=user_id, active=True)
+    return _get_mcp_servers(user_id=user_id, active=True, replace_bearer_token=bearer_token)
 
 
 @api_wrapper

@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -141,7 +142,8 @@ def main(
     
     # Handle CORS origins
     if cors_origins:
-        origins = [origin.strip() for origin in cors_origins.split(',')]
+        cleaned_origins = re.sub(r'^([\s"]+)?(.+?)([\s"]*)?$', r'\2', cors_origins)
+        origins = [origin.strip() for origin in cleaned_origins]
         cli_overrides['cors_origins'] = origins
     
     # Merge configurations

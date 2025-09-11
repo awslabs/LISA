@@ -16,19 +16,13 @@ from ..core.tool_registry import ToolRegistry
 from ..core.tool_discovery import ToolInfo, ToolType
 from ..core.base_tool import BaseTool
 
-# Import FastMCP 2.0 and Starlette for HTTP routes
-try:
-    from fastmcp import FastMCP
-    from starlette.applications import Starlette
-    from starlette.routing import Mount, Route
-    from starlette.responses import JSONResponse
-    from starlette.middleware import Middleware
-    from starlette.middleware.cors import CORSMiddleware
-    FASTMCP_AVAILABLE = True
-except ImportError:
-    # Fallback for development/testing
-    FASTMCP_AVAILABLE = False
-    logging.warning("FastMCP 2.0 or Starlette not available")
+from fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.routing import Mount, Route
+from starlette.responses import JSONResponse
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 
 logger = logging.getLogger(__name__)
@@ -51,9 +45,6 @@ class MCPWorkbenchServer:
         self.tool_registry = tool_registry
         self.registered_tools: Dict[str, Any] = {}
         
-        if not FASTMCP_AVAILABLE:
-            raise ImportError("FastMCP 2.0 is required but not available")
-        
         # Create FastMCP application
         self.app = FastMCP("mcpworkbench")
         logger.info("FastMCP 2.0 server initialized")
@@ -65,11 +56,31 @@ class MCPWorkbenchServer:
         """Register built-in management tools - now removed as they are HTTP routes."""
         # Management functionality moved to HTTP GET endpoints
         pass
+
     
-    def _create_http_routes(self):
-        """Create HTTP routes for management functionality."""
-        routes = []
-        
+    def _add_management_routes(self, app: Starlette):
+        if self.config.exit_route_path:
+            async def exit_endpoint(request):
+                """HTTP GET endpoint to gracefully shutdown the server."""
+                logger.info("Exit requested via HTTP endpoint")
+                
+                # Schedule shutdown after response is sent
+                async def delayed_shutdown():
+                    await asyncio.sleep(1)
+                    logger.info("Shutting down server...")
+                    sys.exit(0)
+                
+                asyncio.create_task(delayed_shutdown())
+                
+                result = {
+                    "status": "success",
+                    "message": "Server shutdown initiated",
+                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                }
+                return JSONResponse(result)
+            
+            app.add_route(self.config.exit_route_path, exit_endpoint, methods=['GET'])
+
         if self.config.rescan_route_path:
             async def rescan_endpoint(request):
                 """HTTP GET endpoint to rescan tools directory and reload tools."""
@@ -112,45 +123,12 @@ class MCPWorkbenchServer:
                         "timestamp": datetime.utcnow().isoformat() + "Z"
                     }
                     return JSONResponse(error_result, status_code=500)
-            
-            routes.append(Route(self.config.rescan_route_path, rescan_endpoint, methods=["GET"]))
-        
-        if self.config.exit_route_path:
-            async def exit_endpoint(request):
-                """HTTP GET endpoint to gracefully shutdown the server."""
-                logger.info("Exit requested via HTTP endpoint")
                 
-                # Schedule shutdown after response is sent
-                async def delayed_shutdown():
-                    await asyncio.sleep(1)
-                    logger.info("Shutting down server...")
-                    sys.exit(0)
-                
-                asyncio.create_task(delayed_shutdown())
-                
-                result = {
-                    "status": "success",
-                    "message": "Server shutdown initiated",
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
-                }
-                return JSONResponse(result)
-            
-            routes.append(Route(self.config.exit_route_path, exit_endpoint, methods=["GET"]))
+            app.add_route(self.config.rescan_route_path, rescan_endpoint, methods=['GET'])
 
 
-        async def health_check(request):
-            """Health check endpoint for Docker health checks."""
-            return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
-
-        # Add the health check route to the app
-        routes.append(Route("/health", health_check))
-        
-        return routes
-    
     def _create_starlette_app(self):
         """Create Starlette application with MCP and HTTP routes."""
-        # Create HTTP routes for management
-        http_routes = self._create_http_routes()
 
         mcp_app = self.app.http_app(
             path="/",
@@ -158,6 +136,11 @@ class MCPWorkbenchServer:
             stateless_http=True
         )
 
+        async def health_check(request):
+            """Health check endpoint for Docker health checks."""
+            return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
+
+        logger.info(f"CORS Allowed Origins: {self.config.cors_settings.allow_origins}")
         mcp_app.add_middleware(
             CORSMiddleware,
             allow_origins=self.config.cors_settings.allow_origins,
@@ -167,17 +150,11 @@ class MCPWorkbenchServer:
         
         # Add MCP mount
         routes = [
+            Route("/health", health_check),
             Mount("/v2/mcp", mcp_app),
         ]
         
-        # Add HTTP management routes
-        routes.extend(http_routes)
-        
-        # # Create lifespan manager for FastMCP
-        # @contextlib.asynccontextmanager
-        # async def lifespan(app: Starlette):
-        #     async with self.app.session_manager.run():
-        #         yield
+        self._add_management_routes(mcp_app)
         
         return Starlette(routes=routes, lifespan=mcp_app.lifespan)
     
@@ -284,7 +261,8 @@ class MCPWorkbenchServer:
             starlette_app,
             host=self.config.server_host,
             port=self.config.server_port,
-            log_level="info"
+            log_level="info",
+            forwarded_allow_ips="*"
         )
         server = uvicorn.Server(config)
         await server.serve()

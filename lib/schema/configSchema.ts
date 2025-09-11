@@ -15,10 +15,8 @@
  */
 import { z } from 'zod';
 
-import { AmiHardwareType, EcsSourceType, RemovalPolicy } from './cdk';
+import { AmiHardwareType, ApplicationProtocol, ApplicationProtocolVersion, EcsSourceType, RemovalPolicy } from './cdk';
 import { RagRepositoryConfigSchema, RdsInstanceConfig } from './ragSchema';
-import { ApplicationProtocol, ApplicationProtocolVersion } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { Z_ERRNO } from 'zlib';
 
 /**
  * Custom security groups for application.

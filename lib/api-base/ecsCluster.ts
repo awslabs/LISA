@@ -108,6 +108,7 @@ export class ECSCluster extends Construct {
         taskDefinitionName: string,
         config: Config,
         taskDefinition: TaskDefinition,
+        baseEnvironment: Record<string, string>,
         ecsConfig: ECSConfig,
         volumes: Volume[],
         mountPoints: MountPoint[],
@@ -164,7 +165,7 @@ export class ECSCluster extends Construct {
         const container = ec2TaskDefinition.addContainer(createCdkId([taskDefinitionName, 'Container']), {
             containerName: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             image,
-            environment: taskDefinition.environment,
+            environment: {...baseEnvironment, ...taskDefinition.environment},
             logging: LogDriver.awsLogs({
                 logGroup: logGroup,
                 streamPrefix: taskDefinitionName
@@ -392,13 +393,22 @@ export class ECSCluster extends Construct {
         );
         const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
-        //todo fix memory reservation
+        const domain =
+            ecsConfig.loadBalancerConfig.domainName !== null
+                ? ecsConfig.loadBalancerConfig.domainName
+                : loadBalancer.loadBalancerDnsName;
+        this.endpointUrl = `${protocol}://${domain}`;
+        baseEnvironment.CORS_ORIGINS = [loadBalancer.loadBalancerDnsName, ecsConfig.loadBalancerConfig.domainName].filter(Boolean)
+            .map((domain) => `${protocol}://${domain}`)
+            .concat('*')
+            .join(',');
 
         Object.entries(ecsConfig.tasks).forEach(([name, definition]) => {
             const taskResult = this.createTaskDefinition(
                 name,
                 config,
                 definition,
+                baseEnvironment,
                 ecsConfig,
                 volumes,
                 mountPoints,
@@ -467,11 +477,5 @@ export class ECSCluster extends Construct {
             this.services[ecsTasksKey] = service;
             this.targetGroups[ecsTasksKey] = targetGroup;
         });
-
-        const domain =
-            ecsConfig.loadBalancerConfig.domainName !== null
-                ? ecsConfig.loadBalancerConfig.domainName
-                : loadBalancer.loadBalancerDnsName;
-        this.endpointUrl = `${protocol}://${domain}`;
     }
 }

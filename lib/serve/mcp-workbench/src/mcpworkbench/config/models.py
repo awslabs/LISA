@@ -10,7 +10,7 @@ class CORSConfig(BaseModel):
     allow_origins: List[str] = Field(default=["*"], description="Allowed origins for CORS")
     allow_methods: List[str] = Field(default=["GET", "POST", "OPTIONS"], description="Allowed HTTP methods")
     allow_headers: List[str] = Field(default=["*"], description="Allowed headers")
-    allow_credentials: bool = Field(default=False, description="Allow credentials in CORS requests")
+    allow_credentials: bool = Field(default=True, description="Allow credentials in CORS requests")
     expose_headers: List[str] = Field(default=[], description="Headers to expose to the browser")
     max_age: int = Field(default=600, description="Maximum age for CORS preflight cache")
 

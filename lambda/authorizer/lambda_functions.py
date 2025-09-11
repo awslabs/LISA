@@ -26,7 +26,7 @@ import create_env_variables  # noqa: F401
 import jwt
 import requests
 from botocore.exceptions import ClientError
-from utilities.common_functions import authorization_wrapper, get_id_token, retry_config
+from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
 
 logger = logging.getLogger(__name__)
 
@@ -185,19 +185,6 @@ def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: st
 
 def is_user(jwt_data: dict[str, Any], user_group: str, jwt_groups_property: str) -> bool:
     return user_group in (get_property_path(jwt_data, jwt_groups_property) or [])
-
-
-def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:
-    """Get the value represented by a property path."""
-    props = property_path.split(".")
-    current_node = data
-    for prop in props:
-        if prop in current_node:
-            current_node = current_node[prop]
-        else:
-            return None
-
-    return current_node
 
 
 def find_jwt_username(jwt_data: dict[str, str]) -> str:

@@ -130,7 +130,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                 position: 'absolute',
                                 top: '5px',
                                 right: '5px',
-                                zIndex: 10
+                                zIndex: 10,
                             }}
                         >
                             <ButtonGroup
@@ -165,7 +165,8 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                                 fontFamily: 'Consolas, Monaco, "Courier New", monospace',
                                 fontSize: '14px',
                                 lineHeight: '1.45',
-                                margin: '0'
+                                margin: '0',
+                                textWrap: 'wrap'
                             }}
                         >
                             <code style={{ backgroundColor: 'transparent', padding: '0', color: 'inherit' }}>

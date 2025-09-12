@@ -17,6 +17,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { normalizeError } from '../util/validationUtils';
+import { boolean, string } from 'zod';
 
 export enum McpServerStatus {
     Active = 'active',
@@ -70,10 +71,15 @@ export const mcpServerApi = createApi({
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Create MCP Server', baseQueryReturnValue),
             invalidatesTags: ['mcpServers'],
         }),
-        getMcpServer: builder.query<McpServer, string>({
-            query (serverId) {
+        getMcpServer: builder.query<McpServer, {mcpServerId, showPlaceholder?: boolean}>({
+            query ({mcpServerId, showPlaceholder = false}) {
+                const queryStringParameters = new URLSearchParams();
+                if (showPlaceholder) {
+                    queryStringParameters.append('showPlaceholder', '1');
+                }
+
                 return {
-                    url: `/mcp-server/${serverId}`,
+                     url: `/mcp-server/${mcpServerId}?${queryStringParameters.toString()}`,
                     method: 'GET'
                 };
             },

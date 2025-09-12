@@ -32,6 +32,14 @@ dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], conf
 table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 
 
+def replace_bearer_token_header(mcp_server: dict, replacement: str):
+    """Replace {LISA_BEARER_TOKEN} placeholder with actual bearer token in custom headers."""
+    custom_headers = mcp_server.get("customHeaders", {})
+    for key, value in custom_headers.items():
+        if key.lower() == 'authorization' and '{LISA_BEARER_TOKEN}' in value:
+            custom_headers[key] = value.replace('{LISA_BEARER_TOKEN}', replacement)
+
+
 def _get_mcp_servers(
     user_id: Optional[str] = None,
     active: Optional[bool] = None,
@@ -70,10 +78,7 @@ def _get_mcp_servers(
     # Look through the headers, and replace {LISA_BEARER_TOKEN} with the users
     if replace_bearer_token:
         for mcp_server in items:
-            custom_headers = mcp_server.get("customHeaders", {})
-            for key, value in custom_headers.items():
-                if key.lower() == 'authentication' and '{LISA_BEARER_TOKEN}' in value:
-                    custom_headers[key] = value.replace('{LISA_BEARER_TOKEN}', replace_bearer_token)
+            replace_bearer_token_header(mcp_server, replace_bearer_token)
 
 
     return {"Items": items}
@@ -84,6 +89,10 @@ def get(event: dict, context: dict) -> Any:
     """Retrieve a specific mcp server from DynamoDB."""
     user_id = get_username(event)
     mcp_server_id = get_mcp_server_id(event)
+
+    # Check if showPlaceholder query parameter is present
+    query_params = event.get("queryStringParameters") or {}
+    show_placeholder = query_params.get("showPlaceholder") == "1"
 
     # Query for the mcp server
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
@@ -98,6 +107,13 @@ def get(event: dict, context: dict) -> Any:
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
             item["isOwner"] = True
+        
+        # Replace bearer token placeholder unless showPlaceholder is true
+        if not show_placeholder:
+            bearer_token = get_bearer_token(event)
+            if bearer_token:
+                replace_bearer_token_header(item, bearer_token)
+        
         return item
 
     raise ValueError(f"Not authorized to get {mcp_server_id}.")

@@ -36,6 +36,7 @@ from starlette.responses import Response, JSONResponse
 
 # The following are field names, not passwords or tokens
 API_KEY_HEADER_NAMES = [
+    "authorization",
     "Authorization",  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
     "Api-Key",  # pragma: allowlist secret # Azure key format, can be used with Continue IDE plugin
 ]
@@ -156,10 +157,9 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next
     ) -> Response:
-        # response = await call_next(request)
-        # response.headers['Custom'] = 'Example'
-        # return response
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
+        if request.method == "OPTIONS":
+            return await call_next(request)
 
         valid = False
         if self._token_authorizer.is_valid_api_token(request.headers):
@@ -169,15 +169,17 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
             logger.info("looks like a valid mgmt token")
             valid = True
         else:
-            authorization = request.headers.get("Authorization", '')
-            id_token = authorization.split(' ')[-1]
-            if len(id_token) > 0 and id_token_is_valid(
-                id_token=id_token,
-                authority=os.environ["AUTHORITY"],
-                client_id=os.environ["CLIENT_ID"],
-                jwks_client=self._jwks_client,
-            ):
-                valid = True
+            for header_name in API_KEY_HEADER_NAMES:
+                authorization = request.headers.get(header_name, '').strip()
+                id_token = authorization.split(' ')[-1]
+                if len(id_token) > 0 and id_token_is_valid(
+                    id_token=id_token,
+                    authority=os.environ["AUTHORITY"],
+                    client_id=os.environ["CLIENT_ID"],
+                    jwks_client=self._jwks_client,
+                ):
+                    valid = True
+                    break
 
         if not valid:
             # raise  HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -210,7 +212,7 @@ class ApiTokenAuthorizer:
         """Return if API Token from request headers is valid if found."""
         for header_name in API_KEY_HEADER_NAMES:
             token = headers.get(header_name, "").removeprefix("Bearer").strip()
-            if token:
+            if len(token) > 0:
                 token_info = self._get_token_info(token)
                 if token_info:
                     token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
@@ -252,5 +254,10 @@ class ManagementTokenAuthorizer:
     def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         self._refreshTokens()
-        token = headers.get("Authorization", "").strip()
-        return token in self._secret_tokens
+
+        for header_name in API_KEY_HEADER_NAMES:
+            token = headers.get(header_name, "").strip()
+            if token in self._secret_tokens:
+                return True
+        
+        return False

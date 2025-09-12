@@ -92,7 +92,7 @@ def check_show_mcp_workbench(body, old_configuration):
                 name='MCP Workbench',
                 description='MCP Workbench Tools',
                 customHeaders={
-                    'Authentication': 'Bearer {LISA_BEARER_TOKEN}'
+                    'Authorization': 'Bearer {LISA_BEARER_TOKEN}'
                 },
                 url=f"{os.getenv('FASTAPI_ENDPOINT')}/v2/mcp/"
             )

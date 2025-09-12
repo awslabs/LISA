@@ -17,7 +17,8 @@
 export const MERMAID_SANITIZATION_CONFIG = {
     USE_PROFILES: { svg: true, svgFilters: true },
     // foreignObject Tag is necessary for text in diagrams (flow, class, etc)
-    ADD_TAGS: ['foreignObject'],
+    ADD_TAGS: ['foreignObject', 'p', 'br'],
+    HTML_INTEGRATION_POINTS: {'foreignobject': true},
     // Various attributes that are necessary for diagram formatting
     ADD_ATTR: [
         'text-anchor', 'dominant-baseline', 'font-family', 'font-size', 'font-weight', 'font-style',

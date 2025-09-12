@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { CfnOutput, Duration, SecretValue } from 'aws-cdk-lib';
+import { CfnOutput, Duration } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
@@ -217,56 +217,12 @@ export class FastApiContainer extends Construct {
             vpc
         });
 
-        // setup event bridge target/connection to hit mcp workbench rescan endpoint when the s3 bucket is updated
-        // the flow is s3 -> eventbridge bus -> eventbridge rule -> eventbridge target -> eventbridge destination (which uses eventbridge connection)
-        const managementKeySecretName = ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
-        const rescanMcpWorkbenchConnection = new events.Connection(this, 'RescanMCPWorkbenchConnection', {
-            authorization: events.Authorization.apiKey(
-                'Authorization',
-                SecretValue.secretsManager(managementKeySecretName)
-            ),
-            headerParameters: {
-                Accept: events.HttpParameter.fromString('text/event-stream')
-            }
-        });
-
-        const rescanMcpWorkbenchDestination = new events.ApiDestination(this, 'RescanMCPWorkbenchDestination',  {
-            connection: rescanMcpWorkbenchConnection,
-            endpoint: `${apiCluster.endpointUrl}/v2/mcp/rescan`,
-            httpMethod: events.HttpMethod.GET,
-        });
-
-        const rescanMcpWorkbenchTarget = new targets.ApiDestination(rescanMcpWorkbenchDestination, {
-            retryAttempts: 2,
-            maxEventAge: Duration.seconds(60),
-            headerParameters: {
-                "Content-Type": "application/json",
-            },
-        });
-
-        const rescanMcpWorkbenchRule = new events.Rule(this, 'RescanMCPWorkbenchRule', {
-            eventPattern: {
-                source: ['aws.s3', 'debug'],
-                detailType: [
-                    'Object Created',
-                    'Object Deleted'
-                ],
-                detail: {
-                    bucket: {
-                        name: [[config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase()]
-                    }
-                }
-            },
-
-        });
-        rescanMcpWorkbenchRule.addTarget(rescanMcpWorkbenchTarget);
-
-        // setup updating our connection when the management secret is rotated
-        // the flow is secret rotating lambda -> eventbridge bus -> eventbridge rule -> eventbridge target (which calls the update connection lambda)
-        const connectionSecretUpdaterRole = new Role(this, 'ConnectionSecretUpdaterRole', {
+        // Create Lambda function to handle S3 events and trigger MCP Workbench rescan
+        // This replaces the EventBridge Connection/Destination approach which isn't available in all regions
+        const s3EventHandlerRole = new Role(this, 'S3EventHandlerRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             inlinePolicies: {
-                'ConnectionSecretUpdaterPolicy': new PolicyDocument({
+                'S3EventHandlerPolicy': new PolicyDocument({
                     statements: [
                         new PolicyStatement({
                             effect: Effect.ALLOW,
@@ -280,52 +236,56 @@ export class FastApiContainer extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                "secretsmanager:GetSecretValue",
-                                "secretsmanager:DescribeSecret",
-                                "secretsmanager:PutSecretValue",
-                                "secretsmanager:UpdateSecretVersionStage"
+                                'secretsmanager:GetSecretValue'
                             ],
                             resources: [
-                                `arn:aws:secretsmanager:${config.region}:*:secret:${config.deploymentName}-lisa-management-key*`,
-                                rescanMcpWorkbenchConnection.connectionSecretArn
+                                `arn:aws:secretsmanager:${config.region}:*:secret:${config.deploymentName}-lisa-management-key*`
                             ]
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'events:ListConnections',
-                                'events:UpdateConnection'
+                                'ssm:GetParameter'
                             ],
-                            resources: ['*']
+                            resources: [
+                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/managementKeySecretName`,
+                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/serve/endpoint`
+                            ]
                         })
                     ]
                 })
             }
         });
 
-        const connectionSecretUpdaterLambda = new lambda.Function(this, 'ConnectionSecretUpdaterLambda', {
+        const s3EventHandlerLambda = new lambda.Function(this, 'S3EventHandlerLambda', {
             runtime: getDefaultRuntime(),
-            handler: 'mcp_workbench.connection_secret_updater.handler',
+            handler: 'mcp_workbench.s3_event_handler.handler',
             code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
-            timeout: Duration.minutes(5),
-            role: connectionSecretUpdaterRole,
+            timeout: Duration.minutes(2),
+            role: s3EventHandlerRole,
             environment: {
-                DEPLOYMENT_PREFIX: config.deploymentPrefix!
+                DEPLOYMENT_PREFIX: config.deploymentPrefix!,
+                API_ENDPOINT: apiCluster.endpointUrl
             }
         });
 
-        const managementEventBus = events.EventBus.fromEventBusName(this, 'ManagementEventBus', `${config.deploymentName}-lisa-management-events`);
-
-        // Create EventBridge rule to trigger lambda when management key is rotated
-        const managementKeyRotationRule = new events.Rule(this, 'ManagementKeyRotationRule', {
+        // Create EventBridge rule to trigger Lambda when S3 objects are created/deleted
+        const rescanMcpWorkbenchRule = new events.Rule(this, 'RescanMCPWorkbenchRule', {
             eventPattern: {
-                source: ['lisa.management-key'],
-                detailType: ['Management Key Rotated']
+                source: ['aws.s3', 'debug'],
+                detailType: [
+                    'Object Created',
+                    'Object Deleted'
+                ],
+                detail: {
+                    bucket: {
+                        name: [[config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase()]
+                    }
+                }
             },
-            eventBus: managementEventBus
         });
 
-        managementKeyRotationRule.addTarget(new targets.LambdaFunction(connectionSecretUpdaterLambda, {
+        rescanMcpWorkbenchRule.addTarget(new targets.LambdaFunction(s3EventHandlerLambda, {
             retryAttempts: 2,
             maxEventAge: Duration.minutes(5)
         }));

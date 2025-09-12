@@ -42,7 +42,7 @@ const advancedOptions = {
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
     enableModelComparisonUtility: 'Enable Model Comparison Utility',
-    enableSessionEncryption: 'Enable Session Encryption',
+    encryptSession: 'Enable Session Encryption',
 };
 
 const configurableOperations = [{

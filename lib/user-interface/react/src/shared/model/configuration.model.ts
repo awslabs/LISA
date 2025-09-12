@@ -19,7 +19,6 @@ export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
     enabledComponents: IEnabledComponents,
     global: IGlobalConfiguration,
-    sessionEncryption: ISessionEncryptionConfiguration
 };
 
 export type IEnabledComponents = {
@@ -37,7 +36,7 @@ export type IEnabledComponents = {
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
     modelLibrary: boolean;
-    enableSessionEncryption: boolean;
+    encryptSession: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -49,10 +48,6 @@ export type ISystemBannerConfiguration = {
 
 export type IGlobalConfiguration = {
     defaultModel: string;
-};
-
-export type ISessionEncryptionConfiguration = {
-    enabled: boolean;
 };
 
 export type BaseConfiguration = {
@@ -92,20 +87,15 @@ export const enabledComponentsSchema = z.object({
     mcpConnections: z.boolean().default(true),
     modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false),
-    enableSessionEncryption: z.boolean().default(false),
+    encryptSession: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({
     defaultModel: z.string().optional()
 });
 
-export const sessionEncryptionConfigSchema = z.object({
-    enabled: z.boolean().default(false)
-});
-
 export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
     enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
     global: globalConfigSchema.default(globalConfigSchema.parse({})),
-    sessionEncryption: sessionEncryptionConfigSchema.default(sessionEncryptionConfigSchema.parse({})),
 });

@@ -112,11 +112,20 @@ def update_connection_secrets(new_management_key: str, management_secret_name: s
         logger.info(f"Updating connections for deployment prefix: {deployment_prefix}")
         
         # List all EventBridge connections to find ones that might use the management key
-        paginator = events_client.get_paginator('list_connections')
-        
+        # Note: list_connections doesn't support boto3 paginator, but supports manual pagination
         connections_updated = 0
-        for page in paginator.paginate():
-            for connection in page.get('Connections', []):
+        next_token = None
+        
+        while True:
+            # Prepare the request parameters
+            list_params = {'Limit': 100}  # Set a reasonable limit per page
+            if next_token:
+                list_params['NextToken'] = next_token
+            
+            response = events_client.list_connections(**list_params)
+            
+            # Process connections in this page
+            for connection in response.get('Connections', []):
                 connection_name = connection['Name']
                 connection_arn = connection['ConnectionArn']
                 
@@ -124,12 +133,19 @@ def update_connection_secrets(new_management_key: str, management_secret_name: s
                 # Look for connections with names containing the deployment pattern
                 if should_update_connection(connection_name, deployment_prefix):
                     try:
-                        update_connection_authorization(connection_arn, new_management_key)
+                        update_connection_authorization(connection_name, new_management_key)
                         connections_updated += 1
                         logger.info(f"Updated connection: {connection_name}")
                     except Exception as e:
                         logger.error(f"Failed to update connection {connection_name}: {e}")
                         # Continue with other connections even if one fails
+            
+            # Check if there are more pages
+            next_token = response.get('NextToken')
+            if not next_token:
+                break
+            
+            logger.info(f"Processing next page of connections (token: {next_token[:20]}...)")
         
         logger.info(f"Updated {connections_updated} connections")
         
@@ -149,7 +165,7 @@ def should_update_connection(connection_name: str, deployment_prefix: str) -> bo
     # Check for common connection naming patterns
     patterns = [
         f"{deployment_name}",
-        "RefreshMCPWorkbench",
+        "RescanMCPWorkbench",
         "MCPWorkbench",
         "lisa",
     ]
@@ -158,14 +174,14 @@ def should_update_connection(connection_name: str, deployment_prefix: str) -> bo
     return any(pattern.lower() in connection_lower for pattern in patterns)
 
 
-def update_connection_authorization(connection_arn: str, new_api_key: str) -> None:
+def update_connection_authorization(connection_name: str, new_api_key: str) -> None:
     """
     Update the authorization for an EventBridge connection with the new API key.
     """
     try:
         # Update the connection with new authorization
         events_client.update_connection(
-            Name=connection_arn.split('/')[-1],  # Extract connection name from ARN
+            Name=connection_name.split('/')[-1],  # Extract connection name from ARN
             AuthorizationType='API_KEY',
             AuthParameters={
                 'ApiKeyAuthParameters': {
@@ -174,7 +190,7 @@ def update_connection_authorization(connection_arn: str, new_api_key: str) -> No
                 }
             }
         )
-        logger.info(f"Successfully updated connection authorization: {connection_arn}")
+        logger.info(f"Successfully updated connection authorization: {connection_name}")
         
     except ClientError as e:
         logger.error(f"Error updating connection authorization: {e}")

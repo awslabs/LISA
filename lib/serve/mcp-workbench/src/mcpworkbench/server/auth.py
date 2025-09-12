@@ -29,6 +29,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction
+from starlette.types import ASGIApp, Scope, Receive, Send
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response, JSONResponse
+
 # The following are field names, not passwords or tokens
 API_KEY_HEADER_NAMES = [
     "Authorization",  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
@@ -129,33 +134,59 @@ def get_authorization_token(headers: Dict[str, str], header_name: str) -> str:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
     return headers.get(header_name.lower(), "").removeprefix("Bearer").strip()
 
+class LoggingMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
+        super().__init__(app, dispatch)
 
-class OIDCHTTPBearer:
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers['Custom'] = 'Example'
+        return response
+    
+class OIDCHTTPBearer(BaseHTTPMiddleware):
     """OIDC based bearer token authenticator."""
 
-    def __init__(self, *args, **kwargs):
-        print("loaded middleware")
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
+        super().__init__(app, dispatch)
         self._token_authorizer = ApiTokenAuthorizer()
         self._management_token_authorizer = ManagementTokenAuthorizer()
-
         self._jwks_client = get_jwks_client()
 
-    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+    async def dispatch(
+        self, request: Request, call_next
+    ) -> Response:
+        # response = await call_next(request)
+        # response.headers['Custom'] = 'Example'
+        # return response
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
+
+        valid = False
         if self._token_authorizer.is_valid_api_token(request.headers):
-            return None  # valid API token, not continuing with OIDC auth
+            logger.info("looks like a valid api token")
+            valid = True
         elif self._management_token_authorizer.is_valid_api_token(request.headers):
             logger.info("looks like a valid mgmt token")
-            return None  # valid management token, not continuing with OIDC auth
-        http_auth_creds = await super().__call__(request)
-        if not id_token_is_valid(
-            id_token=http_auth_creds.credentials,
-            authority=os.environ["AUTHORITY"],
-            client_id=os.environ["CLIENT_ID"],
-            jwks_client=self._jwks_client,
-        ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-        return http_auth_creds
+            valid = True
+        else:
+            authorization = request.headers.get("Authorization", '')
+            id_token = authorization.split(' ')[-1]
+            if len(id_token) > 0 and id_token_is_valid(
+                id_token=id_token,
+                authority=os.environ["AUTHORITY"],
+                client_id=os.environ["CLIENT_ID"],
+                jwks_client=self._jwks_client,
+            ):
+                valid = True
+
+        if not valid:
+            # raise  HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Unauthorized"},
+            )
+
+        return await call_next(request)
 
 
 class ApiTokenAuthorizer:

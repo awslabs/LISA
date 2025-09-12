@@ -149,9 +149,10 @@ class MCPWorkbenchServer:
             allow_methods=self.config.cors_settings.allow_methods,
             allow_headers=self.config.cors_settings.allow_headers,
         )
-        # mcp_app.add_middleware(
-        #     OIDCHTTPBearer
-        # )
+
+        mcp_app.add_middleware(
+            OIDCHTTPBearer
+        )
         
         # Add MCP mount
         routes = [

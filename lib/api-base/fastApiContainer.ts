@@ -217,21 +217,26 @@ export class FastApiContainer extends Construct {
             vpc
         });
 
+        // setup event bridge target/connection to hit mcp workbench rescan endpoint when the s3 bucket is updated
+        // the flow is s3 -> eventbridge bus -> eventbridge rule -> eventbridge target -> eventbridge destination (which uses eventbridge connection)
         const managementKeySecretName = ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
-        const connection = new events.Connection(this, 'RefreshMCPWorkbenchConnection', {
+        const rescanMcpWorkbenchConnection = new events.Connection(this, 'RescanMCPWorkbenchConnection', {
             authorization: events.Authorization.apiKey(
                 'Authorization',
                 SecretValue.secretsManager(managementKeySecretName)
-            )
+            ),
+            headerParameters: {
+                Accept: events.HttpParameter.fromString('text/event-stream')
+            }
         });
 
-        const refreshMcpWorkbenchDestination = new events.ApiDestination(this, 'RefreshMCPWorkbenchDestination',  {
-            connection,
-            endpoint: `${apiCluster.endpointUrl}/v2/mcp/refresh`,
+        const rescanMcpWorkbenchDestination = new events.ApiDestination(this, 'RescanMCPWorkbenchDestination',  {
+            connection: rescanMcpWorkbenchConnection,
+            endpoint: `${apiCluster.endpointUrl}/v2/mcp/rescan`,
             httpMethod: events.HttpMethod.GET,
         });
 
-        const refreshMcpWorkbenchTarget = new targets.ApiDestination(refreshMcpWorkbenchDestination, {
+        const rescanMcpWorkbenchTarget = new targets.ApiDestination(rescanMcpWorkbenchDestination, {
             retryAttempts: 2,
             maxEventAge: Duration.seconds(60),
             headerParameters: {
@@ -239,7 +244,7 @@ export class FastApiContainer extends Construct {
             },
         });
 
-        const refreshMcpWorkbenchRule = new events.Rule(this, 'RefreshMCPWorkbenchRule', {
+        const rescanMcpWorkbenchRule = new events.Rule(this, 'RescanMCPWorkbenchRule', {
             eventPattern: {
                 source: ['aws.s3', 'debug'],
                 detailType: [
@@ -254,9 +259,10 @@ export class FastApiContainer extends Construct {
             },
 
         });
-        refreshMcpWorkbenchRule.addTarget(refreshMcpWorkbenchTarget);
+        rescanMcpWorkbenchRule.addTarget(rescanMcpWorkbenchTarget);
 
-        // Create Lambda function to update connection secrets when management key is rotated
+        // setup updating our connection when the management secret is rotated
+        // the flow is secret rotating lambda -> eventbridge bus -> eventbridge rule -> eventbridge target (which calls the update connection lambda)
         const connectionSecretUpdaterRole = new Role(this, 'ConnectionSecretUpdaterRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             inlinePolicies: {
@@ -274,10 +280,15 @@ export class FastApiContainer extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'secretsmanager:GetSecretValue',
-                                'secretsmanager:DescribeSecret'
+                                "secretsmanager:GetSecretValue",
+                                "secretsmanager:DescribeSecret",
+                                "secretsmanager:PutSecretValue",
+                                "secretsmanager:UpdateSecretVersionStage"
                             ],
-                            resources: [`arn:aws:secretsmanager:${config.region}:*:secret:${config.deploymentName}-lisa-management-key*`]
+                            resources: [
+                                `arn:aws:secretsmanager:${config.region}:*:secret:${config.deploymentName}-lisa-management-key*`,
+                                rescanMcpWorkbenchConnection.connectionSecretArn
+                            ]
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
@@ -303,12 +314,15 @@ export class FastApiContainer extends Construct {
             }
         });
 
+        const managementEventBus = events.EventBus.fromEventBusName(this, 'ManagementEventBus', `${config.deploymentName}-lisa-management-events`);
+
         // Create EventBridge rule to trigger lambda when management key is rotated
         const managementKeyRotationRule = new events.Rule(this, 'ManagementKeyRotationRule', {
             eventPattern: {
                 source: ['lisa.management-key'],
                 detailType: ['Management Key Rotated']
-            }
+            },
+            eventBus: managementEventBus
         });
 
         managementKeyRotationRule.addTarget(new targets.LambdaFunction(connectionSecretUpdaterLambda, {

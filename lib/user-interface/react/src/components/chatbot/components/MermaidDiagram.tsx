@@ -17,7 +17,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
 import { ButtonGroup, StatusIndicator } from '@cloudscape-design/components';
-import { downloadSvgAsPng } from '../../../shared/util/downloader';
+import { downloadSvgAsPng } from '@/shared/util/downloader';
+import { MERMAID_SANITIZATION_CONFIG } from '@/components/chatbot/config/mermaidSanitizationConfig';
+import DOMPurify from 'dompurify';
 
 type MermaidDiagramProps = {
     chart: string;
@@ -41,7 +43,6 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 startOnLoad: false,
                 theme: 'dark',
                 securityLevel: 'loose',
-                fontFamily: 'Arial, sans-serif',
                 suppressErrorRendering: true,
                 fontSize: 14,
                 flowchart: {
@@ -134,7 +135,6 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 border: '1px solid #d13212',
                 borderRadius: '4px',
                 color: '#ff6b6b',
-                fontFamily: 'monospace',
                 fontSize: '12px'
             }}>
                 <strong>Mermaid Error:</strong> {error}
@@ -223,7 +223,9 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                     borderRadius: '4px',
                     overflow: 'auto'
                 }}
-                dangerouslySetInnerHTML={{ __html: svg }}
+                dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(svg, MERMAID_SANITIZATION_CONFIG)
+                }}
             />
         </div>
     );

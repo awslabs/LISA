@@ -15,18 +15,17 @@
 */
 
 export const MERMAID_SANITIZATION_CONFIG = {
-    USE_PROFILES: { svg: true, svgFilters: true },
     // foreignObject Tag is necessary for text in diagrams (flow, class, etc)
     ADD_TAGS: ['foreignObject', 'p', 'br'],
     HTML_INTEGRATION_POINTS: {'foreignobject': true},
     // Various attributes that are necessary for diagram formatting
     ADD_ATTR: [
         'text-anchor', 'dominant-baseline', 'font-family', 'font-size', 'font-weight', 'font-style',
-        'x', 'y', 'dx', 'dy', 'rotate', 'textLength', 'lengthAdjust',
+        'x', 'y', 'dx', 'dy', 'rx', 'ry', 'rotate', 'textLength', 'lengthAdjust',
         'startOffset', 'method', 'spacing', 'alignment-baseline', 'baseline-shift',
         'letter-spacing', 'word-spacing', 'text-decoration', 'text-rendering',
         'unicode-bidi', 'direction', 'writing-mode', 'glyph-orientation-vertical',
         'glyph-orientation-horizontal', 'kerning', 'fill', 'stroke', 'stroke-width',
-        'opacity', 'fill-opacity', 'stroke-opacity', 'transform', 'style'
+        'opacity', 'fill-opacity', 'stroke-opacity', 'transform', 'style', 'width', 'height',
     ]
 }

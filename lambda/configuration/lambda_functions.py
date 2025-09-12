@@ -21,12 +21,12 @@ from decimal import Decimal
 from typing import Any, Dict
 
 import boto3
-import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
 from utilities.common_functions import api_wrapper, retry_config
 
 logger = logging.getLogger(__name__)
 
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 
@@ -52,18 +52,6 @@ def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
     return response.get("Items", {})  # type: ignore [no-any-return]
 
 
-def _convert_floats_to_decimals(obj: Any) -> Any:
-    """Recursively convert float values to Decimal for DynamoDB compatibility."""
-    if isinstance(obj, float):
-        return Decimal(str(obj))
-    elif isinstance(obj, dict):
-        return {key: _convert_floats_to_decimals(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [_convert_floats_to_decimals(item) for item in obj]
-    else:
-        return obj
-
-
 def _invalidate_session_encryption_cache() -> None:
     """Invalidate session encryption cache across Lambda functions.
 
@@ -72,12 +60,6 @@ def _invalidate_session_encryption_cache() -> None:
     is updated.
     """
     try:
-        # Use SQS or SNS to notify other Lambda functions to clear their cache
-        # For now, we'll use a simple approach with SSM Parameter Store
-        import boto3
-
-        ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
-
         # Update a parameter that indicates cache should be invalidated
         # Lambda functions can check this timestamp against their cache timestamp
         current_time = str(int(time.time()))
@@ -101,12 +83,8 @@ def _invalidate_session_encryption_cache() -> None:
 @api_wrapper
 def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
-    # Parse JSON with float/int types for proper type preservation
+    # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
-
-    # Convert floats to Decimals for DynamoDB compatibility
-    body = _convert_floats_to_decimals(body)
-
     body["created_at"] = str(Decimal(time.time()))
 
     try:

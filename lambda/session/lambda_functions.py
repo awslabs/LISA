@@ -137,7 +137,7 @@ def _is_session_encryption_enabled() -> bool:
                 result = encrypt_session
             elif isinstance(encrypt_session, str):
                 result = encrypt_session.lower() in ("true", "1", "yes", "on")
-            elif isinstance(encrypt_session, (int, float)):
+            elif isinstance(encrypt_session, (int, float, Decimal)):
                 result = bool(encrypt_session)
             else:
                 logger.warning(f"Unexpected type for encryptSession: {type(encrypt_session)}, defaulting to False")

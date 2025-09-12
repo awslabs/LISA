@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+from decimal import Decimal
 from typing import Any
 
 import boto3
@@ -54,7 +55,7 @@ def get(event: dict, context: dict) -> Any:
 def update(event: dict, context: dict) -> Any:
     """Update an existing user preferences in DynamoDB."""
     user_id = get_username(event)
-    body = json.loads(event["body"], parse_float=float, parse_int=int)
+    body = json.loads(event["body"], parse_float=Decimal)
     user_preferences_model = UserPreferencesModel(**body)
 
     # Query for the latest user preferences revision

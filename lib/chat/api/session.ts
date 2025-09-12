@@ -153,6 +153,7 @@ export class SessionApi extends Construct {
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
             MODEL_TABLE_NAME: modelTableName,
             CONFIG_TABLE_NAME: configTable.tableName,
+            SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
         };
 
         const lambdaRole: IRole = createLambdaRole(
@@ -221,11 +222,6 @@ export class SessionApi extends Construct {
             })
         );
 
-        // Add KMS key ARN to environment variables
-        Object.assign(env, {
-            SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
-        });
-
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
@@ -280,38 +276,6 @@ export class SessionApi extends Construct {
                 resource: 'session',
                 description: 'Attaches image to session',
                 path: 'session/{sessionId}/attachImage',
-                method: 'PUT',
-                environment: env,
-            },
-            {
-                name: 'generate_data_key',
-                resource: 'session-encryption',
-                description: 'Generates data key for session encryption',
-                path: 'session/encryption/generate-key',
-                method: 'POST',
-                environment: env,
-            },
-            {
-                name: 'decrypt_data_key',
-                resource: 'session-encryption',
-                description: 'Decrypts data key for session decryption',
-                path: 'session/encryption/decrypt-key',
-                method: 'POST',
-                environment: env,
-            },
-            {
-                name: 'get_encryption_config',
-                resource: 'session-encryption',
-                description: 'Gets encryption configuration',
-                path: 'session/encryption/config',
-                method: 'GET',
-                environment: env,
-            },
-            {
-                name: 'update_encryption_config',
-                resource: 'session-encryption',
-                description: 'Updates encryption configuration',
-                path: 'session/encryption/config',
                 method: 'PUT',
                 environment: env,
             },

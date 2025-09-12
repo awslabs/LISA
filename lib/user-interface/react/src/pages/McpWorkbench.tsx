@@ -26,9 +26,6 @@ export function McpWorkbench ({ setNav }): ReactElement {
     return (
         <Routes>
             <Route index path='*' element={<McpWorkbenchManagementComponent />} />
-            {/* <Route index path='/new' element={<McpServerForm />} />
-            <Route index path='/edit/:mcpServerId' element={<McpServerForm isEdit={true} />} />
-            <Route index path='/:mcpServerId' element={<McpServerDetails />} /> */}
         </Routes>
     );
 }

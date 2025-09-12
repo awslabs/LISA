@@ -41,6 +41,7 @@ import { getDefaultRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { letIfDefined } from '../util/common-functions';
+import { EventBus } from 'aws-cdk-lib/aws-events';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -92,6 +93,11 @@ export class LisaServeApplicationConstruct extends Construct {
             vpc: vpc,
         });
 
+        // Create EventBus for management key rotation events
+        const managementEventBus = new EventBus(scope, createCdkId([scope.node.id, 'managementEventBus']), {
+            eventBusName: `${config.deploymentName}-lisa-management-events`,
+        });
+
         // Use a stable name for the management key secret
         const managementKeySecret = new Secret(scope, createCdkId([scope.node.id, 'managementKeySecret']), {
             secretName: `${config.deploymentName}-lisa-management-key`, // Use stable name based on deployment
@@ -109,6 +115,9 @@ export class LisaServeApplicationConstruct extends Construct {
             handler: 'management_key.handler',
             code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
             timeout: Duration.minutes(5),
+            environment: {
+                EVENT_BUS_NAME: managementEventBus.eventBusName,
+            },
             role: new Role(scope, createCdkId([scope.node.id, 'managementKeyRotationRole']), {
                 assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
                 managedPolicies: [
@@ -126,6 +135,13 @@ export class LisaServeApplicationConstruct extends Construct {
                                     'secretsmanager:UpdateSecretVersionStage'
                                 ],
                                 resources: [managementKeySecret.secretArn]
+                            }),
+                            new PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: [
+                                    'events:PutEvents'
+                                ],
+                                resources: [managementEventBus.eventBusArn]
                             })
                         ]
                     })

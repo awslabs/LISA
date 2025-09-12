@@ -14,13 +14,15 @@
  limitations under the License.
  */
 
-import { Button, CodeEditor, Grid, SpaceBetween, List, ButtonDropdown, Header, Box, Icon, Input, FormField, Alert, TextFilter, Pagination } from '@cloudscape-design/components';
+import { Button, CodeEditor, Container, Grid, SpaceBetween, List, ButtonDropdown, Header, Box, Icon, Input, FormField, Alert, TextFilter, Pagination } from '@cloudscape-design/components';
 import 'react';
-import 'ace-builds/css/ace.css';
-import 'ace-builds/css/theme/cloud_editor.css';
-import 'ace-builds/css/theme/cloud_editor_dark.css';
-import * as ace from 'ace-builds';
+import 'ace-builds';
+// import * as ace from 'ace-builds/src-noconflict/ace';
+    import { Ace } from 'ace-builds';
+// import 'ace-builds/webpack-resolver'; // lets ace load workers/themes when bundled
 import 'ace-builds/src-noconflict/mode-python';
+import 'ace-builds/src-noconflict/theme-tomorrow';
+import 'ace-builds/src-noconflict/ext-language_tools';
 import { ReactElement, useEffect, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -33,6 +35,8 @@ import {
     useDeleteMcpToolMutation
 } from '@/shared/reducers/mcp-tools.reducer';
 import { IMcpTool, DefaultMcpTool } from '@/shared/model/mcp-tools.model';
+import initialTool from './default_tool.txt?raw';
+import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 
 export function McpWorkbenchManagementComponent(): ReactElement {
     const dispatch = useAppDispatch();
@@ -48,7 +52,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
     const [deleteToolMutation, { isLoading: isDeleting }] = useDeleteMcpToolMutation();
     
     // Local state
-    const defaultContent = '# Welcome to MCP Workbench\n# Write your Python code here\n\ndef my_tool():\n    """Your MCP tool function."""\n    return "Hello from MCP Tool!"';
+    const defaultContent = initialTool;
     const [editorContent, setEditorContent] = useState<string>('');
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
@@ -71,6 +75,8 @@ export function McpWorkbenchManagementComponent(): ReactElement {
         (currentPageIndex - 1) * pageSize,
         currentPageIndex * pageSize
     );
+
+    dispatch(setBreadcrumbs([]));
     
     // Reset pagination when filter changes
     useEffect(() => {
@@ -221,25 +227,40 @@ export function McpWorkbenchManagementComponent(): ReactElement {
     const getCurrentToolName = () => {
         if (isCreatingNew) return 'New Tool';
         if (selectedToolData) return selectedToolData.id;
-        return 'MCP Workbench';
+        return '';
     };
 
     return (
+        <Container
+            header={
+                <Header variant='h1'>
+                    MCP Workbench
+                </Header>
+            }>
         <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
             <SpaceBetween size='s' direction='vertical'>
                 <Header
                     variant="h3"
                     actions={
-                        <Button
-                            onClick={() => refetch()}
-                            ariaLabel="Refresh tools"
-                            disabled={isLoadingTools}
-                        >
-                            <Icon name='refresh' />
-                        </Button>
+                        <SpaceBetween direction='horizontal' size='xxs'>
+                            <Button
+                                onClick={() => refetch()}
+                                ariaLabel="Refresh tools"
+                                disabled={isLoadingTools}
+                            >
+                                <Icon name='refresh' />
+                            </Button>
+                            <Button 
+                                variant="primary"
+                                onClick={handleCreateNew}
+                                disabled={isCreating}
+                            >
+                                New Tool
+                            </Button>
+                        </SpaceBetween>
                     }
                 >
-                    MCP Tools ({tools.length})
+                    Tools ({tools.length})
                 </Header>
 
                 {tools.length > 0 && (
@@ -260,8 +281,8 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 ) : tools.length === 0 ? (
                     <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
                         <SpaceBetween size='m'>
-                            <b>No MCP tools</b>
-                            <p>Create your first MCP tool to get started.</p>
+                            <b>No tools</b>
+                            <p>Create your first tool to get started.</p>
                         </SpaceBetween>
                     </Box>
                 ) : filteredTools.length === 0 ? (
@@ -321,22 +342,12 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                         )}
                     </>
                 )}
-
-                <Box textAlign="center">
-                    <Button 
-                        variant="primary"
-                        onClick={handleCreateNew}
-                        disabled={isCreating}
-                    >
-                        Add New Tool
-                    </Button>
-                </Box>
             </SpaceBetween>
 
             <SpaceBetween size='s' direction='vertical'>
                 <Header
                     variant="h3"
-                    description={isCreatingNew ? "Create a new MCP tool" : isEditing ? "Edit the selected tool" : "Select a tool to edit"}
+                    description={isCreatingNew ? "Create a new tool" : isEditing ? "Edit the selected tool" : ""}
                 >
                     {getCurrentToolName()}
                 </Header>
@@ -344,7 +355,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 {isCreatingNew && (
                     <FormField
                         label="Tool Name"
-                        description="Enter a name for your MCP tool. Extension '.py' will be added automatically if omitted."
+                        description="Enter a name for your tool. Extension '.py' will be added automatically if omitted."
                         errorText={!newToolName.trim() ? "Tool name is required" : ""}
                     >
                         <Input
@@ -372,6 +383,10 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                         if (isCreatingNew || isEditing) {
                             handleEditorChange(detail.value);
                         }
+                    }}
+                    preferences={{
+                        wrapLines: true,
+                        theme: 'cloud_editor',
                     }}
                     onPreferencesChange={() => {}}
                     themes={{
@@ -403,6 +418,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 </Box>
             </SpaceBetween>
         </Grid>
+        </Container>
     );
 }
 

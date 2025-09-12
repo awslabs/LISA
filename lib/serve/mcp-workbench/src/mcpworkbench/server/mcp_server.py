@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+from .auth import OIDCHTTPBearer
+
 from ..config.models import ServerConfig
 from ..core.tool_discovery import ToolDiscovery
 from ..core.tool_registry import ToolRegistry
@@ -147,6 +149,9 @@ class MCPWorkbenchServer:
             allow_methods=self.config.cors_settings.allow_methods,
             allow_headers=self.config.cors_settings.allow_headers,
         )
+        # mcp_app.add_middleware(
+        #     OIDCHTTPBearer
+        # )
         
         # Add MCP mount
         routes = [

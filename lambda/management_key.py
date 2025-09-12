@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Any, Dict
 
 import boto3
@@ -28,6 +29,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+events_client = boto3.client("events", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -169,9 +171,61 @@ def finish_secret(secret_arn: str, token: str) -> None:
 
         logger.info(f"Successfully finished rotation - version {token} is now current")
 
+        # Publish event to EventBridge after successful rotation
+        publish_rotation_event(secret_arn, token, current_version)
+
     except ClientError as e:
         logger.error(f"Error finishing secret rotation: {e}")
         raise
+
+
+def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) -> None:
+    """
+    Publish a management key rotation event to EventBridge.
+    """
+    event_bus_name = os.environ.get("EVENT_BUS_NAME")
+    if not event_bus_name:
+        logger.warning("EVENT_BUS_NAME environment variable not set, skipping event publication")
+        return
+
+    try:
+        # Extract secret name from ARN for cleaner event data
+        secret_name = secret_arn.split(":")[-1]
+        
+        event_detail = {
+            "secretArn": secret_arn,
+            "secretName": secret_name,
+            "newVersionId": new_version,
+            "oldVersionId": old_version,
+            "rotationTimestamp": datetime.utcnow().isoformat() + "Z",
+            "rotationType": "management-key"
+        }
+
+        # Publish event to EventBridge
+        response = events_client.put_events(
+            Entries=[
+                {
+                    "Source": "lisa.management-key",
+                    "DetailType": "Management Key Rotated",
+                    "Detail": json.dumps(event_detail),
+                    "EventBusName": event_bus_name,
+                    "Time": datetime.utcnow()
+                }
+            ]
+        )
+
+        if response["FailedEntryCount"] > 0:
+            logger.error(f"Failed to publish event: {response['Entries']}")
+            raise Exception("Failed to publish rotation event to EventBridge")
+        
+        logger.info(f"Successfully published rotation event for secret {secret_name} to EventBridge")
+
+    except ClientError as e:
+        logger.error(f"Error publishing rotation event: {e}")
+        # Don't raise the exception as event publishing failure shouldn't fail the rotation
+    except Exception as e:
+        logger.error(f"Unexpected error publishing rotation event: {e}")
+        # Don't raise the exception as event publishing failure shouldn't fail the rotation
 
 
 # Legacy function for backward compatibility

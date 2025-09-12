@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+TOOLS_DIR="${TOOLS_DIR:-/workspace/tools}"
+
+mountpoint $TOOLS_DIR

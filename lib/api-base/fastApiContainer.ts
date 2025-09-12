@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { CfnOutput } from 'aws-cdk-lib';
+import { CfnOutput, Duration, SecretValue } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
@@ -31,6 +31,13 @@ import * as path from 'path';
 import { letIfDefined } from '../util/common-functions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { LAMBDA_PATH } from '../util';
+import { getDefaultRuntime } from './utils';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
@@ -209,6 +216,105 @@ export class FastApiContainer extends Construct {
             securityGroup,
             vpc
         });
+
+        const managementKeySecretName = ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
+        const connection = new events.Connection(this, 'RefreshMCPWorkbenchConnection', {
+            authorization: events.Authorization.apiKey(
+                'Authorization',
+                SecretValue.secretsManager(managementKeySecretName)
+            )
+        });
+
+        const refreshMcpWorkbenchDestination = new events.ApiDestination(this, 'RefreshMCPWorkbenchDestination',  {
+            connection,
+            endpoint: `${apiCluster.endpointUrl}/v2/mcp/refresh`,
+            httpMethod: events.HttpMethod.GET,
+        });
+
+        const refreshMcpWorkbenchTarget = new targets.ApiDestination(refreshMcpWorkbenchDestination, {
+            retryAttempts: 2,
+            maxEventAge: Duration.seconds(60),
+            headerParameters: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        const refreshMcpWorkbenchRule = new events.Rule(this, 'RefreshMCPWorkbenchRule', {
+            eventPattern: {
+                source: ['aws.s3', 'debug'],
+                detailType: [
+                    'Object Created',
+                    'Object Deleted'
+                ],
+                detail: {
+                    bucket: {
+                        name: [[config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase()]
+                    }
+                }
+            },
+
+        });
+        refreshMcpWorkbenchRule.addTarget(refreshMcpWorkbenchTarget);
+
+        // Create Lambda function to update connection secrets when management key is rotated
+        const connectionSecretUpdaterRole = new Role(this, 'ConnectionSecretUpdaterRole', {
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            inlinePolicies: {
+                'ConnectionSecretUpdaterPolicy': new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'logs:CreateLogGroup',
+                                'logs:CreateLogStream',
+                                'logs:PutLogEvents'
+                            ],
+                            resources: ['arn:aws:logs:*:*:*']
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'secretsmanager:GetSecretValue',
+                                'secretsmanager:DescribeSecret'
+                            ],
+                            resources: [`arn:aws:secretsmanager:${config.region}:*:secret:${config.deploymentName}-lisa-management-key*`]
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'events:ListConnections',
+                                'events:UpdateConnection'
+                            ],
+                            resources: ['*']
+                        })
+                    ]
+                })
+            }
+        });
+
+        const connectionSecretUpdaterLambda = new lambda.Function(this, 'ConnectionSecretUpdaterLambda', {
+            runtime: getDefaultRuntime(),
+            handler: 'mcp_workbench.connection_secret_updater.handler',
+            code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
+            timeout: Duration.minutes(5),
+            role: connectionSecretUpdaterRole,
+            environment: {
+                DEPLOYMENT_PREFIX: config.deploymentPrefix!
+            }
+        });
+
+        // Create EventBridge rule to trigger lambda when management key is rotated
+        const managementKeyRotationRule = new events.Rule(this, 'ManagementKeyRotationRule', {
+            eventPattern: {
+                source: ['lisa.management-key'],
+                detailType: ['Management Key Rotated']
+            }
+        });
+
+        managementKeyRotationRule.addTarget(new targets.LambdaFunction(connectionSecretUpdaterLambda, {
+            retryAttempts: 2,
+            maxEventAge: Duration.minutes(5)
+        }));
 
         if (tokenTable) {
             Object.entries(apiCluster.taskRoles).forEach(([_, role]) => {

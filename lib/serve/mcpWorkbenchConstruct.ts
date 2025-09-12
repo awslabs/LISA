@@ -20,15 +20,13 @@ import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config } from '../schema';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH } from '../util';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as path from 'path';
 
 export type McpWorkbenchConstructProps = {
     authorizer: IAuthorizer;
@@ -67,8 +65,6 @@ export default class McpWorkbenchConstruct extends Construct {
         const lambdaLayers = [commonLambdaLayer,  fastapiLambdaLayer];
 
         this.createWorkbenchApi(restApi, rootResourceId, config, vpc, securityGroups, authorizer, workbenchBucket, lambdaLayers);
-
-        const managementKeySecretName = ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
     }
 
     private createWorkbenchApi (restApi: IRestApi, rootResourceId: string, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], authorizer: IAuthorizer, workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[]) {
@@ -174,6 +170,7 @@ export default class McpWorkbenchConstruct extends Construct {
             enforceSSL: true,
             serverAccessLogsBucket: bucketAccessLogsBucket,
             serverAccessLogsPrefix: 'logs/mcpworkbench-bucket/',
+            eventBridgeEnabled: true
         });
     }
 }

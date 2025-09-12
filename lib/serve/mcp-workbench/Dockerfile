@@ -38,6 +38,10 @@ RUN unzip -d /tmp /tmp/$(basename $RCLONE_SOURCE) && \
 COPY . /workspace/mcpworkbench-src/
 RUN pip install -e /workspace/mcpworkbench-src/
 
+# Install additional requirements
+COPY requirements.txt /workspace/
+RUN pip install -r /workspace/requirements.txt
+
 # Copy s6-overlay service definitions
 COPY s6-overlay/services.d /etc/services.d
 RUN chmod +x /etc/services.d/mcpworkbench/run

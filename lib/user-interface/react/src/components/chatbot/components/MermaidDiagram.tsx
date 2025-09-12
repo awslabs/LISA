@@ -213,7 +213,6 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 }}
                 dangerouslySetInnerHTML={{
                     __html: DOMPurify.sanitize(svg, MERMAID_SANITIZATION_CONFIG)
-                    // __html: svg
                 }}
             />
         </div>

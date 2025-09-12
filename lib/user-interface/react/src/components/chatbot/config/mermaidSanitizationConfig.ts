@@ -28,4 +28,4 @@ export const MERMAID_SANITIZATION_CONFIG = {
         'glyph-orientation-horizontal', 'kerning', 'fill', 'stroke', 'stroke-width',
         'opacity', 'fill-opacity', 'stroke-opacity', 'transform', 'style', 'width', 'height',
     ]
-}
+};

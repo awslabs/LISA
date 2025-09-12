@@ -19,6 +19,7 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
+import boto3
 import pytest
 from moto import mock_aws
 
@@ -33,7 +34,7 @@ os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["SESSION_ENCRYPTION_KEY_ARN"] = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
-os.environ["SESSION_ENCRYPTION_ENABLED"] = "true"
+os.environ["CONFIG_TABLE_NAME"] = "config-table"
 
 
 @pytest.fixture(scope="function")
@@ -62,6 +63,27 @@ def mock_event():
         "body": json.dumps({"sessionId": "test-session-123", "userId": "test-user-456"}),
         "requestContext": {"authorizer": {"claims": {"cognito:username": "test-user-456"}}},
     }
+
+
+@pytest.fixture(scope="function")
+def config_table():
+    """Create a mock configuration DynamoDB table."""
+    with mock_aws():
+        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+        table = dynamodb.create_table(
+            TableName="config-table",
+            KeySchema=[
+                {"AttributeName": "configScope", "KeyType": "HASH"},
+                {"AttributeName": "versionId", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "configScope", "AttributeType": "S"},
+                {"AttributeName": "versionId", "AttributeType": "N"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        table.wait_until_exists()
+        yield table
 
 
 @pytest.fixture(scope="function")
@@ -425,9 +447,22 @@ class TestSessionEncryption:
                     # Direct response structure
                     assert "plaintext" in outer_body
 
-    def test_get_encryption_config_lambda(self, mock_event, mock_context):
+    def test_get_encryption_config_lambda(self, config_table, mock_event, mock_context):
         """Test get encryption config Lambda function."""
-        from session.encryption_lambda_functions import get_encryption_config
+        from session.encryption_lambda_functions import _config_cache, get_encryption_config
+
+        # Clear cache before test
+        _config_cache.clear()
+
+        # Set up global configuration with encryption enabled
+        config_table.put_item(
+            Item={
+                "configScope": "global",
+                "versionId": 0,
+                "configuration": {"enabledComponents": {"encryptSession": True}},
+                "created_at": "1234567890",
+            }
+        )
 
         # Update event for GET operation
         mock_event["httpMethod"] = "GET"
@@ -449,12 +484,14 @@ class TestSessionEncryption:
             if "body" in outer_body:
                 inner_body = json.loads(outer_body["body"])
                 assert "enabled" in inner_body
+                assert inner_body["enabled"] is True  # Should be enabled from config
                 assert "kmsKeyArn" in inner_body
                 assert "userId" in inner_body
                 assert inner_body["userId"] == "test-user-456"
             else:
                 # Direct response structure
                 assert "enabled" in outer_body
+                assert outer_body["enabled"] is True  # Should be enabled from config
                 assert "kmsKeyArn" in outer_body
                 assert "userId" in outer_body
                 assert outer_body["userId"] == "test-user-456"

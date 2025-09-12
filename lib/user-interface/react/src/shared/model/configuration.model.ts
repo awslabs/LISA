@@ -37,6 +37,7 @@ export type IEnabledComponents = {
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
     modelLibrary: boolean;
+    enableSessionEncryption: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -90,7 +91,8 @@ export const enabledComponentsSchema = z.object({
     showPromptTemplateLibrary: z.boolean().default(true),
     mcpConnections: z.boolean().default(true),
     modelLibrary: z.boolean().default(true),
-    enableModelComparisonUtility: z.boolean().default(false)
+    enableModelComparisonUtility: z.boolean().default(false),
+    enableSessionEncryption: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({

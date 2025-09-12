@@ -41,7 +41,8 @@ const advancedOptions = {
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
-    enableModelComparisonUtility: 'Enable Model Comparison Utility'
+    enableModelComparisonUtility: 'Enable Model Comparison Utility',
+    enableSessionEncryption: 'Enable Session Encryption',
 };
 
 const configurableOperations = [{

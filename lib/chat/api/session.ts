@@ -41,6 +41,7 @@ import { RemovalPolicy } from 'aws-cdk-lib';
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  * @property {Map<number, ISubnet> }importedSubnets for application.
+ * @property {dynamodb.Table} configTable - Configuration DynamoDB table
  */
 type SessionApiProps = {
     authorizer: IAuthorizer;
@@ -48,6 +49,7 @@ type SessionApiProps = {
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
     vpc: Vpc;
+    configTable: dynamodb.Table;
 } & BaseProps;
 
 /**
@@ -57,7 +59,7 @@ export class SessionApi extends Construct {
     constructor (scope: Construct, id: string, props: SessionApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, configTable } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -150,6 +152,7 @@ export class SessionApi extends Construct {
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
             MODEL_TABLE_NAME: modelTableName,
+            CONFIG_TABLE_NAME: configTable.tableName,
         };
 
         const lambdaRole: IRole = createLambdaRole(
@@ -166,6 +169,24 @@ export class SessionApi extends Construct {
                 effect: Effect.ALLOW,
                 actions: ['dynamodb:GetItem'],
                 resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${modelTableName}`]
+            })
+        );
+
+        // Add permissions to read from configuration table
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['dynamodb:GetItem'],
+                resources: [configTable.tableArn]
+            })
+        );
+
+        // Add SSM permissions for cache invalidation
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['ssm:GetParameter'],
+                resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/lisa/cache/*`]
             })
         );
 
@@ -200,10 +221,9 @@ export class SessionApi extends Construct {
             })
         );
 
-        // Add KMS key ARN and encryption settings to environment variables
+        // Add KMS key ARN to environment variables
         Object.assign(env, {
             SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
-            SESSION_ENCRYPTION_ENABLED: 'true' // Can be overridden via configuration
         });
 
         // Create API Lambda functions

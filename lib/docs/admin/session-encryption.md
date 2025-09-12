@@ -94,7 +94,6 @@ Session encryption can be configured through the LISA Configuration page:
 
 The following environment variables control encryption behavior:
 
-- `SESSION_ENCRYPTION_ENABLED`: Enable/disable encryption (default: true)
 - `SESSION_ENCRYPTION_KEY_ARN`: KMS key ARN for encryption operations
 
 ### IAM Permissions

@@ -39,8 +39,8 @@ os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
 os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
 os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"] = "bucket"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["CONFIG_TABLE_NAME"] = "config-table"
 os.environ["SESSION_ENCRYPTION_KEY_ARN"] = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
-os.environ["SESSION_ENCRYPTION_ENABLED"] = "false"
 
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
@@ -116,6 +116,25 @@ def dynamodb_table(dynamodb):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
+    return table
+
+
+@pytest.fixture(scope="function")
+def config_table(dynamodb):
+    """Create a mock configuration DynamoDB table."""
+    table = dynamodb.create_table(
+        TableName="config-table",
+        KeySchema=[
+            {"AttributeName": "configScope", "KeyType": "HASH"},
+            {"AttributeName": "versionId", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "configScope", "AttributeType": "S"},
+            {"AttributeName": "versionId", "AttributeType": "N"},
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    table.wait_until_exists()
     return table
 
 
@@ -308,8 +327,13 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
         mock_common.get_session_id.return_value = original_session_id
 
 
-def test_put_session(dynamodb_table, sample_session, lambda_context):
+def test_put_session(dynamodb_table, config_table, sample_session, lambda_context):
     """Test putting a session."""
+    # Clear cache to use default behavior (encryption disabled by default)
+    from session.lambda_functions import _config_cache
+
+    _config_cache.clear()
+
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"sessionId": "test-session"},
@@ -371,3 +395,106 @@ def test_list_sessions_empty(dynamodb_table, lambda_context):
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body) == 0
+
+
+# Import the configuration functions for testing
+from session.lambda_functions import _is_session_encryption_enabled
+
+
+def test_is_session_encryption_enabled_true(config_table, lambda_context):
+    """Test session encryption enabled via global configuration."""
+    # Clear cache before test
+    from session.lambda_functions import _config_cache
+
+    _config_cache.clear()
+
+    # Add global configuration entry with encryption enabled
+    config_table.put_item(
+        Item={
+            "configScope": "global",
+            "versionId": 0,
+            "configuration": {"enabledComponents": {"encryptSession": True}},
+            "created_at": "1234567890",
+        }
+    )
+
+    result = _is_session_encryption_enabled()
+    assert result is True
+
+
+def test_is_session_encryption_enabled_false(config_table, lambda_context):
+    """Test session encryption disabled via global configuration."""
+    # Clear cache before test
+    from session.lambda_functions import _config_cache
+
+    _config_cache.clear()
+
+    # Add global configuration entry with encryption disabled
+    config_table.put_item(
+        Item={
+            "configScope": "global",
+            "versionId": 0,
+            "configuration": {"enabledComponents": {"encryptSession": False}},
+            "created_at": "1234567890",
+        }
+    )
+
+    result = _is_session_encryption_enabled()
+    assert result is False
+
+
+def test_is_session_encryption_enabled_string_values(config_table, lambda_context):
+    """Test session encryption with string boolean values."""
+    test_cases = [
+        ("true", True),
+        ("false", False),
+        ("True", True),
+        ("False", False),
+        ("1", True),
+        ("0", False),
+        ("yes", True),
+        ("no", False),
+        ("on", True),
+        ("off", False),
+    ]
+
+    for string_value, expected in test_cases:
+        # Clear cache between tests
+        from session.lambda_functions import _config_cache
+
+        _config_cache.clear()
+
+        # Update global configuration
+        config_table.put_item(
+            Item={
+                "configScope": "global",
+                "versionId": 0,
+                "configuration": {"enabledComponents": {"encryptSession": string_value}},
+                "created_at": "1234567890",
+            }
+        )
+
+        result = _is_session_encryption_enabled()
+        assert result == expected, f"Expected {expected} for input '{string_value}', got {result}"
+
+
+def test_is_session_encryption_enabled_default_fallback(config_table, lambda_context):
+    """Test session encryption defaults to disabled when configuration is missing."""
+    # Clear cache before test
+    from session.lambda_functions import _config_cache
+
+    _config_cache.clear()
+
+    # Don't add any configuration entry
+    result = _is_session_encryption_enabled()
+    assert result is False  # Should default to disabled
+
+
+@patch("session.lambda_functions.config_table")
+def test_is_session_encryption_enabled_error_fallback(mock_config_table, lambda_context):
+    """Test session encryption defaults to disabled when there's an error accessing configuration."""
+    # Mock the config table to raise an exception
+    mock_config_table.query.side_effect = Exception("Database error")
+
+    result = _is_session_encryption_enabled()
+    assert result is False  # Should default to disabled on error

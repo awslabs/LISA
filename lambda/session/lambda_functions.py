@@ -21,6 +21,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
@@ -469,7 +470,7 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
         session_id = get_session_id(event)
 
         try:
-            body = json.loads(event["body"], parse_float=float, parse_int=int)
+            body = json.loads(event["body"], parse_float=Decimal)
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 
@@ -514,7 +515,7 @@ def rename_session(event: dict, context: dict) -> dict:
         session_id = get_session_id(event)
 
         try:
-            body = json.loads(event.get("body", {}), parse_float=float, parse_int=int)
+            body = json.loads(event.get("body", {}), parse_float=Decimal)
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 
@@ -540,7 +541,7 @@ def put_session(event: dict, context: dict) -> dict:
         session_id = get_session_id(event)
 
         try:
-            body = json.loads(event["body"], parse_float=float, parse_int=int)
+            body = json.loads(event["body"], parse_float=Decimal)
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 

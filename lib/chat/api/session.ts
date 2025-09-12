@@ -176,7 +176,7 @@ export class SessionApi extends Construct {
         lambdaRole.addToPrincipalPolicy(
             new PolicyStatement({
                 effect: Effect.ALLOW,
-                actions: ['dynamodb:GetItem'],
+                actions: ['dynamodb:GetItem', 'dynamodb:Query'],
                 resources: [configTable.tableArn]
             })
         );

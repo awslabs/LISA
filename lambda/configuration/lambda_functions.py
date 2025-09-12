@@ -102,7 +102,7 @@ def _invalidate_session_encryption_cache() -> None:
 def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
     # Parse JSON with float/int types for proper type preservation
-    body = json.loads(event["body"], parse_float=float, parse_int=int)
+    body = json.loads(event["body"], parse_float=Decimal)
 
     # Convert floats to Decimals for DynamoDB compatibility
     body = _convert_floats_to_decimals(body)

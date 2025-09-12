@@ -123,7 +123,8 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 border: '1px solid #d13212',
                 borderRadius: '4px',
                 color: '#ff6b6b',
-                fontSize: '12px'
+                fontSize: '12px',
+                textWrap: 'wrap'
             }}>
                 <strong>Mermaid Error:</strong> {error}
                 <details style={{ marginTop: '8px' }}>

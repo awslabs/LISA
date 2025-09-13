@@ -32,7 +32,8 @@ import {
     useGetMcpToolQuery,
     useCreateMcpToolMutation,
     useUpdateMcpToolMutation,
-    useDeleteMcpToolMutation
+    useDeleteMcpToolMutation,
+    mcpToolsApi
 } from '@/shared/reducers/mcp-tools.reducer';
 import { IMcpTool, DefaultMcpTool } from '@/shared/model/mcp-tools.model';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
@@ -168,6 +169,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
             setIsCreatingNew(false);
             setNewToolName('');
             setHasUnsavedChanges(false);
+            dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
             refetch();
         } catch (error: any) {
             const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
@@ -187,6 +189,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
             
             notificationService.generateNotification(`Successfully updated tool: ${selectedToolId}`, 'success');
             setHasUnsavedChanges(false);
+            dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
         } catch (error: any) {
             const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
             notificationService.generateNotification(`Error updating tool: ${errorMessage}`, 'error');
@@ -232,15 +235,8 @@ export function McpWorkbenchManagementComponent(): ReactElement {
     return (
         <Container
             header={
-                <Header variant='h1'>
-                    MCP Workbench
-                </Header>
-            }>
-        <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
-            <SpaceBetween size='s' direction='vertical'>
-                <Header
-                    variant="h3"
-                    actions={
+                <Header variant='h1'
+                                    actions={
                         <SpaceBetween direction='horizontal' size='xxs'>
                             <Button
                                 onClick={() => refetch()}
@@ -257,7 +253,14 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                                 New Tool
                             </Button>
                         </SpaceBetween>
-                    }
+                    }>
+                    MCP Workbench
+                </Header>
+            }>
+        <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
+            <SpaceBetween size='s' direction='vertical'>
+                <Header
+                    variant="h3"
                 >
                     Tools ({tools.length})
                 </Header>

@@ -111,14 +111,28 @@ def hello_world(name: Annotated[str, "The name of the person to greet."]) -> str
 
 ```python
 from mcpworkbench.tools import BaseTool
+from typing import Annotated
 
 class HelloWorldTool(BaseTool):
     """A simple hello world tool using class inheritance."""
     
-    name = "hello_world_class"
-    description = "A class-based hello world tool"
+    def __init__(self):
+        """
+        Initialize the tool with metadata.
+        
+        The BaseTool constructor requires:
+        - name: A unique identifier for the tool
+        - description: A clear description of what the tool does
+        """
+        super().__init__(
+            name = "hello_world_class",
+            description = "A class-based hello world tool"
+        )
     
-    def execute(self, name: Annotated[str, "The name of the person to greet."]) -> str:
+    async def execute(self):
+        return self.greet
+        
+    async def greet(self, name: Annotated[str, "The name of the person to greet."]) -> str:
         """
         Execute the hello world functionality.
         

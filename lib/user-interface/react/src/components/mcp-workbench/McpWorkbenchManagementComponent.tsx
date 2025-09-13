@@ -17,15 +17,14 @@
 import { Button, CodeEditor, Container, Grid, SpaceBetween, List, ButtonDropdown, Header, Box, Icon, Input, FormField, Alert, TextFilter, Pagination } from '@cloudscape-design/components';
 import 'react';
 import 'ace-builds';
-// import * as ace from 'ace-builds/src-noconflict/ace';
-    import { Ace } from 'ace-builds';
-// import 'ace-builds/webpack-resolver'; // lets ace load workers/themes when bundled
+import { Ace } from 'ace-builds';
 import 'ace-builds/src-noconflict/mode-python';
 import 'ace-builds/src-noconflict/theme-tomorrow';
 import 'ace-builds/src-noconflict/ext-language_tools';
 import { ReactElement, useEffect, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
+import * as z from 'zod';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import {
     useListMcpToolsQuery,
@@ -37,6 +36,8 @@ import {
 } from '@/shared/reducers/mcp-tools.reducer';
 import { IMcpTool, DefaultMcpTool } from '@/shared/model/mcp-tools.model';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
+import { DefaultPromptTemplate } from '@/shared/reducers/prompt-templates.reducer';
+import { useValidationReducer } from '@/shared/validation';
 
 export function McpWorkbenchManagementComponent(): ReactElement {
     const dispatch = useAppDispatch();
@@ -45,7 +46,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
     // API hooks
     const { data: tools = [], isFetching: isLoadingTools, refetch } = useListMcpToolsQuery();
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
-    const { data: selectedToolData, isFetching: isLoadingTool } = useGetMcpToolQuery(selectedToolId!, {  });
+    const { data: selectedToolData, isFetching: isLoadingTool, } = useGetMcpToolQuery(selectedToolId!, {  });
     
     const [createToolMutation, { isLoading: isCreating }] = useCreateMcpToolMutation();
     const [updateToolMutation, { isLoading: isUpdating }] = useUpdateMcpToolMutation();
@@ -53,12 +54,21 @@ export function McpWorkbenchManagementComponent(): ReactElement {
     
     // Local state
     const defaultContent = "from mcpworkbench.core.annotations import mcp_tool\nfrom mcpworkbench.core.base_tool import BaseTool\nfrom typing import Annotated\n\n\n# =============================================================================\n# METHOD 1: FUNCTION-BASED APPROACH WITH @mcp_tool DECORATOR\n# =============================================================================\n# This is a simpler approach for straightforward tools that don't need\n# complex initialization or state management.\n\n@mcp_tool(\n    name=\"simple_calculator\",\n    description=\"A simple calculator using the decorator approach\"\n)\nasync def simple_calculator(\n    operator: Annotated[str, \"The arithmetic operation: add, subtract, multiply, or divide\"],\n    left_operand: Annotated[float, \"The first number in the operation\"],\n    right_operand: Annotated[float, \"The second number in the operation\"]\n) -> dict:\n    '''\n    Perform basic arithmetic operations using the decorator approach.\n    \n    The @mcp_tool decorator automatically:\n    1. Registers the function as an MCP tool\n    2. Extracts parameter information from type annotations\n    3. Uses the Annotated descriptions for parameter documentation\n    4. Handles the MCP protocol communication\n    \n    This approach is ideal for:\n    - Simple, stateless operations\n    - Quick prototyping\n    - Tools that don't need complex initialization\n    '''\n    \n    if operator == \"add\":\n        result = left_operand + right_operand\n    elif operator == \"subtract\":\n        result = left_operand - right_operand\n    elif operator == \"multiply\":\n        result = left_operand * right_operand\n    elif operator == \"divide\":\n        if right_operand == 0:\n            raise ValueError(\"Cannot divide by zero\")\n        result = left_operand / right_operand\n    else:\n        raise ValueError(f\"Unknown operator: {operator}\")\n    \n    return {\n        \"operator\": operator,\n        \"left_operand\": left_operand,\n        \"right_operand\": right_operand,\n        \"result\": result\n    }\n\n\n# =============================================================================\n# METHOD 2: CLASS-BASED APPROACH\n# =============================================================================\n# This is the more structured approach, ideal for complex tools that need\n# initialization, state management, or multiple related operations.\n\nclass CalculatorTool(BaseTool):\n    \"\"\"\n    A simple calculator tool that performs basic arithmetic operations.\n    \n    This class demonstrates the class-based approach to creating MCP tools:\n    1. Inherit from BaseTool\n    2. Initialize with name and description in __init__\n    3. Implement execute() method that returns the callable function\n    4. Define the actual tool function with proper type annotations\n    \"\"\"\n    \n    def __init__(self):\n        \"\"\"\n        Initialize the tool with metadata.\n        \n        The BaseTool constructor requires:\n        - name: A unique identifier for the tool\n        - description: A clear description of what the tool does\n        \"\"\"\n        super().__init__(\n            name=\"calculator\",\n            description=\"Performs basic arithmetic operations (add, subtract, multiply, divide)\"\n        )\n\n    async def execute(self):\n        \"\"\"\n        Return the callable function that implements the tool's functionality.\n        \n        This method is called by the MCP framework to get the actual function\n        that will be executed when the tool is invoked.\n        \"\"\"\n        return self.calculate\n    \n    async def calculate(\n        self,\n        operator: Annotated[str, \"add, subtract, multiply, or divide\"],\n        left_operand: Annotated[float, \"The first number\"],\n        right_operand: Annotated[float, \"The second number\"]\n    ):\n        \"\"\"\n        Execute the calculator operation.\n        \n        Parameter Type Annotations with Context:\n        =======================================\n        Notice the use of Annotated[type, \"description\"] for each parameter.\n        This is OPTIONAL but highly recommended because it provides:\n        \n        1. Type information for the MCP framework\n        2. Human-readable descriptions that help AI models understand\n           what each parameter is for\n        3. Better error messages and validation\n        \n        The Annotated type comes from typing module and follows this pattern:\n        Annotated[actual_type, \"description_string\"]\n        \n        Examples:\n        - Annotated[str, \"The operation to perform\"]\n        - Annotated[int, \"A positive integer between 1 and 100\"]\n        - Annotated[list[str], \"A list of file paths to process\"]\n        \"\"\"        \n        if operator == \"add\":\n            result = left_operand + right_operand\n        elif operator == \"subtract\":\n            result = left_operand - right_operand\n        elif operator == \"multiply\":\n            result = left_operand * right_operand\n        elif operator == \"divide\":\n            if right_operand == 0:\n                raise ValueError(\"Cannot divide by zero\")\n            result = left_operand / right_operand\n        else:\n            raise ValueError(f\"Unknown operator: {operator}\")\n        \n        return {\n            \"operator\": operator,\n            \"left_operand\": left_operand,\n            \"right_operand\": right_operand,\n            \"result\": result\n        }";
-    const [editorContent, setEditorContent] = useState<string>('');
     const [isEditing, setIsEditing] = useState<boolean>(false);
-    const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
-    const [newToolName, setNewToolName] = useState<string>('');
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
-    
+    const [isDirty, setIsDirty] = useState<boolean>(false);
+
+    const schema = z.object({
+        id: z.string().trim().min(1, 'String cannot be empty.'),
+        contents: z.string().trim().min(1, 'String cannot be empty.'),
+    });
+
+    const { errors, touchFields, setFields, isValid, state, setState } = useValidationReducer(schema, {
+        form: { id: `my_new_tool-${Date.now()}`, contents: defaultContent} as IMcpTool,
+        formSubmitting: false,
+        touched: {},
+        validateAll: false
+    });
+
     // Filtering and pagination state
     const [filterText, setFilterText] = useState<string>('');
     const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
@@ -76,6 +86,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
         currentPageIndex * pageSize
     );
 
+    // remove top breadcrumbs
     dispatch(setBreadcrumbs([]));
     
     // Reset pagination when filter changes
@@ -85,90 +96,90 @@ export function McpWorkbenchManagementComponent(): ReactElement {
 
     // Update editor content when a tool is selected
     useEffect(() => {
-        if (selectedToolData && !isCreatingNew) {
-            setEditorContent(selectedToolData.contents);
+        if (selectedToolData) {
+            console.log(selectedToolData);
+            setFields({
+                id: selectedToolData.id,
+                contents: selectedToolData.contents,
+                size: selectedToolData.size,
+                updated_at : selectedToolData.updated_at
+            })
             setIsEditing(true);
-            setHasUnsavedChanges(false);
+            setIsDirty(false);
         }
-    }, [selectedToolData, isCreatingNew]);
+    }, [selectedToolData]);
 
     // Handle tool selection
     const handleToolSelect = (tool: IMcpTool) => {
-        if (hasUnsavedChanges) {
+        if (isDirty) {
             dispatch(
                 setConfirmationModal({
-                    action: 'Switch Tool',
-                    resourceName: selectedToolId,
+                    action: 'Switch Tool?',
+                    resourceName: 'Unsaved change',
                     onConfirm: () => {
                         setSelectedToolId(tool.id);
-                        setIsCreatingNew(false);
-                        setHasUnsavedChanges(false);
+                        setIsDirty(false);
                     },
                     description: 'You have unsaved changes. Switching tools will lose these changes.'
                 })
             );
         } else {
             setSelectedToolId(tool.id);
-            setIsCreatingNew(false);
         }
     };
 
     // Handle editor content change
     const handleEditorChange = (value: string) => {
-        setEditorContent(value);
-        if (!isCreatingNew && selectedToolData && value !== selectedToolData.contents) {
-            setHasUnsavedChanges(true);
-        } else if (isCreatingNew && value !== defaultContent) {
-            setHasUnsavedChanges(true);
-        }
+        setFields({
+            contents: value
+        });
+        setIsDirty(true);
     };
 
     // Handle creating new tool
     const handleCreateNew = () => {
-        if (hasUnsavedChanges && selectedToolId) {
+        if (isDirty && selectedToolId) {
             dispatch(
                 setConfirmationModal({
                     action: 'Create New Tool',
                     resourceName: '',
                     onConfirm: () => {
-                        setIsCreatingNew(true);
                         setSelectedToolId(null);
-                        setNewToolName('');
-                        setEditorContent(defaultContent);
-                        setHasUnsavedChanges(false);
+                        setFields({
+                            id: ['my_new_tool', Date.now()].join('-'),
+                            contents: defaultContent,
+                            size: undefined,
+                            updated_at : undefined
+                        })
+                        setIsDirty(false);
                         setIsEditing(false);
                     },
                     description: 'You have unsaved changes. Creating a new tool will lose these changes.'
                 })
             );
         } else {
-            setIsCreatingNew(true);
             setSelectedToolId(null);
-            setNewToolName('');
-            setEditorContent(defaultContent);
-            setHasUnsavedChanges(false);
+            setFields({
+                id: ['my_new_tool', Date.now()].join('-'),
+                contents: defaultContent,
+                size: undefined,
+                updated_at : undefined
+            })
+            setIsDirty(false);
             setIsEditing(false);
         }
     };
 
     // Handle create tool
     const handleCreateTool = async () => {
-        if (!newToolName.trim()) {
-            notificationService.generateNotification('Please enter a tool name', 'error');
-            return;
-        }
-
         try {
-            const toolName = newToolName.endsWith('.py') ? newToolName : `${newToolName}.py`;
             await createToolMutation({
-                id: toolName,
-                contents: editorContent
+                id: state.form.id,
+                contents: state.form.contents
             }).unwrap();
             
-            notificationService.generateNotification(`Successfully created tool: ${toolName}`, 'success');
-            setIsCreatingNew(false);
-            setNewToolName('');
-            setHasUnsavedChanges(false);
+            notificationService.generateNotification(`Successfully created tool: ${state.form.id}`, 'success');
+            setIsDirty(false);
             dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
             refetch();
         } catch (error: any) {
@@ -184,17 +195,19 @@ export function McpWorkbenchManagementComponent(): ReactElement {
         try {
             await updateToolMutation({
                 toolId: selectedToolId,
-                tool: { contents: editorContent }
+                tool: { contents: state.form.contents }
             }).unwrap();
             
             notificationService.generateNotification(`Successfully updated tool: ${selectedToolId}`, 'success');
-            setHasUnsavedChanges(false);
+            setIsDirty(false);
             dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
         } catch (error: any) {
             const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
             notificationService.generateNotification(`Error updating tool: ${errorMessage}`, 'error');
         }
     };
+
+    console.log('size: ', state.form.size);
 
     // Handle delete tool
     const handleDeleteTool = (tool: IMcpTool) => {
@@ -210,9 +223,14 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                         // Reset selection if the deleted tool was selected
                         if (selectedToolId === tool.id) {
                             setSelectedToolId(null);
-                            setEditorContent('');
+                            setFields({
+                                id: '',
+                                contents: '',
+                                size: undefined,
+                                updated_at : undefined
+                            })
                             setIsEditing(false);
-                            setHasUnsavedChanges(false);
+                            setIsDirty(false);
                         }
                         
                         refetch();
@@ -224,45 +242,30 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 description: `This will permanently delete the tool: ${tool.id}`
             })
         );
-    };
-
-    const getCurrentToolName = () => {
-        if (isCreatingNew) return 'New Tool';
-        if (selectedToolData) return selectedToolData.id;
-        return '';
+        console.log()
     };
 
     return (
         <Container
             header={
-                <Header variant='h1'
-                                    actions={
-                        <SpaceBetween direction='horizontal' size='xxs'>
-                            <Button
-                                onClick={() => refetch()}
-                                ariaLabel="Refresh tools"
-                                disabled={isLoadingTools}
-                            >
-                                <Icon name='refresh' />
-                            </Button>
-                            <Button 
-                                variant="primary"
-                                onClick={handleCreateNew}
-                                disabled={isCreating}
-                            >
-                                New Tool
-                            </Button>
-                        </SpaceBetween>
-                    }>
-                    MCP Workbench
+                <Header variant='h1'>
+                    MCP Workbench Editor
                 </Header>
             }>
         <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
             <SpaceBetween size='s' direction='vertical'>
                 <Header
                     variant="h3"
+                    actions={
+                        <Button
+                            iconName='file'
+                            variant='primary'
+                            onClick={handleCreateNew}
+                            ariaLabel='New Tool File'
+                        ></Button>
+                    }
                 >
-                    Tools ({tools.length})
+                    Tool Files ({tools.length})
                 </Header>
 
                 {tools.length > 0 && (
@@ -304,7 +307,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                                         <Button
                                             variant="inline-link"
                                             onClick={() => handleToolSelect(item)}
-                                            disabled={selectedToolId === item.id && !isCreatingNew}
+                                            disabled={selectedToolId === item.id}
                                             ariaLabel={`Load ${item.id} in editor`}
                                         >
                                             <div style={{ fontWeight: 'bold' }}>{item.id}</div>
@@ -347,44 +350,31 @@ export function McpWorkbenchManagementComponent(): ReactElement {
             </SpaceBetween>
 
             <SpaceBetween size='s' direction='vertical'>
-                <Header
-                    variant="h3"
-                    description={isCreatingNew ? "Create a new tool" : isEditing ? "Edit the selected tool" : ""}
-                >
-                    {getCurrentToolName()}
-                </Header>
-
-                {isCreatingNew && (
+                
                     <FormField
-                        label="Tool Name"
-                        description="Enter a name for your tool. Extension '.py' will be added automatically if omitted."
-                        errorText={!newToolName.trim() ? "Tool name is required" : ""}
+                        label={<Header variant='h3'>Tool Name</Header>}
+                        errorText={errors?.id}
                     >
                         <Input
-                            value={newToolName}
+                            disabled={!!state.form.updated_at}
+                            value={state.form.id}
                             onChange={({ detail }) => {
                                 let value = detail.value;
-                                // Remove .py if user types it, we'll add it automatically
-                                if (value.endsWith('.py')) {
-                                    value = value.slice(0, -3);
-                                }
-                                setNewToolName(value);
+                                setFields({id: value})
+                                // setNewToolName(value);
                             }}
                             placeholder="my_tool"
                         />
                     </FormField>
-                )}
 
                 <CodeEditor
                     language='python'
-                    value={editorContent}
+                    value={state.form.contents}
                     ace={ace}
                     loading={isLoadingTool}
                     onDelayedChange={({ detail }) => {
                         // Only allow changes if we're creating new or editing
-                        if (isCreatingNew || isEditing) {
-                            handleEditorChange(detail.value);
-                        }
+                        handleEditorChange(detail.value);
                     }}
                     preferences={{
                         wrapLines: true,
@@ -398,21 +388,21 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 />
 
                 <Box float="right">
-                    {isCreatingNew ? (
+                    {!state.form.updated_at ? (
                         <Button 
                             variant="primary"
                             onClick={handleCreateTool}
                             loading={isCreating}
-                            disabled={!newToolName.trim() || !editorContent.trim()}
+                            disabled={!isDirty || !isValid}
                         >
                             Create Tool
                         </Button>
-                    ) : isEditing ? (
+                    ) : state.form.size ? (
                         <Button 
                             variant="primary"
                             onClick={handleUpdateTool}
                             loading={isUpdating}
-                            disabled={!hasUnsavedChanges}
+                            disabled={!isDirty || !isValid}
                         >
                             Save Changes
                         </Button>

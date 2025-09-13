@@ -12,13 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Lambda to handle S3 events and trigger MCP Workbench rescan."""
+"""Lambda to handle S3 events and trigger MCP Workbench service redeployment."""
 
 import json
 import logging
 import os
 from typing import Any, Dict
-import urllib3
 import boto3
 from botocore.exceptions import ClientError
 from utilities.common_functions import retry_config
@@ -28,19 +27,16 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Initialize clients
-secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+ecs_client = boto3.client("ecs", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-
-# Initialize HTTP client
-http = urllib3.PoolManager()
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
-    Handle S3 events from EventBridge and trigger MCP Workbench rescan.
+    Handle S3 events from EventBridge and trigger MCP Workbench service redeployment.
     
     This function is triggered by EventBridge when S3 objects are created or deleted
-    in the MCP Workbench bucket. It calls the rescan endpoint with proper authentication.
+    in the MCP Workbench bucket. It forces a new deployment of the MCPWORKBENCH ECS service.
     """
     logger.info(f"Received S3 event: {json.dumps(event, default=str)}")
     
@@ -56,24 +52,24 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         logger.info(f"Processing S3 event '{event_name}' for bucket: {bucket_name}")
         
-        # Get the management key for authentication
-        management_key = get_management_key()
+        # Get ECS cluster and service names
+        cluster_name = get_cluster_name()
+        service_name = get_service_name()
         
-        # Get the API endpoint
-        api_endpoint = get_api_endpoint()
+        # Force new deployment of the MCPWORKBENCH service
+        deployment_response = force_service_deployment(cluster_name, service_name)
         
-        # Call the rescan endpoint
-        rescan_response = call_rescan_endpoint(api_endpoint, management_key)
-        
-        logger.info(f"Rescan endpoint called successfully. Response status: {rescan_response.status}")
+        logger.info(f"Service deployment triggered successfully. Deployment ARN: {deployment_response.get('service', {}).get('deployments', [{}])[0].get('id', 'unknown')}")
         
         return {
             "statusCode": 200, 
             "body": json.dumps({
-                "message": "Rescan triggered successfully",
+                "message": "MCPWORKBENCH service redeployment triggered successfully",
                 "bucket": bucket_name,
                 "event": event_name,
-                "rescan_status": rescan_response.status
+                "cluster": cluster_name,
+                "service": service_name,
+                "deployment_id": deployment_response.get('service', {}).get('deployments', [{}])[0].get('id', 'unknown')
             })
         }
         
@@ -82,104 +78,97 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return {"statusCode": 500, "body": json.dumps(f"Error: {str(e)}")}
 
 
-def get_management_key() -> str:
+def get_cluster_name() -> str:
     """
-    Retrieve the management key from Secrets Manager.
-    """
-    try:
-        # Get the secret name from SSM parameter
-        deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX")
-        if not deployment_prefix:
-            raise ValueError("DEPLOYMENT_PREFIX environment variable not set")
-        
-        secret_name_param = f"{deployment_prefix}/managementKeySecretName"
-        
-        response = ssm_client.get_parameter(Name=secret_name_param)
-        secret_name = response["Parameter"]["Value"]
-        
-        logger.info(f"Retrieved secret name from SSM: {secret_name}")
-        
-        # Get the actual secret value
-        secret_response = secrets_manager.get_secret_value(SecretId=secret_name)
-        return secret_response["SecretString"]
-        
-    except ClientError as e:
-        logger.error(f"Error retrieving management key: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving management key: {e}")
-        raise
-
-
-def get_api_endpoint() -> str:
-    """
-    Get the API endpoint URL from environment or SSM parameter.
+    Get the ECS cluster name from environment variables or construct it from deployment info.
     """
     try:
         # First try environment variable
-        endpoint = os.environ.get("API_ENDPOINT")
-        if endpoint:
-            return endpoint
+        cluster_name = os.environ.get("ECS_CLUSTER_NAME")
+        if cluster_name:
+            return cluster_name
         
-        # Fall back to SSM parameter
+        # Fall back to constructing from deployment info
         deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX")
         if not deployment_prefix:
             raise ValueError("DEPLOYMENT_PREFIX environment variable not set")
         
-        endpoint_param = f"{deployment_prefix}/serve/endpoint"
-        response = ssm_client.get_parameter(Name=endpoint_param)
-        endpoint = response["Parameter"]["Value"]
+        # Get deployment name from SSM parameter
+        deployment_name_param = f"{deployment_prefix}/deploymentName"
+        try:
+            response = ssm_client.get_parameter(Name=deployment_name_param)
+            deployment_name = response["Parameter"]["Value"]
+        except ClientError:
+            # If parameter doesn't exist, extract from deployment prefix
+            # deployment_prefix format is typically /deploymentName-stage
+            deployment_name = deployment_prefix.split('/')[-1].split('-')[0]
         
-        logger.info(f"Retrieved API endpoint from SSM: {endpoint}")
-        return endpoint
+        # Construct cluster name using the same pattern as CDK: createCdkId([config.deploymentName, identifier], 32, 2)
+        # The identifier for the API cluster is typically "serve" or similar
+        api_name = os.environ.get("API_NAME", "serve")
+        cluster_name = f"{deployment_name}-{api_name}"
         
-    except ClientError as e:
-        logger.error(f"Error retrieving API endpoint: {e}")
-        raise
+        logger.info(f"Constructed cluster name: {cluster_name}")
+        return cluster_name
+        
     except Exception as e:
-        logger.error(f"Unexpected error retrieving API endpoint: {e}")
+        logger.error(f"Error getting cluster name: {e}")
         raise
 
 
-def call_rescan_endpoint(api_endpoint: str, management_key: str) -> urllib3.HTTPResponse:
+def get_service_name() -> str:
     """
-    Call the MCP Workbench rescan endpoint with proper authentication.
+    Get the MCPWORKBENCH service name from environment variables or construct it.
     """
     try:
-        # Construct the rescan URL
-        rescan_url = f"{api_endpoint.rstrip('/')}/v2/mcp/rescan"
+        # First try environment variable
+        service_name = os.environ.get("MCPWORKBENCH_SERVICE_NAME")
+        if service_name:
+            return service_name
         
-        logger.info(f"Calling rescan endpoint: {rescan_url}")
+        # Fall back to constructing the service name
+        # Based on CDK code: createCdkId([name], 32, 2) where name is ECSTasks.MCPWORKBENCH
+        service_name = "MCPWORKBENCH"
         
-        # Prepare headers
-        headers = {
-            'Authorization': management_key,
-            'Accept': 'text/event-stream',
-            'Content-Type': 'application/json'
-        }
-        
-        # Make the HTTP GET request
-        response = http.request(
-            'GET',
-            rescan_url,
-            headers=headers,
-            timeout=30.0,  # 30 second timeout
-            retries=urllib3.Retry(
-                total=2,
-                backoff_factor=1,
-                status_forcelist=[500, 502, 503, 504]
-            )
-        )
-        
-        if response.status >= 400:
-            logger.warning(f"Rescan endpoint returned status {response.status}: {response.data.decode('utf-8', errors='ignore')}")
-        else:
-            logger.info(f"Rescan endpoint called successfully with status {response.status}")
-        
-        return response
+        logger.info(f"Using service name: {service_name}")
+        return service_name
         
     except Exception as e:
-        logger.error(f"Error calling rescan endpoint: {e}")
+        logger.error(f"Error getting service name: {e}")
+        raise
+
+
+def force_service_deployment(cluster_name: str, service_name: str) -> Dict[str, Any]:
+    """
+    Force a new deployment of the specified ECS service.
+    """
+    try:
+        logger.info(f"Forcing new deployment for service '{service_name}' in cluster '{cluster_name}'")
+        
+        # Call ECS update_service with forceNewDeployment=True
+        response = ecs_client.update_service(
+            cluster=cluster_name,
+            service=service_name,
+            forceNewDeployment=True
+        )
+        
+        logger.info(f"Successfully triggered new deployment for service '{service_name}'")
+        return response
+        
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        
+        if error_code == 'ServiceNotFoundException':
+            logger.error(f"Service '{service_name}' not found in cluster '{cluster_name}'")
+        elif error_code == 'ClusterNotFoundException':
+            logger.error(f"Cluster '{cluster_name}' not found")
+        else:
+            logger.error(f"ECS error ({error_code}): {error_message}")
+        
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error forcing service deployment: {e}")
         raise
 
 

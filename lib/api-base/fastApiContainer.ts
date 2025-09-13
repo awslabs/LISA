@@ -217,8 +217,7 @@ export class FastApiContainer extends Construct {
             vpc
         });
 
-        // Create Lambda function to handle S3 events and trigger MCP Workbench rescan
-        // This replaces the EventBridge Connection/Destination approach which isn't available in all regions
+        // Create Lambda function to handle S3 events and trigger MCP Workbench service redeployment
         const s3EventHandlerRole = new Role(this, 'S3EventHandlerRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             inlinePolicies: {
@@ -236,10 +235,13 @@ export class FastApiContainer extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'secretsmanager:GetSecretValue'
+                                'ecs:UpdateService',
+                                'ecs:DescribeServices',
+                                'ecs:DescribeClusters'
                             ],
                             resources: [
-                                `arn:aws:secretsmanager:${config.region}:*:secret:${config.deploymentName}-lisa-management-key*`
+                                `arn:aws:ecs:${config.region}:*:cluster/${config.deploymentName}-${props.apiName}*`,
+                                `arn:aws:ecs:${config.region}:*:service/${config.deploymentName}-${props.apiName}*/MCPWORKBENCH*`
                             ]
                         }),
                         new PolicyStatement({
@@ -248,8 +250,7 @@ export class FastApiContainer extends Construct {
                                 'ssm:GetParameter'
                             ],
                             resources: [
-                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/managementKeySecretName`,
-                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/serve/endpoint`
+                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
                             ]
                         })
                     ]
@@ -265,7 +266,9 @@ export class FastApiContainer extends Construct {
             role: s3EventHandlerRole,
             environment: {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
-                API_ENDPOINT: apiCluster.endpointUrl
+                API_NAME: props.apiName,
+                ECS_CLUSTER_NAME: `${config.deploymentName}-${props.apiName}`,
+                MCPWORKBENCH_SERVICE_NAME: ECSTasks.MCPWORKBENCH
             }
         });
 

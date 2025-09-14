@@ -58,16 +58,19 @@ export function McpWorkbenchManagementComponent(): ReactElement {
     const [isDirty, setIsDirty] = useState<boolean>(false);
 
     const schema = z.object({
-        id: z.string().trim().min(1, 'String cannot be empty.'),
+        id: z.string().regex(/^[a-z0-9_\.]+?(\.py)?$/).trim().min(3, 'String cannot be empty.'),
         contents: z.string().trim().min(1, 'String cannot be empty.'),
     });
 
     const { errors, touchFields, setFields, isValid, state, setState } = useValidationReducer(schema, {
-        form: { id: `my_new_tool-${Date.now()}`, contents: defaultContent} as IMcpTool,
+        form: { id: `my_new_tool_${Date.now()}`, contents: defaultContent} as IMcpTool,
         formSubmitting: false,
         touched: {},
         validateAll: false
     });
+
+    console.log('errors: ', errors);
+    console.log('isValid: ', isValid);
 
     // Filtering and pagination state
     const [filterText, setFilterText] = useState<string>('');
@@ -105,7 +108,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 updated_at : selectedToolData.updated_at
             })
             setIsEditing(true);
-            setIsDirty(false);
+            setIsDirty(true);
         }
     }, [selectedToolData]);
 
@@ -138,6 +141,12 @@ export function McpWorkbenchManagementComponent(): ReactElement {
 
     // Handle creating new tool
     const handleCreateNew = () => {
+        const newTool = {
+            id: ['my_new_tool', Date.now()].join('-'),
+            contents: defaultContent,
+            size: undefined,
+            updated_at: undefined
+        };
         if (isDirty && selectedToolId) {
             dispatch(
                 setConfirmationModal({
@@ -145,28 +154,18 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                     resourceName: '',
                     onConfirm: () => {
                         setSelectedToolId(null);
-                        setFields({
-                            id: ['my_new_tool', Date.now()].join('-'),
-                            contents: defaultContent,
-                            size: undefined,
-                            updated_at : undefined
-                        })
-                        setIsDirty(false);
-                        setIsEditing(false);
+                        setFields(newTool)
+                        setIsDirty(true);
+                        setIsEditing(true);
                     },
                     description: 'You have unsaved changes. Creating a new tool will lose these changes.'
                 })
             );
         } else {
             setSelectedToolId(null);
-            setFields({
-                id: ['my_new_tool', Date.now()].join('-'),
-                contents: defaultContent,
-                size: undefined,
-                updated_at : undefined
-            })
-            setIsDirty(false);
-            setIsEditing(false);
+            setFields(newTool)
+            setIsDirty(true);
+            setIsEditing(true);
         }
     };
 
@@ -257,12 +256,20 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 <Header
                     variant="h3"
                     actions={
-                        <Button
-                            iconName='file'
-                            variant='primary'
-                            onClick={handleCreateNew}
-                            ariaLabel='New Tool File'
-                        ></Button>
+                        <SpaceBetween direction='horizontal' size='xxs'>
+                            {/* <Button
+                                iconName='refresh'
+                                variant='normal'
+                                onClick={handleCreateNew}
+                                ariaLabel='Refresh'
+                            ></Button> */}
+                            <Button
+                                // iconName='file'
+                                variant='primary'
+                                onClick={handleCreateNew}
+                                ariaLabel='New Tool File'
+                            >New Tool</Button>
+                        </SpaceBetween>
                     }
                 >
                     Tool Files ({tools.length})
@@ -352,16 +359,15 @@ export function McpWorkbenchManagementComponent(): ReactElement {
             <SpaceBetween size='s' direction='vertical'>
                 
                     <FormField
-                        label={<Header variant='h3'>Tool Name</Header>}
                         errorText={errors?.id}
                     >
                         <Input
                             disabled={!!state.form.updated_at}
                             value={state.form.id}
                             onChange={({ detail }) => {
+                                touchFields(['id'])
                                 let value = detail.value;
                                 setFields({id: value})
-                                // setNewToolName(value);
                             }}
                             placeholder="my_tool"
                         />
@@ -375,6 +381,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                     onDelayedChange={({ detail }) => {
                         // Only allow changes if we're creating new or editing
                         handleEditorChange(detail.value);
+                        touchFields(['contents'])
                     }}
                     preferences={{
                         wrapLines: true,
@@ -388,7 +395,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                 />
 
                 <Box float="right">
-                    {!state.form.updated_at ? (
+                    {selectedToolId === null ? (
                         <Button 
                             variant="primary"
                             onClick={handleCreateTool}
@@ -397,7 +404,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                         >
                             Create Tool
                         </Button>
-                    ) : state.form.size ? (
+                    ) : (
                         <Button 
                             variant="primary"
                             onClick={handleUpdateTool}
@@ -406,7 +413,7 @@ export function McpWorkbenchManagementComponent(): ReactElement {
                         >
                             Save Changes
                         </Button>
-                    ) : null}
+                    )}
                 </Box>
             </SpaceBetween>
         </Grid>

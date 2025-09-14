@@ -200,14 +200,14 @@ function App () {
                                     </PrivateRoute>
                                 }
                             />}
-                            {/* {config?.configuration?.enabledComponents?.mcpWorkbench && */}
+                            {config?.configuration?.enabledComponents?.showMcpWorkbench &&
                             <Route
                                 path='mcp-workbench/*'
                                 element={
                                     <McpWorkbench setNav={setNav} />
                                 }
                             />
-                            {/* } */}
+                            }
                             {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
                                 path='model-comparison'
                                 element={

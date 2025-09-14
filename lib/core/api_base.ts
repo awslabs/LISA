@@ -32,7 +32,7 @@ export class LisaApiBaseStack extends Stack {
         super(scope, id, props);
 
         const api = new LisaApiBaseConstruct(this, id + 'Resources', props);
-
+        api.node.addMetadata('aws:cdk:path', this.node.path);
         this.authorizer = api.authorizer;
         this.restApi = api.restApi;
         this.restApiId = api.restApi.restApiId;

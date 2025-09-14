@@ -68,7 +68,8 @@ def update_configuration(event: dict, context: dict) -> None:
     body["created_at"] = str(Decimal(time.time()))
 
     # check if showMcpWorkbench configuration changed
-    old_configuration = _get_configurations(body["configScope"])[0]
+    old_configurations = _get_configurations(body["configScope"])
+    old_configuration = old_configurations[0] if old_configurations else {}
     check_show_mcp_workbench(body, old_configuration)
 
     try:

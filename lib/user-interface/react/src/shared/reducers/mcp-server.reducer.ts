@@ -35,6 +35,7 @@ export type McpServer = {
     url: string;
     name: string;
     description?: string;
+    groups?: string[];
     isOwner?: true;
     customHeaders?: Record<string, string>;
     clientConfig?: McpClientConfig;
@@ -48,7 +49,8 @@ export const DefaultMcpServer: NewMcpServer = {
     url: '',
     description: '',
     clientConfig: {},
-    status: McpServerStatus.Active
+    status: McpServerStatus.Active,
+    groups: []
 };
 
 export type McpServerListResponse = {

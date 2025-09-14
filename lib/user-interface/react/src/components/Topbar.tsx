@@ -118,7 +118,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     disableUtilityCollapse: false,
                     external: false,
                     onClick: () => {
-                        navigate('/ai-assistant');
+                        navigate('/');
                     },
                 },
                 ...(

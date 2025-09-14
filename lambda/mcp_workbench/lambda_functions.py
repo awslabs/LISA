@@ -24,7 +24,8 @@ import boto3
 import botocore.exceptions
 from pydantic import BaseModel, Field
 from mcp_server.models import McpServerModel
-from utilities.common_functions import api_wrapper, is_admin, retry_config
+from utilities.common_functions import api_wrapper, retry_config
+from utilities.auth import is_admin
 from utilities.exceptions import HTTPException
 import uuid
 

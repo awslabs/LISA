@@ -19,9 +19,10 @@ import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import { IContainerConfig } from '../../../shared/model/model-management.model';
-import { Button, Grid, Header, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, Grid, Header, Icon, Select, SpaceBetween } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
 import { EnvironmentVariables } from '../../../shared/form/environment-variables';
+import { EcsSourceType } from '../../../../../../schema';
 
 type ContainerConfigProps = FormProps<IContainerConfig> & {
     isEdit: boolean;
@@ -61,15 +62,17 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                             }}
                         />
                     </FormField>
-                    <FormField label='Type' errorText={props.formErrors?.containerConfig?.image?.type}>
-                        <Input
-                            value={props.item.image.type}
-                            inputMode='text'
-                            disabled={props.isEdit}
+                    <FormField label='Type' errorText={props.formErrors?.inferenceContainer}>
+                        <Select
+                            selectedOption={{label: props.item.image.type, value: props.item.image.type}}
                             onBlur={() => props.touchFields(['containerConfig.image.type'])}
                             onChange={({ detail }) => {
-                                props.setFields({ 'containerConfig.image.type': detail.value });
+                                props.setFields({ 'containerConfig.image.type': detail.selectedOption.value });
                             }}
+                            options={[
+                                { label: 'asset', value: EcsSourceType.ASSET, description: 'Base container image used to build model hosting image, e.g. \'vllm/vllm-openai\'' },
+                                { label: 'ecr', value: EcsSourceType.ECR, description: 'Prebuilt ECR image url used when deploying to ECS' },
+                            ]}
                         />
                     </FormField>
                 </SpaceBetween>

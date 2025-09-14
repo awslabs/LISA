@@ -29,6 +29,8 @@ lib/rag/ingestion/ingestion-image/build
 .DS_Store
 *.iml
 *.code-workspace
+.cursor
+memory-bank/
 
 # Coverage Statistic Folders
 coverage

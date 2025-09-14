@@ -22,14 +22,13 @@
  */
 import { Duration, Size, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { BaseProps } from '../../schema';
+import { BaseProps, EcsSourceType } from '../../schema';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -37,6 +36,7 @@ import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -47,6 +47,19 @@ export type IngestionJobConstructProps = StackProps & BaseProps & {
 };
 
 export class IngestionJobConstruct extends Construct {
+    private getMaxCpus (vpc: Vpc): number {
+        // Calculate maxvCpus based on available IPs in subnets to prevent IP exhaustion
+        // Each task uses 2 vCPUs, so maxvCpus = available_ips * 2 vCPUs per task
+        const availableIps = vpc.subnetSelection?.subnets?.reduce((total, subnet) => {
+            // Each subnet reserves 5 IPs (network, broadcast, gateway, DNS, future use)
+            const subnetSize = Math.pow(2, 32 - parseInt(subnet.ipv4CidrBlock.split('/')[1]));
+            return total + Math.max(0, subnetSize - 5);
+        }, 0) || 64; // Default to 64 if calculation fails
+
+        const maxTasks = Math.min(availableIps, 256); // Cap at 256 for reasonable limits
+        return maxTasks * 2; // Each task uses 2 vCPUs
+    }
+
     constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
@@ -84,10 +97,12 @@ export class IngestionJobConstruct extends Construct {
         });
 
         // AWS Batch Fargate compute environment for running ingestion jobs
+        const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
             computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             vpc: vpc.vpc,
-
+            vpcSubnets: vpc.subnetSelection,
+            maxvCpus: maxvCpus,
         });
 
         // AWS Batch job queue that uses the Fargate compute environment
@@ -103,11 +118,10 @@ export class IngestionJobConstruct extends Construct {
         baseEnvironment['LISA_INGESTION_JOB_QUEUE_NAME'] = jobQueue.jobQueueName;
 
         // Set up build directory for Docker image
-        const ingestionImageRoot = path.join(__dirname, 'ingestion-image');
         const buildDirName = 'build';
-        const buildDir = path.join(ingestionImageRoot, buildDirName);
+        const buildDir = path.join(BATCH_INGESTION_PATH, buildDirName);
 
-        fs.mkdirSync(buildDir, {recursive: true});
+        fs.mkdirSync(buildDir, { recursive: true });
 
         const copyOptions = {
             recursive: true,
@@ -136,12 +150,16 @@ export class IngestionJobConstruct extends Construct {
             });
         }
 
-        // Build Docker image for batch jobs
-        const dockerImageAsset = new DockerImageAsset(this, 'IngestionJobImage', {
-            directory: ingestionImageRoot,
+        const imageConfig = config.batchIngestionConfig || {
+            baseImage: config.baseImage,
+            path: BATCH_INGESTION_PATH,
+            type: EcsSourceType.ASSET,
             buildArgs: {
                 'BUILD_DIR': buildDirName
             },
+        };
+        const image = CodeFactory.createImage(imageConfig, this, 'BatchIngestionContainer', {
+            'BUILD_DIR': buildDirName
         });
 
         // AWS Batch job definition specifying container configuration
@@ -149,7 +167,7 @@ export class IngestionJobConstruct extends Construct {
             jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
-                image: ecs.ContainerImage.fromDockerImageAsset(dockerImageAsset),
+                image,
                 memory: Size.mebibytes(4096),
                 cpu: 2,
                 command: ['-m', 'repository.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],
@@ -185,8 +203,9 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const scheduleParameterName = `${config.deploymentPrefix}/ingestion/ingest/schedule`;
         new StringParameter(this, 'IngestionJobScheduleLambdaArn', {
-            parameterName: `${config.deploymentPrefix}/ingestion/ingest/schedule`,
+            parameterName: scheduleParameterName,
             stringValue: handlePipelineIngestScheduleLambda.functionArn
         });
         handlePipelineIngestScheduleLambda.addPermission('AllowEventBridgeInvoke', {
@@ -207,8 +226,9 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const eventParameterName = `${config.deploymentPrefix}/ingestion/ingest/event`;
         new StringParameter(this, 'IngestionJobEventLambdaArn', {
-            parameterName: `${config.deploymentPrefix}/ingestion/ingest/event`,
+            parameterName: eventParameterName,
             stringValue: handlePipelineIngestEvent.functionArn
         });
         handlePipelineIngestEvent.addPermission('AllowEventBridgeInvoke', {
@@ -229,8 +249,9 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const deleteParameterName = `${config.deploymentPrefix}/ingestion/delete/event`;
         new StringParameter(this, 'DeletionJobEventLambdaArn', {
-            parameterName: `${config.deploymentPrefix}/ingestion/delete/event`,
+            parameterName: deleteParameterName,
             stringValue: handlePipelineDeleteEvent.functionArn
         });
 

@@ -21,7 +21,8 @@ from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from utilities.common_functions import api_wrapper, get_item, get_username, retry_config
+from utilities.auth import get_username
+from utilities.common_functions import api_wrapper, get_item, retry_config
 
 from .models import UserPreferencesModel
 

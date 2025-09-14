@@ -158,13 +158,13 @@ export default class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchBucket (scope: Construct, config: any): s3.Bucket {
+    private createWorkbenchBucket (scope: Construct, config: Config): s3.Bucket {
         const bucketAccessLogsBucket = s3.Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
             ssm.StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`),
         );
 
         return new s3.Bucket(scope, createCdkId(['LISA', 'MCPWorkbench', config.deploymentName, config.deploymentStage]), {
-            bucketName: [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase(),
+            bucketName: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             enforceSSL: true,

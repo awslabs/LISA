@@ -19,7 +19,7 @@ import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, CapacityDistributionStrategy, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
-import { InstanceType, ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
+import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
     AmiHardwareType,
     AsgCapacityProvider,
@@ -214,6 +214,11 @@ export class ECSCluster extends Construct {
             containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
+        const asgSecurityGroup = new SecurityGroup(this, 'RestAsgSecurityGroup', {
+            allowAllOutbound: true,
+            vpc: vpc.vpc,
+        });
+
         // Create auto-scaling group
         const autoScalingGroup = new AutoScalingGroup(this, createCdkId(['ASG']), {
             vpc: vpc.vpc,
@@ -234,6 +239,7 @@ export class ECSCluster extends Construct {
                     }),
                 },
             ],
+            securityGroup: asgSecurityGroup
         });
 
         const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId(['AsgCapacityProvider']), {
@@ -376,6 +382,8 @@ export class ECSCluster extends Construct {
             vpcSubnets: vpc.subnetSelection,
             idleTimeout: Duration.seconds(600)
         });
+
+        asgSecurityGroup.addIngressRule(securityGroup, Port.allTcp());
 
         // Add listener
         const listenerProps: BaseApplicationListenerProps = {

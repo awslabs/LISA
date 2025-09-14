@@ -169,7 +169,7 @@ export class FastApiContainer extends Construct {
                 [ECSTasks.MCPWORKBENCH]: {
                     environment: {...baseEnvironment,
                         RCLONE_CONFIG_S3_REGION: config.region,
-                        MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase(),
+                        MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
                     },
                     containerConfig: {
                         image: {
@@ -282,7 +282,7 @@ export class FastApiContainer extends Construct {
                 ],
                 detail: {
                     bucket: {
-                        name: [[config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase()]
+                        name: [[config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase()]
                     }
                 }
             },
@@ -300,7 +300,7 @@ export class FastApiContainer extends Construct {
         }
 
         letIfDefined(apiCluster.taskRoles.MCPWORKBENCH, (taskRole) => {
-            const bucketName = [config.deploymentName, config.deploymentStage, 'MCPWorkbench'].join('-').toLowerCase();
+            const bucketName = [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase();
             const workbenchBucket = Bucket.fromBucketName(scope, 'MCPWorkbenchBucket', bucketName);
             workbenchBucket.grantRead(taskRole);
         })

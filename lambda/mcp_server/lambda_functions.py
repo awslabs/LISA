@@ -41,7 +41,7 @@ def replace_bearer_token_header(mcp_server: dict, replacement: str):
         if key.lower() == 'authorization' and '{LISA_BEARER_TOKEN}' in value:
             custom_headers[key] = value.replace('{LISA_BEARER_TOKEN}', replacement)
 
-
+            
 def _build_groups_condition(groups: List[str]) -> Any:
     """Build DynamoDB condition for groups filtering."""
     # Servers with no groups (groups attribute doesn't exist, is null, or is empty array) should be included

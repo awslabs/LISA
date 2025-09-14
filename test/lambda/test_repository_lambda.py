@@ -260,7 +260,6 @@ from repository.lambda_functions import _ensure_document_ownership, _ensure_repo
 # Patch vector_store after import
 patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
 
-
 @pytest.fixture(autouse=True)
 def mock_boto3_client_fixture():
     """Fixture to patch boto3.client for repository tests with proper isolation."""

@@ -47,10 +47,10 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     // API hooks
     const { data: tools = [], isFetching: isLoadingTools, refetch } = useListMcpToolsQuery();
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
-    const { data: selectedToolData, isFetching: isLoadingTool, } = useGetMcpToolQuery(selectedToolId!, { 
+    const { data: selectedToolData, isFetching: isLoadingTool, } = useGetMcpToolQuery(selectedToolId!, {
         refetchOnMountOrArgChange: true,
         refetchOnFocus: true
-     });
+    });
 
     const [createToolMutation, { isLoading: isCreating }] = useCreateMcpToolMutation();
     const [updateToolMutation, { isLoading: isUpdating }] = useUpdateMcpToolMutation();

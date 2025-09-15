@@ -16,9 +16,9 @@
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, CapacityDistributionStrategy, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
+import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
+import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
     AmiHardwareType,
@@ -55,8 +55,8 @@ import { Vpc } from '../networking/vpc';
 import { CodeFactory } from '../util';
 
 export enum ECSTasks {
-    REST = "REST",
-    MCPWORKBENCH = "MCPWORKBENCH",
+    REST = 'REST',
+    MCPWORKBENCH = 'MCPWORKBENCH',
 }
 
 /**
@@ -104,7 +104,7 @@ export class ECSCluster extends Construct {
      * @param buildArgs - Optional build arguments for the container image
      * @returns Object containing task definition, container, and task role
      */
-    private createTaskDefinition(
+    private createTaskDefinition (
         taskDefinitionName: string,
         config: Config,
         taskDefinition: TaskDefinition,
@@ -189,7 +189,7 @@ export class ECSCluster extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {ECSClusterProps} props - The properties of the construct.
    */
-    constructor(scope: Construct, id: string, props: ECSClusterProps) {
+    constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, identifier, vpc, securityGroup, ecsConfig } = props;
 
@@ -250,7 +250,7 @@ export class ECSCluster extends Construct {
             // 90 means try to keep instances ~90% reserved before adding more.
             capacityProviderName: 'cp-ec2',
 
-            // disable managed scaling becuase we are going to setup rules to do it
+            // disable managed scaling because we are going to setup rules to do it
             enableManagedScaling: false,
             enableManagedTerminationProtection: false,
         });
@@ -445,7 +445,7 @@ export class ECSCluster extends Construct {
             });
             service.node.addDependency(autoScalingGroup);
 
-            // since our contianers are using ephemeral ports, the load balancer must be allowed to access them
+            // since our containers are using ephemeral ports, the load balancer must be allowed to access them
             service.connections.allowFrom(loadBalancer, Port.allTcp());
 
             // Create target groups for both services

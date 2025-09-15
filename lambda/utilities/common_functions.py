@@ -22,7 +22,7 @@ import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
 from functools import cache
-from typing import Any, Callable, cast, Dict, List, TypeVar, Union
+from typing import Any, Callable, cast, Dict, List, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
@@ -269,6 +269,11 @@ def generate_exception_response(
         logger.exception(e)
     elif hasattr(e, "http_status_code"):
         status_code = e.http_status_code
+        e = e.message  # type: ignore [assignment]
+        logger.exception(e)
+    elif hasattr(e, "status_code"):
+        status_code = e.status_code
+        e = e.message  # type: ignore [assignment]
         logger.exception(e)
     else:
         error_msg = str(e)
@@ -478,3 +483,39 @@ def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> 
 
     # Check if user has at least one matching group
     return len(set(user_groups).intersection(set(allowed_groups))) > 0
+
+
+def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:
+    """Get the value represented by a property path."""
+    props = property_path.split(".")
+    current_node = data
+    for prop in props:
+        if prop in current_node:
+            current_node = current_node[prop]
+        else:
+            return None
+
+    return current_node
+
+
+def get_bearer_token(event, with_prefix: bool = True):
+    """
+    Extracts a Bearer token from the Authorization header in a Lambda event.
+
+    Args:
+        event (dict): AWS Lambda event (API Gateway / ALB proxy style).
+
+    Returns:
+        str | None: The token string if present and properly formatted, else None.
+    """
+    headers = event.get("headers") or {}
+    # Headers may vary in casing
+    auth_header = headers.get("Authorization") or headers.get("authorization")
+    if not auth_header:
+        return None
+
+    if not auth_header.lower().startswith("bearer "):
+        return None
+
+    # Return the token after "Bearer "
+    return auth_header.split(" ", 1)[1].strip()

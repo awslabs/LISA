@@ -38,7 +38,7 @@ strict_optional = true
 show_error_codes = true
 
 [tool.ruff]
-ignore = ["D401"]
+lint.ignore = ["D401"]
 line-length = 120
 
 [tool.pytest.ini_options]

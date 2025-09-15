@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
-from utilities.common_functions import api_wrapper, get_groups, get_item, retry_config
+from utilities.common_functions import api_wrapper, get_bearer_token, get_groups, get_item, retry_config
 
 from .models import McpServerModel, McpServerStatus
 
@@ -32,6 +32,14 @@ logger = logging.getLogger(__name__)
 # Initialize the DynamoDB resource and the table using environment variables
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
+
+
+def replace_bearer_token_header(mcp_server: dict, replacement: str):
+    """Replace {LISA_BEARER_TOKEN} placeholder with actual bearer token in custom headers."""
+    custom_headers = mcp_server.get("customHeaders", {})
+    for key, value in custom_headers.items():
+        if key.lower() == "authorization" and "{LISA_BEARER_TOKEN}" in value:
+            custom_headers[key] = value.replace("{LISA_BEARER_TOKEN}", replacement)
 
 
 def _build_groups_condition(groups: List[str]) -> Any:
@@ -50,6 +58,7 @@ def _build_groups_condition(groups: List[str]) -> Any:
 def _get_mcp_servers(
     user_id: Optional[str] = None,
     active: Optional[bool] = None,
+    replace_bearer_token: Optional[str] = None,
     groups: Optional[List] = None,
 ) -> Dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
@@ -121,6 +130,11 @@ def _get_mcp_servers(
         else:
             break
 
+    # Look through the headers, and replace {LISA_BEARER_TOKEN} with the users
+    if replace_bearer_token:
+        for mcp_server in items:
+            replace_bearer_token_header(mcp_server, replace_bearer_token)
+
     return {"Items": items}
 
 
@@ -129,6 +143,10 @@ def get(event: dict, context: dict) -> Any:
     """Retrieve a specific mcp server from DynamoDB."""
     user_id = get_username(event)
     mcp_server_id = get_mcp_server_id(event)
+
+    # Check if showPlaceholder query parameter is present
+    query_params = event.get("queryStringParameters") or {}
+    show_placeholder = query_params.get("showPlaceholder") == "1"
 
     # Query for the mcp server
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
@@ -144,6 +162,13 @@ def get(event: dict, context: dict) -> Any:
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
             item["isOwner"] = True
+
+        # Replace bearer token placeholder unless showPlaceholder is true
+        if not show_placeholder:
+            bearer_token = get_bearer_token(event)
+            if bearer_token:
+                replace_bearer_token_header(item, bearer_token)
+
         return item
 
     raise ValueError(f"Not authorized to get {mcp_server_id}.")
@@ -158,12 +183,14 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id = get_username(event)
 
+    bearer_token = get_bearer_token(event)
+
     if is_admin(event):
-        return _get_mcp_servers()
+        logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
+        return _get_mcp_servers(replace_bearer_token=bearer_token)
 
     groups = get_groups(event)
-    result = _get_mcp_servers(user_id=user_id, active=True, groups=groups)
-    return result
+    return _get_mcp_servers(user_id=user_id, active=True, groups=groups, replace_bearer_token=bearer_token)
 
 
 @api_wrapper
@@ -171,7 +198,9 @@ def create(event: dict, context: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id = get_username(event)
     body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) is None else body["owner"]  # Set the owner of the mcp server
+    body["owner"] = (
+        user_id if body.get("owner", None) != "lisa:public" else body["owner"]
+    )  # Set the owner of the mcp server
     mcp_server_model = McpServerModel(**body)
 
     # Insert the new mcp server item into the DynamoDB table
@@ -185,6 +214,7 @@ def update(event: dict, context: dict) -> Any:
     user_id = get_username(event)
     mcp_server_id = get_mcp_server_id(event)
     body = json.loads(event["body"], parse_float=Decimal)
+    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
     mcp_server_model = McpServerModel(**body)
 
     if mcp_server_id != mcp_server_model.id:

@@ -41,6 +41,7 @@ import { ModifyMethod } from '../../shared/validation/modify-method';
 import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import {
     DefaultMcpServer,
+    mcpServerApi,
     McpServerStatus,
     NewMcpServer,
     useCreateMcpServerMutation,
@@ -110,7 +111,7 @@ export function McpServerForm (props: McpServerFormProps) {
     const disabled = isFetching || isCreating || isUpdating;
 
     if (isEdit && isUninitialized && mcpServerId) {
-        getMcpServerQuery(mcpServerId).then((response) => {
+        getMcpServerQuery({mcpServerId, showPlaceholder: true}).then((response) => {
             if (response.isSuccess) {
                 setFields({ ...response.data,
                     customHeaders: response.data.customHeaders ? Object.entries(response.data.customHeaders).map(([key, value]) => ({ key, value })) : [],
@@ -194,8 +195,9 @@ export function McpServerForm (props: McpServerFormProps) {
             const data = isCreatingSuccess ? createData : updateData;
             notificationService.generateNotification(`Successfully ${verb} MCP Connection: ${data.name}`, 'success');
             navigate(`/mcp-connections/${data.id}`);
+            dispatch(mcpServerApi.util.invalidateTags(['mcpServers']));
         }
-    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate]);
+    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate, dispatch]);
 
     // create failure notification
     useEffect(() => {

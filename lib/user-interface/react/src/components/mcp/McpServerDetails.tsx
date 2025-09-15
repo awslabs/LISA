@@ -123,7 +123,7 @@ export function McpServerDetails () {
     }
 
     if (isUninitialized && mcpServerId) {
-        getMcpServerQuery(mcpServerId);
+        getMcpServerQuery({mcpServerId});
     }
 
     const {

@@ -58,4 +58,35 @@ export enum AmiHardwareType {
     NEURON = 'Neuron'
 }
 
+/**
+ * Load balancing protocol for application load balancers
+ */
+export enum ApplicationProtocol {
+    /**
+     * HTTP
+     */
+    HTTP = 'HTTP',
+    /**
+     * HTTPS
+     */
+    HTTPS = 'HTTPS'
+}
+/**
+ * Load balancing protocol version for application load balancers
+ */
+export enum ApplicationProtocolVersion {
+    /**
+     * GRPC
+     */
+    GRPC = 'GRPC',
+    /**
+     * HTTP1
+     */
+    HTTP1 = 'HTTP1',
+    /**
+     * HTTP2
+     */
+    HTTP2 = 'HTTP2'
+}
+
 /* eslint-enable @typescript-eslint/no-duplicate-enum-values */

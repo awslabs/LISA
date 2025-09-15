@@ -97,7 +97,6 @@ from authorizer.lambda_functions import (
     find_jwt_username,
     generate_policy,
     get_management_tokens,
-    get_property_path,
     id_token_is_valid,
     is_admin,
     is_valid_api_token,
@@ -198,24 +197,6 @@ def test_find_jwt_username(sample_jwt_data):
     with pytest.raises(ValueError) as excinfo:
         find_jwt_username(data_without_username_or_sub)
     assert "No username found in JWT" in str(excinfo.value)
-
-
-def test_get_property_path(sample_jwt_data):
-    """Test the get_property_path function."""
-    # Test with simple property
-    assert get_property_path(sample_jwt_data, "username") == "test-user"
-
-    # Test with nested property
-    assert get_property_path(sample_jwt_data, "nested.property") == "value"
-
-    # Test with non-existent property
-    assert get_property_path(sample_jwt_data, "nonexistent") is None
-
-    # Test with non-existent nested property
-    assert get_property_path(sample_jwt_data, "nested.nonexistent") is None
-
-    # Test with non-existent parent
-    assert get_property_path(sample_jwt_data, "nonexistent.property") is None
 
 
 def test_is_admin(sample_jwt_data):

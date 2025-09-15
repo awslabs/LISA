@@ -29,6 +29,7 @@ import { getJsonDifference } from '../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useNotificationService } from '../../shared/util/hooks';
 import RepositoryTable from './RepositoryTable';
+import { mcpServerApi } from '@/shared/reducers/mcp-server.reducer';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -115,6 +116,10 @@ export function ConfigurationComponent (): ReactElement {
     useEffect(() => {
         if (!isUpdating && isUpdateSuccess) {
             notificationService.generateNotification('Successfully updated configuration', 'success');
+
+            // invalidate the mcp servers on update in case they've changed
+            dispatch(mcpServerApi.util.invalidateTags(['mcpServers']));
+
             resetUpdate();
         } else if (!isUpdating && isUpdateError) {
             notificationService.generateNotification(`Error updating config: ${updateError.data?.message ?? updateError.data}`, 'error');

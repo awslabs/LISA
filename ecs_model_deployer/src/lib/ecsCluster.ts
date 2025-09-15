@@ -55,6 +55,7 @@ import { CodeFactory } from '../../../lib/util';
  * @property {string} executionRoleName? - The role used for executing the task
  */
 type ECSClusterProps = {
+    identifier: string;
     ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: IVpc;
@@ -84,17 +85,17 @@ export class ECSCluster extends Construct {
    */
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
-        const { config, vpc, securityGroup, ecsConfig, subnetSelection, taskRoleName, executionRoleName } = props;
+        const { identifier, config, vpc, securityGroup, ecsConfig, subnetSelection, taskRoleName, executionRoleName } = props;
 
         // Create ECS cluster
-        const cluster = new Cluster(this, createCdkId([ecsConfig.identifier, 'Cl']), {
-            clusterName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
+        const cluster = new Cluster(this, createCdkId([identifier, 'Cl']), {
+            clusterName: createCdkId([config.deploymentName, identifier], 32, 2),
             vpc: vpc,
             containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
         // Create auto scaling group
-        const autoScalingGroup = cluster.addCapacity(createCdkId([ecsConfig.identifier, 'ASG']), {
+        const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
@@ -120,207 +121,218 @@ export class ECSCluster extends Construct {
             value: autoScalingGroup.autoScalingGroupName,
         });
 
-        const environment = ecsConfig.environment;
-        const volumes: Volume[] = [];
-        const mountPoints: MountPoint[] = [];
+        // we want to set these based on the task created but currently the ECSCluster for model
+        // will only create one task, so grab these values during creation so we can set the properties
+        // on this class
+        let container;
+        let taskRole;
+        let endpointUrl;
 
-        // If NVMe drive available, mount and use it
-        if (Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
-            // EC2 user data to mount ephemeral NVMe drive
-            const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
-            const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
-            /* eslint-disable no-useless-escape */
-            const rawUserData = `#!/bin/bash
-    set -e
-    # Check if NVMe is already formatted
-    if ! blkid ${NVME_PATH}; then
-        mkfs.xfs ${NVME_PATH}
-    fi
+        Object.entries(ecsConfig.tasks).forEach(([, taskDefinition]) => {
+            const environment = taskDefinition.environment;
 
-    mkdir -p ${MOUNT_PATH}
-    mount ${NVME_PATH} ${MOUNT_PATH}
+            const volumes: Volume[] = [];
+            const mountPoints: MountPoint[] = [];
 
-    # Add to fstab if not already present
-    if ! grep -q "${NVME_PATH}" /etc/fstab; then
-        echo ${NVME_PATH} ${MOUNT_PATH} xfs defaults,nofail 0 2 >> /etc/fstab
-    fi
+            // If NVMe drive available, mount and use it
+            if (Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
+                // EC2 user data to mount ephemeral NVMe drive
+                const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
+                const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
+                /* eslint-disable no-useless-escape */
+                const rawUserData = `#!/bin/bash
+                    set -e
+                    # Check if NVMe is already formatted
+                    if ! blkid ${NVME_PATH}; then
+                        mkfs.xfs ${NVME_PATH}
+                    fi
 
-    # Update Docker root location and restart Docker service
-    mkdir -p ${MOUNT_PATH}/docker
-    echo '{\"data-root\": \"${MOUNT_PATH}/docker\"}' | tee /etc/docker/daemon.json
-    systemctl restart docker
-    `;
-            /* eslint-enable no-useless-escape */
-            autoScalingGroup.addUserData(rawUserData);
+                    mkdir -p ${MOUNT_PATH}
+                    mount ${NVME_PATH} ${MOUNT_PATH}
 
-            // Create mount point for container
-            const sourceVolume = 'nvme';
-            const host: Host = { sourcePath: config.nvmeHostMountPath ?? '/nvme' };
-            const nvmeVolume: Volume = { name: sourceVolume, host: host };
-            const nvmeMountPoint: MountPoint = {
-                sourceVolume: sourceVolume,
-                containerPath: config.nvmeContainerMountPath ?? '/nvme',
-                readOnly: false,
+                    # Add to fstab if not already present
+                    if ! grep -q "${NVME_PATH}" /etc/fstab; then
+                        echo ${NVME_PATH} ${MOUNT_PATH} xfs defaults,nofail 0 2 >> /etc/fstab
+                    fi
+
+                    # Update Docker root location and restart Docker service
+                    mkdir -p ${MOUNT_PATH}/docker
+                    echo '{\"data-root\": \"${MOUNT_PATH}/docker\"}' | tee /etc/docker/daemon.json
+                    systemctl restart docker
+                    `;
+                /* eslint-enable no-useless-escape */
+                autoScalingGroup.addUserData(rawUserData);
+
+                // Create mount point for container
+                const sourceVolume = 'nvme';
+                const host: Host = { sourcePath: config.nvmeHostMountPath ?? '/nvme' };
+                const nvmeVolume: Volume = { name: sourceVolume, host: host };
+                const nvmeMountPoint: MountPoint = {
+                    sourceVolume: sourceVolume,
+                    containerPath: config.nvmeContainerMountPath ?? '/nvme',
+                    readOnly: false,
+                };
+                volumes.push(nvmeVolume);
+                mountPoints.push(nvmeMountPoint);
+            }
+
+            // Add permissions to use SSM in dev environment for EC2 debugging purposes only
+            if (config.deploymentStage === 'dev') {
+                autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'));
+            }
+
+            if (config.region?.includes('iso')) {
+                const pkiSourceVolume = 'pki';
+                const pkiHost: Host = { sourcePath: '/etc/pki' };
+                const pkiVolume: Volume = { name: pkiSourceVolume, host: pkiHost };
+                const pkiMountPoint: MountPoint = {
+                    sourceVolume: pkiSourceVolume,
+                    containerPath: '/etc/pki',
+                    readOnly: false,
+                };
+                volumes.push(pkiVolume);
+                mountPoints.push(pkiMountPoint);
+                // Requires mount point /etc/pki from host
+                environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
+                environment.SSL_CERT_FILE = config.certificateAuthorityBundle ?? '';
+                environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
+                environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
+                environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
+            }
+
+            const roleId = identifier;
+            const taskRole = taskRoleName ?
+                Role.fromRoleName(this, createCdkId([config.deploymentName, roleId]), taskRoleName) :
+                this.createTaskRole(config.deploymentName ?? '', config.deploymentPrefix, roleId);
+
+            // Create ECS task definition
+            const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
+                family: createCdkId([config.deploymentName, roleId], 32, 2),
+                volumes: volumes,
+                taskRole,
+                ...(executionRoleName && { executionRole: Role.fromRoleName(this, createCdkId([config.deploymentName, roleId, 'EX']), executionRoleName) }),
+            });
+
+            // Add container to task definition
+            const containerHealthCheckConfig = taskDefinition.containerConfig.healthCheckConfig;
+            const containerHealthCheck: HealthCheck = {
+                command: containerHealthCheckConfig.command,
+                interval: Duration.seconds(containerHealthCheckConfig.interval),
+                startPeriod: Duration.seconds(containerHealthCheckConfig.startPeriod),
+                timeout: Duration.seconds(containerHealthCheckConfig.timeout),
+                retries: containerHealthCheckConfig.retries,
             };
-            volumes.push(nvmeVolume);
-            mountPoints.push(nvmeMountPoint);
-        }
 
-        // Add permissions to use SSM in dev environment for EC2 debugging purposes only
-        if (config.deploymentStage === 'dev') {
-            autoScalingGroup.role.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMFullAccess'));
-        }
+            const linuxParameters =
+                taskDefinition.containerConfig.sharedMemorySize > 0
+                    ? new LinuxParameters(this, createCdkId([identifier, 'LinuxParameters']), {
+                        sharedMemorySize: taskDefinition.containerConfig.sharedMemorySize,
+                    })
+                    : undefined;
 
-        if (config.region?.includes('iso')) {
-            const pkiSourceVolume = 'pki';
-            const pkiHost: Host = { sourcePath: '/etc/pki' };
-            const pkiVolume: Volume = { name: pkiSourceVolume, host: pkiHost };
-            const pkiMountPoint: MountPoint = {
-                sourceVolume: pkiSourceVolume,
-                containerPath: '/etc/pki',
-                readOnly: false,
+            const image = CodeFactory.createImage(taskDefinition.containerConfig.image, this, identifier, ecsConfig.buildArgs);
+            const container = ec2TaskDefinition.addContainer(createCdkId([identifier, 'Container']), {
+                containerName: createCdkId([config.deploymentName, identifier], 32, 2),
+                image,
+                environment,
+                logging: LogDriver.awsLogs({ streamPrefix: identifier }),
+                gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
+                memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
+                portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
+                healthCheck: containerHealthCheck,
+                // Model containers need to run with privileged set to true
+                privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
+                ...(linuxParameters && { linuxParameters }),
+            });
+            container.addMountPoints(...mountPoints);
+
+            // Create ECS service
+            const serviceProps: Ec2ServiceProps = {
+                cluster: cluster,
+                daemon: true,
+                serviceName: createCdkId([config.deploymentName, identifier], 32, 2),
+                taskDefinition: ec2TaskDefinition,
+                circuitBreaker: !config.region?.includes('iso') ? { rollback: true } : undefined,
             };
-            volumes.push(pkiVolume);
-            mountPoints.push(pkiMountPoint);
-            // Requires mount point /etc/pki from host
-            environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
-            environment.SSL_CERT_FILE = config.certificateAuthorityBundle ?? '';
-            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
-            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
-            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle ?? '';
-        }
 
-        const roleId = ecsConfig.identifier;
-        const taskRole = taskRoleName ?
-            Role.fromRoleName(this, createCdkId([config.deploymentName, roleId]), taskRoleName) :
-            this.createTaskRole(config.deploymentName ?? '', config.deploymentPrefix, roleId);
+            const service = new Ec2Service(this, createCdkId([identifier, 'Ec2Svc']), serviceProps);
 
-        // Create ECS task definition
-        const taskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
-            family: createCdkId([config.deploymentName, roleId], 32, 2),
-            volumes: volumes,
-            taskRole,
-            ...(executionRoleName && { executionRole: Role.fromRoleName(this, createCdkId([config.deploymentName, roleId, 'EX']), executionRoleName) }),
-        });
+            service.node.addDependency(autoScalingGroup);
 
-        // Add container to task definition
-        const containerHealthCheckConfig = ecsConfig.containerConfig.healthCheckConfig;
-        const containerHealthCheck: HealthCheck = {
-            command: containerHealthCheckConfig.command,
-            interval: Duration.seconds(containerHealthCheckConfig.interval),
-            startPeriod: Duration.seconds(containerHealthCheckConfig.startPeriod),
-            timeout: Duration.seconds(containerHealthCheckConfig.timeout),
-            retries: containerHealthCheckConfig.retries,
-        };
+            // Create application load balancer
+            const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([identifier, 'ALB']), {
+                deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
+                internetFacing: false,
+                loadBalancerName: createCdkId([config.deploymentName, identifier], 32, 2).toLowerCase(),
+                dropInvalidHeaderFields: true,
+                securityGroup,
+                vpc,
+                vpcSubnets: subnetSelection,
+                idleTimeout: Duration.seconds(600)
+            });
 
-        const linuxParameters =
-            ecsConfig.containerConfig.sharedMemorySize > 0
-                ? new LinuxParameters(this, createCdkId([ecsConfig.identifier, 'LinuxParameters']), {
-                    sharedMemorySize: ecsConfig.containerConfig.sharedMemorySize,
-                })
-                : undefined;
+            // Add listener
+            const listenerProps: BaseApplicationListenerProps = {
+                port: 80,
+                open: false,
+                certificates: undefined,
+            };
 
-        const image = CodeFactory.createImage(ecsConfig.containerConfig.image, this, ecsConfig.identifier, ecsConfig.buildArgs);
-        const container = taskDefinition.addContainer(createCdkId([ecsConfig.identifier, 'Container']), {
-            containerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            image,
-            environment,
-            logging: LogDriver.awsLogs({ streamPrefix: ecsConfig.identifier }),
-            gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
-            memoryReservationMiB: Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer,
-            portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
-            healthCheck: containerHealthCheck,
-            // Model containers need to run with privileged set to true
-            privileged: ecsConfig.amiHardwareType === AmiHardwareType.GPU,
-            ...(linuxParameters && { linuxParameters }),
-        });
-        container.addMountPoints(...mountPoints);
+            const listener = loadBalancer.addListener(
+                createCdkId([identifier, 'ApplicationListener']),
+                listenerProps,
+            );
+            const protocol = 'http';
 
-        // Create ECS service
-        const serviceProps: Ec2ServiceProps = {
-            cluster: cluster,
-            daemon: true,
-            serviceName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2),
-            taskDefinition: taskDefinition,
-            circuitBreaker: !config.region?.includes('iso') ? { rollback: true } : undefined,
-        };
+            // Add targets
+            const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
+            const targetGroup = listener.addTargets(createCdkId([identifier, 'TgtGrp']), {
+                targetGroupName: createCdkId([config.deploymentName, identifier], 32, 2).toLowerCase(),
+                healthCheck: {
+                    path: loadBalancerHealthCheckConfig.path,
+                    interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
+                    timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
+                    healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
+                    unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
+                },
+                port: 80,
+                targets: [service],
+            });
 
-        const service = new Ec2Service(this, createCdkId([ecsConfig.identifier, 'Ec2Svc']), serviceProps);
+            // ALB metric for ASG to use for auto scaling EC2 instances
+            // TODO: Update this to step scaling for embedding models??
+            const requestCountPerTargetMetric = new Metric({
+                metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
+                namespace: 'AWS/ApplicationELB',
+                dimensionsMap: {
+                    TargetGroup: targetGroup.targetGroupFullName,
+                    LoadBalancer: loadBalancer.loadBalancerFullName,
+                },
+                statistic: Stats.SAMPLE_COUNT,
+                period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+            });
 
-        service.node.addDependency(autoScalingGroup);
+            // Create hook to scale on ALB metric count exceeding thresholds
+            autoScalingGroup.scaleToTrackMetric(createCdkId([identifier, 'ScalingPolicy']), {
+                metric: requestCountPerTargetMetric,
+                targetValue: ecsConfig.autoScalingConfig.metricConfig.targetValue,
+                estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
+            });
 
-        // Create application load balancer
-        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([ecsConfig.identifier, 'ALB']), {
-            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
-            internetFacing: false,
-            loadBalancerName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
-            dropInvalidHeaderFields: true,
-            securityGroup,
-            vpc,
-            vpcSubnets: subnetSelection,
-            idleTimeout: Duration.seconds(600)
-        });
+            const domain = loadBalancer.loadBalancerDnsName;
 
-        // Add listener
-        const listenerProps: BaseApplicationListenerProps = {
-            port: 80,
-            open: false,
-            certificates: undefined,
-        };
+            endpointUrl = `${protocol}://${domain}`;
 
-        const listener = loadBalancer.addListener(
-            createCdkId([ecsConfig.identifier, 'ApplicationListener']),
-            listenerProps,
-        );
-        const protocol = 'http';
-
-        // Add targets
-        const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
-        const targetGroup = listener.addTargets(createCdkId([ecsConfig.identifier, 'TgtGrp']), {
-            targetGroupName: createCdkId([config.deploymentName, ecsConfig.identifier], 32, 2).toLowerCase(),
-            healthCheck: {
-                path: loadBalancerHealthCheckConfig.path,
-                interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
-                timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
-                healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
-                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
-            },
-            port: 80,
-            targets: [service],
-        });
-
-        // ALB metric for ASG to use for auto scaling EC2 instances
-        // TODO: Update this to step scaling for embedding models??
-        const requestCountPerTargetMetric = new Metric({
-            metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
-            namespace: 'AWS/ApplicationELB',
-            dimensionsMap: {
-                TargetGroup: targetGroup.targetGroupFullName,
-                LoadBalancer: loadBalancer.loadBalancerFullName,
-            },
-            statistic: Stats.SAMPLE_COUNT,
-            period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
-        });
-
-        // Create hook to scale on ALB metric count exceeding thresholds
-        autoScalingGroup.scaleToTrackMetric(createCdkId([ecsConfig.identifier, 'ScalingPolicy']), {
-            metric: requestCountPerTargetMetric,
-            targetValue: ecsConfig.autoScalingConfig.metricConfig.targetValue,
-            estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
-        });
-
-        const domain = loadBalancer.loadBalancerDnsName;
-
-        this.endpointUrl = `${protocol}://${domain}`;
-
-        new CfnOutput(this, 'modelEndpointurl', {
-            key: 'modelEndpointUrl',
-            value: this.endpointUrl,
+            new CfnOutput(this, 'modelEndpointurl', {
+                key: 'modelEndpointUrl',
+                value: this.endpointUrl,
+            });
         });
 
         // Update
-        this.container = container;
-        this.taskRole = taskRole;
+        this.endpointUrl = endpointUrl!;
+        this.container = container!;
+        this.taskRole = taskRole!;
     }
 
     createTaskRole (deploymentName: string, deploymentPrefix: string | undefined, roleId: string): IRole {

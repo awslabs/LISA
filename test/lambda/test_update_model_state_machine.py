@@ -137,7 +137,9 @@ mock_cfn.describe_stack_resources.return_value = {
 
 
 # Mock boto3.client
-def mock_boto3_client(service, **kwargs):
+def mock_boto3_client(*args, **kwargs):
+    # Support both (service_name, region_name, config) and (service_name)
+    service = args[0] if args else kwargs.get("service_name", kwargs.get("service"))
     if service == "autoscaling":
         return mock_autoscaling
     elif service == "iam":
@@ -162,6 +164,7 @@ def mock_boto3_client(service, **kwargs):
         return MagicMock()
 
 
+# Note: This module needs global boto3.client patch for import-time dependencies
 patch("boto3.client", side_effect=mock_boto3_client).start()
 
 from models.domain_objects import ModelStatus

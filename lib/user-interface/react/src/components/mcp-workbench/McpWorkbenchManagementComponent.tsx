@@ -106,7 +106,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
             });
             setIsDirty(true);
         }
-    }, [selectedToolId, selectedToolData, setFields]);
+    }, [selectedToolId, selectedToolData, setFields, isDirty]);
 
     // Handle tool selection
     const handleToolSelect = (tool: IMcpTool) => {

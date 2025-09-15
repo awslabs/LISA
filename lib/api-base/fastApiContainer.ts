@@ -242,7 +242,7 @@ export class FastApiContainer extends Construct {
                             ],
                             resources: [
                                 `arn:aws:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
-                                `arn:aws:ecs:${config.region}:*:service/${config.deploymentName}-${props.apiName}*/${workbenchService?.serviceName}*`
+                                `arn:aws:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
                             ]
                         }),
                         new PolicyStatement({
@@ -268,7 +268,7 @@ export class FastApiContainer extends Construct {
             environment: {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
                 API_NAME: props.apiName,
-                ECS_CLUSTER_NAME: workbenchService?.cluster?.clusterName || '',
+                ECS_CLUSTER_NAME: workbenchService!.cluster?.clusterName,
                 MCPWORKBENCH_SERVICE_NAME: workbenchService!.serviceName
             }
         });

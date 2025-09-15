@@ -16,7 +16,7 @@
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
+import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring, UpdatePolicy } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -239,7 +239,8 @@ export class ECSCluster extends Construct {
                     }),
                 },
             ],
-            securityGroup: asgSecurityGroup
+            securityGroup: asgSecurityGroup,
+            updatePolicy: UpdatePolicy.rollingUpdate({})
         });
 
         const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId([config.deploymentName, config.deploymentStage, 'AsgCapacityProvider']), {
@@ -248,7 +249,7 @@ export class ECSCluster extends Construct {
             // when services want more tasks than the cluster can fit.
             // targetCapacityPercent ~ how "full" you want the cluster (by CPU/memory reservation).
             // 90 means try to keep instances ~90% reserved before adding more.
-            capacityProviderName: [config.deploymentName, config.deploymentStage, 'cp-ec2'].join('-'),
+            // capacityProviderName: [config.deploymentName, config.deploymentStage, 'cp-ec2'].join('-'),
 
             // disable managed scaling because we are going to setup rules to do it
             enableManagedScaling: false,

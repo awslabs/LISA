@@ -21,7 +21,7 @@ import ace from 'ace-builds';
 import 'ace-builds/src-noconflict/mode-python';
 import 'ace-builds/src-noconflict/theme-tomorrow';
 import 'ace-builds/src-noconflict/ext-language_tools';
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import * as z from 'zod';
@@ -52,7 +52,9 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     const [deleteToolMutation] = useDeleteMcpToolMutation();
 
     // Local state
-    const defaultContent = 'from mcpworkbench.core.annotations import mcp_tool\nfrom mcpworkbench.core.base_tool import BaseTool\nfrom typing import Annotated\n\n\n# =============================================================================\n# METHOD 1: FUNCTION-BASED APPROACH WITH @mcp_tool DECORATOR\n# =============================================================================\n# This is a simpler approach for straightforward tools that don\'t need\n# complex initialization or state management.\n\n@mcp_tool(\n    name="simple_calculator",\n    description="A simple calculator using the decorator approach"\n)\nasync def simple_calculator(\n    operator: Annotated[str, "The arithmetic operation: add, subtract, multiply, or divide"],\n    left_operand: Annotated[float, "The first number in the operation"],\n    right_operand: Annotated[float, "The second number in the operation"]\n) -> dict:\n    \'\'\'\n    Perform basic arithmetic operations using the decorator approach.\n    \n    The @mcp_tool decorator automatically:\n    1. Registers the function as an MCP tool\n    2. Extracts parameter information from type annotations\n    3. Uses the Annotated descriptions for parameter documentation\n    4. Handles the MCP protocol communication\n    \n    This approach is ideal for:\n    - Simple, stateless operations\n    - Quick prototyping\n    - Tools that don\'t need complex initialization\n    \'\'\'\n    \n    if operator == "add":\n        result = left_operand + right_operand\n    elif operator == "subtract":\n        result = left_operand - right_operand\n    elif operator == "multiply":\n        result = left_operand * right_operand\n    elif operator == "divide":\n        if right_operand == 0:\n            raise ValueError("Cannot divide by zero")\n        result = left_operand / right_operand\n    else:\n        raise ValueError(f"Unknown operator: {operator}")\n    \n    return {\n        "operator": operator,\n        "left_operand": left_operand,\n        "right_operand": right_operand,\n        "result": result\n    }\n\n\n# =============================================================================\n# METHOD 2: CLASS-BASED APPROACH\n# =============================================================================\n# This is the more structured approach, ideal for complex tools that need\n# initialization, state management, or multiple related operations.\n\nclass CalculatorTool(BaseTool):\n    """\n    A simple calculator tool that performs basic arithmetic operations.\n    \n    This class demonstrates the class-based approach to creating MCP tools:\n    1. Inherit from BaseTool\n    2. Initialize with name and description in __init__\n    3. Implement execute() method that returns the callable function\n    4. Define the actual tool function with proper type annotations\n    """\n    \n    def __init__(self):\n        """\n        Initialize the tool with metadata.\n        \n        The BaseTool constructor requires:\n        - name: A unique identifier for the tool\n        - description: A clear description of what the tool does\n        """\n        super().__init__(\n            name="calculator",\n            description="Performs basic arithmetic operations (add, subtract, multiply, divide)"\n        )\n\n    async def execute(self):\n        """\n        Return the callable function that implements the tool\'s functionality.\n        \n        This method is called by the MCP framework to get the actual function\n        that will be executed when the tool is invoked.\n        """\n        return self.calculate\n    \n    async def calculate(\n        self,\n        operator: Annotated[str, "add, subtract, multiply, or divide"],\n        left_operand: Annotated[float, "The first number"],\n        right_operand: Annotated[float, "The second number"]\n    ):\n        """\n        Execute the calculator operation.\n        \n        Parameter Type Annotations with Context:\n        =======================================\n        Notice the use of Annotated[type, "description"] for each parameter.\n        This is OPTIONAL but highly recommended because it provides:\n        \n        1. Type information for the MCP framework\n        2. Human-readable descriptions that help AI models understand\n           what each parameter is for\n        3. Better error messages and validation\n        \n        The Annotated type comes from typing module and follows this pattern:\n        Annotated[actual_type, "description_string"]\n        \n        Examples:\n        - Annotated[str, "The operation to perform"]\n        - Annotated[int, "A positive integer between 1 and 100"]\n        - Annotated[list[str], "A list of file paths to process"]\n        """        \n        if operator == "add":\n            result = left_operand + right_operand\n        elif operator == "subtract":\n            result = left_operand - right_operand\n        elif operator == "multiply":\n            result = left_operand * right_operand\n        elif operator == "divide":\n            if right_operand == 0:\n                raise ValueError("Cannot divide by zero")\n            result = left_operand / right_operand\n        else:\n            raise ValueError(f"Unknown operator: {operator}")\n        \n        return {\n            "operator": operator,\n            "left_operand": left_operand,\n            "right_operand": right_operand,\n            "result": result\n        }';
+    const defaultContent = useMemo(() => {
+        return 'from mcpworkbench.core.annotations import mcp_tool\nfrom mcpworkbench.core.base_tool import BaseTool\nfrom typing import Annotated\n\n\n# =============================================================================\n# METHOD 1: FUNCTION-BASED APPROACH WITH @mcp_tool DECORATOR\n# =============================================================================\n# This is a simpler approach for straightforward tools that don\'t need\n# complex initialization or state management.\n\n@mcp_tool(\n    name="simple_calculator",\n    description="A simple calculator using the decorator approach"\n)\nasync def simple_calculator(\n    operator: Annotated[str, "The arithmetic operation: add, subtract, multiply, or divide"],\n    left_operand: Annotated[float, "The first number in the operation"],\n    right_operand: Annotated[float, "The second number in the operation"]\n) -> dict:\n    \'\'\'\n    Perform basic arithmetic operations using the decorator approach.\n    \n    The @mcp_tool decorator automatically:\n    1. Registers the function as an MCP tool\n    2. Extracts parameter information from type annotations\n    3. Uses the Annotated descriptions for parameter documentation\n    4. Handles the MCP protocol communication\n    \n    This approach is ideal for:\n    - Simple, stateless operations\n    - Quick prototyping\n    - Tools that don\'t need complex initialization\n    \'\'\'\n    \n    if operator == "add":\n        result = left_operand + right_operand\n    elif operator == "subtract":\n        result = left_operand - right_operand\n    elif operator == "multiply":\n        result = left_operand * right_operand\n    elif operator == "divide":\n        if right_operand == 0:\n            raise ValueError("Cannot divide by zero")\n        result = left_operand / right_operand\n    else:\n        raise ValueError(f"Unknown operator: {operator}")\n    \n    return {\n        "operator": operator,\n        "left_operand": left_operand,\n        "right_operand": right_operand,\n        "result": result\n    }\n\n\n# =============================================================================\n# METHOD 2: CLASS-BASED APPROACH\n# =============================================================================\n# This is the more structured approach, ideal for complex tools that need\n# initialization, state management, or multiple related operations.\n\nclass CalculatorTool(BaseTool):\n    """\n    A simple calculator tool that performs basic arithmetic operations.\n    \n    This class demonstrates the class-based approach to creating MCP tools:\n    1. Inherit from BaseTool\n    2. Initialize with name and description in __init__\n    3. Implement execute() method that returns the callable function\n    4. Define the actual tool function with proper type annotations\n    """\n    \n    def __init__(self):\n        """\n        Initialize the tool with metadata.\n        \n        The BaseTool constructor requires:\n        - name: A unique identifier for the tool\n        - description: A clear description of what the tool does\n        """\n        super().__init__(\n            name="calculator",\n            description="Performs basic arithmetic operations (add, subtract, multiply, divide)"\n        )\n\n    async def execute(self):\n        """\n        Return the callable function that implements the tool\'s functionality.\n        \n        This method is called by the MCP framework to get the actual function\n        that will be executed when the tool is invoked.\n        """\n        return self.calculate\n    \n    async def calculate(\n        self,\n        operator: Annotated[str, "add, subtract, multiply, or divide"],\n        left_operand: Annotated[float, "The first number"],\n        right_operand: Annotated[float, "The second number"]\n    ):\n        """\n        Execute the calculator operation.\n        \n        Parameter Type Annotations with Context:\n        =======================================\n        Notice the use of Annotated[type, "description"] for each parameter.\n        This is OPTIONAL but highly recommended because it provides:\n        \n        1. Type information for the MCP framework\n        2. Human-readable descriptions that help AI models understand\n           what each parameter is for\n        3. Better error messages and validation\n        \n        The Annotated type comes from typing module and follows this pattern:\n        Annotated[actual_type, "description_string"]\n        \n        Examples:\n        - Annotated[str, "The operation to perform"]\n        - Annotated[int, "A positive integer between 1 and 100"]\n        - Annotated[list[str], "A list of file paths to process"]\n        """        \n        if operator == "add":\n            result = left_operand + right_operand\n        elif operator == "subtract":\n            result = left_operand - right_operand\n        elif operator == "multiply":\n            result = left_operand * right_operand\n        elif operator == "divide":\n            if right_operand == 0:\n                raise ValueError("Cannot divide by zero")\n            result = left_operand / right_operand\n        else:\n            raise ValueError(f"Unknown operator: {operator}")\n        \n        return {\n            "operator": operator,\n            "left_operand": left_operand,\n            "right_operand": right_operand,\n            "result": result\n        }';
+    });
     const [isDirty, setIsDirty] = useState<boolean>(false);
 
     const schema = z.object({
@@ -66,9 +68,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         touched: {},
         validateAll: false
     });
-
-    console.log('errors: ', errors);
-    console.log('isValid: ', isValid);
 
     // Filtering and pagination state
     const [filterText, setFilterText] = useState<string>('');
@@ -97,8 +96,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
     // Update editor content when a tool is selected
     useEffect(() => {
-        if (selectedToolData) {
-            console.log(selectedToolData);
+        if (selectedToolId !== null && selectedToolData) {
             setFields({
                 id: selectedToolData.id,
                 contents: selectedToolData.contents,
@@ -107,7 +105,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
             });
             setIsDirty(true);
         }
-    }, [selectedToolData, setFields]);
+    }, [selectedToolId, selectedToolData, setFields]);
 
     // Handle tool selection
     const handleToolSelect = (tool: IMcpTool) => {
@@ -134,6 +132,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
             contents: value
         });
         setIsDirty(true);
+        touchFields(['contents']);
     };
 
     // Handle creating new tool
@@ -141,9 +140,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         const newTool = {
             id: ['my_new_tool', Date.now()].join('-'),
             contents: defaultContent,
-            size: undefined,
-            updated_at: undefined
         };
+
         if (isDirty && selectedToolId) {
             dispatch(
                 setConfirmationModal({
@@ -152,7 +150,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                     onConfirm: () => {
                         setSelectedToolId(null);
                         setFields(newTool);
-                        setIsDirty(true);
+                        setIsDirty(false);
                     },
                     description: 'You have unsaved changes. Creating a new tool will lose these changes.'
                 })
@@ -201,8 +199,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         }
     };
 
-    console.log('size: ', state.form.size);
-
     // Handle delete tool
     const handleDeleteTool = (tool: IMcpTool) => {
         dispatch(
@@ -235,7 +231,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                 description: `This will permanently delete the tool: ${tool.id}`
             })
         );
-        console.log();
     };
 
     return (
@@ -356,7 +351,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                         errorText={errors?.id}
                     >
                         <Input
-                            disabled={!!state.form.updated_at}
+                            disabled={!!selectedToolId}
                             value={state.form.id}
                             onChange={({ detail }) => {
                                 touchFields(['id']);
@@ -375,7 +370,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                         onDelayedChange={({ detail }) => {
                         // Only allow changes if we're creating new or editing
                             handleEditorChange(detail.value);
-                            touchFields(['contents']);
                         }}
                         preferences={{
                             wrapLines: true,

@@ -257,6 +257,7 @@ export class FastApiContainer extends Construct {
             }
         });
 
+        const workbenchService = apiCluster.services.MCPWORKBENCH;
         const s3EventHandlerLambda = new lambda.Function(this, 'S3EventHandlerLambda', {
             runtime: getDefaultRuntime(),
             handler: 'mcp_workbench.s3_event_handler.handler',
@@ -267,7 +268,7 @@ export class FastApiContainer extends Construct {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
                 API_NAME: props.apiName,
                 ECS_CLUSTER_NAME: `${config.deploymentName}-${props.apiName}`,
-                MCPWORKBENCH_SERVICE_NAME: ECSTasks.MCPWORKBENCH
+                MCPWORKBENCH_SERVICE_NAME: workbenchService!.serviceName
             }
         });
 

@@ -31,7 +31,6 @@ import * as path from 'path';
 import { letIfDefined } from '../util/common-functions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -77,7 +76,7 @@ export class FastApiContainer extends Construct {
    * @param {string} id - The unique identifier for the construct within its scope.
    * @param {FastApiContainerProps} props - The properties of the construct.
    */
-    constructor(scope: Construct, id: string, props: FastApiContainerProps) {
+    constructor (scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
@@ -294,23 +293,23 @@ export class FastApiContainer extends Construct {
         }));
 
         if (tokenTable) {
-            Object.entries(apiCluster.taskRoles).forEach(([_, role]) => {
+            Object.entries(apiCluster.taskRoles).forEach(([, role]) => {
                 tokenTable.grantReadData(role);
-            })
+            });
         }
 
         letIfDefined(apiCluster.taskRoles.MCPWORKBENCH, (taskRole) => {
             const bucketName = [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase();
             const workbenchBucket = Bucket.fromBucketName(scope, 'MCPWorkbenchBucket', bucketName);
             workbenchBucket.grantRead(taskRole);
-        })
+        });
 
         this.endpoint = apiCluster.endpointUrl;
 
         new StringParameter(scope, 'FastApiEndpoint', {
             parameterName: `${config.deploymentPrefix}/serve/endpoint`,
             stringValue: this.endpoint
-        })
+        });
 
         // Update
         this.containers = Object.values(apiCluster.containers);

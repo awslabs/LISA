@@ -18,7 +18,6 @@ import sys
 from decimal import Decimal
 
 import pytest
-
 from utilities.common_functions import get_property_path
 
 

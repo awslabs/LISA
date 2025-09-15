@@ -24,15 +24,11 @@ from typing import Any, Dict, Optional
 import boto3
 import jwt
 import requests
-from fastapi import HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Request
 from loguru import logger
-from starlette.status import HTTP_401_UNAUTHORIZED
-
 from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction
-from starlette.types import ASGIApp, Scope, Receive, Send
-from starlette.requests import Request as StarletteRequest
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
 # The following are field names, not passwords or tokens
 API_KEY_HEADER_NAMES = [
@@ -135,16 +131,17 @@ def get_authorization_token(headers: Dict[str, str], header_name: str) -> str:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
     return headers.get(header_name.lower(), "").removeprefix("Bearer").strip()
 
+
 class LoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
         super().__init__(app, dispatch)
 
-
     async def dispatch(self, request, call_next):
         response = await call_next(request)
-        response.headers['Custom'] = 'Example'
+        response.headers["Custom"] = "Example"
         return response
-    
+
+
 class OIDCHTTPBearer(BaseHTTPMiddleware):
     """OIDC based bearer token authenticator."""
 
@@ -154,9 +151,7 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
         self._management_token_authorizer = ManagementTokenAuthorizer()
         self._jwks_client = get_jwks_client()
 
-    async def dispatch(
-        self, request: Request, call_next
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next) -> Response:
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
         if request.method == "OPTIONS":
             return await call_next(request)
@@ -170,8 +165,8 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
             valid = True
         else:
             for header_name in API_KEY_HEADER_NAMES:
-                authorization = request.headers.get(header_name, '').strip()
-                id_token = authorization.split(' ')[-1]
+                authorization = request.headers.get(header_name, "").strip()
+                id_token = authorization.split(" ")[-1]
                 if len(id_token) > 0 and id_token_is_valid(
                     id_token=id_token,
                     authority=os.environ["AUTHORITY"],
@@ -259,5 +254,5 @@ class ManagementTokenAuthorizer:
             token = headers.get(header_name, "").strip()
             if token in self._secret_tokens:
                 return True
-        
+
         return False

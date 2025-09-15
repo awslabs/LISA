@@ -80,7 +80,7 @@ export class LisaApiBaseConstruct extends Construct {
             binaryMediaTypes: ['font/*', 'image/*'],
         });
 
-        const workbench = new McpWorkbenchConstruct(this, id + 'McpWorkbench', {
+        new McpWorkbenchConstruct(this, id + 'McpWorkbench', {
             ...props,
             authorizer: this.authorizer!,
             restApiId: restApi.restApiId,

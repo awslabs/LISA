@@ -118,7 +118,7 @@ export function ConfigurationComponent (): ReactElement {
             notificationService.generateNotification('Successfully updated configuration', 'success');
 
             // invalidate the mcp servers on update in case they've changed
-            dispatch(mcpServerApi.util.invalidateTags(['mcpServers']))
+            dispatch(mcpServerApi.util.invalidateTags(['mcpServers']));
 
             resetUpdate();
         } else if (!isUpdating && isUpdateError) {

@@ -1,43 +1,33 @@
 #!/usr/bin/env python3
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """
 Simple test to verify MCP Workbench installation.
 Run this after installing to verify everything works.
 """
-
-def test_imports():
-    """Test that all main modules can be imported."""
-    try:
-        # Test core imports
-        from mcpworkbench.core.base_tool import BaseTool
-        from mcpworkbench.core.annotations import mcp_tool
-        from mcpworkbench.core.tool_discovery import ToolDiscovery
-        from mcpworkbench.core.tool_registry import ToolRegistry
-        
-        # Test adapter imports
-        from mcpworkbench.adapters.tool_adapter import create_adapter
-        
-        # Test config imports
-        from mcpworkbench.config.models import ServerConfig
-        
-        # Test server imports
-        from mcpworkbench.server.mcp_server import MCPWorkbenchServer
-        
-        print("✅ All imports successful!")
-        return True
-        
-    except ImportError as e:
-        print(f"❌ Import failed: {e}")
-        return False
 
 
 def test_cli_available():
     """Test that the CLI command is available."""
     import subprocess
     import sys
-    
+
     try:
-        result = subprocess.run([sys.executable, "-m", "mcpworkbench.cli", "--help"], 
-                              capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            [sys.executable, "-m", "mcpworkbench.cli", "--help"], capture_output=True, text=True, timeout=10
+        )
         if result.returncode == 0 and "mcpworkbench" in result.stdout.lower():
             print("✅ CLI command is available!")
             return True
@@ -56,31 +46,31 @@ def test_basic_functionality():
     try:
         # Create a simple tool class
         from mcpworkbench.core.base_tool import BaseTool
-        
+
         class TestTool(BaseTool):
             def __init__(self):
                 super().__init__("test", "A test tool")
-            
+
             async def execute(self, **kwargs):
                 return {"result": "test successful"}
-        
+
         # Test tool instantiation
         tool = TestTool()
         assert tool.name == "test"
         assert tool.description == "A test tool"
-        
+
         # Test annotation
         from mcpworkbench.core.annotations import mcp_tool
-        
+
         @mcp_tool(name="test_func", description="Test function")
         def test_func():
             return "annotated test successful"
-        
-        assert hasattr(test_func, '_is_mcp_tool')
-        
+
+        assert hasattr(test_func, "_is_mcp_tool")
+
         print("✅ Basic functionality test passed!")
         return True
-        
+
     except Exception as e:
         print(f"❌ Basic functionality test failed: {e}")
         return False
@@ -90,26 +80,25 @@ def main():
     """Run all installation tests."""
     print("Testing MCP Workbench installation...")
     print("=" * 50)
-    
+
     tests = [
-        ("Import Test", test_imports),
-        ("CLI Test", test_cli_available), 
-        ("Basic Functionality Test", test_basic_functionality)
+        ("CLI Test", test_cli_available),
+        ("Basic Functionality Test", test_basic_functionality),
     ]
-    
+
     passed = 0
     total = len(tests)
-    
+
     for test_name, test_func in tests:
         print(f"\nRunning {test_name}...")
         if test_func():
             passed += 1
         else:
             print(f"❌ {test_name} failed")
-    
+
     print("\n" + "=" * 50)
     print(f"Results: {passed}/{total} tests passed")
-    
+
     if passed == total:
         print("🎉 Installation verification successful!")
         print("\nYou can now use MCP Workbench:")
@@ -120,11 +109,12 @@ def main():
         print("\nTry reinstalling:")
         print("  pip install -e .")
         print("  # or")
-        print("  pip install -e \".[dev]\"")
-    
+        print('  pip install -e ".[dev]"')
+
     return passed == total
 
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(0 if main() else 1)

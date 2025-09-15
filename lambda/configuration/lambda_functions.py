@@ -23,8 +23,8 @@ from typing import Any, Dict
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from mcp_workbench.lambda_functions import MCPWORKBENCH_UUID
 from mcp_server.models import McpServerModel
+from mcp_workbench.lambda_functions import MCPWORKBENCH_UUID
 from utilities.common_functions import api_wrapper, get_property_path, retry_config
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,6 @@ def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
     config_scope = event["queryStringParameters"]["configScope"]
 
     return _get_configurations(config_scope)
-
 
 
 def _get_configurations(config_scope: str) -> dict[str, Any]:
@@ -84,22 +83,20 @@ def check_show_mcp_workbench(body, old_configuration):
 
     # check if the value changed
     if old_show_mcp_value != new_show_mcp_value:
-        from mcp_server.lambda_functions import table as mcp_servers_table;
+        from mcp_server.lambda_functions import table as mcp_servers_table
 
         if new_show_mcp_value:
             mcp_server_model = McpServerModel(
                 id=MCPWORKBENCH_UUID,
-                owner='lisa:public',
-                name='MCP Workbench',
-                description='MCP Workbench Tools',
-                customHeaders={
-                    'Authorization': 'Bearer {LISA_BEARER_TOKEN}'
-                },
-                url=f"{os.getenv('FASTAPI_ENDPOINT')}/v2/mcp/"
+                owner="lisa:public",
+                name="MCP Workbench",
+                description="MCP Workbench Tools",
+                customHeaders={"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
+                url=f"{os.getenv('FASTAPI_ENDPOINT')}/v2/mcp/",
             )
 
             # Insert the new mcp server item into the DynamoDB table
             mcp_servers_table.put_item(Item=mcp_server_model.model_dump(exclude_none=True))
         else:
-            logger.info(f"Deleting mcp server MCP Workbench Server")
-            mcp_servers_table.delete_item(Key={"id": MCPWORKBENCH_UUID, "owner": 'lisa:public'})
+            logger.info("Deleting mcp server MCP Workbench Server")
+            mcp_servers_table.delete_item(Key={"id": MCPWORKBENCH_UUID, "owner": "lisa:public"})

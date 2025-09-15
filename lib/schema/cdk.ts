@@ -65,11 +65,11 @@ export enum ApplicationProtocol {
     /**
      * HTTP
      */
-    HTTP = "HTTP",
+    HTTP = 'HTTP',
     /**
      * HTTPS
      */
-    HTTPS = "HTTPS"
+    HTTPS = 'HTTPS'
 }
 /**
  * Load balancing protocol version for application load balancers
@@ -78,15 +78,15 @@ export enum ApplicationProtocolVersion {
     /**
      * GRPC
      */
-    GRPC = "GRPC",
+    GRPC = 'GRPC',
     /**
      * HTTP1
      */
-    HTTP1 = "HTTP1",
+    HTTP1 = 'HTTP1',
     /**
      * HTTP2
      */
-    HTTP2 = "HTTP2"
+    HTTP2 = 'HTTP2'
 }
 
 /* eslint-enable @typescript-eslint/no-duplicate-enum-values */

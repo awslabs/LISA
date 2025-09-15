@@ -46,32 +46,32 @@ const advancedOptions = {
 const mcpOptions = {
     mcpConnections: 'Allow MCP Server Connections',
     showMcpWorkbench: 'Show MCP Workbench'
-}
+};
 
 const optionGroups = {
-  mcpOptions,
-  inContextOptions,
-  ragOptions,
-  libraryOptions,
-  advancedOptions,
+    mcpOptions,
+    inContextOptions,
+    ragOptions,
+    libraryOptions,
+    advancedOptions,
 } as const;
 
 type AllOptionKeys<G extends Record<string, Record<string, unknown>>> = {
-  [K in keyof G]: keyof G[K];
+    [K in keyof G]: keyof G[K];
 }[keyof G];
 
 type DependencyMap<G extends Record<string, Record<string, unknown>>> = {
-  [Opt in AllOptionKeys<G>]?: {
-    prerequisites?: ReadonlyArray<AllOptionKeys<G>>;
-    dependents?: ReadonlyArray<AllOptionKeys<G>>;
-  };
+    [Opt in AllOptionKeys<G>]?: {
+        prerequisites?: ReadonlyArray<AllOptionKeys<G>>;
+        dependents?: ReadonlyArray<AllOptionKeys<G>>;
+    };
 };
 
 
 const dependencies: DependencyMap<typeof optionGroups> = {
     showMcpWorkbench: {prerequisites: ['mcpConnections'] },
     mcpConnections: {dependents: ['showMcpWorkbench']}
-}
+};
 
 const configurableOperations = [{
     header: 'RAG Components',
@@ -99,26 +99,27 @@ export type ActivatedComponentConfigurationProps = {
 };
 
 export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
+    const { setFields } = props;
     // Helper function to check if an option should be disabled based on prerequisites
     const isOptionDisabled = useCallback((optionKey: string): boolean => {
         const dependency = dependencies[optionKey];
-        return Boolean(dependency?.prerequisites?.some(prereq => !props.enabledComponents[prereq]));
+        return Boolean(dependency?.prerequisites?.some((prereq) => !props.enabledComponents[prereq]));
     }, [props.enabledComponents]);
 
     // Helper function to recursively collect all dependents
     const getAllDependents = useCallback((optionKey: string, visited = new Set<string>()): string[] => {
         if (visited.has(optionKey)) return [];
         visited.add(optionKey);
-        
+
         const dependency = dependencies[optionKey];
         if (!dependency?.dependents) return [];
-        
+
         const allDependents: string[] = [];
         for (const dependent of dependency.dependents) {
             allDependents.push(dependent);
             allDependents.push(...getAllDependents(dependent, visited));
         }
-        
+
         return allDependents;
     }, []);
 
@@ -135,8 +136,8 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
             }
         }
 
-        props.setFields(updatedFields);
-    }, [props.setFields, getAllDependents]);
+        setFields(updatedFields);
+    }, [setFields, getAllDependents]);
 
     return (
         <Container
@@ -155,7 +156,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                             {Object.keys(operation.items).map((item) => {
                                 const isDisabled = isOptionDisabled(item);
                                 const isChecked = props.enabledComponents[item] || false;
-                                
+
                                 return (
                                     <Box textAlign='center' key={item}>
                                         <SpaceBetween alignItems='start' size='xs'>

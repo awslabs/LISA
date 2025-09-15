@@ -191,14 +191,14 @@ def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) 
     try:
         # Extract secret name from ARN for cleaner event data
         secret_name = secret_arn.split(":")[-1]
-        
+
         event_detail = {
             "secretArn": secret_arn,
             "secretName": secret_name,
             "newVersionId": new_version,
             "oldVersionId": old_version,
             "rotationTimestamp": datetime.utcnow().isoformat() + "Z",
-            "rotationType": "management-key"
+            "rotationType": "management-key",
         }
 
         # Publish event to EventBridge
@@ -209,7 +209,7 @@ def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) 
                     "DetailType": "Management Key Rotated",
                     "Detail": json.dumps(event_detail),
                     "EventBusName": event_bus_name,
-                    "Time": datetime.utcnow()
+                    "Time": datetime.utcnow(),
                 }
             ]
         )
@@ -217,7 +217,7 @@ def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) 
         if response["FailedEntryCount"] > 0:
             logger.error(f"Failed to publish event: {response['Entries']}")
             raise Exception("Failed to publish rotation event to EventBridge")
-        
+
         logger.info(f"Successfully published rotation event for secret {secret_name} to EventBridge")
 
     except ClientError as e:

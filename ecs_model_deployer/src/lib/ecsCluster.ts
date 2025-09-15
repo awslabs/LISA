@@ -128,7 +128,7 @@ export class ECSCluster extends Construct {
         let taskRole;
         let endpointUrl;
 
-        Object.entries(ecsConfig.tasks).forEach(([_, taskDefinition]) => {
+        Object.entries(ecsConfig.tasks).forEach(([, taskDefinition]) => {
             const environment = taskDefinition.environment;
 
             const volumes: Volume[] = [];

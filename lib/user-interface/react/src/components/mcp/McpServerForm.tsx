@@ -197,7 +197,7 @@ export function McpServerForm (props: McpServerFormProps) {
             navigate(`/mcp-connections/${data.id}`);
             dispatch(mcpServerApi.util.invalidateTags(['mcpServers']));
         }
-    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate]);
+    }, [isCreatingSuccess, isUpdatingSuccess, notificationService, createData, updateData, navigate, dispatch]);
 
     // create failure notification
     useEffect(() => {

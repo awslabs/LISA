@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -23,11 +24,9 @@ from typing import Any, Dict, Optional
 import boto3
 import botocore.exceptions
 from pydantic import BaseModel, Field
-from mcp_server.models import McpServerModel
-from utilities.common_functions import api_wrapper, retry_config
 from utilities.auth import is_admin
+from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
-import uuid
 
 logger = logging.getLogger(__name__)
 

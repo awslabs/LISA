@@ -17,7 +17,7 @@
 /**
  * Interface representing an MCP Tool - TypeScript equivalent of Python MCPToolModel
  */
-export interface IMcpTool {
+export type IMcpTool = {
     /** The filename/toolId seen by frontend */
     id: string;
     /** The Python code content */
@@ -26,40 +26,40 @@ export interface IMcpTool {
     updated_at?: string;
     /** File size in bytes (included in list responses) */
     size?: number;
-}
+};
 
 /**
  * Response interface for listing MCP tools
  */
-export interface IMcpToolListResponse {
+export type IMcpToolListResponse = {
     tools: IMcpTool[];
-}
+};
 
 /**
  * Request interface for creating a new MCP tool
  */
-export interface IMcpToolRequest {
+export type IMcpToolRequest = {
     /** The tool identifier/filename */
     id: string;
     /** The Python code content */
     contents: string;
-}
+};
 
 /**
  * Request interface for updating an existing MCP tool
  */
-export interface IMcpToolUpdateRequest {
+export type IMcpToolUpdateRequest = {
     /** The Python code content */
     contents: string;
-}
+};
 
 /**
  * Response interface for delete operations
  */
-export interface IMcpToolDeleteResponse {
+export type IMcpToolDeleteResponse = {
     status: string;
     message: string;
-}
+};
 
 /**
  * Default empty MCP tool for forms

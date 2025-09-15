@@ -1,3 +1,17 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """
 MCP Tool Creation Tutorial
 ==========================
@@ -9,8 +23,9 @@ This file demonstrates how to create MCP (Model Context Protocol) tools using tw
 Both methods allow you to create tools that can be called by AI models to perform specific tasks.
 """
 
-from mcpworkbench.core.base_tool import BaseTool
 from typing import Annotated
+
+from mcpworkbench.core.base_tool import BaseTool
 
 # =============================================================================
 # METHOD 1: CLASS-BASED APPROACH
@@ -18,66 +33,66 @@ from typing import Annotated
 # This is the more structured approach, ideal for complex tools that need
 # initialization, state management, or multiple related operations.
 
+
 class CalculatorTool(BaseTool):
     """
     A simple calculator tool that performs basic arithmetic operations.
-    
+
     This class demonstrates the class-based approach to creating MCP tools:
     1. Inherit from BaseTool
     2. Initialize with name and description in __init__
     3. Implement execute() method that returns the callable function
     4. Define the actual tool function with proper type annotations
     """
-    
+
     def __init__(self):
         """
         Initialize the tool with metadata.
-        
+
         The BaseTool constructor requires:
         - name: A unique identifier for the tool
         - description: A clear description of what the tool does
         """
         super().__init__(
-            name="calculator",
-            description="Performs basic arithmetic operations (add, subtract, multiply, divide)"
+            name="calculator", description="Performs basic arithmetic operations (add, subtract, multiply, divide)"
         )
 
     async def execute(self):
         """
         Return the callable function that implements the tool's functionality.
-        
+
         This method is called by the MCP framework to get the actual function
         that will be executed when the tool is invoked.
         """
         return self.calculate
-    
+
     async def calculate(
         self,
         operator: Annotated[str, "add, subtract, multiply, or divide"],
         left_operand: Annotated[float, "The first number"],
-        right_operand: Annotated[float, "The second number"]
+        right_operand: Annotated[float, "The second number"],
     ):
         """
         Execute the calculator operation.
-        
+
         Parameter Type Annotations with Context:
         =======================================
         Notice the use of Annotated[type, "description"] for each parameter.
         This is OPTIONAL but highly recommended because it provides:
-        
+
         1. Type information for the MCP framework
         2. Human-readable descriptions that help AI models understand
            what each parameter is for
         3. Better error messages and validation
-        
+
         The Annotated type comes from typing module and follows this pattern:
         Annotated[actual_type, "description_string"]
-        
+
         Examples:
         - Annotated[str, "The operation to perform"]
         - Annotated[int, "A positive integer between 1 and 100"]
         - Annotated[list[str], "A list of file paths to process"]
-        """        
+        """
         if operator == "add":
             result = left_operand + right_operand
         elif operator == "subtract":
@@ -90,13 +105,8 @@ class CalculatorTool(BaseTool):
             result = left_operand / right_operand
         else:
             raise ValueError(f"Unknown operator: {operator}")
-        
-        return {
-            "operator": operator,
-            "left_operand": left_operand,
-            "right_operand": right_operand,
-            "result": result
-        }
+
+        return {"operator": operator, "left_operand": left_operand, "right_operand": right_operand, "result": result}
 
 
 # =============================================================================
@@ -122,19 +132,19 @@ async def simple_calculator(
 ) -> dict:
     '''
     Perform basic arithmetic operations using the decorator approach.
-    
+
     The @mcp_tool decorator automatically:
     1. Registers the function as an MCP tool
     2. Extracts parameter information from type annotations
     3. Uses the Annotated descriptions for parameter documentation
     4. Handles the MCP protocol communication
-    
+
     This approach is ideal for:
     - Simple, stateless operations
     - Quick prototyping
     - Tools that don't need complex initialization
     '''
-    
+
     if operator == "add":
         result = left_operand + right_operand
     elif operator == "subtract":
@@ -147,7 +157,7 @@ async def simple_calculator(
         result = left_operand / right_operand
     else:
         raise ValueError(f"Unknown operator: {operator}")
-    
+
     return {
         "operator": operator,
         "left_operand": left_operand,
@@ -166,7 +176,7 @@ async def process_files(
 ):
     '''
     Example showing different parameter types with Annotated descriptions.
-    
+
     Key points about Annotated:
     - Works with any Python type: str, int, float, bool, list, dict, etc.
     - The description should be clear and specific

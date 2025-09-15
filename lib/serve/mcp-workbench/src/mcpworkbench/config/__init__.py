@@ -14,6 +14,6 @@
 
 """Configuration module for MCP Workbench."""
 
-from .models import ServerConfig, CORSConfig
+from .models import CORSConfig, ServerConfig
 
 __all__ = ["ServerConfig", "CORSConfig"]

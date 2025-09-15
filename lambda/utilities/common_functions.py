@@ -22,7 +22,7 @@ import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
 from functools import cache
-from typing import Any, Callable, Optional, cast, Dict, List, TypeVar, Union
+from typing import Any, Callable, cast, Dict, List, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
@@ -497,6 +497,7 @@ def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]
 
     return current_node
 
+
 def get_bearer_token(event, with_prefix: bool = True):
     """
     Extracts a Bearer token from the Authorization header in a Lambda event.
@@ -507,7 +508,7 @@ def get_bearer_token(event, with_prefix: bool = True):
     Returns:
         str | None: The token string if present and properly formatted, else None.
     """
-    headers = (event.get("headers") or {})
+    headers = event.get("headers") or {}
     # Headers may vary in casing
     auth_header = headers.get("Authorization") or headers.get("authorization")
     if not auth_header:

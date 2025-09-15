@@ -74,7 +74,7 @@ class MyTool(BaseTool):
             name="my_tool",
             description="Description of what my tool does"
         )
-    
+
     def get_parameters(self):
         return {
             "type": "object",
@@ -83,7 +83,7 @@ class MyTool(BaseTool):
             },
             "required": ["param1"]
         }
-    
+
     async def execute(self, **kwargs):
         param1 = kwargs["param1"]
         return {"result": f"Processed: {param1}"}

@@ -19,7 +19,7 @@ import os
 import ssl
 from datetime import datetime
 from functools import cache
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import boto3
 import create_env_variables  # noqa: F401

@@ -249,7 +249,7 @@ export class LisaServeApplicationConstruct extends Construct {
         config.restApiConfig.rdsConfig.dbHost = litellmDb.dbInstanceEndpointAddress;
 
         letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
-        if (config.iamRdsAuth) {
+            if (config.iamRdsAuth) {
                 litellmDb.grantConnect(serveRole, serveRole.roleName);
 
                 // Create the lambda for generating DB users for IAM auth
@@ -278,7 +278,7 @@ export class LisaServeApplicationConstruct extends Construct {
                 litellmDbPasswordSecret.grantRead(serveRole);
             }
         });
-            
+
         restApi.containers.forEach((container) => {
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
         });

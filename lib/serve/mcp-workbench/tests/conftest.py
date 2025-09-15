@@ -20,8 +20,7 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-
-from mcpworkbench.config.models import ServerConfig, CORSConfig
+from mcpworkbench.config.models import CORSConfig, ServerConfig
 from mcpworkbench.core.tool_discovery import ToolDiscovery
 from mcpworkbench.core.tool_registry import ToolRegistry
 
@@ -37,7 +36,7 @@ def temp_tools_dir() -> Generator[Path, None, None]:
 @pytest.fixture
 def sample_function_tool_content() -> str:
     """Sample function-based tool content."""
-    return '''
+    return """
 from mcpworkbench.core.annotations import mcp_tool
 
 @mcp_tool(
@@ -68,7 +67,7 @@ def echo_message(message: str):
 )
 async def add_numbers(a: float, b: float):
     return {"a": a, "b": b, "sum": a + b}
-'''
+"""
 
 
 @pytest.fixture
@@ -79,13 +78,13 @@ from mcpworkbench.core.base_tool import BaseTool
 
 class TestGreetingTool(BaseTool):
     """Test greeting tool."""
-    
+
     def __init__(self):
         super().__init__(
             name="greeting_test",
             description="Generate personalized greetings for testing"
         )
-    
+
     def get_parameters(self):
         return {
             "type": "object",
@@ -100,31 +99,33 @@ class TestGreetingTool(BaseTool):
             },
             "required": ["name"]
         }
-    
+
     async def execute(self, **kwargs):
         name = kwargs["name"]
         style = kwargs.get("style", "casual")
-        
+
         if style == "formal":
             greeting = f"Good day, {name}."
         elif style == "enthusiastic":
             greeting = f"Hey there, {name}! How exciting to meet you!"
         else:  # casual
             greeting = f"Hi {name}!"
-        
+
         return {"greeting": greeting, "name": name, "style": style}
 '''
 
 
 @pytest.fixture
-def populated_tools_dir(temp_tools_dir: Path, sample_function_tool_content: str, sample_class_tool_content: str) -> Path:
+def populated_tools_dir(
+    temp_tools_dir: Path, sample_function_tool_content: str, sample_class_tool_content: str
+) -> Path:
     """Create a tools directory populated with sample tools."""
     # Create function-based tools file
     (temp_tools_dir / "function_tools.py").write_text(sample_function_tool_content)
-    
+
     # Create class-based tools file
     (temp_tools_dir / "class_tools.py").write_text(sample_class_tool_content)
-    
+
     return temp_tools_dir
 
 
@@ -138,11 +139,7 @@ def sample_config() -> ServerConfig:
         mcp_route_path="/mcp",
         exit_route_path="/shutdown",
         rescan_route_path="/rescan",
-        cors_settings=CORSConfig(
-            allow_origins=["*"],
-            allow_methods=["GET", "POST"],
-            allow_headers=["*"]
-        )
+        cors_settings=CORSConfig(allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"]),
     )
 
 

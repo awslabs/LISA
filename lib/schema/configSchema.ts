@@ -463,7 +463,7 @@ export const ContainerConfigSchema = z.object({
     privileged: z.boolean().optional()
 }).describe('Configuration for the container.');
 
-export type ContainerConfig = z.infer<typeof ContainerConfigSchema>
+export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;
 
 const HealthCheckConfigSchema = z.object({
     path: z.string().describe('Path for the health check.'),
@@ -500,11 +500,11 @@ export const AutoScalingConfigSchema = z.object({
     .describe('Configuration for auto scaling settings.');
 
 const enumKeySchema = <E extends Record<string, string | number>>(e: E) => {
-  const keys = Object.keys(e).filter(k => Number.isNaN(Number(k))) as Array<Extract<keyof E, string>>;
-  if (keys.length === 0) {
-    throw new Error('Enum must have at least one valid key');
-  }
-  return z.enum(keys as unknown as [string, ...string[]]);
+    const keys = Object.keys(e).filter((k) => Number.isNaN(Number(k))) as Array<Extract<keyof E, string>>;
+    if (keys.length === 0) {
+        throw new Error('Enum must have at least one valid key');
+    }
+    return z.enum(keys as unknown as [string, ...string[]]);
 };
 
 export const ApplicationTargetSchema = z.object({
@@ -529,7 +529,7 @@ export const TaskDefinitionSchema = z.object({
     applicationTarget: ApplicationTargetSchema.optional().describe('How the load balancer should target the task.')
 });
 
-export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>
+export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
 
 
 /**
@@ -587,7 +587,7 @@ export type RegisteredModel = {
 /**
  * Type representing configuration for an ECS model.
  */
-export type ECSConfig = z.infer<typeof EcsBaseConfigSchema>;;
+export type ECSConfig = z.infer<typeof EcsBaseConfigSchema>;
 
 /**
  * Configuration schema for an ECS model.

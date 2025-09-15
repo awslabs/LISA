@@ -240,6 +240,7 @@ export class ECSCluster extends Construct {
                 },
             ],
             securityGroup: asgSecurityGroup,
+            autoScalingGroupName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
             updatePolicy: UpdatePolicy.rollingUpdate({})
         });
 

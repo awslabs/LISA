@@ -267,7 +267,7 @@ export class FastApiContainer extends Construct {
             environment: {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
                 API_NAME: props.apiName,
-                ECS_CLUSTER_NAME: `${config.deploymentName}-${props.apiName}`,
+                ECS_CLUSTER_NAME: workbenchService?.cluster.clusterName!,
                 MCPWORKBENCH_SERVICE_NAME: workbenchService!.serviceName
             }
         });

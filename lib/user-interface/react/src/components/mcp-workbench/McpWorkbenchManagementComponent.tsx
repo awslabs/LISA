@@ -97,7 +97,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
     // Update editor content when a tool is selected
     useEffect(() => {
-    if (selectedToolId !== null && selectedToolData && isDirty === false) {
+        if (selectedToolId !== null && selectedToolData && isDirty === false) {
             setFields({
                 id: selectedToolData.id,
                 contents: selectedToolData.contents,

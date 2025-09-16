@@ -216,6 +216,8 @@ export class FastApiContainer extends Construct {
             vpc
         });
 
+        const workbenchService = apiCluster.services.MCPWORKBENCH;
+
         // Create Lambda function to handle S3 events and trigger MCP Workbench service redeployment
         const s3EventHandlerRole = new Role(this, 'S3EventHandlerRole', {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
@@ -239,8 +241,8 @@ export class FastApiContainer extends Construct {
                                 'ecs:DescribeClusters'
                             ],
                             resources: [
-                                `arn:aws:ecs:${config.region}:*:cluster/${config.deploymentName}-${props.apiName}*`,
-                                `arn:aws:ecs:${config.region}:*:service/${config.deploymentName}-${props.apiName}*/MCPWORKBENCH*`
+                                `arn:aws:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
+                                `arn:aws:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
                             ]
                         }),
                         new PolicyStatement({
@@ -266,8 +268,8 @@ export class FastApiContainer extends Construct {
             environment: {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
                 API_NAME: props.apiName,
-                ECS_CLUSTER_NAME: `${config.deploymentName}-${props.apiName}`,
-                MCPWORKBENCH_SERVICE_NAME: ECSTasks.MCPWORKBENCH
+                ECS_CLUSTER_NAME: workbenchService!.cluster?.clusterName,
+                MCPWORKBENCH_SERVICE_NAME: workbenchService!.serviceName
             }
         });
 

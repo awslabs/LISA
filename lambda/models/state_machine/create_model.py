@@ -351,9 +351,9 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         # Fallback to default if JSON parsing fails
         litellm_params = {}
 
-    litellm_params["api_key"] = event.get(
-        "apiKey", "ignored"
-    )  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
+    # Only set api_key if it's present in the event
+    if "apiKey" in event:
+        litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
     litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:

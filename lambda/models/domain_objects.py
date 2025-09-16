@@ -252,6 +252,7 @@ class CreateModelRequest(BaseModel):
     streaming: Optional[bool] = False
     features: Optional[List[ModelFeature]] = None
     allowedGroups: Optional[List[str]] = None
+    apiKey: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:

@@ -119,6 +119,12 @@ export default function Chat ({ sessionId }) {
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
     const [modelFilterValue, setModelFilterValue] = useState('');
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
+    const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
+
+    // Callback to handle Mermaid diagram rendering completion
+    const handleMermaidRenderComplete = useCallback(() => {
+        setMermaidRenderComplete((prev) => prev + 1);
+    }, []);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
@@ -449,7 +455,7 @@ export default function Chat ({ sessionId }) {
         if (bottomRef.current) {
             bottomRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [session.history.length, isStreaming, isRunning, generateResponse]);
+    }, [isStreaming, session, mermaidRenderComplete]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -685,6 +691,7 @@ export default function Chat ({ sessionId }) {
                             handleSendGenerateRequest={handleSendGenerateRequest}
                             chatConfiguration={chatConfiguration}
                             setUserPrompt={setUserPrompt}
+                            onMermaidRenderComplete={handleMermaidRenderComplete}
                         />
                     ))}
                     {(isRunning || callingToolName) && !isStreaming && <Message
@@ -696,6 +703,7 @@ export default function Chat ({ sessionId }) {
                         handleSendGenerateRequest={handleSendGenerateRequest}
                         chatConfiguration={chatConfiguration}
                         setUserPrompt={setUserPrompt}
+                        onMermaidRenderComplete={handleMermaidRenderComplete}
                     />}
                     {session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen
@@ -780,7 +788,7 @@ export default function Chat ({ sessionId }) {
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
                                         </Box>
                                     )
-                                        : !selectedModel ? (<div></div>)
+                                        : !selectedModel || !enabledServers || enabledServers.length === 0 ? (<div></div>)
                                             : (<Box>
                                                 <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
                                             </Box>)}

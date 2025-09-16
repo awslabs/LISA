@@ -34,7 +34,7 @@ import {
     useListMcpServersQuery,
 } from '@/shared/reducers/mcp-server.reducer';
 import { useAppDispatch, useAppSelector } from '@/config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUsername } from '@/shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUsername, selectCurrentUserGroups } from '@/shared/reducers/user.reducer';
 import {
     DefaultUserPreferences, McpPreferences,
     useGetUserPreferencesQuery,
@@ -48,6 +48,7 @@ export function McpServerManagementComponent () {
     const dispatch = useAppDispatch();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const userName = useAppSelector(selectCurrentUsername);
+    const userGroups = useAppSelector(selectCurrentUserGroups);
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {});
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
@@ -171,11 +172,14 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Server', cell: (item) => item.owner === userName || item.owner === 'lisa:public' ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
+                { header: 'Use Server', cell: (item) => item.owner === userName || item.owner === 'lisa:public' || item.groups?.map((group) => group.replace(/^\w+?:/, '')).filter((group) => userGroups.includes(group)).length > 0 ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
                 { header: 'Owner', cell: (item) => item.owner === 'lisa:public' ? <em>(public)</em> : item.owner, id: 'owner', sortingField: 'owner'},
+                { header: 'Groups', cell: (item) => {
+                    return item.groups?.length ? item.groups?.map((group) => group.replace(/^\w+?:/, '')).join(', ') : '-';
+                }},
                 { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
                 ...(isUserAdmin ? [{ header: 'Status', cell: (item) => item.status ?? McpServerStatus.Inactive}] : [])
             ]}

@@ -15,7 +15,7 @@
  */
 import { z } from 'zod';
 
-import { AmiHardwareType, EcsSourceType, RemovalPolicy } from './cdk';
+import { AmiHardwareType, ApplicationProtocol, ApplicationProtocolVersion, EcsSourceType, RemovalPolicy } from './cdk';
 import { RagRepositoryConfigSchema, RdsInstanceConfig } from './ragSchema';
 
 /**
@@ -460,7 +460,10 @@ export const ContainerConfigSchema = z.object({
         .describe('Environment variables for the container.'),
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
     healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
+    privileged: z.boolean().optional()
 }).describe('Configuration for the container.');
+
+export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;
 
 const HealthCheckConfigSchema = z.object({
     path: z.string().describe('Path for the health check.'),
@@ -496,6 +499,38 @@ export const AutoScalingConfigSchema = z.object({
 })
     .describe('Configuration for auto scaling settings.');
 
+const enumKeySchema = <E extends Record<string, string | number>>(e: E) => {
+    const keys = Object.keys(e).filter((k) => Number.isNaN(Number(k))) as Array<Extract<keyof E, string>>;
+    if (keys.length === 0) {
+        throw new Error('Enum must have at least one valid key');
+    }
+    return z.enum(keys as unknown as [string, ...string[]]);
+};
+
+export const ApplicationTargetSchema = z.object({
+    protocol: enumKeySchema(ApplicationProtocol).optional(),
+    protocolVersion: enumKeySchema(ApplicationProtocolVersion).optional(),
+    port: z.number().positive().optional(),
+    priority: z.number().optional(),
+    conditions: z.array(z.object({
+        type: z.enum(['pathPatterns']),
+        values: z.array(z.string())
+    })).optional()
+});
+
+export type ApplicationTarget = z.infer<typeof ApplicationTargetSchema>;
+
+export const TaskDefinitionSchema = z.object({
+    containerConfig: ContainerConfigSchema,
+    containerMemoryReservationMiB: z.number().default(1024 * 2)
+        .describe('The amount (in MiB) of memory to present to the container.').optional(),
+    memoryLimitMiB: z.number().positive().describe('The amount (in MiB) of memory to present to the container.').optional(),
+    environment: z.record(z.string()).describe('Environment variables set on the task container'),
+    applicationTarget: ApplicationTargetSchema.optional().describe('How the load balancer should target the task.')
+});
+
+export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
+
 
 /**
  * Configuration schema for an ECS model.
@@ -520,15 +555,13 @@ export const EcsBaseConfigSchema = z.object({
     autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
     buildArgs: z.record(z.string()).optional()
         .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),
-    containerConfig: ContainerConfigSchema,
     containerMemoryBuffer: z.number().default(1024 * 2)
-        .describe('This is the amount of memory to buffer (or subtract off)  from the total instance memory, ' +
+        .describe('This is the amount of memory to buffer (or subtract off) from the total instance memory, ' +
             'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
-    environment: z.record(z.string()).describe('Environment variables set on the task container'),
-    identifier: z.string(),
+    tasks: z.record(TaskDefinitionSchema),
     instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),
     internetFacing: z.boolean().default(false).describe('Whether or not the cluster will be configured as internet facing'),
-    loadBalancerConfig: LoadBalancerConfigSchema,
+    loadBalancerConfig: LoadBalancerConfigSchema
 });
 
 
@@ -551,16 +584,10 @@ export type RegisteredModel = {
     streaming?: boolean;
 };
 
-
 /**
  * Type representing configuration for an ECS model.
  */
-type EcsBaseConfig = z.infer<typeof EcsBaseConfigSchema>;
-
-/**
- * Union model type representing various model configurations.
- */
-export type ECSConfig = EcsBaseConfig;
+export type ECSConfig = z.infer<typeof EcsBaseConfigSchema>;
 
 /**
  * Configuration schema for an ECS model.

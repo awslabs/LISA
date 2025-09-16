@@ -42,6 +42,7 @@ import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
 import { ConfigurationContext } from './shared/configuration.provider';
 import McpServers from '@/pages/Mcp';
 import ModelComparisonPage from './pages/ModelComparison';
+import McpWorkbench from './pages/McpWorkbench';
 
 
 export type RouteProps = {
@@ -199,6 +200,14 @@ function App () {
                                     </PrivateRoute>
                                 }
                             />}
+                            {config?.configuration?.enabledComponents?.showMcpWorkbench &&
+                            <Route
+                                path='mcp-workbench/*'
+                                element={
+                                    <McpWorkbench setNav={setNav} />
+                                }
+                            />
+                            }
                             {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
                                 path='model-comparison'
                                 element={

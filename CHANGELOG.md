@@ -1,3 +1,82 @@
+# v5.3.0
+## Key Features
+### Model Context Protocol (MCP) Workbench
+LISA now includes a comprehensive MCP Workbench that enables administrators to create, test, manage and host custom MCP tools directly within LISA.
+
+#### MCP Tool Development
+- **Custom Tool Creation**: Administrators can create and edit custom MCP tools using a built-in code editor with syntax highlighting
+- **Tool Testing Environment**: Integrated testing capabilities for validating MCP tools before enterprise rollout
+- **Template-Based Development**: Pre-built tempslate and examples to accelerate tool development
+- **MCP file hosting support**: Administrators can upload MCP tool code directly to S3. The MCP Workbench connection will automatically host this tool for use
+- **Improved Authentication**: Enhanced authentication mechanisms for MCP server connections, if users specify `{LISA_BEARER_TOKEN}` in the header field, LISA will populate this with the users active token. This is important for proxying calls to internally hosted servers that use the same authentication mechanisms as LISA
+
+#### Administrative Control
+- **Tool Management**: Administrators can manage and configure the MCP workbench capabilities for their organization
+- **IDP Group Locking**: MCP connections can now be locked down to specific Identity Provider (IdP) groups for enhanced security
+
+### Enhanced Model Control
+- **Custom API Key Support**: Support for handling custom API keys for third-party models added to Model Management
+
+### Mermaid Diagram Sanitization
+- **Security Enhancement**: Implemented sanitization for Mermaid diagrams to prevent potential security vulnerabilities
+- **Safe Rendering**: Ensures that Mermaid diagrams are rendered safely without executing malicious code
+
+## What's Next?
+We'll be launching broader MCP tool hosting capabilities in an upcoming LISA release.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @jmharold
+* @dustins
+* @jonleeh
+* @drduhe
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.2.0...v5.3.0
+
+# v5.2.0
+## Key Features
+### Model Context Protocol (MCP)  Enhancements
+- **Connection Validation**: Real-time connection testing with detailed feedback on server connectivity during connection creation/edit
+- **Enhanced Debugging**: Improved error handling and connection status reporting for MCP servers
+
+### Session Management Improvements
+- **Time-Based Session Grouping**: Sessions are now automatically organized into time-based groups based on updated date (Last Day, Last 7 Days, Last Month, Last 3 Months, Older)
+- **Session ID Removal**: Removed session ID from prompt input for cleaner user interface
+
+### RAG (Retrieval-Augmented Generation) Improvements
+#### Document Processing
+- **Document Chunk Processing Fixes**: Resolved issues with document chunk processing and ingestion
+- **Document Library Pagination**: Added pagination support for the Document Library to handle large numbers of documents efficiently
+
+#### Vector Store Configuration
+- **Default Embedding Model Support**: Added ability to define a default embedding model when creating or updating vector stores
+- **IAM Permissions Optimization**: Trimmed vector store IAM permissions to follow the principle of least privilege
+- **Container Configuration**: Added container override configuration for batch ingestion processes
+
+#### Batch Ingestion
+- **Container Configuration**: Added support for container override configuration in batch ingestion jobs
+- **Max Batch Jobs Setting**: Implemented dynamic maximum batch jobs limit
+- **Ingestion Rules Updates**: Automatic updates to ingestion rules when Lambda functions are updated
+
+### Model Management Improvements
+- **Base Container Configuration**: Added support for using prebuilt model containers, instead of building during model deployment
+
+### UI/UX Enhancements
+- **General UI Improvements**: Various user interface enhancements to improve usability
+- **Updated Default System Prompt**: Updated LISAs default system prompt to take advantage of new rendering capabilities. Pairing this prompt with new UI components supports the display of:
+  - Inline-Code
+  - Mathematic equations using LaTex syntax
+  - Mermaid Diagrams. These diagrams can also be copied and downloaded as images
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @dustins
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.1.0...v5.2.0
+
 # v5.1.0
 ## Key Features
 ### Model Management Enhancements

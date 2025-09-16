@@ -78,6 +78,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'modelDescription': detail.value });
                 }} placeholder='Brief description of the model and its capabilities'/>
             </FormField>
+            {!props.item.lisaHostedModel && <FormField label={<span>API Key <em>(optional)</em></span>} errorText={props.formErrors?.apiKey}>
+                <Input value={props.item.apiKey} inputMode='text' onBlur={() => props.touchFields(['apiKey'])} onChange={({ detail }) => {
+                    props.setFields({ 'apiKey': detail.value });
+                }} disabled={props.isEdit}/>
+            </FormField>}
             <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });

@@ -60,6 +60,15 @@ export class LisaChatApplicationConstruct extends Construct {
             vpc,
         });
 
+        const mcpApi = new McpApi(scope, 'McpApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
         new ConfigurationApi(scope, 'ConfigurationApi', {
             authorizer,
             config,
@@ -67,6 +76,7 @@ export class LisaChatApplicationConstruct extends Construct {
             rootResourceId,
             securityGroups,
             vpc,
+            mcpApi
         });
 
         new PromptTemplateApi(scope, 'PromptTemplateApi', {
@@ -76,15 +86,6 @@ export class LisaChatApplicationConstruct extends Construct {
             rootResourceId,
             securityGroups,
             vpc
-        });
-
-        new McpApi(scope, 'McpApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
         });
 
         new UserPreferencesApi(scope, 'UserPreferencesApi', {

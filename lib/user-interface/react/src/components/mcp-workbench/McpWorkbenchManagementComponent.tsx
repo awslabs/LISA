@@ -140,7 +140,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     const handleCreateNew = () => {
         const newTool = {
             id: ['my_new_tool', Date.now()].join('-'),
-            contents: defaultContent,
+            contents: DEFAULT_CONTENT,
         };
 
         if (isDirty && selectedToolId) {

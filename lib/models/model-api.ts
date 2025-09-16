@@ -151,7 +151,7 @@ export class ModelsApi extends Construct {
         const stateMachinesLambdaRole = config.roles ?
             Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
             this.createStateMachineLambdaRole(modelTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
-                ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName);
+                ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
@@ -333,10 +333,10 @@ export class ModelsApi extends Construct {
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
 
-        // Minimal migration to fix Bedrock models on deployment
-        const bedrockCleanupLambda = new Function(this, 'BedrockAuthCleanup', {
+        // Model API key cleanup - runs once per deployment version
+        const modelApiKeyCleanupLambda = new Function(this, 'ModelApiKeyCleanup', {
             runtime: getDefaultRuntime(),
-            handler: 'models.bedrock_auth_cleanup.lambda_handler',
+            handler: 'models.model_api_key_cleanup.lambda_handler',
             code: Code.fromAsset(lambdaPath),
             layers: lambdaLayers,
             environment: {
@@ -348,21 +348,22 @@ export class ModelsApi extends Construct {
             vpc: vpc.vpc,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
-            description: 'Remove api_key from existing Bedrock models to enable AWS credential auto-detection',
+            description: 'Remove api_key from existing models to fix Invalid API Key format errors',
         });
 
         // Run cleanup automatically during deployment
-        const cleanupProvider = new Provider(this, 'BedrockCleanupProvider', {
-            onEventHandler: bedrockCleanupLambda,
+        const cleanupProvider = new Provider(this, 'ModelApiKeyCleanupProvider', {
+            onEventHandler: modelApiKeyCleanupLambda,
         });
 
-        new CustomResource(this, 'BedrockCleanupResource', {
+        new CustomResource(this, 'ModelApiKeyCleanupResource', {
             serviceToken: cleanupProvider.serviceToken,
             properties: {
-                // Trigger on every deployment to clean up any problematic models
-                DeploymentTimestamp: Date.now().toString(),
+                // Only runs once - increment this version number if you need to run cleanup again
+                CleanupVersion: '1.0.0',
             },
         });
+
     }
 
     /**
@@ -374,7 +375,7 @@ export class ModelsApi extends Construct {
      * @param managementKeyName - Name of the management key secret
      * @returns The created role
      */
-    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string): IRole {
+    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
         return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -452,15 +453,6 @@ export class ModelsApi extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'ssm:GetParameter'
-                            ],
-                            resources: [
-                                lisaServeEndpointUrlParamArn
-                            ],
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
                                 'secretsmanager:GetSecretValue'
                             ],
                             resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
@@ -506,6 +498,27 @@ export class ModelsApi extends Construct {
                                 'bedrock:InvokeModelWithResponseStream',
                             ],
                             resources: ['*'],  // Bedrock model ARNs are dynamic and region-specific
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ssm:GetParameter',
+                            ],
+                            resources: [
+                                lisaServeEndpointUrlParamArn,
+                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
+                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
+                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/LiteLLMDbConnectionInfo`,
+                            ],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'secretsmanager:GetSecretValue',
+                            ],
+                            resources: [
+                                `arn:aws:secretsmanager:${config.region}:${config.accountNumber}:secret:*`,  // LiteLLM DB password secret
+                            ],
                         }),
                     ]
                 }),

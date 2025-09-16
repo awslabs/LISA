@@ -1,4 +1,5 @@
-FROM ghcr.io/huggingface/text-embeddings-inference:1.2.3@sha256:ad6a9a4f80be66604962893bf24d6820b952ce5b5a67bce31c4fbb47a317e25a
+ARG BASE_IMAGE=ghcr.io/huggingface/text-embeddings-inference:1.2.3@sha256:ad6a9a4f80be66604962893bf24d6820b952ce5b5a67bce31c4fbb47a317e25a
+FROM ${BASE_IMAGE}
 
 ##### DOWNLOAD MOUNTPOINTS S3
 ARG MOUNTS3_DEB_URL

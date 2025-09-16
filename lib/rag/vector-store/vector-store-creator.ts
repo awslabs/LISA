@@ -206,7 +206,6 @@ export class VectorStoreCreatorStack extends Construct {
         new DeleteStoreStateMachine(this, 'DeleteStoreStateMachine', {
             config: props.config,
             executionRole: lambdaExecutionRole,
-            lambdaLayers: layers,
             parameterName: baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'],
             role: stateMachineRole,
             ragVectorStoreTable: vectorStoreTable,

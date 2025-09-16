@@ -81,6 +81,7 @@ export class FastApiContainer extends Construct {
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
             LITELLM_KEY: config.litellmConfig.db_key,
+            OPENAI_API_KEY: config.litellmConfig.db_key,
             TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE'
         };
 

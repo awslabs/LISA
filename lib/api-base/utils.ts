@@ -36,7 +36,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { CfnPermission, Code, DockerImageCode, DockerImageFunction, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 
@@ -84,6 +84,7 @@ export function registerAPIEndpoint (
     securityGroups: ISecurityGroup[],
     authorizer?: IAuthorizer,
     role?: IRole,
+    useContainerImage?: boolean,
 ): IFunction {
     const functionId = `${
         funcDef.id ||
@@ -104,23 +105,45 @@ export function registerAPIEndpoint (
             principal: 'apigateway.amazonaws.com',
         });
     } else {
-        handler = new Function(scope, functionId, {
-            functionName: functionId,
-            runtime: pythonRuntime,
-            handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
-            code: Code.fromAsset(lambdaSourcePath),
-            description: funcDef.description,
-            environment: {
-                ...funcDef.environment,
-            },
-            timeout: funcDef.timeout || Duration.seconds(180),
-            memorySize: 512,
-            layers,
-            role,
-            vpc: vpc.vpc,
-            securityGroups,
-            vpcSubnets: vpc.subnetSelection,
-        });
+        if (useContainerImage) {
+            handler = new DockerImageFunction(scope, functionId, {
+                functionName: functionId,
+                code: DockerImageCode.fromImageAsset('.', {
+                    file: 'lambda/Dockerfile',
+                    cmd: [`${funcDef.resource}.lambda_functions.${funcDef.name}`],
+                    exclude: ['cdk.out']
+                }),
+                description: funcDef.description,
+                environment: {
+                    ...funcDef.environment,
+                },
+                timeout: funcDef.timeout || Duration.seconds(180),
+                memorySize: 512,
+                // Using container image - no layers needed
+                role,
+                vpc: vpc.vpc,
+                securityGroups,
+                vpcSubnets: vpc.subnetSelection,
+            });
+        } else {
+            handler = new Function(scope, functionId, {
+                functionName: functionId,
+                runtime: pythonRuntime,
+                handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
+                code: Code.fromAsset(lambdaSourcePath),
+                description: funcDef.description,
+                environment: {
+                    ...funcDef.environment,
+                },
+                timeout: funcDef.timeout || Duration.seconds(180),
+                memorySize: 512,
+                layers,
+                role,
+                vpc: vpc.vpc,
+                securityGroups,
+                vpcSubnets: vpc.subnetSelection,
+            });
+        }
     }
 
     if (funcDef.disableAuthorizer || !authorizer) {

@@ -16,7 +16,7 @@
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
+import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring, UpdatePolicy } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -208,8 +208,8 @@ export class ECSCluster extends Construct {
         );
 
         // Create ECS cluster
-        const cluster = new Cluster(this, createCdkId(['Cl']), {
-            clusterName: createCdkId([config.deploymentName, identifier], 32, 2),
+        const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
+            clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
             vpc: vpc.vpc,
             containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
@@ -220,7 +220,7 @@ export class ECSCluster extends Construct {
         });
 
         // Create auto-scaling group
-        const autoScalingGroup = new AutoScalingGroup(this, createCdkId(['ASG']), {
+        const autoScalingGroup = new AutoScalingGroup(this, createCdkId([config.deploymentName, config.deploymentStage, 'ASG']), {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
@@ -239,16 +239,18 @@ export class ECSCluster extends Construct {
                     }),
                 },
             ],
-            securityGroup: asgSecurityGroup
+            securityGroup: asgSecurityGroup,
+            autoScalingGroupName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
+            updatePolicy: UpdatePolicy.rollingUpdate({})
         });
 
-        const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId(['AsgCapacityProvider']), {
+        const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId([config.deploymentName, config.deploymentStage, 'AsgCapacityProvider']), {
             autoScalingGroup,
             // Managed scaling tracks cluster reservation to add/remove instances automatically
             // when services want more tasks than the cluster can fit.
             // targetCapacityPercent ~ how "full" you want the cluster (by CPU/memory reservation).
             // 90 means try to keep instances ~90% reserved before adding more.
-            capacityProviderName: 'cp-ec2',
+            // capacityProviderName: [config.deploymentName, config.deploymentStage, 'cp-ec2'].join('-'),
 
             // disable managed scaling because we are going to setup rules to do it
             enableManagedScaling: false,
@@ -372,10 +374,10 @@ export class ECSCluster extends Construct {
         });
 
         // Create application load balancer
-        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([identifier, 'ALB']), {
+        const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([config.deploymentName, config.deploymentStage, identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: ecsConfig.internetFacing,
-            loadBalancerName: createCdkId([config.deploymentName, identifier], 32, 2).toLowerCase(),
+            loadBalancerName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2).toLowerCase(),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc: vpc.vpc,

@@ -124,9 +124,9 @@ export class ECSCluster extends Construct {
         // we want to set these based on the task created but currently the ECSCluster for model
         // will only create one task, so grab these values during creation so we can set the properties
         // on this class
-        let container;
-        let taskRole;
-        let endpointUrl;
+        let container: ContainerDefinition | undefined;
+        let taskRole: IRole | undefined;
+        let endpointUrl: string | undefined;
 
         Object.entries(ecsConfig.tasks).forEach(([, taskDefinition]) => {
             const environment = taskDefinition.environment;
@@ -201,7 +201,7 @@ export class ECSCluster extends Construct {
             }
 
             const roleId = identifier;
-            const taskRole = taskRoleName ?
+            taskRole = taskRoleName ?
                 Role.fromRoleName(this, createCdkId([config.deploymentName, roleId]), taskRoleName) :
                 this.createTaskRole(config.deploymentName ?? '', config.deploymentPrefix, roleId);
 
@@ -231,7 +231,7 @@ export class ECSCluster extends Construct {
                     : undefined;
 
             const image = CodeFactory.createImage(taskDefinition.containerConfig.image, this, identifier, ecsConfig.buildArgs);
-            const container = ec2TaskDefinition.addContainer(createCdkId([identifier, 'Container']), {
+            container = ec2TaskDefinition.addContainer(createCdkId([identifier, 'Container']), {
                 containerName: createCdkId([config.deploymentName, identifier], 32, 2),
                 image,
                 environment,
@@ -322,15 +322,20 @@ export class ECSCluster extends Construct {
             const domain = loadBalancer.loadBalancerDnsName;
 
             endpointUrl = `${protocol}://${domain}`;
+        });
 
-            new CfnOutput(this, 'modelEndpointurl', {
-                key: 'modelEndpointUrl',
-                value: this.endpointUrl,
-            });
+        // Validate endpointUrl is set before creating output
+        if (!endpointUrl) {
+            throw new Error('Failed to create endpoint URL - no tasks configured');
+        }
+
+        new CfnOutput(this, 'modelEndpointurl', {
+            key: 'modelEndpointUrl',
+            value: endpointUrl,
         });
 
         // Update
-        this.endpointUrl = endpointUrl!;
+        this.endpointUrl = endpointUrl;
         this.container = container!;
         this.taskRole = taskRole!;
     }

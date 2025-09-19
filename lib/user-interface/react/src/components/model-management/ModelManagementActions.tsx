@@ -20,10 +20,7 @@ import { useAppDispatch, useAppSelector } from '@/config/store';
 import { IModel, ModelStatus } from '@/shared/model/model-management.model';
 import { useNotificationService } from '@/shared/util/hooks';
 import { INotificationService } from '@/shared/notification/notification.service';
-import {
-    modelManagementApi,
-    useDeleteModelMutation, useUpdateModelMutation,
-} from '@/shared/reducers/model-management.reducer';
+import { useDeleteModelMutation, useUpdateModelMutation} from '@/shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
@@ -38,6 +35,7 @@ export type ModelActionProps = {
     updateConfigMutation?: any;
     currentDefaultModel?: string;
     currentConfig?: any;
+    refetch?: () => void;
 };
 
 function ModelActions (props: ModelActionProps): ReactElement {
@@ -49,7 +47,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
             <Button
                 onClick={() => {
                     props.setSelectedItems([]);
-                    dispatch(modelManagementApi.util.invalidateTags(['models']));
+                    props.refetch?.();
                 }}
                 ariaLabel={'Refresh models cards'}
             >

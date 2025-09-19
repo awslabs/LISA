@@ -269,11 +269,17 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     stack_name = payload.get("stackName", None)
 
     if not stack_name:
+        # Log the full payload for debugging
+        logger.error(f"ECS Model Deployer response: {payload}")
+        error_message = payload.get("errorMessage", "Unknown error")
+        error_type = payload.get("errorType", "Unknown error type")
+
         raise StackFailedToCreateException(
             json.dumps(
                 {
-                    "error": "Failed to create Model CloudFormation Stack. Please validate model parameters are valid.",
+                    "error": f"Failed to create Model CloudFormation Stack. {error_type}: {error_message}",
                     "event": event,
+                    "deployer_response": payload,
                 }
             )
         )

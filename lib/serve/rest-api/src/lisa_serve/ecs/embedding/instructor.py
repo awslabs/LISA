@@ -76,18 +76,22 @@ class EcsEmbeddingInstructorAdapter(EmbeddingModelAdapter):
             "text": text,
         }
 
-        async with ClientSession() as session:
-            async with session.post(self.endpoint_url, json=payload) as server_response:
-                server_response.raise_for_status()
-                server_response_json = await server_response.json()
+        try:
+            async with ClientSession() as session:
+                async with session.post(self.endpoint_url, json=payload) as server_response:
+                    server_response.raise_for_status()
+                    server_response_json = await server_response.json()
 
-                response = EmbedQueryResponse(embeddings=server_response_json)
+                    response = EmbedQueryResponse(embeddings=server_response_json)
 
-                logger.debug(
-                    f"Received: {escape_curly_brackets(response.json())}",
-                    extra={"event": f"{self.__class__.__name__}:embed_query"},
-                )
-                return response
+                    logger.debug(
+                        f"Received: {escape_curly_brackets(response.json())}",
+                        extra={"event": f"{self.__class__.__name__}:embed_query"},
+                    )
+                    return response
+        except Exception as e:
+            logger.error(f"Embedding request failed: {e}")
+            raise
 
 
 # Register the model

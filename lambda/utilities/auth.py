@@ -16,10 +16,22 @@ import os
 from functools import wraps
 from typing import Any, Callable, Dict
 
+import boto3
+from botocore.config import Config
 from utilities.common_functions import get_groups
 from utilities.exceptions import HTTPException
 
 logger = logging.getLogger(__name__)
+
+retry_config = Config(
+    retries={
+        "max_attempts": 3,
+        "mode": "standard",
+    },
+)
+
+secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 def get_username(event: dict) -> str:
@@ -46,3 +58,10 @@ def admin_only(func: Callable) -> Callable:
         return func(event, context, *args, **kwargs)
 
     return wrapper
+
+
+def get_management_key() -> str:
+    secret_name_param = ssm_client.get_parameter(Name=os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"])
+    secret_name = secret_name_param["Parameter"]["Value"]
+    secret_response = secrets_client.get_secret_value(SecretId=secret_name)
+    return secret_response["SecretString"]

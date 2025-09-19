@@ -21,7 +21,7 @@ export type MessageContentParams = {
     fileContext: string;
     useRag: boolean;
     userPrompt: string;
-    fetchRelevantDocuments?: (query: string) => Promise<any>;
+    ragDocs?: any;
 };
 
 export const buildMessageContent = async ({
@@ -29,7 +29,7 @@ export const buildMessageContent = async ({
     fileContext,
     useRag,
     userPrompt,
-    fetchRelevantDocuments,
+    ragDocs,
 }: MessageContentParams) => {
     if (isImageGenerationMode) {
         return userPrompt;
@@ -43,8 +43,7 @@ export const buildMessageContent = async ({
         ];
     }
 
-    if (useRag && fetchRelevantDocuments) {
-        const ragDocs = await fetchRelevantDocuments(userPrompt);
+    if (useRag && ragDocs) {
         return [
             { type: 'text', text: 'File context: ' + formatDocumentsAsString(ragDocs.data?.docs) },
             { type: 'text', text: userPrompt },
@@ -64,15 +63,13 @@ export const buildMessageContent = async ({
 export const buildMessageMetadata = async ({
     isImageGenerationMode,
     useRag,
-    userPrompt,
     chatConfiguration,
-    fetchRelevantDocuments,
+    ragDocs,
 }: {
     isImageGenerationMode: boolean;
     useRag: boolean;
-    userPrompt: string;
     chatConfiguration: any;
-    fetchRelevantDocuments?: (query: string) => Promise<any>;
+    ragDocs?: any;
 }) => {
     const metadata: any = {};
 
@@ -81,8 +78,7 @@ export const buildMessageMetadata = async ({
         metadata.imageGenerationSettings = chatConfiguration.sessionConfiguration.imageGenerationArgs;
     }
 
-    if (useRag && !isImageGenerationMode && fetchRelevantDocuments) {
-        const ragDocs = await fetchRelevantDocuments(userPrompt);
+    if (useRag && !isImageGenerationMode && ragDocs) {
         metadata.ragContext = formatDocumentsAsString(ragDocs.data?.docs, true);
         metadata.ragDocuments = formatDocumentTitlesAsString(ragDocs.data?.docs);
     }

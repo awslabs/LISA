@@ -78,12 +78,17 @@ async def validate_model(request_data: Dict[str, Any], resource: RestApiResource
     registered_models_cache = get_registered_models_cache()
     supported_models = registered_models_cache[resource][provider]
     if model_name not in supported_models:
+        # Sanitize inputs for logging to prevent log injection
+        safe_model_name = str(model_name).replace("\n", "").replace("\r", "")
+        safe_resource = str(resource).replace("\n", "").replace("\r", "")
+        safe_supported = str(supported_models).replace("\n", "").replace("\r", "")
+
         message = (
-            f"Provider does not support model {model_name} for endpoint "
-            f"/{resource}, expected one of: {supported_models}"
+            f"Provider does not support model {safe_model_name} for endpoint "
+            f"/{safe_resource}, expected one of: {safe_supported}"
         )
         logger.error(message, extra={"event": event, "status": "ERROR"})
-        raise Exception(message)
+        raise ValueError(message)
 
 
 async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, Any]:
@@ -113,7 +118,10 @@ async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, An
 
         # Retrieve model endpoint URL
         registered_models_cache = get_registered_models_cache()
-        endpoint_url = registered_models_cache["endpointUrls"][model_key]
+        try:
+            endpoint_url = registered_models_cache["endpointUrls"][model_key]
+        except KeyError:
+            raise KeyError(f"Model endpoint URL not found for {model_key}")
 
         # Instantiate the model
         model = adapter(model_name=model_name, endpoint_url=endpoint_url)
@@ -158,7 +166,11 @@ async def validate_and_prepare_llm_request(
 
     task_logger.debug("Finish task", status="FINISH")
 
-    return model, model_kwargs.dict(), request_data["text"]
+    text = request_data.get("text")
+    if text is None:
+        raise ValueError("Missing required field: text")
+
+    return model, model_kwargs.dict(), text
 
 
 def handle_stream_exceptions(

@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 
 import boto3
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
-from repository.embeddings import get_embeddings_pipeline
+from repository.embeddings import get_embeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
@@ -48,10 +48,12 @@ rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"]
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
+    texts = []
+    metadatas = []
+    all_ids = []
     try:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
-        all_ids = []
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             ingest_document_to_kb(
                 s3_client=s3,
@@ -107,12 +109,21 @@ def pipeline_ingest(job: IngestionJob) -> None:
 
         error_msg = f"Failed to process document: {str(e)}"
         logger.error(error_msg, exc_info=True)
+        logger.error(f"Job: {job.model_dump_json(indent=2)}")
+
+        text_details = [
+            f"Text {i + 1} (len={len(text)}): {text[:100]}{'...' if len(text) > 100 else ''}"
+            for i, text in enumerate(texts)
+        ]
+        total_length = sum(len(text) for text in texts)
+        logger.error(f"Request texts (total length={total_length}): {'; '.join(text_details)}")
+
         raise Exception(error_msg)
 
 
 def remove_document_from_vectorstore(doc: RagDocument) -> None:
     # Delete from the Vector Store
-    embeddings = get_embeddings_pipeline(model_name=doc.collection_id)
+    embeddings = get_embeddings(model_name=doc.collection_id)
     vector_store = get_vector_store_client(
         doc.repository_id,
         index=doc.collection_id,
@@ -280,7 +291,7 @@ def store_chunks_in_vectorstore(
     texts: List[str], metadatas: List[Dict], repository_id: str, embedding_model: str
 ) -> List[str]:
     """Store document chunks in vector store."""
-    embeddings = get_embeddings_pipeline(model_name=embedding_model)
+    embeddings = get_embeddings(model_name=embedding_model)
     vs = get_vector_store_client(
         repository_id,
         index=embedding_model,

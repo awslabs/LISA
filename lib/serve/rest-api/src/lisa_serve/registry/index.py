@@ -45,6 +45,6 @@ class ModelRegistry:
         except KeyError:
             raise KeyError(
                 f"Model provider '{provider}' not found in registry. Available providers: "
-                f"{', '.join(list(self.registry))}"
+                f"{', '.join(self.registry)}"
             )
         return model_assets  # type: ignore

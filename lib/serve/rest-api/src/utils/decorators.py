@@ -12,8 +12,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Constants related to parsing RAG documents."""
-PDF_FILE = "pdf"
-TEXT_FILE = "txt"
-DOCX_FILE = "docx"
-RICH_TEXT_FILE = "rtf"
+"""Utility decorators."""
+from typing import Any, Callable, cast, Dict, TypeVar
+
+T = TypeVar("T")
+
+
+def singleton(cls: type[T]) -> Callable[..., T]:
+    """Singleton decorator."""
+    instances: Dict[type, Any] = {}
+
+    def get_instance(*args: Any, **kwargs: Any) -> T:
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return cast(T, instances[cls])
+
+    return get_instance

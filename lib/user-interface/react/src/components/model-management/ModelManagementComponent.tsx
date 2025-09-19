@@ -119,6 +119,7 @@ export function ModelManagementComponent (): ReactElement {
                                 updateConfigMutation={updateConfigMutation}
                                 currentDefaultModel={config?.[0]?.configuration?.global?.defaultModel}
                                 currentConfig={config}
+                                refetch={refetch}
                             />
                         }
                     >

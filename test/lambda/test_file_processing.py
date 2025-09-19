@@ -172,3 +172,58 @@ def test_generate_chunks_preserves_metadata():
 
     assert len(result) == 1
     assert result[0].metadata == metadata
+
+
+def test_extract_text_by_content_type_pdf():
+    """Test _extract_text_by_content_type with PDF file."""
+    from utilities.file_processing import _extract_text_by_content_type
+
+    mock_s3_object = {"Body": BytesIO(b"mock pdf content")}
+
+    with patch("utilities.file_processing._extract_pdf_content") as mock_extract:
+        mock_extract.return_value = "Extracted PDF text"
+
+        result = _extract_text_by_content_type("pdf", mock_s3_object)
+
+        assert result == "Extracted PDF text"
+        mock_extract.assert_called_once_with(mock_s3_object)
+
+
+def test_extract_text_by_content_type_docx():
+    """Test _extract_text_by_content_type with DOCX file."""
+    from utilities.file_processing import _extract_text_by_content_type
+
+    mock_s3_object = {"Body": BytesIO(b"mock docx content")}
+
+    with patch("utilities.file_processing._extract_docx_content") as mock_extract:
+        mock_extract.return_value = "Extracted DOCX text"
+
+        result = _extract_text_by_content_type("docx", mock_s3_object)
+
+        assert result == "Extracted DOCX text"
+        mock_extract.assert_called_once_with(mock_s3_object)
+
+
+def test_extract_text_by_content_type_txt():
+    """Test _extract_text_by_content_type with TXT file."""
+    from utilities.file_processing import _extract_text_by_content_type
+
+    mock_s3_object = {"Body": BytesIO(b"mock text content")}
+
+    with patch("utilities.file_processing._extract_text_content") as mock_extract:
+        mock_extract.return_value = "Extracted text content"
+
+        result = _extract_text_by_content_type("txt", mock_s3_object)
+
+        assert result == "Extracted text content"
+        mock_extract.assert_called_once_with(mock_s3_object)
+
+
+def test_extract_text_by_content_type_unsupported():
+    """Test _extract_text_by_content_type with unsupported file type."""
+    from utilities.file_processing import _extract_text_by_content_type
+
+    mock_s3_object = {"Body": BytesIO(b"mock content")}
+
+    with pytest.raises(RagUploadException, match="Unsupported file type"):
+        _extract_text_by_content_type("unsupported", mock_s3_object)

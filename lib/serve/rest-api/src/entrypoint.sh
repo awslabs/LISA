@@ -20,6 +20,8 @@ python ./src/utils/generate_litellm_config.py -f litellm_config.yaml
 # src/api/endpoints/v2/litellm_passthrough.py for the LiteLLM URI
 litellm -c litellm_config.yaml &
 
+# Validate THREADS variable with default value
+THREADS=${THREADS:-4}
 echo "Starting Gunicorn with $THREADS workers..."
 
 # Start Gunicorn with Uvicorn workers.

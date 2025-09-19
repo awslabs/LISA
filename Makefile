@@ -206,7 +206,10 @@ modelCheck:
 				fi; \
 				echo "Converting and uploading safetensors for model: $$MODEL_ID"; \
 				tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
-				echo $$tgiImage; \
+				if [ "$$tgiImage" = "null" ] || [ -z "$$tgiImage" ]; then \
+					tgiImage="ghcr.io/huggingface/text-generation-inference:latest"; \
+				fi; \
+				echo "Using TGI image: $$tgiImage"; \
 				$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $$MODEL_ID -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
 			fi; \
 		fi; \

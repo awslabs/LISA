@@ -14,13 +14,14 @@
 
 import logging
 import os
-from typing import Any, List
+from typing import List
 
 import boto3
 import requests
 from lisapy.langchain import LisaOpenAIEmbeddings
-from utilities.common_functions import get_cert_path, retry_config
-from utilities.validation import ValidationError
+from utilities.auth import get_management_key
+from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+from utilities.validation import validate_model_name, ValidationError
 
 logger = logging.getLogger(__name__)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -30,32 +31,25 @@ iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=re
 lisa_api_endpoint = ""
 
 
-class PipelineEmbeddings:
+class RagEmbeddings:
     """
-    Handles document embeddings for pipeline processing using management credentials.
-
-    This class provides methods to embed both single queries and batches of documents
-    using the LISA API with management-level authentication.
+    Handles document embeddings through LiteLLM using management credentials.
     """
 
     model_name: str
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, id_token: str | None = None) -> None:
         try:
+            # Use management token if id_token is not provided
+            if id_token is None:
+                logger.info("Using management key for ingestion")
+                self.token = get_management_key()
+            else:
+                self.token = id_token
+
+            self.lisa_api_endpoint = get_rest_api_container_endpoint()
             self.model_name = model_name
-            # Get the management key secret name from SSM Parameter Store
-            secret_name_param = ssm_client.get_parameter(Name=os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"])
-            secret_name = secret_name_param["Parameter"]["Value"]
-
-            # Get the management token from Secrets Manager using the secret name
-            secret_response = secrets_client.get_secret_value(SecretId=secret_name)
-            self.token = secret_response["SecretString"]
-
-            # Get the API endpoint from SSM
-            lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
-            self.base_url = f"{lisa_api_param_response['Parameter']['Value']}/{os.environ['REST_API_VERSION']}/serve"
-
-            # Get certificate path for SSL verification
+            self.base_url = get_rest_api_container_endpoint()
             self.cert_path = get_cert_path(iam_client)
 
             logger.info("Successfully initialized pipeline embeddings")
@@ -95,7 +89,6 @@ class PipelineEmbeddings:
 
             if response.status_code != 200:
                 logger.error(f"Embedding request failed with status {response.status_code}")
-                logger.error(f"Response content: {response.text}")
                 raise Exception(f"Embedding request failed with status {response.status_code}")
 
             result = response.json()
@@ -150,7 +143,7 @@ class PipelineEmbeddings:
         return self.embed_documents([text])[0]
 
 
-def get_embeddings_pipeline(model_name: str) -> Any:
+def get_embeddings(model_name: str, id_token: str | None = None) -> RagEmbeddings:
     """
     Get embeddings for pipeline requests using management token.
 
@@ -162,28 +155,27 @@ def get_embeddings_pipeline(model_name: str) -> Any:
         Exception: If API request fails
     """
     logger.info("Starting pipeline embeddings request")
+    validate_model_name(model_name)
 
-    return PipelineEmbeddings(model_name=model_name)
+    return RagEmbeddings(model_name=model_name, id_token=id_token)
 
 
-def get_embeddings(model_name: str, id_token: str) -> LisaOpenAIEmbeddings:
+def get_openai_embeddings(model_name: str, id_token: str | None = None) -> LisaOpenAIEmbeddings:
     """
-    Initialize and return an embeddings client for the specified model.
+    Initialize and return an embeddings client for the specified model. Do not use for embedding documents since OpenAI
+    client does not use the provided model for embedding.
 
     Args:
         model_name: Name of the embedding model to use
-        id_token: Authentication token for API access
+        id_token: Authentication token for API access. If not provided, uses management token.
 
     Returns:
         LisaOpenAIEmbeddings: Configured embeddings client
     """
-    global lisa_api_endpoint
+    if id_token is None:
+        id_token = get_management_key()
 
-    if not lisa_api_endpoint:
-        lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
-        lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
-
-    base_url = f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
+    base_url = get_rest_api_container_endpoint()
     cert_path = get_cert_path(iam_client)
 
     embedding = LisaOpenAIEmbeddings(

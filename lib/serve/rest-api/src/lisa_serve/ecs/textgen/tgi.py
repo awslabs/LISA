@@ -195,10 +195,12 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
         AsyncGenerator[GenerateStreamResponse, None]
             Text generation model response with streaming.
         """
-        request = {"prompt": text, **model_kwargs}
+        # Generate static values once before streaming
         resp_id = str(uuid.uuid4())
         fingerprint = str(uuid.uuid4())
         created = int(time.time())
+
+        request = {"prompt": text, **model_kwargs}
         if is_text_completion:
             response_class = OpenAICompletionsResponse
         else:

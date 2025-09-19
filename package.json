@@ -33,7 +33,7 @@
     "cypress"
   ],
   "scripts": {
-    "build": "if [ \"$BUILD_ASSETS\" = \"true\" ]; then npm run build:assets; fi",
+    "build": "tsc && npm run build -ws && if [ \"$BUILD_ASSETS\" = \"true\" ]; then npm run build:assets; fi",
     "build:assets": "./bin/build-assets",
     "deploy": "tsx ./bin/lisa.ts",
     "copy-dist": "cp VERSION ./dist/",

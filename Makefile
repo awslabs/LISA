@@ -143,9 +143,9 @@ else
 endif
 
 
-## Set up Python interpreter environment
+## Set up Python interpreter environment to match LISA deployed version
 createPythonEnvironment:
-	python3 -m venv .venv
+	python3.11 -m venv .venv
 	@printf ">>> New virtual environment created. To activate run: 'source .venv/bin/activate'"
 
 
@@ -268,6 +268,9 @@ listStacks:
 
 buildNpmModules:
 	npm run build
+
+buildArchive:
+	BUILD_ASSETS=true npm run build
 
 define print_config
     @printf "\n \

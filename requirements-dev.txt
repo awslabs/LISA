@@ -16,13 +16,15 @@ pypdf==6.0.0
 langchain-community==0.3.9
 langchain-openai==0.2.11
 langchain==0.3.9
+--only-binary=pyarrow,lxml,psycopg2-binary
+pyarrow
 
 # Testing
 pytest==8.3.2
 pytest-cov==4.1.0
 moto[all]==5.0.3
 coverage==7.4.4
-lxml==5.1.0
+lxml==5.3.0
 opensearch-py==2.8.0
 requests_aws4auth==1.3.1
 PyJWT==2.8.0

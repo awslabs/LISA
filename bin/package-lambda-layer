@@ -4,78 +4,141 @@ set -e
 SRC=src
 OUTPUT=Lambda.zip
 EXCLUDE_PACKAGES=""
-SRC_ROOT=$PWD
-BUILD_DIR=$SRC_ROOT/build
+BUILD_DIR=$PWD/build
+IS_LAYER=0
+TMP_DIR=$BUILD_DIR/tmp/
+PYPI_URL=
 
 # Parse named parameters
 while [ $# -gt 0 ]; do
-    case "$1" in
-        --src=*)
-            SRC="${1#*=}"
-            ;;
-        --output=*)
-            OUTPUT="${1#*=}"
-            ;;
-        --build=*)
-            BUILD_DIR="${1#*=}"
-            ;;
-        --exclude=*)
-            EXCLUDE_PACKAGES="${1#*=}"
-            ;;
-        *)
-            echo "Unknown parameter: $1"
-            echo "Usage: $0 --src=<source_dir> --output=<output_file> --exclude=<packages>"
-            exit 1
-            ;;
-    esac
+    if [[ $1 == *"="* ]]; then
+        # Handle --param=value style
+        param="${1%%=*}"
+        value="${1#*=}"
+
+        case "$param" in
+            --src)
+                SRC="$value"
+                ;;
+            --output)
+                OUTPUT="$value"
+                ;;
+            --build)
+                BUILD_DIR="$value"
+                ;;
+            --exclude)
+                EXCLUDE_PACKAGES="$value"
+                ;;
+            --pypi)
+                PYPI_URL="$value"
+                ;;
+            --layer)
+                IS_LAYER=1
+                ;;
+            *)
+                echo "Unknown parameter: $param"
+                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages> --layer"
+                exit 1
+                ;;
+        esac
+    else
+        # Handle --param value style
+        case "$1" in
+            --src)
+                shift
+                SRC="$1"
+                ;;
+            --output)
+                shift
+                OUTPUT="$1"
+                ;;
+            --build)
+                shift
+                BUILD_DIR="$1"
+                TMP_DIR=$BUILD_DIR/tmp/python/
+                ;;
+            --exclude)
+                shift
+                EXCLUDE_PACKAGES="$1"
+                ;;
+            --pypi)
+                shift
+                PYPI_URL="$1"
+                ;;
+            --layer)
+                IS_LAYER=1
+                ;;
+            *)
+                echo "Unknown parameter: $1"
+                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages>"
+                exit 1
+                ;;
+        esac
+    fi
     shift
 done
 
+echo "Starting"
+if [ $IS_LAYER -eq 1 ]; then
+    TMP_DIR=$BUILD_DIR/tmp/python/
+fi
+
+if [ -z "$PYPI_URL" ]; then
+    echo "Must supply PYPI_URL via --pypi"
+    exit 1
+fi
+
+# Extract IP from PYPI_URL for trusted host
+TRUSTED_HOST=$(echo $PYPI_URL | sed 's|http://||' | sed 's|/.*||')
+
+# Print parameters for debugging
+echo "Source directory: $SRC"
+echo "Output file: $OUTPUT"
+echo "Build directory: $BUILD_DIR"
+echo "Temp directory: $TMP_DIR"
+
+
 install_requirements() {
-    echo "installing requirements"
-    rm -rf "$BUILD_DIR"
-    mkdir -p "$BUILD_DIR/python"
-    # Install with version pinning for security
-    python3 -m pip install --upgrade pip==24.3.1
-    python3 -m pip install "$SRC_ROOT" --target "${BUILD_DIR}/python"
+    echo "Installing requirements"
+    rm -rf "$TMP_DIR"
+    mkdir -p "$TMP_DIR"
+    if [ -f "$SRC/requirements.txt" ]; then
+        echo "Installing requirements from $SRC/requirements.txt"
+        echo "Using python version $(python3 --version)"
+        python3 -m pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target "$TMP_DIR" --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+    else
+        echo "No requirements.txt found in $SRC"
+    fi
 }
 
 
 build_package() {
-    echo "building package"
+    echo "Building package"
     if [ -d "$SRC" ]; then
-        cp -r "$SRC"/* "${BUILD_DIR}/python/"
-    fi
-}
-
-copy_configuration() {
-    echo "copying configuration"
-    if [ -d "configuration/Packaging" ]; then
-        cp -a configuration/Packaging "$BUILD_DIR"
+        rsync -av --exclude='build' --exclude='.hatch' --exclude='.venv' "$SRC/" "$TMP_DIR/"
     fi
 }
 
 package_artifacts() {
-    echo "packaging"
+    echo "Packaging"
     if [ -n "$EXCLUDE_PACKAGES" ]; then
         echo "Removing excluded packages: $EXCLUDE_PACKAGES"
         for pkg in ${EXCLUDE_PACKAGES//,/ }; do
             echo "Removing $pkg"
-            rm -rf ${BUILD_DIR}/python/${pkg}
-            rm -rf ${BUILD_DIR}/python/${pkg}-*
+            rm -rf ${TMP_DIR}/${pkg}
+            rm -rf ${TMP_DIR}/${pkg}-*
             # Also remove egg-info directories
-            find "${BUILD_DIR}/python" -type d -name "${pkg}*egg-info" -exec rm -rf {} +
+            find "$TMP_DIR" -type d -name "${pkg}*egg-info" -exec rm -rf {} +
         done
     fi
 
     # AWS Lambda recommends to exclude __pycache__: https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-pycache
-    find "${BUILD_DIR}/python" -depth -name __pycache__ -exec rm -rf {} \;
-    cd "${BUILD_DIR}"
-    zip "${BUILD_DIR}/${OUTPUT}" ./python -r
-    rm -rf "${BUILD_DIR}/python"
+    find "${TMP_DIR}" -depth -name __pycache__ -exec rm -rf {} \;
+    cd "${BUILD_DIR}/tmp/"
+    zip -r "${BUILD_DIR}/${OUTPUT}" .
+    rm -rf "${BUILD_DIR}/tmp"
 }
 
 install_requirements
 build_package
-copy_configuration
 package_artifacts

@@ -33,10 +33,11 @@
     "cypress"
   ],
   "scripts": {
-    "build": "tsc && npm run build -ws",
+    "build": "tsc && npm run build -ws && if [ \"$BUILD_ASSETS\" = \"true\" ]; then npm run build:assets; fi",
+    "build:assets": "./bin/build-assets",
     "deploy": "tsx ./bin/lisa.ts",
     "copy-dist": "cp VERSION ./dist/",
-    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build",
+    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",

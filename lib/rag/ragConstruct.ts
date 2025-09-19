@@ -169,6 +169,7 @@ export class LisaRagConstruct extends Construct {
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             REST_API_VERSION: 'v2',
+            TIKTOKEN_CACHE_DIR: '/tmp',
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -216,24 +217,7 @@ export class LisaRagConstruct extends Construct {
             }
         }
 
-        // Build RAG Lambda layer
-        const ragLambdaLayer = new Layer(scope, 'RagLayer', {
-            config: config,
-            path: RAG_LAYER_PATH,
-            description: 'Lambda dependencies for RAG API',
-            architecture: ARCHITECTURE,
-            autoUpgrade: true,
-            assetPath: config.lambdaLayerAssets?.ragLayerPath,
-            afterBundle: (inputDir: string, outputDir: string) => [
-                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/TIKTOKEN_CACHE/`
-            ],
-        });
-
-        new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'RagLayer']), {
-            parameterName: `${config.deploymentPrefix}/layerVersion/rag`,
-            stringValue: ragLambdaLayer.layer.layerVersionArn
-        });
-        const layers = [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer];
+        const layers = [commonLambdaLayer, sdkLayer];
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -299,7 +283,7 @@ export class LisaRagConstruct extends Construct {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
-        baseEnvironment['TIKTOKEN_CACHE_DIR'] = '/opt/python/TIKTOKEN_CACHE';
+        baseEnvironment['TIKTOKEN_CACHE_DIR'] = '/tmp';
 
         // this modifies baseEnvironment and adds necessary environment variables
         new IngestionStack(scope, 'IngestionStack', {
@@ -323,7 +307,7 @@ export class LisaRagConstruct extends Construct {
             config,
             vpc,
             baseEnvironment,
-            { common: commonLambdaLayer, rag: ragLambdaLayer.layer, sdk: sdkLayer },
+            { common: commonLambdaLayer, sdk: sdkLayer },
             lambdaRole,
             docMetaTable,
             subDocTable,
@@ -354,7 +338,7 @@ export class LisaRagConstruct extends Construct {
         config: Config,
         vpc: Vpc,
         baseEnvironment: Record<string, string>,
-        layers: { [key in 'common' | 'sdk' | 'rag']: ILayerVersion },
+        layers: { [key in 'common' | 'sdk']: ILayerVersion },
         lambdaRole: IRole,
         docMetaTable: dynamodb.ITable,
         subDocTable: dynamodb.ITable,
@@ -613,7 +597,6 @@ export class LisaRagConstruct extends Construct {
                             rdsConfig: ragConfig.rdsConfig,
                             repositoryId: ragConfig.repositoryId,
                             type: ragConfig.type,
-                            layers: [layers.common, layers.rag, layers.sdk],
                             registeredRepositoriesParamName,
                             ragDocumentTable: docMetaTable,
                             ragSubDocumentTable: subDocTable,

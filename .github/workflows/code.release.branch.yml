@@ -7,16 +7,18 @@ on:
         required: true
 
 permissions:
-  id-token: write
-  contents: write
-  pull-requests: write
+  contents: read  # Default read-only
 
 jobs:
   MakeNewReleaseBranch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Required for branch creation
+      id-token: write       # Required for AWS authentication
+      pull-requests: write  # Required for creating PRs
     steps:
       - name: Checkout Develop Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           ref: develop
       - name: Create Release Branch and Update Version

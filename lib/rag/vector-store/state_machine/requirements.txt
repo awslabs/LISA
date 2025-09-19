@@ -17,13 +17,7 @@ pgvector==0.2.5
 psycopg2-binary==2.9.9
 requests-aws4auth==1.2.3
 #
-# HTTP client libraries
-httpx>=0.23.0
-#
 # Document processing libraries
 pypdf==6.0.0
 lxml==5.1.0
 python-docx==1.1.0
-#
-# LISA SDK (installed from local source in Dockerfile)
-# lisapy

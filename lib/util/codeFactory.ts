@@ -54,14 +54,14 @@ export class CodeFactory {
 
     static createDockerImageCode (image: ImageAsset | string, buildArgs?: any): DockerImageCode {
         if (typeof image === 'string') {
-            return DockerImageCode.fromImageAsset(image, { buildArgs });
+            return DockerImageCode.fromImageAsset(image, { buildArgs, exclude: ['cdk.out'] });
         }
 
         switch (image.type) {
             case EcsSourceType.EXTERNAL:
                 return image.code;
             case EcsSourceType.ASSET:
-                return DockerImageCode.fromImageAsset(image.path, { buildArgs });
+                return DockerImageCode.fromImageAsset(image.path, { buildArgs, exclude: ['cdk.out'] });
             default:
                 throw Error(`Unimplemented image type for DockerImageCode: ${image.type}`);
         }

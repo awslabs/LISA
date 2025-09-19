@@ -5,24 +5,28 @@ on:
     types: [closed]
 
 permissions:
-  id-token: write
-  contents: write
+  contents: read  # Default read-only
 
 jobs:
   draft_release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases
+      id-token: write  # Required for AWS authentication
     if: (startsWith(github.event.pull_request.head.ref, 'release/' ) || startsWith(github.event.pull_request.head.ref, 'hotfix/')) && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     steps:
       - name: Checkout Source Tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           ref: main
       - name: Get Version
         id: get-version
         run: |
-          version=$(echo ${{github.event.pull_request.head.ref}} | cut -d/ -f2)
+          version=$(echo "$GITHUB_HEAD_REF" | cut -d/ -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "VERSION = $version"
+        env:
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: Create Release
         run: |
           gh release create ${{ steps.get-version.outputs.version }} --generate-notes -d -t "${{ steps.get-version.outputs.version }}" --target main
@@ -33,15 +37,19 @@ jobs:
     needs: [draft_release]
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      contents: read
     steps:
       - name: Get Version
         id: get-version
         run: |
-          version=$(echo ${{github.event.pull_request.head.ref}} | cut -d/ -f2)
+          version=$(echo "$GITHUB_HEAD_REF" | cut -d/ -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "VERSION = $version"
+        env:
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: Send Notification that Draft Release is Ready
-        uses: rtCamp/action-slack-notify@v2
+        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
         if: (startsWith(github.event.pull_request.head.ref, 'release/' ) || startsWith(github.event.pull_request.head.ref, 'hotfix/')) && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
         with:
           status: success()

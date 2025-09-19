@@ -29,10 +29,10 @@ import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -190,17 +190,18 @@ export class IngestionJobConstruct extends Construct {
             resources: ['*']
         }));
 
-        // Lambda function for handling scheduled document ingestion
-        const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
+        // Lambda function for handling scheduled document ingestion - using container image
+        const handlePipelineIngestScheduleLambda = new DockerImageFunction(this, 'handlePipelineIngestSchedule', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule-${hash}`,
-            runtime: getDefaultRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.DockerImageCode.fromImageAsset('.', {
+                file: 'lambda/Dockerfile',
+                cmd: ['repository.pipeline_ingest_documents.handle_pipline_ingest_schedule'],
+                exclude: ['cdk.out']
+            }),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
-            layers: layers,
             role: lambdaRole
         });
         const scheduleParameterName = `${config.deploymentPrefix}/ingestion/ingest/schedule`;
@@ -213,17 +214,18 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // Lambda function for handling S3 event-based document ingestion
-        const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
+        // Lambda function for handling S3 event-based document ingestion - using container image
+        const handlePipelineIngestEvent = new DockerImageFunction(this, 'handlePipelineIngestEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event-${hash}`,
-            runtime: getDefaultRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.DockerImageCode.fromImageAsset('.', {
+                file: 'lambda/Dockerfile',
+                cmd: ['repository.pipeline_ingest_documents.handle_pipeline_ingest_event'],
+                exclude: ['cdk.out']
+            }),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
-            layers: layers,
             role: lambdaRole
         });
         const eventParameterName = `${config.deploymentPrefix}/ingestion/ingest/event`;
@@ -236,17 +238,18 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // Lambda function for handling document deletion events
-        const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
+        // Lambda function for handling document deletion events - using container image
+        const handlePipelineDeleteEvent = new DockerImageFunction(this, 'handlePipelineDeleteEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event-${hash}`,
-            runtime: getDefaultRuntime(),
-            handler: 'repository.pipeline_delete_documents.handle_pipeline_delete_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.DockerImageCode.fromImageAsset('.', {
+                file: 'lambda/Dockerfile',
+                cmd: ['repository.pipeline_delete_documents.handle_pipeline_delete_event'],
+                exclude: ['cdk.out']
+            }),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
-            layers: layers,
             role: lambdaRole
         });
         const deleteParameterName = `${config.deploymentPrefix}/ingestion/delete/event`;

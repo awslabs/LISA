@@ -1,0 +1,100 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+
+  # Enable version updates for npm in UI components
+  - package-ecosystem: "npm"
+    directory: "/lib/user-interface/react"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable version updates for pip  
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday" 
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip in lisa-sdk
+  - package-ecosystem: "pip"
+    directory: "/lisa-sdk"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable security updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable updates for Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/rest-api"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Track ECS model dockerfiles
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/ecs-model/vllm"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 2

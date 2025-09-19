@@ -43,8 +43,6 @@ def generate_config(filepath: str) -> None:
             "litellm_params": {
                 "model": f"openai/{model['modelName']}",
                 "api_base": model["endpointUrl"] + "/v1",  # Local containers require the /v1 for OpenAI API routing.
-                # the following is an unused placeholder to avoid LiteLLM deployment failures
-                "api_key": "ignored",  # pragma: allowlist secret
             },
         }
         for model in registered_models

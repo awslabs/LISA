@@ -351,9 +351,9 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         # Fallback to default if JSON parsing fails
         litellm_params = {}
 
-    litellm_params["api_key"] = event.get(
-        "apiKey", "ignored"
-    )  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
+    # Only set api_key if it's present in the event
+    if "apiKey" in event:
+        litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
     litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
@@ -368,7 +368,18 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         litellm_params=litellm_params,
     )
 
-    litellm_id = litellm_response["model_info"]["id"]
+    # Handle different LiteLLM API response structures
+    if "model_info" in litellm_response and "id" in litellm_response["model_info"]:
+        litellm_id = litellm_response["model_info"]["id"]
+    elif "id" in litellm_response:
+        litellm_id = litellm_response["id"]
+    elif "model_id" in litellm_response:
+        litellm_id = litellm_response["model_id"]
+    else:
+        # Log the actual response structure for debugging
+        logger.error(f"Unexpected LiteLLM response structure: {litellm_response}")
+        raise KeyError(f"Could not find model ID in LiteLLM response: {litellm_response}")
+    
     output_dict["litellm_id"] = litellm_id
 
     model_table.update_item(

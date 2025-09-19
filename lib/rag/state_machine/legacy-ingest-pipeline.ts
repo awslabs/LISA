@@ -35,7 +35,6 @@ type IngestPipelineStateMachineProps = BaseProps & {
     rdsConfig?: RdsConfig;
     repositoryId: string;
     type: RagRepositoryType;
-    layers?: ILayerVersion[];
     registeredRepositoriesParamName: string;
     ragDocumentTable: ITable;
     ragSubDocumentTable: ITable;

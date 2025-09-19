@@ -391,7 +391,6 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     litellm_params["model"] = f"openai/{ddb_item['model_config']['modelName']}"
     litellm_params["api_base"] = model_url
-    litellm_params["api_key"] = "ignored"  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
 
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
     ddb_update_values: Dict[str, Any] = {

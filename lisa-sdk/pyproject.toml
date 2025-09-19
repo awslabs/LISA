@@ -1,5 +1,15 @@
 [project]
+name = "lisapy"
+version = "5.1.0"
+description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
+readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0.0",
+    "langchain",
+    "langchain-community", 
+    "langchain-openai",
+]
 
 [tool.poetry]
 name = "lisapy"

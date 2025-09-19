@@ -16,7 +16,8 @@
 import { Construct } from 'constructs';
 import { BaseProps } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { DockerImageCode } from 'aws-cdk-lib/aws-lambda';
+import { DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Choice, Condition, IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
@@ -33,7 +34,6 @@ import { LAMBDA_PATH } from '../../../util';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,
-    lambdaLayers: ILayerVersion[];
     vectorStoreDeployerFnArn: string;
     vpc: Vpc,
     role?: iam.IRole,
@@ -54,7 +54,6 @@ export class DeleteStoreStateMachine extends Construct {
         const {
             config,
             executionRole,
-            lambdaLayers,
             parameterName,
             role,
             ragVectorStoreTable,
@@ -137,15 +136,16 @@ export class DeleteStoreStateMachine extends Construct {
         }).next(handleCleanupBedrockKnowledgeBase);
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
-            runtime: getDefaultRuntime(),
-            handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const cleanupDocsFunc = new DockerImageFunction(this, 'CleanupRepositoryDocsFunc', {
+            code: DockerImageCode.fromImageAsset('.', {
+                file: 'lambda/Dockerfile',
+                cmd: ['repository.state_machine.cleanup_repo_docs.lambda_handler'],
+                exclude: ['cdk.out']
+            }),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc.vpc,
             environment: environment,
-            layers: lambdaLayers,
             role: executionRole,
         });
 

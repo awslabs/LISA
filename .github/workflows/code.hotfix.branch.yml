@@ -10,16 +10,18 @@ on:
         required: true
 
 permissions:
-  id-token: write
-  contents: write
-  pull-requests: write
+  contents: read  # Default read-only
 
 jobs:
   MakeNewBranch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Required for branch creation
+      id-token: write       # Required for AWS authentication  
+      pull-requests: write  # Required for creating PRs
     steps:
       - name: Checkout Source Tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           ref: refs/tags/${{ github.event.inputs.source_tag }}
       - name: Create Hotfix Branch and Update Version

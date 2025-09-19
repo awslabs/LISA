@@ -13,7 +13,7 @@ This directory contains integration tests for the LISA (Large Language Model Inf
 The `integration-setup-test.sh` script creates and optionally cleans up LISA resources for testing purposes. This script is designed to test the full deployment pipeline including:
 
 1. **Bedrock Model** - Creates a Claude 3 Haiku model configuration using Amazon Bedrock
-2. **Self-Hosted Model** - Deploys a Llama 2 7B model using LISA's self-hosting capabilities  
+2. **Self-Hosted Model** - Deploys a Llama 2 7B model using LISA's self-hosting capabilities
 3. **PGVector Repository** - Creates a PostgreSQL vector store for RAG operations
 4. **OpenSearch Repository** - Creates an OpenSearch cluster for vector storage
 
@@ -47,7 +47,7 @@ The script uses the same authentication setup as the original `integration-test.
 ### Command Line Options
 
 - `--rest-url, -r` - URL to the LISA REST API (auto-detected from CloudFormation if not provided)
-- `--verify, -v` - SSL certificate verification ('true' or 'false', defaults to 'false')  
+- `--verify, -v` - SSL certificate verification ('true' or 'false', defaults to 'false')
 - `--cleanup, -c` - Clean up all created resources after deployment
 - `--wait, -w` - Wait for resources to reach ready state before completing
 - `--help, -h` - Display help message
@@ -67,7 +67,7 @@ The test creates the following resources with predictable names for easy identif
   - `bedrock-claude-v3-haiku` - Bedrock Claude 3 Haiku model
   - `self-hosted-llama2-7b` - Self-hosted Llama 2 7B model
 
-- **Repositories:**  
+- **Repositories:**
   - `test-pgvector-repo` - PGVector repository with new RDS instance
   - `test-opensearch-repo` - OpenSearch repository with new cluster
 
@@ -96,7 +96,7 @@ Script monitors resource deployment status and waits up to 30 minutes for each r
 # Quick test - deploy and immediately clean up
 ./test/python/integration-setup-test.sh -c
 
-# Full integration test - deploy, wait for ready, then clean up  
+# Full integration test - deploy, wait for ready, then clean up
 ./test/python/integration-setup-test.sh -w -c
 
 # Deploy for manual testing (resources remain)
@@ -116,7 +116,7 @@ The integration setup test includes new SDK functions in the lisa-sdk package:
 - `delete_model()` - Remove models from LISA
 - `get_model()` - Retrieve model details and status
 
-### Repository Management  
+### Repository Management
 - `create_repository()` - Generic repository creation
 - `create_pgvector_repository()` - Create PGVector repositories with RDS
 - `create_opensearch_repository()` - Create OpenSearch repositories with clusters

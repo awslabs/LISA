@@ -87,7 +87,7 @@ if [ -z "$ALB_URL" ]; then
       --name "/${DEPLOYMENT_STAGE}/${DEPLOYMENT_NAME}/${APP_NAME}/lisaServeRestApiUri" \
       --query "Parameter.Value" \
       --output text 2>/dev/null || echo "")
-  
+
   if [ -z "$ALB_URL" ] || [ "$ALB_URL" = "None" ]; then
     echo "⚠️  Could not retrieve ALB URL from SSM. You may need to provide it manually with --alb-url"
     ALB_URL=""
@@ -100,7 +100,7 @@ if [ -z "$API_URL" ]; then
   echo "Grabbing API from CFN..."
   API_URL=$(aws cloudformation describe-stacks --stack-name ${DEPLOYMENT_NAME}-${APP_NAME}-api-deployment-${DEPLOYMENT_STAGE} --region ${REGION} \
         --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text 2>/dev/null || echo "")
-  
+
   if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
     echo "⚠️  Could not retrieve API URL from CloudFormation. You may need to provide it manually with --rest-url"
     API_URL=""

@@ -107,7 +107,7 @@ export function registerAPIEndpoint (
     } else {
         if (useContainerImage) {
             handler = new DockerImageFunction(scope, functionId, {
-                functionName: functionId,
+                functionName: `${functionId}-container`,
                 code: DockerImageCode.fromImageAsset('.', {
                     file: 'lambda/Dockerfile',
                     cmd: [`${funcDef.resource}.lambda_functions.${funcDef.name}`],

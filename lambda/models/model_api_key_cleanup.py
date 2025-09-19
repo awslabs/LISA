@@ -151,13 +151,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             model_type = litellm_params.get('model', '')
             has_api_key = 'api_key' in litellm_params
             
-            # Debug logging for test-3 model
-            if 'test-3' in model_name.lower():
-                print(f"🔍 DEBUG - test-3 model details:")
-                print(f"    Model name: {model_name}")
-                print(f"    Model type: {model_type}")
-                print(f"    Has api_key: {has_api_key}")
-                print(f"    Full litellm_params: {litellm_params}")
+            # Debug logging
+            print(f"    Model name: {model_name}")
+            print(f"    Model type: {model_type}")
+            print(f"    Has api_key: {has_api_key}")
+            print(f"    Full litellm_params: {litellm_params}")
             
             # Process any model that has api_key - remove the problematic field
             if has_api_key:

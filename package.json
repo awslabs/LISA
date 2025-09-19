@@ -117,8 +117,7 @@
   },
   "resolutions": {
     "prismjs": "^1.30.0",
-    "brace-expansion": "^2.0.0",
-    "esbuild": "^0.25.9"
+    "brace-expansion": "^2.0.0"
   },
   "files": [
     "VERSION",

@@ -124,4 +124,6 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         return StreamingResponse(generate_response(response.iter_lines()), status_code=response.status_code)
     else:  # not a streaming request
         response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers)
+        if response.status_code != 200:
+            logger.error(f"LiteLLM error response: {response.text}")
         return JSONResponse(response.json(), status_code=response.status_code)

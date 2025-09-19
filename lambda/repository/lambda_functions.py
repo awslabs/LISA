@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name, config=retry_config)
-secrets_client = boto3.client("secretsmanager", region_name, config=retry_config)
 iam_client = boto3.client("iam", region_name, config=retry_config)
 step_functions_client = boto3.client("stepfunctions", region_name, config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
@@ -96,6 +95,29 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
     return cast(dict, vs_repo.get_repository_status())
 
 
+def clear_vector_store(repository: any, vs: any, model_name: str) -> None:
+    """
+    Clear the vector store for the specified repository and model.
+
+    Args:
+        repository (dict): The repository configuration
+    """
+    try:
+        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
+            if vs.client.indices.exists(index=model_name):
+                vs.client.indices.delete(index=model_name)
+                logger.info(f"Deleted OpenSearch index: {model_name}")
+            else:
+                logger.info(f"OpenSearch index {model_name} does not exist")
+        elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
+            # For PGVector, delete all documents in the collection
+            vs.delete_collection()
+            logger.info(f"Cleared PGVector collection: {model_name}")
+    except Exception as e:
+        logger.error(f"Failed to clear vector store: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 @api_wrapper
 def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     """Return documents matching the query.
@@ -148,11 +170,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         ):
             logger.info(f"Index {model_name} does not exist. Returning empty docs.")
         else:
-            results = vs.similarity_search(
-                query,
-                k=top_k,
-            )
-            docs = [{"page_content": r.page_content, "metadata": r.metadata} for r in results]
+            docs = _similarity_search(vs, query, top_k)
     doc_content = [
         {
             "Document": {
@@ -549,3 +567,68 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
+
+
+def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
+    """Perform similarity search without scores.
+
+    Args:
+        vs: Vector store instance
+        query: Search query string
+        top_k: Number of top results to return
+
+    Returns:
+        List of documents with page_content and metadata
+    """
+    results = vs.similarity_search_with_score(
+        query,
+        k=top_k,
+    )
+
+    return [{"page_content": r.page_content, "metadata": r.metadata} for r in results]
+
+
+def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) -> list[dict[str, Any]]:
+    """Perform similarity search with normalized scores.
+
+    Args:
+        vs: Vector store instance
+        query: Search query string
+        top_k: Number of top results to return
+        repository: Repository configuration dict
+
+    Returns:
+        List of documents with page_content, metadata, and similarity_score
+    """
+    results = vs.similarity_search_with_score(
+        query,
+        k=top_k,
+    )
+    docs = []
+    for i, (doc, score) in enumerate(results):
+        # Transform score based on vector store type
+        if RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
+            # Convert cosine distance to similarity for PGVector
+            # PGVector returns cosine distance (0-2 range, lower = more similar)
+            # Convert to similarity (0-1 range, higher = more similar)
+            similarity_score = max(0.0, 1.0 - (score / 2.0))
+        else:
+            # OpenSearch and other stores return similarity scores directly
+            similarity_score = score
+
+        logger.info(
+            f"Result {i + 1}: Raw Score={score:.4f}, Similarity={similarity_score:.4f}, "
+            + f"Content: {doc.page_content[:200]}..."
+        )
+        logger.info(f"Result {i + 1} metadata: {doc.metadata}")
+        docs.append(
+            {
+                "page_content": doc.page_content,
+                "metadata": {**doc.metadata, "similarity_score": similarity_score},
+            }
+        )
+
+    if results and max(score for _, score in results) < 0.3:
+        logger.warning(f"All similarity < 0.3 for query '{query}' - possible embedding model mismatch")
+
+    return docs

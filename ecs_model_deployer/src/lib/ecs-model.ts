@@ -60,15 +60,19 @@ export class EcsModel extends Construct {
         const { config, modelConfig, securityGroup, vpc, subnetSelection } = props;
 
         const modelCluster = new ECSCluster(scope, `${id}-ECC`, {
+            identifier: getModelIdentifier(modelConfig),
             config,
             ecsConfig: {
+                tasks: {
+                    [getModelIdentifier(modelConfig)]: {
+                        containerConfig: modelConfig.containerConfig,
+                        environment: this.getEnvironmentVariables(config, modelConfig),
+                    }
+                },
                 amiHardwareType: AmiHardwareType.GPU,
                 autoScalingConfig: modelConfig.autoScalingConfig,
                 buildArgs: this.getBuildArguments(config, modelConfig),
-                containerConfig: modelConfig.containerConfig,
                 containerMemoryBuffer: CONTAINER_MEMORY_BUFFER,
-                environment: this.getEnvironmentVariables(config, modelConfig),
-                identifier: getModelIdentifier(modelConfig),
                 instanceType: modelConfig.instanceType,
                 internetFacing: false,
                 loadBalancerConfig: modelConfig.loadBalancerConfig,

@@ -59,8 +59,17 @@ def mock_boto3_client(service_name, region_name=None, config=None):
         return MagicMock()  # Return a generic MagicMock for other services
 
 
+# Note: boto3.client patch moved to fixture to avoid global conflicts
+
+
+@pytest.fixture(autouse=True)
+def mock_boto3_client_fixture():
+    """Fixture to patch boto3.client for this test module with proper isolation."""
+    with patch("boto3.client", side_effect=mock_boto3_client):
+        yield
+
+
 # Patch boto3.client to use our mock
-patch("boto3.client", side_effect=mock_boto3_client).start()
 
 # Create mock modules for missing dependencies
 mock_vector_store_repo = MagicMock()

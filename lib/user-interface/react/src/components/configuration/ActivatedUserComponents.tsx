@@ -15,7 +15,7 @@
  */
 
 import { Box, Container, Grid, Header, SpaceBetween, Toggle } from '@cloudscape-design/components';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { SetFieldsFunction } from '../../shared/validation';
 
 const ragOptions = {
@@ -32,7 +32,6 @@ const libraryOptions = {
 const inContextOptions = {
     uploadContextDocs: 'Allow document upload to context',
     documentSummarization: 'Allow Document Summarization',
-    mcpConnections: 'Allow MCP Server Connections',
 };
 
 const advancedOptions = {
@@ -43,6 +42,36 @@ const advancedOptions = {
     editChatHistoryBuffer: 'Edit chat history buffer',
     enableModelComparisonUtility: 'Enable Model Comparison Utility',
     encryptSession: 'Enable Session Encryption',
+};
+
+const mcpOptions = {
+    mcpConnections: 'Allow MCP Server Connections',
+    showMcpWorkbench: 'Show MCP Workbench'
+};
+
+const optionGroups = {
+    mcpOptions,
+    inContextOptions,
+    ragOptions,
+    libraryOptions,
+    advancedOptions,
+} as const;
+
+type AllOptionKeys<G extends Record<string, Record<string, unknown>>> = {
+    [K in keyof G]: keyof G[K];
+}[keyof G];
+
+type DependencyMap<G extends Record<string, Record<string, unknown>>> = {
+    [Opt in AllOptionKeys<G>]?: {
+        prerequisites?: ReadonlyArray<AllOptionKeys<G>>;
+        dependents?: ReadonlyArray<AllOptionKeys<G>>;
+    };
+};
+
+
+const dependencies: DependencyMap<typeof optionGroups> = {
+    showMcpWorkbench: {prerequisites: ['mcpConnections'] },
+    mcpConnections: {dependents: ['showMcpWorkbench']}
 };
 
 const configurableOperations = [{
@@ -60,6 +89,9 @@ const configurableOperations = [{
 {
     header: 'Advanced Components',
     items: advancedOptions
+}, {
+    header: 'MCP Components',
+    items: mcpOptions
 }];
 
 export type ActivatedComponentConfigurationProps = {
@@ -68,6 +100,46 @@ export type ActivatedComponentConfigurationProps = {
 };
 
 export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
+    const { setFields } = props;
+    // Helper function to check if an option should be disabled based on prerequisites
+    const isOptionDisabled = useCallback((optionKey: string): boolean => {
+        const dependency = dependencies[optionKey];
+        return Boolean(dependency?.prerequisites?.some((prereq) => !props.enabledComponents[prereq]));
+    }, [props.enabledComponents]);
+
+    // Helper function to recursively collect all dependents
+    const getAllDependents = useCallback((optionKey: string, visited = new Set<string>()): string[] => {
+        if (visited.has(optionKey)) return [];
+        visited.add(optionKey);
+
+        const dependency = dependencies[optionKey];
+        if (!dependency?.dependents) return [];
+
+        const allDependents: string[] = [];
+        for (const dependent of dependency.dependents) {
+            allDependents.push(dependent);
+            allDependents.push(...getAllDependents(dependent, visited));
+        }
+
+        return allDependents;
+    }, []);
+
+    // Handle toggle changes with dependency management
+    const handleToggleChange = useCallback((item: string, checked: boolean) => {
+        const updatedFields: Record<string, boolean> = {};
+        updatedFields[`enabledComponents.${item}`] = checked;
+
+        // If turning off, also turn off all dependents recursively
+        if (!checked) {
+            const allDependents = getAllDependents(item);
+            for (const dependent of allDependents) {
+                updatedFields[`enabledComponents.${dependent}`] = false;
+            }
+        }
+
+        setFields(updatedFields);
+    }, [setFields, getAllDependents]);
+
     return (
         <Container
             header={
@@ -78,21 +150,23 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
             <SpaceBetween direction='vertical' size='m'>
                 <Grid gridDefinition={configurableOperations.map(() => ({ colspan: 4 }))}>
                     {configurableOperations.map((operation) =>
-                        <SpaceBetween size={'xs'}>
+                        <SpaceBetween size={'xs'} key={operation.header}>
                             <Header variant='h3'>
                                 {operation.header}
                             </Header>
                             {Object.keys(operation.items).map((item) => {
+                                const isDisabled = isOptionDisabled(item);
+                                const isChecked = props.enabledComponents[item] || false;
+
                                 return (
                                     <Box textAlign='center' key={item}>
                                         <SpaceBetween alignItems='start' size='xs'>
                                             <Toggle
                                                 onChange={({ detail }) => {
-                                                    const updatedField = {};
-                                                    updatedField[`enabledComponents.${item}`] = detail.checked;
-                                                    props.setFields(updatedField);
+                                                    handleToggleChange(item, detail.checked);
                                                 }}
-                                                checked={props.enabledComponents[item] || false}
+                                                checked={isChecked}
+                                                disabled={isDisabled}
                                                 data-cy={`Toggle-${item}`}
                                             >
                                                 {operation.items[item]}

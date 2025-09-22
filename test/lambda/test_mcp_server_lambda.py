@@ -386,7 +386,7 @@ def test_create_mcp_server_with_owner(mcp_servers_table, lambda_context):
     response = create(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["owner"] == "custom-owner"
+    assert body["owner"] == "test-user"
 
 
 def test_update_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context):

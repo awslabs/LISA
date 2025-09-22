@@ -29,6 +29,7 @@ import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH } from '../../util';
+import { McpApi } from './mcp';
 
 /**
  * Props for the ConfigurationApi construct
@@ -46,6 +47,7 @@ type ConfigurationApiProps = {
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
     vpc: Vpc;
+    mcpApi: McpApi;
 } & BaseProps;
 
 /**
@@ -57,13 +59,19 @@ export class ConfigurationApi extends Construct {
     constructor (scope: Construct, id: string, props: ConfigurationApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, mcpApi, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'configuration-common-lambda-layer',
             StringParameter.fromStringParameterName(this, 'configuration-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+        );
+
+        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'mcp-fastapi-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
         // Create DynamoDB table to handle config data
@@ -81,6 +89,7 @@ export class ConfigurationApi extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
+        const mcpServersTable = dynamodb.Table.fromTableName(this, 'McpServersTable', mcpApi.mcpServersTableNameParameter.stringValue);
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
 
         // Add SSM permissions for cache invalidation
@@ -94,6 +103,7 @@ export class ConfigurationApi extends Construct {
                 resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/lisa/cache/*`]
             })
         );
+        mcpServersTable.grantReadWriteData(lambdaRole);
 
         // Populate the App Config table with default config
         const date = new Date();
@@ -122,6 +132,7 @@ export class ConfigurationApi extends Construct {
                                 'uploadContextDocs': {'BOOL': 'True'},
                                 'documentSummarization': {'BOOL': 'True'},
                                 'showRagLibrary': {'BOOL': 'True'},
+                                'showMcpWorkbench': {'BOOL': 'False'},
                                 'showPromptTemplateLibrary': {'BOOL': 'True'},
                                 'mcpConnections': {'BOOL': 'True'},
                                 'modelLibrary': {'BOOL': 'True'},
@@ -145,6 +156,15 @@ export class ConfigurationApi extends Construct {
             rootResourceId: rootResourceId,
         });
 
+        const fastApiEndpoint = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/serve/endpoint`);
+
+        const environment = {
+            CONFIG_TABLE_NAME: this.configTable.tableName,
+            FASTAPI_ENDPOINT: fastApiEndpoint,
+            // add MCP_SERVERS_TABLE_NAME so we can update it if the configuration changes
+            MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName
+        };
+
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
@@ -153,9 +173,7 @@ export class ConfigurationApi extends Construct {
                 description: 'Get configuration',
                 path: 'configuration',
                 method: 'GET',
-                environment: {
-                    CONFIG_TABLE_NAME: this.configTable.tableName,
-                },
+                environment
             },
             {
                 name: 'update_configuration',
@@ -163,9 +181,7 @@ export class ConfigurationApi extends Construct {
                 description: 'Updates config data',
                 path: 'configuration/{configScope}',
                 method: 'PUT',
-                environment: {
-                    CONFIG_TABLE_NAME: this.configTable.tableName,
-                },
+                environment
             },
         ];
 
@@ -175,7 +191,7 @@ export class ConfigurationApi extends Construct {
                 this,
                 restApi,
                 lambdaPath,
-                [commonLambdaLayer],
+                [commonLambdaLayer, fastapiLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,

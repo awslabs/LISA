@@ -51,6 +51,8 @@ type McpApiProps = {
  * API which Maintains mcp state in DynamoDB
  */
 export class McpApi extends Construct {
+    readonly mcpServersTableNameParameter: StringParameter;
+
     constructor (scope: Construct, id: string, props: McpApiProps) {
         super(scope, id);
 
@@ -94,6 +96,13 @@ export class McpApi extends Construct {
             indexName: byOwnerSorted,
             partitionKey: { name: 'owner', type: dynamodb.AttributeType.STRING },
             sortKey: { name: 'created', type: dynamodb.AttributeType.STRING },
+        });
+
+        // Create SSM parameter for the MCP servers table name
+        this.mcpServersTableNameParameter = new StringParameter(this, 'McpServersTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/table/mcpServersTable`,
+            stringValue: mcpServersTable.tableName,
+            description: 'Name of the MCP servers DynamoDB table',
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {

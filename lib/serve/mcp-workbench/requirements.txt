@@ -1,0 +1,2 @@
+## Add additional requirements to this file
+## boto3==1.34.34

@@ -1,0 +1,47 @@
+#!/bin/bash
+set -e
+
+ROOT=$(pwd)
+OUTPUT_DIR=$ROOT/dist/layers
+mkdir -p $OUTPUT_DIR
+
+PYPI_URL=${PYPI_URL:-https://pypi.org/simple/}
+source .venv/bin/activate
+
+build_layer() {
+  local package_name=$1
+  local source_path=$2
+  local pre_build_cmd=$3
+  echo "Building Lambda Layer $package_name from $source_path..."
+
+  if [ -n "$pre_build_cmd" ]; then
+    eval "$pre_build_cmd"
+  fi
+
+  cd $source_path
+  $ROOT/bin/package-lambda-layer --src . --output "$package_name.zip" --pypi $PYPI_URL --layer
+  mv ./build/"$package_name.zip" $OUTPUT_DIR/
+  rm -rf ./build
+  cd $ROOT
+}
+
+build_lambda() {
+  local package_name=$1
+  local source_path=$2
+  echo "Building Lambda $package_name from $source_path..."
+  cd "$source_path"
+  $ROOT/bin/package-lambda-layer --src . --output "$package_name.zip" --pypi $PYPI_URL
+  mv ./build/"$package_name.zip" $OUTPUT_DIR/
+  rm -rf ./build
+  cd $ROOT
+}
+
+echo "Building Python Lambda Layers..."
+build_layer "AimlAdcLisaCommonLayer" "./lib/core/layers/common"
+build_layer "AimlAdcLisaAuthLayer" "./lib/core/layers/authorizer"
+build_layer "AimlAdcLisaFastApiLayer" "./lib/core/layers/fastapi"
+build_layer "AimlAdcLisaRag" "./lib/rag/layer" "python3 scripts/cache-tiktoken-for-offline.py ./lib/rag/layer/TIKTOKEN_CACHE"
+build_layer "AimlAdcLisaSdk" "./lisa-sdk"
+
+echo "Building Python Lambdas..."
+build_lambda "AimlAdcLisaLambda" "./lambda"

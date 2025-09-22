@@ -50,6 +50,16 @@ export class LisaChatApplicationConstruct extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
+
+        const mcpApi = new McpApi(scope, 'McpApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
         // Create Configuration API first to get the configuration table
         const configurationApi = new ConfigurationApi(scope, 'ConfigurationApi', {
             authorizer,
@@ -58,6 +68,7 @@ export class LisaChatApplicationConstruct extends Construct {
             rootResourceId,
             securityGroups,
             vpc,
+            mcpApi
         });
 
         // Add REST API Lambdas to APIGW
@@ -78,15 +89,6 @@ export class LisaChatApplicationConstruct extends Construct {
             rootResourceId,
             securityGroups,
             vpc
-        });
-
-        new McpApi(scope, 'McpApi', {
-            authorizer,
-            config,
-            restApiId,
-            rootResourceId,
-            securityGroups,
-            vpc,
         });
 
         new UserPreferencesApi(scope, 'UserPreferencesApi', {

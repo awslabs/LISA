@@ -100,25 +100,3 @@ Cypress.Commands.add('loginAs', (username = 'user') => {
     log.snapshot('after');
     log.end();
 });
-
-/**
- * Custom command to log out the current user and clear authentication state.
- * This ensures a clean state before running authentication tests.
- */
-Cypress.Commands.add('logout', () => {
-    // Clear all storage
-    cy.window().then((win) => {
-        if (win.localStorage) {
-            win.localStorage.clear();
-        }
-        if (win.sessionStorage) {
-            win.sessionStorage.clear();
-        }
-    });
-
-    // Visit the home page to trigger logout
-    cy.visit(BASE_URL);
-
-    // Wait for the page to load
-    cy.get('body').should('be.visible');
-});

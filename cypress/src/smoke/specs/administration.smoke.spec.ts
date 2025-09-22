@@ -30,34 +30,13 @@ import {
 } from '../../support/adminHelpers';
 
 describe('Administration features (Smoke)', () => {
-    beforeEach(() => {
-        // Ensure clean state before each test
-        cy.logout();
-    });
-
     it('Admin sees the button', () => {
         cy.loginAs('admin');
-
-        // Debug: Check if we're on the right page and user is authenticated
-        cy.url().should('not.include', '/');
-        cy.get('body').should('be.visible');
-
-        // Debug: Check if the topbar is rendered
-        cy.get('[data-testid="topbar"], .awsui-top-navigation, [role="navigation"]').should('exist');
-
         checkAdminButtonExists();
     });
 
     it('Admin can expand menu', () => {
         cy.loginAs('admin');
-
-        // Debug: Check if we're on the right page and user is authenticated
-        cy.url().should('not.include', '/');
-        cy.get('body').should('be.visible');
-
-        // Debug: Check if the topbar is rendered
-        cy.get('[data-testid="topbar"], .awsui-top-navigation, [role="navigation"]').should('exist');
-
         expandAdminMenu();
     });
 

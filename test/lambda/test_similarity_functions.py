@@ -27,7 +27,7 @@ os.environ["AWS_REGION"] = "us-east-1"
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
-from repository.lambda_functions import _similarity_search, _similarity_search_with_score, clear_vector_store
+from repository.lambda_functions import _similarity_search, _similarity_search_with_score, delete_index
 from utilities.repository_types import RepositoryType
 
 
@@ -38,7 +38,7 @@ def test_similarity_search():
     mock_doc = MagicMock()
     mock_doc.page_content = "Test content"
     mock_doc.metadata = {"source": "test.txt"}
-    mock_vs.similarity_search_with_score.return_value = [mock_doc]
+    mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.8)]
 
     result = _similarity_search(mock_vs, "test query", 5)
 
@@ -91,63 +91,121 @@ def test_similarity_search_with_score_opensearch():
         assert result[0]["metadata"]["similarity_score"] == 0.9  # Direct similarity score
 
 
-def test_clear_vector_store_opensearch():
-    """Test clear_vector_store with OpenSearch repository"""
-    mock_vs = MagicMock()
-    mock_vs.client.indices.exists.return_value = True
-    mock_vs.client.indices.delete.return_value = {}
+def test_delete_index_opensearch():
+    """Test delete_index with OpenSearch repository"""
+    event = {
+        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "requestContext": {"authorizer": {"groups": "[]"}},
+    }
+    context = {}
 
-    repository = {"type": "opensearch"}
+    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
+        "repository.lambda_functions.get_id_token"
+    ), patch("repository.lambda_functions.get_embeddings"), patch(
+        "repository.lambda_functions.get_vector_store_client"
+    ) as mock_get_vs, patch(
+        "repository.lambda_functions.RepositoryType.is_type"
+    ) as mock_is_type, patch(
+        "repository.lambda_functions.is_admin"
+    ) as mock_is_admin:
 
-    with patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type:
+        mock_is_admin.return_value = True
+        mock_find_repo.return_value = {"type": "opensearch"}
+        mock_vs = MagicMock()
+        mock_vs.client.indices.exists.return_value = True
+        mock_get_vs.return_value = mock_vs
         mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.OPENSEARCH
 
-        clear_vector_store(repository, mock_vs, "test-model")
+        delete_index(event, context)
 
         mock_vs.client.indices.exists.assert_called_once_with(index="test-model")
         mock_vs.client.indices.delete.assert_called_once_with(index="test-model")
 
 
-def test_clear_vector_store_opensearch_index_not_exists():
-    """Test clear_vector_store with OpenSearch when index doesn't exist"""
-    mock_vs = MagicMock()
-    mock_vs.client.indices.exists.return_value = False
+def test_delete_index_opensearch_index_not_exists():
+    """Test delete_index with OpenSearch when index doesn't exist"""
+    event = {
+        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "requestContext": {"authorizer": {"groups": "[]"}},
+    }
+    context = {}
 
-    repository = {"type": "opensearch"}
+    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
+        "repository.lambda_functions.get_id_token"
+    ), patch("repository.lambda_functions.get_embeddings"), patch(
+        "repository.lambda_functions.get_vector_store_client"
+    ) as mock_get_vs, patch(
+        "repository.lambda_functions.RepositoryType.is_type"
+    ) as mock_is_type, patch(
+        "repository.lambda_functions.is_admin"
+    ) as mock_is_admin:
 
-    with patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type:
+        mock_is_admin.return_value = True
+        mock_find_repo.return_value = {"type": "opensearch"}
+        mock_vs = MagicMock()
+        mock_vs.client.indices.exists.return_value = False
+        mock_get_vs.return_value = mock_vs
         mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.OPENSEARCH
 
-        clear_vector_store(repository, mock_vs, "test-model")
+        delete_index(event, context)
 
         mock_vs.client.indices.exists.assert_called_once_with(index="test-model")
         mock_vs.client.indices.delete.assert_not_called()
 
 
-def test_clear_vector_store_pgvector():
-    """Test clear_vector_store with PGVector repository"""
-    mock_vs = MagicMock()
-    mock_vs.delete_collection.return_value = None
+def test_delete_index_pgvector():
+    """Test delete_index with PGVector repository"""
+    event = {
+        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "requestContext": {"authorizer": {"groups": "[]"}},
+    }
+    context = {}
 
-    repository = {"type": "pgvector"}
+    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
+        "repository.lambda_functions.get_id_token"
+    ), patch("repository.lambda_functions.get_embeddings"), patch(
+        "repository.lambda_functions.get_vector_store_client"
+    ) as mock_get_vs, patch(
+        "repository.lambda_functions.RepositoryType.is_type"
+    ) as mock_is_type, patch(
+        "repository.lambda_functions.is_admin"
+    ) as mock_is_admin:
 
-    with patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type:
+        mock_is_admin.return_value = True
+        mock_find_repo.return_value = {"type": "pgvector"}
+        mock_vs = MagicMock()
+        mock_get_vs.return_value = mock_vs
         mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.PGVECTOR
 
-        clear_vector_store(repository, mock_vs, "test-model")
+        delete_index(event, context)
 
         mock_vs.delete_collection.assert_called_once()
 
 
-def test_clear_vector_store_exception():
-    """Test clear_vector_store handles exceptions"""
-    mock_vs = MagicMock()
-    mock_vs.client.indices.exists.side_effect = Exception("Connection error")
+def test_delete_index_exception():
+    """Test delete_index handles exceptions"""
+    event = {
+        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "requestContext": {"authorizer": {"groups": "[]"}},
+    }
+    context = {}
 
-    repository = {"type": "opensearch"}
+    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
+        "repository.lambda_functions.get_id_token"
+    ), patch("repository.lambda_functions.get_embeddings"), patch(
+        "repository.lambda_functions.get_vector_store_client"
+    ) as mock_get_vs, patch(
+        "repository.lambda_functions.RepositoryType.is_type"
+    ) as mock_is_type, patch(
+        "repository.lambda_functions.is_admin"
+    ) as mock_is_admin:
 
-    with patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type:
+        mock_is_admin.return_value = True
+        mock_find_repo.return_value = {"type": "opensearch"}
+        mock_vs = MagicMock()
+        mock_vs.client.indices.exists.side_effect = Exception("Connection error")
+        mock_get_vs.return_value = mock_vs
         mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.OPENSEARCH
 
         # Should not raise exception
-        clear_vector_store(repository, mock_vs, "test-model")
+        delete_index(event, context)

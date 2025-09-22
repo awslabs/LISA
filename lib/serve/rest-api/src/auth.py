@@ -299,13 +299,15 @@ class Authorizer:
 
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    def _log_access_attempt(self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = "") -> None:
+    def _log_access_attempt(
+        self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = ""
+    ) -> None:
         """Centralized logging for all authentication attempts."""
         status = "SUCCESS" if success else "FAILED"
         log_msg = f"AUTH {status}: user={user_id} method={auth_method} endpoint={endpoint}"
         if reason:
             log_msg += f" reason={reason}"
-        
+
         if success:
             logger.info(log_msg)
         else:
@@ -320,7 +322,7 @@ class Authorizer:
         user_id = "anonymous"
         has_access = False
         reason = ""
-        
+
         if not self.use_idp:
             auth_method = "NO_IDP"
             user_id = "anonymous"
@@ -339,7 +341,7 @@ class Authorizer:
             else:
                 auth_method = "OIDC"
                 user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
-                
+
                 # If user is admin, always allow access
                 if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
                     has_access = True
@@ -354,7 +356,6 @@ class Authorizer:
                         jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
                     )
                     reason = "Valid user group" if has_access else "Invalid user group"
-        
-        
+
         self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
         return has_access

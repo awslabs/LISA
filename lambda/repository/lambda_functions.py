@@ -95,29 +95,6 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
     return cast(dict, vs_repo.get_repository_status())
 
 
-def clear_vector_store(repository: any, vs: any, model_name: str) -> None:
-    """
-    Clear the vector store for the specified repository and model.
-
-    Args:
-        repository (dict): The repository configuration
-    """
-    try:
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            if vs.client.indices.exists(index=model_name):
-                vs.client.indices.delete(index=model_name)
-                logger.info(f"Deleted OpenSearch index: {model_name}")
-            else:
-                logger.info(f"OpenSearch index {model_name} does not exist")
-        elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
-            # For PGVector, delete all documents in the collection
-            vs.delete_collection()
-            logger.info(f"Cleared PGVector collection: {model_name}")
-    except Exception as e:
-        logger.error(f"Failed to clear vector store: {e}")
-        return {"status": "error", "message": str(e)}
-
-
 @api_wrapper
 def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     """Return documents matching the query.
@@ -131,6 +108,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
+            - queryStringParameters.score (optional): Include similarity scores (default: false)
         context (dict): The Lambda context object
 
     Returns:
@@ -144,6 +122,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     model_name = query_string_params["modelName"]
     query = query_string_params["query"]
     top_k = query_string_params.get("topK", 3)
+    include_score = query_string_params.get("score", "false").lower() == "true"
     repository_id = event["pathParameters"]["repositoryId"]
 
     repository = vs_repo.find_repository_by_id(repository_id)
@@ -170,7 +149,11 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         ):
             logger.info(f"Index {model_name} does not exist. Returning empty docs.")
         else:
-            docs = _similarity_search(vs, query, top_k)
+            docs = (
+                _similarity_search_with_score(vs, query, top_k, repository)
+                if include_score
+                else _similarity_search(vs, query, top_k)
+            )
     doc_content = [
         {
             "Document": {
@@ -552,6 +535,48 @@ def delete(event: dict, context: dict) -> Any:
 
         # Return success status and execution ARN
         return {"status": "success", "executionArn": response["executionArn"]}
+
+
+@api_wrapper
+@admin_only
+def delete_index(event: dict, context: dict) -> None:
+    """
+    Clear the vector store for the specified repository and model.
+
+    Args:
+        event (dict): The Lambda event object containing path parameters
+        context (dict): The Lambda context object
+    """
+    path_params = event.get("pathParameters", {}) or {}
+    repository_id = path_params.get("repositoryId", None)
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    model_name = path_params.get("modelName", None)
+    if not model_name:
+        raise ValidationError("modelName is required")
+
+    repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+    id_token = get_id_token(event)
+    embeddings = get_embeddings(model_name=model_name, id_token=id_token)
+    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+
+    try:
+        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
+            if vs.client.indices.exists(index=model_name):
+                vs.client.indices.delete(index=model_name)
+                logger.info(f"Deleted OpenSearch index: {model_name}")
+            else:
+                logger.info(f"OpenSearch index {model_name} does not exist")
+        elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
+            # For PGVector, delete all documents in the collection
+            vs.delete_collection()
+            logger.info(f"Deleted PGVector collection: {model_name}")
+        else:
+            logger.error(f"Unsupported repository type: {repository.get('type')}")
+            return {"status": "error", "message": "Repository is not supported"}
+    except Exception as e:
+        logger.error(f"Failed to clear vector store: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 def _remove_legacy(repository_id: str) -> None:

@@ -379,7 +379,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         # Log the actual response structure for debugging
         logger.error(f"Unexpected LiteLLM response structure: {litellm_response}")
         raise KeyError(f"Could not find model ID in LiteLLM response: {litellm_response}")
-    
+
     output_dict["litellm_id"] = litellm_id
 
     model_table.update_item(

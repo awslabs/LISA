@@ -122,10 +122,10 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
 
     // --- Trigger the login flow in the UI ---
     cy.visit('/');
-    
+
     // Wait for the page to load completely
     cy.get('body').should('be.visible');
-    
+
     // Check if we're already authenticated (no modal should appear)
     cy.get('body').then(($body) => {
         if ($body.find('[role="dialog"]').length === 0) {
@@ -137,12 +137,12 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
             cy.get('[role="dialog"]').within(() => {
                 cy.contains('Sign in').should('be.visible').click();
             });
-            
+
             // Wait for the authentication to complete
             cy.wait('@stubToken');
         }
     });
-    
+
     // Wait for the page to be ready after authentication
     cy.get('body').should('be.visible');
 });
@@ -161,10 +161,10 @@ Cypress.Commands.add('logout', () => {
             win.sessionStorage.clear();
         }
     });
-    
+
     // Visit the home page to trigger logout
     cy.visit('/');
-    
+
     // Wait for the page to load
     cy.get('body').should('be.visible');
 });

@@ -24,8 +24,8 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { RepositoryApi } from './api/repository';
-import { ARCHITECTURE } from '../core';
-import { Layer } from '../core/layers';
+// import { ARCHITECTURE } from '../core';
+// import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config, RDSConfig } from '../schema';

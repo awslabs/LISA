@@ -63,7 +63,7 @@ export class IngestionJobConstruct extends Construct {
     constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
-        const { config, vpc, lambdaRole, layers, baseEnvironment } = props;
+        const { config, vpc, lambdaRole, baseEnvironment } = props;
         const hash = crypto.randomBytes(6).toString('hex');
 
         // DynamoDB table for tracking ingestion jobs

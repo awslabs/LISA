@@ -29,12 +29,12 @@ updates:
       include: "scope"
     open-pull-requests-limit: 3
 
-  # Enable version updates for pip  
+  # Enable version updates for pip
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "tuesday" 
+      day: "tuesday"
       time: "09:00"
     reviewers:
       - "awslabs/lisa-maintainers"

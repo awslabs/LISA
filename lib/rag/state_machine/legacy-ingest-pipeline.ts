@@ -16,7 +16,7 @@
 
 import { Construct } from 'constructs';
 import { BaseProps } from '../../schema';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+// import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Vpc } from '../../networking/vpc';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';

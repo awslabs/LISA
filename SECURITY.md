@@ -37,7 +37,7 @@ Please include the following information:
 - **Dependency Scanning**: Regular vulnerability detection
 - **License Compliance**: Automated license validation
 
-### **Dependency Management** 
+### **Dependency Management**
 - **Dependabot**: Automated security updates
 - **Pin Dependencies**: Critical dependencies pinned by hash
 - **Vulnerability Monitoring**: Continuous monitoring of known CVEs
@@ -55,7 +55,7 @@ Please include the following information:
 ## ⚡ Response Timeline
 
 - **Critical vulnerabilities**: 24-48 hours
-- **High severity**: 7 days  
+- **High severity**: 7 days
 - **Medium severity**: 30 days
 - **Low severity**: Next release cycle
 
@@ -74,7 +74,7 @@ Security decisions follow these principles:
 
 1. **Defense in Depth**: Multiple layers of security controls
 2. **Zero Trust**: Verify all access and communications
-3. **Least Privilege**: Minimum required access permissions  
+3. **Least Privilege**: Minimum required access permissions
 4. **Continuous Monitoring**: Real-time threat detection
 5. **Incident Response**: Documented response procedures
 

@@ -115,10 +115,10 @@ Cypress.Commands.add('logout', () => {
             win.sessionStorage.clear();
         }
     });
-    
+
     // Visit the home page to trigger logout
     cy.visit(BASE_URL);
-    
+
     // Wait for the page to load
     cy.get('body').should('be.visible');
 });

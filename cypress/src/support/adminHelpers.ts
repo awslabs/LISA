@@ -25,7 +25,7 @@ export function checkAdminButtonExists () {
         const buttonTexts = $buttons.map((_, el) => Cypress.$(el).text().trim()).get();
         cy.log('Available buttons:', buttonTexts);
     });
-    
+
     // Look for the Administration button by text content
     cy.contains('button', 'Administration')
         .should('exist')

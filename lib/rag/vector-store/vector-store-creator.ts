@@ -43,7 +43,7 @@ export class VectorStoreCreatorStack extends Construct {
     constructor (scope: Construct, id: string, props: VectorStoreCreatorStackProps) {
         super(scope, id);
 
-        const { baseEnvironment, config, layers, ragVectorStoreTable, vpc } = props;
+        const { baseEnvironment, config, ragVectorStoreTable, vpc } = props;
 
         const vectorStoreTable = dynamodb.Table.fromTableArn(this, createCdkId([config.deploymentPrefix, 'RagVectorStoreTable']), ragVectorStoreTable.value);
 

@@ -27,10 +27,10 @@ import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../core/utils';
-import { getDefaultRuntime } from '../../../api-base/utils';
+// import { getDefaultRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
-import { LAMBDA_PATH } from '../../../util';
+// import { LAMBDA_PATH } from '../../../util';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,
@@ -135,7 +135,7 @@ export class DeleteStoreStateMachine extends Construct {
             resultPath: '$.ddbResult',
         }).next(handleCleanupBedrockKnowledgeBase);
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
+        // const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const cleanupDocsFunc = new DockerImageFunction(this, 'CleanupRepositoryDocsFunc', {
             code: DockerImageCode.fromImageAsset('.', {
                 file: 'lambda/Dockerfile',

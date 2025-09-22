@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write       # Required for branch creation
-      id-token: write       # Required for AWS authentication  
+      id-token: write       # Required for AWS authentication
       pull-requests: write  # Required for creating PRs
     steps:
       - name: Checkout Source Tag

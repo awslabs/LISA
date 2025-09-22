@@ -319,11 +319,18 @@ class Authorizer:
             logger.info("No JWT data returned with API/Management Token")
             return True
 
+        # If user is admin, always allow access
+        if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
+            logger.info("User is admin, allowing access")
+            return True
+
+        # If admin is required but user is not admin, deny access
         if require_admin:
-            logger.info("Admin group required")
-            return is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property)
-        else:
-            logger.info("Admin group not required, checking user group")
-            return self.user_group == "" or is_user_in_group(
-                jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
-            )
+            logger.warning("Admin required but user is not admin")
+            return False
+
+        # For non-admin requests, check user group
+        logger.info("Checking user group for non-admin request")
+        return self.user_group == "" or is_user_in_group(
+            jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
+        )

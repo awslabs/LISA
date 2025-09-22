@@ -111,5 +111,17 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
 
     // --- Trigger the login flow in the UI ---
     cy.visit('/');
-    cy.contains('Sign in').click();
+    
+    // Wait for the page to load completely
+    cy.get('body').should('be.visible');
+    
+    // Wait for the modal to be visible and click the Sign in button
+    // The modal should be visible when user is not authenticated
+    cy.get('[role="dialog"]', { timeout: 10000 }).should('be.visible');
+    cy.get('[role="dialog"]').within(() => {
+        cy.contains('Sign in').should('be.visible').click();
+    });
+    
+    // Wait for the authentication to complete
+    cy.wait('@stubToken');
 });

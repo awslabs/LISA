@@ -33,7 +33,6 @@ jobs:
       uses: github/codeql-action/init@b36bf259c813715f76eafece573914b94412cd13 # v3
       with:
         languages: ${{ matrix.language }}
-        queries: security-extended,security-and-quality
 
     - name: Set up Python 3.11
       if: matrix.language == 'python'
@@ -68,3 +67,4 @@ jobs:
       uses: github/codeql-action/analyze@b36bf259c813715f76eafece573914b94412cd13 # v3
       with:
         category: "/language:${{matrix.language}}"
+        upload: true

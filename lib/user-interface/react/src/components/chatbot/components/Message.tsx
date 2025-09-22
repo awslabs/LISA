@@ -21,7 +21,7 @@ import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import atomOneDark from 'react-syntax-highlighter/dist/styles/atom-one-dark';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
@@ -112,7 +112,7 @@ export default function Message ({ message, isRunning, showMetadata, isStreaming
                             />
                         </div>
                         <SyntaxHighlighter
-                            style={vscDarkPlus}
+                            style={atomOneDark}
                             language={language}
                             PreTag='div'
                             {...props}

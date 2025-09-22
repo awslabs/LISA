@@ -33,7 +33,7 @@ enum NagType {
 const nagResults: NagResult = {
     LisaApiBase: [1,26,0,25],
     LisaApiDeployment: [0,0,0,0],
-    LisaChat: [4,61,0,69],
+    LisaChat: [4,63,0,69],
     LisaCore: [0,1,0,6],
     LisaDocs: [1,21,0,12],
     LisaIAM: [0,14,0,0],

@@ -21,7 +21,7 @@ import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from
 import { JsonView, darkStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import atomOneDark from 'react-syntax-highlighter/dist/styles/atom-one-dark';
+import atomOneDark from 'react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';

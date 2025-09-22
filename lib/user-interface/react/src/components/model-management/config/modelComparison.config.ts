@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import atomOneDark from 'react-syntax-highlighter/dist/styles/atom-one-dark';
+import atomOneDark from 'react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark';
 import { SYSTEM_PROMPT } from '@/shared/constants/systemPrompt';
 
 export const MODEL_COMPARISON_CONFIG = {

@@ -349,7 +349,7 @@ export class LisaServeApplicationConstruct extends Construct {
                 }),
             ]
         });
-        
+
         // Grant SSM parameter read access and attach invocation permissions
         const restRole = restApi.taskRoles[ECSTasks.REST];
         if (restRole) {

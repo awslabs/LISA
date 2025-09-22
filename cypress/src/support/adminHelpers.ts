@@ -20,7 +20,14 @@
  */
 
 export function checkAdminButtonExists () {
-    cy.get('button[aria-label="Administration"]')
+    // Debug: Log all buttons on the page
+    cy.get('button').then(($buttons) => {
+        const buttonTexts = $buttons.map((_, el) => Cypress.$(el).text().trim()).get();
+        cy.log('Available buttons:', buttonTexts);
+    });
+    
+    // Look for the Administration button by text content
+    cy.contains('button', 'Administration')
         .should('exist')
         .and('be.visible')
         .and('have.attr', 'aria-expanded', 'false');
@@ -28,7 +35,7 @@ export function checkAdminButtonExists () {
 
 export function expandAdminMenu () {
     // click → verify expanded → verify menu items
-    cy.get('button[aria-label="Administration"]')
+    cy.contains('button', 'Administration')
         .filter(':visible')
         .click()
         .should('have.attr', 'aria-expanded', 'true');
@@ -50,6 +57,6 @@ export function expandAdminMenu () {
 }
 
 export function checkNoAdminButton () {
-    cy.get('button[aria-label="Administration"]')
+    cy.contains('button', 'Administration')
         .should('not.exist');
 }

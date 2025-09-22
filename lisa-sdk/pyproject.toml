@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0.0",
     "langchain",
-    "langchain-community", 
+    "langchain-community",
     "langchain-openai",
 ]
 

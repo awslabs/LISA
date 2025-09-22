@@ -40,6 +40,17 @@ const API_STUBS = [
 Cypress.Commands.add('loginAs', (role = 'user') => {
     const isAdmin = role === 'admin';
 
+    // --- First, ensure user is logged out by clearing any existing auth state ---
+    cy.window().then((win) => {
+        // Clear any existing authentication state
+        if (win.localStorage) {
+            win.localStorage.clear();
+        }
+        if (win.sessionStorage) {
+            win.sessionStorage.clear();
+        }
+    });
+
     let apiBase: string = '/dev/';
     // --- Stub env.js so window.env is correct ---
     cy.fixture('env.json').then((env) => {
@@ -115,13 +126,45 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
     // Wait for the page to load completely
     cy.get('body').should('be.visible');
     
-    // Wait for the modal to be visible and click the Sign in button
-    // The modal should be visible when user is not authenticated
-    cy.get('[role="dialog"]', { timeout: 10000 }).should('be.visible');
-    cy.get('[role="dialog"]').within(() => {
-        cy.contains('Sign in').should('be.visible').click();
+    // Check if we're already authenticated (no modal should appear)
+    cy.get('body').then(($body) => {
+        if ($body.find('[role="dialog"]').length === 0) {
+            // User is already authenticated, no need to click sign in
+            cy.log('User appears to be already authenticated');
+        } else {
+            // Wait for the modal to be visible and click the Sign in button
+            cy.get('[role="dialog"]', { timeout: 15000 }).should('be.visible');
+            cy.get('[role="dialog"]').within(() => {
+                cy.contains('Sign in').should('be.visible').click();
+            });
+            
+            // Wait for the authentication to complete
+            cy.wait('@stubToken');
+        }
     });
     
-    // Wait for the authentication to complete
-    cy.wait('@stubToken');
+    // Wait for the page to be ready after authentication
+    cy.get('body').should('be.visible');
+});
+
+/**
+ * Custom command to log out the current user and clear authentication state.
+ * This ensures a clean state before running authentication tests.
+ */
+Cypress.Commands.add('logout', () => {
+    // Clear all storage
+    cy.window().then((win) => {
+        if (win.localStorage) {
+            win.localStorage.clear();
+        }
+        if (win.sessionStorage) {
+            win.sessionStorage.clear();
+        }
+    });
+    
+    // Visit the home page to trigger logout
+    cy.visit('/');
+    
+    // Wait for the page to load
+    cy.get('body').should('be.visible');
 });

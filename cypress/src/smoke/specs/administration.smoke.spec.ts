@@ -30,6 +30,11 @@ import {
 } from '../../support/adminHelpers';
 
 describe('Administration features (Smoke)', () => {
+    beforeEach(() => {
+        // Ensure clean state before each test
+        cy.logout();
+    });
+
     it('Admin sees the button', () => {
         cy.loginAs('admin');
         checkAdminButtonExists();

@@ -1,12 +1,14 @@
 name: "CodeQL Security Analysis"
 
 on:
-  push:
-    branches: [ "main", "develop" ]
-  pull_request:
-    branches: [ "main", "develop" ]
-  schedule:
-    - cron: '0 8 * * 1'  # Weekly on Monday at 8 AM UTC
+  # Temporarily disabled to avoid conflicts with default CodeQL setup
+  # push:
+  #   branches: [ "main", "develop" ]
+  # pull_request:
+  #   branches: [ "main", "develop" ]
+  # schedule:
+  #   - cron: '0 8 * * 1'  # Weekly on Monday at 8 AM UTC
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,6 +35,8 @@ jobs:
       uses: github/codeql-action/init@b36bf259c813715f76eafece573914b94412cd13 # v3
       with:
         languages: ${{ matrix.language }}
+        config: |
+          name: "Custom CodeQL Analysis"
 
     - name: Set up Python 3.11
       if: matrix.language == 'python'
@@ -67,4 +71,3 @@ jobs:
       uses: github/codeql-action/analyze@b36bf259c813715f76eafece573914b94412cd13 # v3
       with:
         category: "/language:${{matrix.language}}"
-        upload: true

@@ -585,7 +585,7 @@ def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
         k=top_k,
     )
 
-    return [{"page_content": r.page_content, "metadata": r.metadata} for r in results]
+    return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc, score in results]
 
 
 def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) -> list[dict[str, Any]]:

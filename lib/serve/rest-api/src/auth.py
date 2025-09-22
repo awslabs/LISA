@@ -250,11 +250,7 @@ class ManagementTokenAuthorizer:
         cache_key = int(time() // 3600)
         secret_tokens = get_management_tokens(cache_key)
         token = get_authorization_token(headers)
-        logger.info(f"Management Auth Token: {token}")
-
-        result = token in secret_tokens
-        logger.info(f"Is Management Auth Token: {result}")
-        return result
+        return token in secret_tokens
 
 
 @singleton
@@ -303,34 +299,62 @@ class Authorizer:
 
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
+    def _log_access_attempt(self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = "") -> None:
+        """Centralized logging for all authentication attempts."""
+        status = "SUCCESS" if success else "FAILED"
+        log_msg = f"AUTH {status}: user={user_id} method={auth_method} endpoint={endpoint}"
+        if reason:
+            log_msg += f" reason={reason}"
+        
+        if success:
+            logger.info(log_msg)
+        else:
+            logger.warning(log_msg)
+
     async def can_access(
         self, request: Request, require_admin: bool, jwt_data: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Return whether the user is authorized to access the endpoint."""
+        endpoint = f"{request.method} {request.url.path}"
+        auth_method = "NO_IDP"
+        user_id = "anonymous"
+        has_access = False
+        reason = ""
+        
         if not self.use_idp:
-            logger.info("IDP not used, allowing access")
-            return True
+            auth_method = "NO_IDP"
+            user_id = "anonymous"
+            has_access = True
+            reason = "IDP disabled"
+        else:
+            # Use provided JWT data or authenticate request
+            if jwt_data is None:
+                jwt_data = await self.authenticate_request(request)
 
-        # Use provided JWT data or authenticate request
-        if jwt_data is None:
-            jwt_data = await self.authenticate_request(request)
-
-        if not jwt_data:
-            logger.info("No JWT data returned with API/Management Token")
-            return True
-
-        # If user is admin, always allow access
-        if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
-            logger.info("User is admin, allowing access")
-            return True
-
-        # If admin is required but user is not admin, deny access
-        if require_admin:
-            logger.warning("Admin required but user is not admin")
-            return False
-
-        # For non-admin requests, check user group
-        logger.info("Checking user group for non-admin request")
-        return self.user_group == "" or is_user_in_group(
-            jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
-        )
+            if not jwt_data:
+                auth_method = "API_TOKEN"
+                user_id = "api_user"
+                has_access = True
+                reason = "Valid API/Management token"
+            else:
+                auth_method = "OIDC"
+                user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
+                
+                # If user is admin, always allow access
+                if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
+                    has_access = True
+                    reason = "Admin user"
+                # If admin is required but user is not admin, deny access
+                elif require_admin:
+                    has_access = False
+                    reason = "Admin required"
+                # For non-admin requests, check user group
+                else:
+                    has_access = self.user_group == "" or is_user_in_group(
+                        jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
+                    )
+                    reason = "Valid user group" if has_access else "Invalid user group"
+        
+        
+        self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
+        return has_access

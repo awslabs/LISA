@@ -364,7 +364,7 @@ def create_self_hosted_model(
                 "timeout": 5,
                 "retries": 3,
             },
-            "environment": {"MAX_TOTAL_TOKENS": "2048", "MAX_CONCURRENT_REQUESTS": "128", "MAX_INPUT_LENGTH": "1024"},
+            "environment": {"MAX_TOTAL_TOKENS": "8192", "MAX_CONCURRENT_REQUESTS": "128", "MAX_INPUT_LENGTH": "32768"},
         },
         "inferenceContainer": "vllm",
         "instanceType": "g5.xlarge",

@@ -82,7 +82,7 @@ class RagEmbeddings:
             response = requests.post(
                 url,
                 json=request_data,
-                headers={"Authorization": self.token, "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
                 verify=self.cert_path,  # Use proper SSL verification
                 timeout=300,  # 5 minute timeout
             )

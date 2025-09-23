@@ -403,7 +403,7 @@ export class LisaServeApplicationConstruct extends Construct {
         return LayerVersion.fromLayerVersionArn(
             scope,
             'LISAServeCommonLayerVersion',
-            StringParameter.fromStringParameterName(scope, 'serve-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+            StringParameter.valueForStringParameter(scope,`${config.deploymentPrefix}/layerVersion/common`),
         );
     }
 }

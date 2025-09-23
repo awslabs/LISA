@@ -17,7 +17,6 @@
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -65,7 +64,7 @@ export class ConfigurationApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'configuration-common-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'configuration-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -92,17 +91,6 @@ export class ConfigurationApi extends Construct {
         const mcpServersTable = dynamodb.Table.fromTableName(this, 'McpServersTable', mcpApi.mcpServersTableNameParameter.stringValue);
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
 
-        // Add SSM permissions for cache invalidation
-        lambdaRole.addToPrincipalPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: [
-                    'ssm:PutParameter',
-                    'ssm:GetParameter',
-                ],
-                resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/lisa/cache/*`]
-            })
-        );
         mcpServersTable.grantReadWriteData(lambdaRole);
 
         // Populate the App Config table with default config

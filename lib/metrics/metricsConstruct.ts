@@ -61,7 +61,7 @@ export class MetricsConstruct extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'metrics-common-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'metrics-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
         // Create Usage Metrics table

@@ -84,13 +84,13 @@ export class ModelsApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'models-common-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'models-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'models-fastapi-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'models-fastapi-layer-param', `${config.deploymentPrefix}/layerVersion/fastapi`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
         const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];

@@ -28,7 +28,6 @@ from utilities.common_functions import api_wrapper, get_property_path, retry_con
 
 logger = logging.getLogger(__name__)
 
-ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 
@@ -59,34 +58,6 @@ def _get_configurations(config_scope: str) -> dict[str, Any]:
     return response.get("Items", {})  # type: ignore [no-any-return]
 
 
-def _invalidate_session_encryption_cache() -> None:
-    """Invalidate session encryption cache across Lambda functions.
-
-    This function sends a signal to clear the session encryption cache
-    in both session and encryption Lambda functions when global configuration
-    is updated.
-    """
-    try:
-        # Update a parameter that indicates cache should be invalidated
-        # Lambda functions can check this timestamp against their cache timestamp
-        current_time = str(int(time.time()))
-
-        try:
-            ssm_client.put_parameter(
-                Name="/lisa/cache/session-encryption-invalidation",
-                Value=current_time,
-                Type="String",
-                Overwrite=True,
-                Description="Timestamp when session encryption cache should be invalidated",
-            )
-            logger.info("Updated session encryption cache invalidation timestamp")
-        except ClientError as e:
-            logger.warning(f"Failed to update cache invalidation parameter: {e}")
-
-    except Exception as e:
-        logger.error(f"Error invalidating session encryption cache: {e}")
-
-
 @api_wrapper
 def update_configuration(event: dict, context: dict) -> None:
     """Update configuration in DynamoDB."""
@@ -101,18 +72,6 @@ def update_configuration(event: dict, context: dict) -> None:
 
     try:
         table.put_item(Item=body)
-
-        # If this is a global configuration update that might affect session encryption,
-        # invalidate the cache
-        if (
-            body.get("configScope") == "global"
-            and "configuration" in body
-            and "enabledComponents" in body.get("configuration", {})
-            and "encryptSession" in body.get("configuration", {}).get("enabledComponents", {})
-        ):
-            logger.info("Global configuration with session encryption setting updated, invalidating cache")
-            _invalidate_session_encryption_cache()
-
     except ClientError:
         logger.exception("Error updating session in DynamoDB")
 

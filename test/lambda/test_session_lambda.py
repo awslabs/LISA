@@ -329,10 +329,6 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
 
 def test_put_session(dynamodb_table, config_table, sample_session, lambda_context):
     """Test putting a session."""
-    # Clear cache to use default behavior (encryption disabled by default)
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -399,7 +395,6 @@ def test_list_sessions_empty(dynamodb_table, lambda_context):
 
 # Import the configuration functions for testing
 from session.lambda_functions import (
-    _check_cache_invalidation,
     _delete_user_session,
     _find_first_human_message,
     _generate_presigned_image_url,
@@ -415,10 +410,6 @@ from session.lambda_functions import (
 
 def test_is_session_encryption_enabled_true(config_table, lambda_context):
     """Test session encryption enabled via global configuration."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Add global configuration entry with encryption enabled
     config_table.put_item(
@@ -430,16 +421,17 @@ def test_is_session_encryption_enabled_true(config_table, lambda_context):
         }
     )
 
+    # Clear cache to ensure fresh result
+    from session.lambda_functions import cache
+
+    cache.clear()
+
     result = _is_session_encryption_enabled()
     assert result is True
 
 
 def test_is_session_encryption_enabled_false(config_table, lambda_context):
     """Test session encryption disabled via global configuration."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Add global configuration entry with encryption disabled
     config_table.put_item(
@@ -451,53 +443,24 @@ def test_is_session_encryption_enabled_false(config_table, lambda_context):
         }
     )
 
+    # Clear cache to ensure fresh result
+    from session.lambda_functions import cache
+
+    cache.clear()
+
     result = _is_session_encryption_enabled()
     assert result is False
 
 
-def test_is_session_encryption_enabled_string_values(config_table, lambda_context):
-    """Test session encryption with string boolean values."""
-    test_cases = [
-        ("true", True),
-        ("false", False),
-        ("True", True),
-        ("False", False),
-        ("1", True),
-        ("0", False),
-        ("yes", True),
-        ("no", False),
-        ("on", True),
-        ("off", False),
-    ]
-
-    for string_value, expected in test_cases:
-        # Clear cache between tests
-        from session.lambda_functions import _config_cache
-
-        _config_cache.clear()
-
-        # Update global configuration
-        config_table.put_item(
-            Item={
-                "configScope": "global",
-                "versionId": 0,
-                "configuration": {"enabledComponents": {"encryptSession": string_value}},
-                "created_at": "1234567890",
-            }
-        )
-
-        result = _is_session_encryption_enabled()
-        assert result == expected, f"Expected {expected} for input '{string_value}', got {result}"
-
-
 def test_is_session_encryption_enabled_default_fallback(config_table, lambda_context):
     """Test session encryption defaults to disabled when configuration is missing."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Don't add any configuration entry
+    # Clear cache to ensure fresh result
+    from session.lambda_functions import cache
+
+    cache.clear()
+
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to disabled
 
@@ -508,144 +471,13 @@ def test_is_session_encryption_enabled_error_fallback(mock_config_table, lambda_
     # Mock the config table to raise an exception
     mock_config_table.query.side_effect = Exception("Database error")
 
+    # Clear cache to ensure fresh result
+    from session.lambda_functions import cache
+
+    cache.clear()
+
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to disabled on error
-
-
-# Cache Invalidation Tests
-@patch("session.lambda_functions.boto3.client")
-def test_check_cache_invalidation_newer_timestamp(mock_boto_client, lambda_context):
-    """Test cache invalidation when SSM parameter timestamp is newer."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
-
-    # Mock SSM client response with newer timestamp
-    mock_ssm_client = MagicMock()
-    mock_boto_client.return_value = mock_ssm_client
-    mock_ssm_client.get_parameter.return_value = {"Parameter": {"Value": "1234567890"}}
-
-    # Set initial timestamp to be older
-    import session.lambda_functions
-
-    session.lambda_functions._cache_invalidation_timestamp = 1234567880
-
-    result = _check_cache_invalidation()
-    assert result is True
-    mock_ssm_client.get_parameter.assert_called_once_with(Name="/lisa/cache/session-encryption-invalidation")
-
-
-@patch("session.lambda_functions.boto3.client")
-def test_check_cache_invalidation_older_timestamp(mock_boto_client, lambda_context):
-    """Test cache invalidation when SSM parameter timestamp is older."""
-    # Mock SSM client response with older timestamp
-    mock_ssm_client = MagicMock()
-    mock_boto_client.return_value = mock_ssm_client
-    mock_ssm_client.get_parameter.return_value = {"Parameter": {"Value": "1234567880"}}
-
-    # Set initial timestamp to be newer
-    import session.lambda_functions
-
-    session.lambda_functions._cache_invalidation_timestamp = 1234567890
-
-    result = _check_cache_invalidation()
-    assert result is False
-
-
-@patch("session.lambda_functions.boto3.client")
-def test_check_cache_invalidation_client_error(mock_boto_client, lambda_context):
-    """Test cache invalidation with ClientError."""
-    from botocore.exceptions import ClientError
-
-    # Mock SSM client to raise ClientError
-    mock_ssm_client = MagicMock()
-    mock_boto_client.return_value = mock_ssm_client
-    mock_ssm_client.get_parameter.side_effect = ClientError(
-        error_response={"Error": {"Code": "ParameterNotFound"}}, operation_name="GetParameter"
-    )
-
-    result = _check_cache_invalidation()
-    assert result is False
-
-
-@patch("session.lambda_functions.boto3.client")
-def test_check_cache_invalidation_value_error(mock_boto_client, lambda_context):
-    """Test cache invalidation with ValueError (invalid timestamp format)."""
-    # Mock SSM client response with invalid timestamp
-    mock_ssm_client = MagicMock()
-    mock_boto_client.return_value = mock_ssm_client
-    mock_ssm_client.get_parameter.return_value = {"Parameter": {"Value": "invalid-timestamp"}}
-
-    result = _check_cache_invalidation()
-    assert result is False
-
-
-@patch("session.lambda_functions.boto3.client")
-def test_check_cache_invalidation_general_exception(mock_boto_client, lambda_context):
-    """Test cache invalidation with general exception."""
-    # Mock SSM client to raise general exception
-    mock_ssm_client = MagicMock()
-    mock_boto_client.return_value = mock_ssm_client
-    mock_ssm_client.get_parameter.side_effect = Exception("General error")
-
-    result = _check_cache_invalidation()
-    assert result is False
-
-
-# Configuration Edge Cases Tests
-def test_is_session_encryption_enabled_numeric_values(config_table, lambda_context):
-    """Test session encryption with numeric boolean values."""
-    from decimal import Decimal
-
-    test_cases = [
-        (1, True),
-        (0, False),
-        (Decimal("1.0"), True),
-        (Decimal("0.0"), False),
-        (-1, True),
-        (2, True),
-    ]
-
-    for numeric_value, expected in test_cases:
-        # Clear cache between tests
-        from session.lambda_functions import _config_cache
-
-        _config_cache.clear()
-
-        # Update global configuration - use Decimal for floats to avoid DynamoDB errors
-        config_table.put_item(
-            Item={
-                "configScope": "global",
-                "versionId": 0,
-                "configuration": {"enabledComponents": {"encryptSession": numeric_value}},
-                "created_at": "1234567890",
-            }
-        )
-
-        result = _is_session_encryption_enabled()
-        assert result == expected, f"Expected {expected} for input {numeric_value}, got {result}"
-
-
-def test_is_session_encryption_enabled_unexpected_type(config_table, lambda_context):
-    """Test session encryption with unexpected type values."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
-
-    # Add global configuration with unexpected type
-    config_table.put_item(
-        Item={
-            "configScope": "global",
-            "versionId": 0,
-            "configuration": {"enabledComponents": {"encryptSession": {"nested": "object"}}},
-            "created_at": "1234567890",
-        }
-    )
-
-    result = _is_session_encryption_enabled()
-    assert result is False  # Should default to False for unexpected types
 
 
 @patch("session.lambda_functions.config_table")
@@ -653,15 +485,15 @@ def test_is_session_encryption_enabled_client_error(mock_config_table, lambda_co
     """Test session encryption with ClientError in configuration lookup."""
     from botocore.exceptions import ClientError
 
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
-
     # Mock config table to raise ClientError
     mock_config_table.query.side_effect = ClientError(
         error_response={"Error": {"Code": "ResourceNotFoundException"}}, operation_name="Query"
     )
+
+    # Clear cache to ensure fresh result
+    from session.lambda_functions import cache
+
+    cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to False on ClientError
@@ -670,13 +502,14 @@ def test_is_session_encryption_enabled_client_error(mock_config_table, lambda_co
 @patch("session.lambda_functions.config_table")
 def test_is_session_encryption_enabled_general_exception(mock_config_table, lambda_context):
     """Test session encryption with general exception in configuration lookup."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Mock config table to raise general exception
     mock_config_table.query.side_effect = Exception("General database error")
+
+    # Clear cache to ensure fresh result
+    from session.lambda_functions import cache
+
+    cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to False on general exception
@@ -1192,10 +1025,6 @@ def test_put_session_encryption_enabled_success(
     mock_migrate, mock_encryption_enabled, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with encryption enabled and successful encryption."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Mock encryption enabled
     mock_encryption_enabled.return_value = True
@@ -1232,11 +1061,7 @@ def test_put_session_encryption_error(
     mock_migrate, mock_encryption_enabled, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with encryption enabled but encryption error."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
     from utilities.session_encryption import SessionEncryptionError
-
-    _config_cache.clear()
 
     # Mock encryption enabled
     mock_encryption_enabled.return_value = True
@@ -1263,10 +1088,6 @@ def test_put_session_sqs_metrics_success(
     mock_sqs_client, mock_get_groups, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with successful SQS metrics publishing."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Set environment variable for metrics queue
     os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
@@ -1291,10 +1112,6 @@ def test_put_session_sqs_metrics_missing_queue(
     mock_sqs_client, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with missing USAGE_METRICS_QUEUE_NAME environment variable."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Remove environment variable
     if "USAGE_METRICS_QUEUE_NAME" in os.environ:
@@ -1319,10 +1136,6 @@ def test_put_session_sqs_metrics_error(
     mock_sqs_client, mock_get_groups, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with SQS metrics publishing error."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Set environment variable for metrics queue
     os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
@@ -1349,10 +1162,6 @@ def test_put_session_model_config_update(
     mock_update_config, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with model configuration update."""
-    # Clear cache before test
-    from session.lambda_functions import _config_cache
-
-    _config_cache.clear()
 
     # Mock model config update
     updated_config = {"selectedModel": {"modelId": "test-model", "features": ["new-feature"]}}

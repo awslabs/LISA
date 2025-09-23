@@ -17,7 +17,6 @@ import base64
 import json
 import logging
 import os
-import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -27,6 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
+from cachetools import cached, TTLCache
 from utilities.auth import get_username
 from utilities.common_functions import api_wrapper, get_groups, get_session_id, retry_config
 from utilities.encoders import convert_decimal
@@ -50,47 +50,10 @@ config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 executor = ThreadPoolExecutor(max_workers=10)
 
 # Cache for configuration values to avoid repeated database queries
-_config_cache: Dict[str, Dict[str, Any]] = {}
-_cache_ttl = 300  # 5 minutes
-_cache_invalidation_timestamp = 0
+cache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
 
 
-def _check_cache_invalidation() -> bool:
-    """Check if the cache should be invalidated based on SSM parameter.
-
-    Returns
-    -------
-    bool
-        True if cache should be invalidated, False otherwise.
-    """
-    global _cache_invalidation_timestamp
-
-    try:
-        import boto3
-
-        ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-
-        try:
-            response = ssm_client.get_parameter(Name="/lisa/cache/session-encryption-invalidation")
-
-            invalidation_timestamp = int(response["Parameter"]["Value"])
-
-            # If the invalidation timestamp is newer than our last check, invalidate cache
-            if invalidation_timestamp > _cache_invalidation_timestamp:
-                logger.info(f"Cache invalidation detected: {invalidation_timestamp} > {_cache_invalidation_timestamp}")
-                _cache_invalidation_timestamp = invalidation_timestamp
-                return True
-
-        except (ClientError, ValueError) as e:
-            # Parameter doesn't exist or invalid format, don't invalidate
-            logger.debug(f"No cache invalidation parameter found: {e}")
-
-    except Exception as e:
-        logger.warning(f"Error checking cache invalidation: {e}")
-
-    return False
-
-
+@cached(cache=cache)
 def _is_session_encryption_enabled() -> bool:
     """Check if session encryption is enabled via global configuration.
 
@@ -100,20 +63,6 @@ def _is_session_encryption_enabled() -> bool:
         True if session encryption is enabled, False otherwise.
         Defaults to False if configuration is not found or accessible.
     """
-    cache_key = "global_config_encryption"
-    current_time = time.time()
-
-    # Check if cache should be invalidated
-    if _check_cache_invalidation():
-        logger.info("Invalidating session encryption cache due to configuration update")
-        _config_cache.clear()
-
-    # Check cache first
-    if cache_key in _config_cache:
-        cached_data = _config_cache[cache_key]
-        if current_time - cached_data["timestamp"] < _cache_ttl:
-            logger.debug("Using cached global configuration for session encryption")
-            return cached_data["value"]  # type: ignore [no-any-return]
 
     try:
         logger.debug("Querying global configuration for session encryption setting")
@@ -131,27 +80,10 @@ def _is_session_encryption_enabled() -> bool:
             configuration = config_item.get("configuration", {})
             enabled_components = configuration.get("enabledComponents", {})
             encrypt_session = enabled_components.get("encryptSession", False)  # Default to False
-
-            # Handle various boolean representations
-            if isinstance(encrypt_session, bool):
-                result = encrypt_session
-            elif isinstance(encrypt_session, str):
-                result = encrypt_session.lower() in ("true", "1", "yes", "on")
-            elif isinstance(encrypt_session, (int, float, Decimal)):
-                result = bool(encrypt_session)
-            else:
-                logger.warning(f"Unexpected type for encryptSession: {type(encrypt_session)}, defaulting to False")
-                result = False
-
-            # Cache the result
-            _config_cache[cache_key] = {"value": result, "timestamp": current_time}
-
-            logger.info(f"Retrieved session encryption setting from global config: {result}")
-            return result
+            logger.info(f"Retrieved session encryption setting from global config: {encrypt_session}")
+            return encrypt_session
         else:
             logger.warning("No global configuration found, defaulting session encryption to disabled")
-            # Cache the default value
-            _config_cache[cache_key] = {"value": False, "timestamp": current_time}
             return False
 
     except ClientError as error:

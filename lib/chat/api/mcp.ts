@@ -62,13 +62,13 @@ export class McpApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'mcp-common-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'mcp-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'mcp-fastapi-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'mcp-fastapi-layer-param', `${config.deploymentPrefix}/layerVersion/fastapi`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
         // Create DynamoDB table to handle configured mcp servers

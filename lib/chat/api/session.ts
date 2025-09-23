@@ -65,14 +65,14 @@ export class SessionApi extends Construct {
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'session-common-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'session-common-layer-param', `${config.deploymentPrefix}/layerVersion/common`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
         // Get FastAPI layer for cryptography support
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'session-fastapi-lambda-layer',
-            StringParameter.fromStringParameterName(this, 'session-fastapi-layer-param', `${config.deploymentPrefix}/layerVersion/fastapi`).stringValue,
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
         // Create DynamoDB table to handle chat sessions
@@ -179,15 +179,6 @@ export class SessionApi extends Construct {
                 effect: Effect.ALLOW,
                 actions: ['dynamodb:GetItem', 'dynamodb:Query'],
                 resources: [configTable.tableArn]
-            })
-        );
-
-        // Add SSM permissions for cache invalidation
-        lambdaRole.addToPrincipalPolicy(
-            new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: ['ssm:GetParameter'],
-                resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/lisa/cache/*`]
             })
         );
 

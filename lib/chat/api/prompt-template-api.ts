@@ -57,7 +57,7 @@ export class PromptTemplateApi extends Construct {
         const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'models-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this,`${config.deploymentPrefix}/layerVersion/fastapi`),
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
         const promptTemplatesTable = new Table(this, 'PromptTemplatesTable', {

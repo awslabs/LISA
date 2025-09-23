@@ -27,7 +27,7 @@ from langchain_core.documents import Document
 from models.domain_objects import ChunkingStrategyType, IngestionJob
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
-from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE
+from utilities.constants import DOCX_FILE, PDF_FILE, RICH_TEXT_FILE, TEXT_FILE
 from utilities.exceptions import RagUploadException
 
 logger = logging.getLogger(__name__)
@@ -47,12 +47,13 @@ def _extract_text_by_content_type(content_type: str, s3_object: dict) -> str:
     extraction_functions = {
         PDF_FILE: _extract_pdf_content,
         DOCX_FILE: _extract_docx_content,
-        TEXT_FILE: lambda obj: obj["Body"].read(),
+        TEXT_FILE: _extract_text_content,
+        RICH_TEXT_FILE: _extract_text_content,
     }
 
     extraction_function = extraction_functions.get(content_type)
     if extraction_function:
-        return str(extraction_function(s3_object))
+        return extraction_function(s3_object)
     else:
         logger.error(f"File has unsupported content type: {content_type}")
         raise RagUploadException("Unsupported file type")
@@ -124,6 +125,18 @@ def _extract_docx_content(s3_object: dict) -> str:
 
     output = "\n".join(para.text for para in doc.paragraphs)
     return output
+
+
+def _extract_text_content(s3_object: dict) -> str:
+    """
+    Extracts text content from an S3 object. Decode as
+    utf-8 to properly read special characters
+
+    Parameters
+    ----------
+    s3_object (dict): an S3 object containing a text file body.
+    """
+    return s3_object["Body"].read().decode("utf-8", errors="replace")
 
 
 def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:

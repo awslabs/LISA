@@ -170,7 +170,7 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    echo: Optional[int] = Field(False, description="Whether to prepend the prompt to the generated text.")
+    echo: Optional[bool] = Field(False, description="Whether to prepend the prompt to the generated text.")
     frequency_penalty: Optional[float] = Field(None, description="Penalty to add for text repetition.")
     logit_bias: Optional[Dict[Any, Any]] = Field(
         None,

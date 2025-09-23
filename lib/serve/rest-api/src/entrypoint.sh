@@ -21,6 +21,8 @@ python ./src/utils/generate_litellm_config.py -f litellm_config.yaml
 # --use_prisma_db_push enables automatic Prisma schema management
 litellm -c litellm_config.yaml --use_prisma_db_push &
 
+# Validate THREADS variable with default value
+THREADS=${THREADS:-4}
 echo "Starting Gunicorn with $THREADS workers..."
 
 # Start Gunicorn with Uvicorn workers.

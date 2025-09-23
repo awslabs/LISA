@@ -61,7 +61,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
-            index_name=index.lower(),
+            index_name=index,
             embedding_function=embeddings,
             http_auth=auth,
             timeout=300,

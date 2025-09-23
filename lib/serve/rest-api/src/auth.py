@@ -13,27 +13,28 @@
 #   limitations under the License.
 
 """Authentication for FastAPI app."""
+import asyncio
 import os
 import ssl
 import sys
+import threading
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from time import time
 from typing import Any, Dict, Optional
 
 import boto3
 import jwt
 import requests
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-# The following are field names, not passwords or tokens
-API_KEY_HEADER_NAMES = [
-    "Authorization",  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
-    "Api-Key",  # pragma: allowlist secret # Azure key format, can be used with Continue IDE plugin
-]
+from .utils.decorators import singleton
+
 TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 TOKEN_TABLE_NAME = "TOKEN_TABLE_NAME"  # nosec B105
 USE_AUTH = "USE_AUTH"
@@ -49,6 +50,19 @@ logger.configure(
         }
     ]
 )
+
+
+# The following are field names, not passwords or tokens
+class AuthHeaders(str, Enum):
+    """API key header names."""
+
+    AUTHORIZATION = "Authorization"  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
+    API_KEY = "Api-Key"  # pragma: allowlist secret # Azure key format, can be used with Continue IDE plugin
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """Return list of header values."""
+        return list(cls)
 
 
 def is_idp_used() -> bool:
@@ -88,6 +102,7 @@ def id_token_is_valid(
     id_token: str, client_id: str, authority: str, jwks_client: jwt.PyJWKClient
 ) -> Optional[Dict[str, Any]]:
     """Check whether an ID token is valid and return decoded data."""
+    logger.info(f"Auth Token: {id_token}")
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(id_token)
         data: Dict[str, Any] = jwt.decode(
@@ -106,13 +121,13 @@ def id_token_is_valid(
             },
         )
         return data
-    except jwt.exceptions.PyJWTError as e:
+    except (jwt.exceptions.PyJWTError, jwt.exceptions.DecodeError) as e:
         logger.exception(e)
         return None
 
 
 def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: str) -> bool:
-    """Check if the user is an admin."""
+    """Check if the user is in group."""
     props = jwt_groups_property.split(".")
     current_node = jwt_data
     for prop in props:
@@ -123,7 +138,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
     return group in current_node
 
 
-def get_authorization_token(headers: Dict[str, str], header_name: str) -> str:
+def get_authorization_token(headers: Dict[str, str], header_name: str = AuthHeaders.AUTHORIZATION) -> str:
     """Get Bearer token from Authorization headers if it exists."""
     if header_name in headers:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
@@ -133,29 +148,38 @@ def get_authorization_token(headers: Dict[str, str], header_name: str) -> str:
 class OIDCHTTPBearer(HTTPBearer):
     """OIDC based bearer token authenticator."""
 
-    def __init__(self, **kwargs: Dict[str, Any]):
+    def __init__(self, authority: Optional[str] = None, client_id: Optional[str] = None, **kwargs: Dict[str, Any]):
         super().__init__(**kwargs)
-        self._token_authorizer = ApiTokenAuthorizer()
-        self._management_token_authorizer = ManagementTokenAuthorizer()
+        self.authority = authority or os.environ.get("AUTHORITY", "")
+        self.client_id = client_id or os.environ.get("CLIENT_ID", "")
+        self.jwks_client = get_jwks_client()
 
-        self._jwks_client = get_jwks_client()
-
-    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
-        """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
-        if self._token_authorizer.is_valid_api_token(request.headers):
-            return None  # valid API token, not continuing with OIDC auth
-        elif self._management_token_authorizer.is_valid_api_token(request.headers):
-            logger.info("looks like a valid mgmt token")
-            return None  # valid management token, not continuing with OIDC auth
+    async def id_token_is_valid(self, request: Request) -> Optional[Dict[str, Any]]:
+        """Check whether an ID token is valid and return decoded data."""
         http_auth_creds = await super().__call__(request)
-        if not id_token_is_valid(
-            id_token=http_auth_creds.credentials,
-            authority=os.environ["AUTHORITY"],
-            client_id=os.environ["CLIENT_ID"],
-            jwks_client=self._jwks_client,
-        ):
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-        return http_auth_creds
+        id_token = http_auth_creds.credentials
+        logger.info(f"Auth Token: {id_token}")
+        try:
+            signing_key = self.jwks_client.get_signing_key_from_jwt(id_token)
+            data: Dict[str, Any] = jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256"],
+                issuer=self.authority,
+                audience=self.client_id,
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_nbf": True,
+                    "verify_iat": True,
+                    "verify_aud": True,
+                    "verify_iss": True,
+                },
+            )
+            return data
+        except (jwt.exceptions.PyJWTError, jwt.exceptions.DecodeError) as e:
+            logger.exception(e)
+            return None
 
 
 class ApiTokenAuthorizer:
@@ -175,12 +199,15 @@ class ApiTokenAuthorizer:
         ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
-        for header_name in API_KEY_HEADER_NAMES:
-            token = headers.get(header_name, "").removeprefix("Bearer").strip()
+
+        for header_name in AuthHeaders.values():
+            token = get_authorization_token(headers, header_name)
+
+            logger.info(f"API Auth Token: {token}")
             if token:
-                token_info = self._get_token_info(token)
+                token_info = await asyncio.to_thread(self._get_token_info, token)
                 if token_info:
                     token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
                     current_time = int(datetime.now().timestamp())
@@ -193,33 +220,154 @@ class ManagementTokenAuthorizer:
     """Class for checking Management tokens against a SecretsManager secret."""
 
     def __init__(self) -> None:
-        self._secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
-        self._secret_tokens: list[str] = []
-        self._last_run = 0
+        self._cache = TTLCache(maxsize=1, ttl=300)
+        self._cache_lock = threading.RLock()
+        self._local = threading.local()
 
-    def _refreshTokens(self) -> None:
-        """Refresh secret management tokens."""
-        current_time = int(time())
-        if current_time - (self._last_run or 0) > 3600:
-            secret_tokens = []
+    def _get_secrets_client(self):
+        """Get thread-local secrets manager client."""
+        if not hasattr(self._local, "secrets_manager"):
+            self._local.secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+        return self._local.secrets_manager
+
+    def get_management_tokens(self) -> list[str]:
+        """Return secret management tokens if they exist."""
+        cache_key = hashkey()
+
+        with self._cache_lock:
+            if cache_key in self._cache:
+                return self._cache[cache_key]
+
+        logger.info("Updating management tokens cache")
+        secret_tokens = []
+        secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
+        secrets_manager = self._get_secrets_client()
+
+        try:
             secret_tokens.append(
-                self._secrets_manager.get_secret_value(
-                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
-                )["SecretString"]
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
             )
-            try:
-                secret_tokens.append(
-                    self._secrets_manager.get_secret_value(
-                        SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
-                    )["SecretString"]
-                )
-            except Exception:
-                logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
-            self._secret_tokens = secret_tokens
-            self._last_run = current_time
+            secret_tokens.append(
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+            )
+        except Exception:
+            logger.info(f"No previous secret version for {secret_id}")
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+        with self._cache_lock:
+            self._cache[cache_key] = secret_tokens
+
+        return secret_tokens
+
+    async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
-        self._refreshTokens()
-        token = headers.get("Authorization", "").strip()
-        return token in self._secret_tokens
+        secret_tokens = await asyncio.to_thread(self.get_management_tokens)
+        token = get_authorization_token(headers)
+        return token in secret_tokens
+
+
+@singleton
+class Authorizer:
+    """Composite authenticator that tries multiple authentication methods in order."""
+
+    def __init__(self) -> None:
+        self.client_id = os.environ.get("CLIENT_ID", "")
+        self.authority = os.environ.get("AUTHORITY", "")
+        self.admin_group = os.environ.get("ADMIN_GROUP", "")
+        self.user_group = os.environ.get("USER_GROUP", "")
+        self.jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
+        self.use_idp = is_idp_used()
+
+        self.token_authorizer = ApiTokenAuthorizer()
+        self.management_token_authorizer = ManagementTokenAuthorizer()
+        self.oidc_authorizer = OIDCHTTPBearer(authority=self.authority, client_id=self.client_id)
+
+    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+        jwt_data = await self.authenticate_request(request)
+        return jwt_data
+
+    async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
+        """Authenticate request and return JWT data if OIDC, None if API/management token."""
+        if not self.use_idp:
+            return None
+
+        # First try API tokens
+        logger.info("Try API Auth Token...")
+        if await self.token_authorizer.is_valid_api_token(request.headers):
+            logger.info("Valid API token")
+            return None
+
+        # Then try management tokens
+        logger.info("Try Management Auth Token...")
+        if await self.management_token_authorizer.is_valid_api_token(request.headers):
+            logger.info("Valid Management token")
+            return None
+
+        # Finally try OIDC Bearer tokens
+        logger.info("Try OIDC Auth Token...")
+        jwt_data = await self.oidc_authorizer.id_token_is_valid(request)
+        if jwt_data:
+            logger.info("Valid OIDC token")
+            return jwt_data
+
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    def _log_access_attempt(
+        self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = ""
+    ) -> None:
+        """Centralized logging for all authentication attempts."""
+        status = "SUCCESS" if success else "FAILED"
+        log_msg = f"AUTH {status}: user={user_id} method={auth_method} endpoint={endpoint}"
+        if reason:
+            log_msg += f" reason={reason}"
+
+        if success:
+            logger.info(log_msg)
+        else:
+            logger.warning(log_msg)
+
+    async def can_access(
+        self, request: Request, require_admin: bool, jwt_data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Return whether the user is authorized to access the endpoint."""
+        endpoint = f"{request.method} {request.url.path}"
+        auth_method = "NO_IDP"
+        user_id = "anonymous"
+        has_access = False
+        reason = ""
+
+        if not self.use_idp:
+            auth_method = "NO_IDP"
+            user_id = "anonymous"
+            has_access = True
+            reason = "IDP disabled"
+        else:
+            # Use provided JWT data or authenticate request
+            if jwt_data is None:
+                jwt_data = await self.authenticate_request(request)
+
+            if not jwt_data:
+                auth_method = "API_TOKEN"
+                user_id = "api_user"
+                has_access = True
+                reason = "Valid API/Management token"
+            else:
+                auth_method = "OIDC"
+                user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
+
+                # If user is admin, always allow access
+                if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
+                    has_access = True
+                    reason = "Admin user"
+                # If admin is required but user is not admin, deny access
+                elif require_admin:
+                    has_access = False
+                    reason = "Admin required"
+                # For non-admin requests, check user group
+                else:
+                    has_access = self.user_group == "" or is_user_in_group(
+                        jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
+                    )
+                    reason = "Valid user group" if has_access else "Invalid user group"
+
+        self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
+        return has_access

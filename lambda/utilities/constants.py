@@ -16,3 +16,4 @@
 PDF_FILE = "pdf"
 TEXT_FILE = "txt"
 DOCX_FILE = "docx"
+RICH_TEXT_FILE = "rtf"

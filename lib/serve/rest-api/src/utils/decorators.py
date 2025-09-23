@@ -12,24 +12,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Embedding routes."""
+"""Utility decorators."""
+from typing import Any, Callable, cast, Dict, TypeVar
 
-import logging
-
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-
-from ....handlers.embeddings import handle_embeddings
-from ....utils.resources import EmbeddingsRequest, RestApiResource
-
-logger = logging.getLogger(__name__)
-
-router = APIRouter()
+T = TypeVar("T")
 
 
-@router.post(f"/{RestApiResource.EMBEDDINGS}")
-async def embeddings(request: EmbeddingsRequest) -> JSONResponse:
-    """Text embeddings."""
-    response = await handle_embeddings(request.dict())
+def singleton(cls: type[T]) -> Callable[..., T]:
+    """Singleton decorator."""
+    instances: Dict[type, Any] = {}
 
-    return JSONResponse(content=response, status_code=200)
+    def get_instance(*args: Any, **kwargs: Any) -> T:
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return cast(T, instances[cls])
+
+    return get_instance

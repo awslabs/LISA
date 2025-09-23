@@ -19,7 +19,7 @@ from .errors import parse_error
 
 
 class ModelMixin(BaseMixin):
-    """Mixin for repository-related operations."""
+    """Mixin for model-related operations."""
 
     def list_models(self) -> List[Dict]:
         response = self._session.get(f"{self.url}/models")
@@ -43,7 +43,93 @@ class ModelMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
+    def create_bedrock_model(self, payload: Dict) -> Dict:
+        """Create a Bedrock model configuration.
 
-# TODO: Create the following:
-# - Create Models
-# - Manage Models
+        Args:
+            payload: JSON payload for the Bedrock model
+
+        Returns:
+            Dict: Created model information
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.post(f"{self.url}/models", json=payload)
+        if response.status_code in [200, 201]:
+            return response.json()
+        else:
+            raise parse_error(response.status_code, response)
+
+    def create_self_hosted_model(self, payload: Dict) -> Dict:
+        """Create a self-hosted model configuration.
+
+        Args:
+            payload: JSON payload for the self-hosted model
+
+        Returns:
+            Dict: Created model information
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.post(f"{self.url}/models", json=payload)
+        if response.status_code in [200, 201]:
+            return response.json()
+        else:
+            raise parse_error(response.status_code, response)
+
+    def create_self_hosted_embedded_model(self, payload: Dict) -> Dict:
+        """Create a self-hosted embedding model configuration.
+
+        Args:
+            payload: JSON payload for the self-hosted embedding model
+
+        Returns:
+            Dict: Created model information
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.post(f"{self.url}/models", json=payload)
+        if response.status_code in [200, 201]:
+            return response.json()
+        else:
+            raise parse_error(response.status_code, response)
+
+    def delete_model(self, model_id: str) -> bool:
+        """Delete a model.
+
+        Args:
+            model_id: The ID of the model to delete
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.delete(f"{self.url}/models/{model_id}")
+        if response.status_code in [200, 204]:
+            return True
+        else:
+            raise parse_error(response.status_code, response)
+
+    def get_model(self, model_id: str) -> Dict:
+        """Get details of a specific model.
+
+        Args:
+            model_id: The ID of the model to retrieve
+
+        Returns:
+            Dict: Model information
+
+        Raises:
+            Exception: If the request fails
+        """
+        models = self.list_models()
+        for model in models:
+            if model.get("modelId") == model_id:
+                return model
+
+        raise Exception(f"Model with ID {model_id} not found")

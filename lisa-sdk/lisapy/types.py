@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -75,3 +75,52 @@ class StreamingResponse(BaseModel):
     token: str = Field(..., description="Generated token")
     finish_reason: Optional[str] = Field(None, description="Generation finish reason when stream is complete.")
     generated_tokens: Optional[int] = Field(None, description="Number of generated tokens when stream is complete.")
+
+
+class ModelRequest(TypedDict, total=False):
+    """Type definition for model creation requests."""
+
+    modelId: str
+    modelName: str
+    modelDescription: str
+    modelUrl: str
+    streaming: bool
+    multiModal: bool
+    modelType: str
+    instanceType: str
+    inferenceContainer: str
+    baseImage: str
+    features: List[Dict[str, str]]
+    allowedGroups: List[str]
+    containerConfig: Dict[str, Any]
+    autoScalingConfig: Dict[str, Any]
+    loadBalancerConfig: Dict[str, Any]
+
+
+class BedrockModelRequest(TypedDict, total=False):
+    """Type definition for Bedrock model creation requests."""
+
+    modelId: str
+    modelName: str
+    modelDescription: str
+    modelUrl: str
+    streaming: bool
+    multiModal: bool
+    modelType: str
+    features: List[Dict[str, str]]
+    allowedGroups: List[str]
+    apiKey: str
+
+
+class RagRepositoryConfig(TypedDict, total=False):
+    """Type definition for RAG repository configuration."""
+
+    repositoryId: str
+    repositoryName: str
+    embeddingModelId: str
+    type: str
+    opensearchConfig: Dict[str, Any]
+    rdsConfig: Dict[str, Any]
+    bedrockKnowledgeBaseConfig: Dict[str, Any]
+    pipelines: List[Dict[str, Any]]
+    allowedGroups: List[str]

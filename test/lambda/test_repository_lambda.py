@@ -781,18 +781,18 @@ def test_delete_missing_repository_id():
             assert "repositoryId is required" in body["error"]
 
 
-def test_get_embeddings_error():
-    """Test error handling in get_embeddings function"""
+def test_RagEmbeddings_error():
+    """Test error handling in RagEmbeddings function"""
 
     # Create a patched version of the function that raises an error
-    def mock_get_embeddings(model_name, api_key):
+    def mock_RagEmbeddings(model_name, api_key):
         raise Exception("SSM error")
 
     # Patch the function
-    with patch("repository.lambda_functions.get_embeddings", side_effect=mock_get_embeddings):
+    with patch("repository.lambda_functions.RagEmbeddings", side_effect=mock_RagEmbeddings):
         # Test that the error is properly handled
         with pytest.raises(Exception, match="SSM error"):
-            mock_get_embeddings("test-model", "test-token")
+            mock_RagEmbeddings("test-model", "test-token")
 
 
 def test_similarity_search_forbidden():
@@ -843,18 +843,18 @@ def test_remove_legacy():
 
 
 def test_pipeline_embeddings_embed_documents_error():
-    """Test error handling in PipelineEmbeddings.embed_documents"""
+    """Test error handling in LisaOpenAIEmbeddings.embed_documents"""
 
     # Mock the function to raise an exception
     def mock_embed_documents(docs):
         raise requests.RequestException("API request failed")
 
-    # Create a mock PipelineEmbeddings instance
+    # Create a mock LisaOpenAIEmbeddings instance
     mock_embeddings = MagicMock()
     mock_embeddings.embed_documents.side_effect = mock_embed_documents
 
-    # Patch get_embeddings_pipeline to return our mock
-    with patch("repository.embeddings.get_embeddings_pipeline", return_value=mock_embeddings):
+    # Patch RagEmbeddings_pipeline to return our mock
+    with patch("repository.embeddings.RagEmbeddings", return_value=mock_embeddings):
         embeddings = mock_embeddings
 
         # Test that the error is properly handled
@@ -862,19 +862,19 @@ def test_pipeline_embeddings_embed_documents_error():
             embeddings.embed_documents(["test text"])
 
 
-def test_pipeline_embeddings_embed_query_error():
-    """Test error handling in PipelineEmbeddings.embed_query"""
+def test_embeddings_embed_query_error():
+    """Test error handling in OpenAIEmbeddings.embed_query"""
 
     # Mock the function to raise an exception
     def mock_embed_query(query):
         raise ValidationError("Invalid query text")
 
-    # Create a mock PipelineEmbeddings instance
+    # Create a mock LisaOpenAIEmbeddings instance
     mock_embeddings = MagicMock()
     mock_embeddings.embed_query.side_effect = mock_embed_query
 
-    # Patch get_embeddings_pipeline to return our mock
-    with patch("repository.embeddings.get_embeddings_pipeline", return_value=mock_embeddings):
+    # Patch RagEmbeddings_pipeline to return our mock
+    with patch("repository.embeddings.RagEmbeddings", return_value=mock_embeddings):
         embeddings = mock_embeddings
 
         # Test with invalid input
@@ -883,20 +883,6 @@ def test_pipeline_embeddings_embed_query_error():
 
         with pytest.raises(ValidationError, match="Invalid query text"):
             embeddings.embed_query("")
-
-
-def test_get_embeddings_pipeline_error():
-    """Test error handling in get_embeddings_pipeline function"""
-
-    # Mock the function to raise an exception
-    def mock_get_embeddings_pipeline(model_name):
-        raise ValidationError("Invalid model name")
-
-    # Patch the function
-    with patch("repository.embeddings.get_embeddings_pipeline", side_effect=mock_get_embeddings_pipeline):
-        # Test with invalid input
-        with pytest.raises(ValidationError, match="Invalid model name"):
-            mock_get_embeddings_pipeline("invalid-model")
 
 
 def test_ensure_repository_access_unauthorized():
@@ -1017,86 +1003,75 @@ def test_repository_access_validation():
 # Additional comprehensive tests for better coverage
 
 
-def test_get_embeddings_function():
-    """Test the get_embeddings function"""
-    from repository.embeddings import get_embeddings
+def test_RagEmbeddings_function():
+    """Test the RagEmbeddings function"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.LisaOpenAIEmbeddings") as mock_embeddings:
+    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
 
-        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "https://api.example.com"}}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
-        mock_embeddings_instance = MagicMock()
-        mock_embeddings.return_value = mock_embeddings_instance
+        mock_key.return_value = "test-token"
 
-        result = get_embeddings("test-model", "test-token")
+        result = RagEmbeddings("test-model", "test-token")
 
-        assert result == mock_embeddings_instance
-        mock_ssm.get_parameter.assert_called_once()
+        assert result.model_name == "test-model"
         mock_cert.assert_called_once()
-        mock_embeddings.assert_called_once()
+        assert mock_endpoint.call_count == 2  # Called twice in RagEmbeddings.__init__
 
 
 def test_pipeline_embeddings_init():
-    """Test PipelineEmbeddings initialization"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings initialization"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert:
+    with patch("repository.embeddings.get_management_key") as mock_management_key, patch(
+        "repository.embeddings.get_rest_api_container_endpoint"
+    ) as mock_endpoint, patch("repository.embeddings.get_cert_path") as mock_cert:
 
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_management_key.return_value = "test-token"
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model")
 
+        assert isinstance(embeddings.model_name, str)
         assert embeddings.model_name == "test-model"
-        assert embeddings.token == "test-token"
-        assert "/serve" in embeddings.base_url
-        assert embeddings.cert_path == "/path/to/cert"
+        mock_management_key.assert_called_once()
+        assert mock_endpoint.call_count == 2  # Called twice in RagEmbeddings.__init__
+        mock_cert.assert_called_once()
 
 
 def test_pipeline_embeddings_init_error():
-    """Test PipelineEmbeddings initialization error handling"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test LisaOpenAIEmbeddings initialization error handling"""
+    from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.ssm_client") as mock_ssm:
         mock_ssm.get_parameter.side_effect = Exception("SSM error")
 
         with pytest.raises(Exception):
-            PipelineEmbeddings("test-model")
+            RagEmbeddings("test-model")
 
 
 def test_pipeline_embeddings_embed_documents():
-    """Test PipelineEmbeddings embed_documents method"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_documents method"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
-        # Setup requests mock
+        # Mock successful API response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}, {"embedding": [0.4, 0.5, 0.6]}]}
-        mock_requests.post.return_value = mock_response
+        mock_post.return_value = mock_response
 
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model", "test-token")
         result = embeddings.embed_documents(["text1", "text2"])
 
         assert len(result) == 2
@@ -1105,252 +1080,177 @@ def test_pipeline_embeddings_embed_documents():
 
 
 def test_pipeline_embeddings_embed_documents_no_texts():
-    """Test PipelineEmbeddings embed_documents with no texts"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test LisaOpenAIEmbeddings embed_documents with no texts"""
+    from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert:
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.LisaOpenAIEmbeddings") as mock_embeddings_class:
 
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "https://api.example.com"}}
         mock_cert.return_value = "/path/to/cert"
 
-        embeddings = PipelineEmbeddings("test-model")
+        mock_embeddings_instance = MagicMock()
+        mock_embeddings_instance.embed_documents.side_effect = ValidationError("No texts provided for embedding")
+        mock_embeddings_class.return_value = mock_embeddings_instance
+
+        embeddings = RagEmbeddings("test-model", "test-token")
 
         with pytest.raises(ValidationError, match="No texts provided for embedding"):
             embeddings.embed_documents([])
 
 
 def test_pipeline_embeddings_embed_documents_api_error():
-    """Test PipelineEmbeddings embed_documents with API error"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_documents with API error"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
+        mock_post.side_effect = Exception("API request failed")
 
-        # Setup requests mock for error
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal server error"
-        mock_requests.post.return_value = mock_response
-        mock_requests.Timeout = requests.Timeout
-        mock_requests.RequestException = requests.RequestException
+        embeddings = RagEmbeddings("test-model", "test-token")
 
-        embeddings = PipelineEmbeddings("test-model")
-
-        with pytest.raises(Exception, match="Embedding request failed with status 500"):
+        with pytest.raises(Exception, match="API request failed"):
             embeddings.embed_documents(["text1"])
 
 
 def test_pipeline_embeddings_embed_documents_timeout():
-    """Test PipelineEmbeddings embed_documents with timeout"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_documents with timeout"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
+        mock_post.side_effect = requests.Timeout("Request timed out")
 
-        # Setup requests mock for timeout
-        mock_requests.Timeout = requests.Timeout
-        mock_requests.RequestException = requests.RequestException
-        mock_requests.post.side_effect = requests.Timeout("Request timed out")
-
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model", "test-token")
 
         with pytest.raises(Exception, match="Embedding request timed out after 5 minutes"):
             embeddings.embed_documents(["text1"])
 
 
 def test_pipeline_embeddings_embed_documents_different_formats():
-    """Test PipelineEmbeddings embed_documents with different response formats"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_documents with different response formats"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model", "test-token")
 
-        # Test embeddings key format
+        # Test OpenAI format
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"embeddings": [[0.1, 0.2], [0.3, 0.4]]}
-        mock_requests.post.return_value = mock_response
-
+        mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2]}, {"embedding": [0.3, 0.4]}]}
+        mock_post.return_value = mock_response
         result = embeddings.embed_documents(["text1", "text2"])
         assert len(result) == 2
 
         # Test direct list format
-        mock_response.json.return_value = [[0.1, 0.2], [0.3, 0.4]]
+        mock_response.json.return_value = [[0.5, 0.6], [0.7, 0.8]]
         result = embeddings.embed_documents(["text1", "text2"])
         assert len(result) == 2
 
 
 def test_pipeline_embeddings_embed_documents_no_embeddings():
-    """Test PipelineEmbeddings embed_documents with no embeddings in response"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_documents with no embeddings in response"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
-        # Setup requests mock with no embeddings
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"other_data": "value"}
-        mock_requests.post.return_value = mock_response
-        mock_requests.Timeout = requests.Timeout
-        mock_requests.RequestException = requests.RequestException
+        mock_response.json.return_value = {"message": "No embeddings"}
+        mock_post.return_value = mock_response
 
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model", "test-token")
 
         with pytest.raises(Exception, match="No embeddings found in API response"):
             embeddings.embed_documents(["text1"])
 
 
 def test_pipeline_embeddings_embed_documents_mismatch():
-    """Test PipelineEmbeddings embed_documents with embedding count mismatch"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_documents with embedding count mismatch"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
-        # Setup requests mock with wrong number of embeddings
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2]}]}  # Only 1 embedding for 2 texts
-        mock_requests.post.return_value = mock_response
-        mock_requests.Timeout = requests.Timeout
-        mock_requests.RequestException = requests.RequestException
+        mock_post.return_value = mock_response
 
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model", "test-token")
 
         with pytest.raises(Exception, match="Number of embeddings does not match number of input texts"):
             embeddings.embed_documents(["text1", "text2"])
 
 
 def test_pipeline_embeddings_embed_query():
-    """Test PipelineEmbeddings embed_query method"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test RagEmbeddings embed_query method"""
+    from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert, patch(
-        "repository.embeddings.requests"
-    ) as mock_requests:
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
 
-        # Setup initialization mocks
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
-        # Setup requests mock
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
-        mock_requests.post.return_value = mock_response
+        mock_post.return_value = mock_response
 
-        embeddings = PipelineEmbeddings("test-model")
+        embeddings = RagEmbeddings("test-model", "test-token")
         result = embeddings.embed_query("test query")
 
         assert result == [0.1, 0.2, 0.3]
 
 
 def test_pipeline_embeddings_embed_query_invalid():
-    """Test PipelineEmbeddings embed_query with invalid input"""
-    from repository.embeddings import PipelineEmbeddings
+    """Test LisaOpenAIEmbeddings embed_query with invalid input"""
+    from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "repository.embeddings.secrets_client"
-    ) as mock_secrets, patch("repository.embeddings.get_cert_path") as mock_cert:
+        "repository.embeddings.get_cert_path"
+    ) as mock_cert, patch("repository.embeddings.LisaOpenAIEmbeddings") as mock_embeddings_class:
 
-        mock_ssm.get_parameter.side_effect = [
-            {"Parameter": {"Value": "secret-name"}},
-            {"Parameter": {"Value": "https://api.example.com"}},
-        ]
-        mock_secrets.get_secret_value.return_value = {"SecretString": "test-token"}
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "https://api.example.com"}}
         mock_cert.return_value = "/path/to/cert"
 
-        embeddings = PipelineEmbeddings("test-model")
+        mock_embeddings_instance = MagicMock()
+        mock_embeddings_instance.embed_query.side_effect = ValidationError("Invalid query text")
+        mock_embeddings_class.return_value = mock_embeddings_instance
+
+        embeddings = RagEmbeddings("test-model", "test-token")
 
         with pytest.raises(ValidationError, match="Invalid query text"):
             embeddings.embed_query(None)
 
         with pytest.raises(ValidationError, match="Invalid query text"):
             embeddings.embed_query("")
-
-
-def test_get_embeddings_pipeline():
-    """Test get_embeddings_pipeline function"""
-    from repository.embeddings import get_embeddings_pipeline
-
-    with patch("repository.embeddings.PipelineEmbeddings") as mock_pipeline:
-        mock_instance = MagicMock()
-        mock_pipeline.return_value = mock_instance
-
-        result = get_embeddings_pipeline("test-model")
-
-        assert result == mock_instance
-        mock_pipeline.assert_called_once_with(model_name="test-model")
 
 
 def test_user_has_group():
@@ -1424,7 +1324,7 @@ def test_real_similarity_search_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client, patch("repository.embeddings.get_embeddings") as mock_get_embeddings, patch(
+    ) as mock_get_client, patch("repository.embeddings.RagEmbeddings") as mock_RagEmbeddings, patch(
         "utilities.common_functions.get_groups"
     ) as mock_get_groups, patch(
         "utilities.common_functions.get_id_token"
@@ -1442,7 +1342,7 @@ def test_real_similarity_search_function():
         ]
 
         mock_embeddings = MagicMock()
-        mock_get_embeddings.return_value = mock_embeddings
+        mock_RagEmbeddings.return_value = mock_embeddings
 
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},

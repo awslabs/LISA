@@ -1,4 +1,5 @@
 # urllib3<2 // Provided by Lambda
-requests==2.32.4
+# cachetools==5.5.0 // provided by Common Layer
+# requests==2.32.4 // provided by Common Layer
 cryptography==44.0.1
 PyJWT==2.9.0

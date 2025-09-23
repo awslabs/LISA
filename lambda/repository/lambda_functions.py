@@ -23,7 +23,7 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, RagDocument
-from repository.embeddings import get_embeddings
+from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
 session = boto3.Session()
 ssm_client = boto3.client("ssm", region_name, config=retry_config)
-secrets_client = boto3.client("secretsmanager", region_name, config=retry_config)
 iam_client = boto3.client("iam", region_name, config=retry_config)
 step_functions_client = boto3.client("stepfunctions", region_name, config=retry_config)
 ddb_client = boto3.client("dynamodb", region_name, config=retry_config)
@@ -109,6 +108,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
+            - queryStringParameters.score (optional): Include similarity scores (default: false)
         context (dict): The Lambda context object
 
     Returns:
@@ -122,6 +122,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     model_name = query_string_params["modelName"]
     query = query_string_params["query"]
     top_k = query_string_params.get("topK", 3)
+    include_score = query_string_params.get("score", "false").lower() == "true"
     repository_id = event["pathParameters"]["repositoryId"]
 
     repository = vs_repo.find_repository_by_id(repository_id)
@@ -139,7 +140,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             repository_id=repository_id,
         )
     else:
-        embeddings = get_embeddings(model_name=model_name, id_token=id_token)
+        embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
         vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
 
         # empty vector stores do not have an initialize index. Return empty docs
@@ -148,11 +149,11 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         ):
             logger.info(f"Index {model_name} does not exist. Returning empty docs.")
         else:
-            results = vs.similarity_search(
-                query,
-                k=top_k,
+            docs = (
+                _similarity_search_with_score(vs, query, top_k, repository)
+                if include_score
+                else _similarity_search(vs, query, top_k)
             )
-            docs = [{"page_content": r.page_content, "metadata": r.metadata} for r in results]
     doc_content = [
         {
             "Document": {
@@ -536,6 +537,48 @@ def delete(event: dict, context: dict) -> Any:
         return {"status": "success", "executionArn": response["executionArn"]}
 
 
+@api_wrapper
+@admin_only
+def delete_index(event: dict, context: dict) -> None:
+    """
+    Clear the vector store for the specified repository and model.
+
+    Args:
+        event (dict): The Lambda event object containing path parameters
+        context (dict): The Lambda context object
+    """
+    path_params = event.get("pathParameters", {}) or {}
+    repository_id = path_params.get("repositoryId", None)
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    model_name = path_params.get("modelName", None)
+    if not model_name:
+        raise ValidationError("modelName is required")
+
+    repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+    id_token = get_id_token(event)
+    embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
+    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+
+    try:
+        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
+            if vs.client.indices.exists(index=model_name):
+                vs.client.indices.delete(index=model_name)
+                logger.info(f"Deleted OpenSearch index: {model_name}")
+            else:
+                logger.info(f"OpenSearch index {model_name} does not exist")
+        elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
+            # For PGVector, delete all documents in the collection
+            vs.delete_collection()
+            logger.info(f"Deleted PGVector collection: {model_name}")
+        else:
+            logger.error(f"Unsupported repository type: {repository.get('type')}")
+            return {"status": "error", "message": "Repository is not supported"}
+    except Exception as e:
+        logger.error(f"Failed to clear vector store: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 def _remove_legacy(repository_id: str) -> None:
     registered_repositories = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS"])
     registered_repositories = json.loads(registered_repositories["Parameter"]["Value"])
@@ -549,3 +592,59 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
+
+
+def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
+    """Perform similarity search without scores.
+
+    Args:
+        vs: Vector store instance
+        query: Search query string
+        top_k: Number of top results to return
+
+    Returns:
+        List of documents with page_content and metadata
+    """
+    results = vs.similarity_search_with_score(
+        query,
+        k=top_k,
+    )
+
+    return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc, score in results]
+
+
+def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) -> list[dict[str, Any]]:
+    """Perform similarity search with normalized scores.
+
+    Args:
+        vs: Vector store instance
+        query: Search query string
+        top_k: Number of top results to return
+        repository: Repository configuration dict
+
+    Returns:
+        List of documents with page_content, metadata, and similarity_score
+    """
+    results = vs.similarity_search_with_score(
+        query,
+        k=top_k,
+    )
+    docs = []
+    for i, (doc, score) in enumerate(results):
+        similarity_score = RepositoryType.get_type(repository=repository).calculate_similarity_score(score)
+        logger.info(
+            f"Result {i + 1}: Raw Score={score:.4f}, Similarity={similarity_score:.4f}, "
+            + f"Content: {doc.page_content[:200]}..."
+        )
+        logger.info(f"Result {i + 1} metadata: {doc.metadata}")
+        docs.append(
+            {
+                "page_content": doc.page_content,
+                "metadata": {**doc.metadata, "similarity_score": similarity_score},
+            }
+        )
+
+    if results and max(score for _, score in results) < 0.3:
+        logger.warning(f"All similarity < 0.3 for query '{query}' - possible embedding model mismatch")
+
+    return docs

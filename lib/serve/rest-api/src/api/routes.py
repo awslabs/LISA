@@ -20,20 +20,20 @@ import os
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from ..auth import OIDCHTTPBearer
+from ..auth import Authorizer
 from .endpoints.v2 import litellm_passthrough
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-if os.getenv("USE_AUTH", "true").lower() == "false":
-    dependencies = []
-    logger.info("Auth disabled")
-else:
-    security = OIDCHTTPBearer()
-    dependencies = [Depends(security)]
+dependencies = []
+if os.getenv("USE_AUTH", "true").lower() == "true":
     logger.info("Auth enabled")
+    security = Authorizer()
+    dependencies = [Depends(security)]
+else:
+    logger.info("Auth disabled")
 
 router.include_router(
     litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=dependencies
@@ -46,6 +46,17 @@ async def health_check() -> JSONResponse:
 
     This needs to match the path in the config.yaml file.
     """
-    content = {"status": "OK"}
+    try:
+        # Basic health verification - check if required environment variables are set
+        required_vars = ["AWS_REGION", "LOG_LEVEL"]
+        missing_vars = [var for var in required_vars if not os.getenv(var)]
 
-    return JSONResponse(content=content, status_code=200)
+        if missing_vars:
+            content = {"status": "UNHEALTHY", "missing_env_vars": missing_vars}
+            return JSONResponse(content=content, status_code=503)
+
+        content = {"status": "OK"}
+        return JSONResponse(content=content, status_code=200)
+    except Exception as e:
+        content = {"status": "UNHEALTHY", "error": str(e)}
+        return JSONResponse(content=content, status_code=503)

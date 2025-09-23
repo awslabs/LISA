@@ -30,7 +30,7 @@ logger.configure(
         {
             "sink": sys.stdout,
             "format": "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | "
-            "<cyan>{request_id}</cyan> | {message}",
+            "<cyan>{extra[request_id]}</cyan> | {message}",
             "level": logger_level.upper(),
         }
     ]

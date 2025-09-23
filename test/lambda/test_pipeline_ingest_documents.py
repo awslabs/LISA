@@ -93,7 +93,7 @@ def test_remove_document_from_vectorstore():
     import repository.pipeline_ingest_documents as pid
 
     doc = make_doc()
-    with patch("repository.pipeline_ingest_documents.get_embeddings"), patch(
+    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
         "repository.pipeline_ingest_documents.get_vector_store_client"
     ) as mock_vs:
         mock_vs.return_value.delete = MagicMock()
@@ -167,7 +167,7 @@ def test_handle_pipline_ingest_schedule_error():
 def test_store_chunks_in_vectorstore_success():
     import repository.pipeline_ingest_documents as pid
 
-    with patch("repository.pipeline_ingest_documents.get_embeddings"), patch(
+    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
         "repository.pipeline_ingest_documents.get_vector_store_client"
     ) as mock_vs:
         mock_vs.return_value.add_texts.return_value = ["id1", "id2"]
@@ -180,7 +180,7 @@ def test_store_chunks_in_vectorstore_success():
 def test_store_chunks_in_vectorstore_empty_batch():
     import repository.pipeline_ingest_documents as pid
 
-    with patch("repository.pipeline_ingest_documents.get_embeddings"), patch(
+    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
         "repository.pipeline_ingest_documents.get_vector_store_client"
     ) as mock_vs:
         mock_vs.return_value.add_texts.return_value = []

@@ -115,10 +115,10 @@ async def handle_describe_models(model_types: List[ModelType]) -> DefaultDict[st
     response: DefaultDict[str, DefaultDict[str, Dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
 
     for model_type, providers in registered_models.items():
-        response[model_type.value] = {}  # type: ignore
+        response[model_type] = {}  # type: ignore
         providers = providers or {}
         for provider, model_names in providers.items():
-            response[model_type.value][provider] = [
+            response[model_type][provider] = [
                 registered_models_cache["metadata"][f"{provider}.{model_name}"] for model_name in model_names
             ]  # type: ignore
 

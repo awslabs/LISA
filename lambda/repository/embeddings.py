@@ -19,6 +19,7 @@ from typing import List
 import boto3
 import requests
 from lisapy.langchain import LisaOpenAIEmbeddings
+from pydantic import BaseModel, field_validator
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.validation import validate_model_name, ValidationError
@@ -31,31 +32,46 @@ iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=re
 lisa_api_endpoint = ""
 
 
-class RagEmbeddings:
+class RagEmbeddings(BaseModel):
     """
     Handles document embeddings through LiteLLM using management credentials.
     """
 
     model_name: str
+    token: str
+    lisa_api_endpoint: str
+    base_url: str
+    cert_path: str | bool
 
-    def __init__(self, model_name: str, id_token: str | None = None) -> None:
+    @field_validator("model_name")
+    @classmethod
+    def validate_model_name(cls, v: str) -> str:
+        validate_model_name(v)
+        return v
+
+    def __init__(self, model_name: str, id_token: str | None = None, **data) -> None:
+        # Prepare initialization data
+        init_data = {"model_name": model_name, **data}
         try:
             # Use management token if id_token is not provided
             if id_token is None:
                 logger.info("Using management key for ingestion")
-                self.token = get_management_key()
+                init_data["token"] = get_management_key()
             else:
-                self.token = id_token
+                init_data["token"] = id_token
 
-            self.lisa_api_endpoint = get_rest_api_container_endpoint()
-            self.model_name = model_name
-            self.base_url = get_rest_api_container_endpoint()
-            self.cert_path = get_cert_path(iam_client)
+            init_data["lisa_api_endpoint"] = get_rest_api_container_endpoint()
+            init_data["base_url"] = get_rest_api_container_endpoint()
+            init_data["cert_path"] = get_cert_path(iam_client)
 
+            super().__init__(**init_data)
             logger.info("Successfully initialized pipeline embeddings")
         except Exception:
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """
@@ -141,23 +157,6 @@ class RagEmbeddings:
 
         logger.info("Embedding single query text")
         return self.embed_documents([text])[0]
-
-
-def get_embeddings(model_name: str, id_token: str | None = None) -> RagEmbeddings:
-    """
-    Get embeddings for pipeline requests using management token.
-
-    Args:
-        model_name: Name of the embedding model to use
-
-    Raises:
-        ValidationError: If model name is invalid
-        Exception: If API request fails
-    """
-    logger.info("Starting pipeline embeddings request")
-    validate_model_name(model_name)
-
-    return RagEmbeddings(model_name=model_name, id_token=id_token)
 
 
 def get_openai_embeddings(model_name: str, id_token: str | None = None) -> LisaOpenAIEmbeddings:

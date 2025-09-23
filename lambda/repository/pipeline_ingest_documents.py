@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 
 import boto3
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
-from repository.embeddings import get_embeddings
+from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
@@ -114,7 +114,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
 
 def remove_document_from_vectorstore(doc: RagDocument) -> None:
     # Delete from the Vector Store
-    embeddings = get_embeddings(model_name=doc.collection_id)
+    embeddings = RagEmbeddings(model_name=doc.collection_id)
     vector_store = get_vector_store_client(
         doc.repository_id,
         index=doc.collection_id,
@@ -282,7 +282,7 @@ def store_chunks_in_vectorstore(
     texts: List[str], metadatas: List[Dict], repository_id: str, embedding_model: str
 ) -> List[str]:
     """Store document chunks in vector store."""
-    embeddings = get_embeddings(model_name=embedding_model)
+    embeddings = RagEmbeddings(model_name=embedding_model)
     vs = get_vector_store_client(
         repository_id,
         index=embedding_model,

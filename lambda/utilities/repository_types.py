@@ -22,5 +22,18 @@ class RepositoryType(str, Enum):
     BEDROCK_KB = "bedrock_knowledge_base"
 
     @classmethod
+    def get_type(cls, repository: Dict[str, Any]) -> "RepositoryType":
+        return RepositoryType(repository.get("type"))
+
+    @classmethod
     def is_type(cls, repository: Dict[str, Any], repo_type: "RepositoryType") -> bool:
-        return repository.get("type") == repo_type.value
+        return repository.get("type") == repo_type
+
+    def calculate_similarity_score(self, score: float) -> float:
+        # Convert cosine distance to similarity for PGVector
+        # PGVector returns cosine distance (0-2 range, lower = more similar)
+        # Convert to similarity (0-1 range, higher = more similar)
+        if self == RepositoryType.PGVECTOR:
+            return max(0.0, 1.0 - (score / 2.0))
+        else:
+            return score

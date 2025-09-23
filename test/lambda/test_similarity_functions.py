@@ -100,21 +100,19 @@ def test_delete_index_opensearch():
     context = {}
 
     with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
-        "repository.lambda_functions.get_id_token"
-    ), patch("repository.lambda_functions.get_embeddings"), patch(
         "repository.lambda_functions.get_vector_store_client"
-    ) as mock_get_vs, patch(
-        "repository.lambda_functions.RepositoryType.is_type"
-    ) as mock_is_type, patch(
+    ) as mock_get_vs, patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, patch(
         "repository.lambda_functions.is_admin"
-    ) as mock_is_admin:
+    ) as mock_is_admin, patch(
+        "repository.lambda_functions.RagEmbeddings"
+    ):
 
         mock_is_admin.return_value = True
         mock_find_repo.return_value = {"type": "opensearch"}
         mock_vs = MagicMock()
         mock_vs.client.indices.exists.return_value = True
         mock_get_vs.return_value = mock_vs
-        mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.OPENSEARCH
+        mock_is_type.side_effect = lambda _, repo_type: repo_type == RepositoryType.OPENSEARCH
 
         delete_index(event, context)
 
@@ -131,21 +129,19 @@ def test_delete_index_opensearch_index_not_exists():
     context = {}
 
     with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
-        "repository.lambda_functions.get_id_token"
-    ), patch("repository.lambda_functions.get_embeddings"), patch(
         "repository.lambda_functions.get_vector_store_client"
-    ) as mock_get_vs, patch(
-        "repository.lambda_functions.RepositoryType.is_type"
-    ) as mock_is_type, patch(
+    ) as mock_get_vs, patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, patch(
         "repository.lambda_functions.is_admin"
-    ) as mock_is_admin:
+    ) as mock_is_admin, patch(
+        "repository.lambda_functions.RagEmbeddings"
+    ):
 
         mock_is_admin.return_value = True
         mock_find_repo.return_value = {"type": "opensearch"}
         mock_vs = MagicMock()
         mock_vs.client.indices.exists.return_value = False
         mock_get_vs.return_value = mock_vs
-        mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.OPENSEARCH
+        mock_is_type.side_effect = lambda _, repo_type: repo_type == RepositoryType.OPENSEARCH
 
         delete_index(event, context)
 
@@ -162,20 +158,18 @@ def test_delete_index_pgvector():
     context = {}
 
     with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
-        "repository.lambda_functions.get_id_token"
-    ), patch("repository.lambda_functions.get_embeddings"), patch(
         "repository.lambda_functions.get_vector_store_client"
-    ) as mock_get_vs, patch(
-        "repository.lambda_functions.RepositoryType.is_type"
-    ) as mock_is_type, patch(
+    ) as mock_get_vs, patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, patch(
         "repository.lambda_functions.is_admin"
-    ) as mock_is_admin:
+    ) as mock_is_admin, patch(
+        "repository.lambda_functions.RagEmbeddings"
+    ):
 
         mock_is_admin.return_value = True
         mock_find_repo.return_value = {"type": "pgvector"}
         mock_vs = MagicMock()
         mock_get_vs.return_value = mock_vs
-        mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.PGVECTOR
+        mock_is_type.side_effect = lambda _, repo_type: repo_type == RepositoryType.PGVECTOR
 
         delete_index(event, context)
 
@@ -191,21 +185,19 @@ def test_delete_index_exception():
     context = {}
 
     with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
-        "repository.lambda_functions.get_id_token"
-    ), patch("repository.lambda_functions.get_embeddings"), patch(
         "repository.lambda_functions.get_vector_store_client"
-    ) as mock_get_vs, patch(
-        "repository.lambda_functions.RepositoryType.is_type"
-    ) as mock_is_type, patch(
+    ) as mock_get_vs, patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, patch(
         "repository.lambda_functions.is_admin"
-    ) as mock_is_admin:
+    ) as mock_is_admin, patch(
+        "repository.lambda_functions.RagEmbeddings"
+    ):
 
         mock_is_admin.return_value = True
         mock_find_repo.return_value = {"type": "opensearch"}
         mock_vs = MagicMock()
         mock_vs.client.indices.exists.side_effect = Exception("Connection error")
         mock_get_vs.return_value = mock_vs
-        mock_is_type.side_effect = lambda repo, repo_type: repo_type == RepositoryType.OPENSEARCH
+        mock_is_type.side_effect = lambda _, repo_type: repo_type == RepositoryType.OPENSEARCH
 
         # Should not raise exception
         delete_index(event, context)

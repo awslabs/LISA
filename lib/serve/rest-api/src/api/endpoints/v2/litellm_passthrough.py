@@ -104,7 +104,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     authorizer = Authorizer()
     require_admin = api_path not in OPENAI_ROUTES
-    if not await authorizer.can_access(request, require_admin=require_admin):
+    if not await authorizer.can_access(request, require_admin):
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough")
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for

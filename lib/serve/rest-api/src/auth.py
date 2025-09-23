@@ -18,14 +18,13 @@ import ssl
 import sys
 from datetime import datetime
 from enum import Enum
-from functools import lru_cache
 from pathlib import Path
-from time import time
 from typing import Any, Dict, Optional
 
 import boto3
 import jwt
 import requests
+from cachetools import cached, TTLCache
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
@@ -51,7 +50,7 @@ logger.configure(
 
 
 # The following are field names, not passwords or tokens
-class AuthHeaders(Enum):
+class AuthHeaders(str, Enum):
     """API key header names."""
 
     AUTHORIZATION = "Authorization"  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
@@ -60,7 +59,7 @@ class AuthHeaders(Enum):
     @classmethod
     def values(cls) -> list[str]:
         """Return list of header values."""
-        return [header.value for header in cls]
+        return list(cls)
 
 
 def is_idp_used() -> bool:
@@ -136,7 +135,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
     return group in current_node
 
 
-def get_authorization_token(headers: Dict[str, str], header_name: str = AuthHeaders.AUTHORIZATION.value) -> str:
+def get_authorization_token(headers: Dict[str, str], header_name: str = AuthHeaders.AUTHORIZATION) -> str:
     """Get Bearer token from Authorization headers if it exists."""
     if header_name in headers:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
@@ -191,7 +190,6 @@ class ApiTokenAuthorizer:
     def __init__(self) -> None:
         ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
         self._token_table = ddb_resource.Table(os.environ[TOKEN_TABLE_NAME])
-        self._initialized = True
 
     def _get_token_info(self, token: str) -> Any:
         """Return DDB entry for token if it exists."""
@@ -215,40 +213,33 @@ class ApiTokenAuthorizer:
         return False
 
 
-@lru_cache(maxsize=1)
-def get_management_tokens(cache_key: int) -> list[str]:
-    """Return secret management tokens if they exist."""
-    logger.info(f"Updating management tokens cache for key {cache_key}")
-    secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
-    secret_tokens = []
-    try:
-        secret_tokens.append(
-            secrets_manager.get_secret_value(SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT")[
-                "SecretString"
-            ]
-        )
-        secret_tokens.append(
-            secrets_manager.get_secret_value(
-                SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSPREVIOUS"
-            )["SecretString"]
-        )
-    except Exception:
-        logger.info(f"No previous secret version for {os.environ.get('MANAGEMENT_KEY_NAME')}")
-
-    return secret_tokens
-
-
 class ManagementTokenAuthorizer:
     """Class for checking Management tokens against a SecretsManager secret."""
 
     def __init__(self) -> None:
-        pass
+        self.secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+
+    @cached(cache=TTLCache(maxsize=1, ttl=300))
+    def get_management_tokens(self) -> list[str]:
+        """Return secret management tokens if they exist."""
+        logger.info("Updating management tokens cache")
+        secret_tokens = []
+        secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
+        try:
+            secret_tokens.append(
+                self.secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
+            )
+            secret_tokens.append(
+                self.secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+            )
+        except Exception:
+            logger.info(f"No previous secret version for {secret_id}")
+
+        return secret_tokens
 
     def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
-        # Fetch the management token once an hour
-        cache_key = int(time() // 3600)
-        secret_tokens = get_management_tokens(cache_key)
+        secret_tokens = self.get_management_tokens()
         token = get_authorization_token(headers)
         return token in secret_tokens
 

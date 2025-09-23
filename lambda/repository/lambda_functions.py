@@ -23,7 +23,7 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, RagDocument
-from repository.embeddings import get_embeddings
+from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
@@ -140,7 +140,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             repository_id=repository_id,
         )
     else:
-        embeddings = get_embeddings(model_name=model_name, id_token=id_token)
+        embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
         vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
 
         # empty vector stores do not have an initialize index. Return empty docs
@@ -557,7 +557,7 @@ def delete_index(event: dict, context: dict) -> None:
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id)
     id_token = get_id_token(event)
-    embeddings = get_embeddings(model_name=model_name, id_token=id_token)
+    embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
     vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
 
     try:
@@ -631,16 +631,7 @@ def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) 
     )
     docs = []
     for i, (doc, score) in enumerate(results):
-        # Transform score based on vector store type
-        if RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
-            # Convert cosine distance to similarity for PGVector
-            # PGVector returns cosine distance (0-2 range, lower = more similar)
-            # Convert to similarity (0-1 range, higher = more similar)
-            similarity_score = max(0.0, 1.0 - (score / 2.0))
-        else:
-            # OpenSearch and other stores return similarity scores directly
-            similarity_score = score
-
+        similarity_score = RepositoryType.get_type(repository=repository).calculate_similarity_score(score)
         logger.info(
             f"Result {i + 1}: Raw Score={score:.4f}, Similarity={similarity_score:.4f}, "
             + f"Content: {doc.page_content[:200]}..."

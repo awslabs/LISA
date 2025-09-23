@@ -13,9 +13,11 @@
 #   limitations under the License.
 
 """Authentication for FastAPI app."""
+import asyncio
 import os
 import ssl
 import sys
+import threading
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -24,7 +26,8 @@ from typing import Any, Dict, Optional
 import boto3
 import jwt
 import requests
-from cachetools import cached, TTLCache
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
@@ -196,7 +199,7 @@ class ApiTokenAuthorizer:
         ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
 
         for header_name in AuthHeaders.values():
@@ -204,7 +207,7 @@ class ApiTokenAuthorizer:
 
             logger.info(f"API Auth Token: {token}")
             if token:
-                token_info = self._get_token_info(token)
+                token_info = await asyncio.to_thread(self._get_token_info, token)
                 if token_info:
                     token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
                     current_time = int(datetime.now().timestamp())
@@ -217,29 +220,47 @@ class ManagementTokenAuthorizer:
     """Class for checking Management tokens against a SecretsManager secret."""
 
     def __init__(self) -> None:
-        self.secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+        self._cache = TTLCache(maxsize=1, ttl=300)
+        self._cache_lock = threading.RLock()
+        self._local = threading.local()
 
-    @cached(cache=TTLCache(maxsize=1, ttl=300))
+    def _get_secrets_client(self):
+        """Get thread-local secrets manager client."""
+        if not hasattr(self._local, "secrets_manager"):
+            self._local.secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+        return self._local.secrets_manager
+
     def get_management_tokens(self) -> list[str]:
         """Return secret management tokens if they exist."""
+        cache_key = hashkey()
+
+        with self._cache_lock:
+            if cache_key in self._cache:
+                return self._cache[cache_key]
+
         logger.info("Updating management tokens cache")
         secret_tokens = []
         secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
+        secrets_manager = self._get_secrets_client()
+
         try:
             secret_tokens.append(
-                self.secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
             )
             secret_tokens.append(
-                self.secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
+                secrets_manager.get_secret_value(SecretId=secret_id, VersionStage="AWSPREVIOUS")["SecretString"]
             )
         except Exception:
             logger.info(f"No previous secret version for {secret_id}")
 
+        with self._cache_lock:
+            self._cache[cache_key] = secret_tokens
+
         return secret_tokens
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
-        secret_tokens = self.get_management_tokens()
+        secret_tokens = await asyncio.to_thread(self.get_management_tokens)
         token = get_authorization_token(headers)
         return token in secret_tokens
 
@@ -271,13 +292,13 @@ class Authorizer:
 
         # First try API tokens
         logger.info("Try API Auth Token...")
-        if self.token_authorizer.is_valid_api_token(request.headers):
+        if await self.token_authorizer.is_valid_api_token(request.headers):
             logger.info("Valid API token")
             return None
 
         # Then try management tokens
         logger.info("Try Management Auth Token...")
-        if self.management_token_authorizer.is_valid_api_token(request.headers):
+        if await self.management_token_authorizer.is_valid_api_token(request.headers):
             logger.info("Valid Management token")
             return None
 

@@ -343,12 +343,13 @@ export class ModelsApi extends Construct {
                 LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
                 MANAGEMENT_KEY_NAME: managementKeyName,
                 REST_API_VERSION: 'v2',
+                DEPLOYMENT_PREFIX: config.deploymentPrefix || '',
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
-            description: 'Remove api_key from existing models to fix Invalid API Key format errors',
+            description: 'Remove api_key from existing Bedrock models to fix Invalid API Key format errors',
         });
 
         // Run cleanup automatically during deployment
@@ -360,7 +361,7 @@ export class ModelsApi extends Construct {
             serviceToken: cleanupProvider.serviceToken,
             properties: {
                 // Only runs once - increment this version number if you need to run cleanup again
-                CleanupVersion: '1.0.0',
+                CleanupVersion: '1',
             },
         });
 
@@ -391,6 +392,7 @@ export class ModelsApi extends Construct {
                                 'dynamodb:GetItem',
                                 'dynamodb:PutItem',
                                 'dynamodb:UpdateItem',
+                                'dynamodb:Scan',
                             ],
                             resources: [
                                 modelTableArn,
@@ -509,6 +511,7 @@ export class ModelsApi extends Construct {
                                 `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
                                 `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
                                 `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/LiteLLMDbConnectionInfo`,
+                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/modelTableName`,
                             ],
                         }),
                         new PolicyStatement({

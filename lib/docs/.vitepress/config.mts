@@ -93,9 +93,7 @@ export default defineConfig({
   vite: {
     build: {
       rollupOptions: {
-        external: (id) => {
-          return /\.(png|jpg|jpeg|gif|svg)$/.test(id);
-        },
+        // Removed external configuration that was causing image files to be treated as external modules
       },
     },
   },

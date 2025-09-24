@@ -20,8 +20,6 @@ from decimal import Decimal
 import pytest
 from utilities.common_functions import get_property_path
 
-# Removed unused import
-
 
 def test_get_property_path(sample_jwt_data):
     """Test the get_property_path function."""
@@ -354,9 +352,6 @@ def test_get_id_token_missing():
         get_id_token(event)
 
 
-# Removed complex tests that require AWS credentials
-
-
 def test_get_session_id():
     """Test get_session_id function."""
     if "utilities.common_functions" in sys.modules:
@@ -437,9 +432,6 @@ def test_get_principal_id_missing():
 
     result = get_principal_id(event)
     assert result == ""
-
-
-# Removed AWS credential tests
 
 
 def test_get_item():

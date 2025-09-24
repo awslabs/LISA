@@ -27,14 +27,12 @@ import os
 import sys
 import unittest
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Add the lambda directory to the path so we can import the utilities
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda"))
 
 from utilities.session_encryption import (
-    SessionEncryptionError,
-    TypePreservingJSONEncoder,
     _create_encryption_context,
     _decrypt_data_key,
     _deserialize_with_type_preservation,
@@ -46,6 +44,8 @@ from utilities.session_encryption import (
     encrypt_session_data,
     is_encrypted_data,
     migrate_session_to_encrypted,
+    SessionEncryptionError,
+    TypePreservingJSONEncoder,
 )
 
 
@@ -92,11 +92,12 @@ class TestSessionEncryption(unittest.TestCase):
     def test_type_preserving_json_encoder_other_types(self):
         """Test TypePreservingJSONEncoder with other types."""
         encoder = TypePreservingJSONEncoder()
+
         # Test with a non-Decimal type that would trigger default (like a custom object)
         class CustomObject:
             def __init__(self, value):
                 self.value = value
-        
+
         custom_obj = CustomObject("test")
         # This should raise TypeError since it's not JSON serializable
         with self.assertRaises(TypeError):
@@ -157,9 +158,7 @@ class TestSessionEncryption(unittest.TestCase):
 
         self.assertEqual(plaintext, b"01234567890123456789012345678901")
         self.assertEqual(encrypted, b"encrypted_key_data")
-        self.mock_kms.generate_data_key.assert_called_once_with(
-            KeyId=key_arn, KeySpec="AES_256", EncryptionContext={}
-        )
+        self.mock_kms.generate_data_key.assert_called_once_with(KeyId=key_arn, KeySpec="AES_256", EncryptionContext={})
 
     def test_generate_data_key_client_error(self):
         """Test _generate_data_key with KMS ClientError."""

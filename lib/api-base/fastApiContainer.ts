@@ -93,19 +93,14 @@ export class FastApiContainer extends Construct {
             THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
             LITELLM_KEY: config.litellmConfig.db_key,
             OPENAI_API_KEY: config.litellmConfig.db_key,
-            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE'
+            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE',
+            USE_AUTH: 'true',
+            AUTHORITY: config.authConfig!.authority,
+            CLIENT_ID: config.authConfig!.clientId,
+            ADMIN_GROUP: config.authConfig!.adminGroup,
+            USER_GROUP: config.authConfig!.userGroup,
+            JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
         };
-
-        if (config.restApiConfig.internetFacing) {
-            baseEnvironment.USE_AUTH = 'true';
-            baseEnvironment.AUTHORITY = config.authConfig!.authority;
-            baseEnvironment.CLIENT_ID = config.authConfig!.clientId;
-            baseEnvironment.ADMIN_GROUP = config.authConfig!.adminGroup;
-            baseEnvironment.USER_GROUP = config.authConfig!.userGroup;
-            baseEnvironment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
-        } else {
-            baseEnvironment.USE_AUTH = 'false';
-        }
 
         if (tokenTable) {
             baseEnvironment.TOKEN_TABLE_NAME = tokenTable.tableName;

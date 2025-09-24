@@ -65,11 +65,6 @@ class AuthHeaders(str, Enum):
         return list(cls)
 
 
-def is_idp_used() -> bool:
-    """Get if the identity provider is being used based on environment variable."""
-    return os.environ.get(USE_AUTH, "false").lower() == "true"
-
-
 if not jwt.algorithms.has_crypto:
     logger.error("No crypto support for JWT.")
     raise RuntimeError("No crypto support for JWT.")
@@ -275,7 +270,6 @@ class Authorizer:
         self.admin_group = os.environ.get("ADMIN_GROUP", "")
         self.user_group = os.environ.get("USER_GROUP", "")
         self.jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
-        self.use_idp = is_idp_used()
 
         self.token_authorizer = ApiTokenAuthorizer()
         self.management_token_authorizer = ManagementTokenAuthorizer()
@@ -286,10 +280,6 @@ class Authorizer:
         return jwt_data
 
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
-        """Authenticate request and return JWT data if OIDC, None if API/management token."""
-        if not self.use_idp:
-            return None
-
         # First try API tokens
         logger.info("Try API Auth Token...")
         if await self.token_authorizer.is_valid_api_token(request.headers):
@@ -330,44 +320,33 @@ class Authorizer:
     ) -> bool:
         """Return whether the user is authorized to access the endpoint."""
         endpoint = f"{request.method} {request.url.path}"
-        auth_method = "NO_IDP"
-        user_id = "anonymous"
-        has_access = False
-        reason = ""
 
-        if not self.use_idp:
-            auth_method = "NO_IDP"
-            user_id = "anonymous"
+        if jwt_data is None:
+            jwt_data = await self.authenticate_request(request)
+
+        if not jwt_data:
+            auth_method = "API_TOKEN"
+            user_id = "api_user"
             has_access = True
-            reason = "IDP disabled"
+            reason = "Valid API/Management token"
         else:
-            # Use provided JWT data or authenticate request
-            if jwt_data is None:
-                jwt_data = await self.authenticate_request(request)
+            auth_method = "OIDC"
+            user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
 
-            if not jwt_data:
-                auth_method = "API_TOKEN"
-                user_id = "api_user"
+            # If user is admin, always allow access
+            if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
                 has_access = True
-                reason = "Valid API/Management token"
+                reason = "Admin user"
+            # If admin is required but user is not admin, deny access
+            elif require_admin:
+                has_access = False
+                reason = "Admin required"
+            # For non-admin requests, check user group
             else:
-                auth_method = "OIDC"
-                user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
-
-                # If user is admin, always allow access
-                if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
-                    has_access = True
-                    reason = "Admin user"
-                # If admin is required but user is not admin, deny access
-                elif require_admin:
-                    has_access = False
-                    reason = "Admin required"
-                # For non-admin requests, check user group
-                else:
-                    has_access = self.user_group == "" or is_user_in_group(
-                        jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
-                    )
-                    reason = "Valid user group" if has_access else "Invalid user group"
+                has_access = self.user_group == "" or is_user_in_group(
+                    jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
+                )
+                reason = "Valid user group" if has_access else "Invalid user group"
 
         self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
         return has_access

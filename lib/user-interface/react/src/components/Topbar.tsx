@@ -98,7 +98,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             disableUtilityCollapse: false,
             external: false,
             href: '/mcp-connections',
-        } as ButtonDropdownProps.Item] : []),
+        } as ButtonDropdownProps.Item] : [])
     ];
 
     return (
@@ -158,7 +158,16 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/model-management',
-                            } as ButtonDropdownProps.Item
+                            } as ButtonDropdownProps.Item,
+                            ...(configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
+                                id: 'mcp-workbench',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'MCP Workbench',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/mcp-workbench',
+                            } as ButtonDropdownProps.Item] : []),
                         ]
                     }] : []) as TopNavigationProps.Utility[]),
                 {

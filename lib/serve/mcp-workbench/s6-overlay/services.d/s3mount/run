@@ -1,0 +1,32 @@
+#!/command/with-contenv bash
+
+# Get environment variables with defaults
+TOOLS_DIR="${TOOLS_DIR:-/workspace/tools}"
+LOG_LEVEL="${LOG_LEVEL:-info}"
+MCPWORKBENCH_BUCKET="${MCPWORKBENCH_BUCKET:-}"
+
+# Build command arguments
+ARGS="--allow-other --read-only --vfs-cache-mode off --direct-io --dir-cache-time 0s --attr-timeout 0s --poll-interval 0s :s3,provider=AWS,env_auth:${MCPWORKBENCH_BUCKET} ${TOOLS_DIR}"
+
+# Add verbosity based on log level
+case "${LOG_LEVEL}" in
+    debug)
+        ARGS="${ARGS} --debug-fuse"
+        ;;
+    verbose)
+        ARGS="${ARGS} --debug-fuse -vv"
+        ;;
+esac
+
+# Log startup
+echo "[rclone] Starting rclone mount of S3 ${MCPWORKBENCH_BUCKET}..."
+echo "[rclone] Mounting to ${TOOLS_DIR}"
+echo "[rclone] Arguments: ${ARGS}"
+
+# Create tools directory if it doesn't exist
+mkdir -p "${TOOLS_DIR}"
+
+# s6-notifyoncheck -d 10000 -c "mountpoint -q /workspace/tools"
+
+# Start the rclone daemon
+exec s6-notifyoncheck s6-setuidgid root rclone mount ${ARGS}

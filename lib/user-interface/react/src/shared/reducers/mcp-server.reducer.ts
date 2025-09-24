@@ -34,6 +34,7 @@ export type McpServer = {
     url: string;
     name: string;
     description?: string;
+    groups?: string[];
     isOwner?: true;
     customHeaders?: Record<string, string>;
     clientConfig?: McpClientConfig;
@@ -47,7 +48,8 @@ export const DefaultMcpServer: NewMcpServer = {
     url: '',
     description: '',
     clientConfig: {},
-    status: McpServerStatus.Active
+    status: McpServerStatus.Active,
+    groups: []
 };
 
 export type McpServerListResponse = {
@@ -70,10 +72,15 @@ export const mcpServerApi = createApi({
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Create MCP Server', baseQueryReturnValue),
             invalidatesTags: ['mcpServers'],
         }),
-        getMcpServer: builder.query<McpServer, string>({
-            query (serverId) {
+        getMcpServer: builder.query<McpServer, {mcpServerId, showPlaceholder?: boolean}>({
+            query ({mcpServerId, showPlaceholder = false}) {
+                const queryStringParameters = new URLSearchParams();
+                if (showPlaceholder) {
+                    queryStringParameters.append('showPlaceholder', '1');
+                }
+
                 return {
-                    url: `/mcp-server/${serverId}`,
+                    url: `/mcp-server/${mcpServerId}?${queryStringParameters.toString()}`,
                     method: 'GET'
                 };
             },

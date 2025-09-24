@@ -23,6 +23,7 @@ import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Role } from 'aws-cdk-lib/aws-iam';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import McpWorkbenchConstruct from '../serve/mcpWorkbenchConstruct';
 
 export type LisaApiBaseProps = {
     vpc: Vpc;
@@ -77,6 +78,14 @@ export class LisaApiBaseConstruct extends Construct {
             },
             // Support binary media types used for documentation images and fonts
             binaryMediaTypes: ['font/*', 'image/*'],
+        });
+
+        new McpWorkbenchConstruct(this, id + 'McpWorkbench', {
+            ...props,
+            authorizer: this.authorizer!,
+            restApiId: restApi.restApiId,
+            rootResourceId: restApi.restApiRootResourceId,
+            securityGroups: [props.vpc.securityGroups.ecsModelAlbSg],
         });
 
         this.restApi = restApi;

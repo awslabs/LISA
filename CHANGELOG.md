@@ -1,3 +1,39 @@
+# v5.3.0
+## Key Features
+### Model Context Protocol (MCP) Workbench
+LISA now includes a comprehensive MCP Workbench that enables administrators to create, test, manage and host custom MCP tools directly within LISA.
+
+#### MCP Tool Development
+- **Custom Tool Creation**: Administrators can create and edit custom MCP tools using a built-in code editor with syntax highlighting
+- **Tool Testing Environment**: Integrated testing capabilities for validating MCP tools before enterprise rollout
+- **Template-Based Development**: Pre-built tempslate and examples to accelerate tool development
+- **MCP file hosting support**: Administrators can upload MCP tool code directly to S3. The MCP Workbench connection will automatically host this tool for use
+- **Improved Authentication**: Enhanced authentication mechanisms for MCP server connections, if users specify `{LISA_BEARER_TOKEN}` in the header field, LISA will populate this with the users active token. This is important for proxying calls to internally hosted servers that use the same authentication mechanisms as LISA
+
+#### Administrative Control
+- **Tool Management**: Administrators can manage and configure the MCP workbench capabilities for their organization
+- **IDP Group Locking**: MCP connections can now be locked down to specific Identity Provider (IdP) groups for enhanced security
+
+### Enhanced Model Control
+- **Custom API Key Support**: Support for handling custom API keys for third-party models added to Model Management
+
+### Mermaid Diagram Sanitization
+- **Security Enhancement**: Implemented sanitization for Mermaid diagrams to prevent potential security vulnerabilities
+- **Safe Rendering**: Ensures that Mermaid diagrams are rendered safely without executing malicious code
+
+## What's Next?
+We'll be launching broader MCP tool hosting capabilities in an upcoming LISA release.
+
+## Acknowledgements
+* @bedanley
+* @estohlmann
+* @jmharold
+* @dustins
+* @jonleeh
+* @drduhe
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.2.0...v5.3.0
+
 # v5.2.0
 ## Key Features
 ### Model Context Protocol (MCP)  Enhancements

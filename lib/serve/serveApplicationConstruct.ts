@@ -39,6 +39,9 @@ import { LAMBDA_PATH, REST_API_PATH } from '../util';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { getDefaultRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
+import { ECSTasks } from '../api-base/ecsCluster';
+import { letIfDefined } from '../util/common-functions';
+import { EventBus } from 'aws-cdk-lib/aws-events';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -90,6 +93,11 @@ export class LisaServeApplicationConstruct extends Construct {
             vpc: vpc,
         });
 
+        // Create EventBus for management key rotation events
+        const managementEventBus = new EventBus(scope, createCdkId([scope.node.id, 'managementEventBus']), {
+            eventBusName: `${config.deploymentName}-lisa-management-events`,
+        });
+
         // Use a stable name for the management key secret
         const managementKeySecret = new Secret(scope, createCdkId([scope.node.id, 'managementKeySecret']), {
             secretName: `${config.deploymentName}-lisa-management-key`, // Use stable name based on deployment
@@ -107,6 +115,9 @@ export class LisaServeApplicationConstruct extends Construct {
             handler: 'management_key.handler',
             code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
             timeout: Duration.minutes(5),
+            environment: {
+                EVENT_BUS_NAME: managementEventBus.eventBusName,
+            },
             role: new Role(scope, createCdkId([scope.node.id, 'managementKeyRotationRole']), {
                 assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
                 managedPolicies: [
@@ -124,6 +135,13 @@ export class LisaServeApplicationConstruct extends Construct {
                                     'secretsmanager:UpdateSecretVersionStage'
                                 ],
                                 resources: [managementKeySecret.secretArn]
+                            }),
+                            new PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: [
+                                    'events:PutEvents'
+                                ],
+                                resources: [managementEventBus.eventBusArn]
                             })
                         ]
                     })
@@ -143,7 +161,9 @@ export class LisaServeApplicationConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
             stringValue: managementKeySecret.secretName,
         });
-        restApi.container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
+        restApi.containers.forEach((container) => {
+            container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
+        });
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
         const connectionParamName = 'LiteLLMDbConnectionInfo';
@@ -221,50 +241,58 @@ export class LisaServeApplicationConstruct extends Construct {
             ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
         }));
 
-
-        litellmDbConnectionInfoPs.grantRead(restApi.taskRole);
+        Object.values(restApi.taskRoles).forEach((taskRole) => {
+            litellmDbConnectionInfoPs.grantRead(taskRole);
+        });
 
         // update the rdsConfig with the endpoint address
         config.restApiConfig.rdsConfig.dbHost = litellmDb.dbInstanceEndpointAddress;
 
-        if (config.iamRdsAuth) {
-            litellmDb.grantConnect(restApi.taskRole, restApi.taskRole.roleName);
+        letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
+            if (config.iamRdsAuth) {
+                litellmDb.grantConnect(serveRole, serveRole.roleName);
 
-            // Create the lambda for generating DB users for IAM auth
-            const createDbUserLambda = this.getIAMAuthLambda(scope, config, litellmDbPasswordSecret, restApi.taskRole.roleName, vpc, [litellmDbSg]);
+                // Create the lambda for generating DB users for IAM auth
+                const createDbUserLambda = this.getIAMAuthLambda(scope, config, litellmDbPasswordSecret, serveRole.roleName, vpc, [litellmDbSg]);
 
-            const customResourceRole = new Role(scope, 'LISAServeCustomResourceRole', {
-                assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            });
-            createDbUserLambda.grantInvoke(customResourceRole);
+                const customResourceRole = new Role(scope, 'LISAServeCustomResourceRole', {
+                    assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+                });
+                createDbUserLambda.grantInvoke(customResourceRole);
 
-            // run updateInstanceKmsConditionsLambda every deploy
-            new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
-                onCreate: {
-                    service: 'Lambda',
-                    action: 'invoke',
-                    physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
-                    parameters: {
-                        FunctionName: createDbUserLambda.functionName,
-                        Payload: '{}'
+                // run updateInstanceKmsConditionsLambda every deploy
+                new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
+                    onCreate: {
+                        service: 'Lambda',
+                        action: 'invoke',
+                        physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
+                        parameters: {
+                            FunctionName: createDbUserLambda.functionName,
+                            Payload: '{}'
+                        },
                     },
-                },
-                role: customResourceRole
-            });
-        } else {
-            litellmDb.grantConnect(restApi.taskRole);
-            litellmDbPasswordSecret.grantRead(restApi.taskRole);
-        }
+                    role: customResourceRole
+                });
+            } else {
+                litellmDb.grantConnect(serveRole);
+                litellmDbPasswordSecret.grantRead(serveRole);
+            }
+        });
 
-        restApi.container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+        restApi.containers.forEach((container) => {
+            container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+        });
 
         if (config.region.includes('iso')) {
             const ca_bundle = config.certificateAuthorityBundle ?? '';
-            restApi.container.addEnvironment('SSL_CERT_DIR', '/etc/pki/tls/certs');
-            restApi.container.addEnvironment('SSL_CERT_FILE', ca_bundle);
-            restApi.container.addEnvironment('REQUESTS_CA_BUNDLE', ca_bundle);
-            restApi.container.addEnvironment('CURL_CA_BUNDLE', ca_bundle);
-            restApi.container.addEnvironment('AWS_CA_BUNDLE', ca_bundle);
+
+            restApi.containers.forEach((container) => {
+                container.addEnvironment('SSL_CERT_DIR', '/etc/pki/tls/certs');
+                container.addEnvironment('SSL_CERT_FILE', ca_bundle);
+                container.addEnvironment('REQUESTS_CA_BUNDLE', ca_bundle);
+                container.addEnvironment('CURL_CA_BUNDLE', ca_bundle);
+                container.addEnvironment('AWS_CA_BUNDLE', ca_bundle);
+            });
         }
 
         // Create Parameter Store entry with RestAPI URI
@@ -281,9 +309,14 @@ export class LisaServeApplicationConstruct extends Construct {
             description: 'Serialized JSON of registered models data',
         });
 
-        this.modelsPs.grantRead(restApi.taskRole);
+        letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
+            this.modelsPs.grantRead(serveRole);
+        });
+
         // Add parameter as container environment variable for both RestAPI and RagAPI
-        restApi.container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
+        restApi.containers.forEach((container) => {
+            container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
+        });
         restApi.node.addDependency(this.modelsPs);
 
         // Additional permissions for REST API Role
@@ -311,7 +344,10 @@ export class LisaServeApplicationConstruct extends Construct {
                 }),
             ]
         });
-        restApi.taskRole.attachInlinePolicy(invocation_permissions);
+        letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
+            this.modelsPs.grantRead(serveRole);
+            serveRole.attachInlinePolicy(invocation_permissions);
+        });
 
         // Update
         this.restApi = restApi;

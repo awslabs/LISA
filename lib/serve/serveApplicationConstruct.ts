@@ -318,6 +318,8 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
         });
         restApi.node.addDependency(this.modelsPs);
+        restApi.node.addDependency(litellmDbConnectionInfoPs);
+        restApi.node.addDependency(this.endpointUrl);
 
         // Additional permissions for REST API Role
         const invocation_permissions = new Policy(scope, 'ModelInvokePerms', {

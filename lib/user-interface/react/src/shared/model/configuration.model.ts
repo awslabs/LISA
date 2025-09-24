@@ -18,7 +18,7 @@ import { z } from 'zod';
 export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
     enabledComponents: IEnabledComponents,
-    global: IGlobalConfiguration
+    global: IGlobalConfiguration,
 };
 
 export type IEnabledComponents = {
@@ -37,6 +37,7 @@ export type IEnabledComponents = {
     mcpConnections: boolean;
     showMcpWorkbench: boolean;
     modelLibrary: boolean;
+    encryptSession: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -86,7 +87,8 @@ export const enabledComponentsSchema = z.object({
     showPromptTemplateLibrary: z.boolean().default(true),
     mcpConnections: z.boolean().default(true),
     modelLibrary: z.boolean().default(true),
-    enableModelComparisonUtility: z.boolean().default(false)
+    enableModelComparisonUtility: z.boolean().default(false),
+    encryptSession: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({

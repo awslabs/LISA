@@ -20,6 +20,7 @@ import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
@@ -40,6 +41,7 @@ import { RemovalPolicy } from 'aws-cdk-lib';
  * @property {IAuthorizer} authorizer - APIGW authorizer
  * @property {ISecurityGroup[]} securityGroups - Security groups for Lambdas
  * @property {Map<number, ISubnet> }importedSubnets for application.
+ * @property {dynamodb.Table} configTable - Configuration DynamoDB table
  */
 type SessionApiProps = {
     authorizer: IAuthorizer;
@@ -47,6 +49,7 @@ type SessionApiProps = {
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
     vpc: Vpc;
+    configTable: dynamodb.Table;
 } & BaseProps;
 
 /**
@@ -56,13 +59,20 @@ export class SessionApi extends Construct {
     constructor (scope: Construct, id: string, props: SessionApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, configTable } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
             'session-common-lambda-layer',
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+        );
+
+        // Get FastAPI layer for cryptography support
+        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'session-fastapi-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
         // Create DynamoDB table to handle chat sessions
@@ -90,6 +100,19 @@ export class SessionApi extends Construct {
             indexName: byUserIdIndexSorted,
             partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
             sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
+        });
+
+        // Create KMS key for session data encryption
+        const sessionEncryptionKey = new Key(this, 'SessionEncryptionKey', {
+            description: 'KMS key for encrypting session data at rest',
+            enableKeyRotation: true,
+            removalPolicy: config.removalPolicy,
+        });
+
+        // Store KMS key ARN in SSM parameter for cross-stack access
+        new StringParameter(this, 'SessionEncryptionKeyArnParameter', {
+            parameterName: `${config.deploymentPrefix}/sessionEncryptionKeyArn`,
+            stringValue: sessionEncryptionKey.keyArn,
         });
 
         const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
@@ -129,6 +152,8 @@ export class SessionApi extends Construct {
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
             MODEL_TABLE_NAME: modelTableName,
+            CONFIG_TABLE_NAME: configTable.tableName,
+            SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
         };
 
         const lambdaRole: IRole = createLambdaRole(
@@ -145,6 +170,15 @@ export class SessionApi extends Construct {
                 effect: Effect.ALLOW,
                 actions: ['dynamodb:GetItem'],
                 resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${modelTableName}`]
+            })
+        );
+
+        // Add permissions to read from configuration table
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['dynamodb:GetItem', 'dynamodb:Query'],
+                resources: [configTable.tableArn]
             })
         );
 
@@ -165,6 +199,19 @@ export class SessionApi extends Construct {
             );
             Object.assign(env, { USAGE_METRICS_QUEUE_NAME: usageMetricsQueueName });
         }
+
+        // Add KMS permissions for session encryption
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'kms:GenerateDataKey',
+                    'kms:Decrypt',
+                    'kms:DescribeKey'
+                ],
+                resources: [sessionEncryptionKey.keyArn]
+            })
+        );
 
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
@@ -231,7 +278,7 @@ export class SessionApi extends Construct {
                 this,
                 restApi,
                 lambdaPath,
-                [commonLambdaLayer],
+                [commonLambdaLayer, fastapiLambdaLayer],
                 f,
                 getDefaultRuntime(),
                 vpc,

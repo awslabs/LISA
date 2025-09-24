@@ -53,6 +53,8 @@ type ConfigurationApiProps = {
  * API which Maintains config state in DynamoDB
  */
 export class ConfigurationApi extends Construct {
+    public readonly configTable: dynamodb.Table;
+
     constructor (scope: Construct, id: string, props: ConfigurationApiProps) {
         super(scope, id);
 
@@ -72,7 +74,7 @@ export class ConfigurationApi extends Construct {
         );
 
         // Create DynamoDB table to handle config data
-        const configTable = new dynamodb.Table(this, 'ConfigurationTable', {
+        this.configTable = new dynamodb.Table(this, 'ConfigurationTable', {
             partitionKey: {
                 name: 'configScope',
                 type: dynamodb.AttributeType.STRING,
@@ -87,8 +89,8 @@ export class ConfigurationApi extends Construct {
         });
 
         const mcpServersTable = dynamodb.Table.fromTableName(this, 'McpServersTable', mcpApi.mcpServersTableNameParameter.stringValue);
+        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
 
-        const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
         mcpServersTable.grantReadWriteData(lambdaRole);
 
         // Populate the App Config table with default config
@@ -99,7 +101,7 @@ export class ConfigurationApi extends Construct {
                 action: 'putItem',
                 physicalResourceId: PhysicalResourceId.of('initConfigData'),
                 parameters: {
-                    TableName: configTable.tableName,
+                    TableName: this.configTable.tableName,
                     Item: {
                         'versionId': {'N': '0'},
                         'changedBy': {'S': 'System'},
@@ -122,6 +124,7 @@ export class ConfigurationApi extends Construct {
                                 'showPromptTemplateLibrary': {'BOOL': 'True'},
                                 'mcpConnections': {'BOOL': 'True'},
                                 'modelLibrary': {'BOOL': 'True'},
+                                'encryptSession': {'BOOL': 'False'},
                             }},
                             'systemBanner': {'M': {
                                 'isEnabled': {'BOOL': 'False'},
@@ -144,7 +147,7 @@ export class ConfigurationApi extends Construct {
         const fastApiEndpoint = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/serve/endpoint`);
 
         const environment = {
-            CONFIG_TABLE_NAME: configTable.tableName,
+            CONFIG_TABLE_NAME: this.configTable.tableName,
             FASTAPI_ENDPOINT: fastApiEndpoint,
             // add MCP_SERVERS_TABLE_NAME so we can update it if the configuration changes
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName
@@ -185,11 +188,11 @@ export class ConfigurationApi extends Construct {
                 lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {
-                configTable.grantWriteData(lambdaFunction);
+                this.configTable.grantWriteData(lambdaFunction);
             } else if (f.method === 'GET') {
-                configTable.grantReadData(lambdaFunction);
+                this.configTable.grantReadData(lambdaFunction);
             } else if (f.method === 'DELETE') {
-                configTable.grantReadWriteData(lambdaFunction);
+                this.configTable.grantReadWriteData(lambdaFunction);
             }
         });
     }

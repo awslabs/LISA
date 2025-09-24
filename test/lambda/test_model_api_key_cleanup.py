@@ -34,7 +34,7 @@ class TestModelApiKeyCleanup:
         event = {"RequestType": "Delete"}
         context = Mock()
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             result = lambda_handler(event, context)
 
             assert result["Status"] == "SUCCESS"
@@ -49,7 +49,7 @@ class TestModelApiKeyCleanup:
         mock_cursor.fetchall.return_value = [("model-1", '{"api_key": "ignored"}')]
         mock_get_connection.return_value = mock_connection
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             event = {"RequestType": "Create"}
             context = Mock()
 
@@ -64,7 +64,7 @@ class TestModelApiKeyCleanup:
         """Test exception handling."""
         mock_get_connection.side_effect = Exception("Database connection failed")
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             event = {"RequestType": "Create"}
             context = Mock()
 
@@ -101,7 +101,7 @@ class TestModelApiKeyCleanup:
             "SecretString": json.dumps({"username": "testuser", "password": "testpass"})
         }
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             with patch("models.model_api_key_cleanup.psycopg2.connect") as mock_connect:
                 mock_connection = Mock()
                 mock_connect.return_value = mock_connection
@@ -118,7 +118,7 @@ class TestModelApiKeyCleanup:
         mock_boto3_client.return_value = mock_ssm_client
         mock_ssm_client.get_parameter.side_effect = Exception("SSM error")
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             with pytest.raises(Exception, match="SSM error"):
                 get_database_connection()
 
@@ -148,7 +148,7 @@ class TestModelApiKeyCleanup:
             # Mock Secrets Manager error
             mock_secrets_client.get_secret_value.side_effect = Exception("Secrets error")
 
-            with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+            with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
                 with pytest.raises(Exception, match="Secrets error"):
                     get_database_connection()
 
@@ -161,7 +161,7 @@ class TestModelApiKeyCleanup:
         mock_cursor.fetchall.return_value = []  # No tables found
         mock_get_connection.return_value = mock_connection
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             event = {"RequestType": "Create"}
             context = Mock()
 
@@ -187,7 +187,7 @@ class TestModelApiKeyCleanup:
         mock_cursor.description = [("id",), ("model_name",), ("litellm_params",)]
         mock_get_connection.return_value = mock_connection
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             event = {"RequestType": "Create"}
             context = Mock()
 
@@ -209,7 +209,7 @@ class TestModelApiKeyCleanup:
         mock_cursor.description = [("some_column",), ("other_column",)]  # Missing required columns
         mock_get_connection.return_value = mock_connection
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
+        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
             event = {"RequestType": "Create"}
             context = Mock()
 

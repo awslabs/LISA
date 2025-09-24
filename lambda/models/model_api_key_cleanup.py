@@ -43,45 +43,42 @@ def get_all_dynamodb_models() -> List[Dict[str, str]]:
     try:
         dynamodb = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
         ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-        
+
         # Get model table name from SSM parameter
         deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX", "/dev/LISA/lisa")
         model_table_param = f"{deployment_prefix}/modelTableName"
-        
+
         try:
             table_name_response = ssm_client.get_parameter(Name=model_table_param)
             table_name = table_name_response["Parameter"]["Value"]
-            
+
             if not table_name:
                 raise ValueError("Empty table name returned from SSM")
-                
+
         except Exception as e:
             print(f"⚠️ Could not get model table name from SSM: {e}")
             return []
-        
+
         # Scan the entire DynamoDB table to get all models
         response = dynamodb.scan(TableName=table_name)
-        
+
         models = []
-        for item in response.get('Items', []):
+        for item in response.get("Items", []):
             # Extract model_id and modelName from the item with proper validation
-            model_id = item.get('model_id', {}).get('S', '')
-            model_config = item.get('model_config', {})
-            model_name = ''
-            
-            if 'M' in model_config and 'modelName' in model_config['M']:
-                model_name = model_config['M']['modelName'].get('S', '')
-            
+            model_id = item.get("model_id", {}).get("S", "")
+            model_config = item.get("model_config", {})
+            model_name = ""
+
+            if "M" in model_config and "modelName" in model_config["M"]:
+                model_name = model_config["M"]["modelName"].get("S", "")
+
             # Only include models with both ID and name
             if model_id and model_name:
-                models.append({
-                    'model_id': model_id,
-                    'model_name': model_name
-                })
-        
+                models.append({"model_id": model_id, "model_name": model_name})
+
         print(f"🔍 Found {len(models)} models in DynamoDB")
         return models
-        
+
     except Exception as e:
         print(f"⚠️ Error scanning DynamoDB table: {e}")
         return []
@@ -97,7 +94,7 @@ def get_database_connection():
     # Get database connection info from SSM using environment variable
     deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX", "/dev/LISA/lisa")
     db_param_name = f"{deployment_prefix}/LiteLLMDbConnectionInfo"
-    
+
     try:
         db_param_response = ssm_client.get_parameter(Name=db_param_name, WithDecryption=True)
         db_params = json.loads(db_param_response["Parameter"]["Value"])
@@ -117,7 +114,7 @@ def get_database_connection():
     for param in required_params:
         if param not in db_params:
             raise ValueError(f"Missing required database parameter: {param}")
-    
+
     if "password" not in secret:
         raise ValueError("Missing password in secret")
 
@@ -149,7 +146,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         CloudFormation CustomResource response
     """
     print("🔧 Starting Bedrock model API key cleanup...")
-    
+
     # Validate environment variables
     required_env_vars = ["AWS_REGION", "DEPLOYMENT_PREFIX"]
     for env_var in required_env_vars:
@@ -160,7 +157,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     conn = None
     cursor = None
-    
+
     try:
         # Get database connection
         conn = get_database_connection()
@@ -212,17 +209,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Get all models from DynamoDB and check if they exist in LiteLLM
         dynamodb_models = get_all_dynamodb_models()
         bedrock_models_processed = 0
-        
+
         for dynamodb_model in dynamodb_models:
-            dynamodb_model_id = dynamodb_model['model_id']
-            dynamodb_model_name = dynamodb_model['model_name']
-            
+            dynamodb_model_id = dynamodb_model["model_id"]
+            dynamodb_model_name = dynamodb_model["model_name"]
+
             # Check if this is a Bedrock model
             if not dynamodb_model_name.startswith("bedrock/"):
                 continue
-                
+
             print(f"🎯 Processing Bedrock model: {dynamodb_model_name}")
-            
+
             # Find the corresponding LiteLLM model by matching the model_name (alias)
             # DynamoDB model_id is actually the alias, LiteLLM model_name is the alias
             matching_litellm_model = None
@@ -239,25 +236,25 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             litellm_params = {}
                     except json.JSONDecodeError:
                         continue
-                    
+
                     matching_litellm_model = {
-                        'model_id': model_id,
-                        'model_name': model_name,
-                        'litellm_params': litellm_params
+                        "model_id": model_id,
+                        "model_name": model_name,
+                        "litellm_params": litellm_params,
                     }
                     break
-            
+
             if not matching_litellm_model:
                 print(f"⚠️ No matching LiteLLM model found for: {dynamodb_model_name}")
                 continue
-            
+
             # Check if this model has an api_key to remove
-            if 'api_key' in matching_litellm_model['litellm_params']:
+            if "api_key" in matching_litellm_model["litellm_params"]:
                 print(f"🔧 Removing api_key from: {matching_litellm_model['model_name']}")
-                
+
                 try:
                     # Remove api_key from litellm_params
-                    clean_params = matching_litellm_model['litellm_params'].copy()
+                    clean_params = matching_litellm_model["litellm_params"].copy()
                     if "api_key" in clean_params:  # pragma: allowlist secret
                         del clean_params["api_key"]
 
@@ -265,7 +262,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     clean_params_json = json.dumps(clean_params)
                     cursor.execute(
                         f'UPDATE "{litellm_table}" SET "{litellm_params_col}" = %s WHERE "{model_id_col}" = %s',
-                        (clean_params_json, matching_litellm_model['model_id']),
+                        (clean_params_json, matching_litellm_model["model_id"]),
                     )
                     print(f"✅ Successfully cleaned model: {matching_litellm_model['model_name']}")
                     bedrock_models_processed += 1
@@ -293,22 +290,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Handle configuration/validation errors
         print(f"❌ Configuration error: {e}")
         return {"Status": "FAILED", "PhysicalResourceId": "bedrock-auth-cleanup", "Reason": str(e)}
-    
+
     except Exception as e:
         # Handle unexpected errors
         print(f"❌ Cleanup failed: {e}")
         import traceback
+
         print(f"❌ Traceback: {traceback.format_exc()}")
-        
+
         # Rollback any pending database changes
         if conn:
             try:
                 conn.rollback()
             except Exception as rollback_error:
                 print(f"⚠️ Failed to rollback database changes: {rollback_error}")
-        
+
         return {"Status": "FAILED", "PhysicalResourceId": "bedrock-auth-cleanup", "Reason": str(e)}
-    
+
     finally:
         # Ensure proper cleanup of database resources
         if cursor:
@@ -316,7 +314,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 cursor.close()
             except Exception as e:
                 print(f"⚠️ Error closing cursor: {e}")
-        
+
         if conn:
             try:
                 conn.close()

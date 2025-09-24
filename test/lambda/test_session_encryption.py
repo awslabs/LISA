@@ -128,14 +128,14 @@ class TestSessionEncryption(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(SessionEncryptionError) as context:
                 _get_kms_key_arn()
-            self.assert_in("SESSION_ENCRYPTION_KEY_ARN environment variable not set", str(context.exception))
+            self.assertIn("SESSION_ENCRYPTION_KEY_ARN environment variable not set", str(context.exception))
 
     def test_get_kms_key_arn_empty(self):
         """Test _get_kms_key_arn with empty environment variable."""
         with patch.dict(os.environ, {"SESSION_ENCRYPTION_KEY_ARN": ""}):
             with self.assertRaises(SessionEncryptionError) as context:
                 _get_kms_key_arn()
-            self.assert_in("SESSION_ENCRYPTION_KEY_ARN environment variable not set", str(context.exception))
+            self.assertIn("SESSION_ENCRYPTION_KEY_ARN environment variable not set", str(context.exception))
 
     def test_generate_data_key_success(self):
         """Test _generate_data_key with successful KMS call."""
@@ -171,7 +171,7 @@ class TestSessionEncryption(unittest.TestCase):
         with self.assertRaises(SessionEncryptionError) as context:
             _generate_data_key("arn:aws:kms:us-east-1:123456789012:key/test-key-id")
 
-        self.assert_in("Failed to generate data key", str(context.exception))
+        self.assertIn("Failed to generate data key", str(context.exception))
 
     def test_decrypt_data_key_success(self):
         """Test _decrypt_data_key with successful KMS call."""
@@ -205,7 +205,7 @@ class TestSessionEncryption(unittest.TestCase):
         with self.assertRaises(SessionEncryptionError) as context:
             _decrypt_data_key(b"encrypted_key_data")
 
-        self.assert_in("Failed to decrypt data key", str(context.exception))
+        self.assertIn("Failed to decrypt data key", str(context.exception))
 
     def test_create_encryption_context(self):
         """Test _create_encryption_context function."""
@@ -224,9 +224,9 @@ class TestSessionEncryption(unittest.TestCase):
         # Verify it can be decoded
         decoded = base64.b64decode(result).decode("utf-8")
         parsed = json.loads(decoded)
-        self.assert_in("encrypted_key", parsed)
-        self.assert_in("encrypted_data", parsed)
-        self.assert_in("encryption_version", parsed)
+        self.assertIn("encrypted_key", parsed)
+        self.assertIn("encrypted_data", parsed)
+        self.assertIn("encryption_version", parsed)
 
     def test_encrypt_session_data_exception(self):
         """Test encrypt_session_data with exception during encryption."""
@@ -236,7 +236,7 @@ class TestSessionEncryption(unittest.TestCase):
         with self.assertRaises(SessionEncryptionError) as context:
             encrypt_session_data(self.test_data, self.user_id, self.session_id)
 
-        self.assert_in("Failed to encrypt session data", str(context.exception))
+        self.assertIn("Failed to encrypt session data", str(context.exception))
 
     def test_decrypt_session_data_success(self):
         """Test decrypt_session_data with successful decryption."""
@@ -257,7 +257,7 @@ class TestSessionEncryption(unittest.TestCase):
         with self.assertRaises(SessionEncryptionError) as context:
             decrypt_session_data(invalid_data, self.user_id, self.session_id)
 
-        self.assert_in("Failed to decrypt session data", str(context.exception))
+        self.assertIn("Failed to decrypt session data", str(context.exception))
 
     def test_is_encrypted_data_valid(self):
         """Test is_encrypted_data with valid encrypted data."""
@@ -323,8 +323,8 @@ class TestSessionEncryption(unittest.TestCase):
         self.assertEqual(result["encryption_version"], "1.0")
 
         # Verify fields were encrypted
-        self.assert_in("encrypted_history", result)
-        self.assert_in("encrypted_configuration", result)
+        self.assertIn("encrypted_history", result)
+        self.assertIn("encrypted_configuration", result)
 
         # Verify original fields were removed
         self.assertNotIn("history", result)
@@ -383,7 +383,7 @@ class TestSessionEncryption(unittest.TestCase):
             with self.assertRaises(SessionEncryptionError) as context:
                 migrate_session_to_encrypted(session_data, self.user_id, self.session_id)
 
-            self.assert_in("Failed to migrate session to encrypted", str(context.exception))
+            self.assertIn("Failed to migrate session to encrypted", str(context.exception))
 
     def test_decrypt_session_fields_success(self):
         """Test decrypt_session_fields with successful decryption."""
@@ -459,7 +459,7 @@ class TestSessionEncryption(unittest.TestCase):
             with self.assertRaises(SessionEncryptionError) as context:
                 decrypt_session_fields(session_data, self.user_id, self.session_id)
 
-            self.assert_in("Failed to decrypt session fields", str(context.exception))
+            self.assertIn("Failed to decrypt session fields", str(context.exception))
 
     def test_end_to_end_encryption_decryption(self):
         """Test complete encryption and decryption cycle."""

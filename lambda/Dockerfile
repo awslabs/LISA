@@ -15,10 +15,6 @@ COPY lambda/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy the lisa-sdk directory and install lisapy from local source
-COPY lisa-sdk /tmp/lisa-sdk
-RUN pip install --no-cache-dir /tmp/lisa-sdk
-
 # Copy the Lambda function code
 COPY lambda/ .
 

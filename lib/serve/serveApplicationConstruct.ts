@@ -319,6 +319,8 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
         });
         restApi.node.addDependency(this.modelsPs);
+        restApi.node.addDependency(litellmDbConnectionInfoPs);
+        restApi.node.addDependency(this.endpointUrl);
 
         // Update
         this.restApi = restApi;

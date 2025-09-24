@@ -227,8 +227,6 @@ patch.dict(
         "repository.rag_document_repo": mock_doc_repo,
         "langchain_community": mock_langchain_community,
         "langchain_community.vectorstores": mock_langchain_community,
-        "langchain_community.vectorstores.opensearch_vector_search": mock_langchain_community,
-        "langchain_community.vectorstores.pgvector": mock_langchain_community,
         "langchain_core": mock_langchain_core,
         "langchain_core.embeddings": mock_langchain_core,
         "langchain_core.vectorstores": mock_langchain_core,

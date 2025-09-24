@@ -16,8 +16,7 @@
 import { Construct } from 'constructs';
 import { BaseProps } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { DockerImageCode } from 'aws-cdk-lib/aws-lambda';
-import { DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Choice, Condition, IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
@@ -27,14 +26,15 @@ import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../core/utils';
-// import { getDefaultRuntime } from '../../../api-base/utils';
+import { getDefaultRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
-// import { LAMBDA_PATH } from '../../../util';
+import { LAMBDA_PATH } from '../../../util';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,
     vectorStoreDeployerFnArn: string;
+    lambdaLayers: ILayerVersion[];
     vpc: Vpc,
     role?: iam.IRole,
     executionRole: iam.IRole;
@@ -54,6 +54,7 @@ export class DeleteStoreStateMachine extends Construct {
         const {
             config,
             executionRole,
+            lambdaLayers,
             parameterName,
             role,
             ragVectorStoreTable,
@@ -135,17 +136,17 @@ export class DeleteStoreStateMachine extends Construct {
             resultPath: '$.ddbResult',
         }).next(handleCleanupBedrockKnowledgeBase);
 
-        // const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const cleanupDocsFunc = new DockerImageFunction(this, 'CleanupRepositoryDocsFunc', {
-            code: DockerImageCode.fromImageAsset('.', {
-                file: 'lambda/Dockerfile',
-                cmd: ['repository.state_machine.cleanup_repo_docs.lambda_handler'],
-                exclude: ['cdk.out']
-            }),
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
+
+        const cleanupDocsFunc =  new Function(this, 'CleanupRepositoryDocsFunc', {
+            runtime: getDefaultRuntime(),
+            handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
             vpc: vpc.vpc,
             environment: environment,
+            layers: lambdaLayers,
             role: executionRole,
         });
 

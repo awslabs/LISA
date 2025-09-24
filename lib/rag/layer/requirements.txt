@@ -3,13 +3,11 @@
 
 # Core RAG packages
 # psycopg2-binary==2.9.10 // provided by Common Layer
-langchain==0.3.27
+langchain-text-splitters==0.3.11
 langchain-community==0.3.27
-
-# Scientific computing packages
+langchain-core==0.3.76
+# Required by langchain-community - Pin NumPy to avoid GCC 9.3+
 numpy<2.0.0
-scipy
-pandas
 
 # Database and search connectors
 opensearch-py==2.6.0

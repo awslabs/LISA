@@ -43,7 +43,7 @@ export class VectorStoreCreatorStack extends Construct {
     constructor (scope: Construct, id: string, props: VectorStoreCreatorStackProps) {
         super(scope, id);
 
-        const { baseEnvironment, config, ragVectorStoreTable, vpc } = props;
+        const { baseEnvironment, config, layers, ragVectorStoreTable, vpc } = props;
 
         const vectorStoreTable = dynamodb.Table.fromTableArn(this, createCdkId([config.deploymentPrefix, 'RagVectorStoreTable']), ragVectorStoreTable.value);
 
@@ -206,6 +206,7 @@ export class VectorStoreCreatorStack extends Construct {
         new DeleteStoreStateMachine(this, 'DeleteStoreStateMachine', {
             config: props.config,
             executionRole: lambdaExecutionRole,
+            lambdaLayers: layers,
             parameterName: baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'],
             role: stateMachineRole,
             ragVectorStoreTable: vectorStoreTable,

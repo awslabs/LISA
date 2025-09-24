@@ -24,8 +24,8 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { RepositoryApi } from './api/repository';
-// import { ARCHITECTURE } from '../core';
-// import { Layer } from '../core/layers';
+import { ARCHITECTURE } from '../core';
+import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config, RDSConfig } from '../schema';
@@ -196,6 +196,25 @@ export class LisaRagConstruct extends Construct {
             'rag-common-lambda-layer',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
+        // Build RAG Lambda layer
+        const ragLambdaLayer = new Layer(scope, 'RagLayer', {
+            config: config,
+            path: RAG_LAYER_PATH,
+            description: 'Lambda dependencies for RAG API',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.ragLayerPath,
+            afterBundle: (inputDir: string, outputDir: string) => [
+                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/TIKTOKEN_CACHE/`
+            ],
+        });
+
+        new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'RagLayer']), {
+            parameterName: `${config.deploymentPrefix}/layerVersion/rag`,
+            stringValue: ragLambdaLayer.layer.layerVersionArn
+        });
+
+        const layers = [commonLambdaLayer, ragLambdaLayer.layer];
 
         // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
         if (config.restApiConfig.imageConfig === undefined) {
@@ -210,8 +229,6 @@ export class LisaRagConstruct extends Construct {
                 }
             }
         }
-
-        const layers = [commonLambdaLayer];
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -277,7 +294,7 @@ export class LisaRagConstruct extends Construct {
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;
-        baseEnvironment['TIKTOKEN_CACHE_DIR'] = '/tmp';
+        baseEnvironment['TIKTOKEN_CACHE_DIR'] = '/opt/python/TIKTOKEN_CACHE';
 
         // this modifies baseEnvironment and adds necessary environment variables
         new IngestionStack(scope, 'IngestionStack', {
@@ -301,7 +318,7 @@ export class LisaRagConstruct extends Construct {
             config,
             vpc,
             baseEnvironment,
-            { common: commonLambdaLayer },
+            { common: commonLambdaLayer, rag: ragLambdaLayer.layer },
             lambdaRole,
             docMetaTable,
             subDocTable,
@@ -332,7 +349,7 @@ export class LisaRagConstruct extends Construct {
         config: Config,
         vpc: Vpc,
         baseEnvironment: Record<string, string>,
-        layers: { [key in 'common']: ILayerVersion },
+        layers: { [key in 'common' | 'rag']: ILayerVersion },
         lambdaRole: IRole,
         docMetaTable: dynamodb.ITable,
         subDocTable: dynamodb.ITable,
@@ -591,6 +608,7 @@ export class LisaRagConstruct extends Construct {
                             rdsConfig: ragConfig.rdsConfig,
                             repositoryId: ragConfig.repositoryId,
                             type: ragConfig.type,
+                            layers: [layers.common, layers.rag],
                             registeredRepositoriesParamName,
                             ragDocumentTable: docMetaTable,
                             ragSubDocumentTable: subDocTable,

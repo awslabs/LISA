@@ -201,7 +201,6 @@ export class RepositoryApi extends Construct {
                 securityGroups,
                 authorizer,
                 lambdaExecutionRole,
-                true, // useContainerImage
             );
         });
     }

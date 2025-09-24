@@ -22,7 +22,7 @@ dependencies = [
     "gunicorn==23.0.0",
     "pydantic==2.8.2",
     "PyJWT==2.9.0",
-    "requests==2.32.4",
+    "requests==2.32.5",
     "fastapi==0.115.11",
     "fastapi_utils==0.7.0",
     "loguru==0.7.2"

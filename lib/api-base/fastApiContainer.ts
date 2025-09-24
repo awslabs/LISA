@@ -141,7 +141,7 @@ export class FastApiContainer extends Construct {
         const ecsConfig: ECSConfig = {
             amiHardwareType: AmiHardwareType.STANDARD,
             autoScalingConfig: {
-                blockDeviceVolumeSize: 30,
+                blockDeviceVolumeSize: 50,
                 minCapacity: 1,
                 maxCapacity: 5,
                 cooldown: 60,

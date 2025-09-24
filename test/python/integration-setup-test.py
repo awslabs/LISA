@@ -255,7 +255,7 @@ def create_self_hosted_embedded_model(
 
     self_hosted_embedded_model_request: ModelRequest = {
         "autoScalingConfig": {
-            "blockDeviceVolumeSize": 30,
+            "blockDeviceVolumeSize": 50,
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,
@@ -342,7 +342,7 @@ def create_self_hosted_model(
     print(f"  Using instance type: {instance_type}")
     self_hosted_model_request: ModelRequest = {
         "autoScalingConfig": {
-            "blockDeviceVolumeSize": 30,
+            "blockDeviceVolumeSize": 50,
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,

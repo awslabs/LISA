@@ -4,7 +4,6 @@
 # Core RAG packages
 langchain==0.3.27
 langchain-community==0.3.27
-langchain-openai==0.2.11
 
 # Scientific computing packages
 numpy<2.0.0

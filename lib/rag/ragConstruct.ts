@@ -197,12 +197,6 @@ export class LisaRagConstruct extends Construct {
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        const sdkLayer = LayerVersion.fromLayerVersionArn(
-            scope,
-            'rag-sdk-lambda-layer',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/lisa-sdk`),
-        );
-
         // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
         if (config.restApiConfig.imageConfig === undefined) {
             const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
@@ -217,7 +211,7 @@ export class LisaRagConstruct extends Construct {
             }
         }
 
-        const layers = [commonLambdaLayer, sdkLayer];
+        const layers = [commonLambdaLayer];
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -307,7 +301,7 @@ export class LisaRagConstruct extends Construct {
             config,
             vpc,
             baseEnvironment,
-            { common: commonLambdaLayer, sdk: sdkLayer },
+            { common: commonLambdaLayer },
             lambdaRole,
             docMetaTable,
             subDocTable,
@@ -338,7 +332,7 @@ export class LisaRagConstruct extends Construct {
         config: Config,
         vpc: Vpc,
         baseEnvironment: Record<string, string>,
-        layers: { [key in 'common' | 'sdk']: ILayerVersion },
+        layers: { [key in 'common']: ILayerVersion },
         lambdaRole: IRole,
         docMetaTable: dynamodb.ITable,
         subDocTable: dynamodb.ITable,

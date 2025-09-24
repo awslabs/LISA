@@ -115,7 +115,6 @@ build_all_images() {
     BUILD_DIR="${RAG_DIR}/build"
     mkdir -p "$BUILD_DIR"
     rsync -av --exclude='__pycache__' ./lambda/ "$BUILD_DIR/"
-    rsync -av --exclude='__pycache__' ./lisa-sdk/lisapy/ "$BUILD_DIR/lisapy/"
     build_image "Dockerfile" "lisa-batch-ingestion" "$LISA_VERSION" "$RAG_DIR" "NODE_ENV=production"
 
     # lisa-tei

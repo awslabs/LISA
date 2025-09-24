@@ -132,10 +132,9 @@ export class IngestionJobConstruct extends Construct {
         // Skip actual copying during tests to avoid file not found errors
         if (process.env.NODE_ENV !== 'test') {
             fs.cpSync(path.join(__dirname, '../../../lambda'), buildDir, copyOptions);
-            fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(buildDir, 'lisapy'), copyOptions);
         } else {
             // For tests, we just ensure the directories exist but don't copy files
-            const directories = ['repository', 'prompt_templates', 'lisapy'];
+            const directories = ['repository', 'prompt_templates'];
             directories.forEach((dir) => {
                 const dirPath = path.join(buildDir, dir);
                 fs.mkdirSync(dirPath, { recursive: true });

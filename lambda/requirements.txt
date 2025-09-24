@@ -1,16 +1,16 @@
 # Container-based Lambda
 # All packages can be included since container images have 10GB limit
-#
+
 # Core RAG packages
 langchain==0.3.27
 langchain-community==0.3.27
 langchain-openai==0.2.11
-#
+
 # Scientific computing packages
 numpy<2.0.0
 scipy
 pandas
-#
+
 # Database and search connectors
 opensearch-py==2.6.0
 pgvector==0.2.5
@@ -18,14 +18,11 @@ psycopg2-binary==2.9.10
 cachetools==5.5.0
 requests==2.32.4
 requests-aws4auth==1.2.3
-#
+
 # HTTP client libraries
 httpx>=0.23.0
-#
+
 # Document processing libraries
 pypdf==6.0.0
 lxml==5.1.0
 python-docx==1.1.0
-#
-# LISA SDK (installed from local source in Dockerfile)
-# lisapy

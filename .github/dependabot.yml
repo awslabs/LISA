@@ -15,17 +15,23 @@ updates:
     open-pull-requests-limit: 5
     rebase-strategy: "auto"
 
-  # Enable version updates for pip
+  # Enable version updates for pip - root directory
   - package-ecosystem: "pip"
     directory: "/"
-    directories:
-      - "/"
-      - "/lisa-sdk"
-      - "lib/core/layers/authorizer"
-      - "lib/core/layers/common"
-      - "lib/core/layers/fastapi"
-      - "lib/serve/rest-api/src"
-      - "lib/rag/layer"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - lisa-sdk
+  - package-ecosystem: "pip"
+    directory: "/lisa-sdk"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -51,17 +57,9 @@ updates:
       include: "scope"
     open-pull-requests-limit: 5
 
-  # Enable updates for Docker dependencies
+  # Enable updates for Docker - RAG ingestion
   - package-ecosystem: "docker"
-    directories:
-      - "/lib/rag/ingestion/ingestion-image"
-      - "/lib/rag/vector-store/state_machine"
-      - "/lib/serve/rest-api"
-      - "/lib/serve/mcp-workbench"
-      - "/lib/serve/ecs-model/vllm"
-      - "lib/serve/ecs-model/embedding/tei"
-      - "lib/serve/ecs-model/embedding/instructor"
-      - "lib/serve/ecs-model/textgen/tgi"
+    directory: "/lib/rag/ingestion/ingestion-image"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -73,7 +71,21 @@ updates:
       include: "scope"
     open-pull-requests-limit: 3
 
-  # Track ECS model dockerfiles
+  # Enable updates for Docker - REST API
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/rest-api"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - VLLM
   - package-ecosystem: "docker"
     directory: "/lib/serve/ecs-model/vllm"
     schedule:
@@ -85,4 +97,4 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 3

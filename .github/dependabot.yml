@@ -1,100 +1,83 @@
 version: 2
+
+# YAML anchors for common configurations
+common: &common
+  reviewers:
+    - "awslabs/lisa-maintainers"
+  commit-message:
+    prefix: "chore"
+    include: "scope"
+
+pip-config: &pip-config
+  <<: *common
+  package-ecosystem: "pip"
+  schedule:
+    interval: "weekly"
+    day: "tuesday"
+    time: "09:00"
+  open-pull-requests-limit: 5
+
+docker-config: &docker-config
+  <<: *common
+  package-ecosystem: "docker"
+  schedule:
+    interval: "weekly"
+    day: "thursday"
+    time: "09:00"
+  open-pull-requests-limit: 3
+
 updates:
   # Enable version updates for npm
-  - package-ecosystem: "npm"
+  - <<: *common
+    package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     open-pull-requests-limit: 5
     rebase-strategy: "auto"
 
-  # Enable version updates for pip - root directory
-  - package-ecosystem: "pip"
+  # Pip directories
+  - <<: *pip-config
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 5
-
-  # Enable version updates for pip - lisa-sdk
-  - package-ecosystem: "pip"
+  - <<: *pip-config
     directory: "/lisa-sdk"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 5
+  - <<: *pip-config
+    directory: "/lib/core/layers/authorizer"
+  - <<: *pip-config
+    directory: "/lib/core/layers/common"
+  - <<: *pip-config
+    directory: "/lib/core/layers/fastapi"
+  - <<: *pip-config
+    directory: "/lib/serve/rest-api/src"
+  - <<: *pip-config
+    directory: "/lib/rag/layer"
 
-  # Enable security updates for GitHub Actions
-  - package-ecosystem: "github-actions"
+  # GitHub Actions
+  - <<: *common
+    package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "wednesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     open-pull-requests-limit: 5
 
-  # Enable updates for Docker - RAG ingestion
-  - package-ecosystem: "docker"
+  # Docker directories
+  - <<: *docker-config
     directory: "/lib/rag/ingestion/ingestion-image"
-    schedule:
-      interval: "weekly"
-      day: "thursday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 3
-
-  # Enable updates for Docker - REST API
-  - package-ecosystem: "docker"
+  - <<: *docker-config
+    directory: "/lib/rag/vector-store/state_machine"
+  - <<: *docker-config
     directory: "/lib/serve/rest-api"
-    schedule:
-      interval: "weekly"
-      day: "thursday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 3
-
-  # Enable updates for Docker - VLLM
-  - package-ecosystem: "docker"
+  - <<: *docker-config
+    directory: "/lib/serve/mcp-workbench"
+  - <<: *docker-config
     directory: "/lib/serve/ecs-model/vllm"
-    schedule:
-      interval: "weekly"
-      day: "thursday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 3
+  - <<: *docker-config
+    directory: "/lib/serve/ecs-model/embedding/tei"
+  - <<: *docker-config
+    directory: "/lib/serve/ecs-model/embedding/instructor"
+  - <<: *docker-config
+    directory: "/lib/serve/ecs-model/textgen/tgi"

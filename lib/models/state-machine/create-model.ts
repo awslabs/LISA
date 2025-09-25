@@ -75,6 +75,7 @@ export class CreateModelStateMachine extends Construct {
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             LITELLM_CONFIG_OBJ: JSON.stringify(config.litellmConfig),
             AWS_ACCOUNT_ID: config.accountNumber,
+            AWS_PARTITION: config.partition,
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {

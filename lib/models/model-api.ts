@@ -508,10 +508,10 @@ export class ModelsApi extends Construct {
                             ],
                             resources: [
                                 lisaServeEndpointUrlParamArn,
-                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
-                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/LiteLLMDbConnectionInfo`,
-                                `arn:aws:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/modelTableName`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/LiteLLMDbConnectionInfo`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/modelTableName`,
                             ],
                         }),
                         new PolicyStatement({
@@ -520,7 +520,7 @@ export class ModelsApi extends Construct {
                                 'secretsmanager:GetSecretValue',
                             ],
                             resources: [
-                                `arn:aws:secretsmanager:${config.region}:${config.accountNumber}:secret:*`,  // LiteLLM DB password secret
+                                `arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`,  // LiteLLM DB password secret
                             ],
                         }),
                     ]

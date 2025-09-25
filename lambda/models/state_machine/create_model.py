@@ -30,7 +30,12 @@ from models.exception import (
     StackFailedToCreateException,
     UnexpectedCloudFormationStateException,
 )
-from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import (
+    get_account_and_partition,
+    get_cert_path,
+    get_rest_api_container_endpoint,
+    retry_config,
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -236,15 +241,10 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     # Handle ECR images differently - use the existing ECR image instead of the built one
     if event["image_info"].get("image_type") == "ecr":
         # For pre-existing ECR images, construct the ARN using the image repository
-        account_id = os.environ.get("AWS_ACCOUNT_ID", "")
-        if not account_id:
-            # Try to get account ID from the existing ECR repository ARN
-            ecr_repo_arn = os.environ.get("ECR_REPOSITORY_ARN", "")
-            if ecr_repo_arn:
-                account_id = ecr_repo_arn.split(":")[4]
+        account_id, partition = get_account_and_partition()
 
         repository_arn = (
-            f"arn:aws:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}"
+            f"arn:{partition}:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}"
         )
         prepared_event["containerConfig"]["image"] = {
             "repositoryArn": repository_arn,

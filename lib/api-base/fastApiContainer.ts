@@ -227,7 +227,7 @@ export class FastApiContainer extends Construct {
                                 'logs:CreateLogStream',
                                 'logs:PutLogEvents'
                             ],
-                            resources: ['arn:aws:logs:*:*:*']
+                            resources: [`arn:${config.partition}:logs:*:*:*`]
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
@@ -237,8 +237,8 @@ export class FastApiContainer extends Construct {
                                 'ecs:DescribeClusters'
                             ],
                             resources: [
-                                `arn:aws:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
-                                `arn:aws:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
+                                `arn:${config.partition}:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
+                                `arn:${config.partition}:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
                             ]
                         }),
                         new PolicyStatement({
@@ -247,7 +247,7 @@ export class FastApiContainer extends Construct {
                                 'ssm:GetParameter'
                             ],
                             resources: [
-                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
+                                `arn:${config.partition}:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
                             ]
                         })
                     ]

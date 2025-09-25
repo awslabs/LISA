@@ -93,7 +93,6 @@ export default defineConfig({
   vite: {
     build: {
       rollupOptions: {
-        // Removed external configuration that was causing image files to be treated as external modules
       },
     },
   },

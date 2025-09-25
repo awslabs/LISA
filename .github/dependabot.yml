@@ -15,23 +15,17 @@ updates:
     open-pull-requests-limit: 5
     rebase-strategy: "auto"
 
-  # Enable version updates for npm in UI components
-  - package-ecosystem: "npm"
-    directory: "/lib/user-interface/react"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 3
-
   # Enable version updates for pip
   - package-ecosystem: "pip"
     directory: "/"
+    directories:
+      - "/"
+      - "/lisa-sdk"
+      - "lib/core/layers/authorizer"
+      - "lib/core/layers/common"
+      - "lib/core/layers/fastapi"
+      - "lib/serve/rest-api/src"
+      - "lib/rag/layer"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -42,20 +36,6 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 5
-
-  # Enable version updates for pip in lisa-sdk
-  - package-ecosystem: "pip"
-    directory: "/lisa-sdk"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    open-pull-requests-limit: 3
 
   # Enable security updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -73,7 +53,15 @@ updates:
 
   # Enable updates for Docker dependencies
   - package-ecosystem: "docker"
-    directory: "/lib/serve/rest-api"
+    directories:
+      - "/lib/rag/ingestion/ingestion-image"
+      - "/lib/rag/vector-store/state_machine"
+      - "/lib/serve/rest-api"
+      - "/lib/serve/mcp-workbench"
+      - "/lib/serve/ecs-model/vllm"
+      - "lib/serve/ecs-model/embedding/tei"
+      - "lib/serve/ecs-model/embedding/instructor"
+      - "lib/serve/ecs-model/textgen/tgi"
     schedule:
       interval: "weekly"
       day: "thursday"

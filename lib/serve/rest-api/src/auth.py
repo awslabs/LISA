@@ -97,7 +97,6 @@ def id_token_is_valid(
     id_token: str, client_id: str, authority: str, jwks_client: jwt.PyJWKClient
 ) -> Optional[Dict[str, Any]]:
     """Check whether an ID token is valid and return decoded data."""
-    logger.info(f"Auth Token: {id_token}")
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(id_token)
         data: Dict[str, Any] = jwt.decode(
@@ -153,7 +152,6 @@ class OIDCHTTPBearer(HTTPBearer):
         """Check whether an ID token is valid and return decoded data."""
         http_auth_creds = await super().__call__(request)
         id_token = http_auth_creds.credentials
-        logger.info(f"Auth Token: {id_token}")
         try:
             signing_key = self.jwks_client.get_signing_key_from_jwt(id_token)
             data: Dict[str, Any] = jwt.decode(
@@ -200,7 +198,6 @@ class ApiTokenAuthorizer:
         for header_name in AuthHeaders.values():
             token = get_authorization_token(headers, header_name)
 
-            logger.info(f"API Auth Token: {token}")
             if token:
                 token_info = await asyncio.to_thread(self._get_token_info, token)
                 if token_info:
@@ -280,23 +277,26 @@ class Authorizer:
         return jwt_data
 
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
+        """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
+
+        logger.trace(f"Authenticating request: {request.method} {request.url.path}")
         # First try API tokens
-        logger.info("Try API Auth Token...")
+        logger.trace("Try API Auth Token...")
         if await self.token_authorizer.is_valid_api_token(request.headers):
-            logger.info("Valid API token")
+            logger.trace("Valid API token")
             return None
 
         # Then try management tokens
-        logger.info("Try Management Auth Token...")
+        logger.trace("Try Management Auth Token...")
         if await self.management_token_authorizer.is_valid_api_token(request.headers):
-            logger.info("Valid Management token")
+            logger.trace("Valid Management token")
             return None
 
         # Finally try OIDC Bearer tokens
-        logger.info("Try OIDC Auth Token...")
+        logger.trace("Try OIDC Auth Token...")
         jwt_data = await self.oidc_authorizer.id_token_is_valid(request)
         if jwt_data:
-            logger.info("Valid OIDC token")
+            logger.trace("Valid OIDC token")
             return jwt_data
 
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -324,6 +324,7 @@ class Authorizer:
         if jwt_data is None:
             jwt_data = await self.authenticate_request(request)
 
+        # Valid API_TOKEN will be treated as admin
         if not jwt_data:
             auth_method = "API_TOKEN"
             user_id = "api_user"

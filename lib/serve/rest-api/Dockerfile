@@ -1,6 +1,13 @@
 ARG BASE_IMAGE=python:3.11@sha256:1d6131b5d479888b43200645e03a78443c7157efbdb730e6b48129740727c312
 FROM ${BASE_IMAGE}
 
+# Install build dependencies for madoka package
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG
 
@@ -16,12 +23,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY src/requirements.txt .
-COPY src/requirements-hashes.txt* ./
-RUN if [ -f "requirements-hashes.txt" ]; then \
-        pip install --no-cache-dir --require-hashes -r requirements-hashes.txt; \
-    else \
-        pip install --no-cache-dir --upgrade -r requirements.txt; \
-    fi
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy the source code into the container
 COPY src/ ./src

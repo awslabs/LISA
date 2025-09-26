@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import atomOneDark from 'react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark';
+ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SYSTEM_PROMPT } from '@/shared/constants/systemPrompt';
 
 export const MODEL_COMPARISON_CONFIG = {
@@ -28,7 +28,7 @@ export const MODEL_COMPARISON_CONFIG = {
 
 export const UI_CONFIG = {
     RESPONSE_MAX_WIDTH: '60em',
-    CODE_BLOCK_THEME: atomOneDark,
+    CODE_BLOCK_THEME: vscDarkPlus,
     ANIMATION_DURATION: 200,
     GRID_BREAKPOINT: 2, // Max columns before switching to grid layout
 } as const;

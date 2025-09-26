@@ -47,7 +47,7 @@ jobs:
     - name: Install Python dependencies
       if: matrix.language == 'python'
       run: |
-        python -m pip install --upgrade pip==24.3.1
+        python -m pip install --upgrade pip
         # Try hash-verified install first, fall back to regular
         if [ -f "requirements-dev-hashes.txt" ]; then
           pip install --require-hashes -r requirements-dev-hashes.txt

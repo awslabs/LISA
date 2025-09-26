@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:abc799c7ee22b0d66f46c367643088a35e048bbabd81212d73c2323aed38c64f
 
 ARG RCLONE_VERSION=v1.71.0
 ARG RCLONE_ARCH=amd64
@@ -36,11 +36,12 @@ RUN unzip -d /tmp /tmp/$(basename $RCLONE_SOURCE) && \
 
 # Copy and install the MCP workbench package
 COPY . /workspace/mcpworkbench-src/
-RUN pip install -e /workspace/mcpworkbench-src/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e /workspace/mcpworkbench-src/
 
 # Install additional requirements
 COPY requirements.txt /workspace/
-RUN pip install -r /workspace/requirements.txt
+RUN pip install --no-cache-dir -r /workspace/requirements.txt
 
 # Copy s6-overlay service definitions
 COPY s6-overlay/services.d /etc/services.d

@@ -13,7 +13,7 @@ echo "source .venv/bin/activate" >> ~/.zshrc
 echo "alias deploylisa='make clean && npm ci && make deploy HEADLESS=true'" >> ~/.bashrc
 echo "alias deploylisa='make clean && npm ci && make deploy HEADLESS=true'" >> ~/.zshrc
 
-python -m pip install --upgrade pip==24.3.1
+python -m pip install --upgrade pip
 pip3 install yq==3.4.3 huggingface_hub==0.26.3 s5cmd==2.2.2
 make installPythonRequirements
 

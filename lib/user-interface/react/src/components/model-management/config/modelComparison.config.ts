@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
- import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SYSTEM_PROMPT } from '@/shared/constants/systemPrompt';
 
 export const MODEL_COMPARISON_CONFIG = {

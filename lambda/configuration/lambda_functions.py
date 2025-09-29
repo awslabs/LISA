@@ -22,7 +22,7 @@ from typing import Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
-from mcp_server.models import McpServerModel
+from mcp_server.models import McpServerModel, McpServerStatus
 from mcp_workbench.lambda_functions import MCPWORKBENCH_UUID
 from utilities.common_functions import api_wrapper, get_property_path, retry_config
 
@@ -83,7 +83,6 @@ def check_show_mcp_workbench(body, old_configuration):
     # check if the value changed
     if old_show_mcp_value != new_show_mcp_value:
         from mcp_server.lambda_functions import table as mcp_servers_table
-        from mcp_server.models import McpServerStatus
 
         if new_show_mcp_value:
             mcp_server_model = McpServerModel(

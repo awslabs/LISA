@@ -30,6 +30,7 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+os.environ["AWS_REGION"] = "us-east-1"
 
 from langchain_core.documents import Document
 
@@ -227,3 +228,143 @@ def test_extract_text_by_content_type_unsupported():
 
     with pytest.raises(RagUploadException, match="Unsupported file type"):
         _extract_text_by_content_type("unsupported", mock_s3_object)
+
+
+def test_generate_chunks_invalid_chunk_size():
+    """Test _generate_chunks with invalid chunk size."""
+    docs = [Document(page_content="Test content", metadata={})]
+
+    with pytest.raises(RagUploadException, match="Invalid chunk size"):
+        _generate_chunks(docs, chunk_size=50, chunk_overlap=51)  # chunk_size < 100
+
+    with pytest.raises(RagUploadException, match="Invalid chunk size"):
+        _generate_chunks(docs, chunk_size=15000, chunk_overlap=51)  # chunk_size > 10000
+
+
+def test_generate_chunks_invalid_chunk_overlap():
+    """Test _generate_chunks with invalid chunk overlap."""
+    docs = [Document(page_content="Test content", metadata={})]
+
+    with pytest.raises(RagUploadException, match="Invalid chunk overlap"):
+        _generate_chunks(docs, chunk_size=512, chunk_overlap=-1)  # negative overlap
+
+    with pytest.raises(RagUploadException, match="Invalid chunk overlap"):
+        _generate_chunks(docs, chunk_size=512, chunk_overlap=512)  # overlap >= chunk_size
+
+
+def test_generate_chunks_with_none_values():
+    """Test _generate_chunks with None chunk_size and chunk_overlap."""
+    docs = [Document(page_content="Test content", metadata={})]
+
+    with patch.dict(os.environ, {"CHUNK_SIZE": "256", "CHUNK_OVERLAP": "25"}):
+        result = _generate_chunks(docs, chunk_size=None, chunk_overlap=None)
+        assert len(result) > 0
+
+
+def test_extract_pdf_content_error():
+    """Test _extract_pdf_content with PDF read error."""
+    from pypdf.errors import PdfReadError
+    from utilities.file_processing import _extract_pdf_content
+
+    mock_s3_object = {"Body": BytesIO(b"invalid pdf content")}
+
+    with patch("utilities.file_processing.PdfReader") as mock_reader:
+        mock_reader.side_effect = PdfReadError("Invalid PDF")
+
+        with pytest.raises(PdfReadError):
+            _extract_pdf_content(mock_s3_object)
+
+
+def test_extract_pdf_content_success():
+    """Test _extract_pdf_content with valid PDF."""
+    from utilities.file_processing import _extract_pdf_content
+
+    mock_s3_object = {"Body": BytesIO(b"mock pdf content")}
+
+    with patch("utilities.file_processing.PdfReader") as mock_reader:
+        mock_page = MagicMock()
+        mock_page.extract_text.return_value = "Page 1 content"
+        mock_reader.return_value.pages = [mock_page]
+
+        result = _extract_pdf_content(mock_s3_object)
+        assert result == "Page 1 content"
+
+
+def test_extract_docx_content_success():
+    """Test _extract_docx_content with valid DOCX."""
+    from utilities.file_processing import _extract_docx_content
+
+    mock_s3_object = {"Body": BytesIO(b"mock docx content")}
+
+    with patch("utilities.file_processing.docx.Document") as mock_doc:
+        mock_para = MagicMock()
+        mock_para.text = "Paragraph content"
+        mock_doc.return_value.paragraphs = [mock_para]
+
+        result = _extract_docx_content(mock_s3_object)
+        assert result == "Paragraph content"
+
+
+def test_extract_text_content_success():
+    """Test _extract_text_content with valid text."""
+    from utilities.file_processing import _extract_text_content
+
+    mock_s3_object = {"Body": BytesIO(b"test text content")}
+
+    result = _extract_text_content(mock_s3_object)
+    assert result == "test text content"
+
+
+def test_generate_chunks_s3_error(sample_ingestion_job):
+    """Test generate_chunks with S3 ClientError."""
+    from botocore.exceptions import ClientError
+
+    job = sample_ingestion_job
+    job.s3_path = "s3://test-bucket/test-key.txt"
+
+    with patch("utilities.file_processing.s3") as mock_s3:
+        mock_s3.get_object.side_effect = ClientError(
+            error_response={"Error": {"Code": "NoSuchKey"}}, operation_name="GetObject"
+        )
+
+        with pytest.raises(ClientError):
+            generate_chunks(job)
+
+
+def test_generate_chunks_unrecognized_strategy(sample_ingestion_job):
+    """Test generate_chunks with unrecognized chunk strategy."""
+    from models.domain_objects import ChunkingStrategyType, FixedChunkingStrategy
+
+    job = sample_ingestion_job
+    job.s3_path = "s3://test-bucket/test-key.txt"
+
+    # Create a mock chunking strategy with an invalid type by directly setting the attribute
+    job.chunk_strategy = FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=512, overlap=51)
+    job.chunk_strategy.type = "INVALID_TYPE"  # Override the type after creation
+
+    with patch("utilities.file_processing.s3") as mock_s3:
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"test content")}
+
+        with pytest.raises(Exception, match="Unrecognized chunk strategy"):
+            generate_chunks(job)
+
+
+def test_generate_fixed_chunks_with_metadata(sample_ingestion_job):
+    """Test generate_fixed_chunks updates metadata with part numbers."""
+    from utilities.file_processing import generate_fixed_chunks
+
+    job = sample_ingestion_job
+    job.s3_path = "s3://test-bucket/test-key.txt"
+
+    mock_s3_object = {"Body": BytesIO(b"test content for chunking " * 100)}
+
+    with patch("utilities.file_processing._extract_text_by_content_type") as mock_extract:
+        mock_extract.return_value = "test content for chunking " * 100
+
+        result = generate_fixed_chunks(job, "txt", mock_s3_object)
+
+        assert len(result) > 1
+        for i, doc in enumerate(result):
+            assert doc.metadata["part"] == i + 1
+            assert doc.metadata["source"] == job.s3_path
+            assert doc.metadata["name"] == "test-key.txt"

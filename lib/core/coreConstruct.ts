@@ -14,18 +14,14 @@
   limitations under the License.
 */
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { Layer } from './layers';
 import { BaseProps } from '../schema';
-import { createCdkId } from './utils';
-import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
-import { getDefaultRuntime } from '../api-base/utils';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
-import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, SDK_PATH } from '../util';
+import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH } from '../util';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
@@ -89,24 +85,6 @@ export class CoreConstruct extends Construct {
             assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
         });
 
-        // Build SDK Layer
-        let sdkLambdaLayer: ILayerVersion;
-        if (config.lambdaLayerAssets?.sdkLayerPath) {
-            sdkLambdaLayer = new LayerVersion(scope, 'SdkLayer', {
-                code: lambda.Code.fromAsset(config.lambdaLayerAssets?.sdkLayerPath),
-                compatibleRuntimes: [getDefaultRuntime()],
-                removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
-            });
-        } else {
-            sdkLambdaLayer = new PythonLayerVersion(scope, 'SdkLayer', {
-                entry: SDK_PATH,
-                compatibleRuntimes: [getDefaultRuntime()],
-                removalPolicy: config.removalPolicy,
-                description: 'LISA SDK common layer',
-            });
-        }
-
         new StringParameter(scope, 'LisaCommonLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/common`,
             stringValue: commonLambdaLayer.layer.layerVersionArn,
@@ -123,12 +101,6 @@ export class CoreConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
             stringValue: authorizerLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
-        });
-
-        new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'SdkLayer']), {
-            parameterName: `${config.deploymentPrefix}/layerVersion/lisa-sdk`,
-            stringValue: sdkLambdaLayer.layerVersionArn,
-            description: 'Layer Version ARN for LISA SDK Layer',
         });
     }
 }

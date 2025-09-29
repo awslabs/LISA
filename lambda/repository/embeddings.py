@@ -18,7 +18,6 @@ from typing import List
 
 import boto3
 import requests
-from lisapy.langchain import LisaOpenAIEmbeddings
 from pydantic import BaseModel, field_validator
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
@@ -157,27 +156,3 @@ class RagEmbeddings(BaseModel):
 
         logger.info("Embedding single query text")
         return self.embed_documents([text])[0]
-
-
-def get_openai_embeddings(model_name: str, id_token: str | None = None) -> LisaOpenAIEmbeddings:
-    """
-    Initialize and return an embeddings client for the specified model. Do not use for embedding documents since OpenAI
-    client does not use the provided model for embedding.
-
-    Args:
-        model_name: Name of the embedding model to use
-        id_token: Authentication token for API access. If not provided, uses management token.
-
-    Returns:
-        LisaOpenAIEmbeddings: Configured embeddings client
-    """
-    if id_token is None:
-        id_token = get_management_key()
-
-    base_url = get_rest_api_container_endpoint()
-    cert_path = get_cert_path(iam_client)
-
-    embedding = LisaOpenAIEmbeddings(
-        lisa_openai_api_base=base_url, model=model_name, api_token=id_token, verify=cert_path
-    )
-    return embedding

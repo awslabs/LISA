@@ -129,8 +129,6 @@ mock_common.get_cert_path.return_value = None
 mock_common.admin_only = mock_admin_only
 
 # Create mock modules for missing dependencies
-mock_lisapy = MagicMock()
-mock_lisapy_langchain = MagicMock()
 mock_langchain_community = MagicMock()
 mock_langchain_core = MagicMock()
 mock_opensearchpy = MagicMock()
@@ -227,12 +225,8 @@ patch.dict(
         "create_env_variables": mock_create_env,
         "repository.vector_store_repo": mock_vs_repo,
         "repository.rag_document_repo": mock_doc_repo,
-        "lisapy": mock_lisapy,
-        "lisapy.langchain": mock_lisapy_langchain,
         "langchain_community": mock_langchain_community,
         "langchain_community.vectorstores": mock_langchain_community,
-        "langchain_community.vectorstores.opensearch_vector_search": mock_langchain_community,
-        "langchain_community.vectorstores.pgvector": mock_langchain_community,
         "langchain_core": mock_langchain_core,
         "langchain_core.embeddings": mock_langchain_core,
         "langchain_core.vectorstores": mock_langchain_core,
@@ -1080,19 +1074,16 @@ def test_pipeline_embeddings_embed_documents():
 
 
 def test_pipeline_embeddings_embed_documents_no_texts():
-    """Test LisaOpenAIEmbeddings embed_documents with no texts"""
+    """Test RagEmbeddings embed_documents with no texts"""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.LisaOpenAIEmbeddings") as mock_embeddings_class:
+    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
 
-        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "https://api.example.com"}}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
-
-        mock_embeddings_instance = MagicMock()
-        mock_embeddings_instance.embed_documents.side_effect = ValidationError("No texts provided for embedding")
-        mock_embeddings_class.return_value = mock_embeddings_instance
+        mock_key.return_value = "test-token"
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
@@ -1230,19 +1221,16 @@ def test_pipeline_embeddings_embed_query():
 
 
 def test_pipeline_embeddings_embed_query_invalid():
-    """Test LisaOpenAIEmbeddings embed_query with invalid input"""
+    """Test RagEmbeddings embed_query with invalid input"""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm, patch(
+    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.LisaOpenAIEmbeddings") as mock_embeddings_class:
+    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
 
-        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "https://api.example.com"}}
+        mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
-
-        mock_embeddings_instance = MagicMock()
-        mock_embeddings_instance.embed_query.side_effect = ValidationError("Invalid query text")
-        mock_embeddings_class.return_value = mock_embeddings_instance
+        mock_key.return_value = "test-token"
 
         embeddings = RagEmbeddings("test-model", "test-token")
 

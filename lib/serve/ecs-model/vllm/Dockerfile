@@ -1,8 +1,9 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=python:3.11
 FROM ${BASE_IMAGE}
 
 ##### DOWNLOAD MOUNTPOINTS S3
 ARG MOUNTS3_DEB_URL
+ARG MOUNTS3_DEB_SHA256
 RUN apt update -y && apt install -y wget rsync && \
     wget ${MOUNTS3_DEB_URL} && \
     apt install -y ./mount-s3.deb && \

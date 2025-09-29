@@ -548,7 +548,7 @@ def put_session(event: dict, context: dict) -> dict:
                 Key={"sessionId": session_id, "userId": user_id},
                 UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
                 + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), "
-                + "#lastUpdated = :lastUpdated",
+                + "#lastUpdated = :lastUpdated, #is_encrypted = :is_encrypted",
                 ExpressionAttributeNames={
                     "#history": "history",
                     "#name": "name",
@@ -556,6 +556,7 @@ def put_session(event: dict, context: dict) -> dict:
                     "#startTime": "startTime",
                     "#createTime": "createTime",
                     "#lastUpdated": "lastUpdated",
+                    "#is_encrypted": "is_encrypted",
                 },
                 ExpressionAttributeValues={
                     ":history": messages,
@@ -564,6 +565,7 @@ def put_session(event: dict, context: dict) -> dict:
                     ":startTime": datetime.now().isoformat(),
                     ":createTime": datetime.now().isoformat(),
                     ":lastUpdated": datetime.now().isoformat(),
+                    ":is_encrypted": False,
                 },
                 ReturnValues="UPDATED_NEW",
             )

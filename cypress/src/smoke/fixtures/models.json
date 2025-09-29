@@ -2,7 +2,7 @@
   "models": [
     {
       "autoScalingConfig": {
-        "blockDeviceVolumeSize": 30,
+        "blockDeviceVolumeSize": 50,
         "minCapacity": 1,
         "maxCapacity": 1,
         "cooldown": 420,

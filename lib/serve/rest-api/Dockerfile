@@ -1,6 +1,13 @@
 ARG BASE_IMAGE=python:3.11
 FROM ${BASE_IMAGE}
 
+# Install build dependencies for madoka package
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG
 
@@ -23,8 +30,7 @@ COPY src/ ./src
 
 COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
 
-# Generate the prisma binary
-RUN prisma generate
+# LiteLLM will handle Prisma setup at runtime with --use_prisma_db_push flag
 
 # Copy LiteLLM config directly to container, it will be updated at runtime
 # with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify

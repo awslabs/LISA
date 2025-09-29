@@ -30,7 +30,12 @@ from models.exception import (
     StackFailedToCreateException,
     UnexpectedCloudFormationStateException,
 )
-from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+from utilities.common_functions import (
+    get_account_and_partition,
+    get_cert_path,
+    get_rest_api_container_endpoint,
+    retry_config,
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -236,15 +241,10 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     # Handle ECR images differently - use the existing ECR image instead of the built one
     if event["image_info"].get("image_type") == "ecr":
         # For pre-existing ECR images, construct the ARN using the image repository
-        account_id = os.environ.get("AWS_ACCOUNT_ID", "")
-        if not account_id:
-            # Try to get account ID from the existing ECR repository ARN
-            ecr_repo_arn = os.environ.get("ECR_REPOSITORY_ARN", "")
-            if ecr_repo_arn:
-                account_id = ecr_repo_arn.split(":")[4]
+        account_id, partition = get_account_and_partition()
 
         repository_arn = (
-            f"arn:aws:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}"
+            f"arn:{partition}:ecr:{os.environ['AWS_REGION']}:{account_id}:repository/{event['image_info']['image_uri']}"
         )
         prepared_event["containerConfig"]["image"] = {
             "repositoryArn": repository_arn,
@@ -357,9 +357,9 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         # Fallback to default if JSON parsing fails
         litellm_params = {}
 
-    litellm_params["api_key"] = event.get(
-        "apiKey", "ignored"
-    )  # pragma: allowlist-secret not a real key, but needed for LiteLLM to be happy
+    # Only set api_key if it's present in the event
+    if "apiKey" in event:
+        litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
     litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
@@ -374,7 +374,18 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         litellm_params=litellm_params,
     )
 
-    litellm_id = litellm_response["model_info"]["id"]
+    # Handle different LiteLLM API response structures
+    if "model_info" in litellm_response and "id" in litellm_response["model_info"]:
+        litellm_id = litellm_response["model_info"]["id"]
+    elif "id" in litellm_response:
+        litellm_id = litellm_response["id"]
+    elif "model_id" in litellm_response:
+        litellm_id = litellm_response["model_id"]
+    else:
+        # Log the actual response structure for debugging
+        logger.error(f"Unexpected LiteLLM response structure: {litellm_response}")
+        raise KeyError(f"Could not find model ID in LiteLLM response: {litellm_response}")
+
     output_dict["litellm_id"] = litellm_id
 
     model_table.update_item(

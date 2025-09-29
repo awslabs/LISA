@@ -1,0 +1,240 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+
+  # Enable version updates for pip - root directory
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - lisa-sdk
+  - package-ecosystem: "pip"
+    directory: "/lisa-sdk"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - authorizer layer
+  - package-ecosystem: "pip"
+    directory: "/lib/core/layers/authorizer"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - common layer
+  - package-ecosystem: "pip"
+    directory: "/lib/core/layers/common"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - fastapi layer
+  - package-ecosystem: "pip"
+    directory: "/lib/core/layers/fastapi"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - rest-api src
+  - package-ecosystem: "pip"
+    directory: "/lib/serve/rest-api/src"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable version updates for pip - rag layer
+  - package-ecosystem: "pip"
+    directory: "/lib/rag/layer"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable security updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable updates for Docker - RAG ingestion
+  - package-ecosystem: "docker"
+    directory: "/lib/rag/ingestion/ingestion-image"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - vector store
+  - package-ecosystem: "docker"
+    directory: "/lib/rag/vector-store/state_machine"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - REST API
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/rest-api"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - MCP workbench
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/mcp-workbench"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - VLLM
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/ecs-model/vllm"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - TEI
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/ecs-model/embedding/tei"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - instructor
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/ecs-model/embedding/instructor"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3
+
+  # Enable updates for Docker - TGI
+  - package-ecosystem: "docker"
+    directory: "/lib/serve/ecs-model/textgen/tgi"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+    reviewers:
+      - "awslabs/lisa-maintainers"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    open-pull-requests-limit: 3

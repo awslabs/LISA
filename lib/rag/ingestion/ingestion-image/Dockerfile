@@ -6,7 +6,8 @@ ARG BUILD_DIR=build
 WORKDIR /workdir
 
 COPY ./requirements.txt /workdir
-RUN /var/lang/bin/pip install --no-cache-dir -r /workdir/requirements.txt -t .
+RUN /var/lang/bin/pip install --no-cache-dir --upgrade pip && \
+    /var/lang/bin/pip install --no-cache-dir -r /workdir/requirements.txt -t .
 
 COPY ./${BUILD_DIR} /workdir
 

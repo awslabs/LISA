@@ -3,4 +3,4 @@
 # urllib3<2 // Provided by Lambda
 psycopg2-binary==2.9.10
 cachetools==5.5.0
-requests==2.32.4
+requests==2.32.5

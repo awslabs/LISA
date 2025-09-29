@@ -18,8 +18,7 @@ import logging
 import os
 
 import boto3
-from langchain_community.vectorstores.opensearch_vector_search import OpenSearchVectorSearch
-from langchain_community.vectorstores.pgvector import PGVector
+from langchain_community.vectorstores import OpenSearchVectorSearch, PGVector
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection

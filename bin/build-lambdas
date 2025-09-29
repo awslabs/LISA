@@ -41,7 +41,6 @@ build_layer "AimlAdcLisaCommonLayer" "./lib/core/layers/common"
 build_layer "AimlAdcLisaAuthLayer" "./lib/core/layers/authorizer"
 build_layer "AimlAdcLisaFastApiLayer" "./lib/core/layers/fastapi"
 build_layer "AimlAdcLisaRag" "./lib/rag/layer" "python3 scripts/cache-tiktoken-for-offline.py ./lib/rag/layer/TIKTOKEN_CACHE"
-build_layer "AimlAdcLisaSdk" "./lisa-sdk"
 
 echo "Building Python Lambdas..."
 build_lambda "AimlAdcLisaLambda" "./lambda"

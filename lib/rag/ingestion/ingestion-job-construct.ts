@@ -29,10 +29,10 @@ import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { getDefaultRuntime } from '../../api-base/utils';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { getDefaultRuntime } from '../../api-base/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -63,7 +63,7 @@ export class IngestionJobConstruct extends Construct {
     constructor (scope: Construct, id: string, props: IngestionJobConstructProps) {
         super(scope, id);
 
-        const { config, vpc, lambdaRole, layers, baseEnvironment } = props;
+        const { config, vpc, layers, lambdaRole, baseEnvironment } = props;
         const hash = crypto.randomBytes(6).toString('hex');
 
         // DynamoDB table for tracking ingestion jobs
@@ -132,10 +132,9 @@ export class IngestionJobConstruct extends Construct {
         // Skip actual copying during tests to avoid file not found errors
         if (process.env.NODE_ENV !== 'test') {
             fs.cpSync(path.join(__dirname, '../../../lambda'), buildDir, copyOptions);
-            fs.cpSync(path.join(__dirname, '../../../lisa-sdk/lisapy'), path.join(buildDir, 'lisapy'), copyOptions);
         } else {
             // For tests, we just ensure the directories exist but don't copy files
-            const directories = ['repository', 'prompt_templates', 'lisapy'];
+            const directories = ['repository', 'prompt_templates'];
             directories.forEach((dir) => {
                 const dirPath = path.join(buildDir, dir);
                 fs.mkdirSync(dirPath, { recursive: true });
@@ -190,7 +189,7 @@ export class IngestionJobConstruct extends Construct {
             resources: ['*']
         }));
 
-        // Lambda function for handling scheduled document ingestion
+        // Lambda function for handling scheduled document ingestion - using container image
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule-${hash}`,
             runtime: getDefaultRuntime(),
@@ -213,7 +212,7 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // Lambda function for handling S3 event-based document ingestion
+        // Lambda function for handling S3 event-based document ingestion - using container image
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event-${hash}`,
             runtime: getDefaultRuntime(),
@@ -223,7 +222,7 @@ export class IngestionJobConstruct extends Construct {
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
-            layers: layers,
+            layers,
             role: lambdaRole
         });
         const eventParameterName = `${config.deploymentPrefix}/ingestion/ingest/event`;
@@ -236,17 +235,17 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // Lambda function for handling document deletion events
+        // Lambda function for handling document deletion events - using container image
         const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event-${hash}`,
             runtime: getDefaultRuntime(),
-            handler: 'repository.pipeline_delete_documents.handle_pipeline_delete_event',
+            handler: 'repository.pipeline_ingest_documents.handle_pipeline_delete_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
-            layers: layers,
+            layers,
             role: lambdaRole
         });
         const deleteParameterName = `${config.deploymentPrefix}/ingestion/delete/event`;

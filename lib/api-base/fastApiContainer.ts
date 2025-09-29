@@ -92,20 +92,15 @@ export class FastApiContainer extends Construct {
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
             THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
             LITELLM_KEY: config.litellmConfig.db_key,
-            OPENAI_API_KEY: 'dummy-key', // pragma: allowlist secret - Required for OpenAI compatible self-hosted models through LiteLLM
-            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE'
+            OPENAI_API_KEY: config.litellmConfig.db_key,
+            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE',
+            USE_AUTH: 'true',
+            AUTHORITY: config.authConfig!.authority,
+            CLIENT_ID: config.authConfig!.clientId,
+            ADMIN_GROUP: config.authConfig!.adminGroup,
+            USER_GROUP: config.authConfig!.userGroup,
+            JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
         };
-
-        if (config.restApiConfig.internetFacing) {
-            baseEnvironment.USE_AUTH = 'true';
-            baseEnvironment.AUTHORITY = config.authConfig!.authority;
-            baseEnvironment.CLIENT_ID = config.authConfig!.clientId;
-            baseEnvironment.ADMIN_GROUP = config.authConfig!.adminGroup;
-            baseEnvironment.USER_GROUP = config.authConfig!.userGroup;
-            baseEnvironment.JWT_GROUPS_PROP = config.authConfig!.jwtGroupsProperty;
-        } else {
-            baseEnvironment.USE_AUTH = 'false';
-        }
 
         if (tokenTable) {
             baseEnvironment.TOKEN_TABLE_NAME = tokenTable.tableName;
@@ -141,7 +136,7 @@ export class FastApiContainer extends Construct {
         const ecsConfig: ECSConfig = {
             amiHardwareType: AmiHardwareType.STANDARD,
             autoScalingConfig: {
-                blockDeviceVolumeSize: 30,
+                blockDeviceVolumeSize: 50,
                 minCapacity: 1,
                 maxCapacity: 5,
                 cooldown: 60,
@@ -232,7 +227,7 @@ export class FastApiContainer extends Construct {
                                 'logs:CreateLogStream',
                                 'logs:PutLogEvents'
                             ],
-                            resources: ['arn:aws:logs:*:*:*']
+                            resources: [`arn:${config.partition}:logs:*:*:*`]
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,
@@ -242,8 +237,8 @@ export class FastApiContainer extends Construct {
                                 'ecs:DescribeClusters'
                             ],
                             resources: [
-                                `arn:aws:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
-                                `arn:aws:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
+                                `arn:${config.partition}:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
+                                `arn:${config.partition}:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
                             ]
                         }),
                         new PolicyStatement({
@@ -252,7 +247,7 @@ export class FastApiContainer extends Construct {
                                 'ssm:GetParameter'
                             ],
                             resources: [
-                                `arn:aws:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
+                                `arn:${config.partition}:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
                             ]
                         })
                     ]

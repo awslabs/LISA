@@ -519,3 +519,22 @@ def get_bearer_token(event, with_prefix: bool = True):
 
     # Return the token after "Bearer "
     return auth_header.split(" ", 1)[1].strip()
+
+
+def get_account_and_partition() -> tuple[str, str]:
+    """Get AWS account ID and partition from environment or ECR repository ARN.
+
+    Returns:
+        tuple[str, str]: (account_id, partition)
+    """
+    account_id = os.environ.get("AWS_ACCOUNT_ID", "")
+    partition = os.environ.get("AWS_PARTITION", "aws")
+
+    if not account_id:
+        ecr_repo_arn = os.environ.get("ECR_REPOSITORY_ARN", "")
+        if ecr_repo_arn:
+            arn_parts = ecr_repo_arn.split(":")
+            partition = arn_parts[1]
+            account_id = arn_parts[4]
+
+    return account_id, partition

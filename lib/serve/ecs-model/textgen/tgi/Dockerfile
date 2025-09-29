@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=ghcr.io/huggingface/text-generation-inference:2.0.1
 FROM ${BASE_IMAGE}
 
 ##### DOWNLOAD MOUNTPOINTS S3

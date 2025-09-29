@@ -38,6 +38,7 @@ import {
 } from '../types';
 import RagControls from './components/RagOptions';
 import { ContextUploadModal, RagUploadModal } from './components/FileUploadModals';
+import { JobStatusModal } from './components/JobStatusModal';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import {
@@ -633,6 +634,11 @@ export default function Chat ({ sessionId }) {
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}
+            />
+            <JobStatusModal
+                ragConfig={ragConfig}
+                showJobStatusModal={modals.jobStatus}
+                setShowJobStatusModal={(show) => show ? openModal('jobStatus') : closeModal('jobStatus')}
             />
             <ContextUploadModal
                 showContextUploadModal={modals.contextUpload}

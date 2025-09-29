@@ -492,6 +492,52 @@ def create(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
+def list_jobs(event: dict, context: dict) -> Dict[str, str]:
+    """List all ingestion jobs for a specific repository.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository id to list jobs for
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, str]: A dictionary mapping job IDs to their status
+
+    Raises:
+        ValidationError: If repositoryId is not provided
+    """
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+    
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    
+    # Ensure user has access to the repository
+    repository = vs_repo.find_repository_by_id(repository_id)
+    _ensure_repository_access(event, repository)
+    
+    # Query all jobs for this repository
+    response = ddb_client.query(
+        TableName=os.environ["LISA_INGESTION_JOB_TABLE_NAME"],
+        IndexName="repositoryId",
+        KeyConditionExpression="repository_id = :repository_id",
+        ExpressionAttributeValues={
+            ":repository_id": {"S": repository_id}
+        }
+    )
+    
+    # Convert to job_id -> status mapping
+    job_status_map = {}
+    for item in response.get("Items", []):
+        job_id = item.get("id", {}).get("S", "")
+        status = item.get("status", {}).get("S", "UNKNOWN")
+        if job_id:
+            job_status_map[job_id] = status
+    
+    return job_status_map
+
+
+@api_wrapper
 @admin_only
 def delete(event: dict, context: dict) -> Any:
     """

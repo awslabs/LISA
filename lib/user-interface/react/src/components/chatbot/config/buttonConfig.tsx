@@ -46,6 +46,15 @@ export const getButtonItems = (
             text: 'Upload to RAG',
             disabled: !useRag
         });
+        
+        // RAG Job Status
+        conditionalItems.push({
+            type: 'icon-button',
+            id: 'rag-job-status',
+            iconName: 'status-info',
+            text: 'RAG Job Status',
+            disabled: !useRag
+        });
     }
 
     // Context Upload
@@ -117,6 +126,7 @@ export const useButtonActions = ({
                 openModal('promptTemplate');
             },
             'upload-to-rag': () => openModal('ragUpload'),
+            'rag-job-status': () => openModal('jobStatus'),
             'add-file-to-context': () => openModal('contextUpload'),
             'summarize-document': () => openModal('documentSummarization'),
             'insert-prompt-template': () => {

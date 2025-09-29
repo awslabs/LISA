@@ -74,7 +74,7 @@ export const ragApi = createApi({
             query: () => ({
                 url: '/repository'
             }),
-            providesTags:['repositories'],
+            providesTags: ['repositories'],
         }),
         createRagRepository: builder.mutation<RagRepositoryConfig, CreateRepositoryRequest>({
             query: (body) => ({
@@ -123,7 +123,7 @@ export const ragApi = createApi({
                 };
             },
         }),
-        ingestDocuments: builder.mutation<void, IngestDocumentRequest>({
+        ingestDocuments: builder.mutation<{ ingestionJobIds: string[] }, IngestDocumentRequest>({
             query: (request) => ({
                 url: `repository/${request.repositoryId}/bulk?repositoryType=${request.repostiroyType}&chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`,
                 method: 'POST',
@@ -144,7 +144,12 @@ export const ragApi = createApi({
         }),
         listRagDocuments: builder.query<PaginatedDocumentResponse, ListRagDocumentRequest>({
             query: (request) => {
-                const params: any = { collectionId: request.collectionId };
+                const params: any = {};
+
+                // Add collectionId parameter if provided
+                if (request.collectionId) {
+                    params.collectionId = request.collectionId;
+                }
 
                 // Add pageSize parameter if provided
                 if (request.pageSize) {
@@ -190,6 +195,15 @@ export const ragApi = createApi({
                 method: 'GET',
             }),
         }),
+        getIngestionJobs: builder.query<Record<string, string>, string>({
+            query: (repositoryId) => ({
+                url: `/repository/${repositoryId}/jobs`,
+                method: 'GET',
+                params: {
+                    timeLimit: 10
+                }
+            }),
+        }),
     }),
 });
 
@@ -206,4 +220,6 @@ export const {
     useDeleteRagDocumentsMutation,
     useLazyGetRelevantDocumentsQuery,
     useLazyDownloadRagDocumentQuery,
+    useGetIngestionJobsQuery,
+    useLazyGetIngestionJobsQuery,
 } = ragApi;

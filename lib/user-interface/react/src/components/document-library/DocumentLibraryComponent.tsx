@@ -80,18 +80,40 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
-    const { data: paginatedDocs, isFetching } = useListRagDocumentsQuery(
+    const { data: paginatedDocs, isFetching, isLoading, error } = useListRagDocumentsQuery(
         {
             repositoryId,
             lastEvaluatedKey: lastEvaluatedKey || undefined,
             pageSize: preferences.pageSize
         },
-        { refetchOnMountOrArgChange: 5 }
+        { 
+            refetchOnMountOrArgChange: 5,
+            skip: !repositoryId // Skip the query if repositoryId is not available
+        }
     );
+
+    // Debug logging to help identify issues
+    React.useEffect(() => {
+        if (repositoryId) {
+            console.log('DocumentLibraryComponent: repositoryId =', repositoryId);
+            console.log('DocumentLibraryComponent: isFetching =', isFetching);
+            console.log('DocumentLibraryComponent: isLoading =', isLoading);
+            console.log('DocumentLibraryComponent: paginatedDocs =', paginatedDocs);
+            if (error) {
+                console.error('DocumentLibraryComponent: error =', error);
+            }
+        }
+    }, [repositoryId, isFetching, isLoading, paginatedDocs, error]);
 
     const allDocs = paginatedDocs?.documents || [];
     const totalDocuments = paginatedDocs?.totalDocuments || 0;
     const hasNextPage = paginatedDocs?.hasNextPage || false;
+
+    // Debug logging for documents
+    React.useEffect(() => {
+        console.log('DocumentLibraryComponent: allDocs =', allDocs);
+        console.log('DocumentLibraryComponent: totalDocuments =', totalDocuments);
+    }, [allDocs, totalDocuments]);
 
     const { items, actions, filteredItemsCount, collectionProps, filterProps } = useCollection(
         allDocs ?? [], {
@@ -115,6 +137,12 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             selection: { trackBy: 'document_id' },
         },
     );
+
+    // Debug logging for collection items
+    React.useEffect(() => {
+        console.log('DocumentLibraryComponent: items from useCollection =', items);
+        console.log('DocumentLibraryComponent: filteredItemsCount =', filteredItemsCount);
+    }, [items, filteredItemsCount]);
     const [getDownloadUrl, { isFetching: isDownloading }] = useLazyDownloadRagDocumentQuery();
     const actionItems: ButtonDropdownProps.Item[] = [
         {
@@ -140,7 +168,12 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                         action: 'Delete',
                         resourceName: 'Documents',
                         onConfirm: () => deleteMutation({ repositoryId, documentIds }),
-                        description: <div>This will delete the following documents: <ul>{documentView}</ul></div>,
+                        description: <div>
+                            This will delete the following documents: <ul>{documentView}</ul>
+                            <span>
+                                ⚠️ Batch delete will be processed in the background. Changes will not be reflected immediately and may take several minutes to complete.
+                            </span>
+                        </div>
                     }),
                 );
                 break;
@@ -169,7 +202,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             resizableColumns
             enableKeyboardNavigation
             items={items}
-            loading={isFetching}
+            loading={isLoading && !paginatedDocs}
             loadingText='Loading documents'
             selectionType='multi'
             filter={

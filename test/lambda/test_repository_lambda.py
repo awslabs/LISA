@@ -1906,3 +1906,211 @@ def test_real_similarity_search_bedrock_kb_function():
         assert first_doc["page_content"] == "KB doc content"
         assert first_doc["metadata"]["source"] == "s3://bucket/path/doc1.pdf"
         assert first_doc["metadata"]["name"] == "doc1.pdf"
+
+
+@mock_aws()
+def test_list_jobs_function():
+    """Test the list_jobs function"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.ddb_client"
+    ) as mock_ddb, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_is_admin.return_value = True  # Admin access required
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Mock DynamoDB query response
+        mock_ddb.query.return_value = {
+            "Items": [
+                {
+                    "id": {"S": "job-1"},
+                    "status": {"S": "INGESTION_COMPLETED"},
+                    "repository_id": {"S": "test-repo"},
+                },
+                {
+                    "id": {"S": "job-2"},
+                    "status": {"S": "INGESTION_IN_PROGRESS"},
+                    "repository_id": {"S": "test-repo"},
+                },
+                {
+                    "id": {"S": "job-3"},
+                    "status": {"S": "INGESTION_FAILED"},
+                    "repository_id": {"S": "test-repo"},
+                },
+            ]
+        }
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        
+        # Should return a mapping of job IDs to statuses
+        expected_jobs = {
+            "job-1": "INGESTION_COMPLETED",
+            "job-2": "INGESTION_IN_PROGRESS", 
+            "job-3": "INGESTION_FAILED"
+        }
+        assert body == expected_jobs
+
+        # Verify DynamoDB query was called correctly
+        mock_ddb.query.assert_called_once_with(
+            TableName="testing-ingestion-table",
+            IndexName="repositoryId",
+            KeyConditionExpression="repository_id = :repository_id",
+            ExpressionAttributeValues={":repository_id": {"S": "test-repo"}}
+        )
+
+
+@mock_aws()
+def test_list_jobs_missing_repository_id():
+    """Test list_jobs function with missing repository ID"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_is_admin.return_value = True
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {},  # Missing repositoryId
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Should return validation error
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert "repositoryId is required" in body["message"]
+
+
+@mock_aws()
+def test_list_jobs_unauthorized_access():
+    """Test list_jobs function with unauthorized access"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.common_functions.get_groups"
+    ) as mock_get_groups, patch("utilities.auth.is_admin") as mock_is_admin:
+
+        # Setup mocks - user is not admin and doesn't have group access
+        mock_get_groups.return_value = ["other-group"]
+        mock_is_admin.return_value = False
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "regular-user"}, "groups": json.dumps(["other-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Should return forbidden error
+        assert result["statusCode"] == 403
+        body = json.loads(result["body"])
+        assert "does not have permission" in body["message"]
+
+
+@mock_aws()
+def test_list_jobs_empty_results():
+    """Test list_jobs function with no jobs found"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.ddb_client"
+    ) as mock_ddb, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_is_admin.return_value = True
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Mock DynamoDB query response with no items
+        mock_ddb.query.return_value = {"Items": []}
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body == {}  # Empty dictionary when no jobs found
+
+
+@mock_aws()
+def test_list_jobs_malformed_dynamodb_items():
+    """Test list_jobs function with malformed DynamoDB items"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.ddb_client"
+    ) as mock_ddb, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_is_admin.return_value = True
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Mock DynamoDB query response with malformed items
+        mock_ddb.query.return_value = {
+            "Items": [
+                {
+                    "id": {"S": "job-1"},
+                    "status": {"S": "INGESTION_COMPLETED"},
+                },
+                {
+                    # Missing id field
+                    "status": {"S": "INGESTION_IN_PROGRESS"},
+                },
+                {
+                    "id": {"S": "job-3"},
+                    # Missing status field - should default to UNKNOWN
+                },
+            ]
+        }
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Verify the response handles malformed items gracefully
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        
+        # Should only include items with valid job IDs
+        expected_jobs = {
+            "job-1": "INGESTION_COMPLETED",
+            "job-3": "UNKNOWN"  # Missing status defaults to UNKNOWN
+        }
+        assert body == expected_jobs

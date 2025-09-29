@@ -68,6 +68,7 @@ export const WelcomeScreen = ({
                         navigate(`/ai-assistant/${uuidv4()}`);
                         modelSelectRef?.current?.focus();
                     }}
+                    show={true}
                 />
 
                 <ButtonBadge
@@ -96,6 +97,7 @@ export const WelcomeScreen = ({
                     text='Summarize a Doc'
                     icon={faFileLines}
                     onClick={() => openModal('documentSummarization')}
+                    show={true}
                 />
 
                 <ButtonBadge

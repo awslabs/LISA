@@ -28,13 +28,21 @@ import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { useNavigate } from 'react-router-dom';
 import { RagRepositoryConfig } from '#root/lib/schema';
 
-export function RepositoryLibraryComponent (): ReactElement {
+export function RepositoryLibraryComponent(): ReactElement {
     const {
         data: allRepos,
-        isFetching: fetchingRepos,
+        isLoading: fetchingRepos,
+        isFetching,
     } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: 5 });
 
     const [matchedRepos, setMatchedRepos] = useState<RagRepositoryConfig[]>([]);
+
+    // Debug logging to show the difference between isLoading and isFetching
+    useEffect(() => {
+        console.log('RepositoryLibraryComponent: isLoading =', fetchingRepos);
+        console.log('RepositoryLibraryComponent: isFetching =', isFetching);
+        console.log('RepositoryLibraryComponent: allRepos =', allRepos);
+    }, [fetchingRepos, isFetching, allRepos]);
 
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);
@@ -81,7 +89,7 @@ export function RepositoryLibraryComponent (): ReactElement {
                 items={matchedRepos}
                 trackBy='repositoryId'
                 variant='full-page'
-                loading={fetchingRepos}
+                loading={fetchingRepos && !allRepos}
                 cardsPerRow={[{ cards: 3 }]}
                 header={
                     <Header counter={`(${count})` ?? ''}>

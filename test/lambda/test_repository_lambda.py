@@ -1957,13 +1957,9 @@ def test_list_jobs_function():
         # Verify the response
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        
+
         # Should return a mapping of job IDs to statuses
-        expected_jobs = {
-            "job-1": "INGESTION_COMPLETED",
-            "job-2": "INGESTION_IN_PROGRESS", 
-            "job-3": "INGESTION_FAILED"
-        }
+        expected_jobs = {"job-1": "INGESTION_COMPLETED", "job-2": "INGESTION_IN_PROGRESS", "job-3": "INGESTION_FAILED"}
         assert body == expected_jobs
 
         # Verify DynamoDB query was called correctly
@@ -1971,7 +1967,7 @@ def test_list_jobs_function():
             TableName="testing-ingestion-table",
             IndexName="repositoryId",
             KeyConditionExpression="repository_id = :repository_id",
-            ExpressionAttributeValues={":repository_id": {"S": "test-repo"}}
+            ExpressionAttributeValues={":repository_id": {"S": "test-repo"}},
         )
 
 
@@ -2107,10 +2103,7 @@ def test_list_jobs_malformed_dynamodb_items():
         # Verify the response handles malformed items gracefully
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        
+
         # Should only include items with valid job IDs
-        expected_jobs = {
-            "job-1": "INGESTION_COMPLETED",
-            "job-3": "UNKNOWN"  # Missing status defaults to UNKNOWN
-        }
+        expected_jobs = {"job-1": "INGESTION_COMPLETED", "job-3": "UNKNOWN"}  # Missing status defaults to UNKNOWN
         assert body == expected_jobs

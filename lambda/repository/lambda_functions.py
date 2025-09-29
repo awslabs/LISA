@@ -450,6 +450,43 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
+def list_jobs(event: dict, context: dict) -> Dict[str, Dict]:
+    """List ingestion jobs for a specific repository with filtering.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository id to list jobs for
+            - queryStringParameters.timeLimit (optional): Time limit in hours (default: 1)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, str]: A dictionary mapping job IDs to their status
+
+    Raises:
+        ValidationError: If repositoryId is not provided
+    """
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Ensure user has access to the repository
+    repository = vs_repo.find_repository_by_id(repository_id)
+    _ensure_repository_access(event, repository)
+
+    username = get_username(event)
+    admin = is_admin(event)
+
+    query_params = event.get("queryStringParameters", {}) or {}
+    time_limit_hours = int(query_params.get("timeLimit", "1"))
+
+    return ingestion_job_repository.list_jobs_by_repository(
+        repository_id=repository_id, username=username, is_admin=admin, time_limit_hours=time_limit_hours
+    )
+
+
+@api_wrapper
 @admin_only
 def create(event: dict, context: dict) -> Any:
     """
@@ -489,52 +526,6 @@ def create(event: dict, context: dict) -> Any:
 
     # Return success status and execution ARN
     return {"status": "success", "executionArn": response["executionArn"]}
-
-
-@api_wrapper
-def list_jobs(event: dict, context: dict) -> Dict[str, str]:
-    """List all ingestion jobs for a specific repository.
-
-    Args:
-        event (dict): The Lambda event object containing:
-            - pathParameters.repositoryId: The repository id to list jobs for
-        context (dict): The Lambda context object
-
-    Returns:
-        Dict[str, str]: A dictionary mapping job IDs to their status
-
-    Raises:
-        ValidationError: If repositoryId is not provided
-    """
-    path_params = event.get("pathParameters", {})
-    repository_id = path_params.get("repositoryId")
-    
-    if not repository_id:
-        raise ValidationError("repositoryId is required")
-    
-    # Ensure user has access to the repository
-    repository = vs_repo.find_repository_by_id(repository_id)
-    _ensure_repository_access(event, repository)
-    
-    # Query all jobs for this repository
-    response = ddb_client.query(
-        TableName=os.environ["LISA_INGESTION_JOB_TABLE_NAME"],
-        IndexName="repositoryId",
-        KeyConditionExpression="repository_id = :repository_id",
-        ExpressionAttributeValues={
-            ":repository_id": {"S": repository_id}
-        }
-    )
-    
-    # Convert to job_id -> status mapping
-    job_status_map = {}
-    for item in response.get("Items", []):
-        job_id = item.get("id", {}).get("S", "")
-        status = item.get("status", {}).get("S", "UNKNOWN")
-        if job_id:
-            job_status_map[job_id] = status
-    
-    return job_status_map
 
 
 @api_wrapper

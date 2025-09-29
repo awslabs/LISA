@@ -86,7 +86,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             lastEvaluatedKey: lastEvaluatedKey || undefined,
             pageSize: preferences.pageSize
         },
-        { 
+        {
             refetchOnMountOrArgChange: 5,
             skip: !repositoryId // Skip the query if repositoryId is not available
         }
@@ -105,7 +105,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
         }
     }, [repositoryId, isFetching, isLoading, paginatedDocs, error]);
 
-    const allDocs = paginatedDocs?.documents || [];
+    const allDocs = React.useMemo(() => paginatedDocs?.documents || [], [paginatedDocs?.documents]);
     const totalDocuments = paginatedDocs?.totalDocuments || 0;
     const hasNextPage = paginatedDocs?.hasNextPage || false;
 
@@ -173,7 +173,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                             <span>
                                 ⚠️ Batch delete will be processed in the background. Changes will not be reflected immediately and may take several minutes to complete.
                             </span>
-                        </div>
+                        </div>,
                     }),
                 );
                 break;

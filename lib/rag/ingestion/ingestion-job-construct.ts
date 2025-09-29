@@ -80,36 +80,6 @@ export class IngestionJobConstruct extends Construct {
         ingestionJobTable.grantReadWriteData(props.lambdaRole);
         baseEnvironment['LISA_INGESTION_JOB_TABLE_NAME'] = ingestionJobTable.tableName;
 
-        // GSI for querying by document ID
-        ingestionJobTable.addGlobalSecondaryIndex({
-            indexName: 'documentId',
-            partitionKey: {
-                name: 'document_id',
-                type: dynamodb.AttributeType.STRING
-            },
-            projectionType: dynamodb.ProjectionType.ALL
-        });
-
-        // GSI for querying by repository ID
-        ingestionJobTable.addGlobalSecondaryIndex({
-            indexName: 'repositoryId',
-            partitionKey: {
-                name: 'repository_id',
-                type: dynamodb.AttributeType.STRING
-            },
-            projectionType: dynamodb.ProjectionType.ALL
-        });
-
-        // GSI for querying by S3 path
-        ingestionJobTable.addGlobalSecondaryIndex({
-            indexName: 's3Path',
-            partitionKey: {
-                name: 's3_path',
-                type: dynamodb.AttributeType.STRING
-            },
-            projectionType: dynamodb.ProjectionType.ALL
-        });
-
         // CloudWatch log group for batch job container logs
         const logGroup = new logs.LogGroup(this, 'IngestionJobLogGroup', {
             retention: logs.RetentionDays.ONE_WEEK,

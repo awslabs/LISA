@@ -46,7 +46,7 @@ export const getButtonItems = (
             text: 'Upload to RAG',
             disabled: !useRag
         });
-        
+
         // RAG Job Status
         conditionalItems.push({
             type: 'icon-button',

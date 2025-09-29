@@ -27,8 +27,6 @@ import {
     Icon,
 } from '@cloudscape-design/components';
 import { RagConfig } from './RagOptions';
-import { useAppDispatch } from '@/config/store';
-import { useNotificationService } from '@/shared/util/hooks';
 import { useLazyGetIngestionJobsQuery } from '@/shared/reducers/rag.reducer';
 
 export type JobStatusProps = {
@@ -70,27 +68,25 @@ const getJobStatusInfo = (status: string) => {
     };
 };
 
-export function JobStatusModal({
+export function JobStatusModal ({
     showJobStatusModal,
     setShowJobStatusModal,
     ragConfig,
 }: JobStatusProps) {
     const [getIngestionJobs, { data: jobsData, isLoading, error }] = useLazyGetIngestionJobsQuery();
-    const dispatch = useAppDispatch();
-    const notificationService = useNotificationService(dispatch);
 
-    const handleRefresh = () => {
+    const handleRefresh = React.useCallback(() => {
         if (ragConfig.repositoryId) {
             getIngestionJobs(ragConfig.repositoryId);
         }
-    };
+    }, [ragConfig.repositoryId, getIngestionJobs]);
 
     // Load jobs when modal opens
     React.useEffect(() => {
         if (showJobStatusModal && ragConfig.repositoryId) {
             handleRefresh();
         }
-    }, [showJobStatusModal, ragConfig.repositoryId]);
+    }, [showJobStatusModal, ragConfig.repositoryId, handleRefresh]);
 
     const jobItems = jobsData ? Object.entries(jobsData).map(([jobId, jobInfo]) => ({
         jobId,
@@ -123,7 +119,7 @@ export function JobStatusModal({
                     <h4>RAG Job Status</h4>
                     <p>
                         <small>
-                            View the status of RAG document ingestion and deletion jobs. Jobs are created when documents are uploaded to or removed from the RAG repository. Pipeline jobs (marked with <Icon name="workflow" variant="subtle" size="small" />) are automated processes.
+                            View the status of RAG document ingestion and deletion jobs. Jobs are created when documents are uploaded to or removed from the RAG repository. Pipeline jobs (marked with <Icon name='workflow' variant='subtle' size='small' />) are automated processes.
                         </small>
                     </p>
                 </TextContent>
@@ -140,12 +136,12 @@ export function JobStatusModal({
                             id: 'document',
                             header: 'Document',
                             cell: (item) => (
-                                <SpaceBetween direction="horizontal" size="xs">
+                                <SpaceBetween direction='horizontal' size='xs'>
                                     {item.auto && (
                                         <Icon
-                                            name="workflow"
-                                            variant="normal"
-                                            size="small"
+                                            name='workflow'
+                                            variant='normal'
+                                            size='small'
                                         />
                                     )}
                                     <span>{item.document}</span>

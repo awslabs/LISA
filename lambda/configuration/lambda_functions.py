@@ -83,6 +83,7 @@ def check_show_mcp_workbench(body, old_configuration):
     # check if the value changed
     if old_show_mcp_value != new_show_mcp_value:
         from mcp_server.lambda_functions import table as mcp_servers_table
+        from mcp_server.models import McpServerStatus
 
         if new_show_mcp_value:
             mcp_server_model = McpServerModel(
@@ -92,6 +93,7 @@ def check_show_mcp_workbench(body, old_configuration):
                 description="MCP Workbench Tools",
                 customHeaders={"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                 url=f"{os.getenv('FASTAPI_ENDPOINT')}/v2/mcp/",
+                status=McpServerStatus.ACTIVE,
             )
 
             # Insert the new mcp server item into the DynamoDB table

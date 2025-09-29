@@ -90,12 +90,6 @@ export default defineConfig({
   outDir: 'dist',
   base: '/LISA/',
   head: [['link', { rel: 'icon', href: '/LISA/favicon.ico' }]],
-  vite: {
-    build: {
-      rollupOptions: {
-      },
-    },
-  },
   // https://vitepress.dev/reference/default-theme-config
   themeConfig: {
     logo: {

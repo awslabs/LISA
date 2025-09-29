@@ -116,10 +116,6 @@
     "lib": "lib",
     "test": "test"
   },
-  "resolutions": {
-    "prismjs": "^1.30.0",
-    "brace-expansion": "^2.0.0"
-  },
   "files": [
     "VERSION",
     "bin",

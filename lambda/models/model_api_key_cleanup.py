@@ -45,7 +45,9 @@ def get_all_dynamodb_models() -> List[Dict[str, str]]:
         ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
         # Get model table name from SSM parameter
-        deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX", "/dev/LISA/lisa")
+        deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX")
+        if not deployment_prefix:
+            raise ValueError("DEPLOYMENT_PREFIX environment variable not set")
         model_table_param = f"{deployment_prefix}/modelTableName"
 
         try:
@@ -56,7 +58,7 @@ def get_all_dynamodb_models() -> List[Dict[str, str]]:
                 raise ValueError("Empty table name returned from SSM")
 
         except Exception as e:
-            print(f"⚠️ Could not get model table name from SSM: {e}")
+            print(f"Could not get model table name from SSM: {e}")
             return []
 
         # Scan the entire DynamoDB table to get all models
@@ -76,15 +78,12 @@ def get_all_dynamodb_models() -> List[Dict[str, str]]:
             if model_id and model_name:
                 models.append({"model_id": model_id, "model_name": model_name})
 
-        print(f"🔍 Found {len(models)} models in DynamoDB")
+        print(f"Found {len(models)} models in DynamoDB")
         return models
 
     except Exception as e:
-        print(f"⚠️ Error scanning DynamoDB table: {e}")
+        print(f"Error scanning DynamoDB table: {e}")
         return []
-
-
-# Removed unused functions to clean up code
 
 
 def get_database_connection():
@@ -92,7 +91,9 @@ def get_database_connection():
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
     # Get database connection info from SSM using environment variable
-    deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX", "/dev/LISA/lisa")
+    deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX")
+    if not deployment_prefix:
+        raise ValueError("DEPLOYMENT_PREFIX environment variable not set")
     db_param_name = f"{deployment_prefix}/LiteLLMDbConnectionInfo"
 
     try:
@@ -145,14 +146,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Returns:
         CloudFormation CustomResource response
     """
-    print("🔧 Starting Bedrock model API key cleanup...")
+    print("Starting Bedrock model API key cleanup...")
 
     # Validate environment variables
     required_env_vars = ["AWS_REGION", "DEPLOYMENT_PREFIX"]
     for env_var in required_env_vars:
         if not os.environ.get(env_var):
             error_msg = f"Missing required environment variable: {env_var}"
-            print(f"❌ {error_msg}")
+            print(error_msg)
             return {"Status": "FAILED", "PhysicalResourceId": "bedrock-auth-cleanup", "Reason": error_msg}
 
     conn = None
@@ -166,7 +167,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # First, let's see what tables exist in the database
         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
         tables = cursor.fetchall()
-        print(f"🔍 Available tables in database: {[table[0] for table in tables]}")
+        print(f"Available tables in database: {[table[0] for table in tables]}")
 
         # Try to find the correct LiteLLM model table name
         litellm_table = None
@@ -174,19 +175,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             table_name = table[0]
             if "proxymodel" in table_name.lower() or table_name == "LiteLLM_ProxyModelTable":
                 litellm_table = table_name
-                print(f"🎯 Found LiteLLM model table: {table_name}")
+                print(f"Found LiteLLM model table: {table_name}")
                 break
 
         if not litellm_table:
-            print("⚠️ No LiteLLM model table found in database. Database might not be initialized yet.")
-            print("🎉 Bedrock model cleanup completed! 0 Bedrock models updated (no LiteLLM tables found)")
+            print("No LiteLLM model table found in database. Database might not be initialized yet.")
+            print("Bedrock model cleanup completed! 0 Bedrock models updated (no LiteLLM tables found)")
             # Return success response for CloudFormation CustomResource
             return {"Status": "SUCCESS", "PhysicalResourceId": "bedrock-auth-cleanup", "Data": {"ModelsUpdated": "0"}}
 
         # Query all models from the LiteLLM database using the found table (use quotes for case-sensitive names)
         cursor.execute(f'SELECT * FROM "{litellm_table}" LIMIT 1')
         columns = [desc[0] for desc in cursor.description]
-        print(f"🔍 Table {litellm_table} columns: {columns}")
+        print(f"Table {litellm_table} columns: {columns}")
 
         # Try to find the correct column names
         model_id_col = next((col for col in columns if "id" in col.lower()), None)
@@ -194,9 +195,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         litellm_params_col = next((col for col in columns if "param" in col.lower()), None)
 
         if not all([model_id_col, model_name_col, litellm_params_col]):
-            print(f"⚠️ Could not find required columns in table {litellm_table}")
+            print(f"Could not find required columns in table {litellm_table}")
             print(f"    Available columns: {columns}")
-            print("🎉 Bedrock model cleanup completed! 0 Bedrock models updated (LiteLLM table structure unknown)")
+            print("Bedrock model cleanup completed! 0 Bedrock models updated (LiteLLM table structure unknown)")
             # Return success response for CloudFormation CustomResource
             return {"Status": "SUCCESS", "PhysicalResourceId": "bedrock-auth-cleanup", "Data": {"ModelsUpdated": "0"}}
 
@@ -204,7 +205,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         cursor.execute(f'SELECT "{model_id_col}", "{model_name_col}", "{litellm_params_col}" FROM "{litellm_table}"')
         models = cursor.fetchall()
 
-        print(f"🔍 Found {len(models)} total models in LiteLLM database")
+        print(f"Found {len(models)} total models in LiteLLM database")
 
         # Get all models from DynamoDB and check if they exist in LiteLLM
         dynamodb_models = get_all_dynamodb_models()
@@ -218,7 +219,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if not dynamodb_model_name.startswith("bedrock/"):
                 continue
 
-            print(f"🎯 Processing Bedrock model: {dynamodb_model_name}")
+            print(f"Processing Bedrock model: {dynamodb_model_name}")
 
             # Find the corresponding LiteLLM model by matching the model_name (alias)
             # DynamoDB model_id is actually the alias, LiteLLM model_name is the alias
@@ -245,12 +246,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     break
 
             if not matching_litellm_model:
-                print(f"⚠️ No matching LiteLLM model found for: {dynamodb_model_name}")
+                print(f"No matching LiteLLM model found for: {dynamodb_model_name}")
                 continue
 
             # Check if this model has an api_key to remove
             if "api_key" in matching_litellm_model["litellm_params"]:
-                print(f"🔧 Removing api_key from: {matching_litellm_model['model_name']}")
+                print(f"Removing api_key from: {matching_litellm_model['model_name']}")
 
                 try:
                     # Remove api_key from litellm_params
@@ -264,20 +265,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         f'UPDATE "{litellm_table}" SET "{litellm_params_col}" = %s WHERE "{model_id_col}" = %s',
                         (clean_params_json, matching_litellm_model["model_id"]),
                     )
-                    print(f"✅ Successfully cleaned model: {matching_litellm_model['model_name']}")
+                    print(f"Successfully cleaned model: {matching_litellm_model['model_name']}")
                     bedrock_models_processed += 1
 
                 except Exception as e:
-                    print(f"❌ Error cleaning model {matching_litellm_model['model_name']}: {e}")
+                    print(f"Error cleaning model {matching_litellm_model['model_name']}: {e}")
                     conn.rollback()
             else:
-                print(f"✅ Model {matching_litellm_model['model_name']} already clean")
-
-        # Note: Legacy processing removed - we now use DynamoDB-first approach above
+                print(f"Model {matching_litellm_model['model_name']} already clean")
 
         # Commit the changes
         conn.commit()
-        print(f"🎉 Cleanup completed! {bedrock_models_processed} Bedrock models processed")
+        print(f"Cleanup completed! {bedrock_models_processed} Bedrock models processed")
 
         # Return success response for CloudFormation CustomResource
         return {
@@ -288,22 +287,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     except ValueError as e:
         # Handle configuration/validation errors
-        print(f"❌ Configuration error: {e}")
+        print(f"Configuration error: {e}")
         return {"Status": "FAILED", "PhysicalResourceId": "bedrock-auth-cleanup", "Reason": str(e)}
 
     except Exception as e:
         # Handle unexpected errors
-        print(f"❌ Cleanup failed: {e}")
+        print(f"Cleanup failed: {e}")
         import traceback
 
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f"Traceback: {traceback.format_exc()}")
 
         # Rollback any pending database changes
         if conn:
             try:
                 conn.rollback()
             except Exception as rollback_error:
-                print(f"⚠️ Failed to rollback database changes: {rollback_error}")
+                print(f"Failed to rollback database changes: {rollback_error}")
 
         return {"Status": "FAILED", "PhysicalResourceId": "bedrock-auth-cleanup", "Reason": str(e)}
 
@@ -313,10 +312,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             try:
                 cursor.close()
             except Exception as e:
-                print(f"⚠️ Error closing cursor: {e}")
+                print(f"Error closing cursor: {e}")
 
         if conn:
             try:
                 conn.close()
             except Exception as e:
-                print(f"⚠️ Error closing database connection: {e}")
+                print(f"Error closing database connection: {e}")

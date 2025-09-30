@@ -14,6 +14,7 @@ permissions:
 jobs:
   MakeNewReleaseBranch:
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - name: Checkout Develop Branch
         uses: actions/checkout@v4

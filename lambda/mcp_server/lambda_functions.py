@@ -187,7 +187,9 @@ def _set_can_use(
     formatted_groups = [f"group:{group}" for group in groups]
     for item in items:
         item["canUse"] = (
-            _is_member(formatted_groups, item["groups"]) or item["owner"] == user_id or item["owner"] == "lisa:public"
+            _is_member(formatted_groups, item.get("groups", []))
+            or item["owner"] == user_id
+            or item["owner"] == "lisa:public"
         )
     connections["Items"] = items
     return connections

@@ -1,3 +1,33 @@
+# v5.3.1
+
+## Key Features
+
+### Session Encryption
+LISA now supports optional session encryption. Administrators can activate encryption which applies to all sessions. When activated, chat sessions are encrypted prior to storage in DynamoDB and automatically decrypted when retrieving data, enhancing data security at rest.
+
+### Security Improvements and Vulnerability Remediation
+This release includes security related across the codebase.
+**Security Enhancements:**
+- **Dependency Security**: Updated vulnerable dependencies across Python and Node.js packages with Dependabot configuration for automated security updates
+- **Container Security**: Updated Dockerfiles with security-focused base images and improved container build processes
+- **Infrastructure Security**: Added CodeQL security scanning workflow and enhanced CI/CD pipeline with security checks
+- **API Security**: Improved API key handling and cleanup mechanisms with enhanced LiteLLM integration
+
+## Key Changes
+- **Security Documentation**: Added comprehensive SECURITY.md
+- **Dependency Management**: Updated 9+ requirement files with security patches
+- **Workflow Security**: Enhanced 15+ GitHub Actions workflows
+- **Container Security**: Updated 6+ Dockerfiles with security improvements
+- **API Security**: Implemented secure API key management
+
+## Acknowledgements
+@bedanley
+@estohlmann
+@jmharold
+@dustins
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.3.0...v5.3.1
+
 # v5.3.0
 ## Key Features
 ### Model Context Protocol (MCP) Workbench

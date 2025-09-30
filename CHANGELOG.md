@@ -36,6 +36,10 @@ This release includes security related updates across the codebase.
 - **Expanded SDK**: Enhanced SDK functionality with integration script for setting up models and vector stores
 - **Request Caching**: Cache repeated requests for configs and keys
 
+## Breaking Changes
+
+- **Bedrock Model Configuration**: Legacy Bedrock models not prefixed with `bedrock/` will need to be recreated. The updated LiteLLM version requires removal of placeholder API keys from Bedrock models, which are identified using the 'bedrock/' prefix.
+
 ## Acknowledgements
 
 - @bedanley

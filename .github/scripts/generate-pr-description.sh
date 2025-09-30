@@ -19,7 +19,7 @@ check_gh_auth() {
     if ! command -v gh >/dev/null 2>&1; then
         return 1
     fi
-    
+
     # Check authentication status with timeout
     if timeout 10s gh auth status >/dev/null 2>&1; then
         return 0
@@ -33,21 +33,21 @@ get_commit_pr_info() {
     local commit_hash="$1"
     local commit_subject="$2"
     local commit_author="$3"
-    
+
     # Try to find associated PRs using GitHub CLI (only if authenticated)
     if [[ "$GH_AUTHENTICATED" == "true" ]]; then
         # Use timeout to prevent hanging and suppress errors
         local pr_info=$(timeout 15s gh pr list --search "$commit_hash" --state merged --json number,title,body --limit 1 2>/dev/null || echo "[]")
-        
+
         if [[ "$pr_info" != "[]" ]] && [[ -n "$pr_info" ]] && [[ "$pr_info" != *"error"* ]]; then
             local pr_number=$(echo "$pr_info" | jq -r '.[0].number // empty' 2>/dev/null)
             local pr_title=$(echo "$pr_info" | jq -r '.[0].title // empty' 2>/dev/null)
             local pr_body=$(echo "$pr_info" | jq -r '.[0].body // empty' 2>/dev/null)
-            
+
             if [[ -n "$pr_number" && -n "$pr_title" && "$pr_number" != "null" ]]; then
                 echo "- $commit_subject ($commit_author)"
                 echo "  PR #$pr_number: $pr_title"
-                
+
                 if [[ -n "$pr_body" && "$pr_body" != "null" ]]; then
                     # Truncate very long PR descriptions and clean up formatting
                     local cleaned_body=$(echo "$pr_body" | head -c 500 | tr '\n' ' ' | tr -s ' ')
@@ -57,7 +57,7 @@ get_commit_pr_info() {
             fi
         fi
     fi
-    
+
     # Fallback to commit message only
     echo "- $commit_subject ($commit_author)"
     return 1
@@ -100,24 +100,24 @@ while IFS='|' read -r hash subject author; do
     if [[ -n "$hash" ]]; then
         # Get commit info and handle return code properly with set -e
         commit_info=$(get_commit_pr_info "$hash" "$subject" "$author") || commit_return_code=$?
-        
+
         # Check if PR info was found (return code 0 means PR found)
         if [[ -z "$commit_return_code" ]]; then
             pr_found_count=$((pr_found_count + 1))
         fi
-        
+
         if [[ -n "$COMMITS" ]]; then
             COMMITS="$COMMITS"$'\n'"$commit_info"
         else
             COMMITS="$commit_info"
         fi
         commit_count=$((commit_count + 1))
-        
+
         # Show progress for long-running operations
         if [[ $((commit_count % 3)) -eq 0 ]]; then
             echo "   ... processed $commit_count commits"
         fi
-        
+
         # Reset the return code variable for next iteration
         unset commit_return_code
     fi
@@ -173,7 +173,7 @@ PROMPT="Please create a comprehensive pull request description for the LISA soft
 
 ## Key Changes
 - **[Category]**: [Description of change]
-- **[Category]**: [Description of change]  
+- **[Category]**: [Description of change]
 - **[Category]**: [Description of change]
 [Include ALL significant changes, not just a few examples]
 

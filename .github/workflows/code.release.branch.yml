@@ -54,7 +54,7 @@ jobs:
           .github/scripts/generate-pr-description.sh "${{ github.event.inputs.release_tag }}"
         env:
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
-          
+
       - name: Draft Pull Request
         run: |
           # Switch to release branch to ensure proper context for PR creation

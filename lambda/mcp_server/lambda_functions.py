@@ -181,13 +181,13 @@ def _is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
 def _set_can_use(
     connections: Dict[str, Any], user_id: Optional[str] = None, groups: Optional[List[str]] = None
 ) -> Dict[str, Any]:
+    if groups is None:
+        groups = []
     items = connections.get("Items", [])
     formatted_groups = [f"group:{group}" for group in groups]
     for item in items:
         item["canUse"] = (
-            (groups and _is_member(formatted_groups, item["groups"]))
-            or item["owner"] == user_id
-            or item["owner"] == "lisa:public"
+            _is_member(formatted_groups, item["groups"]) or item["owner"] == user_id or item["owner"] == "lisa:public"
         )
     connections["Items"] = items
     return connections

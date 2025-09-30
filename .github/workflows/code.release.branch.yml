@@ -29,12 +29,33 @@ jobs:
           echo "$( jq --arg version ${RELEASE_TAG:1} '.version = $version' package.json )" > package.json
           sed -E -i -e "s/version = \"[0-9\.].+\"/version = \"${RELEASE_TAG:1}\"/g" lisa-sdk/pyproject.toml
           echo ${RELEASE_TAG:1} > VERSION
+          # update package-lock.json
+          npm ci
           git commit -a -m "Updating version for release ${{ github.event.inputs.release_tag }}"
           git push origin release/${{ github.event.inputs.release_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 14400
+      - name: Generate PR Description with Bedrock
+        id: generate_description
+        run: |
+          chmod +x .github/scripts/generate-pr-description.sh
+          .github/scripts/generate-pr-description.sh "${{ github.event.inputs.release_tag }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+          
       - name: Draft Pull Request
         run: |
-          gh pr create -d --title "Release ${{github.event.inputs.release_tag}} into Main" --body "Release ${{github.event.inputs.release_tag}} PR into Main" --base main --head release/${{ github.event.inputs.release_tag }}
+          gh pr create -d \
+            --title "Release ${{github.event.inputs.release_tag}} into Main" \
+            --body "${{ steps.generate_description.outputs.DESCRIPTION }}" \
+            --base main \
+            --head release/${{ github.event.inputs.release_tag }}
         env:
           GH_TOKEN: ${{ github.token }}

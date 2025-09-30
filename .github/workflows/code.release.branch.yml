@@ -48,6 +48,8 @@ jobs:
       - name: Generate PR Description with Bedrock
         id: generate_description
         run: |
+          # Switch back to develop branch for accurate commit comparison
+          git checkout develop
           chmod +x .github/scripts/generate-pr-description.sh
           .github/scripts/generate-pr-description.sh "${{ github.event.inputs.release_tag }}"
         env:
@@ -55,6 +57,8 @@ jobs:
           
       - name: Draft Pull Request
         run: |
+          # Switch to release branch to ensure proper context for PR creation
+          git checkout release/${{ github.event.inputs.release_tag }}
           gh pr create -d \
             --title "Release ${{github.event.inputs.release_tag}} into Main" \
             --body "${{ steps.generate_description.outputs.DESCRIPTION }}" \

@@ -22,7 +22,15 @@ from typing import Any, cast, Dict, List, Optional
 import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, ListJobsResponse, RagDocument
+from models.domain_objects import (
+    FixedChunkingStrategy,
+    IngestionJob,
+    IngestionStatus,
+    ListJobsResponse,
+    PaginationParams,
+    PaginationResult,
+    RagDocument,
+)
 from repository.config.params import ListJobsParams
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
@@ -34,7 +42,6 @@ from utilities.bedrock_kb import retrieve_documents
 from utilities.common_functions import api_wrapper, get_groups, get_id_token, retry_config, user_has_group_access
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
-from utilities.types import PaginationParams, PaginationResult
 from utilities.validation import ValidationError
 from utilities.vector_store import get_vector_store_client
 

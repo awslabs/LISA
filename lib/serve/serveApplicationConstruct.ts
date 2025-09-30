@@ -84,7 +84,7 @@ export class LisaServeApplicationConstruct extends Construct {
         this.tokenTable = tokenTable;
 
         // Create REST API
-        const restApi = new FastApiContainer(scope, `${config.deploymentName}-RestApi`, {
+        const restApi = new FastApiContainer(scope, `${config.deploymentName}-${config.deploymentStage}-RestApi`, {
             apiName: 'REST',
             config: config,
             resourcePath: REST_API_PATH,

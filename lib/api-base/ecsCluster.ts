@@ -209,7 +209,7 @@ export class ECSCluster extends Construct {
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
-            clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier, 'v2'], 32, 2),
+            clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
             vpc: vpc.vpc,
             containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
@@ -368,7 +368,7 @@ export class ECSCluster extends Construct {
 
         // Create CloudWatch log group with explicit retention
         const logGroup = new LogGroup(this, createCdkId([identifier, 'LogGroup']), {
-            logGroupName: `/aws/ecs/${config.deploymentName}-${config.deploymentStage}-${identifier}-v2`,
+            logGroupName: `/aws/ecs/${config.deploymentName}-${config.deploymentStage}-${identifier}`,
             retention: RetentionDays.ONE_WEEK,
             removalPolicy: config.removalPolicy
         });
@@ -377,7 +377,7 @@ export class ECSCluster extends Construct {
         const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([config.deploymentName, config.deploymentStage, identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: ecsConfig.internetFacing,
-            loadBalancerName: createCdkId([config.deploymentName, config.deploymentStage, identifier, 'v2'], 32, 2).toLowerCase(),
+            loadBalancerName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2).toLowerCase(),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc: vpc.vpc,
@@ -431,7 +431,7 @@ export class ECSCluster extends Construct {
             // Create ECS service for primary task
             const serviceProps: Ec2ServiceProps = {
                 cluster: cluster,
-                serviceName: createCdkId([name, 'v2'], 32, 2),
+                serviceName: createCdkId([name], 32, 2),
                 taskDefinition: taskDefinition,
                 circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
                 capacityProviderStrategies: [
@@ -454,7 +454,7 @@ export class ECSCluster extends Construct {
             const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
 
             const targetGroup = listener.addTargets(createCdkId([identifier, name, 'TgtGrp']), {
-                targetGroupName: createCdkId([config.deploymentName, identifier, name, 'v2'], 32, 2).toLowerCase(),
+                targetGroupName: createCdkId([config.deploymentName, identifier, name], 32, 2).toLowerCase(),
                 healthCheck: {
                     path: loadBalancerHealthCheckConfig.path,
                     interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

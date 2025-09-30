@@ -204,7 +204,7 @@ export class FastApiContainer extends Construct {
             },
         };
 
-        const apiCluster = new ECSCluster(scope, `${config.deploymentName}-${config.deploymentStage}-${id}-ECSCluster`, {
+        const apiCluster = new ECSCluster(scope, `${id}-ECSCluster`, {
             identifier: props.apiName,
             ecsConfig,
             config,

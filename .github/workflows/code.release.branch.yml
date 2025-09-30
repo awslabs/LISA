@@ -12,6 +12,7 @@ permissions:
 jobs:
   MakeNewReleaseBranch:
     runs-on: ubuntu-latest
+    environment: dev
     permissions:
       contents: write       # Required for branch creation
       id-token: write       # Required for AWS authentication

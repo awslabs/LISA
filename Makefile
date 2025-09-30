@@ -249,6 +249,7 @@ cleanCfn:
 ## Delete all misc files
 cleanMisc:
 	@find . -type f -name "*.DS_Store" -delete
+	@find . -type d -name "TIKTOKEN_CACHE" -exec rm -rf {} +
 	@rm -f .hf_token_cache
 
 

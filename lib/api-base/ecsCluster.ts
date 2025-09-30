@@ -431,7 +431,7 @@ export class ECSCluster extends Construct {
             // Create ECS service for primary task
             const serviceProps: Ec2ServiceProps = {
                 cluster: cluster,
-                serviceName: createCdkId([name], 32, 2),
+                serviceName: createCdkId([name, 'v2'], 32, 2),
                 taskDefinition: taskDefinition,
                 circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
                 capacityProviderStrategies: [
@@ -454,7 +454,7 @@ export class ECSCluster extends Construct {
             const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
 
             const targetGroup = listener.addTargets(createCdkId([identifier, name, 'TgtGrp']), {
-                targetGroupName: createCdkId([config.deploymentName, identifier, name], 32, 2).toLowerCase(),
+                targetGroupName: createCdkId([config.deploymentName, identifier, name, 'v2'], 32, 2).toLowerCase(),
                 healthCheck: {
                     path: loadBalancerHealthCheckConfig.path,
                     interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

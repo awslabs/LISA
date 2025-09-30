@@ -118,7 +118,7 @@ export class ECSCluster extends Construct {
         executionRole?: IRole
     ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition } {
         const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([taskDefinitionName, 'Ec2TaskDefinition']), {
-            family: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
+            family: createCdkId([config.deploymentName, taskDefinitionName, 'v2'], 32, 2),
             volumes,
             ...(taskRole && { taskRole }),
             ...(executionRole && { executionRole }),
@@ -209,7 +209,7 @@ export class ECSCluster extends Construct {
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
-            clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
+            clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier, 'v2'], 32, 2),
             vpc: vpc.vpc,
             containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
@@ -368,7 +368,7 @@ export class ECSCluster extends Construct {
 
         // Create CloudWatch log group with explicit retention
         const logGroup = new LogGroup(this, createCdkId([identifier, 'LogGroup']), {
-            logGroupName: `/aws/ecs/${config.deploymentName}-${config.deploymentStage}-${identifier}`,
+            logGroupName: `/aws/ecs/${config.deploymentName}-${config.deploymentStage}-${identifier}-v2`,
             retention: RetentionDays.ONE_WEEK,
             removalPolicy: config.removalPolicy
         });
@@ -377,7 +377,7 @@ export class ECSCluster extends Construct {
         const loadBalancer = new ApplicationLoadBalancer(this, createCdkId([config.deploymentName, config.deploymentStage, identifier, 'ALB']), {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             internetFacing: ecsConfig.internetFacing,
-            loadBalancerName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2).toLowerCase(),
+            loadBalancerName: createCdkId([config.deploymentName, config.deploymentStage, identifier, 'v2'], 32, 2).toLowerCase(),
             dropInvalidHeaderFields: true,
             securityGroup,
             vpc: vpc.vpc,

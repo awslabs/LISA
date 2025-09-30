@@ -79,6 +79,23 @@ commit_count=0
 pr_found_count=0
 echo "📡 Looking up commit information..."
 
+# Determine the correct main branch reference
+MAIN_REF=""
+if git rev-parse --verify main >/dev/null 2>&1; then
+    MAIN_REF="main"
+elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+    MAIN_REF="origin/main"
+elif git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
+    MAIN_REF="refs/remotes/origin/main"
+else
+    echo "❌ Cannot find main branch reference. Available branches:"
+    git branch -a 2>/dev/null || echo "No branches found"
+    echo "Using develop branch as fallback for commit analysis"
+    MAIN_REF="HEAD~50"  # Fallback to last 50 commits
+fi
+
+echo "🔍 Using main branch reference: $MAIN_REF"
+
 while IFS='|' read -r hash subject author; do
     if [[ -n "$hash" ]]; then
         # Get commit info and handle return code properly with set -e
@@ -104,7 +121,7 @@ while IFS='|' read -r hash subject author; do
         # Reset the return code variable for next iteration
         unset commit_return_code
     fi
-done < <(git log main..HEAD --pretty=format:"%H|%s|%an" --no-merges)
+done < <(git log $MAIN_REF..HEAD --pretty=format:"%H|%s|%an" --no-merges 2>/dev/null || echo "")
 
 echo "✅ Processed $commit_count commits"
 if [[ "$GH_AUTHENTICATED" == "true" ]]; then
@@ -112,7 +129,7 @@ if [[ "$GH_AUTHENTICATED" == "true" ]]; then
 fi
 
 # Get unique contributors from commits for acknowledgements (use email to extract GitHub username)
-CONTRIBUTORS=$(git log main..HEAD --pretty=format:"%ae" --no-merges | sort -u | sed 's/@.*$//' | sed 's/^/* @/' | tr '\n' '\n')
+CONTRIBUTORS=$(git log $MAIN_REF..HEAD --pretty=format:"%ae" --no-merges 2>/dev/null | sort -u | sed 's/@.*$//' | sed 's/^/* @/' | tr '\n' '\n' || echo "")
 
 # Get the current version from VERSION file to use as previous version in changelog
 if [ -f "VERSION" ]; then

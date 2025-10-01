@@ -6,7 +6,7 @@ locust==2.25.0
 loguru==0.7.3
 mangum==0.17.0
 pre-commit==3.5.0
-pydantic==2.8.2
+pydantic==2.11.9
 pytest-xdist==3.6.1
 pytest-asyncio==0.25
 uvicorn==0.22.0

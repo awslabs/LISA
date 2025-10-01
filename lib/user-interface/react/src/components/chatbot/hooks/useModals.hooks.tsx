@@ -20,7 +20,6 @@ export type ModalState = {
     sessionConfiguration: boolean;
     contextUpload: boolean;
     ragUpload: boolean;
-    jobStatus: boolean;
     documentSummarization: boolean;
     promptTemplate: boolean;
     modelComparison: boolean
@@ -31,7 +30,6 @@ export const useModals = () => {
         sessionConfiguration: false,
         contextUpload: false,
         ragUpload: false,
-        jobStatus: false,
         documentSummarization: false,
         promptTemplate: false,
         modelComparison: false,

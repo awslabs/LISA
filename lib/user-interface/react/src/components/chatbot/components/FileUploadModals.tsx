@@ -40,6 +40,7 @@ import {
 import { uploadToS3Request } from '../../utils';
 import { RagRepositoryPipeline } from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
+import { JobStatusTable } from './JobStatusTable';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -89,7 +90,7 @@ export type ContextUploadProps = {
     selectedModel: IModel;
 };
 
-export function ContextUploadModal ({
+export function ContextUploadModal({
     showContextUploadModal,
     setShowContextUploadModal,
     fileContext,
@@ -101,11 +102,11 @@ export function ContextUploadModal ({
     const notificationService = useNotificationService(dispatch);
     const modelSupportsImages = selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length && true;
 
-    function handleError (error: string) {
+    function handleError(error: string) {
         notificationService.generateNotification(error, 'error');
     }
 
-    async function processFile (file: File): Promise<boolean> {
+    async function processFile(file: File): Promise<boolean> {
         //File context currently only supports single files
         let fileContents: string;
 
@@ -204,7 +205,9 @@ export type RagUploadProps = {
     ragConfig: RagConfig;
 };
 
-export function RagUploadModal ({
+
+
+export function RagUploadModal({
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,
@@ -225,11 +228,13 @@ export function RagUploadModal ({
     const [uploadToS3Mutation] = useUploadToS3Mutation();
     const [ingestDocuments] = useIngestDocumentsMutation();
 
-    function handleError (error: string): void {
+    function handleError(error: string): void {
         notificationService.generateNotification(error, 'error');
     }
 
-    async function processFile (file: File, fileIndex: number): Promise<boolean> {
+
+
+    async function processFile(file: File, fileIndex: number): Promise<boolean> {
         setProgressBarDescription(`Uploading ${file.name}`);
 
         const urlResponse = await getPresignedUrl(file.name);
@@ -245,7 +250,7 @@ export function RagUploadModal ({
 
     }
 
-    async function indexFiles (fileKeys: string[]): Promise<void> {
+    async function indexFiles(fileKeys: string[]): Promise<void> {
         setIngestingFiles(true);
         setIngestionType(StatusTypes.LOADING);
         setIngestionStatus('Ingesting documents into the selected repository...');
@@ -277,6 +282,8 @@ export function RagUploadModal ({
             setIngestingFiles(false);
         }
     }
+
+
 
     return (
         <Modal
@@ -387,6 +394,14 @@ export function RagUploadModal ({
                     />
                 )}
                 {ingestingFiles && <StatusIndicator type={ingestionType}>{ingestionStatus}</StatusIndicator>}
+
+                {/* Job Status Table */}
+                <JobStatusTable 
+                    ragConfig={ragConfig}
+                    autoLoad={showRagUploadModal}
+                    showDescription={true}
+                    title="Recent Jobs"
+                />
             </SpaceBetween>
         </Modal>
     );

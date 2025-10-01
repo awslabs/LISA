@@ -46,15 +46,6 @@ export const getButtonItems = (
             text: 'Upload to RAG',
             disabled: !useRag
         });
-
-        // RAG Job Status
-        conditionalItems.push({
-            type: 'icon-button',
-            id: 'rag-job-status',
-            iconName: 'status-info',
-            text: 'RAG Job Status',
-            disabled: !useRag
-        });
     }
 
     // Context Upload

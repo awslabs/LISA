@@ -63,6 +63,17 @@ type CreateRepositoryRequest = {
     ragConfig: RagRepositoryConfig
 };
 
+export type IngestionJob = {
+    status: string;
+    document: string;
+    auto: boolean;
+    createdDate?: string | null;
+};
+
+export type IngestionJobsResponse = {
+    [jobId: string]: IngestionJob;
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
@@ -195,12 +206,12 @@ export const ragApi = createApi({
                 method: 'GET',
             }),
         }),
-        getIngestionJobs: builder.query<Record<string, string>, string>({
+        getIngestionJobs: builder.query<IngestionJobsResponse, string>({
             query: (repositoryId) => ({
                 url: `/repository/${repositoryId}/jobs`,
                 method: 'GET',
                 params: {
-                    timeLimit: 10
+                    timeLimit: 1000
                 }
             }),
         }),

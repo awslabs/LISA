@@ -148,7 +148,7 @@ export type Repository = {
     repositoryId: string;
     repositoryName?: string;
     type: RepositoryTypes;
-    allowedGroups: String[];
+    allowedGroups: string[];
 };
 
 /**

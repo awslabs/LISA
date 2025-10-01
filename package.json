@@ -51,7 +51,7 @@
     "@aws-sdk/client-iam": "^3.738.0",
     "@aws-sdk/client-ssm": "^3.738.0",
     "@cdklabs/cdk-enterprise-iac": "^0.0.512",
-    "@stylistic/eslint-plugin": "^2.13.0",
+    "@stylistic/eslint-plugin": "^5.4.0",
     "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.15",

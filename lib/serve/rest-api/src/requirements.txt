@@ -5,7 +5,7 @@ backoff==2.2.1
 boto3==1.36.0
 cachetools==5.5.0
 click==8.1.7
-cryptography==44.0.1
+cryptography==46.0.1
 fastapi==0.115.11
 fastapi_utils==0.7.0
 gunicorn==23.0.0

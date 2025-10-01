@@ -11,7 +11,7 @@ fastapi_utils==0.7.0
 gunicorn==23.0.0
 litellm[proxy]==1.77.4
 loguru==0.7.2
-pydantic==2.8.2
+pydantic==2.11.9
 PyJWT==2.10.1
 text-generation==0.7.0
 prisma==0.13.1

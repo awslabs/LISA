@@ -22,6 +22,7 @@ jobs:
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           ref: develop
+          fetch-depth: 0  # Fetch full history for proper branch comparison
       - name: Create Release Branch and Update Version
         run: |
           git config --global user.email "evmann@amazon.com"
@@ -32,9 +33,11 @@ jobs:
           echo "$( jq --arg version ${RELEASE_TAG:1} '.version = $version' package.json )" > package.json
           sed -E -i -e "s/version = \"[0-9\.].+\"/version = \"${RELEASE_TAG:1}\"/g" lisa-sdk/pyproject.toml
           echo ${RELEASE_TAG:1} > VERSION
-          # update package-lock.json
-          npm ci
-          git commit -a -m "Updating version for release ${{ github.event.inputs.release_tag }}"
+          # Update package-lock.json to reflect new version
+          npm install
+          # Ensure all changes including package-lock.json are committed
+          git add .
+          git commit -m "Updating version for release ${{ github.event.inputs.release_tag }}"
           git push origin release/${{ github.event.inputs.release_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
@@ -45,6 +48,14 @@ jobs:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           role-duration-seconds: 14400
+      - name: Fetch Main Branch for Comparison
+        run: |
+          # Fetch main branch with full history for proper commit comparison
+          git fetch --no-tags origin main:main
+          git fetch --no-tags origin develop:develop
+        env:
+          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+
       - name: Generate PR Description with Bedrock
         id: generate_description
         run: |
@@ -59,6 +70,30 @@ jobs:
         run: |
           # Switch to release branch to ensure proper context for PR creation
           git checkout release/${{ github.event.inputs.release_tag }}
+
+          # Add the generated PR description to the top of CHANGELOG.md
+          echo "📝 Adding release notes to CHANGELOG.md..."
+
+          # Create a temporary file with the new content
+          {
+            echo "${{ steps.generate_description.outputs.DESCRIPTION }}"
+            echo ""  # Add blank line separator
+            cat CHANGELOG.md
+          } > CHANGELOG_temp.md
+
+          # Replace the original with the updated content
+          mv CHANGELOG_temp.md CHANGELOG.md
+
+          # Commit the changelog update to the release branch
+          git config --global user.email "evmann@amazon.com"
+          git config --global user.name "github_actions_lisa"
+          git add CHANGELOG.md
+          git commit -m "Add ${{ github.event.inputs.release_tag }} changelog entry"
+          git push origin release/${{ github.event.inputs.release_tag }}
+
+          echo "✅ Changelog updated and committed to release branch"
+
+          # Create the draft pull request
           gh pr create -d \
             --title "Release ${{github.event.inputs.release_tag}} into Main" \
             --body "${{ steps.generate_description.outputs.DESCRIPTION }}" \
@@ -66,3 +101,4 @@ jobs:
             --head release/${{ github.event.inputs.release_tag }}
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}

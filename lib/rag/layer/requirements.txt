@@ -10,7 +10,7 @@ langchain-core==0.3.76
 numpy<2.0.0
 
 # Database and search connectors
-opensearch-py==2.6.0
+opensearch-py==3.0.0
 pgvector==0.2.5
 pypdf==6.0.0
 lxml==5.3.0

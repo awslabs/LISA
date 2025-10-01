@@ -3,7 +3,7 @@ datasets==2.20.0
 fastapi==0.111.1
 fastapi_utils==0.7.0
 locust==2.25.0
-loguru==0.7.2
+loguru==0.7.3
 mangum==0.17.0
 pre-commit==3.5.0
 pydantic==2.8.2

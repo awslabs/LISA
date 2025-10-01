@@ -490,4 +490,18 @@ class IngestionJob(BaseModel):
         super().__init__(**data)
 
         self.document_name = self.s3_path.split("/")[-1] if self.s3_path else ""
-        self.auto = self.job_username == "system"
+        self.auto = self.username == "system"
+
+
+class PaginatedResponse(BaseModel):
+    """Base class for paginated API responses."""
+
+    lastEvaluatedKey: Optional[Dict[str, str]] = None
+    hasNextPage: bool = False
+    hasPreviousPage: bool = False
+
+
+class ListJobsResponse(PaginatedResponse):
+    """Response structure for listing ingestion jobs with pagination."""
+
+    jobs: List[IngestionJob]

@@ -22,7 +22,7 @@ from typing import Any, cast, Dict, List, Optional
 import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, RagDocument
+from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, ListJobsResponse, RagDocument
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -450,17 +450,23 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
-def list_jobs(event: dict, context: dict) -> Dict[str, Dict]:
-    """List ingestion jobs for a specific repository with filtering.
+def list_jobs(event: dict, context: dict) -> ListJobsResponse:
+    """List ingestion jobs for a specific repository with filtering and pagination.
 
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The repository id to list jobs for
-            - queryStringParameters.timeLimit (optional): Time limit in hours (default: 1)
+            - queryStringParameters.timeLimit (optional): Time limit in hours (default: 720, which is 30 days)
+            - queryStringParameters.pageSize (optional): Number of jobs to return per page (default: 10, max: 100)
+            - queryStringParameters.lastEvaluatedKey (optional): Pagination token from previous request
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, str]: A dictionary mapping job IDs to their status
+        ListJobsResponse: A response object containing:
+            - jobs: List of job objects with their details
+            - lastEvaluatedKey: Token for next page (null if no more pages)
+            - hasNextPage: Boolean indicating if more pages exist
+            - hasPreviousPage: Boolean indicating if previous pages exist
 
     Raises:
         ValidationError: If repositoryId is not provided
@@ -479,11 +485,45 @@ def list_jobs(event: dict, context: dict) -> Dict[str, Dict]:
     admin = is_admin(event)
 
     query_params = event.get("queryStringParameters", {}) or {}
-    time_limit_hours = int(query_params.get("timeLimit", "1"))
+    time_limit_hours = int(query_params.get("timeLimit", "720"))  # Default to 30 days (720 hours)
+    
+    # Handle pagination parameters
+    page_size = int(query_params.get("pageSize", "10"))
+    if page_size < 1:
+        page_size = 1
+    elif page_size > 100:  # Cap at 100 to prevent abuse
+        page_size = 100
 
-    return ingestion_job_repository.list_jobs_by_repository(
-        repository_id=repository_id, username=username, is_admin=admin, time_limit_hours=time_limit_hours
+    # Parse lastEvaluatedKey if provided
+    last_evaluated_key: Optional[Dict[str, str]] = None
+    if "lastEvaluatedKey" in query_params:
+        try:
+            last_evaluated_key = json.loads(urllib.parse.unquote(query_params["lastEvaluatedKey"]))
+        except (json.JSONDecodeError, TypeError):
+            # If parsing fails, start from beginning
+            last_evaluated_key = None
+
+    logger.info(f"Calling list_jobs_by_repository with: repository_id={repository_id}, username={username}, is_admin={admin}, time_limit_hours={time_limit_hours}, page_size={page_size}")
+    
+    jobs, last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
+        repository_id=repository_id, 
+        username=username, 
+        is_admin=admin, 
+        time_limit_hours=time_limit_hours,
+        page_size=page_size,
+        last_evaluated_key=last_evaluated_key
     )
+
+    logger.info(f"Retrieved {len(jobs)} jobs from repository")
+    for job in jobs:
+        logger.info(f"Job: {job.id} - {job.status} - {job.created_date}")
+
+    return ListJobsResponse(
+        jobs=jobs,
+        lastEvaluatedKey=last_evaluated_key,
+        hasNextPage=last_evaluated_key is not None,
+        hasPreviousPage="lastEvaluatedKey" in query_params,
+    ).model_dump()
 
 
 @api_wrapper

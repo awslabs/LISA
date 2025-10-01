@@ -7,7 +7,7 @@ cachetools==5.5.0
 click==8.1.7
 cryptography==44.0.1
 fastapi==0.115.11
-fastapi_utils==0.7.0
+fastapi_utils==0.8.0
 gunicorn==23.0.0
 litellm[proxy]==1.77.4
 loguru==0.7.2

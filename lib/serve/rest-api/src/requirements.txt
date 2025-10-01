@@ -16,5 +16,5 @@ PyJWT==2.10.1
 text-generation==0.7.0
 prisma==0.13.1
 pynacl==1.5.0
-starlette==0.46.2
+starlette==0.47.2
 uvicorn==0.29.0

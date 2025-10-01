@@ -40,11 +40,11 @@ export const WelcomeScreen = ({
     openModal,
 }: WelcomeScreenProps) => {
     return (
-        <div className="h-96 flex flex-col justify-center items-center gap-8 text-center">
+        <div className='h-96 flex flex-col justify-center items-center gap-8 text-center'>
             <div>
                 <Header variant='h1'>What would you like to do?</Header>
             </div>
-            <div className="flex flex-row flex-wrap justify-center items-center gap-4 text-center">
+            <div className='flex flex-row flex-wrap justify-center items-center gap-4 text-center'>
                 <ButtonBadge
                     text='Start Chatting'
                     icon={faMessage}

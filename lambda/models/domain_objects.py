@@ -483,3 +483,11 @@ class IngestionJob(BaseModel):
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error_message: Optional[str] = Field(default=None)
+    document_name: Optional[str] = Field(default=None)
+    auto: Optional[bool] = Field(default=None)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+
+        self.document_name = self.s3_path.split("/")[-1] if self.s3_path else ""
+        self.auto = self.job_username == "system"

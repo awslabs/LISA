@@ -26,7 +26,7 @@ import {
     Icon,
 } from '@cloudscape-design/components';
 import { RagConfig } from './RagOptions';
-import { useGetIngestionJobsQuery, IngestionJob, IngestionJobsResponse } from '@/shared/reducers/rag.reducer';
+import { useGetIngestionJobsQuery, IngestionJob } from '@/shared/reducers/rag.reducer';
 import { faFileImport } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -70,7 +70,7 @@ const getJobStatusInfo = (status: string) => {
     };
 };
 
-export function JobStatusTable({
+export function JobStatusTable ({
     ragConfig,
     autoLoad = true,
     showDescription = true,
@@ -147,7 +147,7 @@ export function JobStatusTable({
                                 {item.auto && (<FontAwesomeIcon icon={faFileImport} />)}
                                 <span
                                     title={item.document}
-                                    className="truncate max-w-[30ch] block"
+                                    className='truncate max-w-[30ch] block'
                                 >
                                     {item.document}
                                 </span>
@@ -158,7 +158,7 @@ export function JobStatusTable({
                         id: 'jobId',
                         header: 'Job ID',
                         cell: (item) => (
-                            <span className="font-mono text-sm text-gray-500">
+                            <span className='font-mono text-sm text-gray-500'>
                                 {item.jobId}
                             </span>
                         ),
@@ -180,17 +180,17 @@ export function JobStatusTable({
                         header: 'Created Date',
                         cell: (item) => {
                             if (!item.createdDate) {
-                                return <span className="text-gray-500">-</span>;
+                                return <span className='text-gray-500'>-</span>;
                             }
 
                             // Format the date - assuming it's a timestamp or ISO string
                             const date = new Date(item.lastUpdate);
                             if (isNaN(date.getTime())) {
-                                return <span className="text-gray-500">-</span>;
+                                return <span className='text-gray-500'>-</span>;
                             }
 
                             return (
-                                <span className="text-sm">
+                                <span className='text-sm'>
                                     {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             );

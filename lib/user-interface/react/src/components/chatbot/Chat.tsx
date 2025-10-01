@@ -504,21 +504,26 @@ export default function Chat ({ sessionId }) {
             }));
         }
 
+        // Fetch RAG documents once if needed
+        let ragDocs = null;
+        if (useRag && !isImageGenerationMode) {
+            ragDocs = await fetchRelevantDocuments(userPrompt);
+        }
+
         // Use extracted message builder utilities
         const messageContent = await buildMessageContent({
             isImageGenerationMode,
             fileContext,
             useRag,
             userPrompt,
-            fetchRelevantDocuments,
+            ragDocs,
         });
 
         const messageMetadata = await buildMessageMetadata({
             isImageGenerationMode,
             useRag,
-            userPrompt,
             chatConfiguration,
-            fetchRelevantDocuments,
+            ragDocs,
         });
 
         messages.push(new LisaChatMessage({

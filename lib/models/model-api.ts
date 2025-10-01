@@ -29,8 +29,10 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { CustomResource, Duration } from 'aws-cdk-lib';
+import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
@@ -149,7 +151,7 @@ export class ModelsApi extends Construct {
         const stateMachinesLambdaRole = config.roles ?
             Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
             this.createStateMachineLambdaRole(modelTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
-                ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName);
+                ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
@@ -330,6 +332,39 @@ export class ModelsApi extends Construct {
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
+
+        // Model API key cleanup - runs once per deployment version
+        const modelApiKeyCleanupLambda = new Function(this, 'ModelApiKeyCleanup', {
+            runtime: getDefaultRuntime(),
+            handler: 'models.model_api_key_cleanup.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
+                DEPLOYMENT_PREFIX: config.deploymentPrefix || '',
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Remove api_key from existing Bedrock models to fix Invalid API Key format errors',
+        });
+
+        // Run cleanup automatically during deployment
+        const cleanupProvider = new Provider(this, 'ModelApiKeyCleanupProvider', {
+            onEventHandler: modelApiKeyCleanupLambda,
+        });
+
+        new CustomResource(this, 'ModelApiKeyCleanupResource', {
+            serviceToken: cleanupProvider.serviceToken,
+            properties: {
+                // Only runs once - increment this version number if you need to run cleanup again
+                CleanupVersion: '1',
+            },
+        });
+
     }
 
     /**
@@ -341,7 +376,7 @@ export class ModelsApi extends Construct {
      * @param managementKeyName - Name of the management key secret
      * @returns The created role
      */
-    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string): IRole {
+    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
         return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -357,6 +392,7 @@ export class ModelsApi extends Construct {
                                 'dynamodb:GetItem',
                                 'dynamodb:PutItem',
                                 'dynamodb:UpdateItem',
+                                'dynamodb:Scan',
                             ],
                             resources: [
                                 modelTableArn,
@@ -419,15 +455,6 @@ export class ModelsApi extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: [
-                                'ssm:GetParameter'
-                            ],
-                            resources: [
-                                lisaServeEndpointUrlParamArn
-                            ],
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
                                 'secretsmanager:GetSecretValue'
                             ],
                             resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
@@ -465,6 +492,36 @@ export class ModelsApi extends Construct {
                                 'iam:PassRole',
                             ],
                             resources: ['*'],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'bedrock:InvokeModel',
+                                'bedrock:InvokeModelWithResponseStream',
+                            ],
+                            resources: ['*'],  // Bedrock model ARNs are dynamic and region-specific
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ssm:GetParameter',
+                            ],
+                            resources: [
+                                lisaServeEndpointUrlParamArn,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/LiteLLMDbConnectionInfo`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/modelTableName`,
+                            ],
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'secretsmanager:GetSecretValue',
+                            ],
+                            resources: [
+                                `arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`,  // LiteLLM DB password secret
+                            ],
                         }),
                     ]
                 }),

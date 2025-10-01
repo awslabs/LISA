@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=python:3.11
 FROM ${BASE_IMAGE}
 
 #### POINT TO NEW PYPI CONFIG
@@ -26,6 +26,7 @@ RUN if [ "$CONDA_URL" != "" ]; then \
 
 RUN /opt/conda/bin/conda install s5cmd && \
     /opt/conda/bin/conda clean -ya && \
+    pip install --no-cache-dir --upgrade pip && \
     pip install -U --no-cache --upgrade torchserve torch-model-archiver torch-workflow-archiver
 
 ARG LOCAL_CODE_PATH

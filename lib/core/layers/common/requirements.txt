@@ -1,4 +1,6 @@
 # boto3>=1.34.131 // Provided by Lambda
 # botocore>=1.34.131 // Provided by Lambda
 # urllib3<2 // Provided by Lambda
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
+cachetools==5.5.0
+requests==2.32.5

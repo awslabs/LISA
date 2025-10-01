@@ -18,7 +18,6 @@ import logging
 import os
 import ssl
 from datetime import datetime
-from functools import cache
 from typing import Any, Dict
 
 import boto3
@@ -26,6 +25,7 @@ import create_env_variables  # noqa: F401
 import jwt
 import requests
 from botocore.exceptions import ClientError
+from cachetools import cached, TTLCache
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
 
 logger = logging.getLogger(__name__)
@@ -203,7 +203,7 @@ def find_jwt_username(jwt_data: dict[str, str]) -> str:
     return username
 
 
-@cache
+@cached(cache=TTLCache(maxsize=1, ttl=300))
 def get_management_tokens() -> list[str]:
     """Return secret management tokens if they exist."""
     secret_tokens: list[str] = []

@@ -21,14 +21,16 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
+from cachetools import cached, TTLCache
 from utilities.auth import get_username
 from utilities.common_functions import api_wrapper, get_groups, get_session_id, retry_config
 from utilities.encoders import convert_decimal
+from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,54 @@ s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
 # Get model table for real-time feature validation
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
+# Get configuration table for system settings
+config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
+
 executor = ThreadPoolExecutor(max_workers=10)
+
+# Cache for configuration values to avoid repeated database queries
+cache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
+
+
+@cached(cache=cache)
+def _is_session_encryption_enabled() -> bool:
+    """Check if session encryption is enabled via global configuration.
+
+    Returns
+    -------
+    bool
+        True if session encryption is enabled, False otherwise.
+        Defaults to False if configuration is not found or accessible.
+    """
+
+    try:
+        logger.debug("Querying global configuration for session encryption setting")
+        # Query the global configuration entry
+        response = config_table.query(
+            KeyConditionExpression="configScope = :scope",
+            ExpressionAttributeValues={":scope": "global"},
+            ScanIndexForward=False,
+            Limit=1,
+        )
+
+        items = response.get("Items", [])
+        if items:
+            config_item = items[0]
+            configuration = config_item.get("configuration", {})
+            enabled_components = configuration.get("enabledComponents", {})
+            encrypt_session = enabled_components.get("encryptSession", False)  # Default to False
+            logger.info(f"Retrieved session encryption setting from global config: {encrypt_session}")
+            return encrypt_session
+        else:
+            logger.warning("No global configuration found, defaulting session encryption to disabled")
+            return False
+
+    except ClientError as error:
+        logger.error(f"Failed to query global configuration: {error}, defaulting to encryption disabled")
+        return False
+    except Exception as e:
+        logger.error(f"Error checking session encryption configuration: {e}, defaulting to disabled")
+        return False
 
 
 def _get_current_model_config(model_id: str) -> Any:
@@ -199,20 +248,41 @@ def _generate_presigned_image_url(key: str) -> str:
     return url
 
 
-def _map_session(session: dict) -> Dict[str, Any]:
+def _map_session(session: dict, user_id: Optional[str] = None) -> Dict[str, Any]:
     return {
         "sessionId": session.get("sessionId", None),
         "name": session.get("name", None),
-        "firstHumanMessage": _find_first_human_message(session),
+        "firstHumanMessage": _find_first_human_message(session, user_id),
         "startTime": session.get("startTime", None),
         "createTime": session.get("createTime", None),
         "lastUpdated": session.get(
             "lastUpdated", session.get("startTime", None)
         ),  # Fallback to startTime for backward compatibility
+        "isEncrypted": session.get("is_encrypted", False),
     }
 
 
-def _find_first_human_message(session: dict) -> str:
+def _find_first_human_message(session: dict, user_id: Optional[str] = None) -> str:
+    # Check if session is encrypted
+    if session.get("is_encrypted", False):
+        # For encrypted sessions, decrypt to get the first message
+        try:
+            if user_id:
+                logging.info(
+                    f"Decrypting encrypted session {session.get('sessionId', 'unknown')} "
+                    f"to find first message for user {user_id}"
+                )
+                decrypted_session = decrypt_session_fields(session, user_id, session.get("sessionId", ""))
+                # Use the decrypted session for finding the first message
+                session = decrypted_session
+            else:
+                # If no user_id provided, return placeholder
+                return "[Encrypted Session - User ID required]"
+        except SessionEncryptionError as e:
+            logging.error(f"Failed to decrypt session {session.get('sessionId', 'unknown')} to find first message: {e}")
+            return "[Encrypted Session - Decryption failed]"
+
+    # For unencrypted sessions (or successfully decrypted sessions), proceed as before
     for msg in session.get("history", []):
         if msg.get("type") == "human":
             content = msg.get("content")
@@ -225,7 +295,7 @@ def _find_first_human_message(session: dict) -> str:
                         if text and not text.startswith("File context:"):
                             return text
             else:
-                logger.warning(f"Unhandled human message content in session {session['sessionId']}")
+                logger.warning(f"Unhandled human message content in session {session.get('sessionId', 'unknown')}")
     return ""
 
 
@@ -237,7 +307,7 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
 
-    return list(executor.map(_map_session, sessions))
+    return list(executor.map(lambda session: _map_session(session, user_id), sessions))
 
 
 def _process_image(task: Tuple[dict, str]) -> None:
@@ -260,6 +330,18 @@ def get_session(event: dict, context: dict) -> dict:
 
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         resp = response.get("Item", {})
+
+        if not resp:
+            return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
+
+        # Check if session data is encrypted and decrypt if necessary
+        try:
+            if resp.get("is_encrypted", False):
+                logging.info(f"Decrypting encrypted session {session_id} for user {user_id}")
+                resp = decrypt_session_fields(resp, user_id, session_id)
+        except SessionEncryptionError as e:
+            logging.error(f"Failed to decrypt session {session_id}: {e}")
+            return {"statusCode": 500, "body": json.dumps({"error": "Failed to decrypt session data"})}
 
         # Update configuration with current model settings before returning
         if resp and resp.get("configuration"):
@@ -409,7 +491,86 @@ def put_session(event: dict, context: dict) -> dict:
             updated_temp_config = _update_session_with_current_model_config(temp_config)
             configuration["selectedModel"] = updated_temp_config.get("selectedModel", configuration["selectedModel"])
 
-        # Publish event to SQS queue for metrics processing
+        # Check if encryption is enabled via configuration table
+        encryption_enabled = _is_session_encryption_enabled()
+
+        # Prepare session data for storage
+        session_data = {
+            "history": messages,
+            "name": body.get("name", None),
+            "configuration": configuration,
+            "startTime": datetime.now().isoformat(),
+            "createTime": datetime.now().isoformat(),
+            "lastUpdated": datetime.now().isoformat(),
+        }
+
+        # Encrypt sensitive data if encryption is enabled
+        if encryption_enabled:
+            try:
+                logging.info(f"Encrypting session {session_id} for user {user_id}")
+                encrypted_session = migrate_session_to_encrypted(session_data, user_id, session_id)
+
+                # Update DynamoDB with encrypted data
+                table.update_item(
+                    Key={"sessionId": session_id, "userId": user_id},
+                    UpdateExpression="SET #encrypted_history = :encrypted_history, #name = :name, "
+                    + "#encrypted_configuration = :encrypted_configuration, #startTime = :startTime, "
+                    + "#createTime = if_not_exists(#createTime, :createTime), #lastUpdated = :lastUpdated, "
+                    + "#encryption_version = :encryption_version, #is_encrypted = :is_encrypted",
+                    ExpressionAttributeNames={
+                        "#encrypted_history": "encrypted_history",
+                        "#name": "name",
+                        "#encrypted_configuration": "encrypted_configuration",
+                        "#startTime": "startTime",
+                        "#createTime": "createTime",
+                        "#lastUpdated": "lastUpdated",
+                        "#encryption_version": "encryption_version",
+                        "#is_encrypted": "is_encrypted",
+                    },
+                    ExpressionAttributeValues={
+                        ":encrypted_history": encrypted_session["encrypted_history"],
+                        ":name": encrypted_session["name"],
+                        ":encrypted_configuration": encrypted_session["encrypted_configuration"],
+                        ":startTime": encrypted_session["startTime"],
+                        ":createTime": encrypted_session["createTime"],
+                        ":lastUpdated": encrypted_session["lastUpdated"],
+                        ":encryption_version": encrypted_session["encryption_version"],
+                        ":is_encrypted": encrypted_session["is_encrypted"],
+                    },
+                    ReturnValues="UPDATED_NEW",
+                )
+            except SessionEncryptionError as e:
+                logging.error(f"Failed to encrypt session {session_id}: {e}")
+                return {"statusCode": 500, "body": json.dumps({"error": "Failed to encrypt session data"})}
+        else:
+            # Store unencrypted data (legacy mode)
+            table.update_item(
+                Key={"sessionId": session_id, "userId": user_id},
+                UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
+                + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), "
+                + "#lastUpdated = :lastUpdated, #is_encrypted = :is_encrypted",
+                ExpressionAttributeNames={
+                    "#history": "history",
+                    "#name": "name",
+                    "#configuration": "configuration",
+                    "#startTime": "startTime",
+                    "#createTime": "createTime",
+                    "#lastUpdated": "lastUpdated",
+                    "#is_encrypted": "is_encrypted",
+                },
+                ExpressionAttributeValues={
+                    ":history": messages,
+                    ":name": body.get("name", None),
+                    ":configuration": configuration,
+                    ":startTime": datetime.now().isoformat(),
+                    ":createTime": datetime.now().isoformat(),
+                    ":lastUpdated": datetime.now().isoformat(),
+                    ":is_encrypted": False,
+                },
+                ReturnValues="UPDATED_NEW",
+            )
+
+        # Publish event to SQS queue for metrics processing (use unencrypted data for metrics)
         try:
             if "USAGE_METRICS_QUEUE_NAME" in os.environ:
                 # Create a copy of the event to send to SQS
@@ -430,29 +591,6 @@ def put_session(event: dict, context: dict) -> dict:
         except Exception as e:
             logger.error(f"Failed to publish to metrics queue: {e}")
 
-        table.update_item(
-            Key={"sessionId": session_id, "userId": user_id},
-            UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
-            + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), "
-            + "#lastUpdated = :lastUpdated",
-            ExpressionAttributeNames={
-                "#history": "history",
-                "#name": "name",
-                "#configuration": "configuration",
-                "#startTime": "startTime",
-                "#createTime": "createTime",
-                "#lastUpdated": "lastUpdated",
-            },
-            ExpressionAttributeValues={
-                ":history": messages,
-                ":name": body.get("name", None),
-                ":configuration": configuration,
-                ":startTime": datetime.now().isoformat(),
-                ":createTime": datetime.now().isoformat(),
-                ":lastUpdated": datetime.now().isoformat(),
-            },
-            ReturnValues="UPDATED_NEW",
-        )
         return {"statusCode": 200, "body": json.dumps({"message": "Session updated successfully"})}
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

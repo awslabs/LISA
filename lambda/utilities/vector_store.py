@@ -18,8 +18,7 @@ import logging
 import os
 
 import boto3
-from langchain_community.vectorstores.opensearch_vector_search import OpenSearchVectorSearch
-from langchain_community.vectorstores.pgvector import PGVector
+from langchain_community.vectorstores import OpenSearchVectorSearch, PGVector
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
@@ -61,7 +60,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
-            index_name=index.lower(),
+            index_name=index,
             embedding_function=embeddings,
             http_auth=auth,
             timeout=300,

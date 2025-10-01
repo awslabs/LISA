@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post(f"/{RestApiResource.EMBEDDINGS.value}")
+@router.post(f"/{RestApiResource.EMBEDDINGS}")
 async def embeddings(request: EmbeddingsRequest) -> JSONResponse:
     """Text embeddings."""
     response = await handle_embeddings(request.dict())

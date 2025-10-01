@@ -143,18 +143,17 @@ else
 endif
 
 
-## Set up Python interpreter environment
+## Set up Python interpreter environment to match LISA deployed version
 createPythonEnvironment:
-	python3 -m venv .venv
+	python3.11 -m venv .venv
 	@printf ">>> New virtual environment created. To activate run: 'source .venv/bin/activate'"
 
 
 ## Install Python dependencies for development
 installPythonRequirements:
-	pip3 install pip --upgrade
-	pip3 install -r requirements-dev.txt
-	pip3 install -e lisa-sdk
-
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install pip --upgrade
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install --prefer-binary -r requirements-dev.txt
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lisa-sdk
 
 ## Set up TypeScript interpreter environment
 createTypeScriptEnvironment:
@@ -206,7 +205,10 @@ modelCheck:
 				fi; \
 				echo "Converting and uploading safetensors for model: $$MODEL_ID"; \
 				tgiImage=$$(yq -r '[.ecsModels[] | select(.inferenceContainer == "tgi") | .baseImage] | first' $(PROJECT_DIR)/config-custom.yaml); \
-				echo $$tgiImage; \
+				if [ "$$tgiImage" = "null" ] || [ -z "$$tgiImage" ]; then \
+					tgiImage="ghcr.io/huggingface/text-generation-inference:latest"; \
+				fi; \
+				echo "Using TGI image: $$tgiImage"; \
 				$(PROJECT_DIR)/scripts/convert-and-upload-model.sh -m $$MODEL_ID -s $(MODEL_BUCKET) -a $$access_token -t $$tgiImage -d $$localModelDir; \
 			fi; \
 		fi; \
@@ -247,6 +249,7 @@ cleanCfn:
 ## Delete all misc files
 cleanMisc:
 	@find . -type f -name "*.DS_Store" -delete
+	@find . -type d -name "TIKTOKEN_CACHE" -exec rm -rf {} +
 	@rm -f .hf_token_cache
 
 
@@ -268,6 +271,9 @@ listStacks:
 
 buildNpmModules:
 	npm run build
+
+buildArchive:
+	BUILD_ASSETS=true npm run build
 
 define print_config
     @printf "\n \
@@ -383,4 +389,4 @@ test-coverage:
           --cov-report term-missing \
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
-          --cov-fail-under 83
+          --cov-fail-under 85

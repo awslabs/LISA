@@ -316,9 +316,16 @@ export class LisaServeApplicationConstruct extends Construct {
         // Add parameter as container environment variable for both RestAPI and RagAPI
         restApi.containers.forEach((container) => {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
+            container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
         });
         restApi.node.addDependency(this.modelsPs);
+        restApi.node.addDependency(litellmDbConnectionInfoPs);
+        restApi.node.addDependency(this.endpointUrl);
 
+        // Update
+        this.restApi = restApi;
+
+        // Grant permissions after restApi is fully constructed
         // Additional permissions for REST API Role
         const invocation_permissions = new Policy(scope, 'ModelInvokePerms', {
             statements: [
@@ -344,13 +351,14 @@ export class LisaServeApplicationConstruct extends Construct {
                 }),
             ]
         });
-        letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
-            this.modelsPs.grantRead(serveRole);
-            serveRole.attachInlinePolicy(invocation_permissions);
-        });
 
-        // Update
-        this.restApi = restApi;
+        // Grant SSM parameter read access and attach invocation permissions
+        const restRole = restApi.taskRoles[ECSTasks.REST];
+        if (restRole) {
+            this.modelsPs.grantRead(restRole);
+            litellmDbConnectionInfoPs.grantRead(restRole);
+            restRole.attachInlinePolicy(invocation_permissions);
+        }
     }
 
     getIAMAuthLambda (scope: Stack, config: Config, secret: ISecret, user: string, vpc: Vpc, securityGroups: ISecurityGroup[]): IFunction {

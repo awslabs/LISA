@@ -169,6 +169,7 @@ export class LisaRagConstruct extends Construct {
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             REST_API_VERSION: 'v2',
+            TIKTOKEN_CACHE_DIR: '/tmp',
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
@@ -194,12 +195,6 @@ export class LisaRagConstruct extends Construct {
             scope,
             'rag-common-lambda-layer',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const sdkLayer = LayerVersion.fromLayerVersionArn(
-            scope,
-            'rag-sdk-lambda-layer',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/lisa-sdk`),
         );
 
         // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
@@ -233,7 +228,22 @@ export class LisaRagConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/rag`,
             stringValue: ragLambdaLayer.layer.layerVersionArn
         });
-        const layers = [commonLambdaLayer, ragLambdaLayer.layer, sdkLayer];
+
+        const layers = [commonLambdaLayer, ragLambdaLayer.layer];
+
+        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
+        if (config.restApiConfig.imageConfig === undefined) {
+            const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
+            // Skip tiktoken cache generation in test environment
+            if (process.env.NODE_ENV !== 'test') {
+                try {
+                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
+                } catch (error) {
+                    console.warn('Failed to generate tiktoken cache:', error);
+                    // Continue execution even if cache generation fails
+                }
+            }
+        }
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -323,7 +333,7 @@ export class LisaRagConstruct extends Construct {
             config,
             vpc,
             baseEnvironment,
-            { common: commonLambdaLayer, rag: ragLambdaLayer.layer, sdk: sdkLayer },
+            { common: commonLambdaLayer, rag: ragLambdaLayer.layer },
             lambdaRole,
             docMetaTable,
             subDocTable,
@@ -354,7 +364,7 @@ export class LisaRagConstruct extends Construct {
         config: Config,
         vpc: Vpc,
         baseEnvironment: Record<string, string>,
-        layers: { [key in 'common' | 'sdk' | 'rag']: ILayerVersion },
+        layers: { [key in 'common' | 'rag']: ILayerVersion },
         lambdaRole: IRole,
         docMetaTable: dynamodb.ITable,
         subDocTable: dynamodb.ITable,
@@ -613,7 +623,7 @@ export class LisaRagConstruct extends Construct {
                             rdsConfig: ragConfig.rdsConfig,
                             repositoryId: ragConfig.repositoryId,
                             type: ragConfig.type,
-                            layers: [layers.common, layers.rag, layers.sdk],
+                            layers: [layers.common, layers.rag],
                             registeredRepositoriesParamName,
                             ragDocumentTable: docMetaTable,
                             ragSubDocumentTable: subDocTable,

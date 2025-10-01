@@ -99,7 +99,7 @@ class LoadBalancerConfig(BaseModel):
 class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
-    blockDeviceVolumeSize: Optional[NonNegativeInt] = 30
+    blockDeviceVolumeSize: Optional[NonNegativeInt] = 50
     minCapacity: NonNegativeInt
     maxCapacity: NonNegativeInt
     cooldown: PositiveInt

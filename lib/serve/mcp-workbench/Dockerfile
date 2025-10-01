@@ -36,11 +36,12 @@ RUN unzip -d /tmp /tmp/$(basename $RCLONE_SOURCE) && \
 
 # Copy and install the MCP workbench package
 COPY . /workspace/mcpworkbench-src/
-RUN pip install -e /workspace/mcpworkbench-src/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e /workspace/mcpworkbench-src/
 
 # Install additional requirements
 COPY requirements.txt /workspace/
-RUN pip install -r /workspace/requirements.txt
+RUN pip install --no-cache-dir -r /workspace/requirements.txt
 
 # Copy s6-overlay service definitions
 COPY s6-overlay/services.d /etc/services.d

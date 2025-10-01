@@ -19,7 +19,7 @@ check_gh_auth() {
     if ! command -v gh >/dev/null 2>&1; then
         return 1
     fi
-    
+
     # Check authentication status with timeout
     if timeout 10s gh auth status >/dev/null 2>&1; then
         return 0
@@ -33,21 +33,21 @@ get_commit_pr_info() {
     local commit_hash="$1"
     local commit_subject="$2"
     local commit_author="$3"
-    
+
     # Try to find associated PRs using GitHub CLI (only if authenticated)
     if [[ "$GH_AUTHENTICATED" == "true" ]]; then
         # Use timeout to prevent hanging and suppress errors
         local pr_info=$(timeout 15s gh pr list --search "$commit_hash" --state merged --json number,title,body --limit 1 2>/dev/null || echo "[]")
-        
+
         if [[ "$pr_info" != "[]" ]] && [[ -n "$pr_info" ]] && [[ "$pr_info" != *"error"* ]]; then
             local pr_number=$(echo "$pr_info" | jq -r '.[0].number // empty' 2>/dev/null)
             local pr_title=$(echo "$pr_info" | jq -r '.[0].title // empty' 2>/dev/null)
             local pr_body=$(echo "$pr_info" | jq -r '.[0].body // empty' 2>/dev/null)
-            
+
             if [[ -n "$pr_number" && -n "$pr_title" && "$pr_number" != "null" ]]; then
                 echo "- $commit_subject ($commit_author)"
                 echo "  PR #$pr_number: $pr_title"
-                
+
                 if [[ -n "$pr_body" && "$pr_body" != "null" ]]; then
                     # Truncate very long PR descriptions and clean up formatting
                     local cleaned_body=$(echo "$pr_body" | head -c 500 | tr '\n' ' ' | tr -s ' ')
@@ -57,7 +57,7 @@ get_commit_pr_info() {
             fi
         fi
     fi
-    
+
     # Fallback to commit message only
     echo "- $commit_subject ($commit_author)"
     return 1
@@ -79,32 +79,49 @@ commit_count=0
 pr_found_count=0
 echo "📡 Looking up commit information..."
 
+# Determine the correct main branch reference
+MAIN_REF=""
+if git rev-parse --verify main >/dev/null 2>&1; then
+    MAIN_REF="main"
+elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+    MAIN_REF="origin/main"
+elif git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
+    MAIN_REF="refs/remotes/origin/main"
+else
+    echo "❌ Cannot find main branch reference. Available branches:"
+    git branch -a 2>/dev/null || echo "No branches found"
+    echo "Using develop branch as fallback for commit analysis"
+    MAIN_REF="HEAD~50"  # Fallback to last 50 commits
+fi
+
+echo "🔍 Using main branch reference: $MAIN_REF"
+
 while IFS='|' read -r hash subject author; do
     if [[ -n "$hash" ]]; then
         # Get commit info and handle return code properly with set -e
         commit_info=$(get_commit_pr_info "$hash" "$subject" "$author") || commit_return_code=$?
-        
+
         # Check if PR info was found (return code 0 means PR found)
         if [[ -z "$commit_return_code" ]]; then
             pr_found_count=$((pr_found_count + 1))
         fi
-        
+
         if [[ -n "$COMMITS" ]]; then
             COMMITS="$COMMITS"$'\n'"$commit_info"
         else
             COMMITS="$commit_info"
         fi
         commit_count=$((commit_count + 1))
-        
+
         # Show progress for long-running operations
         if [[ $((commit_count % 3)) -eq 0 ]]; then
             echo "   ... processed $commit_count commits"
         fi
-        
+
         # Reset the return code variable for next iteration
         unset commit_return_code
     fi
-done < <(git log main..HEAD --pretty=format:"%H|%s|%an" --no-merges)
+done < <(git log $MAIN_REF..HEAD --pretty=format:"%H|%s|%an" --no-merges 2>/dev/null || echo "")
 
 echo "✅ Processed $commit_count commits"
 if [[ "$GH_AUTHENTICATED" == "true" ]]; then
@@ -112,7 +129,15 @@ if [[ "$GH_AUTHENTICATED" == "true" ]]; then
 fi
 
 # Get unique contributors from commits for acknowledgements (use email to extract GitHub username)
-CONTRIBUTORS=$(git log main..HEAD --pretty=format:"%ae" --no-merges | sort -u | sed 's/@.*$//' | sed 's/^/* @/' | tr '\n' '\n')
+CONTRIBUTORS=$(git log $MAIN_REF..HEAD --pretty=format:"%ae" --no-merges 2>/dev/null | sort -u | sed 's/@.*$//' | sed 's/^/* @/' | tr '\n' '\n' || echo "")
+
+# Get the current version from VERSION file to use as previous version in changelog
+if [ -f "VERSION" ]; then
+    PREVIOUS_VERSION="v$(cat VERSION)"
+else
+    # Fallback to git tag if VERSION file doesn't exist
+    PREVIOUS_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "unknown")
+fi
 
 # If no commits, use a default message
 if [ -z "$COMMITS" ]; then
@@ -124,49 +149,54 @@ echo "📝 Found commits:"
 echo -e "$COMMITS"
 echo ""
 echo "👥 Contributors: $CONTRIBUTORS"
+echo "🏷️ Previous version: $PREVIOUS_VERSION"
 echo ""
 
 # Create a prompt for Bedrock to generate PR description matching LISA's changelog format
-PROMPT="Please create a professional pull request description for the LISA software release that follows this EXACT format template:
+PROMPT="Please create a comprehensive pull request description for the LISA software release that covers ALL commits and PRs provided. Use this format structure:
 
 # $RELEASE_TAG
 
 ## Key Features
 
-### [Feature Name 1]
+### [Feature Name - create as many sections as needed]
 [Description of the feature and its capabilities]
-**[Subcategory if needed]:**
+**[Subcategory if applicable]:**
 - **[Component]**: [Description of enhancement]
 - **[Component]**: [Description of enhancement]
 
-### [Feature Name 2]  
-[Description of the feature]
+### [Another Feature Name - repeat for each major feature/PR]
+[Description and details]
+
+### [Continue for ALL features found in the commits]
+[Ensure every significant commit/PR is represented]
 
 ## Key Changes
 - **[Category]**: [Description of change]
 - **[Category]**: [Description of change]
 - **[Category]**: [Description of change]
+[Include ALL significant changes, not just a few examples]
 
 ## Acknowledgements
 $CONTRIBUTORS
 
-**Full Changelog**: https://github.com/awslabs/LISA/compare/[previous-version]..$RELEASE_TAG
+**Full Changelog**: https://github.com/awslabs/LISA/compare/$PREVIOUS_VERSION..$RELEASE_TAG
 
 ---
 
-Based on these commits from the release:
+IMPORTANT: You MUST analyze and include ALL of the following commits/PRs in your response:
 $COMMITS
 
 Requirements:
-1. Use the EXACT format template above with # for version header
-2. Group related commits into logical Key Features sections with descriptive subsection names
-3. List implementation details in Key Changes as bullet points with bold category labels
-4. Use professional, concise language appropriate for a software release
-5. Focus on user-facing improvements and system enhancements
-6. Include the contributors list and changelog link as shown
-7. If there are only version/build commits, create a simple 'System Updates' feature section
+1. Create a separate Key Features section for EVERY major feature, enhancement, or significant PR listed above
+2. Do NOT limit yourself to just 2-3 features - cover ALL significant changes
+3. Group related smaller commits together into logical feature sections
+4. Use descriptive, professional language for each feature section
+5. Ensure every PR mentioned above gets appropriate coverage in the description
+6. List ALL significant changes in the Key Changes section
+7. If there are many commits, prioritize PRs with detailed descriptions first, then group commits by theme
 
-Generate the description now:"
+Generate a comprehensive description that covers ALL the provided commits and PRs now:"
 
 # Call Bedrock to generate description
 echo "🤖 Generating PR description with Bedrock Claude 3 Haiku..."
@@ -176,7 +206,7 @@ BEDROCK_PAYLOAD=$(jq -n \
   --arg prompt "$PROMPT" \
   '{
     "anthropic_version": "bedrock-2023-05-31",
-    "max_tokens": 1500,
+    "max_tokens": 3000,
     "messages": [
       {
         "role": "user",
@@ -212,7 +242,7 @@ This release includes version updates and system improvements to enhance LISA's 
 ## Acknowledgements
 $CONTRIBUTORS
 
-**Full Changelog**: https://github.com/awslabs/LISA/compare/[previous-version]..$RELEASE_TAG"
+**Full Changelog**: https://github.com/awslabs/LISA/compare/$PREVIOUS_VERSION..$RELEASE_TAG"
 else
     echo "✅ Successfully generated PR description with Bedrock"
 fi

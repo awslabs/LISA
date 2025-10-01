@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Model Cache Utilities."""
+import threading
 from typing import Any, Dict, Optional, Tuple
 
 from .resources import ModelType, RestApiResource
@@ -33,24 +34,31 @@ REGISTERED_MODELS_CACHE: Dict[str, Dict[str, Any]] = {
 }
 MODEL_ASSETS_CACHE: Dict[str, Tuple[Any, Any]] = {}
 
+# Thread locks for cache operations
+_REGISTERED_MODELS_LOCK = threading.RLock()
+_MODEL_ASSETS_LOCK = threading.RLock()
+
 
 def get_registered_models_cache() -> Dict[str, Dict[str, Any]]:
     """Get the cache containing the registered models."""
-    return REGISTERED_MODELS_CACHE
+    with _REGISTERED_MODELS_LOCK:
+        return REGISTERED_MODELS_CACHE.copy()
 
 
 def get_model_assets(model_key: str) -> Optional[Tuple[Any, Any]]:
     """Get the cache belonging to the model assets."""
-    return MODEL_ASSETS_CACHE.get(model_key, None)
+    with _MODEL_ASSETS_LOCK:
+        return MODEL_ASSETS_CACHE.get(model_key)
 
 
 def cache_model_assets(key: str, model_assets: Tuple[Any, Any]) -> None:
     """Cache the specified model assets for the specified key."""
-    global MODEL_ASSETS_CACHE
-    MODEL_ASSETS_CACHE[key] = model_assets
+    with _MODEL_ASSETS_LOCK:
+        MODEL_ASSETS_CACHE[key] = model_assets
 
 
 def set_registered_models_cache(models: Dict[str, Dict[str, Any]]) -> None:
     """Set the registered model cache to the specified models value."""
-    global REGISTERED_MODELS_CACHE
-    REGISTERED_MODELS_CACHE = models
+    with _REGISTERED_MODELS_LOCK:
+        global REGISTERED_MODELS_CACHE
+        REGISTERED_MODELS_CACHE = models

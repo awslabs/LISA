@@ -490,7 +490,7 @@ export const MetricConfigSchema = z.object({
     .describe('Metric configuration for ECS auto scaling.');
 
 export const AutoScalingConfigSchema = z.object({
-    blockDeviceVolumeSize: z.number().min(30).default(30),
+    blockDeviceVolumeSize: z.number().min(30).default(50),
     minCapacity: z.number().min(1).default(1).describe('Minimum capacity for auto scaling. Must be at least 1.'),
     maxCapacity: z.number().min(1).default(2).describe('Maximum capacity for auto scaling. Must be at least 1.'),
     defaultInstanceWarmup: z.number().default(180).describe('Default warm-up time in seconds until a newly launched instance can'),
@@ -828,7 +828,7 @@ export const RawConfigObject = z.object({
     privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
     s3BucketModels: z.string().describe('S3 bucket for models.'),
     mountS3DebUrl: z.string().describe('URL for S3-mounted Debian package.'),
-    imageBuilderVolumeSize: z.number().default(30).describe('EC2 volume size for image builder. Needs to be large enough for system plus inference container.'),
+    imageBuilderVolumeSize: z.number().default(50).describe('EC2 volume size for image builder. Needs to be large enough for system plus inference container.'),
     accountNumbersEcr: z
         .array(z.union([z.number(), z.string()]))
         .transform((arr) => arr.map(String))
@@ -883,7 +883,6 @@ export const RawConfigObject = z.object({
             commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
             fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
             ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
-            sdkLayerPath: z.string().optional().describe('Lambda SDK layer code path'),
         })
         .optional()
         .describe('Configuration for local Lambda layer code'),

@@ -33,8 +33,8 @@ import { LAMBDA_PATH } from '../../../util';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,
-    lambdaLayers: ILayerVersion[];
     vectorStoreDeployerFnArn: string;
+    lambdaLayers: ILayerVersion[];
     vpc: Vpc,
     role?: iam.IRole,
     executionRole: iam.IRole;
@@ -137,7 +137,8 @@ export class DeleteStoreStateMachine extends Construct {
         }).next(handleCleanupBedrockKnowledgeBase);
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const cleanupDocsFunc = new Function(this, 'CleanupRepositoryDocsFunc', {
+
+        const cleanupDocsFunc =  new Function(this, 'CleanupRepositoryDocsFunc', {
             runtime: getDefaultRuntime(),
             handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
             code: Code.fromAsset(lambdaPath),

@@ -1,0 +1,142 @@
+#!/bin/bash
+
+set -e
+
+ROOT=$(pwd)
+OUTPUT_DIR=$ROOT/dist/images
+DOCKER_CMD=$(command -v finch >/dev/null 2>&1 && echo "finch" || echo "docker")
+
+# Parse command line arguments
+UPLOAD=false
+EXPORT=false
+for arg in "$@"; do
+    case $arg in
+        --upload)
+            UPLOAD=true
+            shift
+            ;;
+        --export)
+            EXPORT=true
+            mkdir -p $OUTPUT_DIR
+            shift
+            ;;
+    esac
+done
+
+# Default LISA_VERSION if not set
+LISA_VERSION=${LISA_VERSION:-$(cat ./VERSION 2>/dev/null || echo "latest")}
+
+# ECR configuration
+ACCOUNT=${AWS_ACCOUNT:-""}
+REGION=${AWS_REGION:-"us-east-1"}
+DOMAIN=${AWS_DOMAIN:-"amazonaws.com"}
+ECR_BASE_URL=$ACCOUNT.dkr.ecr.$REGION.$DOMAIN
+
+# Function to build a single image
+build_image() {
+    local dockerfile_path="$1"
+    local repository_name="$2"
+    local image_tag="$3"
+    local build_context_path="$4"
+    shift 4
+    local build_args=("$@")
+
+    echo "Building image: $repository_name:$image_tag"
+    echo "Context: $build_context_path"
+
+    # Construct docker build command
+    local docker_cmd="$DOCKER_CMD build"
+
+    # Add build args
+    for arg in "${build_args[@]}"; do
+        docker_cmd="$docker_cmd --build-arg $arg"
+    done
+
+    # Add dockerfile, tag, and context
+    docker_cmd="$docker_cmd -f $build_context_path/$dockerfile_path -t $repository_name:$image_tag $build_context_path"
+
+    echo "Executing: $docker_cmd"
+    eval "$docker_cmd"
+    echo "Successfully built $repository_name:$image_tag"
+
+    # Upload to ECR if --upload flag is set
+    if [[ "$UPLOAD" == "true" && -n "$ACCOUNT" ]]; then
+        local ecr_tag="$ECR_BASE_URL/$repository_name:$image_tag"
+        echo "Tagging for ECR: $ecr_tag"
+        $DOCKER_CMD tag "$repository_name:$image_tag" "$ecr_tag"
+        echo "Pushing to ECR: $ecr_tag"
+        $DOCKER_CMD push "$ecr_tag"
+        echo "Successfully pushed $ecr_tag"
+    fi
+
+    # Export image if --export flag is set
+    if [[ "$EXPORT" == "true" ]]; then
+        local export_file="$OUTPUT_DIR/${repository_name}_${image_tag}.tar"
+        echo "Exporting image to: $export_file"
+        $DOCKER_CMD save "$repository_name:$image_tag" -o "$export_file"
+        echo "Successfully exported $export_file"
+    fi
+    echo ""
+}
+
+# Function to login to ECR
+ecr_login() {
+    if [[ "$UPLOAD" == "true" && -n "$ACCOUNT" ]]; then
+        echo "Logging into ECR..."
+        aws ecr get-login-password --region $REGION | $DOCKER_CMD login --username AWS --password-stdin $ACCOUNT.dkr.ecr.$REGION.$DOMAIN
+        echo "ECR login successful"
+        echo ""
+    fi
+}
+
+# Main function to build all images
+build_all_images() {
+    echo "Starting Docker image builds..."
+    echo "LISA_VERSION: $LISA_VERSION"
+    if [[ "$UPLOAD" == "true" && -n "$ACCOUNT" ]]; then
+        echo "ECR_BASE_URL: $ECR_BASE_URL"
+        echo "Upload: Enabled"
+    else
+        echo "Upload: Disabled"
+    fi
+    echo ""
+
+    ecr_login
+
+    # lisa-rest-api
+    python3 scripts/cache-tiktoken-for-offline.py ./lib/serve/rest-api/TIKTOKEN_CACHE
+    build_image "Dockerfile" "lisa-rest-api" "$LISA_VERSION" "./lib/serve/rest-api" \
+        "NODE_ENV=production" \
+        "LITELLM_CONFIG=\"db_key: sk-a8814208-0388-480c-9fc7-fea59607ca38\"" \
+        "BASE_IMAGE=python:3.11"
+
+    # lisa-batch-ingestion
+    RAG_DIR="./lib/rag/ingestion/ingestion-image"
+    BUILD_DIR="${RAG_DIR}/build"
+    mkdir -p "$BUILD_DIR"
+    rsync -av --exclude='__pycache__' ./lambda/ "$BUILD_DIR/"
+    build_image "Dockerfile" "lisa-batch-ingestion" "$LISA_VERSION" "$RAG_DIR" "NODE_ENV=production"
+
+    # lisa-tei
+    build_image "Dockerfile" "lisa-tei" "latest" "./lib/serve/ecs-model/embedding/tei" \
+        "NODE_ENV=production" \
+        "BASE_IMAGE=ghcr.io/huggingface/text-embeddings-inference:latest" \
+        "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
+
+    # lisa-tgi
+    build_image "Dockerfile" "lisa-tgi" "latest" "./lib/serve/ecs-model/textgen/tgi" \
+        "NODE_ENV=production" \
+        "BASE_IMAGE=ghcr.io/huggingface/text-generation-inference:latest" \
+        "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
+
+    # lisa-vllm
+    build_image "Dockerfile" "lisa-vllm" "latest" "./lib/serve/ecs-model/vllm" \
+        "NODE_ENV=production" \
+        "BASE_IMAGE=vllm/vllm-openai:latest" \
+        "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
+
+    echo "All images built successfully!"
+}
+
+# Run the build
+build_all_images

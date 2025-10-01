@@ -782,6 +782,7 @@ export default function Chat ({ sessionId }) {
                                             onItemClick={handleButtonClick}
                                             items={getButtonItems(config, useRag, isImageGenerationMode)}
                                             variant='icon'
+                                            dropdownExpandToViewport={true}
                                         />
                                     </Box>
                                 }

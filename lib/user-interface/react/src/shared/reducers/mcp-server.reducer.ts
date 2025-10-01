@@ -39,6 +39,7 @@ export type McpServer = {
     customHeaders?: Record<string, string>;
     clientConfig?: McpClientConfig;
     status?:McpServerStatus;
+    canUse?: boolean;
 };
 
 export type NewMcpServer = Partial<McpServer> & Pick<McpServer, | 'name' | 'url'>;

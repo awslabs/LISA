@@ -33,7 +33,11 @@ export const User = createSlice({
 });
 
 export const selectCurrentUserIsAdmin = (state: any) => state.user.info?.isAdmin ?? false;
-export const selectCurrentUsername = (state: any) => state.user.info?.preferred_username ?? '';
+export const selectCurrentUsername = (state: any) => {
+    return state.user.info?.preferred_username ||
+        state.user.info?.['cognito:username'] ||
+        state.user.info?.username || ''
+};
 export const selectCurrentUserGroups = (state: any) => state.user.info?.groups ?? [];
 
 export const { updateUserState } = User.actions;

@@ -190,10 +190,12 @@ def is_user(jwt_data: dict[str, Any], user_group: str, jwt_groups_property: str)
 def find_jwt_username(jwt_data: dict[str, str]) -> str:
     """Find the username in the JWT. If the key 'username' doesn't exist, return 'sub', which will be a UUID"""
     username = None
-    if "username" in jwt_data:
-        username = jwt_data.get("username")
-    if "cognito:username" in jwt_data:
+    if "preferred_username" in jwt_data:
+        username = jwt_data.get("preferred_username")
+    elif "cognito:username" in jwt_data:
         username = jwt_data.get("cognito:username")
+    elif "username" in jwt_data:
+        username = jwt_data.get("username")
     else:
         username = jwt_data.get("sub")
 

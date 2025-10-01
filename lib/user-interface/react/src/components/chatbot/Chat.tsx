@@ -347,7 +347,7 @@ export default function Chat ({ sessionId }) {
         if (sessionHealth) {
             setIsConnected(true);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+
     }, [sessionHealth]);
 
     // Handle tool calls with chaining support

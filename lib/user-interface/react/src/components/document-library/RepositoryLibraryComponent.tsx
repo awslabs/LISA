@@ -84,7 +84,7 @@ export function RepositoryLibraryComponent (): ReactElement {
                 loading={fetchingRepos}
                 cardsPerRow={[{ cards: 3 }]}
                 header={
-                    <Header counter={`(${count})` ?? ''}>
+                    <Header counter={`(${count})`}>
                         Repositories
                     </Header>
                 }

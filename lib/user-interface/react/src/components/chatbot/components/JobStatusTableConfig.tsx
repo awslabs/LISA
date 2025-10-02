@@ -81,10 +81,10 @@ export const TABLE_DEFINITION: {
             <SpaceBetween direction='horizontal' size='xs'>
                 {item.auto && (<FontAwesomeIcon icon={faFileImport} />)}
                 <span
-                    title={item.document_name}
+                    title={item.document_name.replace(/^\d+?_/, '')}
                     className='truncate max-w-[30ch] block'
                 >
-                    {item.document_name}
+                    {item.document_name.replace(/^\d+?_/, '')}
                 </span>
             </SpaceBetween>
         ),

@@ -74,95 +74,95 @@ export const TABLE_DEFINITION: {
     isRowHeader?: boolean,
     visible: boolean
 }[] = [
-        {
-            id: 'document_name',
-            header: 'Document',
-            cell: (item) => (
-                <SpaceBetween direction='horizontal' size='xs'>
-                    {item.auto && (<FontAwesomeIcon icon={faFileImport} />)}
-                    <span
-                        title={item.document_name}
-                        className='truncate max-w-[30ch] block'
-                    >
-                        {item.document_name}
-                    </span>
-                </SpaceBetween>
-            ),
-            sortingField: 'document_name',
-            visible: true,
-        },
-        {
-            id: 'id',
-            header: 'Job ID',
-            cell: (item) => (
-                <span className='font-mono text-sm text-gray-500'>
-                    {item.id}
+    {
+        id: 'document_name',
+        header: 'Document',
+        cell: (item) => (
+            <SpaceBetween direction='horizontal' size='xs'>
+                {item.auto && (<FontAwesomeIcon icon={faFileImport} />)}
+                <span
+                    title={item.document_name}
+                    className='truncate max-w-[30ch] block'
+                >
+                    {item.document_name}
                 </span>
-            ),
-            sortingField: 'id',
-            isRowHeader: true,
-            visible: false,
+            </SpaceBetween>
+        ),
+        sortingField: 'document_name',
+        visible: true,
+    },
+    {
+        id: 'id',
+        header: 'Job ID',
+        cell: (item) => (
+            <span className='font-mono text-sm text-gray-500'>
+                {item.id}
+            </span>
+        ),
+        sortingField: 'id',
+        isRowHeader: true,
+        visible: false,
+    },
+    {
+        id: 'status',
+        header: 'Status',
+        cell: (item) => {
+            const statusInfo = getJobStatusInfo(item.status);
+            return (
+                <StatusIndicator type={statusInfo.type}>
+                    {statusInfo.displayName}: {statusInfo.text}
+                </StatusIndicator>
+            );
         },
-        {
-            id: 'status',
-            header: 'Status',
-            cell: (item) => {
-                const statusInfo = getJobStatusInfo(item.status);
-                return (
-                    <StatusIndicator type={statusInfo.type}>
-                        {statusInfo.displayName}: {statusInfo.text}
-                    </StatusIndicator>
-                );
-            },
-            sortingField: 'status',
-            visible: true,
-        },
-        {
-            id: 'username',
-            header: 'User',
-            cell: (item) => (
+        sortingField: 'status',
+        visible: true,
+    },
+    {
+        id: 'username',
+        header: 'User',
+        cell: (item) => (
+            <span className='text-sm'>
+                {item.username}
+            </span>
+        ),
+        sortingField: 'username',
+        visible: false,
+    },
+    {
+        id: 'collection_id',
+        header: 'Collection',
+        cell: (item) => (
+            <span className='text-sm text-gray-600'>
+                {item.collection_id}
+            </span>
+        ),
+        sortingField: 'collection_id',
+        visible: false,
+    },
+    {
+        id: 'created_date',
+        header: 'Created Date',
+        cell: (item) => {
+            if (!item.created_date) {
+                return <span className='text-gray-500'>-</span>;
+            }
+
+            // Format the date - assuming it's a timestamp or ISO string
+            const date = new Date(item.created_date);
+            if (isNaN(date.getTime())) {
+                return <span className='text-gray-500'>-</span>;
+            }
+
+            return (
                 <span className='text-sm'>
-                    {item.username}
+                    {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-            ),
-            sortingField: 'username',
-            visible: false,
+            );
         },
-        {
-            id: 'collection_id',
-            header: 'Collection',
-            cell: (item) => (
-                <span className='text-sm text-gray-600'>
-                    {item.collection_id}
-                </span>
-            ),
-            sortingField: 'collection_id',
-            visible: false,
-        },
-        {
-            id: 'created_date',
-            header: 'Created Date',
-            cell: (item) => {
-                if (!item.created_date) {
-                    return <span className='text-gray-500'>-</span>;
-                }
-
-                // Format the date - assuming it's a timestamp or ISO string
-                const date = new Date(item.created_date);
-                if (isNaN(date.getTime())) {
-                    return <span className='text-gray-500'>-</span>;
-                }
-
-                return (
-                    <span className='text-sm'>
-                        {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                );
-            },
-            sortingField: 'created_date',
-            visible: true
-        }
-    ];
+        sortingField: 'created_date',
+        visible: true
+    }
+];
 
 export const TABLE_PREFERENCES = (() => TABLE_DEFINITION.map((c) => ({ id: c.id, label: c.header })))();
 
@@ -176,6 +176,6 @@ export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     contentDisplay: TABLE_COLUMN_DISPLAY,
 };
 
-export function getMatchesCountText(count: number): string {
+export function getMatchesCountText (count: number): string {
     return count === 1 ? '1 match' : `${count} matches`;
 }

@@ -62,7 +62,7 @@ const TIME_FILTER_OPTIONS = [
     { id: '168', text: '1 week' }, // 7 days * 24 hours
 ];
 
-export function JobStatusTable({
+export function JobStatusTable ({
     ragConfig,
     autoLoad = true,
     title = 'Recent Jobs'
@@ -94,7 +94,6 @@ export function JobStatusTable({
     // Refetch when pagination parameters change
     React.useEffect(() => {
         if (ragConfig.repositoryId && shouldFetch) {
-            console.log('JobStatusTable: Refetching due to pagination change', queryParams);
             refetch();
         }
     }, [lastEvaluatedKey, refetch, ragConfig.repositoryId, shouldFetch]);
@@ -130,7 +129,7 @@ export function JobStatusTable({
 
     const handleTimeFilterChange = React.useCallback((event: any) => {
         const selectedId = event.detail.id;
-        const selectedOption = TIME_FILTER_OPTIONS.find(option => option.id === selectedId);
+        const selectedOption = TIME_FILTER_OPTIONS.find((option) => option.id === selectedId);
         if (selectedOption) {
             setTimeFilter(selectedOption);
             // Reset pagination when changing time filter
@@ -161,7 +160,7 @@ export function JobStatusTable({
             username: job.username,
             collection_id: job.collection_id,
         }));
-    }, [paginatedJobs, preferences.pageSize]);
+    }, [paginatedJobs]);
 
     const currentPageJobs = allJobs.length;
     const hasNextPage = paginatedJobs?.hasNextPage || false;
@@ -171,20 +170,20 @@ export function JobStatusTable({
     // Disable both pagination and sorting since they're handled server-side
     const { items, filteredItemsCount, filterProps } = useCollection(
         allJobs, {
-        filtering: {
-            empty: (
-                <Box margin={{ vertical: 'xs' }} textAlign='center'>
-                    <SpaceBetween size='m'>
-                        <b>No jobs found</b>
-                    </SpaceBetween>
-                </Box>
-            ),
+            filtering: {
+                empty: (
+                    <Box margin={{ vertical: 'xs' }} textAlign='center'>
+                        <SpaceBetween size='m'>
+                            <b>No jobs found</b>
+                        </SpaceBetween>
+                    </Box>
+                ),
+            },
+            // Disable client-side pagination entirely for server-side pagination
+            pagination: { pageSize: allJobs.length || 1 },
+            // Disable client-side sorting since it's handled server-side
+            sorting: {},
         },
-        // Disable client-side pagination entirely for server-side pagination
-        pagination: { pageSize: allJobs.length || 1 },
-        // Disable client-side sorting since it's handled server-side
-        sorting: {},
-    },
     );
 
     // For server-side pagination, we need to create our own collection props
@@ -232,13 +231,13 @@ export function JobStatusTable({
                     <Header
                         counter={`(${currentPageJobs})`}
                         actions={
-                            <SpaceBetween direction="horizontal" size="xs" >
+                            <SpaceBetween direction='horizontal' size='xs' >
                                 <ButtonDropdown
                                     items={TIME_FILTER_OPTIONS}
                                     onItemClick={handleTimeFilterChange}
-                                    ariaLabel="Time filter"
+                                    ariaLabel='Time filter'
                                 >
-                                    <Icon name="calendar" />
+                                    <Icon name='calendar' />
                                 </ButtonDropdown>
                                 <Button
                                     onClick={handleRefreshJobs}

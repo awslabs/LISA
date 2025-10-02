@@ -97,13 +97,13 @@ class IngestionJobRepository:
         return job
 
     def list_jobs_by_repository(
-        self, 
-        repository_id: str, 
-        username: str, 
-        is_admin: bool, 
+        self,
+        repository_id: str,
+        username: str,
+        is_admin: bool,
         time_limit_hours: int = 1,
         page_size: int = 10,
-        last_evaluated_key: Optional[Dict[str, str]] = None
+        last_evaluated_key: Optional[Dict[str, str]] = None,
     ) -> tuple[list[IngestionJob], Optional[Dict[str, str]]]:
         """List ingestion jobs filtered by repository, user permissions, and time limit with pagination.
 
@@ -119,90 +119,42 @@ class IngestionJobRepository:
             Tuple of (list of job dictionaries, last_evaluated_key for next page)
         """
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         time_threshold = datetime.now(timezone.utc) - timedelta(hours=time_limit_hours)
         time_threshold_str = time_threshold.isoformat()
-
-        logger.info(f"Listing jobs for repository_id={repository_id}, username={username}, is_admin={is_admin}")
-        logger.info(f"Time threshold: {time_threshold_str} (last {time_limit_hours} hours)")
-
-        # First, let's do a quick scan to see what jobs exist for this repository (for debugging)
-        debug_response = ingestion_job_table.scan(
-            FilterExpression="repository_id = :repository_id",
-            ExpressionAttributeValues={":repository_id": repository_id},
-            Limit=5
-        )
-        logger.info(f"Debug scan found {len(debug_response.get('Items', []))} jobs for repository_id={repository_id}")
-        for item in debug_response.get('Items', []):
-            logger.info(f"Debug job: id={item.get('id')}, created_date={item.get('created_date')}, username={item.get('username')}")
-
-        if is_admin:
-            filter_expression = "repository_id = :repository_id AND created_date >= :time_threshold"
-            expression_values = {":repository_id": repository_id, ":time_threshold": time_threshold_str}
-        else:
-            # For non-admin users, show their own jobs AND system jobs
-            filter_expression = (
-                "repository_id = :repository_id AND created_date >= :time_threshold AND (username = :username OR username = :system_username)"
-            )
-            expression_values = {
-                ":repository_id": repository_id,
-                ":time_threshold": time_threshold_str,
-                ":username": username,
-                ":system_username": "system",
-            }
-
-        logger.info(f"Filter expression: {filter_expression}")
-        logger.info(f"Expression values: {expression_values}")
 
         # Use Query operation with GSI for better performance
         # GSI should have: PK=repository_id, SK=created_date
         gsi_name = "repository_id-created_date-index"  # Adjust this to match your actual GSI name
-        
+
         try:
             # Build query parameters for efficient GSI query
             query_params = {
                 "IndexName": gsi_name,
                 "KeyConditionExpression": "repository_id = :repository_id AND created_date >= :time_threshold",
-                "ExpressionAttributeValues": {
-                    ":repository_id": repository_id,
-                    ":time_threshold": time_threshold_str
-                },
+                "ExpressionAttributeValues": {":repository_id": repository_id, ":time_threshold": time_threshold_str},
                 "ScanIndexForward": False,  # Sort by created_date descending (newest first)
-                "Limit": page_size
+                "Limit": page_size,
             }
-            
+
             # Add username filter for non-admin users
             if not is_admin:
-                query_params["FilterExpression"] = "username = :username OR username = :system_username"
-                query_params["ExpressionAttributeValues"].update({
-                    ":username": username,
-                    ":system_username": "system"
-                })
-            
+                query_params["FilterExpression"] = "username = :username"
+                query_params["ExpressionAttributeValues"].update({":username": username, ":system_username": "system"})
+
             # Add pagination token if provided
             if last_evaluated_key:
                 query_params["ExclusiveStartKey"] = last_evaluated_key
 
-            logger.info(f"Using GSI query with params: {query_params}")
             response = ingestion_job_table.query(**query_params)
-            
+
             logger.info(f"GSI query returned {len(response.get('Items', []))} items")
-            
+
         except Exception as e:
-            logger.warning(f"GSI query failed ({e}), falling back to scan operation")
-            # Fallback to scan if GSI doesn't exist or query fails
-            scan_params = {
-                "FilterExpression": filter_expression,
-                "ExpressionAttributeValues": expression_values,
-                "Limit": page_size
-            }
-            
-            if last_evaluated_key:
-                scan_params["ExclusiveStartKey"] = last_evaluated_key
-                
-            response = ingestion_job_table.scan(**scan_params)
-            logger.info(f"Fallback scan returned {len(response.get('Items', []))} items")
+            logger.error(f"Error querying GSI: {e}")
+            raise RepositoryError("Error querying GSI for JobStatus")
 
         # Convert items to job objects
         jobs = []
@@ -211,6 +163,5 @@ class IngestionJobRepository:
 
         # Get the last evaluated key for pagination
         last_evaluated_key_response = response.get("LastEvaluatedKey")
-        
-        logger.info(f"Returning {len(jobs)} jobs")
+
         return jobs, last_evaluated_key_response

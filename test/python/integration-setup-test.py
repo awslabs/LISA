@@ -196,7 +196,9 @@ def repository_exists(lisa_client: LisaApi, repository_id: str) -> bool:
         return False
 
 
-def create_bedrock_model(lisa_client: LisaApi, model_id: str, model_name: str, model_type: str = 'textgen', features: any = None) -> Dict[str, Any]:
+def create_bedrock_model(
+    lisa_client: LisaApi, model_id: str, model_name: str, model_type: str = "textgen", features: any = None
+) -> Dict[str, Any]:
     """Create a Bedrock model configuration."""
 
     # Check if model already exists
@@ -204,8 +206,8 @@ def create_bedrock_model(lisa_client: LisaApi, model_id: str, model_name: str, m
         print(f"\n⏭️  Bedrock model '{model_id}' already exists, skipping creation")
         return {"modelId": model_id}
 
-    if features == None:
-        features  = [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}]
+    if features is None:
+        features = [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}]
 
     print(f"\n🚀 Creating Bedrock model '{model_id}'...")
 
@@ -587,15 +589,27 @@ def main():
         models = []
         # # 1. Create Bedrock model
         models.append(create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0"))
-        models.append(create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"))
+        models.append(
+            create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+        )
         models.append(create_bedrock_model(lisa_client, "deepseek-3", "bedrock/us.deepseek.v3-v1:0"))
-        models.append(create_bedrock_model(lisa_client, "llama-maverick", "bedrock/us.meta.llama4-maverick-17b-instruct-v1:0"))
-        models.append(create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"))
+        models.append(
+            create_bedrock_model(lisa_client, "llama-maverick", "bedrock/us.meta.llama4-maverick-17b-instruct-v1:0")
+        )
+        models.append(
+            create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+        )
         models.append(
             create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0")
         )
-        models.append(create_bedrock_model(lisa_client, "titan", "bedrock/amazon.titan-embed-text-v2:0", 'embedding', []))
-        models.append(create_bedrock_model(lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", 'imagegen', []))
+        models.append(
+            create_bedrock_model(lisa_client, "titan", "bedrock/amazon.titan-embed-text-v2:0", "embedding", [])
+        )
+        models.append(
+            create_bedrock_model(
+                lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", "imagegen", []
+            )
+        )
 
         # # 2. Create self-hosted model
         models.append(

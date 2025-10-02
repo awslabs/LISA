@@ -486,7 +486,7 @@ def list_jobs(event: dict, context: dict) -> ListJobsResponse:
 
     query_params = event.get("queryStringParameters", {}) or {}
     time_limit_hours = int(query_params.get("timeLimit", "720"))  # Default to 30 days (720 hours)
-    
+
     # Handle pagination parameters
     page_size = int(query_params.get("pageSize", "10"))
     if page_size < 1:
@@ -503,20 +503,14 @@ def list_jobs(event: dict, context: dict) -> ListJobsResponse:
             # If parsing fails, start from beginning
             last_evaluated_key = None
 
-    logger.info(f"Calling list_jobs_by_repository with: repository_id={repository_id}, username={username}, is_admin={admin}, time_limit_hours={time_limit_hours}, page_size={page_size}")
-    
     jobs, last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
-        repository_id=repository_id, 
-        username=username, 
-        is_admin=admin, 
+        repository_id=repository_id,
+        username=username,
+        is_admin=admin,
         time_limit_hours=time_limit_hours,
         page_size=page_size,
-        last_evaluated_key=last_evaluated_key
+        last_evaluated_key=last_evaluated_key,
     )
-
-    logger.info(f"Retrieved {len(jobs)} jobs from repository")
-    for job in jobs:
-        logger.info(f"Job: {job.id} - {job.status} - {job.created_date}")
 
     return ListJobsResponse(
         jobs=jobs,

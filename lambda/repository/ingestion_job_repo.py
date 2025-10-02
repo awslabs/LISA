@@ -194,7 +194,8 @@ class IngestionJobRepository:
             # Fallback to scan if GSI doesn't exist or query fails
             scan_params = {
                 "FilterExpression": filter_expression,
-                "ExpressionAttributeValues": expression_values
+                "ExpressionAttributeValues": expression_values,
+                "Limit": page_size
             }
             
             if last_evaluated_key:

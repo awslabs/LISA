@@ -77,6 +77,20 @@ export class IngestionJobConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: config.removalPolicy
         });
+
+        // Add GSI for efficient querying by repository_id and created_date
+        ingestionJobTable.addGlobalSecondaryIndex({
+            indexName: 'repository_id-created_date-index',
+            partitionKey: {
+                name: 'repository_id',
+                type: dynamodb.AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'created_date',
+                type: dynamodb.AttributeType.STRING,
+            },
+        });
+
         ingestionJobTable.grantReadWriteData(props.lambdaRole);
         baseEnvironment['LISA_INGESTION_JOB_TABLE_NAME'] = ingestionJobTable.tableName;
 

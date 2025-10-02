@@ -523,7 +523,7 @@ def list_jobs(event: dict, context: dict) -> ListJobsResponse:
         lastEvaluatedKey=last_evaluated_key,
         hasNextPage=last_evaluated_key is not None,
         hasPreviousPage="lastEvaluatedKey" in query_params,
-    ).model_dump()
+    )
 
 
 @api_wrapper

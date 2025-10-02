@@ -17,3 +17,10 @@ PDF_FILE = "pdf"
 TEXT_FILE = "txt"
 DOCX_FILE = "docx"
 RICH_TEXT_FILE = "rtf"
+
+
+"""Constants for pagination and time limits"""
+DEFAULT_TIME_LIMIT_HOURS = 720  # 30 days
+DEFAULT_PAGE_SIZE = 10
+MAX_PAGE_SIZE = 100
+MIN_PAGE_SIZE = 1

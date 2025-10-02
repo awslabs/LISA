@@ -23,16 +23,18 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, ListJobsResponse, RagDocument
+from repository.config.params import ListJobsParams
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_username, is_admin
+from utilities.auth import admin_only, get_user_context, get_username, is_admin
 from utilities.bedrock_kb import retrieve_documents
 from utilities.common_functions import api_wrapper, get_groups, get_id_token, retry_config, user_has_group_access
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
+from utilities.types import PaginationParams, PaginationResult
 from utilities.validation import ValidationError
 from utilities.vector_store import get_vector_store_client
 
@@ -125,8 +127,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     include_score = query_string_params.get("score", "false").lower() == "true"
     repository_id = event["pathParameters"]["repositoryId"]
 
-    repository = vs_repo.find_repository_by_id(repository_id)
-    _ensure_repository_access(event, repository)
+    repository = get_repository(event, repository_id=repository_id)
 
     id_token = get_id_token(event)
 
@@ -169,12 +170,14 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def _ensure_repository_access(event: dict[str, Any], repository: dict[str, Any]) -> None:
+def get_repository(event: dict[str, Any], repository_id: str) -> None:
+    repo = vs_repo.find_repository_by_id(repository_id)
     """Ensures a user has access to the repository or else raises an HTTPException"""
     if is_admin(event) is False:
         user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-        if not user_has_group_access(user_groups, repository.get("allowedGroups", [])):
+        if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
             raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+    return repo
 
 
 def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:
@@ -218,7 +221,8 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     if not document_ids:
         raise ValidationError("No 'documentIds' parameter supplied")
 
-    _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
+    # Ensure repo access
+    _ = get_repository(event, repository_id=repository_id)
 
     rag_documents: list[RagDocument] = []
     if document_ids:
@@ -292,8 +296,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     logger.info(f"using repository {repository_id}")
 
     username = get_username(event)
-    repository = vs_repo.find_repository_by_id(repository_id)
-    _ensure_repository_access(event, repository)
+    _ = get_repository(event, repository_id=repository_id)
 
     ingestion_document_ids = []
     for key in body["keys"]:
@@ -330,7 +333,7 @@ def download_document(event: dict, context: dict) -> str:
     repository_id = path_params.get("repositoryId")
     document_id = path_params.get("documentId")
 
-    _ensure_repository_access(event, vs_repo.find_repository_by_id(repository_id))
+    _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
     source = doc.source
@@ -430,12 +433,8 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
             ),
         }
 
-    page_size = int(query_string_params.get("pageSize", "10"))
-
-    if page_size < 1:
-        page_size = 1
-    elif page_size > 100:  # Cap at 100 to prevent abuse
-        page_size = 100
+    # Use shared pagination utility
+    page_size = PaginationParams.parse_page_size(query_string_params)
 
     docs, last_evaluated, total_documents = doc_repo.list_all(
         repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated, limit=page_size
@@ -450,74 +449,51 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
-def list_jobs(event: dict, context: dict) -> ListJobsResponse:
+def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
     """List ingestion jobs for a specific repository with filtering and pagination.
 
     Args:
-        event (dict): The Lambda event object containing:
-            - pathParameters.repositoryId: The repository id to list jobs for
-            - queryStringParameters.timeLimit (optional): Time limit in hours (default: 720, which is 30 days)
-            - queryStringParameters.pageSize (optional): Number of jobs to return per page (default: 10, max: 100)
-            - queryStringParameters.lastEvaluatedKey (optional): Pagination token from previous request
-        context (dict): The Lambda context object
+        event: The Lambda event object containing path and query parameters
+        context: The Lambda context object
 
     Returns:
-        ListJobsResponse: A response object containing:
-            - jobs: List of job objects with their details
-            - lastEvaluatedKey: Token for next page (null if no more pages)
-            - hasNextPage: Boolean indicating if more pages exist
-            - hasPreviousPage: Boolean indicating if previous pages exist
+        Dict[str, Any]: Response dictionary with jobs, pagination info, and metadata
 
     Raises:
-        ValidationError: If repositoryId is not provided
+        ValidationError: If repositoryId is not provided or parameters are invalid
     """
-    path_params = event.get("pathParameters", {})
-    repository_id = path_params.get("repositoryId")
+    # Extract and validate parameters
+    params = ListJobsParams.from_event(event)
 
-    if not repository_id:
-        raise ValidationError("repositoryId is required")
+    # Validate repository access
+    _ = get_repository(event, repository_id=params.repository_id)
 
-    # Ensure user has access to the repository
-    repository = vs_repo.find_repository_by_id(repository_id)
-    _ensure_repository_access(event, repository)
+    # Get user context
+    username, is_admin_user = get_user_context(event)
 
-    username = get_username(event)
-    admin = is_admin(event)
-
-    query_params = event.get("queryStringParameters", {}) or {}
-    time_limit_hours = int(query_params.get("timeLimit", "720"))  # Default to 30 days (720 hours)
-
-    # Handle pagination parameters
-    page_size = int(query_params.get("pageSize", "10"))
-    if page_size < 1:
-        page_size = 1
-    elif page_size > 100:  # Cap at 100 to prevent abuse
-        page_size = 100
-
-    # Parse lastEvaluatedKey if provided
-    last_evaluated_key: Optional[Dict[str, str]] = None
-    if "lastEvaluatedKey" in query_params:
-        try:
-            last_evaluated_key = json.loads(urllib.parse.unquote(query_params["lastEvaluatedKey"]))
-        except (json.JSONDecodeError, TypeError):
-            # If parsing fails, start from beginning
-            last_evaluated_key = None
-
-    jobs, last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
-        repository_id=repository_id,
+    # Fetch jobs from repository
+    jobs, returned_last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
+        repository_id=params.repository_id,
         username=username,
-        is_admin=admin,
-        time_limit_hours=time_limit_hours,
-        page_size=page_size,
-        last_evaluated_key=last_evaluated_key,
+        is_admin=is_admin_user,
+        time_limit_hours=params.time_limit_hours,
+        page_size=params.page_size,
+        last_evaluated_key=params.last_evaluated_key,
     )
 
-    return ListJobsResponse(
-        jobs=jobs,
-        lastEvaluatedKey=last_evaluated_key,
-        hasNextPage=last_evaluated_key is not None,
-        hasPreviousPage="lastEvaluatedKey" in query_params,
+    # Calculate pagination state
+    pagination = PaginationResult.from_keys(
+        original_key=params.last_evaluated_key, returned_key=returned_last_evaluated_key
     )
+
+    response = ListJobsResponse(
+        jobs=jobs,
+        lastEvaluatedKey=returned_last_evaluated_key,
+        hasNextPage=pagination.has_next_page,
+        hasPreviousPage=pagination.has_previous_page,
+    )
+
+    return response.model_dump()
 
 
 @api_wrapper

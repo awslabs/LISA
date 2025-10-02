@@ -37,6 +37,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import { LisaChatMessageHistory } from '../../adapters/lisa-chat-history';
 import Toggle from '@cloudscape-design/components/toggle';
 import { ChatMemory } from '@/shared/util/chat-memory';
+import React from 'react';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;
@@ -56,7 +57,7 @@ export type DocumentSummarizationModalProps = {
     setMemory: (state: ChatMemory) => void;
 };
 
-export function DocumentSummarizationModal ({
+export const DocumentSummarizationModal = React.memo(({
     showDocumentSummarizationModal,
     setShowDocumentSummarizationModal,
     setFileContext,
@@ -71,7 +72,7 @@ export function DocumentSummarizationModal ({
     userName,
     handleSendGenerateRequest,
     setMemory
-}: DocumentSummarizationModalProps) {
+}: DocumentSummarizationModalProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
     const dispatch = useAppDispatch();
@@ -305,4 +306,6 @@ Repeat the following 2 steps 5 times.
             </SpaceBetween>
         </Modal>
     );
-}
+});
+
+export default DocumentSummarizationModal;

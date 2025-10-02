@@ -76,6 +76,7 @@ import {
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
+import { conditionalDeps } from '../utils';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -600,7 +601,7 @@ export default function Chat ({ sessionId }) {
         <div className='h-[80vh]'>
             {/* MCP Connections - invisible components that manage the connections */}
             {McpConnections}
-            <DocumentSummarizationModal
+            {useMemo(() => (<DocumentSummarizationModal
                 showDocumentSummarizationModal={modals.documentSummarization}
                 setShowDocumentSummarizationModal={(show) => show ? openModal('documentSummarization') : closeModal('documentSummarization')}
                 fileContext={fileContext}
@@ -616,8 +617,9 @@ export default function Chat ({ sessionId }) {
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
                 setMemory={setMemory}
-            />
-            <SessionConfiguration
+            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, fileContext, userPrompt, selectedModel, chatConfiguration])) }
+
+            {useMemo(() => (<SessionConfiguration
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}
                 selectedModel={selectedModel}
@@ -628,20 +630,23 @@ export default function Chat ({ sessionId }) {
                 session={session}
                 updateSession={updateSession}
                 ragConfig={ragConfig}
-            />
-            <RagUploadModal
+            />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [chatConfiguration, selectedModel, isRunning, config, session, ragConfig]))}
+
+            {useMemo(() => (<RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}
-            />
-            <ContextUploadModal
+            />), [ragConfig, modals.ragUpload])}
+
+            {useMemo(() => (<ContextUploadModal
                 showContextUploadModal={modals.contextUpload}
                 setShowContextUploadModal={(show) => show ? openModal('contextUpload') : closeModal('contextUpload')}
                 fileContext={fileContext}
                 setFileContext={setFileContext}
                 selectedModel={selectedModel}
-            />
-            <PromptTemplateModal
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [fileContext, selectedModel, modals.contextUpload]))}
+
+            {useMemo(() => (<PromptTemplateModal
                 session={session}
                 showModal={modals.promptTemplate}
                 setShowModal={(show) => show ? openModal('promptTemplate') : closeModal('promptTemplate')}
@@ -651,7 +656,8 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
-            />
+            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [session, modals.promptTemplate, chatConfiguration, promptTemplateKey, config, filterPromptTemplateType]))}
+
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
                 <ConfirmationModal
@@ -683,8 +689,7 @@ export default function Chat ({ sessionId }) {
             )}
             <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
-                    {session.history.map((message, idx) => (
-                        <Message
+                    {useMemo(() => { console.log("redraw", Math.random()); return session.history.map((message, idx) => <Message
                             key={idx}
                             message={message}
                             showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
@@ -698,7 +703,8 @@ export default function Chat ({ sessionId }) {
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
                         />
-                    ))}
+                    )}, [session.history, chatConfiguration])}
+                    
                     {(isRunning || callingToolName) && !isStreaming && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}

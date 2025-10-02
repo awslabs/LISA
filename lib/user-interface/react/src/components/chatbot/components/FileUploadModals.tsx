@@ -40,6 +40,7 @@ import {
 import {uploadToS3Request} from '../../utils';
 import {RagRepositoryPipeline} from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
+import React from 'react';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -89,13 +90,13 @@ export type ContextUploadProps = {
     selectedModel: IModel;
 };
 
-export function ContextUploadModal ({
+export const ContextUploadModal = React.memo(({
     showContextUploadModal,
     setShowContextUploadModal,
     fileContext,
     setFileContext,
     selectedModel
-}: ContextUploadProps) {
+}: ContextUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
@@ -196,7 +197,7 @@ export function ContextUploadModal ({
             </SpaceBetween>
         </Modal>
     );
-}
+});
 
 export type RagUploadProps = {
     showRagUploadModal: boolean;
@@ -204,11 +205,11 @@ export type RagUploadProps = {
     ragConfig: RagConfig;
 };
 
-export function RagUploadModal ({
+export const RagUploadModal = React.memo(({
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,
-}: RagUploadProps) {
+}: RagUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const [displayProgressBar, setDisplayProgressBar] = useState(false);
     const [progressBarValue, setProgressBarValue] = useState(0);
@@ -388,4 +389,6 @@ export function RagUploadModal ({
             </SpaceBetween>
         </Modal>
     );
-}
+});
+
+export default RagUploadModal;

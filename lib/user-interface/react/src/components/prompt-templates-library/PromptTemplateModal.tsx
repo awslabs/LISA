@@ -25,7 +25,7 @@ import {
     SpaceBetween,
     Textarea,
 } from '@cloudscape-design/components';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_PROMPT_TEMPLATE, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import FormField from '@cloudscape-design/components/form-field';
 import { PromptTemplateType, useListPromptTemplatesQuery, promptTemplateApi } from '../../shared/reducers/prompt-templates.reducer';
@@ -44,7 +44,7 @@ export type PromptTemplateModalProps = {
     type ?: PromptTemplateType;
 };
 
-export function PromptTemplateModal ({
+export const PromptTemplateModal = React.memo(({
     session,
     showModal,
     setShowModal,
@@ -53,7 +53,7 @@ export function PromptTemplateModal ({
     setChatConfiguration,
     config,
     type,
-}: PromptTemplateModalProps) {
+}: PromptTemplateModalProps)  => {
     const isPersona = type === PromptTemplateType.Persona;
     const [selectedOption, setSelectedOption] = useState<SelectProps.Option>({label: 'Owned by me', value: ''});
     const args = {showPublic: Boolean(selectedOption.value)};
@@ -174,4 +174,6 @@ export function PromptTemplateModal ({
             </SpaceBetween>
         </Modal>
     );
-}
+});
+
+export default PromptTemplateModal;

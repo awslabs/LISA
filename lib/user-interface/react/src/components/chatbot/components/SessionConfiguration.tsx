@@ -32,6 +32,7 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatSession } from '@/components/types';
+import React from 'react';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -48,7 +49,7 @@ export type SessionConfigurationProps = {
     ragConfig?: any;
 };
 
-export default function SessionConfiguration ({
+export const SessionConfiguration = React.memo(({
     title,
     chatConfiguration,
     setChatConfiguration,
@@ -61,7 +62,8 @@ export default function SessionConfiguration ({
     session,
     updateSession,
     ragConfig
-}: SessionConfigurationProps) {
+}: SessionConfigurationProps) => {
+    console.log("session config");
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
@@ -487,4 +489,6 @@ export default function SessionConfiguration ({
             </SpaceBetween>
         </Modal>
     );
-}
+});
+
+export default SessionConfiguration;

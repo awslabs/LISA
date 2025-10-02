@@ -258,30 +258,14 @@ export function JobStatusTable ({
                         pagesCount={hasNextPage ? currentPage + 1 : currentPage}
                         disabled={isLoadingJobs}
                         onNextPageClick={() => {
-                            console.log('Next page clicked', {
-                                hasNextPage,
-                                lastEvaluatedKey: paginatedJobs?.lastEvaluatedKey,
-                                currentJobsCount: allJobs.length,
-                                pageSize: preferences.pageSize
-                            });
                             if (hasNextPage && paginatedJobs?.lastEvaluatedKey) {
                                 // Add current key to history before moving to next page
                                 setPageHistory([...pageHistory, lastEvaluatedKey]);
                                 setLastEvaluatedKey(paginatedJobs.lastEvaluatedKey);
                                 setCurrentPage((prev) => prev + 1);
-                                console.log('Next page state updated', {
-                                    newKey: paginatedJobs.lastEvaluatedKey,
-                                    newPage: currentPage + 1
-                                });
                             }
                         }}
                         onPreviousPageClick={() => {
-                            console.log('Previous page clicked', {
-                                pageHistoryLength: pageHistory.length,
-                                currentJobsCount: allJobs.length,
-                                pageSize: preferences.pageSize,
-                                hasPreviousPage
-                            });
                             if (hasPreviousPage) {
                                 if (pageHistory.length > 0) {
                                     // Go back one page by popping from history
@@ -315,10 +299,6 @@ export function JobStatusTable ({
                         confirmLabel='Confirm'
                         cancelLabel='Cancel'
                         onConfirm={({ detail }) => {
-                            console.log('JobStatusTable: Preferences updated', {
-                                oldPageSize: preferences.pageSize,
-                                newPageSize: detail.pageSize
-                            });
                             setPreferences(detail);
                         }}
                         contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}

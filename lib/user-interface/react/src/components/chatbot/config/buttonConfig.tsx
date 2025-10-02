@@ -80,8 +80,7 @@ export const getButtonItems = (
     }
 
     // Additional Configuration Dropdown
-    if (config?.configuration.enabledComponents.editPromptTemplate &&
-        !isImageGenerationMode) {
+    if (config?.configuration.enabledComponents.editPromptTemplate && !isImageGenerationMode) {
         conditionalItems.push({
             type: 'menu-dropdown',
             id: 'more-actions',

@@ -64,20 +64,42 @@ type CreateRepositoryRequest = {
 };
 
 export type IngestionJob = {
+    id: string;
+    s3_path: string;
+    collection_id: string;
+    document_id: string;
+    repository_id: string;
+    chunk_strategy: {
+        type: string;
+        size: number;
+        overlap: number;
+    };
+    username: string;
     status: string;
-    document: string;
+    created_date: string;
+    error_message?: string | null;
+    document_name: string;
     auto: boolean;
-    createdDate?: string | null;
 };
 
-export type IngestionJobsResponse = {
-    [jobId: string]: IngestionJob;
+type GetIngestionJobsRequest = {
+    repositoryId: string;
+    pageSize?: number;
+    lastEvaluatedKey?: any | null; // Can be a complex object with repository_id, created_date, id
+    timeLimit?: number;
+};
+
+export type PaginatedIngestionJobsResponse = {
+    jobs: IngestionJob[];
+    lastEvaluatedKey?: any | null; // Can be a complex object with repository_id, created_date, id
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
 };
 
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'docs', 'repository-status'],
+    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -206,14 +228,22 @@ export const ragApi = createApi({
                 method: 'GET',
             }),
         }),
-        getIngestionJobs: builder.query<IngestionJobsResponse, string>({
-            query: (repositoryId) => ({
-                url: `/repository/${repositoryId}/jobs`,
-                method: 'GET',
-                params: {
-                    timeLimit: 1000
+        getIngestionJobs: builder.query<PaginatedIngestionJobsResponse, GetIngestionJobsRequest>({
+            query: (request) => {
+                let url = `/repository/${request.repositoryId}/jobs?timeLimit=${request.timeLimit || 1}&pageSize=${request.pageSize || 10}`;
+
+                // If lastEvaluatedKey is provided, JSON encode and URL encode it for the API
+                if (request.lastEvaluatedKey) {
+                    const encodedKey = encodeURIComponent(JSON.stringify(request.lastEvaluatedKey));
+                    url += `&lastEvaluatedKey=${encodedKey}`;
                 }
-            }),
+
+                return {
+                    url,
+                    method: 'GET',
+                };
+            },
+            providesTags: ['jobs'], // Add cache tags for invalidation
         }),
     }),
 });

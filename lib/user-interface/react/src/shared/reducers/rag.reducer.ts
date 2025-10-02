@@ -130,7 +130,7 @@ export const ragApi = createApi({
             }),
             providesTags: ['repository-status'],
         }),
-        getPresignedUrl: builder.query<any, String>({
+        getPresignedUrl: builder.query<any, string>({
             query: (body) => ({
                 url: '/repository/presigned-url',
                 method: 'POST',

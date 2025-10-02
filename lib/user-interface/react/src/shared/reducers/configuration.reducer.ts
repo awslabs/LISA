@@ -25,7 +25,7 @@ export const configurationApi = createApi({
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
-        getConfiguration: builder.query<IConfiguration[], String>({
+        getConfiguration: builder.query<IConfiguration[], string>({
             query: (configScope) => ({
                 url: `/configuration?configScope=${configScope}`
             }),

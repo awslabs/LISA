@@ -49,14 +49,6 @@ const mcpOptions = {
     showMcpWorkbench: 'Show MCP Workbench'
 };
 
-const optionGroups = {
-    mcpOptions,
-    inContextOptions,
-    ragOptions,
-    libraryOptions,
-    advancedOptions,
-} as const;
-
 type AllOptionKeys<G extends Record<string, Record<string, unknown>>> = {
     [K in keyof G]: keyof G[K];
 }[keyof G];
@@ -68,8 +60,13 @@ type DependencyMap<G extends Record<string, Record<string, unknown>>> = {
     };
 };
 
-
-const dependencies: DependencyMap<typeof optionGroups> = {
+const dependencies: DependencyMap<{
+    mcpOptions: typeof mcpOptions;
+    inContextOptions: typeof inContextOptions;
+    ragOptions: typeof ragOptions;
+    libraryOptions: typeof libraryOptions;
+    advancedOptions: typeof advancedOptions;
+}> = {
     showMcpWorkbench: {prerequisites: ['mcpConnections'] },
     mcpConnections: {dependents: ['showMcpWorkbench']}
 };

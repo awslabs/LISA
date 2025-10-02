@@ -221,7 +221,6 @@ const ModelActionHandler = async (
                                     ...currentConfig[0]?.configuration,
                                     global: { defaultModel: selectedModel.modelId }
                                 };
-                                '';
                                 const configUpdate: IConfiguration = {
                                     configuration: updatedConfiguration,
                                     configScope: 'global',

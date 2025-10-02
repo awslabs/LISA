@@ -3,6 +3,7 @@
 !postcss.config.js
 !jest.config.js
 !esbuild.js
+!eslint.config.js
 *.d.ts
 node_modules/
 /build

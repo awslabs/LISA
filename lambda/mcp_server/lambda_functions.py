@@ -178,19 +178,40 @@ def _is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
     return bool(set(user_groups) & set(prompt_groups))
 
 
+def _set_can_use(
+    connections: Dict[str, Any], user_id: Optional[str] = None, groups: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    if groups is None:
+        groups = []
+    items = connections.get("Items", [])
+    formatted_groups = [f"group:{group}" for group in groups]
+    for item in items:
+        item["canUse"] = (
+            _is_member(formatted_groups, item.get("groups", []))
+            or item["owner"] == user_id
+            or item["owner"] == "lisa:public"
+        )
+    connections["Items"] = items
+    return connections
+
+
 @api_wrapper
 def list(event: dict, context: dict) -> Dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id = get_username(event)
 
     bearer_token = get_bearer_token(event)
+    groups = get_groups(event)
 
     if is_admin(event):
         logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
-        return _get_mcp_servers(replace_bearer_token=bearer_token)
+        return _set_can_use(_get_mcp_servers(replace_bearer_token=bearer_token), user_id, groups)
 
-    groups = get_groups(event)
-    return _get_mcp_servers(user_id=user_id, active=True, groups=groups, replace_bearer_token=bearer_token)
+    return _set_can_use(
+        _get_mcp_servers(user_id=user_id, active=True, groups=groups, replace_bearer_token=bearer_token),
+        user_id,
+        groups,
+    )
 
 
 @api_wrapper

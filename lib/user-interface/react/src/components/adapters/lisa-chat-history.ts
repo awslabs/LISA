@@ -26,7 +26,7 @@ export class LisaChatMessageHistory extends BaseChatMessageHistory {
     private session: LisaChatSession;
 
     constructor (session: LisaChatSession) {
-    // eslint-disable-next-line prefer-rest-params
+
         super(...arguments);
         this.session = session;
     }

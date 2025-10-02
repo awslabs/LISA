@@ -221,7 +221,7 @@ export class UserInterfaceConstruct extends Construct {
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" run build -w lisa-web`, options);
                                 fs.cpSync(WEBAPP_DIST_PATH, outputDir, {recursive: true});
-                            } catch (e) {
+                            } catch {
                                 return false;
                             }
                             return true;

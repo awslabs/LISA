@@ -22,9 +22,9 @@ import React, { ReactElement } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
 import { BedrockKnowledgeBaseConfig as BedrockKnowledgeBaseConfigSchema, BedrockKnowledgeBaseInstanceConfig } from '#root/lib/schema';
 
- type BedrockKnowledgeBaseConfigProps = {
-     isEdit: boolean
- };
+type BedrockKnowledgeBaseConfigProps = {
+    isEdit: boolean
+};
 
 export function BedrockKnowledgeBaseConfigForm (props: FormProps<BedrockKnowledgeBaseConfigSchema> & BedrockKnowledgeBaseConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;

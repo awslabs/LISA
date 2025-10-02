@@ -100,7 +100,7 @@ export class MetricsConstruct extends Construct {
 
         // Create CloudWatch Dashboard for usage metrics
         const dashboard = new cloudwatch.Dashboard(this, 'UsageMetricsDashboard', {
-            dashboardName: 'LISA-Metrics',
+            dashboardName: `${config.deploymentName}-${config.deploymentStage}-LISA-Metrics`,
             start: '-P7D',
         });
 

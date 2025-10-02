@@ -33,6 +33,6 @@
   "linterOptions": {
     "exclude": ["src", "node_modules", "build", "dist", "coverage", "scripts", "test", "tests"]
   },
-  "exclude": ["src", "node_modules", "build", "dist", "coverage", "scripts", "test", "tests"],
+  "exclude": ["src", "node_modules", "build", "dist", "coverage", "scripts", "test", "tests", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

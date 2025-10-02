@@ -22,7 +22,7 @@ from typing import Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
-from mcp_server.models import McpServerModel
+from mcp_server.models import McpServerModel, McpServerStatus
 from mcp_workbench.lambda_functions import MCPWORKBENCH_UUID
 from utilities.common_functions import api_wrapper, get_property_path, retry_config
 
@@ -92,6 +92,7 @@ def check_show_mcp_workbench(body, old_configuration):
                 description="MCP Workbench Tools",
                 customHeaders={"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                 url=f"{os.getenv('FASTAPI_ENDPOINT')}/v2/mcp/",
+                status=McpServerStatus.ACTIVE,
             )
 
             # Insert the new mcp server item into the DynamoDB table

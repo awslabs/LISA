@@ -31,8 +31,8 @@ export const sessionApi = createApi({
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
-        getSessionById: builder.query<LisaChatSession, String>({
-            query: (sessionId: String) => ({
+        getSessionById: builder.query<LisaChatSession, string>({
+            query: (sessionId: string) => ({
                 url: `/session/${sessionId}`
             }),
         }),
@@ -108,8 +108,8 @@ export const sessionApi = createApi({
             },
             invalidatesTags: ['sessions'],
         }),
-        deleteSessionById: builder.mutation<LisaChatSession, String>({
-            query: (sessionId: String) => ({
+        deleteSessionById: builder.mutation<LisaChatSession, string>({
+            query: (sessionId: string) => ({
                 url: `/session/${sessionId}`,
                 method: 'DELETE',
             }),

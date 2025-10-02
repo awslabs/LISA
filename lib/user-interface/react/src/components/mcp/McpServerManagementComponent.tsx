@@ -34,7 +34,7 @@ import {
     useListMcpServersQuery,
 } from '@/shared/reducers/mcp-server.reducer';
 import { useAppDispatch, useAppSelector } from '@/config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUsername, selectCurrentUserGroups } from '@/shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin } from '@/shared/reducers/user.reducer';
 import {
     DefaultUserPreferences, McpPreferences,
     useGetUserPreferencesQuery,
@@ -47,8 +47,6 @@ export function McpServerManagementComponent () {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
-    const userName = useAppSelector(selectCurrentUsername);
-    const userGroups = useAppSelector(selectCurrentUserGroups);
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {});
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
@@ -59,9 +57,9 @@ export function McpServerManagementComponent () {
         if (userPreferences) {
             setPreferences(userPreferences);
         } else {
-            setPreferences({...DefaultUserPreferences, user: userName});
+            setPreferences({...DefaultUserPreferences});
         }
-    }, [userPreferences, userName]);
+    }, [userPreferences]);
 
     // create success notification
     useEffect(() => {
@@ -172,7 +170,7 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Server', cell: (item) => item.owner === userName || item.owner === 'lisa:public' || item.groups?.map((group) => group.replace(/^\w+?:/, '')).filter((group) => userGroups.includes(group)).length > 0 ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
+                { header: 'Use Server', cell: (item) => item.canUse ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},

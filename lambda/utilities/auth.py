@@ -48,6 +48,20 @@ def is_admin(event: dict) -> bool:
     return admin_group in groups
 
 
+def get_user_context(event: dict) -> tuple[str, bool]:
+    """Get the username and admin status from the event.
+    
+    Args:
+        event: Lambda event containing user authentication
+        
+    Returns:
+        Tuple of (username, is_admin)
+    """
+    username = get_username(event)
+    admin_status = is_admin(event)
+    return username, admin_status
+
+
 def admin_only(func: Callable) -> Callable:
     """Annotation to wrap is_admin"""
 

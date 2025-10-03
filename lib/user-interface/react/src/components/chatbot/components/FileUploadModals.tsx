@@ -90,7 +90,7 @@ export type ContextUploadProps = {
     selectedModel: IModel;
 };
 
-export const ContextUploadModal = React.memo(({
+export const ContextUploadModal = ({
     showContextUploadModal,
     setShowContextUploadModal,
     fileContext,
@@ -197,7 +197,7 @@ export const ContextUploadModal = React.memo(({
             </SpaceBetween>
         </Modal>
     );
-});
+};
 
 export type RagUploadProps = {
     showRagUploadModal: boolean;
@@ -205,7 +205,7 @@ export type RagUploadProps = {
     ragConfig: RagConfig;
 };
 
-export const RagUploadModal = React.memo(({
+export const RagUploadModal = ({
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,
@@ -389,6 +389,6 @@ export const RagUploadModal = React.memo(({
             </SpaceBetween>
         </Modal>
     );
-});
+};
 
 export default RagUploadModal;

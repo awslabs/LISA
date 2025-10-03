@@ -146,6 +146,6 @@ export const conditionalDeps = (baseDeps, conditions, conditionalDeps) => {
   // Check if all conditions are truthy using Array.every()
   const allConditionsTrue = conditions.every(condition => condition);
   
-  // Return merged arrays if conditions met, otherwise just base dependencies
-  return allConditionsTrue ? [...baseDeps, ...conditionalDeps] : baseDeps;
+  // Return merged arrays if conditions met, otherwise just base dependencies with null for other conditions so deps array is a constant size
+  return allConditionsTrue ? [...baseDeps, ...conditionalDeps] : [...baseDeps, ...conditionalDeps.map(() => null)];
 };

@@ -689,7 +689,7 @@ export default function Chat ({ sessionId }) {
             )}
             <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
-                    {useMemo(() => { console.log("redraw", Math.random()); return session.history.map((message, idx) => <Message
+                    {useMemo(() => session.history.map((message, idx) => (<Message
                             key={idx}
                             message={message}
                             showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
@@ -703,7 +703,7 @@ export default function Chat ({ sessionId }) {
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
                         />
-                    )}, [session.history, chatConfiguration])}
+                    )), [session.history, chatConfiguration])}
                     
                     {(isRunning || callingToolName) && !isStreaming && <Message
                         isRunning={isRunning}

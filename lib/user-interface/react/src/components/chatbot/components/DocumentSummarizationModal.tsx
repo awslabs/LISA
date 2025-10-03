@@ -57,7 +57,7 @@ export type DocumentSummarizationModalProps = {
     setMemory: (state: ChatMemory) => void;
 };
 
-export const DocumentSummarizationModal = React.memo(({
+export const DocumentSummarizationModal = ({
     showDocumentSummarizationModal,
     setShowDocumentSummarizationModal,
     setFileContext,
@@ -306,6 +306,6 @@ Repeat the following 2 steps 5 times.
             </SpaceBetween>
         </Modal>
     );
-});
+};
 
 export default DocumentSummarizationModal;

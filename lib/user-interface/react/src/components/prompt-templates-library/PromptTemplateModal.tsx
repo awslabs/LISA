@@ -44,7 +44,7 @@ export type PromptTemplateModalProps = {
     type ?: PromptTemplateType;
 };
 
-export const PromptTemplateModal = React.memo(({
+export const PromptTemplateModal = ({
     session,
     showModal,
     setShowModal,
@@ -174,6 +174,6 @@ export const PromptTemplateModal = React.memo(({
             </SpaceBetween>
         </Modal>
     );
-});
+};
 
 export default PromptTemplateModal;

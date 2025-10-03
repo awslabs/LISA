@@ -49,7 +49,7 @@ export type SessionConfigurationProps = {
     ragConfig?: any;
 };
 
-export const SessionConfiguration = React.memo(({
+export const SessionConfiguration = ({
     title,
     chatConfiguration,
     setChatConfiguration,
@@ -63,7 +63,6 @@ export const SessionConfiguration = React.memo(({
     updateSession,
     ragConfig
 }: SessionConfigurationProps) => {
-    console.log("session config");
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
@@ -489,6 +488,6 @@ export const SessionConfiguration = React.memo(({
             </SpaceBetween>
         </Modal>
     );
-});
+};
 
 export default SessionConfiguration;

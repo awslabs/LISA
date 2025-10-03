@@ -690,21 +690,21 @@ export default function Chat ({ sessionId }) {
             <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {useMemo(() => session.history.map((message, idx) => (<Message
-                            key={idx}
-                            message={message}
-                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
-                            isRunning={false}
-                            callingToolName={undefined}
-                            isStreaming={isStreaming && idx === session.history.length - 1}
-                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                            setChatConfiguration={setChatConfiguration}
-                            handleSendGenerateRequest={handleSendGenerateRequest}
-                            chatConfiguration={chatConfiguration}
-                            setUserPrompt={setUserPrompt}
-                            onMermaidRenderComplete={handleMermaidRenderComplete}
-                        />
+                        key={idx}
+                        message={message}
+                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                        isRunning={false}
+                        callingToolName={undefined}
+                        isStreaming={isStreaming && idx === session.history.length - 1}
+                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                        setChatConfiguration={setChatConfiguration}
+                        handleSendGenerateRequest={handleSendGenerateRequest}
+                        chatConfiguration={chatConfiguration}
+                        setUserPrompt={setUserPrompt}
+                        onMermaidRenderComplete={handleMermaidRenderComplete}
+                    />
                     )), [session.history, chatConfiguration])}
-                    
+
                     {(isRunning || callingToolName) && !isStreaming && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}

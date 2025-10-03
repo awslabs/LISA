@@ -38,6 +38,7 @@ import functools
 import json
 import logging
 import sys
+import urllib.parse
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -45,6 +46,7 @@ import boto3
 import pytest
 import requests
 from botocore.config import Config
+from models.domain_objects import IngestionJob, IngestionStatus
 from moto import mock_aws
 from utilities.exceptions import HTTPException
 from utilities.validation import validate_model_name, ValidationError
@@ -71,7 +73,7 @@ def mock_api_wrapper(func):
             }
         except HTTPException as e:
             # Handle HTTP exceptions with their defined status code
-            status_code = e.status_code
+            status_code = e.http_status_code
             return {
                 "statusCode": status_code,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
@@ -249,7 +251,7 @@ patch("utilities.auth.admin_only", mock_admin_only).start()
 # Global boto3.client patch removed to prevent interference with other test modules
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
-from repository.lambda_functions import _ensure_document_ownership, _ensure_repository_access, presigned_url
+from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
 
 # Patch vector_store after import
 patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
@@ -879,15 +881,15 @@ def test_embeddings_embed_query_error():
             embeddings.embed_query("")
 
 
-def test_ensure_repository_access_unauthorized():
-    """Test _ensure_repository_access with unauthorized access"""
+def test_get_repository_unauthorized():
+    """Test get_repository with unauthorized access"""
 
     # Create a mock function that raises an exception
-    def mock_ensure_repository_access(event, repository):
-        raise HTTPException(message="User does not have permission to access this repository")
+    def mock_get_repository(event, repository_id):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
     # Patch the function
-    with patch("repository.lambda_functions._ensure_repository_access", side_effect=mock_ensure_repository_access):
+    with patch("repository.lambda_functions.get_repository", side_effect=mock_get_repository):
         # Create event with user not in allowed groups
         event = {
             "requestContext": {
@@ -896,10 +898,8 @@ def test_ensure_repository_access_unauthorized():
         }
 
         # Test with repository that requires specific group
-        repository = {"allowedGroups": ["required-group"]}
-
         with pytest.raises(HTTPException) as excinfo:
-            mock_ensure_repository_access(event, repository)
+            mock_get_repository(event, "test-repo")
 
         assert excinfo.value.message == "User does not have permission to access this repository"
 
@@ -959,38 +959,49 @@ def test_validate_model_name():
 
 
 def test_repository_access_validation():
-    """Test repository access validation logic"""
+    """Test get_repository access validation logic"""
 
-    # Test case 1: User is admin
+    # Test case 1: User is admin - get_repository should return the repository
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["admin-group"])}}
     }
-    repository = {"allowedGroups": ["admin-group"]}
 
-    with patch("utilities.auth.is_admin", return_value=True):
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.auth.is_admin", return_value=True
+    ):
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["admin-group"], "status": "active"}
         # Admin should always have access
-        assert _ensure_repository_access(event, repository) is None
+        result = get_repository(event, "test-repo")
+        assert result == {
+            "allowedGroups": ["admin-group"],
+            "status": "active",
+        }  # get_repository returns the repo object
 
     # Test case 2: User has group access
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}}
     }
-    repository = {"allowedGroups": ["test-group"]}
 
-    with patch("utilities.auth.is_admin", return_value=False):
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.auth.is_admin", return_value=False
+    ):
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
         # User has the right group
-        assert _ensure_repository_access(event, repository) is None
+        result = get_repository(event, "test-repo")
+        assert result == {"allowedGroups": ["test-group"], "status": "active"}  # get_repository returns the repo object
 
     # Test case 3: User doesn't have access
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["wrong-group"])}}
     }
-    repository = {"allowedGroups": ["test-group"]}
 
-    with patch("utilities.auth.is_admin", return_value=False):
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.auth.is_admin", return_value=False
+    ):
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
         # User doesn't have the right group
         with pytest.raises(HTTPException) as exc_info:
-            _ensure_repository_access(event, repository)
+            get_repository(event, "test-repo")
         assert exc_info.value.message == "User does not have permission to access this repository"
 
 
@@ -1821,22 +1832,31 @@ def test_remove_legacy_function():
 
 
 def test_ensure_repository_access_edge_cases():
-    """Test _ensure_repository_access with edge cases"""
+    """Test repository access validation with edge cases (now handled in get_repository)"""
 
-    # Test with missing groups in event
+    # Test with missing groups in event - should raise KeyError when trying to access groups
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
-    repository = {"allowedGroups": ["test-group"]}
 
-    with patch("utilities.auth.is_admin", return_value=False):
-        with pytest.raises(KeyError):  # Will raise KeyError for missing groups
-            _ensure_repository_access(event, repository)
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.auth.is_admin", return_value=False
+    ):
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
 
-    # Test with malformed groups JSON
+        # get_repository will raise KeyError when trying to access missing groups
+        with pytest.raises(KeyError):
+            get_repository(event, "test-repo")
+
+    # Test with malformed groups JSON - should raise JSONDecodeError
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": "invalid-json"}}}
 
-    with patch("utilities.auth.is_admin", return_value=False):
-        with pytest.raises(json.JSONDecodeError):  # Will raise JSONDecodeError for invalid JSON
-            _ensure_repository_access(event, repository)
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.auth.is_admin", return_value=False
+    ):
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # get_repository will raise JSONDecodeError when trying to parse invalid JSON
+        with pytest.raises(json.JSONDecodeError):
+            get_repository(event, "test-repo")
 
 
 def test_ensure_document_ownership_edge_cases():
@@ -1906,3 +1926,473 @@ def test_real_similarity_search_bedrock_kb_function():
         assert first_doc["page_content"] == "KB doc content"
         assert first_doc["metadata"]["source"] == "s3://bucket/path/doc1.pdf"
         assert first_doc["metadata"]["name"] == "doc1.pdf"
+
+
+@mock_aws()
+def test_list_jobs_function():
+    """Test the list_jobs function"""
+    from repository.lambda_functions import list_jobs
+
+    # Override global mocks for this test
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    try:
+        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+            "repository.lambda_functions.ingestion_job_repository"
+        ) as mock_job_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch(
+            "utilities.auth.get_username"
+        ) as mock_get_username, patch(
+            "repository.lambda_functions.get_user_context"
+        ) as mock_get_user_context:
+
+            # Setup mocks
+            mock_get_groups.return_value = ["test-group"]
+            mock_is_admin.return_value = True  # Admin access required
+            mock_get_username.return_value = "admin-user"
+            mock_get_user_context.return_value = ("admin-user", True)  # Return username and is_admin
+            mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+            # Create real IngestionJob objects
+            job1 = IngestionJob(
+                id="job-1",
+                repository_id="test-repo",
+                collection_id="test-collection",
+                status=IngestionStatus.INGESTION_COMPLETED,
+                username="admin-user",
+                s3_path="s3://bucket/doc1.pdf",
+            )
+            job2 = IngestionJob(
+                id="job-2",
+                repository_id="test-repo",
+                collection_id="test-collection",
+                status=IngestionStatus.INGESTION_IN_PROGRESS,
+                username="admin-user",
+                s3_path="s3://bucket/doc2.pdf",
+            )
+            job3 = IngestionJob(
+                id="job-3",
+                repository_id="test-repo",
+                collection_id="test-collection",
+                status=IngestionStatus.INGESTION_FAILED,
+                username="admin-user",
+                s3_path="s3://bucket/doc3.pdf",
+            )
+
+            # Mock repository method to return jobs and no pagination key
+            mock_job_repo.list_jobs_by_repository.return_value = ([job1, job2, job3], None)
+
+            event = {
+                "requestContext": {
+                    "authorizer": {
+                        "username": "admin-user",
+                        "claims": {"username": "admin-user"},
+                        "groups": json.dumps(["test-group"]),
+                    }
+                },
+                "pathParameters": {"repositoryId": "test-repo"},
+            }
+
+            result = list_jobs(event, SimpleNamespace())
+
+            # Verify the response
+            assert result["statusCode"] == 200
+            body = json.loads(result["body"])
+
+            # Should return ListJobsResponse format with jobs array
+            assert "jobs" in body
+            assert "lastEvaluatedKey" in body
+            assert "hasNextPage" in body
+            assert "hasPreviousPage" in body
+
+            assert len(body["jobs"]) == 3
+            assert body["hasNextPage"] is False  # No lastEvaluatedKey returned
+            assert body["hasPreviousPage"] is False  # No lastEvaluatedKey in query params
+            assert body["lastEvaluatedKey"] is None
+
+            # Verify job repository method was called correctly
+            mock_job_repo.list_jobs_by_repository.assert_called_once_with(
+                repository_id="test-repo",
+                username="admin-user",
+                is_admin=True,
+                time_limit_hours=720,  # Default 30 days
+                page_size=10,  # Default page size
+                last_evaluated_key=None,
+            )
+    finally:
+        # Reset global mocks to defaults
+        mock_common.get_username.return_value = "test-user"
+        mock_common.is_admin.return_value = False
+
+
+@mock_aws()
+def test_list_jobs_missing_repository_id():
+    """Test list_jobs function with missing repository ID"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_is_admin.return_value = True
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {},  # Missing repositoryId
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Should return validation error (ValidationError gets wrapped as 500 by api_wrapper)
+        assert result["statusCode"] == 500
+        body = json.loads(result["body"])
+        assert "repositoryId is required" in body["error"]
+
+
+@mock_aws()
+def test_list_jobs_unauthorized_access():
+    """Test list_jobs function with unauthorized access"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.common_functions.get_groups"
+    ) as mock_get_groups, patch("utilities.auth.is_admin") as mock_is_admin:
+
+        # Setup mocks - user is not admin and doesn't have group access
+        mock_get_groups.return_value = ["other-group"]
+        mock_is_admin.return_value = False
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Override global mocks
+        mock_common.get_groups.return_value = ["other-group"]
+        mock_common.is_admin.return_value = False
+        mock_common.get_username.return_value = "regular-user"
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "regular-user"}, "groups": json.dumps(["other-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Should return forbidden error
+        assert result["statusCode"] == 403
+        body = json.loads(result["body"])
+        assert "does not have permission" in body["error"]
+
+
+@mock_aws()
+def test_list_jobs_empty_results():
+    """Test list_jobs function with no jobs found"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.ingestion_job_repository"
+    ) as mock_job_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin, patch(
+        "utilities.auth.get_username"
+    ) as mock_get_username:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_is_admin.return_value = True
+        mock_get_username.return_value = "admin-user"
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Override global mocks
+        mock_common.get_username.return_value = "admin-user"
+        mock_common.is_admin.return_value = True
+
+        # Mock repository method to return empty list and no pagination key
+        mock_job_repo.list_jobs_by_repository.return_value = ([], None)
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+
+        # Should return ListJobsResponse format with empty jobs array
+        assert "jobs" in body
+        assert len(body["jobs"]) == 0
+        assert body["hasNextPage"] is False
+        assert body["hasPreviousPage"] is False
+        assert body["lastEvaluatedKey"] is None
+
+
+@mock_aws()
+def test_list_jobs_malformed_dynamodb_items():
+    """Test list_jobs function with error in repository layer"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.ingestion_job_repository"
+    ) as mock_job_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_is_admin.return_value = True
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Mock repository method to raise an exception (simulating malformed data handling)
+        mock_job_repo.list_jobs_by_repository.side_effect = Exception("Database error")
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Verify the response handles the error
+        assert result["statusCode"] == 500
+        body = json.loads(result["body"])
+        assert "error" in body
+        assert "Database error" in body["error"]
+
+
+@mock_aws()
+def test_list_jobs_with_pagination():
+    """Test list_jobs function with pagination parameters"""
+    from repository.lambda_functions import list_jobs
+
+    # Override global mocks for this test
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    try:
+        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+            "repository.lambda_functions.ingestion_job_repository"
+        ) as mock_job_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch(
+            "utilities.auth.get_username"
+        ) as mock_get_username, patch(
+            "repository.lambda_functions.get_user_context"
+        ) as mock_get_user_context:
+
+            # Setup mocks
+            mock_get_groups.return_value = ["test-group"]
+            mock_is_admin.return_value = True
+            mock_get_username.return_value = "admin-user"
+            mock_get_user_context.return_value = ("admin-user", True)  # Return username and is_admin
+            mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+            # Create real IngestionJob object
+            job1 = IngestionJob(
+                id="job-1",
+                repository_id="test-repo",
+                collection_id="test-collection",
+                status=IngestionStatus.INGESTION_COMPLETED,
+                username="admin-user",
+                s3_path="s3://bucket/doc1.pdf",
+            )
+
+            # Mock pagination response
+            last_evaluated_key = {
+                "id": "job-1",
+                "repository_id": "test-repo",
+                "created_date": "2025-09-25T19:14:16.404128+00:00",
+            }
+            mock_job_repo.list_jobs_by_repository.return_value = ([job1], last_evaluated_key)
+
+            event = {
+                "requestContext": {
+                    "authorizer": {
+                        "username": "admin-user",
+                        "claims": {"username": "admin-user"},
+                        "groups": json.dumps(["test-group"]),
+                    }
+                },
+                "pathParameters": {"repositoryId": "test-repo"},
+                "queryStringParameters": {"pageSize": "5", "timeLimit": "48"},
+            }
+
+            result = list_jobs(event, SimpleNamespace())
+
+            # Verify the response
+            assert result["statusCode"] == 200
+            body = json.loads(result["body"])
+
+            # Should return ListJobsResponse format with pagination
+            assert "jobs" in body
+            assert "lastEvaluatedKey" in body
+            assert "hasNextPage" in body
+            assert "hasPreviousPage" in body
+
+            assert len(body["jobs"]) == 1
+            assert body["hasNextPage"] is True  # lastEvaluatedKey returned
+            assert body["hasPreviousPage"] is False  # No lastEvaluatedKey in query params
+            assert body["lastEvaluatedKey"] == last_evaluated_key
+
+            # Verify job repository method was called with custom parameters
+            mock_job_repo.list_jobs_by_repository.assert_called_once_with(
+                repository_id="test-repo",
+                username="admin-user",
+                is_admin=True,
+                time_limit_hours=48,  # Custom time limit
+                page_size=5,  # Custom page size
+                last_evaluated_key=None,
+            )
+    finally:
+        # Reset global mocks to defaults
+        mock_common.get_username.return_value = "test-user"
+        mock_common.is_admin.return_value = False
+
+
+@mock_aws()
+def test_list_jobs_with_last_evaluated_key():
+    """Test list_jobs function with lastEvaluatedKey parameter"""
+    from repository.lambda_functions import list_jobs
+
+    # Override global mocks for this test
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    try:
+        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+            "repository.lambda_functions.ingestion_job_repository"
+        ) as mock_job_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch(
+            "utilities.auth.get_username"
+        ) as mock_get_username, patch(
+            "repository.lambda_functions.get_user_context"
+        ) as mock_get_user_context:
+
+            # Setup mocks
+            mock_get_groups.return_value = ["test-group"]
+            mock_is_admin.return_value = True
+            mock_get_username.return_value = "admin-user"
+            mock_get_user_context.return_value = ("admin-user", True)  # Return username and is_admin
+            mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+            # Create real IngestionJob object
+            job2 = IngestionJob(
+                id="job-2",
+                repository_id="test-repo",
+                collection_id="test-collection",
+                status=IngestionStatus.INGESTION_IN_PROGRESS,
+                username="admin-user",
+                s3_path="s3://bucket/doc2.pdf",
+            )
+
+            # Mock repository response
+            mock_job_repo.list_jobs_by_repository.return_value = ([job2], None)
+
+            # URL-encoded lastEvaluatedKey
+            last_evaluated_key_json = (
+                '{"id":"job-1","repository_id":"test-repo","created_date":"2025-09-25T19:14:16.404128+00:00"}'
+            )
+            encoded_key = urllib.parse.quote(last_evaluated_key_json)
+
+            event = {
+                "requestContext": {
+                    "authorizer": {
+                        "username": "admin-user",
+                        "claims": {"username": "admin-user"},
+                        "groups": json.dumps(["test-group"]),
+                    }
+                },
+                "pathParameters": {"repositoryId": "test-repo"},
+                "queryStringParameters": {"lastEvaluatedKey": encoded_key},
+            }
+
+            result = list_jobs(event, SimpleNamespace())
+
+            # Verify the response
+            assert result["statusCode"] == 200
+            body = json.loads(result["body"])
+
+            assert len(body["jobs"]) == 1
+            assert body["hasNextPage"] is False  # No more pages
+            assert body["hasPreviousPage"] is True  # Has lastEvaluatedKey in query params
+            assert body["lastEvaluatedKey"] is None
+
+            # Verify the lastEvaluatedKey was parsed and passed correctly
+            expected_last_evaluated_key = {
+                "id": "job-1",
+                "repository_id": "test-repo",
+                "created_date": "2025-09-25T19:14:16.404128+00:00",
+            }
+            mock_job_repo.list_jobs_by_repository.assert_called_once_with(
+                repository_id="test-repo",
+                username="admin-user",
+                is_admin=True,
+                time_limit_hours=720,  # Default
+                page_size=10,  # Default
+                last_evaluated_key=expected_last_evaluated_key,
+            )
+    finally:
+        # Reset global mocks to defaults
+        mock_common.get_username.return_value = "test-user"
+        mock_common.is_admin.return_value = False
+
+
+@mock_aws()
+def test_list_jobs_with_invalid_last_evaluated_key():
+    """Test list_jobs function with invalid lastEvaluatedKey parameter"""
+    from repository.lambda_functions import list_jobs
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "repository.lambda_functions.ingestion_job_repository"
+    ) as mock_job_repo, patch("utilities.common_functions.get_groups") as mock_get_groups, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin, patch(
+        "utilities.auth.get_username"
+    ) as mock_get_username:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_is_admin.return_value = True
+        mock_get_username.return_value = "admin-user"
+        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
+
+        # Override global mocks
+        mock_common.get_username.return_value = "admin-user"
+        mock_common.is_admin.return_value = True
+
+        # Create real IngestionJob object
+        job1 = IngestionJob(
+            id="job-1",
+            repository_id="test-repo",
+            collection_id="test-collection",
+            status=IngestionStatus.INGESTION_COMPLETED,
+            username="admin-user",
+            s3_path="s3://bucket/doc1.pdf",
+        )
+
+        # Mock repository response
+        mock_job_repo.list_jobs_by_repository.return_value = ([job1], None)
+
+        # Invalid JSON in lastEvaluatedKey
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {"lastEvaluatedKey": "invalid-json"},
+        }
+
+        result = list_jobs(event, SimpleNamespace())
+
+        # Should return validation error for invalid lastEvaluatedKey
+        assert result["statusCode"] == 500
+        body = json.loads(result["body"])
+        assert "error" in body
+        assert "Invalid JSON in lastEvaluatedKey" in body["error"]

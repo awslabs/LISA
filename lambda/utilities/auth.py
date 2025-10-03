@@ -14,7 +14,7 @@
 import logging
 import os
 from functools import wraps
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Tuple
 
 import boto3
 from botocore.config import Config
@@ -46,6 +46,11 @@ def is_admin(event: dict) -> bool:
     groups = get_groups(event)
     logger.info(f"User groups: {groups} and admin: {admin_group}")
     return admin_group in groups
+
+
+def get_user_context(event: Dict[str, Any]) -> Tuple[str, bool]:
+    """Extract user context from event."""
+    return get_username(event), is_admin(event)
 
 
 def admin_only(func: Callable) -> Callable:

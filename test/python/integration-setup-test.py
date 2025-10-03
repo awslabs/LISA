@@ -196,13 +196,18 @@ def repository_exists(lisa_client: LisaApi, repository_id: str) -> bool:
         return False
 
 
-def create_bedrock_model(lisa_client: LisaApi, model_id: str, model_name: str) -> Dict[str, Any]:
+def create_bedrock_model(
+    lisa_client: LisaApi, model_id: str, model_name: str, model_type: str = "textgen", features: any = None
+) -> Dict[str, Any]:
     """Create a Bedrock model configuration."""
 
     # Check if model already exists
     if model_exists(lisa_client, model_id):
         print(f"\n⏭️  Bedrock model '{model_id}' already exists, skipping creation")
         return {"modelId": model_id}
+
+    if features is None:
+        features = [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}]
 
     print(f"\n🚀 Creating Bedrock model '{model_id}'...")
 
@@ -215,10 +220,10 @@ def create_bedrock_model(lisa_client: LisaApi, model_id: str, model_name: str) -
         "modelId": model_id,
         "modelName": model_name,
         "modelDescription": "",
-        "modelType": "textgen",
+        "modelType": model_type,
         "modelUrl": "",
         "streaming": True,
-        "features": [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}],
+        "features": features,
         "allowedGroups": None,
     }
 
@@ -583,34 +588,58 @@ def main():
 
         models = []
         # # 1. Create Bedrock model
-        models.append(create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0"))
-        models.append(
-            create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0")
+        models.extend(
+            [
+                create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0"),
+                create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
+                create_bedrock_model(lisa_client, "deepseek-3", "bedrock/us.deepseek.v3-v1:0"),
+                create_bedrock_model(
+                    lisa_client, "llama-maverick", "bedrock/us.meta.llama4-maverick-17b-instruct-v1:0"
+                ),
+                create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
+                create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0"),
+                create_bedrock_model(
+                    lisa_client, "titan-embed", "bedrock/amazon.titan-embed-text-v2:0", "embedding", []
+                ),
+                create_bedrock_model(
+                    lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", "imagegen", []
+                ),
+            ]
         )
 
         # # 2. Create self-hosted model
-        models.append(
-            create_self_hosted_model(lisa_client, "mistral-7b-instruct-03", "mistralai/Mistral-7B-Instruct-v0.3")
+        models.extend(
+            [
+                create_self_hosted_model(lisa_client, "mistral-7b-instruct-03", "mistralai/Mistral-7B-Instruct-v0.3"),
+                create_self_hosted_model(lisa_client, "llama-32-1b-instruct", "meta-llama/Llama-3.2-1B-Instruct"),
+                create_self_hosted_model(lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b"),
+            ]
         )
-        models.append(create_self_hosted_model(lisa_client, "llama-32-3b", "meta-llama/Llama-3.2-3B"))
 
         # # 3. Create self-hosted embedded model
-        models.append(
-            create_self_hosted_embedded_model(lisa_client, DEFAULT_EMBEDDING_MODEL_ID, "intfloat/e5-large-v2")
+        models.extend(
+            [
+                create_self_hosted_embedded_model(lisa_client, DEFAULT_EMBEDDING_MODEL_ID, "intfloat/e5-large-v2"),
+                create_self_hosted_embedded_model(lisa_client, "qwen3-embed-06b", "Qwen/Qwen3-Embedding-0.6B"),
+                create_self_hosted_embedded_model(lisa_client, "baai-embed-15", "BAAI/bge-large-en-v1.5"),
+            ]
         )
-        models.append(create_self_hosted_embedded_model(lisa_client, "qwen3-embed-06b", "Qwen/Qwen3-Embedding-0.6B"))
-        models.append(create_self_hosted_embedded_model(lisa_client, "baai-embed-15", "BAAI/bge-large-en-v1.5"))
 
         for model in models:
             created_resources["models"].append(model["modelId"])
 
-        # # 4. Create PGVector repository
-        pgvector_repo = create_pgvector_repository(lisa_client, embedding_model_id)
-        created_resources["repositories"].append(pgvector_repo["repositoryId"])
+        repos = []
+        repos.extend(
+            [
+                # # 4. Create PGVector repository
+                create_pgvector_repository(lisa_client, embedding_model_id),
+                # # 5. Create OpenSearch repository
+                create_opensearch_repository(lisa_client, embedding_model_id),
+            ]
+        )
 
-        # # # 5. Create OpenSearch repository
-        opensearch_repo = create_opensearch_repository(lisa_client, embedding_model_id)
-        created_resources["repositories"].append(opensearch_repo["repositoryId"])
+        for repo in repos:
+            created_resources["repositories"].append(repo["repositoryId"])
 
         print("\n✅ All resources created successfully!")
         print("Created resources:")

@@ -80,8 +80,7 @@ export const getButtonItems = (
     }
 
     // Additional Configuration Dropdown
-    if (config?.configuration.enabledComponents.editPromptTemplate &&
-        !isImageGenerationMode) {
+    if (config?.configuration.enabledComponents.editPromptTemplate && !isImageGenerationMode) {
         conditionalItems.push({
             type: 'menu-dropdown',
             id: 'more-actions',
@@ -117,6 +116,7 @@ export const useButtonActions = ({
                 openModal('promptTemplate');
             },
             'upload-to-rag': () => openModal('ragUpload'),
+            'rag-job-status': () => openModal('jobStatus'),
             'add-file-to-context': () => openModal('contextUpload'),
             'summarize-document': () => openModal('documentSummarization'),
             'insert-prompt-template': () => {

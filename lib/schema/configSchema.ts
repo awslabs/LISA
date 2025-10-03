@@ -66,6 +66,7 @@ export const SecurityGroupConfigSchema = z.object({
 })
     .describe('Security Group Overrides used across stacks.');
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const Ec2TypeSchema = z.object({
     memory: z.number().describe('Memory in megabytes (MB)'),
     gpuCount: z.number().min(0).describe('Number of GPUs'),

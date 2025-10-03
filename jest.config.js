@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-// eslint-disable-next-line no-undef
+
 module.exports = {
     testEnvironment: 'node',
     roots: ['<rootDir>/test'],

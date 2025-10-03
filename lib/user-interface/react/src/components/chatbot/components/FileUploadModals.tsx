@@ -269,7 +269,7 @@ export const RagUploadModal = ({
                 notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository.`, 'success');
                 setShowRagUploadModal(false);
             }
-        } catch (err) {
+        } catch {
             setIngestionType(StatusTypes.ERROR);
             setIngestionStatus('Failed to ingest documents into RAG');
         } finally {

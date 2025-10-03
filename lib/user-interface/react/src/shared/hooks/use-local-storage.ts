@@ -29,8 +29,8 @@ export const load = <T = unknown> (key: string): T | undefined => {
             return undefined;
         }
         return JSON.parse(value) as T;
-    } catch (e) {
-        // eslint-disable-next-line no-console
+    } catch {
+
         console.warn(
             `⚠️ The ${key} value that is stored in localStorage is incorrect. Try to remove the value ${key} from localStorage and reload the page`,
         );

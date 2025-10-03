@@ -55,7 +55,7 @@ export const uploadToS3Request = (presignedUrlResponse: Response, file: File): S
     };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export const formatDocumentsAsString = (docs: any, forMetadata = false): string => {
     let contents = '';
     (docs || []).forEach((doc, index) => {

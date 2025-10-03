@@ -80,16 +80,19 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
-    const { data: paginatedDocs, isFetching } = useListRagDocumentsQuery(
+    const { data: paginatedDocs, isLoading } = useListRagDocumentsQuery(
         {
             repositoryId,
             lastEvaluatedKey: lastEvaluatedKey || undefined,
             pageSize: preferences.pageSize
         },
-        { refetchOnMountOrArgChange: 5 }
+        {
+            refetchOnMountOrArgChange: 5,
+            skip: !repositoryId // Skip the query if repositoryId is not available
+        }
     );
 
-    const allDocs = paginatedDocs?.documents || [];
+    const allDocs = React.useMemo(() => paginatedDocs?.documents || [], [paginatedDocs?.documents]);
     const totalDocuments = paginatedDocs?.totalDocuments || 0;
     const hasNextPage = paginatedDocs?.hasNextPage || false;
 
@@ -140,7 +143,12 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                         action: 'Delete',
                         resourceName: 'Documents',
                         onConfirm: () => deleteMutation({ repositoryId, documentIds }),
-                        description: <div>This will delete the following documents: <ul>{documentView}</ul></div>,
+                        description: <div>
+                            This will delete the following documents: <ul>{documentView}</ul>
+                            <span>
+                                ⚠️ Batch delete will be processed in the background. Changes will not be reflected immediately and may take several minutes to complete.
+                            </span>
+                        </div>,
                     }),
                 );
                 break;
@@ -169,7 +177,7 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
             resizableColumns
             enableKeyboardNavigation
             items={items}
-            loading={isFetching}
+            loading={isLoading && !paginatedDocs}
             loadingText='Loading documents'
             selectionType='multi'
             filter={

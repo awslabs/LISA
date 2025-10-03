@@ -40,27 +40,11 @@ export const WelcomeScreen = ({
     openModal,
 }: WelcomeScreenProps) => {
     return (
-        <div style={{
-            height: '400px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '2em',
-            textAlign: 'center'
-        }}>
+        <div className='h-96 flex flex-col justify-center items-center gap-8 text-center'>
             <div>
                 <Header variant='h1'>What would you like to do?</Header>
             </div>
-            <div style={{
-                display: 'flex',
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: '1em',
-                textAlign: 'center'
-            }}>
+            <div className='flex flex-row flex-wrap justify-center items-center gap-4 text-center'>
                 <ButtonBadge
                     text='Start Chatting'
                     icon={faMessage}
@@ -68,6 +52,7 @@ export const WelcomeScreen = ({
                         navigate(`/ai-assistant/${uuidv4()}`);
                         modelSelectRef?.current?.focus();
                     }}
+                    show={true}
                 />
 
                 <ButtonBadge
@@ -96,6 +81,7 @@ export const WelcomeScreen = ({
                     text='Summarize a Doc'
                     icon={faFileLines}
                     onClick={() => openModal('documentSummarization')}
+                    show={true}
                 />
 
                 <ButtonBadge

@@ -63,11 +63,11 @@ def test_pipeline_delete_success():
     job = make_job()
     doc = make_doc()
 
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), patch(
-        "repository.pipeline_delete_documents.remove_document_from_vectorstore"
-    ) as mock_remove, patch.object(pdd.rag_document_repository, "delete_by_id") as mock_delete, patch.object(
-        pdd.ingestion_job_repository, "update_status"
-    ) as mock_update:
+    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), \
+         patch.object(pdd.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
+         patch("repository.pipeline_delete_documents.remove_document_from_vectorstore") as mock_remove, \
+         patch.object(pdd.rag_document_repository, "delete_by_id") as mock_delete, \
+         patch.object(pdd.ingestion_job_repository, "update_status") as mock_update:
 
         pdd.pipeline_delete(job)
 
@@ -115,10 +115,10 @@ def test_pipeline_delete_vectorstore_exception():
     job = make_job()
     doc = make_doc()
 
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), patch(
-        "repository.pipeline_delete_documents.remove_document_from_vectorstore",
-        side_effect=Exception("Vector store error"),
-    ), patch.object(pdd.ingestion_job_repository, "update_status") as mock_update:
+    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), \
+         patch.object(pdd.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
+         patch("repository.pipeline_delete_documents.remove_document_from_vectorstore", side_effect=Exception("Vector store error")), \
+         patch.object(pdd.ingestion_job_repository, "update_status") as mock_update:
 
         with pytest.raises(Exception, match="Failed to delete document: Vector store error"):
             pdd.pipeline_delete(job)

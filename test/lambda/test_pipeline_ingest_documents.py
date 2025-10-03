@@ -63,17 +63,14 @@ def test_pipeline_ingest_success():
 
     job = make_job()
     make_doc()
-    with patch("repository.pipeline_ingest_documents.generate_chunks", return_value=[MagicMock()]), patch(
-        "repository.pipeline_ingest_documents.prepare_chunks", return_value=(["text"], [{}])
-    ), patch(
-        "repository.pipeline_ingest_documents.store_chunks_in_vectorstore", return_value=["chunk1", "chunk2"]
-    ), patch.object(
-        pid.rag_document_repository, "find_by_source", return_value=[]
-    ), patch.object(
-        pid.rag_document_repository, "save"
-    ), patch.object(
-        pid.ingestion_job_repository, "save"
-    ):
+    with patch("repository.pipeline_ingest_documents.generate_chunks", return_value=[MagicMock()]), \
+         patch("repository.pipeline_ingest_documents.prepare_chunks", return_value=(["text"], [{}])), \
+         patch("repository.pipeline_ingest_documents.store_chunks_in_vectorstore", return_value=["chunk1", "chunk2"]), \
+         patch.object(pid.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
+         patch.object(pid.rag_document_repository, "find_by_source", return_value=[]), \
+         patch.object(pid.rag_document_repository, "save"), \
+         patch.object(pid.ingestion_job_repository, "save"), \
+         patch.object(pid.ingestion_job_repository, "update_status"):
         pid.pipeline_ingest(job)
 
 
@@ -81,9 +78,9 @@ def test_pipeline_ingest_exception():
     import repository.pipeline_ingest_documents as pid
 
     job = make_job()
-    with patch("repository.pipeline_ingest_documents.generate_chunks", side_effect=Exception("fail")), patch.object(
-        pid.ingestion_job_repository, "update_status"
-    ) as mock_update:
+    with patch("repository.pipeline_ingest_documents.generate_chunks", side_effect=Exception("fail")), \
+         patch.object(pid.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
+         patch.object(pid.ingestion_job_repository, "update_status") as mock_update:
         with pytest.raises(Exception, match="Failed to process document: fail"):
             pid.pipeline_ingest(job)
         mock_update.assert_called_with(job, IngestionStatus.INGESTION_FAILED)

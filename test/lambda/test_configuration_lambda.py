@@ -39,69 +39,6 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["CONFIG_TABLE_NAME"] = "config-table"
 
-# Create a real retry config
-retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-
-
-def mock_api_wrapper(func):
-    """Mock API wrapper that handles both success and error cases for testing."""
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            result = func(*args, **kwargs)
-            if isinstance(result, dict) and "statusCode" in result:
-                return result
-            return {
-                "statusCode": 200,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps(result, default=str),
-            }
-        except ValueError as e:
-            error_msg = str(e)
-            status_code = 400
-            if "not found" in error_msg.lower():
-                status_code = 404
-
-            return {
-                "statusCode": status_code,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": error_msg}),
-            }
-        except Exception as e:
-            logging.error(f"Error in {func.__name__}: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
-            }
-
-    return wrapper
-
-
-# Create mock modules
-mock_common = MagicMock()
-mock_common.retry_config = retry_config
-mock_common.api_wrapper = mock_api_wrapper
-
-# Create mock create_env_variables
-mock_create_env = MagicMock()
-
-# First, patch sys.modules
-patch.dict(
-    "sys.modules",
-    {
-        "create_env_variables": mock_create_env,
-    },
-).start()
-
-# Then patch the specific functions
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
-
-# Now import the lambda functions
-from configuration.lambda_functions import get_configuration, update_configuration
-
 
 @pytest.fixture(scope="function")
 def dynamodb():
@@ -167,8 +104,70 @@ def sample_config_items():
     ]
 
 
-def test_get_configuration_system(config_table, sample_config_items, lambda_context):
+@pytest.fixture
+def mock_configuration_common():
+    """Mock common functions for configuration tests."""
+    retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
+    
+    def mock_api_wrapper(func):
+        """Mock API wrapper that handles both success and error cases for testing."""
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                result = func(*args, **kwargs)
+                if isinstance(result, dict) and "statusCode" in result:
+                    return result
+                return {
+                    "statusCode": 200,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps(result, default=str),
+                }
+            except ValueError as e:
+                error_msg = str(e)
+                status_code = 400
+                if "not found" in error_msg.lower():
+                    status_code = 404
+
+                return {
+                    "statusCode": status_code,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps({"error": error_msg}),
+                }
+            except Exception as e:
+                logging.error(f"Error in {func.__name__}: {str(e)}")
+                return {
+                    "statusCode": 500,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps({"error": str(e)}),
+                }
+        return wrapper
+
+    with patch("utilities.common_functions.retry_config", retry_config), \
+         patch("utilities.common_functions.api_wrapper", mock_api_wrapper):
+        yield
+
+
+@pytest.fixture
+def mock_create_env_variables():
+    """Mock create_env_variables module."""
+    with patch.dict("sys.modules", {"create_env_variables": MagicMock()}):
+        yield
+
+
+@pytest.fixture
+def configuration_functions(mock_configuration_common, mock_create_env_variables):
+    """Import configuration functions with mocked dependencies."""
+    from configuration.lambda_functions import get_configuration, update_configuration
+    return {
+        'get_configuration': get_configuration,
+        'update_configuration': update_configuration,
+    }
+
+
+def test_get_configuration_system(configuration_functions, config_table, sample_config_items, lambda_context):
     """Test getting system configuration."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Add items to the table
     for item in sample_config_items:
         config_table.put_item(Item=item)
@@ -187,8 +186,10 @@ def test_get_configuration_system(config_table, sample_config_items, lambda_cont
     assert any(item["configKey"] == "max_tokens" for item in body)
 
 
-def test_get_configuration_user(config_table, sample_config_items, lambda_context):
+def test_get_configuration_user(configuration_functions, config_table, sample_config_items, lambda_context):
     """Test getting user configuration."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Add items to the table
     for item in sample_config_items:
         config_table.put_item(Item=item)
@@ -207,8 +208,10 @@ def test_get_configuration_user(config_table, sample_config_items, lambda_contex
     assert body[0]["value"] == "dark"
 
 
-def test_get_configuration_empty(config_table, lambda_context):
+def test_get_configuration_empty(configuration_functions, config_table, lambda_context):
     """Test getting configuration with no results."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event
     event = {"queryStringParameters": {"configScope": "nonexistent"}}
 
@@ -221,8 +224,10 @@ def test_get_configuration_empty(config_table, lambda_context):
     assert body == []
 
 
-def test_get_configuration_missing_param(lambda_context):
+def test_get_configuration_missing_param(configuration_functions, lambda_context):
     """Test getting configuration with missing parameter."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event with missing configScope
     event = {"queryStringParameters": {}}
 
@@ -235,8 +240,10 @@ def test_get_configuration_missing_param(lambda_context):
     assert "error" in body
 
 
-def test_get_configuration_resource_not_found(config_table, lambda_context):
+def test_get_configuration_resource_not_found(configuration_functions, config_table, lambda_context):
     """Test handling ResourceNotFoundException."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 
@@ -257,8 +264,10 @@ def test_get_configuration_resource_not_found(config_table, lambda_context):
         assert body == []
 
 
-def test_get_configuration_client_error(config_table, lambda_context):
+def test_get_configuration_client_error(configuration_functions, config_table, lambda_context):
     """Test handling other ClientError."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 
@@ -279,8 +288,10 @@ def test_get_configuration_client_error(config_table, lambda_context):
         assert body == []
 
 
-def test_get_configuration_none_query_string_parameters(lambda_context):
+def test_get_configuration_none_query_string_parameters(configuration_functions, lambda_context):
     """Test getting configuration with None queryStringParameters."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event with None queryStringParameters
     event = {
         # queryStringParameters is None
@@ -295,8 +306,10 @@ def test_get_configuration_none_query_string_parameters(lambda_context):
     assert "error" in body
 
 
-def test_get_configuration_resource_not_found_specific(config_table, lambda_context):
+def test_get_configuration_resource_not_found_specific(configuration_functions, config_table, lambda_context):
     """Test specifically the ResourceNotFoundException branch."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 
@@ -321,8 +334,10 @@ def test_get_configuration_resource_not_found_specific(config_table, lambda_cont
             mock_logger.warning.assert_called_once_with("No record found with session id: system")
 
 
-def test_update_configuration(config_table, lambda_context):
+def test_update_configuration(configuration_functions, config_table, lambda_context):
     """Test updating configuration."""
+    update_configuration = configuration_functions['update_configuration']
+    
     # Create test event
     test_config = {"configScope": "system", "configKey": "new_setting", "value": "new_value"}
 
@@ -345,8 +360,10 @@ def test_update_configuration(config_table, lambda_context):
     assert "created_at" in item
 
 
-def test_update_configuration_with_decimal(config_table, lambda_context):
+def test_update_configuration_with_decimal(configuration_functions, config_table, lambda_context):
     """Test updating configuration with a decimal value."""
+    update_configuration = configuration_functions['update_configuration']
+    
     # Create test event with a decimal value
     test_config = {"configScope": "system", "configKey": "token_limit", "value": 1000.5}
 
@@ -366,8 +383,10 @@ def test_update_configuration_with_decimal(config_table, lambda_context):
     assert item["value"] == Decimal("1000.5")
 
 
-def test_update_configuration_invalid_json(lambda_context):
+def test_update_configuration_invalid_json(configuration_functions, lambda_context):
     """Test updating configuration with invalid JSON."""
+    update_configuration = configuration_functions['update_configuration']
+    
     # Create test event with invalid JSON
     event = {"body": "invalid-json"}
 
@@ -381,8 +400,10 @@ def test_update_configuration_invalid_json(lambda_context):
     assert "Expecting value" in str(body["error"])
 
 
-def test_update_configuration_client_error(lambda_context):
+def test_update_configuration_client_error(configuration_functions, lambda_context):
     """Test handling ClientError during update."""
+    update_configuration = configuration_functions['update_configuration']
+    
     # Create test event
     test_config = {"configScope": "system", "configKey": "new_setting", "value": "new_value"}
 
@@ -404,8 +425,10 @@ def test_update_configuration_client_error(lambda_context):
         assert response["body"] == "null"
 
 
-def test_update_configuration_complex_data(config_table, lambda_context):
+def test_update_configuration_complex_data(configuration_functions, config_table, lambda_context):
     """Test updating configuration with complex nested data."""
+    update_configuration = configuration_functions['update_configuration']
+    
     # Create test event with complex nested data
     test_config = {
         "configScope": "system",
@@ -435,8 +458,10 @@ def test_update_configuration_complex_data(config_table, lambda_context):
     assert "created_at" in item
 
 
-def test_get_configuration_other_client_error_specific(config_table, lambda_context):
+def test_get_configuration_other_client_error_specific(configuration_functions, config_table, lambda_context):
     """Test specifically the other ClientError branch in get_configuration."""
+    get_configuration = configuration_functions['get_configuration']
+    
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 

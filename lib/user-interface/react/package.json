@@ -76,7 +76,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.3",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.18",
+    "eslint-plugin-react-refresh": "^0.4.23",
     "linkify-it": "^5.0.0",
     "markdown-it": "^14.1.0",
     "postcss": "^8.5.1",

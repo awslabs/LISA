@@ -368,7 +368,7 @@ export class ECSCluster extends Construct {
 
         // Create CloudWatch log group with explicit retention
         const logGroup = new LogGroup(this, createCdkId([config.deploymentPrefix, identifier, 'LogGroup']), {
-            logGroupName: `/aws/ecs/${config.deploymentName}-${identifier}`,
+            logGroupName: `/aws/ecs/${config.deploymentName}-${config.deploymentStage}-${identifier}`,
             retention: RetentionDays.ONE_WEEK,
             removalPolicy: config.removalPolicy
         });

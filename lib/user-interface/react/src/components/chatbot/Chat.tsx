@@ -617,7 +617,8 @@ export default function Chat ({ sessionId }) {
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
                 setMemory={setMemory}
-            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, fileContext, userPrompt, selectedModel, chatConfiguration])) }
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest, setMemory])) }
 
             {useMemo(() => (<SessionConfiguration
                 chatConfiguration={chatConfiguration}
@@ -630,13 +631,14 @@ export default function Chat ({ sessionId }) {
                 session={session}
                 updateSession={updateSession}
                 ragConfig={ragConfig}
-            />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [chatConfiguration, selectedModel, isRunning, config, session, ragConfig]))}
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig]))}
 
             {useMemo(() => (<RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}
-            />), [ragConfig, modals.ragUpload])}
+            />), [ragConfig, modals.ragUpload, openModal, closeModal])}
 
             {useMemo(() => (<ContextUploadModal
                 showContextUploadModal={modals.contextUpload}
@@ -644,7 +646,8 @@ export default function Chat ({ sessionId }) {
                 fileContext={fileContext}
                 setFileContext={setFileContext}
                 selectedModel={selectedModel}
-            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [fileContext, selectedModel, modals.contextUpload]))}
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, selectedModel]))}
 
             {useMemo(() => (<PromptTemplateModal
                 session={session}
@@ -656,7 +659,8 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
-            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [session, modals.promptTemplate, chatConfiguration, promptTemplateKey, config, filterPromptTemplateType]))}
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType]))}
 
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
@@ -703,6 +707,7 @@ export default function Chat ({ sessionId }) {
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
                     />
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
                     )), [session.history, chatConfiguration])}
 
                     {(isRunning || callingToolName) && !isStreaming && <Message

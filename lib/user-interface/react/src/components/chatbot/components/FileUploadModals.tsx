@@ -206,7 +206,7 @@ export type RagUploadProps = {
 };
 
 
-const RagUploadModal = ({
+export const RagUploadModal = ({
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,

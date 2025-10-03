@@ -131,6 +131,7 @@ export function McpServerDetails () {
         tools,          // Available tools from MCP server
     } = useMcp({
         url: data?.url ?? ' ',
+        callbackUrl: new URL('/#/oauth/callback', window.location.origin).toString(),
         clientName: data?.name,
         clientConfig: data?.clientConfig ?? undefined,
         customHeaders: data?.customHeaders ?? undefined,

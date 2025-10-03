@@ -74,7 +74,7 @@ export const SessionConfiguration = ({
         setChatConfiguration(updatedConfiguration);
 
         // Immediately persist the configuration to the session if available
-        if (session && updateSession) {
+        if (session && updateSession && session.history.length > 0) {
             updateSession({
                 ...session,
                 configuration: {

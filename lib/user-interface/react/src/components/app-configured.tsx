@@ -16,13 +16,34 @@
 
 // es-lint-disable
 import { AuthProvider, useAuth } from 'react-oidc-context';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import App from '../App';
+import { onMcpAuthorization } from 'use-mcp';
+import { useEffect, useState } from 'react';
+import Spinner from '@cloudscape-design/components/spinner';
 
 import { OidcConfig } from '../config/oidc.config';
 import { User, UserProfile } from 'oidc-client-ts';
 import { purgeStore, useAppDispatch } from '../config/store';
 import { updateUserState } from '../shared/reducers/user.reducer';
-import { useEffect, useState } from 'react';
+
+function OAuthCallback () {
+    useEffect(() => {
+        // Handle MCP OAuth authorization
+        try {
+            onMcpAuthorization();
+        } catch (error) {
+            console.error('OAuth callback error:', error);
+        }
+    }, []);
+
+    return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <Spinner size='large' />
+            <span style={{ marginLeft: '10px' }}>Processing OAuth callback...</span>
+        </div>
+    );
+}
 
 function AppConfigured () {
     const dispatch = useAppDispatch();
@@ -70,21 +91,38 @@ function AppConfigured () {
         return window.env.USER_GROUP ? userGroups.includes(window.env.USER_GROUP) : false;
     };
 
+    const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
+
+    // Check if we're on an OAuth callback URL (without hash)
+    const isOAuthCallback = window.location.pathname === '/oauth/callback';
+
+    if (isOAuthCallback) {
+        return <OAuthCallback />;
+    }
+
     return (
-        <AuthProvider
-            {...OidcConfig}
-            onSigninCallback={async (user: User | void) => {
-                if ((window.env.USER_GROUP && user && isUser(getGroups(user.profile))) || !window.env.USER_GROUP){
-                    window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
-                    setOidcUser(user);
-                } else  {
-                    await purgeStore();
-                    await auth.signoutSilent();
-                }
-            }}
-        >
-            <App />
-        </AuthProvider>
+        <HashRouter basename={baseHref}>
+            <Routes>
+                <Route path='/oauth/callback' element={<OAuthCallback />} />
+                <Route path='oauth/callback' element={<OAuthCallback />} />
+                <Route path='*' element={
+                    <AuthProvider
+                        {...OidcConfig}
+                        onSigninCallback={async (user: User | void) => {
+                            if ((window.env.USER_GROUP && user && isUser(getGroups(user.profile))) || !window.env.USER_GROUP){
+                                window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
+                                setOidcUser(user);
+                            } else  {
+                                await purgeStore();
+                                await auth.signoutSilent();
+                            }
+                        }}
+                    >
+                        <App />
+                    </AuthProvider>
+                } />
+            </Routes>
+        </HashRouter>
     );
 }
 

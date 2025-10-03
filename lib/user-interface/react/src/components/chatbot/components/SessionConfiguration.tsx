@@ -48,7 +48,7 @@ export type SessionConfigurationProps = {
     ragConfig?: any;
 };
 
-export default function SessionConfiguration ({
+export const SessionConfiguration = ({
     title,
     chatConfiguration,
     setChatConfiguration,
@@ -61,7 +61,7 @@ export default function SessionConfiguration ({
     session,
     updateSession,
     ragConfig
-}: SessionConfigurationProps) {
+}: SessionConfigurationProps) => {
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
@@ -487,4 +487,6 @@ export default function SessionConfiguration ({
             </SpaceBetween>
         </Modal>
     );
-}
+};
+
+export default SessionConfiguration;

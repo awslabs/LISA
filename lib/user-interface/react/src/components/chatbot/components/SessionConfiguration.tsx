@@ -32,7 +32,6 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatSession } from '@/components/types';
-import React from 'react';
 
 export type SessionConfigurationProps = {
     title?: string;

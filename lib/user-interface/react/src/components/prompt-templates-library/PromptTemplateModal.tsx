@@ -25,7 +25,7 @@ import {
     SpaceBetween,
     Textarea,
 } from '@cloudscape-design/components';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_PROMPT_TEMPLATE, IChatConfiguration } from '../../shared/model/chat.configurations.model';
 import FormField from '@cloudscape-design/components/form-field';
 import { PromptTemplateType, useListPromptTemplatesQuery, promptTemplateApi } from '../../shared/reducers/prompt-templates.reducer';

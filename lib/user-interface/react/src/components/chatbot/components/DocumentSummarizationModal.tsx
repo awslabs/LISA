@@ -37,7 +37,6 @@ import FormField from '@cloudscape-design/components/form-field';
 import { LisaChatMessageHistory } from '../../adapters/lisa-chat-history';
 import Toggle from '@cloudscape-design/components/toggle';
 import { ChatMemory } from '@/shared/util/chat-memory';
-import React from 'react';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;

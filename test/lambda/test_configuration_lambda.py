@@ -108,9 +108,10 @@ def sample_config_items():
 def mock_configuration_common():
     """Mock common functions for configuration tests."""
     retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-    
+
     def mock_api_wrapper(func):
         """Mock API wrapper that handles both success and error cases for testing."""
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
@@ -140,10 +141,12 @@ def mock_configuration_common():
                     "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                     "body": json.dumps({"error": str(e)}),
                 }
+
         return wrapper
 
-    with patch("utilities.common_functions.retry_config", retry_config), \
-         patch("utilities.common_functions.api_wrapper", mock_api_wrapper):
+    with patch("utilities.common_functions.retry_config", retry_config), patch(
+        "utilities.common_functions.api_wrapper", mock_api_wrapper
+    ):
         yield
 
 
@@ -158,16 +161,17 @@ def mock_create_env_variables():
 def configuration_functions(mock_configuration_common, mock_create_env_variables):
     """Import configuration functions with mocked dependencies."""
     from configuration.lambda_functions import get_configuration, update_configuration
+
     return {
-        'get_configuration': get_configuration,
-        'update_configuration': update_configuration,
+        "get_configuration": get_configuration,
+        "update_configuration": update_configuration,
     }
 
 
 def test_get_configuration_system(configuration_functions, config_table, sample_config_items, lambda_context):
     """Test getting system configuration."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Add items to the table
     for item in sample_config_items:
         config_table.put_item(Item=item)
@@ -188,8 +192,8 @@ def test_get_configuration_system(configuration_functions, config_table, sample_
 
 def test_get_configuration_user(configuration_functions, config_table, sample_config_items, lambda_context):
     """Test getting user configuration."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Add items to the table
     for item in sample_config_items:
         config_table.put_item(Item=item)
@@ -210,8 +214,8 @@ def test_get_configuration_user(configuration_functions, config_table, sample_co
 
 def test_get_configuration_empty(configuration_functions, config_table, lambda_context):
     """Test getting configuration with no results."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event
     event = {"queryStringParameters": {"configScope": "nonexistent"}}
 
@@ -226,8 +230,8 @@ def test_get_configuration_empty(configuration_functions, config_table, lambda_c
 
 def test_get_configuration_missing_param(configuration_functions, lambda_context):
     """Test getting configuration with missing parameter."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event with missing configScope
     event = {"queryStringParameters": {}}
 
@@ -242,8 +246,8 @@ def test_get_configuration_missing_param(configuration_functions, lambda_context
 
 def test_get_configuration_resource_not_found(configuration_functions, config_table, lambda_context):
     """Test handling ResourceNotFoundException."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 
@@ -266,8 +270,8 @@ def test_get_configuration_resource_not_found(configuration_functions, config_ta
 
 def test_get_configuration_client_error(configuration_functions, config_table, lambda_context):
     """Test handling other ClientError."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 
@@ -290,8 +294,8 @@ def test_get_configuration_client_error(configuration_functions, config_table, l
 
 def test_get_configuration_none_query_string_parameters(configuration_functions, lambda_context):
     """Test getting configuration with None queryStringParameters."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event with None queryStringParameters
     event = {
         # queryStringParameters is None
@@ -308,8 +312,8 @@ def test_get_configuration_none_query_string_parameters(configuration_functions,
 
 def test_get_configuration_resource_not_found_specific(configuration_functions, config_table, lambda_context):
     """Test specifically the ResourceNotFoundException branch."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 
@@ -336,8 +340,8 @@ def test_get_configuration_resource_not_found_specific(configuration_functions, 
 
 def test_update_configuration(configuration_functions, config_table, lambda_context):
     """Test updating configuration."""
-    update_configuration = configuration_functions['update_configuration']
-    
+    update_configuration = configuration_functions["update_configuration"]
+
     # Create test event
     test_config = {"configScope": "system", "configKey": "new_setting", "value": "new_value"}
 
@@ -362,8 +366,8 @@ def test_update_configuration(configuration_functions, config_table, lambda_cont
 
 def test_update_configuration_with_decimal(configuration_functions, config_table, lambda_context):
     """Test updating configuration with a decimal value."""
-    update_configuration = configuration_functions['update_configuration']
-    
+    update_configuration = configuration_functions["update_configuration"]
+
     # Create test event with a decimal value
     test_config = {"configScope": "system", "configKey": "token_limit", "value": 1000.5}
 
@@ -385,8 +389,8 @@ def test_update_configuration_with_decimal(configuration_functions, config_table
 
 def test_update_configuration_invalid_json(configuration_functions, lambda_context):
     """Test updating configuration with invalid JSON."""
-    update_configuration = configuration_functions['update_configuration']
-    
+    update_configuration = configuration_functions["update_configuration"]
+
     # Create test event with invalid JSON
     event = {"body": "invalid-json"}
 
@@ -402,8 +406,8 @@ def test_update_configuration_invalid_json(configuration_functions, lambda_conte
 
 def test_update_configuration_client_error(configuration_functions, lambda_context):
     """Test handling ClientError during update."""
-    update_configuration = configuration_functions['update_configuration']
-    
+    update_configuration = configuration_functions["update_configuration"]
+
     # Create test event
     test_config = {"configScope": "system", "configKey": "new_setting", "value": "new_value"}
 
@@ -427,8 +431,8 @@ def test_update_configuration_client_error(configuration_functions, lambda_conte
 
 def test_update_configuration_complex_data(configuration_functions, config_table, lambda_context):
     """Test updating configuration with complex nested data."""
-    update_configuration = configuration_functions['update_configuration']
-    
+    update_configuration = configuration_functions["update_configuration"]
+
     # Create test event with complex nested data
     test_config = {
         "configScope": "system",
@@ -460,8 +464,8 @@ def test_update_configuration_complex_data(configuration_functions, config_table
 
 def test_get_configuration_other_client_error_specific(configuration_functions, config_table, lambda_context):
     """Test specifically the other ClientError branch in get_configuration."""
-    get_configuration = configuration_functions['get_configuration']
-    
+    get_configuration = configuration_functions["get_configuration"]
+
     # Create test event
     event = {"queryStringParameters": {"configScope": "system"}}
 

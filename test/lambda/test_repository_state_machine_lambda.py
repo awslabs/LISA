@@ -52,18 +52,18 @@ def mock_state_machine_common(aws_env_vars):
         "RAG_SUB_DOCUMENT_TABLE": "rag-sub-document-table",
         "LISA_RAG_VECTOR_STORE_TABLE": "vector-store-table",
     }
-    
+
     with patch.dict(os.environ, additional_env_vars, clear=False):
         # Create a real retry config
         retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-        
+
         # Mock modules
         mock_common = MagicMock()
         mock_common.retry_config = retry_config
-        
+
         mock_vector_store_repo = MagicMock()
         mock_rag_document_repo = MagicMock()
-        
+
         # Patch sys.modules to provide mock modules needed for imports
         with patch.dict(
             "sys.modules",
@@ -315,21 +315,21 @@ class TestListModifiedObjects:
     def test_normalize_prefix_empty(self, mock_state_machine_common):
         """Test normalize_prefix with empty prefix - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import normalize_prefix
-        
+
         result = normalize_prefix("")
         assert result == ""
 
     def test_normalize_prefix_none(self, mock_state_machine_common):
         """Test normalize_prefix with None prefix - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import normalize_prefix
-        
+
         result = normalize_prefix(None)
         assert result == ""
 
     def test_normalize_prefix_with_slashes(self, mock_state_machine_common):
         """Test normalize_prefix with various slash patterns - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import normalize_prefix
-        
+
         assert normalize_prefix("/test/") == "test/"
         assert normalize_prefix("test/") == "test/"
         assert normalize_prefix("/test") == "test/"
@@ -339,14 +339,14 @@ class TestListModifiedObjects:
     def test_validate_bucket_prefix_valid(self, mock_state_machine_common):
         """Test validate_bucket_prefix with valid parameters - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import validate_bucket_prefix
-        
+
         result = validate_bucket_prefix("test-bucket", "test-prefix")
         assert result is True
 
     def test_validate_bucket_prefix_invalid_bucket(self, mock_state_machine_common):
         """Test validate_bucket_prefix with invalid bucket - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import validate_bucket_prefix
-        
+
         # Test that function raises ValidationError for invalid buckets
         try:
             validate_bucket_prefix("", "test-prefix")
@@ -369,7 +369,7 @@ class TestListModifiedObjects:
     def test_validate_bucket_prefix_invalid_prefix(self, mock_state_machine_common):
         """Test validate_bucket_prefix with invalid prefix - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import validate_bucket_prefix
-        
+
         # Test that function raises ValidationError for invalid prefixes
         try:
             validate_bucket_prefix("test-bucket", None)
@@ -386,7 +386,7 @@ class TestListModifiedObjects:
     def test_validate_bucket_prefix_path_traversal(self, mock_state_machine_common):
         """Test validate_bucket_prefix with path traversal attempt - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import validate_bucket_prefix
-        
+
         # Test that function raises ValidationError for path traversal
         try:
             validate_bucket_prefix("test-bucket", "test/../malicious")
@@ -397,7 +397,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_success(self, mock_state_machine_common, lambda_context):
         """Test successful listing of modified objects - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {
             "Contents": [
                 {
@@ -410,9 +410,9 @@ class TestListModifiedObjects:
                 },
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -431,7 +431,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_with_nested_bucket(self, mock_state_machine_common, lambda_context):
         """Test listing with nested bucket structure - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {
             "Contents": [
                 {
@@ -440,9 +440,9 @@ class TestListModifiedObjects:
                 }
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -457,7 +457,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_with_object_key(self, mock_state_machine_common, lambda_context):
         """Test listing with object key as prefix - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {
             "Contents": [
                 {
@@ -466,9 +466,9 @@ class TestListModifiedObjects:
                 }
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -483,10 +483,10 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_no_contents(self, mock_state_machine_common, lambda_context):
         """Test listing with no contents - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {}
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -501,7 +501,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_old_files_filtered(self, mock_state_machine_common, lambda_context):
         """Test filtering of old files - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {
             "Contents": [
                 {
@@ -510,9 +510,9 @@ class TestListModifiedObjects:
                 }
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -527,9 +527,9 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_validation_error(self, mock_state_machine_common, lambda_context):
         """Test validation error handling - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         s3_client_mock = self._create_s3_client_mock()
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -544,9 +544,9 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_s3_error(self, mock_state_machine_common, lambda_context):
         """Test S3 error handling - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_side_effect=Exception("S3 error"))
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -565,7 +565,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_multiple_pages(self, mock_state_machine_common, lambda_context):
         """Test handling multiple pages of results - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page1 = {
             "Contents": [
                 {
@@ -582,9 +582,9 @@ class TestListModifiedObjects:
                 }
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page1, mock_page2])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -599,7 +599,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_edge_case_timestamps(self, mock_state_machine_common, lambda_context):
         """Test edge case timestamps - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         exactly_24_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         mock_page = {
             "Contents": [
@@ -609,9 +609,9 @@ class TestListModifiedObjects:
                 }
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -626,7 +626,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_mixed_timestamps(self, mock_state_machine_common, lambda_context):
         """Test mixed timestamps - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         now = datetime.now(timezone.utc)
         mock_page = {
             "Contents": [
@@ -644,9 +644,9 @@ class TestListModifiedObjects:
                 },
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -665,7 +665,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_debug_logging(self, mock_state_machine_common, lambda_context):
         """Test debug logging - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {
             "Contents": [
                 {
@@ -674,9 +674,9 @@ class TestListModifiedObjects:
                 }
             ]
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {
@@ -693,9 +693,9 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_empty_event(self, mock_state_machine_common, lambda_context):
         """Test empty event handling - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         s3_client_mock = self._create_s3_client_mock()
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {}
             result = handle_list_modified_objects(event, lambda_context)
@@ -705,9 +705,9 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_missing_detail(self, mock_state_machine_common, lambda_context):
         """Test missing detail field - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         s3_client_mock = self._create_s3_client_mock()
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {"some_other_field": "value"}
             result = handle_list_modified_objects(event, lambda_context)
@@ -717,7 +717,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_complex_prefix_normalization(self, mock_state_machine_common, lambda_context):
         """Test complex prefix normalization - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page = {
             "Contents": [
                 {
@@ -735,7 +735,7 @@ class TestListModifiedObjects:
         ]
         for input_prefix, expected_prefix in test_cases:
             s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page])
-            
+
             with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
                 event = {
                     "detail": {
@@ -749,7 +749,7 @@ class TestListModifiedObjects:
     def test_handle_list_modified_objects_pagination_handling(self, mock_state_machine_common, lambda_context):
         """Test pagination handling - REFACTORED VERSION."""
         from repository.state_machine.list_modified_objects import handle_list_modified_objects
-        
+
         mock_page1 = {
             "Contents": [
                 {
@@ -767,9 +767,9 @@ class TestListModifiedObjects:
                 }
             ],
         }
-        
+
         s3_client_mock = self._create_s3_client_mock(paginator_return_value=[mock_page1, mock_page2])
-        
+
         with patch("repository.state_machine.list_modified_objects.boto3.client", return_value=s3_client_mock):
             event = {
                 "detail": {

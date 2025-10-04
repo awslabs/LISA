@@ -469,20 +469,21 @@ def list_jobs(event: dict, context: dict) -> dict[str, Any]:
     """
     import json
     import urllib.parse
+
     from utilities.auth import get_user_context
-    
+
     # Extract path parameters
     path_params = event.get("pathParameters", {}) or {}
     repository_id = path_params.get("repositoryId")
-    
+
     if not repository_id:
         raise ValidationError("repositoryId is required")
-    
+
     # Extract query parameters
     query_string_params = event.get("queryStringParameters", {}) or {}
     page_size = int(query_string_params.get("pageSize", "10"))
     time_limit_hours = int(query_string_params.get("timeLimit", "720"))  # Default 30 days
-    
+
     # Handle lastEvaluatedKey
     last_evaluated_key = None
     if "lastEvaluatedKey" in query_string_params:
@@ -491,14 +492,14 @@ def list_jobs(event: dict, context: dict) -> dict[str, Any]:
             last_evaluated_key = json.loads(decoded_key)
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Invalid lastEvaluatedKey format: {e}")
-    
+
     # Get user context
     username, is_admin_user = get_user_context(event)
-    
+
     # Ensure repository access
     repository = vs_repo.find_repository_by_id(repository_id)
     _ensure_repository_access(event, repository)
-    
+
     # List jobs using the ingestion job repository
     jobs, returned_last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
         repository_id=repository_id,
@@ -506,21 +507,21 @@ def list_jobs(event: dict, context: dict) -> dict[str, Any]:
         is_admin=is_admin_user,
         time_limit_hours=time_limit_hours,
         page_size=page_size,
-        last_evaluated_key=last_evaluated_key
+        last_evaluated_key=last_evaluated_key,
     )
-    
+
     # Convert jobs to dict format
     job_dicts = [job.model_dump() for job in jobs]
-    
+
     # Determine pagination state
     has_next_page = returned_last_evaluated_key is not None
     has_previous_page = "lastEvaluatedKey" in query_string_params
-    
+
     return {
         "jobs": job_dicts,
         "lastEvaluatedKey": returned_last_evaluated_key,
         "hasNextPage": has_next_page,
-        "hasPreviousPage": has_previous_page
+        "hasPreviousPage": has_previous_page,
     }
 
 

@@ -32,6 +32,12 @@ from models.domain_objects import (
     IngestionType,
 )
 
+# Set required environment variables before importing repository modules
+os.environ["AWS_REGION"] = "us-east-1"
+os.environ["RAG_DOCUMENT_TABLE"] = "test-doc-table"
+os.environ["RAG_SUB_DOCUMENT_TABLE"] = "test-subdoc-table"
+os.environ["LISA_INGESTION_JOB_TABLE_NAME"] = "test-ingestion-job-table"
+
 
 @pytest.fixture
 def sample_ingestion_job():

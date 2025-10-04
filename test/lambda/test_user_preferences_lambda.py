@@ -1,21 +1,37 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """Test module for user preferences lambda functions - refactored version using fixture-based mocking."""
 
 import json
 import os
-import pytest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-from moto import mock_aws
+
 import boto3
+import pytest
 from botocore.config import Config
+from moto import mock_aws
 
 
 @pytest.fixture
 def mock_user_preferences_common():
     """Common mocks for user preferences lambda functions."""
-    
+
     def mock_api_wrapper(func):
         """Mock API wrapper that handles both success and error cases for testing."""
+
         def wrapper(event, context):
             try:
                 result = func(event, context)
@@ -46,6 +62,7 @@ def mock_user_preferences_common():
                     "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                     "body": json.dumps({"error": str(e)}),
                 }
+
         return wrapper
 
     # Set up environment variables
@@ -58,9 +75,9 @@ def mock_user_preferences_common():
         "AWS_REGION": "us-east-1",
         "USER_PREFERENCES_TABLE_NAME": "user-preferences-table",
     }
-    
+
     retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-    
+
     # Create mock UserPreferencesModel
     mock_user_preferences_model = MagicMock()
     mock_model_instance = MagicMock()
@@ -69,19 +86,21 @@ def mock_user_preferences_common():
         "preferences": {"theme": "dark", "notifications": True},
     }
     mock_user_preferences_model.return_value = mock_model_instance
-    
-    with patch.dict(os.environ, env_vars), \
-         patch("utilities.auth.get_username") as mock_get_username, \
-         patch("utilities.common_functions.retry_config", retry_config), \
-         patch("utilities.common_functions.api_wrapper", mock_api_wrapper), \
-         patch("utilities.common_functions.get_item") as mock_get_item, \
-         patch("user_preferences.models.UserPreferencesModel", mock_user_preferences_model), \
-         patch.dict("sys.modules", {"create_env_variables": MagicMock()}):
-        
+
+    with patch.dict(os.environ, env_vars), patch("utilities.auth.get_username") as mock_get_username, patch(
+        "utilities.common_functions.retry_config", retry_config
+    ), patch("utilities.common_functions.api_wrapper", mock_api_wrapper), patch(
+        "utilities.common_functions.get_item"
+    ) as mock_get_item, patch(
+        "user_preferences.models.UserPreferencesModel", mock_user_preferences_model
+    ), patch.dict(
+        "sys.modules", {"create_env_variables": MagicMock()}
+    ):
+
         # Set up default mock return values
         mock_get_username.return_value = "test-user"
         mock_get_item.return_value = None
-        
+
         yield {
             "get_username": mock_get_username,
             "get_item": mock_get_item,
@@ -96,7 +115,7 @@ def mock_user_preferences_common():
 def user_preferences_functions(mock_user_preferences_common):
     """Import user preferences lambda functions with mocked dependencies."""
     from user_preferences.lambda_functions import get, update
-    
+
     return {
         "get": get,
         "update": update,
@@ -144,9 +163,15 @@ def dynamodb_table():
 
 class TestGetUserPreferences:
     """Test class for getting user preferences."""
-    
-    def test_get_user_preferences_success(self, user_preferences_functions, mock_user_preferences_common,
-                                         dynamodb_table, sample_user_preferences, lambda_context):
+
+    def test_get_user_preferences_success(
+        self,
+        user_preferences_functions,
+        mock_user_preferences_common,
+        dynamodb_table,
+        sample_user_preferences,
+        lambda_context,
+    ):
         """Test successfully getting user preferences."""
         # Add sample preferences to table
         dynamodb_table.put_item(Item=sample_user_preferences)
@@ -164,8 +189,9 @@ class TestGetUserPreferences:
         assert body["preferences"]["theme"] == "dark"
         assert body["preferences"]["notifications"] is True
 
-    def test_get_user_preferences_not_found(self, user_preferences_functions, mock_user_preferences_common,
-                                           dynamodb_table, lambda_context):
+    def test_get_user_preferences_not_found(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test getting user preferences when none exist."""
         # Mock get_item to return None
         mock_user_preferences_common["get_item"].return_value = None
@@ -178,8 +204,9 @@ class TestGetUserPreferences:
         body = json.loads(response["body"])
         assert body is None
 
-    def test_get_user_preferences_unauthorized(self, user_preferences_functions, mock_user_preferences_common,
-                                              dynamodb_table, lambda_context):
+    def test_get_user_preferences_unauthorized(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test getting user preferences for unauthorized user."""
         # Mock get_item to return preferences for a different user
         other_user_preferences = {"user": "other-user", "preferences": {"theme": "light"}}
@@ -193,8 +220,9 @@ class TestGetUserPreferences:
         body = json.loads(response["body"])
         assert "Not authorized to get test-user's preferences" in body["error"]
 
-    def test_get_user_preferences_missing_claims(self, user_preferences_functions, mock_user_preferences_common,
-                                                lambda_context):
+    def test_get_user_preferences_missing_claims(
+        self, user_preferences_functions, mock_user_preferences_common, lambda_context
+    ):
         """Test getting user preferences with missing claims."""
         # Mock get_username to raise ValueError
         mock_user_preferences_common["get_username"].side_effect = ValueError("Missing username")
@@ -225,8 +253,9 @@ class TestGetUserPreferences:
             body = json.loads(response["body"])
             assert "error" in body
 
-    def test_get_user_preferences_complex_data(self, user_preferences_functions, mock_user_preferences_common,
-                                              dynamodb_table, lambda_context):
+    def test_get_user_preferences_complex_data(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test getting user preferences with complex nested data."""
         complex_preferences = {
             "user": "test-user",
@@ -250,8 +279,9 @@ class TestGetUserPreferences:
         assert body["preferences"]["notifications"]["email"] is True
         assert "feature1" in body["preferences"]["features"]
 
-    def test_get_user_preferences_case_sensitivity(self, user_preferences_functions, mock_user_preferences_common,
-                                                  dynamodb_table, lambda_context):
+    def test_get_user_preferences_case_sensitivity(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test that user preferences are case sensitive for user IDs."""
         # Mock get_item to return preferences for exact user match
         user_preferences = {"user": "Test-User", "preferences": {"theme": "dark"}}  # Different case
@@ -266,8 +296,9 @@ class TestGetUserPreferences:
         body = json.loads(response["body"])
         assert "Not authorized" in body["error"]
 
-    def test_get_user_preferences_empty_table(self, user_preferences_functions, mock_user_preferences_common,
-                                             dynamodb_table, lambda_context):
+    def test_get_user_preferences_empty_table(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test getting user preferences from an empty table."""
         # Mock get_item to return None (empty table)
         mock_user_preferences_common["get_item"].return_value = None
@@ -283,9 +314,10 @@ class TestGetUserPreferences:
 
 class TestUpdateUserPreferences:
     """Test class for updating user preferences."""
-    
-    def test_update_user_preferences_new_user(self, user_preferences_functions, mock_user_preferences_common,
-                                             dynamodb_table, lambda_context):
+
+    def test_update_user_preferences_new_user(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences for a new user (create new preferences)."""
         # Mock get_item to return None (no existing preferences)
         mock_user_preferences_common["get_item"].return_value = None
@@ -303,8 +335,14 @@ class TestUpdateUserPreferences:
         assert body["user"] == "test-user"
         assert body["preferences"]["theme"] == "dark"
 
-    def test_update_user_preferences_existing_user(self, user_preferences_functions, mock_user_preferences_common,
-                                                  dynamodb_table, sample_user_preferences, lambda_context):
+    def test_update_user_preferences_existing_user(
+        self,
+        user_preferences_functions,
+        mock_user_preferences_common,
+        dynamodb_table,
+        sample_user_preferences,
+        lambda_context,
+    ):
         """Test updating user preferences for an existing user."""
         # Mock get_item to return existing preferences
         mock_user_preferences_common["get_item"].return_value = sample_user_preferences
@@ -321,8 +359,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert body["user"] == "test-user"
 
-    def test_update_user_preferences_unauthorized(self, user_preferences_functions, mock_user_preferences_common,
-                                                 dynamodb_table, lambda_context):
+    def test_update_user_preferences_unauthorized(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences when unauthorized."""
         # Mock get_item to return preferences for a different user
         other_user_preferences = {"user": "other-user", "preferences": {"theme": "light"}}
@@ -340,8 +379,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert "Not authorized to update test-user's preferences" in body["error"]
 
-    def test_update_user_preferences_with_decimal_values(self, user_preferences_functions, mock_user_preferences_common,
-                                                        dynamodb_table, lambda_context):
+    def test_update_user_preferences_with_decimal_values(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with decimal values in JSON."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None
@@ -368,8 +408,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert "error" in body
 
-    def test_update_user_preferences_missing_claims(self, user_preferences_functions, mock_user_preferences_common,
-                                                   lambda_context):
+    def test_update_user_preferences_missing_claims(
+        self, user_preferences_functions, mock_user_preferences_common, lambda_context
+    ):
         """Test updating user preferences with missing claims."""
         # Mock get_username to raise ValueError
         mock_user_preferences_common["get_username"].side_effect = ValueError("Missing username")
@@ -386,8 +427,9 @@ class TestUpdateUserPreferences:
         mock_user_preferences_common["get_username"].side_effect = None
         mock_user_preferences_common["get_username"].return_value = "test-user"
 
-    def test_update_user_preferences_model_validation_error(self, user_preferences_functions, mock_user_preferences_common,
-                                                           dynamodb_table, lambda_context):
+    def test_update_user_preferences_model_validation_error(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with model validation error."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None
@@ -409,7 +451,9 @@ class TestUpdateUserPreferences:
 
         # Reset the mock
         mock_user_preferences_common["user_preferences_model"].side_effect = None
-        mock_user_preferences_common["user_preferences_model"].return_value = mock_user_preferences_common["model_instance"]
+        mock_user_preferences_common["user_preferences_model"].return_value = mock_user_preferences_common[
+            "model_instance"
+        ]
 
     def test_update_user_preferences_put_error(self, user_preferences_functions, dynamodb_table, lambda_context):
         """Test updating user preferences with database put error."""
@@ -429,8 +473,9 @@ class TestUpdateUserPreferences:
             body = json.loads(response["body"])
             assert "error" in body
 
-    def test_update_user_preferences_empty_body(self, user_preferences_functions, mock_user_preferences_common,
-                                               dynamodb_table, lambda_context):
+    def test_update_user_preferences_empty_body(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with empty body."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None
@@ -443,8 +488,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert body["user"] == "test-user"
 
-    def test_update_user_preferences_with_special_characters(self, user_preferences_functions, mock_user_preferences_common,
-                                                            dynamodb_table, lambda_context):
+    def test_update_user_preferences_with_special_characters(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with special characters and unicode."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None
@@ -467,8 +513,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert body["user"] == "test-user"
 
-    def test_update_user_preferences_large_payload(self, user_preferences_functions, mock_user_preferences_common,
-                                                  dynamodb_table, lambda_context):
+    def test_update_user_preferences_large_payload(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with a large JSON payload."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None
@@ -491,8 +538,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert body["user"] == "test-user"
 
-    def test_update_user_preferences_none_values(self, user_preferences_functions, mock_user_preferences_common,
-                                                dynamodb_table, lambda_context):
+    def test_update_user_preferences_none_values(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with None values."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None
@@ -510,8 +558,9 @@ class TestUpdateUserPreferences:
         body = json.loads(response["body"])
         assert body["user"] == "test-user"
 
-    def test_update_user_preferences_boolean_values(self, user_preferences_functions, mock_user_preferences_common,
-                                                   dynamodb_table, lambda_context):
+    def test_update_user_preferences_boolean_values(
+        self, user_preferences_functions, mock_user_preferences_common, dynamodb_table, lambda_context
+    ):
         """Test updating user preferences with various boolean values."""
         # Mock get_item to return None (new user)
         mock_user_preferences_common["get_item"].return_value = None

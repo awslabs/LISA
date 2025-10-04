@@ -73,6 +73,7 @@ def mock_vector_store_repo():
 
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 
@@ -81,19 +82,19 @@ def mock_dynamodb_tables():
     """Create mock DynamoDB tables for testing."""
     mock_doc_table = MagicMock()
     mock_subdoc_table = MagicMock()
-    
+
     # Set up default behaviors
     mock_doc_table.put_item.return_value = {}
     mock_doc_table.query.return_value = {"Items": []}
     mock_doc_table.delete_item.return_value = {}
-    
+
     # Set up batch writer context manager
     mock_batch_writer = MagicMock()
     mock_batch_writer.__enter__ = MagicMock(return_value=mock_batch_writer)
     mock_batch_writer.__exit__ = MagicMock(return_value=None)
     mock_subdoc_table.batch_writer.return_value = mock_batch_writer
     mock_subdoc_table.query.return_value = {"Items": []}
-    
+
     return mock_doc_table, mock_subdoc_table
 
 
@@ -105,28 +106,22 @@ def mock_s3_client():
     return mock_client
 
 
-@pytest.fixture
-def mock_vector_store_repo():
-    """Create mock VectorStoreRepository for testing."""
-    mock_vs_repo = MagicMock()
-    mock_vs_repo.find_repository_by_id.return_value = {}
-    return mock_vs_repo
-
-
 def create_mock_table_selector(mock_doc_table, mock_subdoc_table):
     """Create a function that returns the correct table based on table name."""
+
     def table_selector(table_name):
         if "doc" in table_name.lower() and "subdoc" not in table_name.lower():
             return mock_doc_table
         else:
             return mock_subdoc_table
+
     return table_selector
 
 
 def test_rag_document_repository_init(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test RagDocumentRepository initialization."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -144,7 +139,7 @@ def test_rag_document_repository_init(mock_dynamodb_tables, mock_s3_client, mock
 def test_delete_by_id_success(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test successful deletion by ID."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -167,10 +162,12 @@ def test_delete_by_id_success(sample_rag_document, mock_dynamodb_tables, mock_s3
         mock_subdoc_table.batch_writer.return_value.__enter__.return_value.delete_item.assert_called_once()
 
 
-def test_delete_by_id_no_document(sample_rag_sub_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_delete_by_id_no_document(
+    sample_rag_sub_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test deletion by ID when document doesn't exist."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -196,7 +193,7 @@ def test_delete_by_id_no_document(sample_rag_sub_document, mock_dynamodb_tables,
 def test_delete_by_id_client_error(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test deletion by ID with client error."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -228,7 +225,7 @@ def test_delete_by_id_client_error(mock_dynamodb_tables, mock_s3_client, mock_ve
 def test_save_success(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test successful save operation."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -251,12 +248,12 @@ def test_save_success(sample_rag_document, mock_dynamodb_tables, mock_s3_client,
 def test_save_client_error(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test save operation with client error."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override put_item to raise exception
     mock_doc_table.put_item.side_effect = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "Test error"}}, "PutItem"
     )
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -275,10 +272,10 @@ def test_save_client_error(sample_rag_document, mock_dynamodb_tables, mock_s3_cl
 def test_find_by_id_success(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test successful find by ID."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return document as dict
     mock_doc_table.query.return_value = {"Items": [sample_rag_document.model_dump()]}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -301,10 +298,10 @@ def test_find_by_id_success(sample_rag_document, mock_dynamodb_tables, mock_s3_c
 def test_find_by_id_not_found(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test find by ID when document doesn't exist."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return no items
     mock_doc_table.query.return_value = {"Items": []}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -326,10 +323,10 @@ def test_find_by_id_not_found(mock_dynamodb_tables, mock_s3_client, mock_vector_
 def test_find_by_source_success(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test find by source with results."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return items
     mock_doc_table.query.return_value = {"Items": [sample_rag_document.model_dump()]}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -351,10 +348,10 @@ def test_find_by_source_success(sample_rag_document, mock_dynamodb_tables, mock_
 def test_find_by_source_no_results(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test find by source with no results."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return no items
     mock_doc_table.query.return_value = {"Items": []}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -376,12 +373,12 @@ def test_find_by_source_no_results(mock_dynamodb_tables, mock_s3_client, mock_ve
 def test_find_by_source_client_error(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test find by source with client error."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to raise exception
     mock_doc_table.query.side_effect = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "Test error"}}, "Query"
     )
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -397,13 +394,15 @@ def test_find_by_source_client_error(mock_dynamodb_tables, mock_s3_client, mock_
             list(repo.find_by_source("test-repo", "test-collection", "s3://test-bucket/test-key"))
 
 
-def test_list_all_with_repository_id_only(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_list_all_with_repository_id_only(
+    sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test list_all with repository_id only."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return documents
     mock_doc_table.query.return_value = {"Items": [sample_rag_document.model_dump()]}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -426,10 +425,10 @@ def test_list_all_with_repository_id_only(sample_rag_document, mock_dynamodb_tab
 def test_list_all_with_collection_id(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test list_all with collection_id."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return documents
     mock_doc_table.query.return_value = {"Items": [sample_rag_document.model_dump()]}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -452,13 +451,13 @@ def test_list_all_with_collection_id(sample_rag_document, mock_dynamodb_tables, 
 def test_list_all_with_pagination(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test list_all with pagination."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return documents with pagination
     mock_doc_table.query.return_value = {
         "Items": [sample_rag_document.model_dump()],
         "LastEvaluatedKey": {"document_id": "next-key"},
     }
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -482,10 +481,10 @@ def test_list_all_with_pagination(sample_rag_document, mock_dynamodb_tables, moc
 def test_list_all_with_join_docs(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test list_all with join_docs=True."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return documents as dicts
     mock_doc_table.query.return_value = {"Items": [sample_rag_document.model_dump()]}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class, patch(
@@ -510,13 +509,15 @@ def test_list_all_with_join_docs(sample_rag_document, mock_dynamodb_tables, mock
         assert mock_doc_table.query.call_count == 2
 
 
-def test_find_subdocs_by_id_success(sample_rag_sub_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_find_subdocs_by_id_success(
+    sample_rag_sub_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test successful find_subdocs_by_id."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return subdocs
     mock_subdoc_table.query.return_value = {"Items": [sample_rag_sub_document.model_dump()]}
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -536,16 +537,18 @@ def test_find_subdocs_by_id_success(sample_rag_sub_document, mock_dynamodb_table
         assert result[0].document_id == "test-doc-id"
 
 
-def test_find_subdocs_by_id_with_pagination(sample_rag_sub_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_find_subdocs_by_id_with_pagination(
+    sample_rag_sub_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test find_subdocs_by_id with pagination."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override query to return subdocs with pagination
     mock_subdoc_table.query.side_effect = [
         {"Items": [sample_rag_sub_document.model_dump()], "LastEvaluatedKey": {"sk": "next-key"}},
         {"Items": [sample_rag_sub_document.model_dump()]},
     ]
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -567,7 +570,7 @@ def test_find_subdocs_by_id_with_pagination(sample_rag_sub_document, mock_dynamo
 def test_delete_s3_object_success(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test successful S3 object deletion."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -588,12 +591,12 @@ def test_delete_s3_object_success(mock_dynamodb_tables, mock_s3_client, mock_vec
 def test_delete_s3_object_client_error(mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test S3 object deletion with client error."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Override delete_object to raise exception
     mock_s3_client.delete_object.side_effect = ClientError(
         {"Error": {"Code": "NoSuchKey", "Message": "Test error"}}, "DeleteObject"
     )
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -609,10 +612,12 @@ def test_delete_s3_object_client_error(mock_dynamodb_tables, mock_s3_client, moc
             repo.delete_s3_object("s3://test-bucket/test-key")
 
 
-def test_delete_s3_docs_manual_ingestion(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_delete_s3_docs_manual_ingestion(
+    sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test delete_s3_docs with manual ingestion."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
@@ -636,10 +641,12 @@ def test_delete_s3_docs_manual_ingestion(sample_rag_document, mock_dynamodb_tabl
         repo.delete_s3_object.assert_called_once_with(uri=sample_rag_document.source)
 
 
-def test_delete_s3_docs_auto_ingestion_with_auto_remove(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_delete_s3_docs_auto_ingestion_with_auto_remove(
+    sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test delete_s3_docs with auto ingestion and auto_remove=True."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Create document with auto_remove=True
     sample_rag_document.ingestion_type = IngestionType.AUTO
 
@@ -671,10 +678,12 @@ def test_delete_s3_docs_auto_ingestion_with_auto_remove(sample_rag_document, moc
         repo.delete_s3_object.assert_called_once_with(uri=sample_rag_document.source)
 
 
-def test_delete_s3_docs_auto_ingestion_without_auto_remove(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
+def test_delete_s3_docs_auto_ingestion_without_auto_remove(
+    sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo
+):
     """Test delete_s3_docs with auto ingestion and auto_remove=False."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     # Create document with auto_remove=False
     sample_rag_document.ingestion_type = IngestionType.AUTO
 
@@ -709,7 +718,7 @@ def test_delete_s3_docs_auto_ingestion_without_auto_remove(sample_rag_document, 
 def test_delete_s3_docs_no_pipelines(sample_rag_document, mock_dynamodb_tables, mock_s3_client, mock_vector_store_repo):
     """Test delete_s3_docs with no pipelines."""
     mock_doc_table, mock_subdoc_table = mock_dynamodb_tables
-    
+
     with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
         "repository.rag_document_repo.boto3.client"
     ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:

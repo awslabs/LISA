@@ -50,10 +50,10 @@ def is_admin(event: dict) -> bool:
 
 def get_user_context(event: dict) -> tuple[str, bool]:
     """Get the username and admin status from the event.
-    
+
     Args:
         event: Lambda event containing user authentication
-        
+
     Returns:
         Tuple of (username, is_admin)
     """

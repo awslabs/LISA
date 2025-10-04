@@ -1,22 +1,38 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """Test module for prompt templates lambda functions - refactored version using fixture-based mocking."""
 
 import json
 import os
-import pytest
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-from moto import mock_aws
+
 import boto3
+import pytest
 from botocore.config import Config
+from moto import mock_aws
 
 
 @pytest.fixture
 def mock_prompt_templates_common():
     """Common mocks for prompt templates lambda functions."""
-    
+
     def mock_api_wrapper(func):
         """Mock API wrapper that handles both success and error cases for testing."""
+
         def wrapper(event, context):
             try:
                 # Call the function and wrap successful results in an HTTP response
@@ -51,12 +67,13 @@ def mock_prompt_templates_common():
                     "body": json.dumps({"error": f"Bad Request: {str(e)}"}, default=str),
                     "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
                 }
+
         return wrapper
 
     # Set up environment variables
     env_vars = {
         "AWS_ACCESS_KEY_ID": "testing",
-        "AWS_SECRET_ACCESS_KEY": "testing", 
+        "AWS_SECRET_ACCESS_KEY": "testing",
         "AWS_SECURITY_TOKEN": "testing",
         "AWS_SESSION_TOKEN": "testing",
         "AWS_DEFAULT_REGION": "us-east-1",
@@ -69,22 +86,24 @@ def mock_prompt_templates_common():
         "RAG_SUB_DOCUMENT_TABLE": "sub-document-table",
         "PROMPT_TEMPLATES_TABLE": "prompt-templates-table",
     }
-    
+
     retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-    
-    with patch.dict(os.environ, env_vars), \
-         patch("utilities.auth.get_username") as mock_get_username, \
-         patch("utilities.common_functions.get_groups") as mock_get_groups, \
-         patch("utilities.auth.is_admin") as mock_is_admin, \
-         patch("utilities.common_functions.retry_config", retry_config), \
-         patch("utilities.common_functions.api_wrapper", mock_api_wrapper), \
-         patch.dict("sys.modules", {"create_env_variables": MagicMock()}):
-        
+
+    with patch.dict(os.environ, env_vars), patch("utilities.auth.get_username") as mock_get_username, patch(
+        "utilities.common_functions.get_groups"
+    ) as mock_get_groups, patch("utilities.auth.is_admin") as mock_is_admin, patch(
+        "utilities.common_functions.retry_config", retry_config
+    ), patch(
+        "utilities.common_functions.api_wrapper", mock_api_wrapper
+    ), patch.dict(
+        "sys.modules", {"create_env_variables": MagicMock()}
+    ):
+
         # Set up default mock return values
         mock_get_username.return_value = "test-user"
         mock_get_groups.return_value = ["test-group"]
         mock_is_admin.return_value = False
-        
+
         yield {
             "get_username": mock_get_username,
             "get_groups": mock_get_groups,
@@ -98,11 +117,11 @@ def mock_prompt_templates_common():
 def prompt_templates_functions(mock_prompt_templates_common):
     """Import prompt templates lambda functions with mocked dependencies."""
     from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list, update
-    
+
     return {
         "_get_prompt_templates": _get_prompt_templates,
         "create": create,
-        "delete": delete, 
+        "delete": delete,
         "get": get,
         "list": list,
         "update": update,
@@ -146,10 +165,7 @@ def dynamodb_table():
         dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
         table = dynamodb.create_table(
             TableName="prompt-templates-table",
-            KeySchema=[
-                {"AttributeName": "id", "KeyType": "HASH"},
-                {"AttributeName": "created", "KeyType": "RANGE"}
-            ],
+            KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}, {"AttributeName": "created", "KeyType": "RANGE"}],
             AttributeDefinitions=[
                 {"AttributeName": "id", "AttributeType": "S"},
                 {"AttributeName": "created", "AttributeType": "S"},
@@ -173,17 +189,19 @@ def dynamodb_table():
 
 class TestCreatePromptTemplate:
     """Test class for creating prompt templates."""
-    
+
     def test_create_prompt_template(self, prompt_templates_functions, dynamodb_table, lambda_context):
         """Test creating a new prompt template."""
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-            "body": json.dumps({
-                "title": "Test Template",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Test prompt template body"
-            }),
+            "body": json.dumps(
+                {
+                    "title": "Test Template",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Test prompt template body",
+                }
+            ),
         }
 
         response = prompt_templates_functions["create"](event, lambda_context)
@@ -198,19 +216,21 @@ class TestCreatePromptTemplate:
 
 class TestUpdatePromptTemplate:
     """Test class for updating prompt templates."""
-    
+
     def test_update_prompt_template(self, prompt_templates_functions, dynamodb_table, lambda_context):
         """Test updating a prompt template."""
         # Create initial template
         create_response = prompt_templates_functions["create"](
             {
                 "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-                "body": json.dumps({
-                    "title": "Test Template",
-                    "groups": ["test-group"],
-                    "type": "persona",
-                    "body": "Test prompt template body",
-                }),
+                "body": json.dumps(
+                    {
+                        "title": "Test Template",
+                        "groups": ["test-group"],
+                        "type": "persona",
+                        "body": "Test prompt template body",
+                    }
+                ),
             },
             lambda_context,
         )
@@ -223,14 +243,16 @@ class TestUpdatePromptTemplate:
             {
                 "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
                 "pathParameters": {"promptTemplateId": template_id},
-                "body": json.dumps({
-                    "id": template_id,
-                    "title": "Updated Template",
-                    "groups": ["test-group"],
-                    "type": "persona",
-                    "body": "Updated prompt template body",
-                    "owner": "test-user",
-                }),
+                "body": json.dumps(
+                    {
+                        "id": template_id,
+                        "title": "Updated Template",
+                        "groups": ["test-group"],
+                        "type": "persona",
+                        "body": "Updated prompt template body",
+                        "owner": "test-user",
+                    }
+                ),
             },
             lambda_context,
         )
@@ -240,8 +262,14 @@ class TestUpdatePromptTemplate:
         assert data["title"] == "Updated Template"
         assert data["body"] == "Updated prompt template body"
 
-    def test_update_prompt_template_unauthorized(self, prompt_templates_functions, mock_prompt_templates_common, 
-                                                dynamodb_table, sample_prompt_template, lambda_context):
+    def test_update_prompt_template_unauthorized(
+        self,
+        prompt_templates_functions,
+        mock_prompt_templates_common,
+        dynamodb_table,
+        sample_prompt_template,
+        lambda_context,
+    ):
         """Test updating a prompt template without authorization."""
         # Add the template to the table first
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -249,17 +277,19 @@ class TestUpdatePromptTemplate:
         # Mock different user
         mock_prompt_templates_common["get_username"].return_value = "different-user"
         mock_prompt_templates_common["is_admin"].return_value = False
-        
+
         event = {
             "pathParameters": {"promptTemplateId": "test-template"},
-            "body": json.dumps({
-                "id": "test-template",
-                "title": "Updated Template",
-                "owner": "test-user",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Updated body",
-            }),
+            "body": json.dumps(
+                {
+                    "id": "test-template",
+                    "title": "Updated Template",
+                    "owner": "test-user",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Updated body",
+                }
+            ),
             "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
         }
 
@@ -268,22 +298,25 @@ class TestUpdatePromptTemplate:
         body = json.loads(response["body"])
         assert "Not authorized to update test-template" in body.get("error", "")
 
-    def test_update_template_url_id_mismatch(self, prompt_templates_functions, dynamodb_table, 
-                                           sample_prompt_template, lambda_context):
+    def test_update_template_url_id_mismatch(
+        self, prompt_templates_functions, dynamodb_table, sample_prompt_template, lambda_context
+    ):
         """Test update with mismatched IDs between URL and body."""
         # Add the template to the table first
         dynamodb_table.put_item(Item=sample_prompt_template)
 
         event = {
             "pathParameters": {"promptTemplateId": "test-template"},
-            "body": json.dumps({
-                "id": "different-id",
-                "title": "Updated Template",
-                "owner": "test-user",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Updated body",
-            }),
+            "body": json.dumps(
+                {
+                    "id": "different-id",
+                    "title": "Updated Template",
+                    "owner": "test-user",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Updated body",
+                }
+            ),
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         }
 
@@ -297,14 +330,16 @@ class TestUpdatePromptTemplate:
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
             "pathParameters": {"promptTemplateId": "non-existent"},
-            "body": json.dumps({
-                "id": "non-existent",
-                "title": "Updated Template",
-                "owner": "test-user",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Updated body",
-            }),
+            "body": json.dumps(
+                {
+                    "id": "non-existent",
+                    "title": "Updated Template",
+                    "owner": "test-user",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Updated body",
+                }
+            ),
         }
 
         response = prompt_templates_functions["update"](event, lambda_context)
@@ -312,8 +347,14 @@ class TestUpdatePromptTemplate:
         body = json.loads(response["body"])
         assert "not found" in body.get("error", "")
 
-    def test_admin_can_update_any_template(self, prompt_templates_functions, mock_prompt_templates_common,
-                                         dynamodb_table, sample_prompt_template, lambda_context):
+    def test_admin_can_update_any_template(
+        self,
+        prompt_templates_functions,
+        mock_prompt_templates_common,
+        dynamodb_table,
+        sample_prompt_template,
+        lambda_context,
+    ):
         """Test that an admin can update any template."""
         # Add the template to the table first
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -324,14 +365,16 @@ class TestUpdatePromptTemplate:
 
         event = {
             "pathParameters": {"promptTemplateId": "test-template"},
-            "body": json.dumps({
-                "id": "test-template",
-                "title": "Admin Updated Template",
-                "groups": ["test-group"],
-                "type": "persona",
-                "body": "Admin updated body",
-                "owner": "test-user",
-            }),
+            "body": json.dumps(
+                {
+                    "id": "test-template",
+                    "title": "Admin Updated Template",
+                    "groups": ["test-group"],
+                    "type": "persona",
+                    "body": "Admin updated body",
+                    "owner": "test-user",
+                }
+            ),
             "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
         }
 
@@ -345,9 +388,10 @@ class TestUpdatePromptTemplate:
 
 class TestGetPromptTemplate:
     """Test class for getting prompt templates."""
-    
-    def test_get_prompt_template(self, prompt_templates_functions, dynamodb_table, 
-                                sample_prompt_template, lambda_context):
+
+    def test_get_prompt_template(
+        self, prompt_templates_functions, dynamodb_table, sample_prompt_template, lambda_context
+    ):
         """Test getting a specific prompt template."""
         # Add the template to the table
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -375,8 +419,14 @@ class TestGetPromptTemplate:
         body = json.loads(response["body"])
         assert "Prompt template non-existent not found" in body.get("error", "")
 
-    def test_get_prompt_template_public(self, prompt_templates_functions, mock_prompt_templates_common,
-                                       dynamodb_table, sample_prompt_template, lambda_context):
+    def test_get_prompt_template_public(
+        self,
+        prompt_templates_functions,
+        mock_prompt_templates_common,
+        dynamodb_table,
+        sample_prompt_template,
+        lambda_context,
+    ):
         """Test getting a public prompt template by different user."""
         # Add the template to the table
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -396,8 +446,14 @@ class TestGetPromptTemplate:
         assert body["id"] == "test-template"
         assert body["owner"] == "test-user"
 
-    def test_get_prompt_template_unauthorized(self, prompt_templates_functions, mock_prompt_templates_common,
-                                            dynamodb_table, sample_prompt_template, lambda_context):
+    def test_get_prompt_template_unauthorized(
+        self,
+        prompt_templates_functions,
+        mock_prompt_templates_common,
+        dynamodb_table,
+        sample_prompt_template,
+        lambda_context,
+    ):
         """Test getting a prompt template without authorization."""
         # Add the template to the table with restricted groups
         sample_prompt = sample_prompt_template.copy()
@@ -422,9 +478,10 @@ class TestGetPromptTemplate:
 
 class TestDeletePromptTemplate:
     """Test class for deleting prompt templates."""
-    
-    def test_delete_prompt_template(self, prompt_templates_functions, dynamodb_table, 
-                                   sample_prompt_template, lambda_context):
+
+    def test_delete_prompt_template(
+        self, prompt_templates_functions, dynamodb_table, sample_prompt_template, lambda_context
+    ):
         """Test deleting a prompt template."""
         # Add the template to the table
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -451,8 +508,14 @@ class TestDeletePromptTemplate:
         body = json.loads(response["body"])
         assert "Prompt template non-existent not found" in body.get("error", "")
 
-    def test_delete_prompt_template_unauthorized(self, prompt_templates_functions, mock_prompt_templates_common,
-                                               dynamodb_table, sample_prompt_template, lambda_context):
+    def test_delete_prompt_template_unauthorized(
+        self,
+        prompt_templates_functions,
+        mock_prompt_templates_common,
+        dynamodb_table,
+        sample_prompt_template,
+        lambda_context,
+    ):
         """Test deleting a prompt template without authorization."""
         # Add the template to the table first
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -460,7 +523,7 @@ class TestDeletePromptTemplate:
         # Mock different user
         mock_prompt_templates_common["is_admin"].return_value = False
         mock_prompt_templates_common["get_username"].return_value = "different-user"
-        
+
         event = {
             "pathParameters": {"promptTemplateId": "test-template"},
             "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
@@ -471,8 +534,14 @@ class TestDeletePromptTemplate:
         body = json.loads(response["body"])
         assert "Not authorized to delete test-template" in body.get("error", "")
 
-    def test_admin_can_delete_any_template(self, prompt_templates_functions, mock_prompt_templates_common,
-                                         dynamodb_table, sample_prompt_template, lambda_context):
+    def test_admin_can_delete_any_template(
+        self,
+        prompt_templates_functions,
+        mock_prompt_templates_common,
+        dynamodb_table,
+        sample_prompt_template,
+        lambda_context,
+    ):
         """Test that an admin can delete any template."""
         # Add the template to the table first
         dynamodb_table.put_item(Item=sample_prompt_template)
@@ -495,19 +564,22 @@ class TestDeletePromptTemplate:
 
 class TestListPromptTemplates:
     """Test class for listing prompt templates."""
-    
-    def test_list_prompt_templates(self, prompt_templates_functions, mock_prompt_templates_common,
-                                  dynamodb_table, lambda_context):
+
+    def test_list_prompt_templates(
+        self, prompt_templates_functions, mock_prompt_templates_common, dynamodb_table, lambda_context
+    ):
         """Test listing prompt templates."""
         # Create a public template
         create_event = {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-            "body": json.dumps({
-                "title": "Public Template",
-                "groups": ["lisa:public"],
-                "type": "persona",
-                "body": "Public prompt template body",
-            }),
+            "body": json.dumps(
+                {
+                    "title": "Public Template",
+                    "groups": ["lisa:public"],
+                    "type": "persona",
+                    "body": "Public prompt template body",
+                }
+            ),
         }
         response = prompt_templates_functions["create"](create_event, lambda_context)
         assert response["statusCode"] == 200
@@ -528,18 +600,21 @@ class TestListPromptTemplates:
         assert body["Items"][0]["title"] == "Public Template"
         assert "lisa:public" in body["Items"][0]["groups"]
 
-    def test_list_prompt_templates_admin(self, prompt_templates_functions, mock_prompt_templates_common,
-                                        dynamodb_table, lambda_context):
+    def test_list_prompt_templates_admin(
+        self, prompt_templates_functions, mock_prompt_templates_common, dynamodb_table, lambda_context
+    ):
         """Test listing prompt templates as admin."""
         # Create a public template
         create_event = {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-            "body": json.dumps({
-                "title": "Public Template",
-                "groups": ["lisa:public"],
-                "type": "persona",
-                "body": "Public prompt template body",
-            }),
+            "body": json.dumps(
+                {
+                    "title": "Public Template",
+                    "groups": ["lisa:public"],
+                    "type": "persona",
+                    "body": "Public prompt template body",
+                }
+            ),
         }
         response = prompt_templates_functions["create"](create_event, lambda_context)
         assert response["statusCode"] == 200
@@ -566,12 +641,14 @@ class TestListPromptTemplates:
         # Create a template
         create_event = {
             "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
-            "body": json.dumps({
-                "title": "User Template",
-                "groups": ["lisa:public"],
-                "type": "persona",
-                "body": "User prompt template body",
-            }),
+            "body": json.dumps(
+                {
+                    "title": "User Template",
+                    "groups": ["lisa:public"],
+                    "type": "persona",
+                    "body": "User prompt template body",
+                }
+            ),
         }
         response = prompt_templates_functions["create"](create_event, lambda_context)
         assert response["statusCode"] == 200
@@ -591,7 +668,7 @@ class TestListPromptTemplates:
 
 class TestPromptTemplatesHelper:
     """Test class for prompt templates helper functions."""
-    
+
     def test_get_prompt_templates_helper(self, prompt_templates_functions, dynamodb_table, sample_prompt_template):
         """Test the _get_prompt_templates helper function with different parameters."""
         # Add a template to the table

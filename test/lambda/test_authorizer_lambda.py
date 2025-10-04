@@ -111,20 +111,22 @@ def sample_jwt_data():
 def mock_authorizer_common():
     """Mock common functions for authorizer tests."""
     retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-    
+
     def mock_authorization_wrapper(func):
         """Mock authorization wrapper for testing."""
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
                 raise e
+
         return wrapper
 
-    with patch("utilities.common_functions.retry_config", retry_config), \
-         patch("utilities.common_functions.authorization_wrapper", mock_authorization_wrapper), \
-         patch("utilities.common_functions.get_id_token", return_value="test-token"):
+    with patch("utilities.common_functions.retry_config", retry_config), patch(
+        "utilities.common_functions.authorization_wrapper", mock_authorization_wrapper
+    ), patch("utilities.common_functions.get_id_token", return_value="test-token"):
         yield
 
 
@@ -147,21 +149,22 @@ def authorizer_functions(mock_authorizer_common, mock_create_env_variables):
         is_valid_api_token,
         lambda_handler,
     )
+
     return {
-        'find_jwt_username': find_jwt_username,
-        'generate_policy': generate_policy,
-        'get_management_tokens': get_management_tokens,
-        'id_token_is_valid': id_token_is_valid,
-        'is_admin': is_admin,
-        'is_valid_api_token': is_valid_api_token,
-        'lambda_handler': lambda_handler,
+        "find_jwt_username": find_jwt_username,
+        "generate_policy": generate_policy,
+        "get_management_tokens": get_management_tokens,
+        "id_token_is_valid": id_token_is_valid,
+        "is_admin": is_admin,
+        "is_valid_api_token": is_valid_api_token,
+        "lambda_handler": lambda_handler,
     }
 
 
 def test_generate_policy(authorizer_functions):
     """Test the generate_policy function."""
-    generate_policy = authorizer_functions['generate_policy']
-    
+    generate_policy = authorizer_functions["generate_policy"]
+
     # Test allow policy
     allow_policy = generate_policy(effect="Allow", resource="test-resource", username="test-user")
     assert allow_policy["principalId"] == "test-user"
@@ -177,8 +180,8 @@ def test_generate_policy(authorizer_functions):
 
 def test_find_jwt_username(authorizer_functions, sample_jwt_data):
     """Test the find_jwt_username function."""
-    find_jwt_username = authorizer_functions['find_jwt_username']
-    
+    find_jwt_username = authorizer_functions["find_jwt_username"]
+
     # Test with 'sub' field - this is used when 'cognito:username' is not present
     assert find_jwt_username(sample_jwt_data) == "test-user-id"
 
@@ -195,8 +198,8 @@ def test_find_jwt_username(authorizer_functions, sample_jwt_data):
 
 def test_is_admin(authorizer_functions, sample_jwt_data):
     """Test the is_admin function."""
-    is_admin = authorizer_functions['is_admin']
-    
+    is_admin = authorizer_functions["is_admin"]
+
     # Test when user is admin
     sample_jwt_data["groups"] = ["test-group", "admin-group"]
     assert is_admin(sample_jwt_data, "admin-group", "groups") is True
@@ -212,8 +215,8 @@ def test_is_admin(authorizer_functions, sample_jwt_data):
 
 def test_is_valid_api_token(authorizer_functions, token_table):
     """Test the is_valid_api_token function."""
-    is_valid_api_token = authorizer_functions['is_valid_api_token']
-    
+    is_valid_api_token = authorizer_functions["is_valid_api_token"]
+
     # Test with valid, non-expired token
     future_time = int((datetime.now() + timedelta(hours=1)).timestamp())
     token_table.put_item(Item={"token": "valid-api-token", "tokenExpiration": future_time})
@@ -236,8 +239,8 @@ def test_is_valid_api_token(authorizer_functions, token_table):
 
 def test_get_management_tokens(authorizer_functions):
     """Test the get_management_tokens function."""
-    get_management_tokens = authorizer_functions['get_management_tokens']
-    
+    get_management_tokens = authorizer_functions["get_management_tokens"]
+
     with patch("authorizer.lambda_functions.secrets_manager.get_secret_value") as mock_get_secret:
         # Use side_effect to return different values based on args
         def get_secret_side_effect(SecretId, VersionStage):
@@ -265,8 +268,8 @@ def test_get_management_tokens(authorizer_functions):
 
 def test_get_management_tokens_error(authorizer_functions):
     """Test the get_management_tokens function with error handling."""
-    get_management_tokens = authorizer_functions['get_management_tokens']
-    
+    get_management_tokens = authorizer_functions["get_management_tokens"]
+
     with patch("authorizer.lambda_functions.secrets_manager.get_secret_value") as mock_get_secret:
         # Reset for error test
         get_management_tokens.cache_clear()
@@ -289,14 +292,15 @@ def test_get_management_tokens_error(authorizer_functions):
 
 def test_id_token_is_valid(authorizer_functions):
     """Test the id_token_is_valid function."""
-    id_token_is_valid = authorizer_functions['id_token_is_valid']
-    
-    with patch("authorizer.lambda_functions.requests.get") as mock_requests_get, \
-         patch("authorizer.lambda_functions.jwt.PyJWKClient") as mock_PyJWKClient, \
-         patch("authorizer.lambda_functions.jwt.decode") as mock_jwt_decode, \
-         patch("authorizer.lambda_functions.jwt.algorithms.has_crypto", True), \
-         patch("authorizer.lambda_functions.ssl.create_default_context") as mock_create_default_context, \
-         patch("authorizer.lambda_functions.os.getenv", return_value=None) as mock_getenv:
+    id_token_is_valid = authorizer_functions["id_token_is_valid"]
+
+    with patch("authorizer.lambda_functions.requests.get") as mock_requests_get, patch(
+        "authorizer.lambda_functions.jwt.PyJWKClient"
+    ) as mock_PyJWKClient, patch("authorizer.lambda_functions.jwt.decode") as mock_jwt_decode, patch(
+        "authorizer.lambda_functions.jwt.algorithms.has_crypto", True
+    ), patch(
+        "authorizer.lambda_functions.ssl.create_default_context"
+    ) as mock_create_default_context:
 
         # Mock the response from OIDC well-known endpoint
         mock_response = MagicMock()
@@ -325,20 +329,25 @@ def test_id_token_is_valid(authorizer_functions):
         mock_jwt_decode.return_value = jwt_data
 
         # Test successful token validation
-        result = id_token_is_valid(id_token="test-token", client_id="test-client-id", authority="https://test-authority")
+        result = id_token_is_valid(
+            id_token="test-token", client_id="test-client-id", authority="https://test-authority"
+        )
         assert result == jwt_data
 
 
 def test_id_token_is_valid_errors(authorizer_functions):
     """Test the id_token_is_valid function error cases."""
-    id_token_is_valid = authorizer_functions['id_token_is_valid']
-    
-    with patch("authorizer.lambda_functions.requests.get") as mock_requests_get, \
-         patch("authorizer.lambda_functions.jwt.PyJWKClient") as mock_PyJWKClient, \
-         patch("authorizer.lambda_functions.jwt.decode") as mock_jwt_decode, \
-         patch("authorizer.lambda_functions.jwt.algorithms.has_crypto", True), \
-         patch("authorizer.lambda_functions.ssl.create_default_context") as mock_create_default_context, \
-         patch("authorizer.lambda_functions.os.getenv", return_value=None):
+    id_token_is_valid = authorizer_functions["id_token_is_valid"]
+
+    with patch("authorizer.lambda_functions.requests.get") as mock_requests_get, patch(
+        "authorizer.lambda_functions.jwt.PyJWKClient"
+    ) as mock_PyJWKClient, patch("authorizer.lambda_functions.jwt.decode") as mock_jwt_decode, patch(
+        "authorizer.lambda_functions.jwt.algorithms.has_crypto", True
+    ), patch(
+        "authorizer.lambda_functions.ssl.create_default_context"
+    ) as mock_create_default_context, patch(
+        "authorizer.lambda_functions.os.getenv", return_value=None
+    ):
 
         # Mock the response from OIDC well-known endpoint
         mock_response = MagicMock()
@@ -346,7 +355,9 @@ def test_id_token_is_valid_errors(authorizer_functions):
         mock_requests_get.return_value = mock_response
 
         # Test when OIDC metadata response is not 200
-        result = id_token_is_valid(id_token="test-token", client_id="test-client-id", authority="https://test-authority")
+        result = id_token_is_valid(
+            id_token="test-token", client_id="test-client-id", authority="https://test-authority"
+        )
         assert result is None
 
         # Reset status code for the next test
@@ -364,14 +375,16 @@ def test_id_token_is_valid_errors(authorizer_functions):
 
         # Test when JWT verification fails
         mock_jwt_decode.side_effect = jwt.exceptions.PyJWTError("Invalid token")
-        result = id_token_is_valid(id_token="test-token", client_id="test-client-id", authority="https://test-authority")
+        result = id_token_is_valid(
+            id_token="test-token", client_id="test-client-id", authority="https://test-authority"
+        )
         assert result is None
 
 
 def test_id_token_is_valid_no_crypto(authorizer_functions):
     """Test the id_token_is_valid function when has_crypto is False."""
-    id_token_is_valid = authorizer_functions['id_token_is_valid']
-    
+    id_token_is_valid = authorizer_functions["id_token_is_valid"]
+
     # Test when has_crypto is False
     with patch("authorizer.lambda_functions.jwt.algorithms.has_crypto", False):
         result = id_token_is_valid(
@@ -382,11 +395,11 @@ def test_id_token_is_valid_no_crypto(authorizer_functions):
 
 def test_lambda_handler_with_management_token(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler with management token."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=["test-token"]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=False), \
-         patch.dict(os.environ, {"ADMIN_GROUP": "admin-group"}):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=["test-token"]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=False
+    ), patch.dict(os.environ, {"ADMIN_GROUP": "admin-group"}):
 
         # Test with management token
         response = lambda_handler(sample_event, lambda_context)
@@ -400,10 +413,11 @@ def test_lambda_handler_with_management_token(authorizer_functions, sample_event
 
 def test_lambda_handler_with_api_token(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler with API token."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=True):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=True
+    ):
 
         # Test with API token
         response = lambda_handler(sample_event, lambda_context)
@@ -417,13 +431,15 @@ def test_lambda_handler_with_api_token(authorizer_functions, sample_event, lambd
 
 def test_lambda_handler_with_jwt(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler with JWT token."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=False), \
-         patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, \
-         patch("authorizer.lambda_functions.is_admin", return_value=False), \
-         patch("authorizer.lambda_functions.find_jwt_username", return_value="test-user"):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=False
+    ), patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, patch(
+        "authorizer.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "authorizer.lambda_functions.find_jwt_username", return_value="test-user"
+    ):
 
         # Mock to return valid JWT token
         jwt_data = {
@@ -444,13 +460,15 @@ def test_lambda_handler_with_jwt(authorizer_functions, sample_event, lambda_cont
 
 def test_lambda_handler_admin_models_access(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler for admin access to models endpoint."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=False), \
-         patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, \
-         patch("authorizer.lambda_functions.is_admin", return_value=True), \
-         patch("authorizer.lambda_functions.find_jwt_username", return_value="test-user"):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=False
+    ), patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, patch(
+        "authorizer.lambda_functions.is_admin", return_value=True
+    ), patch(
+        "authorizer.lambda_functions.find_jwt_username", return_value="test-user"
+    ):
 
         # Mock to return valid JWT token with admin access
         jwt_data = {
@@ -473,13 +491,15 @@ def test_lambda_handler_admin_models_access(authorizer_functions, sample_event, 
 
 def test_lambda_handler_non_admin_models_access(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler for non-admin access to models endpoint."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=False), \
-         patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, \
-         patch("authorizer.lambda_functions.is_admin", return_value=False), \
-         patch("authorizer.lambda_functions.find_jwt_username", return_value="test-user"):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=False
+    ), patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, patch(
+        "authorizer.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "authorizer.lambda_functions.find_jwt_username", return_value="test-user"
+    ):
 
         # Mock to return valid JWT token without admin access
         jwt_data = {
@@ -512,13 +532,15 @@ def test_lambda_handler_non_admin_models_access(authorizer_functions, sample_eve
 
 def test_lambda_handler_non_admin_configuration_update(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler for non-admin updating configuration."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=False), \
-         patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, \
-         patch("authorizer.lambda_functions.is_admin", return_value=False), \
-         patch("authorizer.lambda_functions.find_jwt_username", return_value="test-user"):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=False
+    ), patch("authorizer.lambda_functions.id_token_is_valid") as mock_id_token_is_valid, patch(
+        "authorizer.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "authorizer.lambda_functions.find_jwt_username", return_value="test-user"
+    ):
 
         # Mock to return valid JWT token without admin access
         jwt_data = {
@@ -542,12 +564,13 @@ def test_lambda_handler_non_admin_configuration_update(authorizer_functions, sam
 
 def test_lambda_handler_without_token(authorizer_functions, sample_event, lambda_context):
     """Test lambda_handler without a token."""
-    lambda_handler = authorizer_functions['lambda_handler']
-    
-    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), \
-         patch("authorizer.lambda_functions.is_valid_api_token", return_value=False), \
-         patch("authorizer.lambda_functions.id_token_is_valid", return_value=None), \
-         patch("utilities.common_functions.get_id_token", return_value=None):
+    lambda_handler = authorizer_functions["lambda_handler"]
+
+    with patch("authorizer.lambda_functions.get_management_tokens", return_value=[]), patch(
+        "authorizer.lambda_functions.is_valid_api_token", return_value=False
+    ), patch("authorizer.lambda_functions.id_token_is_valid", return_value=None), patch(
+        "utilities.common_functions.get_id_token", return_value=None
+    ):
 
         # Test without a token
         response = lambda_handler(sample_event, lambda_context)
@@ -558,14 +581,17 @@ def test_lambda_handler_without_token(authorizer_functions, sample_event, lambda
 
 def test_id_token_is_valid_with_cert_path(authorizer_functions):
     """Test the id_token_is_valid function with a certificate path."""
-    id_token_is_valid = authorizer_functions['id_token_is_valid']
-    
-    with patch("authorizer.lambda_functions.requests.get") as mock_requests_get, \
-         patch("authorizer.lambda_functions.jwt.PyJWKClient") as mock_PyJWKClient, \
-         patch("authorizer.lambda_functions.jwt.decode") as mock_jwt_decode, \
-         patch("authorizer.lambda_functions.jwt.algorithms.has_crypto", True), \
-         patch("authorizer.lambda_functions.ssl.create_default_context") as mock_create_default_context, \
-         patch("authorizer.lambda_functions.os.getenv", return_value="/path/to/cert.pem"):
+    id_token_is_valid = authorizer_functions["id_token_is_valid"]
+
+    with patch("authorizer.lambda_functions.requests.get") as mock_requests_get, patch(
+        "authorizer.lambda_functions.jwt.PyJWKClient"
+    ) as mock_PyJWKClient, patch("authorizer.lambda_functions.jwt.decode") as mock_jwt_decode, patch(
+        "authorizer.lambda_functions.jwt.algorithms.has_crypto", True
+    ), patch(
+        "authorizer.lambda_functions.ssl.create_default_context"
+    ) as mock_create_default_context, patch(
+        "authorizer.lambda_functions.os.getenv", return_value="/path/to/cert.pem"
+    ):
 
         # Configure the mock
         mock_context = MagicMock()
@@ -587,7 +613,9 @@ def test_id_token_is_valid_with_cert_path(authorizer_functions):
         mock_jwt_decode.return_value = {"sub": "test-user-id"}
 
         # Call the function
-        result = id_token_is_valid(id_token="test-token", client_id="test-client-id", authority="https://test-authority")
+        result = id_token_is_valid(
+            id_token="test-token", client_id="test-client-id", authority="https://test-authority"
+        )
 
         # Assertions
         assert result == {"sub": "test-user-id"}
@@ -597,8 +625,8 @@ def test_id_token_is_valid_with_cert_path(authorizer_functions):
 
 def test_get_management_tokens_client_error(authorizer_functions):
     """Test the get_management_tokens function when ClientError is raised."""
-    get_management_tokens = authorizer_functions['get_management_tokens']
-    
+    get_management_tokens = authorizer_functions["get_management_tokens"]
+
     # Set up the ClientError to be raised
     error_response = {"Error": {"Code": "ResourceNotFoundException", "Message": "Secret not found"}}
     client_error = ClientError(error_response, "GetSecretValue")
@@ -625,8 +653,8 @@ def test_get_management_tokens_client_error(authorizer_functions):
 
 def test_generate_policy_default_username(authorizer_functions):
     """Test the generate_policy function with the default username."""
-    generate_policy = authorizer_functions['generate_policy']
-    
+    generate_policy = authorizer_functions["generate_policy"]
+
     # Test using the default username value
     policy = generate_policy(effect="Allow", resource="test-resource")
 
@@ -657,8 +685,8 @@ def test_generate_policy_default_username(authorizer_functions):
 
 def test_get_management_tokens_with_previous(authorizer_functions):
     """Test the get_management_tokens function retrieving both current and previous tokens."""
-    get_management_tokens = authorizer_functions['get_management_tokens']
-    
+    get_management_tokens = authorizer_functions["get_management_tokens"]
+
     # We need to clear the cache since get_management_tokens uses @cache
     get_management_tokens.cache_clear()
 
@@ -689,8 +717,8 @@ def test_get_management_tokens_with_previous(authorizer_functions):
 
 def test_get_management_tokens_previous_exception(authorizer_functions):
     """Test the get_management_tokens function when the AWSPREVIOUS version raises an exception."""
-    get_management_tokens = authorizer_functions['get_management_tokens']
-    
+    get_management_tokens = authorizer_functions["get_management_tokens"]
+
     # We need to clear the cache since get_management_tokens uses @cache
     get_management_tokens.cache_clear()
 

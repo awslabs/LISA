@@ -141,7 +141,7 @@ def multiple_usage_metrics(dynamodb_table):
 def mock_metrics_common():
     """Mock common functions for metrics tests."""
     retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
-    
+
     def mock_api_wrapper(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -161,11 +161,12 @@ def mock_metrics_common():
                     "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                     "body": json.dumps({"error": str(e)}),
                 }
+
         return wrapper
 
-    with patch("utilities.common_functions.retry_config", retry_config), \
-         patch("utilities.common_functions.api_wrapper", mock_api_wrapper), \
-         patch("metrics.lambda_functions.api_wrapper", mock_api_wrapper):
+    with patch("utilities.common_functions.retry_config", retry_config), patch(
+        "utilities.common_functions.api_wrapper", mock_api_wrapper
+    ), patch("metrics.lambda_functions.api_wrapper", mock_api_wrapper):
         yield
 
 
@@ -191,17 +192,18 @@ def metrics_functions(mock_metrics_common, mock_create_env_variables):
         publish_metric_deltas,
         update_user_metrics_by_session,
     )
+
     return {
-        'calculate_session_metrics': calculate_session_metrics,
-        'count_rag_usage': count_rag_usage,
-        'count_unique_users_and_publish_metric': count_unique_users_and_publish_metric,
-        'count_users_by_group_and_publish_metric': count_users_by_group_and_publish_metric,
-        'daily_metrics_handler': daily_metrics_handler,
-        'get_user_metrics': get_user_metrics,
-        'get_user_metrics_all': get_user_metrics_all,
-        'process_metrics_sqs_event': process_metrics_sqs_event,
-        'publish_metric_deltas': publish_metric_deltas,
-        'update_user_metrics_by_session': update_user_metrics_by_session,
+        "calculate_session_metrics": calculate_session_metrics,
+        "count_rag_usage": count_rag_usage,
+        "count_unique_users_and_publish_metric": count_unique_users_and_publish_metric,
+        "count_users_by_group_and_publish_metric": count_users_by_group_and_publish_metric,
+        "daily_metrics_handler": daily_metrics_handler,
+        "get_user_metrics": get_user_metrics,
+        "get_user_metrics_all": get_user_metrics_all,
+        "process_metrics_sqs_event": process_metrics_sqs_event,
+        "publish_metric_deltas": publish_metric_deltas,
+        "update_user_metrics_by_session": update_user_metrics_by_session,
     }
 
 
@@ -225,8 +227,8 @@ class TestGetUserMetrics:
 
         Expected: Should return usage metrics with 200 status code when userId exists.
         """
-        get_user_metrics = metrics_functions['get_user_metrics']
-        
+        get_user_metrics = metrics_functions["get_user_metrics"]
+
         # Insert sample data into table
         dynamodb_table.put_item(Item=sample_usage_metrics)
 
@@ -249,8 +251,8 @@ class TestGetUserMetrics:
 
         Expected: Should return 400 status code when userId is missing from pathParameters.
         """
-        get_user_metrics = metrics_functions['get_user_metrics']
-        
+        get_user_metrics = metrics_functions["get_user_metrics"]
+
         event = {"pathParameters": {}}
         response = get_user_metrics(event, lambda_context)
 
@@ -262,8 +264,8 @@ class TestGetUserMetrics:
 
         Expected: Should return 400 status code when pathParameters is missing entirely.
         """
-        get_user_metrics = metrics_functions['get_user_metrics']
-        
+        get_user_metrics = metrics_functions["get_user_metrics"]
+
         event = {}
         response = get_user_metrics(event, lambda_context)
 
@@ -275,8 +277,8 @@ class TestGetUserMetrics:
 
         Expected: Should return 200 status code with default empty metrics when user doesn't exist.
         """
-        get_user_metrics = metrics_functions['get_user_metrics']
-        
+        get_user_metrics = metrics_functions["get_user_metrics"]
+
         event = {"pathParameters": {"userId": "non-existent-user"}}
         response = get_user_metrics(event, lambda_context)
 
@@ -294,8 +296,8 @@ class TestGetUserMetrics:
 
         Expected: Should return 500 status code when an exception occurs.
         """
-        get_user_metrics = metrics_functions['get_user_metrics']
-        
+        get_user_metrics = metrics_functions["get_user_metrics"]
+
         with patch("metrics.lambda_functions.usage_metrics_table.get_item") as mock_get_item:
             mock_get_item.side_effect = Exception("Test exception")
 
@@ -308,13 +310,15 @@ class TestGetUserMetrics:
 
 
 class TestGetUserMetricsAll:
-    def test_get_user_metrics_all_success(self, metrics_functions, dynamodb_table, multiple_usage_metrics, lambda_context):
+    def test_get_user_metrics_all_success(
+        self, metrics_functions, dynamodb_table, multiple_usage_metrics, lambda_context
+    ):
         """Test getting all usage metrics successfully.
 
         Expected: Should return aggregated metrics across all users with correct calculations.
         """
-        get_user_metrics_all = metrics_functions['get_user_metrics_all']
-        
+        get_user_metrics_all = metrics_functions["get_user_metrics_all"]
+
         event = {}
         response = get_user_metrics_all(event, lambda_context)
 
@@ -351,8 +355,8 @@ class TestGetUserMetricsAll:
 
         Expected: Should return zero metrics when there are no users in the table.
         """
-        get_user_metrics_all = metrics_functions['get_user_metrics_all']
-        
+        get_user_metrics_all = metrics_functions["get_user_metrics_all"]
+
         event = {}
         response = get_user_metrics_all(event, lambda_context)
 
@@ -373,8 +377,8 @@ class TestGetUserMetricsAll:
 
         Expected: Should return 500 status code when an exception occurs during metric retrieval.
         """
-        get_user_metrics_all = metrics_functions['get_user_metrics_all']
-        
+        get_user_metrics_all = metrics_functions["get_user_metrics_all"]
+
         with patch("metrics.lambda_functions.usage_metrics_table.scan") as mock_scan:
             mock_scan.side_effect = Exception("Test exception")
 
@@ -392,8 +396,8 @@ class TestCloudwatchMetrics:
 
         Expected: Should count users correctly and publish metrics to CloudWatch.
         """
-        count_unique_users_and_publish_metric = metrics_functions['count_unique_users_and_publish_metric']
-        
+        count_unique_users_and_publish_metric = metrics_functions["count_unique_users_and_publish_metric"]
+
         with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
             result = count_unique_users_and_publish_metric()
 
@@ -413,8 +417,8 @@ class TestCloudwatchMetrics:
 
         Expected: Should count users by group correctly and publish metrics to CloudWatch.
         """
-        count_users_by_group_and_publish_metric = metrics_functions['count_users_by_group_and_publish_metric']
-        
+        count_users_by_group_and_publish_metric = metrics_functions["count_users_by_group_and_publish_metric"]
+
         with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
             result = count_users_by_group_and_publish_metric()
 
@@ -440,8 +444,8 @@ class TestCloudwatchMetrics:
 
         Expected: Should call both metrics functions and return the combined results.
         """
-        daily_metrics_handler = metrics_functions['daily_metrics_handler']
-        
+        daily_metrics_handler = metrics_functions["daily_metrics_handler"]
+
         with patch("metrics.lambda_functions.count_unique_users_and_publish_metric") as mock_count_users, patch(
             "metrics.lambda_functions.count_users_by_group_and_publish_metric"
         ) as mock_count_by_group:
@@ -463,8 +467,8 @@ class TestCloudwatchMetrics:
 
         Expected: Should raise the exception after logging the error.
         """
-        count_unique_users_and_publish_metric = metrics_functions['count_unique_users_and_publish_metric']
-        
+        count_unique_users_and_publish_metric = metrics_functions["count_unique_users_and_publish_metric"]
+
         with patch("metrics.lambda_functions.usage_metrics_table.scan") as mock_scan:
             mock_scan.side_effect = Exception("Test exception")
 
@@ -477,8 +481,8 @@ class TestCloudwatchMetrics:
 
         Expected: Should raise the exception after logging the error.
         """
-        count_users_by_group_and_publish_metric = metrics_functions['count_users_by_group_and_publish_metric']
-        
+        count_users_by_group_and_publish_metric = metrics_functions["count_users_by_group_and_publish_metric"]
+
         with patch("metrics.lambda_functions.usage_metrics_table.scan") as mock_scan:
             mock_scan.side_effect = Exception("Test exception")
 
@@ -493,8 +497,8 @@ class TestSQSEventProcessing:
 
         Expected: Should process multiple SQS records and call update_user_metrics_by_session for each.
         """
-        process_metrics_sqs_event = metrics_functions['process_metrics_sqs_event']
-        
+        process_metrics_sqs_event = metrics_functions["process_metrics_sqs_event"]
+
         # Create test SQS event
         sqs_event = {
             "Records": [
@@ -546,8 +550,8 @@ class TestSQSEventProcessing:
 
         Expected: Should log error and continue processing when SQS record has invalid JSON.
         """
-        process_metrics_sqs_event = metrics_functions['process_metrics_sqs_event']
-        
+        process_metrics_sqs_event = metrics_functions["process_metrics_sqs_event"]
+
         # Create test SQS event with bad JSON
         sqs_event = {"Records": [{"body": "invalid json"}]}
 
@@ -561,8 +565,8 @@ class TestSQSEventProcessing:
 
         Expected: Should log error and continue processing when SQS record is missing userId.
         """
-        process_metrics_sqs_event = metrics_functions['process_metrics_sqs_event']
-        
+        process_metrics_sqs_event = metrics_functions["process_metrics_sqs_event"]
+
         # Create test SQS event with missing userId
         sqs_event = {"Records": [{"body": json.dumps({"userGroups": ["group1"], "messages": []})}]}
 
@@ -575,8 +579,8 @@ class TestSQSEventProcessing:
 
         Expected: Should log error and continue processing when SQS record is missing sessionId.
         """
-        process_metrics_sqs_event = metrics_functions['process_metrics_sqs_event']
-        
+        process_metrics_sqs_event = metrics_functions["process_metrics_sqs_event"]
+
         # Create test SQS event with missing sessionId
         sqs_event = {
             "Records": [{"body": json.dumps({"userId": "test-user-1", "userGroups": ["group1"], "messages": []})}]
@@ -593,8 +597,8 @@ class TestCountRagUsage:
 
         Expected: Should count occurrences of 'File context:' in human message content.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [
             {"type": "human", "content": "File context: Some content here"},
             {"type": "assistant", "content": "Hi there!"},
@@ -608,8 +612,8 @@ class TestCountRagUsage:
 
         Expected: Should count all occurrences of 'File context:' across all human messages.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [
             {"type": "human", "content": "File context: First content\nFile context: Second content"},
             {"type": "assistant", "content": "Response"},
@@ -624,8 +628,8 @@ class TestCountRagUsage:
 
         Expected: Should handle DynamoDB format and count 'File context:' occurrences.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [
             {
                 "type": {"S": "human"},
@@ -656,8 +660,8 @@ class TestCountRagUsage:
 
         Expected: Should count 'FILE CONTEXT:', 'file context:', 'File Context:' etc.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [
             {"type": "human", "content": "FILE CONTEXT: uppercase"},
             {"type": "human", "content": "file context: lowercase"},
@@ -672,8 +676,8 @@ class TestCountRagUsage:
 
         Expected: Should return 0 when no 'File context:' is found.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [
             {"type": "human", "content": "Hello, no file context here", "metadata": {}},
             {"type": "assistant", "content": "Hi there!"},
@@ -687,8 +691,8 @@ class TestCountRagUsage:
 
         Expected: Should return 0 when messages list is empty.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         result = count_rag_usage([])
         assert result == 0
 
@@ -697,8 +701,8 @@ class TestCountRagUsage:
 
         Expected: Should return 0 when no human messages are present.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [{"type": "assistant", "content": "Hi there!"}, {"type": "system", "content": "System message"}]
 
         result = count_rag_usage(messages)
@@ -709,8 +713,8 @@ class TestCountRagUsage:
 
         Expected: Should handle content as list of objects with text fields.
         """
-        count_rag_usage = metrics_functions['count_rag_usage']
-        
+        count_rag_usage = metrics_functions["count_rag_usage"]
+
         messages = [
             {"type": "human", "content": [{"text": "File context: First part"}, {"text": "File context: Second part"}]}
         ]
@@ -725,8 +729,8 @@ class TestUpdateUserMetricsBySession:
 
         Expected: Should create a new user record with correct session metrics.
         """
-        update_user_metrics_by_session = metrics_functions['update_user_metrics_by_session']
-        
+        update_user_metrics_by_session = metrics_functions["update_user_metrics_by_session"]
+
         session_metrics = {
             "totalPrompts": 2,
             "ragUsage": 1,
@@ -757,8 +761,8 @@ class TestUpdateUserMetricsBySession:
 
         Expected: Should aggregate metrics across all sessions correctly.
         """
-        update_user_metrics_by_session = metrics_functions['update_user_metrics_by_session']
-        
+        update_user_metrics_by_session = metrics_functions["update_user_metrics_by_session"]
+
         # First session
         session_1_metrics = {
             "totalPrompts": 2,
@@ -806,8 +810,8 @@ class TestUpdateUserMetricsBySession:
 
         Expected: Should only publish deltas when session metrics change.
         """
-        update_user_metrics_by_session = metrics_functions['update_user_metrics_by_session']
-        
+        update_user_metrics_by_session = metrics_functions["update_user_metrics_by_session"]
+
         # Initial session metrics
         initial_metrics = {
             "totalPrompts": 2,
@@ -848,8 +852,8 @@ class TestUpdateUserMetricsBySession:
 
         Expected: Should return early without processing when table name is not set.
         """
-        update_user_metrics_by_session = metrics_functions['update_user_metrics_by_session']
-        
+        update_user_metrics_by_session = metrics_functions["update_user_metrics_by_session"]
+
         with patch.dict(os.environ, {}, clear=True):
             # Should not raise an exception, just return early
             update_user_metrics_by_session("test-user", "session-1", {}, [])
@@ -860,8 +864,8 @@ class TestUpdateUserMetricsBySession:
 
         Expected: Should log error when DynamoDB operations fail.
         """
-        update_user_metrics_by_session = metrics_functions['update_user_metrics_by_session']
-        
+        update_user_metrics_by_session = metrics_functions["update_user_metrics_by_session"]
+
         session_metrics = {
             "totalPrompts": 1,
             "ragUsage": 0,
@@ -892,8 +896,8 @@ class TestCalculateSessionMetrics:
 
         Expected: Should return zero metrics when messages list is empty.
         """
-        calculate_session_metrics = metrics_functions['calculate_session_metrics']
-        
+        calculate_session_metrics = metrics_functions["calculate_session_metrics"]
+
         result = calculate_session_metrics([])
 
         assert result["totalPrompts"] == 0
@@ -906,8 +910,8 @@ class TestCalculateSessionMetrics:
 
         Expected: Should count human messages as prompts and count 'File context:' occurrences for RAG usage.
         """
-        calculate_session_metrics = metrics_functions['calculate_session_metrics']
-        
+        calculate_session_metrics = metrics_functions["calculate_session_metrics"]
+
         messages = [
             {
                 "type": "human",
@@ -931,8 +935,8 @@ class TestCalculateSessionMetrics:
 
         Expected: Should count MCP tool calls and track individual tool usage.
         """
-        calculate_session_metrics = metrics_functions['calculate_session_metrics']
-        
+        calculate_session_metrics = metrics_functions["calculate_session_metrics"]
+
         messages = [
             {
                 "type": "human",
@@ -960,8 +964,8 @@ class TestCalculateSessionMetrics:
 
         Expected: Should handle DynamoDB format tool calls correctly.
         """
-        calculate_session_metrics = metrics_functions['calculate_session_metrics']
-        
+        calculate_session_metrics = metrics_functions["calculate_session_metrics"]
+
         messages = [
             {
                 "type": {"S": "human"},
@@ -998,8 +1002,8 @@ class TestCalculateSessionMetrics:
 
         Expected: Should handle both direct and DynamoDB formats in same session.
         """
-        calculate_session_metrics = metrics_functions['calculate_session_metrics']
-        
+        calculate_session_metrics = metrics_functions["calculate_session_metrics"]
+
         messages = [
             {
                 "type": "human",
@@ -1038,8 +1042,8 @@ class TestPublishMetricDeltas:
 
         Expected: Should not publish any metrics when all deltas are zero.
         """
-        publish_metric_deltas = metrics_functions['publish_metric_deltas']
-        
+        publish_metric_deltas = metrics_functions["publish_metric_deltas"]
+
         with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
             publish_metric_deltas("test-user", 0, 0, 0, {}, ["group1"])
 
@@ -1051,8 +1055,8 @@ class TestPublishMetricDeltas:
 
         Expected: Should publish only prompt-related metrics.
         """
-        publish_metric_deltas = metrics_functions['publish_metric_deltas']
-        
+        publish_metric_deltas = metrics_functions["publish_metric_deltas"]
+
         with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
             publish_metric_deltas("test-user", 5, 0, 0, {}, ["group1", "group2"])
 
@@ -1080,8 +1084,8 @@ class TestPublishMetricDeltas:
 
         Expected: Should publish all relevant metrics including individual tool metrics.
         """
-        publish_metric_deltas = metrics_functions['publish_metric_deltas']
-        
+        publish_metric_deltas = metrics_functions["publish_metric_deltas"]
+
         delta_mcp_usage = {"tool1": 2, "tool2": -1, "tool3": 3}
         user_groups = ["group1"]
 
@@ -1117,8 +1121,8 @@ class TestPublishMetricDeltas:
 
         Expected: Should log error and not raise exception when CloudWatch fails.
         """
-        publish_metric_deltas = metrics_functions['publish_metric_deltas']
-        
+        publish_metric_deltas = metrics_functions["publish_metric_deltas"]
+
         with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric, patch(
             "metrics.lambda_functions.logger.error"
         ) as mock_logger:

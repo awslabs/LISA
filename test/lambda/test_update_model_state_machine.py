@@ -36,7 +36,13 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
 os.environ["MANAGEMENT_KEY_NAME"] = "test-management-key"
+os.environ["LISA_API_URL_PS_NAME"] = "test-api-url"
 os.environ["LITELLM_CONFIG_OBJ"] = '{"litellm_settings": {"drop_params": true}}'
+
+# Create SSM parameter using moto before module imports
+with mock_aws():
+    ssm_setup = boto3.client("ssm", region_name="us-east-1")
+    ssm_setup.put_parameter(Name="test-api-url", Value="https://test-api.example.com", Type="String")
 
 # Create retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")

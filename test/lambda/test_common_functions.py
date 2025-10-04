@@ -19,10 +19,10 @@ This replaces the original test_common_functions.py with isolated, maintainable 
 
 import json
 import os
-import pytest
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
-from conftest import LambdaTestHelper
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 # Set up test environment variables
@@ -31,18 +31,18 @@ def setup_test_env():
     """Set up test environment variables."""
     env_vars = {
         "AWS_ACCESS_KEY_ID": "testing",
-        "AWS_SECRET_ACCESS_KEY": "testing", 
+        "AWS_SECRET_ACCESS_KEY": "testing",
         "AWS_SECURITY_TOKEN": "testing",
         "AWS_SESSION_TOKEN": "testing",
         "AWS_DEFAULT_REGION": "us-east-1",
-        "AWS_REGION": "us-east-1"
+        "AWS_REGION": "us-east-1",
     }
-    
+
     for key, value in env_vars.items():
         os.environ[key] = value
-    
+
     yield
-    
+
     # Cleanup
     for key in env_vars.keys():
         if key in os.environ:
@@ -52,17 +52,16 @@ def setup_test_env():
 @pytest.fixture
 def mock_common_functions():
     """Mock common functions module imports."""
-    with patch('utilities.common_functions.logging') as mock_logging:
+    with patch("utilities.common_functions.logging") as mock_logging:
         mock_logging.getLogger.return_value = MagicMock()
-        yield {
-            'logging': mock_logging
-        }
+        yield {"logging": mock_logging}
 
 
 @pytest.fixture
 def common_functions():
     """Import common functions module."""
     from utilities import common_functions
+
     return common_functions
 
 
@@ -70,6 +69,7 @@ def common_functions():
 def validation_module():
     """Import validation module."""
     from utilities import validation
+
     return validation
 
 
@@ -77,12 +77,13 @@ def validation_module():
 def validators_module():
     """Import validators module."""
     from utilities import validators
+
     return validators
 
 
 class TestGetPropertyPath:
     """Test get_property_path function - REFACTORED VERSION."""
-    
+
     def test_get_property_path_simple_property(self, sample_jwt_data, common_functions):
         """Test get_property_path with simple property."""
         result = common_functions.get_property_path(sample_jwt_data, "username")
@@ -111,7 +112,7 @@ class TestGetPropertyPath:
 
 class TestDecimalEncoder:
     """Test DecimalEncoder class - REFACTORED VERSION."""
-    
+
     def test_decimal_encoder(self, common_functions):
         """Test DecimalEncoder converts Decimal to float."""
         encoder = common_functions.DecimalEncoder()
@@ -121,7 +122,7 @@ class TestDecimalEncoder:
     def test_decimal_encoder_non_decimal(self, common_functions):
         """Test DecimalEncoder with non-Decimal value."""
         encoder = common_functions.DecimalEncoder()
-        
+
         # Should raise TypeError for non-Decimal values
         with pytest.raises(TypeError):
             encoder.default("not a decimal")
@@ -129,7 +130,7 @@ class TestDecimalEncoder:
 
 class TestResponseGeneration:
     """Test response generation functions - REFACTORED VERSION."""
-    
+
     def test_generate_html_response(self, common_functions):
         """Test generate_html_response creates proper response."""
         response = common_functions.generate_html_response(200, {"message": "success"})
@@ -149,7 +150,7 @@ class TestResponseGeneration:
 
 class TestUserExtraction:
     """Test user information extraction functions - REFACTORED VERSION."""
-    
+
     def test_get_username(self, common_functions):
         """Test get_username extracts username from event."""
         event = {"requestContext": {"authorizer": {"username": "test-user"}}}
@@ -193,7 +194,7 @@ class TestUserExtraction:
 
 class TestTokenHandling:
     """Test token handling functions - REFACTORED VERSION."""
-    
+
     def test_get_id_token(self, common_functions):
         """Test get_id_token function."""
         event = {"headers": {"authorization": "Bearer test-token"}}
@@ -203,7 +204,7 @@ class TestTokenHandling:
     def test_get_id_token_missing(self, common_functions):
         """Test get_id_token with missing authorization header."""
         event = {"headers": {}}
-        
+
         with pytest.raises(ValueError, match="Missing authorization token"):
             common_functions.get_id_token(event)
 
@@ -234,7 +235,7 @@ class TestTokenHandling:
 
 class TestSessionHandling:
     """Test session handling functions - REFACTORED VERSION."""
-    
+
     def test_get_session_id(self, common_functions):
         """Test get_session_id function."""
         event = {"pathParameters": {"sessionId": "test-session-123"}}
@@ -250,7 +251,7 @@ class TestSessionHandling:
 
 class TestUserAccess:
     """Test user access control functions - REFACTORED VERSION."""
-    
+
     def test_user_has_group_access_public(self, common_functions):
         """Test user_has_group_access returns True for public resources."""
         result = common_functions.user_has_group_access(["user"], [])
@@ -269,7 +270,7 @@ class TestUserAccess:
 
 class TestUtilityFunctions:
     """Test utility functions - REFACTORED VERSION."""
-    
+
     def test_merge_fields_top_level(self, common_functions):
         """Test merge_fields with top-level fields."""
         source = {"name": "John", "age": 30, "city": "NYC"}
@@ -298,13 +299,13 @@ class TestUtilityFunctions:
 
 class TestLoggingSetup:
     """Test logging setup functions - REFACTORED VERSION."""
-    
+
     def test_setup_root_logging(self, mock_common_functions, common_functions):
         """Test setup_root_logging function."""
         # Reset logging configuration flag if it exists
-        if hasattr(common_functions, 'logging_configured'):
+        if hasattr(common_functions, "logging_configured"):
             common_functions.logging_configured = False
-        
+
         common_functions.setup_root_logging()
 
         # Check that logging was configured (global variable should be True)
@@ -312,10 +313,7 @@ class TestLoggingSetup:
 
     def test_sanitize_event(self, common_functions):
         """Test _sanitize_event function."""
-        event = {
-            "headers": {"Authorization": "Bearer token", "Content-Type": "application/json"}, 
-            "body": "test body"
-        }
+        event = {"headers": {"Authorization": "Bearer token", "Content-Type": "application/json"}, "body": "test body"}
 
         result = common_functions._sanitize_event(event)
         assert isinstance(result, str)
@@ -325,59 +323,63 @@ class TestLoggingSetup:
 
 class TestDecorators:
     """Test decorator functions - REFACTORED VERSION."""
-    
+
     def test_api_wrapper_success(self, common_functions, lambda_context):
         """Test api_wrapper with successful function execution."""
+
         @common_functions.api_wrapper
         def test_function(event, context):
             return {"message": "success"}
 
         event = {"test": "data"}
         result = test_function(event, lambda_context)
-        
+
         assert result["statusCode"] == 200
         assert "success" in result["body"]
 
     def test_api_wrapper_exception(self, common_functions, lambda_context):
         """Test api_wrapper with exception handling."""
+
         @common_functions.api_wrapper
         def test_function(event, context):
             raise ValueError("Test error")
 
         event = {"test": "data"}
         result = test_function(event, lambda_context)
-        
+
         assert result["statusCode"] == 400  # Default status code for exceptions
         assert "error" in result["body"].lower()
 
     def test_authorization_wrapper_success(self, common_functions, lambda_context):
         """Test authorization_wrapper with successful authorization."""
+
         @common_functions.authorization_wrapper
         def test_function(event, context):
             return {"message": "success"}
 
         event = {"requestContext": {"authorizer": {"username": "test-user", "groups": ["admin"]}}}
         result = test_function(event, lambda_context)
-        
+
         # The authorization_wrapper just calls the function directly
         assert result == {"message": "success"}
 
     def test_authorization_wrapper_no_authorizer(self, common_functions, lambda_context):
         """Test authorization_wrapper with missing authorizer."""
+
         @common_functions.authorization_wrapper
         def test_function(event, context):
             return {"message": "success"}
 
         event = {}
         result = test_function(event, lambda_context)
-        
+
         # The authorization_wrapper just calls the function directly
         assert result == {"message": "success"}
 
 
 class TestValidationModule:
     """Test validation module functions - REFACTORED VERSION."""
-    
+
     def test_validate_model_name_valid(self, validation_module):
         """Test validate_model_name with valid model name."""
         result = validation_module.validate_model_name("valid-model-123")
@@ -391,7 +393,7 @@ class TestValidationModule:
 
 class TestValidatorsModule:
     """Test validators module functions - REFACTORED VERSION."""
-    
+
     def test_validate_instance_type_valid(self, validators_module):
         """Test validate_instance_type with valid EC2 instance type."""
         result = validators_module.validate_instance_type("t3.micro")

@@ -28,6 +28,9 @@ os.environ["AWS_REGION"] = "us-east-1"
 os.environ["LISA_INGESTION_JOB_TABLE_NAME"] = "test-table"
 os.environ["RAG_DOCUMENT_TABLE"] = "test-doc-table"
 os.environ["RAG_SUB_DOCUMENT_TABLE"] = "test-subdoc-table"
+os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"] = "test-management-key"
+
+import repository.pipeline_ingest_documents as pid
 
 
 def make_job():
@@ -59,48 +62,48 @@ def make_doc():
 
 
 def test_pipeline_ingest_success():
-    import repository.pipeline_ingest_documents as pid
-
     job = make_job()
     make_doc()
-    with patch("repository.pipeline_ingest_documents.generate_chunks", return_value=[MagicMock()]), \
-         patch("repository.pipeline_ingest_documents.prepare_chunks", return_value=(["text"], [{}])), \
-         patch("repository.pipeline_ingest_documents.store_chunks_in_vectorstore", return_value=["chunk1", "chunk2"]), \
-         patch.object(pid.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
-         patch.object(pid.rag_document_repository, "find_by_source", return_value=[]), \
-         patch.object(pid.rag_document_repository, "save"), \
-         patch.object(pid.ingestion_job_repository, "save"), \
-         patch.object(pid.ingestion_job_repository, "update_status"):
+    with patch("repository.pipeline_ingest_documents.generate_chunks", return_value=[MagicMock()]), patch(
+        "repository.pipeline_ingest_documents.prepare_chunks", return_value=(["text"], [{}])
+    ), patch(
+        "repository.pipeline_ingest_documents.store_chunks_in_vectorstore", return_value=["chunk1", "chunk2"]
+    ), patch.object(
+        pid.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}
+    ), patch.object(
+        pid.rag_document_repository, "find_by_source", return_value=[]
+    ), patch.object(
+        pid.rag_document_repository, "save"
+    ), patch.object(
+        pid.ingestion_job_repository, "save"
+    ), patch.object(
+        pid.ingestion_job_repository, "update_status"
+    ):
         pid.pipeline_ingest(job)
 
 
 def test_pipeline_ingest_exception():
-    import repository.pipeline_ingest_documents as pid
-
     job = make_job()
-    with patch("repository.pipeline_ingest_documents.generate_chunks", side_effect=Exception("fail")), \
-         patch.object(pid.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
-         patch.object(pid.ingestion_job_repository, "update_status") as mock_update:
+    with patch("repository.pipeline_ingest_documents.generate_chunks", side_effect=Exception("fail")), patch.object(
+        pid.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}
+    ), patch.object(pid.ingestion_job_repository, "update_status") as mock_update:
         with pytest.raises(Exception, match="Failed to process document: fail"):
             pid.pipeline_ingest(job)
         mock_update.assert_called_with(job, IngestionStatus.INGESTION_FAILED)
 
 
 def test_remove_document_from_vectorstore():
-    import repository.pipeline_ingest_documents as pid
-
     doc = make_doc()
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
+    with patch("repository.pipeline_ingest_documents.RagEmbeddings") as mock_embeddings, patch(
         "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_vs:
+    ) as mock_vs, patch("repository.embeddings.get_cert_path", return_value="/test/cert"):
+        mock_embeddings.return_value = MagicMock()
         mock_vs.return_value.delete = MagicMock()
         pid.remove_document_from_vectorstore(doc)
         mock_vs.return_value.delete.assert_called_once_with(doc.subdocs)
 
 
 def test_handle_pipeline_ingest_event():
-    import repository.pipeline_ingest_documents as pid
-
     event = {
         "detail": {
             "bucket": "bucket",
@@ -118,8 +121,6 @@ def test_handle_pipeline_ingest_event():
 
 
 def test_handle_pipline_ingest_schedule_success():
-    import repository.pipeline_ingest_documents as pid
-
     event = {
         "detail": {
             "bucket": "bucket",
@@ -143,8 +144,6 @@ def test_handle_pipline_ingest_schedule_success():
 
 
 def test_handle_pipline_ingest_schedule_error():
-    import repository.pipeline_ingest_documents as pid
-
     event = {
         "detail": {
             "bucket": "bucket",
@@ -162,11 +161,10 @@ def test_handle_pipline_ingest_schedule_error():
 
 
 def test_store_chunks_in_vectorstore_success():
-    import repository.pipeline_ingest_documents as pid
-
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
+    with patch("repository.pipeline_ingest_documents.RagEmbeddings") as mock_embeddings, patch(
         "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_vs:
+    ) as mock_vs, patch("repository.embeddings.get_cert_path", return_value="/test/cert"):
+        mock_embeddings.return_value = MagicMock()
         mock_vs.return_value.add_texts.return_value = ["id1", "id2"]
         texts = ["a", "b"]
         metadatas = [{}, {}]
@@ -175,11 +173,10 @@ def test_store_chunks_in_vectorstore_success():
 
 
 def test_store_chunks_in_vectorstore_empty_batch():
-    import repository.pipeline_ingest_documents as pid
-
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
+    with patch("repository.pipeline_ingest_documents.RagEmbeddings") as mock_embeddings, patch(
         "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_vs:
+    ) as mock_vs, patch("repository.embeddings.get_cert_path", return_value="/test/cert"):
+        mock_embeddings.return_value = MagicMock()
         mock_vs.return_value.add_texts.return_value = []
         texts = ["a"]
         metadatas = [{}]
@@ -188,8 +185,6 @@ def test_store_chunks_in_vectorstore_empty_batch():
 
 
 def test_batch_texts():
-    import repository.pipeline_ingest_documents as pid
-
     texts = ["a", "b", "c", "d"]
     metadatas = [{}, {}, {}, {}]
     batches = pid.batch_texts(texts, metadatas, batch_size=2)
@@ -199,8 +194,6 @@ def test_batch_texts():
 
 
 def test_extract_chunk_strategy():
-    import repository.pipeline_ingest_documents as pid
-
     config = {"chunkSize": 1000, "chunkOverlap": 200}
     strategy = pid.extract_chunk_strategy(config)
     assert strategy.size == 1000
@@ -208,8 +201,6 @@ def test_extract_chunk_strategy():
 
 
 def test_prepare_chunks():
-    import repository.pipeline_ingest_documents as pid
-
     docs = [MagicMock(page_content="abc", metadata={"meta": 1}), MagicMock(page_content="def", metadata={"meta": 2})]
     texts, metadatas = pid.prepare_chunks(docs, "repo-1")
     assert texts == ["abc", "def"]

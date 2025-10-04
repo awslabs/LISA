@@ -1,17 +1,32 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """Test module for models lambda functions - refactored version using fixture-based mocking."""
 
 import json
 import os
-import pytest
 from unittest.mock import MagicMock, patch
-from moto import mock_aws
+
 import boto3
+import pytest
+from moto import mock_aws
 
 
 @pytest.fixture
 def mock_models_common():
     """Common mocks for models lambda functions."""
-    
+
     # Set up environment variables
     env_vars = {
         "AWS_ACCESS_KEY_ID": "testing",
@@ -24,7 +39,7 @@ def mock_models_common():
         "DELETE_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteModelStateMachine",
         "UPDATE_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:UpdateModelStateMachine",
     }
-    
+
     with patch.dict(os.environ, env_vars):
         yield env_vars
 
@@ -57,7 +72,7 @@ def models_functions(mock_models_common):
     from models.handler.list_models_handler import ListModelsHandler
     from models.handler.update_model_handler import UpdateModelHandler
     from models.handler.utils import to_lisa_model
-    
+
     return {
         "domain_objects": {
             "AutoScalingConfig": AutoScalingConfig,
@@ -91,7 +106,7 @@ def models_functions(mock_models_common):
         },
         "utils": {
             "to_lisa_model": to_lisa_model,
-        }
+        },
     }
 
 
@@ -128,7 +143,7 @@ def sample_model(models_functions):
     """Create a sample model dictionary."""
     ModelStatus = models_functions["domain_objects"]["ModelStatus"]
     ModelType = models_functions["domain_objects"]["ModelType"]
-    
+
     return {
         "model_id": "test-model",
         "auto_scaling_group": "test-asg",
@@ -136,7 +151,7 @@ def sample_model(models_functions):
         "last_modified_date": int(1747689448),
         "model_config": {
             "modelId": "test-model",
-            "modelName": "gpt-3.5-turbo", 
+            "modelName": "gpt-3.5-turbo",
             "modelType": ModelType.TEXTGEN,
             "streaming": True,
             "features": [{"name": "test-feature", "overview": "This is a test feature"}],
@@ -167,14 +182,14 @@ def mock_autoscaling_client():
 
 class TestModelUtils:
     """Test class for model utilities."""
-    
+
     def test_to_lisa_model(self, models_functions):
         """Test the to_lisa_model utility function."""
         to_lisa_model = models_functions["utils"]["to_lisa_model"]
         LISAModel = models_functions["domain_objects"]["LISAModel"]
         ModelType = models_functions["domain_objects"]["ModelType"]
         ModelStatus = models_functions["domain_objects"]["ModelStatus"]
-        
+
         # Test with minimal model data
         model_dict = {
             "model_config": {
@@ -212,11 +227,11 @@ class TestModelUtils:
 
 class TestBaseApiHandler:
     """Test class for BaseApiHandler."""
-    
+
     def test_base_api_handler(self, models_functions):
         """Test BaseApiHandler initialization."""
         BaseApiHandler = models_functions["handlers"]["BaseApiHandler"]
-        
+
         model_table = MagicMock()
         autoscaling_client = MagicMock()
         stepfunctions_client = MagicMock()
@@ -234,9 +249,10 @@ class TestBaseApiHandler:
 
 class TestCreateModelHandler:
     """Test class for CreateModelHandler."""
-    
-    def test_create_model_handler(self, models_functions, mock_stepfunctions_client, 
-                                 dynamodb_table, mock_autoscaling_client):
+
+    def test_create_model_handler(
+        self, models_functions, mock_stepfunctions_client, dynamodb_table, mock_autoscaling_client
+    ):
         """Test CreateModelHandler.__call__ method."""
         CreateModelHandler = models_functions["handlers"]["CreateModelHandler"]
         CreateModelRequest = models_functions["domain_objects"]["CreateModelRequest"]
@@ -244,7 +260,7 @@ class TestCreateModelHandler:
         ModelType = models_functions["domain_objects"]["ModelType"]
         ModelStatus = models_functions["domain_objects"]["ModelStatus"]
         ModelAlreadyExistsError = models_functions["exceptions"]["ModelAlreadyExistsError"]
-        
+
         # Create handler instance
         handler = CreateModelHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -286,8 +302,9 @@ class TestCreateModelHandler:
         with pytest.raises(ModelAlreadyExistsError, match="Model 'existing-model' already exists"):
             handler(request)
 
-    def test_create_model_validation(self, models_functions, mock_autoscaling_client, 
-                                    mock_stepfunctions_client, dynamodb_table):
+    def test_create_model_validation(
+        self, models_functions, mock_autoscaling_client, mock_stepfunctions_client, dynamodb_table
+    ):
         """Test validation in CreateModelHandler."""
         CreateModelHandler = models_functions["handlers"]["CreateModelHandler"]
         CreateModelRequest = models_functions["domain_objects"]["CreateModelRequest"]
@@ -300,7 +317,7 @@ class TestCreateModelHandler:
         LoadBalancerConfig = models_functions["domain_objects"]["LoadBalancerConfig"]
         LoadBalancerHealthCheckConfig = models_functions["domain_objects"]["LoadBalancerHealthCheckConfig"]
         InferenceContainer = models_functions["domain_objects"]["InferenceContainer"]
-        
+
         # Create handler instance
         handler = CreateModelHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -354,14 +371,15 @@ class TestCreateModelHandler:
 
 class TestDeleteModelHandler:
     """Test class for DeleteModelHandler."""
-    
-    def test_delete_model_handler(self, models_functions, mock_stepfunctions_client, 
-                                 dynamodb_table, sample_model, mock_autoscaling_client):
+
+    def test_delete_model_handler(
+        self, models_functions, mock_stepfunctions_client, dynamodb_table, sample_model, mock_autoscaling_client
+    ):
         """Test DeleteModelHandler.__call__ method."""
         DeleteModelHandler = models_functions["handlers"]["DeleteModelHandler"]
         LISAModel = models_functions["domain_objects"]["LISAModel"]
         ModelNotFoundError = models_functions["exceptions"]["ModelNotFoundError"]
-        
+
         # Add sample model to table
         dynamodb_table.put_item(Item=sample_model)
 
@@ -386,14 +404,15 @@ class TestDeleteModelHandler:
 
 class TestGetModelHandler:
     """Test class for GetModelHandler."""
-    
-    def test_get_model_handler(self, models_functions, dynamodb_table, sample_model, 
-                              mock_autoscaling_client, mock_stepfunctions_client):
+
+    def test_get_model_handler(
+        self, models_functions, dynamodb_table, sample_model, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test GetModelHandler.__call__ method."""
         GetModelHandler = models_functions["handlers"]["GetModelHandler"]
         LISAModel = models_functions["domain_objects"]["LISAModel"]
         ModelNotFoundError = models_functions["exceptions"]["ModelNotFoundError"]
-        
+
         # Add sample model to table
         dynamodb_table.put_item(Item=sample_model)
 
@@ -418,12 +437,13 @@ class TestGetModelHandler:
 
 class TestListModelsHandler:
     """Test class for ListModelsHandler."""
-    
-    def test_list_models_handler(self, models_functions, dynamodb_table, sample_model, 
-                                mock_autoscaling_client, mock_stepfunctions_client):
+
+    def test_list_models_handler(
+        self, models_functions, dynamodb_table, sample_model, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test ListModelsHandler.__call__ method."""
         ListModelsHandler = models_functions["handlers"]["ListModelsHandler"]
-        
+
         # Add sample model to table
         dynamodb_table.put_item(Item=sample_model)
 
@@ -452,9 +472,10 @@ class TestListModelsHandler:
 
 class TestUpdateModelHandler:
     """Test class for UpdateModelHandler."""
-    
-    def test_update_model_handler(self, models_functions, dynamodb_table, mock_autoscaling_client, 
-                                 mock_stepfunctions_client, sample_model):
+
+    def test_update_model_handler(
+        self, models_functions, dynamodb_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model
+    ):
         """Test UpdateModelHandler.__call__ method."""
         UpdateModelHandler = models_functions["handlers"]["UpdateModelHandler"]
         UpdateModelRequest = models_functions["domain_objects"]["UpdateModelRequest"]
@@ -462,7 +483,7 @@ class TestUpdateModelHandler:
         ModelType = models_functions["domain_objects"]["ModelType"]
         ModelStatus = models_functions["domain_objects"]["ModelStatus"]
         ModelNotFoundError = models_functions["exceptions"]["ModelNotFoundError"]
-        
+
         # Add sample model to table
         dynamodb_table.put_item(Item=sample_model)
 
@@ -535,15 +556,16 @@ class TestUpdateModelHandler:
             with pytest.raises(ModelNotFoundError, match="Model 'non-existent-model' was not found"):
                 handler("non-existent-model", UpdateModelRequest(streaming=False))
 
-    def test_update_model_validation(self, models_functions, dynamodb_table, mock_autoscaling_client, 
-                                    mock_stepfunctions_client, sample_model):
+    def test_update_model_validation(
+        self, models_functions, dynamodb_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model
+    ):
         """Test validation in UpdateModelHandler."""
         UpdateModelHandler = models_functions["handlers"]["UpdateModelHandler"]
         UpdateModelRequest = models_functions["domain_objects"]["UpdateModelRequest"]
         AutoScalingInstanceConfig = models_functions["domain_objects"]["AutoScalingInstanceConfig"]
         ModelStatus = models_functions["domain_objects"]["ModelStatus"]
         InvalidStateTransitionError = models_functions["exceptions"]["InvalidStateTransitionError"]
-        
+
         # Add sample model to table
         dynamodb_table.put_item(Item=sample_model)
 
@@ -581,7 +603,9 @@ class TestUpdateModelHandler:
             handler("stopped-model", UpdateModelRequest(enabled=False))
 
         # Test with simultaneous enabled and autoScalingInstanceConfig
-        with pytest.raises(ValueError, match="Start or Stop operations and AutoScaling changes must happen in separate requests"):
+        with pytest.raises(
+            ValueError, match="Start or Stop operations and AutoScaling changes must happen in separate requests"
+        ):
             handler(
                 "test-model",
                 UpdateModelRequest(enabled=False, autoScalingInstanceConfig=AutoScalingInstanceConfig(minCapacity=1)),
@@ -594,7 +618,9 @@ class TestUpdateModelHandler:
         non_lisa_model.pop("auto_scaling_group", None)
         dynamodb_table.put_item(Item=non_lisa_model)
 
-        with pytest.raises(ValueError, match="Cannot update AutoScaling Config for model not hosted in LISA infrastructure"):
+        with pytest.raises(
+            ValueError, match="Cannot update AutoScaling Config for model not hosted in LISA infrastructure"
+        ):
             handler(
                 "non-lisa-model", UpdateModelRequest(autoScalingInstanceConfig=AutoScalingInstanceConfig(minCapacity=1))
             )
@@ -608,14 +634,14 @@ class TestUpdateModelHandler:
 
 class TestExceptionHandlers:
     """Test class for exception handlers."""
-    
+
     @pytest.mark.asyncio
     async def test_exception_handlers(self, models_functions):
         """Test exception handlers."""
         from fastapi.encoders import jsonable_encoder
         from fastapi.exceptions import RequestValidationError
         from models.lambda_functions import model_not_found_handler, user_error_handler, validation_exception_handler
-        
+
         ModelNotFoundError = models_functions["exceptions"]["ModelNotFoundError"]
         ModelAlreadyExistsError = models_functions["exceptions"]["ModelAlreadyExistsError"]
 
@@ -652,14 +678,15 @@ class TestExceptionHandlers:
 
 class TestFastAPIEndpoints:
     """Test class for FastAPI endpoints."""
-    
+
     @pytest.mark.asyncio
-    async def test_fastapi_endpoints(self, models_functions, sample_model, dynamodb_table, 
-                                    mock_autoscaling_client, mock_stepfunctions_client):
+    async def test_fastapi_endpoints(
+        self, models_functions, sample_model, dynamodb_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test FastAPI endpoints."""
         from fastapi.testclient import TestClient
         from models.lambda_functions import app
-        
+
         CreateModelResponse = models_functions["domain_objects"]["CreateModelResponse"]
         LISAModel = models_functions["domain_objects"]["LISAModel"]
         ModelType = models_functions["domain_objects"]["ModelType"]
@@ -790,8 +817,8 @@ class TestFastAPIEndpoints:
     async def test_fastapi_model_not_found_endpoint(self):
         """Test FastAPI endpoint with model not found error."""
         from fastapi.testclient import TestClient
-        from models.lambda_functions import app
         from models.exception import ModelNotFoundError
+        from models.lambda_functions import app
 
         client = TestClient(app)
 
@@ -849,11 +876,11 @@ class TestFastAPIEndpoints:
 
 class TestModelLambdaFunctions:
     """Test class for models lambda functions."""
-    
+
     def test_lambda_handler(self, models_functions, lambda_context):
         """Test Lambda handler function."""
         from models.lambda_functions import handler
-        
+
         # Test with FastAPI event
         fastapi_event = {
             "version": "2.0",
@@ -891,7 +918,7 @@ class TestModelLambdaFunctions:
             mock_list_handler.return_value = list_handler_instance
 
             response = handler(fastapi_event, lambda_context)
-            
+
             assert response["statusCode"] == 200
             assert "body" in response
             assert "headers" in response
@@ -904,7 +931,7 @@ class TestModelLambdaFunctions:
         event_with_exception = {
             "version": "2.0",
             "routeKey": "GET /non-existent-model",
-            "rawPath": "/non-existent-model", 
+            "rawPath": "/non-existent-model",
             "rawQueryString": "",
             "headers": {
                 "accept": "application/json",

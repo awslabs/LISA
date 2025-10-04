@@ -390,4 +390,4 @@ test-coverage:
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
           --cov-fail-under 85 \
-		  -n auto 
+		  -n auto

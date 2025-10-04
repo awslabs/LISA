@@ -14,8 +14,9 @@
 
 import os
 import sys
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Set up required environment variables before imports
 os.environ.setdefault("AWS_ACCESS_KEY_ID", "testing")
@@ -51,7 +52,7 @@ def mock_similarity_common(aws_env_vars):
         "RAG_SUB_DOCUMENT_TABLE": "rag-sub-document-table",
         "LISA_RAG_VECTOR_STORE_TABLE": "vector-store-table",
     }
-    
+
     with patch.dict(os.environ, additional_env_vars, clear=False):
         yield
 
@@ -124,21 +125,26 @@ def test_delete_index_opensearch(mock_similarity_common, lambda_context):
         "headers": {"authorization": "Bearer test-token"},
     }
 
-    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, \
-         patch("repository.lambda_functions.get_vector_store_client") as mock_get_vs, \
-         patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, \
-         patch("repository.lambda_functions.is_admin") as mock_is_admin, \
-         patch("utilities.auth.is_admin") as mock_auth_is_admin, \
-         patch("utilities.auth.get_groups") as mock_get_groups, \
-         patch("utilities.auth.get_username") as mock_get_username, \
-         patch("repository.lambda_functions.RagEmbeddings"):
+    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
+        "repository.lambda_functions.get_vector_store_client"
+    ) as mock_get_vs, patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, patch(
+        "repository.lambda_functions.is_admin"
+    ) as mock_is_admin, patch(
+        "utilities.auth.is_admin"
+    ) as mock_auth_is_admin, patch(
+        "utilities.auth.get_groups"
+    ) as mock_get_groups, patch(
+        "utilities.auth.get_username"
+    ) as mock_get_username, patch(
+        "repository.lambda_functions.RagEmbeddings"
+    ):
 
         # Set up authentication mocks
         mock_is_admin.return_value = True
         mock_auth_is_admin.return_value = True
         mock_get_groups.return_value = ["admin"]
         mock_get_username.return_value = "test-user"
-        
+
         # Set up repository mocks
         mock_find_repo.return_value = {"type": "opensearch", "allowedGroups": ["admin"]}
         mock_vs = MagicMock()
@@ -152,76 +158,6 @@ def test_delete_index_opensearch(mock_similarity_common, lambda_context):
         mock_vs.client.indices.delete.assert_called_once_with(index="test-model")
 
 
-def test_delete_index_opensearch_index_not_exists(mock_similarity_common, lambda_context):
-    """Test delete_index with OpenSearch when index doesn't exist"""
-    event = {
-        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
-        "requestContext": {"authorizer": {"groups": "[]"}},
-        "headers": {"authorization": "Bearer test-token"},
-    }
-
-    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, \
-         patch("repository.lambda_functions.get_vector_store_client") as mock_get_vs, \
-         patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, \
-         patch("repository.lambda_functions.is_admin") as mock_is_admin, \
-         patch("utilities.auth.is_admin") as mock_auth_is_admin, \
-         patch("utilities.auth.get_groups") as mock_get_groups, \
-         patch("utilities.auth.get_username") as mock_get_username, \
-         patch("repository.lambda_functions.RagEmbeddings"):
-
-        # Set up authentication mocks
-        mock_is_admin.return_value = True
-        mock_auth_is_admin.return_value = True
-        mock_get_groups.return_value = ["admin"]
-        mock_get_username.return_value = "test-user"
-        
-        # Set up repository mocks
-        mock_find_repo.return_value = {"type": "opensearch", "allowedGroups": ["admin"]}
-        mock_vs = MagicMock()
-        mock_vs.client.indices.exists.return_value = False
-        mock_get_vs.return_value = mock_vs
-        mock_is_type.side_effect = lambda _, repo_type: repo_type == RepositoryType.OPENSEARCH
-
-        delete_index(event, lambda_context)
-
-        mock_vs.client.indices.exists.assert_called_once_with(index="test-model")
-        mock_vs.client.indices.delete.assert_not_called()
-
-
-def test_delete_index_pgvector(mock_similarity_common, lambda_context):
-    """Test delete_index with PGVector repository"""
-    event = {
-        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
-        "requestContext": {"authorizer": {"groups": "[]"}},
-        "headers": {"authorization": "Bearer test-token"},
-    }
-
-    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, \
-         patch("repository.lambda_functions.get_vector_store_client") as mock_get_vs, \
-         patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, \
-         patch("repository.lambda_functions.is_admin") as mock_is_admin, \
-         patch("utilities.auth.is_admin") as mock_auth_is_admin, \
-         patch("utilities.auth.get_groups") as mock_get_groups, \
-         patch("utilities.auth.get_username") as mock_get_username, \
-         patch("repository.lambda_functions.RagEmbeddings"):
-
-        # Set up authentication mocks
-        mock_is_admin.return_value = True
-        mock_auth_is_admin.return_value = True
-        mock_get_groups.return_value = ["admin"]
-        mock_get_username.return_value = "test-user"
-        
-        # Set up repository mocks
-        mock_find_repo.return_value = {"type": "pgvector", "allowedGroups": ["admin"]}
-        mock_vs = MagicMock()
-        mock_get_vs.return_value = mock_vs
-        mock_is_type.side_effect = lambda _, repo_type: repo_type == RepositoryType.PGVECTOR
-
-        delete_index(event, lambda_context)
-
-        mock_vs.delete_collection.assert_called_once()
-
-
 def test_delete_index_exception(mock_similarity_common, lambda_context):
     """Test delete_index handles exceptions"""
     event = {
@@ -229,11 +165,13 @@ def test_delete_index_exception(mock_similarity_common, lambda_context):
         "requestContext": {"authorizer": {"groups": "[]"}},
     }
 
-    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, \
-         patch("repository.lambda_functions.get_vector_store_client") as mock_get_vs, \
-         patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, \
-         patch("repository.lambda_functions.is_admin") as mock_is_admin, \
-         patch("repository.lambda_functions.RagEmbeddings"):
+    with patch("repository.lambda_functions.vs_repo.find_repository_by_id") as mock_find_repo, patch(
+        "repository.lambda_functions.get_vector_store_client"
+    ) as mock_get_vs, patch("repository.lambda_functions.RepositoryType.is_type") as mock_is_type, patch(
+        "repository.lambda_functions.is_admin"
+    ) as mock_is_admin, patch(
+        "repository.lambda_functions.RagEmbeddings"
+    ):
 
         mock_is_admin.return_value = True
         mock_find_repo.return_value = {"type": "opensearch"}

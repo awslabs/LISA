@@ -19,7 +19,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
@@ -392,12 +392,12 @@ class IngestionStatus(str, Enum):
 class FixedChunkingStrategy(BaseModel):
     """Defines parameters for fixed-size document chunking."""
 
-    type: ChunkingStrategyType = ChunkingStrategyType.FIXED
+    type: Literal[ChunkingStrategyType.FIXED] = ChunkingStrategyType.FIXED
     size: int
     overlap: int
 
 
-ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
+ChunkingStrategy: TypeAlias = Annotated[Union[FixedChunkingStrategy], Field(discriminator="type")]
 
 
 class RagSubDocument(BaseModel):

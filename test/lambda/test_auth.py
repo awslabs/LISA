@@ -18,9 +18,9 @@ This replaces the original test_auth.py with isolated, maintainable tests.
 """
 
 import os
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from conftest import LambdaTestHelper
 
 
 # Set up test environment variables
@@ -29,18 +29,18 @@ def setup_test_env():
     """Set up test environment variables."""
     env_vars = {
         "AWS_ACCESS_KEY_ID": "testing",
-        "AWS_SECRET_ACCESS_KEY": "testing", 
+        "AWS_SECRET_ACCESS_KEY": "testing",
         "AWS_SECURITY_TOKEN": "testing",
         "AWS_SESSION_TOKEN": "testing",
         "AWS_DEFAULT_REGION": "us-east-1",
-        "ADMIN_GROUP": "admin"  # Default admin group for tests
+        "ADMIN_GROUP": "admin",  # Default admin group for tests
     }
-    
+
     for key, value in env_vars.items():
         os.environ[key] = value
-    
+
     yield
-    
+
     # Cleanup
     for key in env_vars.keys():
         if key in os.environ:
@@ -51,39 +51,27 @@ def setup_test_env():
 def auth_module():
     """Import auth module."""
     from utilities import auth
+
     return auth
 
 
 @pytest.fixture
 def mock_auth_logging():
     """Mock auth module logging."""
-    with patch('utilities.auth.logger') as mock_logger:
+    with patch("utilities.auth.logger") as mock_logger:
         yield mock_logger
 
 
 @pytest.fixture
 def sample_event_with_username():
     """Create a sample event with username in requestContext."""
-    return {
-        "requestContext": {
-            "authorizer": {
-                "username": "test-user", 
-                "groups": '["group1", "group2"]'
-            }
-        }
-    }
+    return {"requestContext": {"authorizer": {"username": "test-user", "groups": '["group1", "group2"]'}}}
 
 
 @pytest.fixture
 def sample_event_without_username():
     """Create a sample event without username in requestContext."""
-    return {
-        "requestContext": {
-            "authorizer": {
-                "groups": '["group1", "group2"]'
-            }
-        }
-    }
+    return {"requestContext": {"authorizer": {"groups": '["group1", "group2"]'}}}
 
 
 @pytest.fixture
@@ -101,27 +89,13 @@ def sample_event_no_context():
 @pytest.fixture
 def admin_event():
     """Create a sample event for admin user."""
-    return {
-        "requestContext": {
-            "authorizer": {
-                "username": "admin-user",
-                "groups": '["admin", "users"]'
-            }
-        }
-    }
+    return {"requestContext": {"authorizer": {"username": "admin-user", "groups": '["admin", "users"]'}}}
 
 
 @pytest.fixture
 def regular_user_event():
     """Create a sample event for regular user."""
-    return {
-        "requestContext": {
-            "authorizer": {
-                "username": "regular-user",
-                "groups": '["users"]'
-            }
-        }
-    }
+    return {"requestContext": {"authorizer": {"username": "regular-user", "groups": '["users"]'}}}
 
 
 class TestGetUsername:
@@ -188,7 +162,7 @@ class TestIsAdmin:
         with patch.dict(os.environ, {}, clear=False):
             if "ADMIN_GROUP" in os.environ:
                 del os.environ["ADMIN_GROUP"]
-            
+
             with patch("utilities.auth.get_groups", return_value=["group1", "group2"]):
                 result = auth_module.is_admin(sample_event_with_username)
                 assert result is False
@@ -206,6 +180,7 @@ class TestAdminOnlyDecorator:
     def test_admin_only_decorator_with_admin_user(self, auth_module, lambda_context):
         """Test admin_only decorator allows admin users to access function."""
         with patch("utilities.auth.is_admin", return_value=True):
+
             @auth_module.admin_only
             def test_function(event, context):
                 return {"result": "success"}
@@ -234,6 +209,7 @@ class TestAdminOnlyDecorator:
 
     def test_admin_only_decorator_preserves_function_metadata(self, auth_module):
         """Test admin_only decorator preserves original function metadata."""
+
         @auth_module.admin_only
         def test_function(event, context):
             """Test function docstring."""
@@ -245,6 +221,7 @@ class TestAdminOnlyDecorator:
     def test_admin_only_decorator_with_function_args_kwargs(self, auth_module, lambda_context):
         """Test admin_only decorator works with functions that have additional args."""
         with patch("utilities.auth.is_admin", return_value=True):
+
             @auth_module.admin_only
             def test_function(event, context, *args, **kwargs):
                 return {"result": "success", "args": args, "kwargs": kwargs}
@@ -259,6 +236,7 @@ class TestAdminOnlyDecorator:
     def test_admin_only_decorator_function_raises_exception(self, auth_module, lambda_context):
         """Test admin_only decorator handles exceptions from wrapped function."""
         with patch("utilities.auth.is_admin", return_value=True):
+
             @auth_module.admin_only
             def test_function(event, context):
                 raise ValueError("Test error")
@@ -284,6 +262,7 @@ class TestAdminOnlyDecorator:
     def test_admin_only_decorator_with_extra_args(self, auth_module, lambda_context):
         """Test admin_only decorator with additional args and kwargs."""
         with patch("utilities.auth.is_admin", return_value=True):
+
             @auth_module.admin_only
             def test_function(event, context, extra_arg, extra_kwarg=None):
                 return {"result": "success", "extra_arg": extra_arg, "extra_kwarg": extra_kwarg}
@@ -296,6 +275,7 @@ class TestAdminOnlyDecorator:
     def test_admin_only_decorator_function_exception_propagation(self, auth_module, lambda_context):
         """Test admin_only decorator allows underlying function exceptions to propagate."""
         with patch("utilities.auth.is_admin", return_value=True):
+
             @auth_module.admin_only
             def test_function(event, context):
                 raise ValueError("Function error")
@@ -310,6 +290,7 @@ class TestAdminOnlyDecorator:
     def test_admin_only_decorator_event_passing(self, auth_module, lambda_context):
         """Test admin_only decorator calls is_admin with the correct event."""
         with patch("utilities.auth.is_admin", return_value=True) as mock_is_admin:
+
             @auth_module.admin_only
             def test_function(event, context):
                 return {"result": "success"}
@@ -352,14 +333,7 @@ class TestAuthFlow:
 
     def test_complete_auth_flow_admin_user(self, auth_module, lambda_context):
         """Test complete auth flow for an admin user."""
-        event = {
-            "requestContext": {
-                "authorizer": {
-                    "username": "admin_user",
-                    "groups": '["user", "lisa-admin"]'
-                }
-            }
-        }
+        event = {"requestContext": {"authorizer": {"username": "admin_user", "groups": '["user", "lisa-admin"]'}}}
 
         # Test get_username
         username = auth_module.get_username(event)
@@ -381,15 +355,8 @@ class TestAuthFlow:
 
     def test_complete_auth_flow_regular_user(self, auth_module, lambda_context):
         """Test complete auth flow for a regular user."""
-        event = {
-            "requestContext": {
-                "authorizer": {
-                    "username": "regular_user",
-                    "groups": '["user"]'
-                }
-            }
-        }
-        
+        event = {"requestContext": {"authorizer": {"username": "regular_user", "groups": '["user"]'}}}
+
         from utilities.exceptions import HTTPException
 
         # Test get_username
@@ -431,30 +398,33 @@ class TestGetUserContext:
 
     def test_get_user_context_admin_user(self, admin_event, auth_module):
         """Test get_user_context for admin user."""
-        with patch.object(auth_module, 'get_username', return_value="admin-user"), \
-             patch.object(auth_module, 'is_admin', return_value=True):
-            
+        with patch.object(auth_module, "get_username", return_value="admin-user"), patch.object(
+            auth_module, "is_admin", return_value=True
+        ):
+
             username, is_admin_user = auth_module.get_user_context(admin_event)
-            
+
             assert username == "admin-user"
             assert is_admin_user is True
 
     def test_get_user_context_regular_user(self, regular_user_event, auth_module):
         """Test get_user_context for regular user."""
-        with patch.object(auth_module, 'get_username', return_value="regular-user"), \
-             patch.object(auth_module, 'is_admin', return_value=False):
-            
+        with patch.object(auth_module, "get_username", return_value="regular-user"), patch.object(
+            auth_module, "is_admin", return_value=False
+        ):
+
             username, is_admin_user = auth_module.get_user_context(regular_user_event)
-            
+
             assert username == "regular-user"
             assert is_admin_user is False
 
     def test_get_user_context_system_user(self, sample_event_no_context, auth_module):
         """Test get_user_context for system user."""
-        with patch.object(auth_module, 'get_username', return_value="system"), \
-             patch.object(auth_module, 'is_admin', return_value=False):
-            
+        with patch.object(auth_module, "get_username", return_value="system"), patch.object(
+            auth_module, "is_admin", return_value=False
+        ):
+
             username, is_admin_user = auth_module.get_user_context(sample_event_no_context)
-            
+
             assert username == "system"
             assert is_admin_user is False

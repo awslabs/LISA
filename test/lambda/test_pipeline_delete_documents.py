@@ -26,6 +26,11 @@ from models.domain_objects import FixedChunkingStrategy, IngestionJob, Ingestion
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["RAG_DOCUMENT_TABLE"] = "test-doc-table"
 os.environ["RAG_SUB_DOCUMENT_TABLE"] = "test-subdoc-table"
+os.environ["LISA_INGESTION_JOB_TABLE_NAME"] = "test-ingestion-job-table"
+os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"] = "test-management-key"
+os.environ["LISA_RAG_VECTOR_STORE_TABLE"] = "test-rag-vs-table"
+
+import repository.pipeline_delete_documents as pdd
 
 
 def make_job():
@@ -58,16 +63,16 @@ def make_doc():
 
 def test_pipeline_delete_success():
     """Test successful pipeline delete operation"""
-    import repository.pipeline_delete_documents as pdd
-
     job = make_job()
     doc = make_doc()
 
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), \
-         patch.object(pdd.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
-         patch("repository.pipeline_delete_documents.remove_document_from_vectorstore") as mock_remove, \
-         patch.object(pdd.rag_document_repository, "delete_by_id") as mock_delete, \
-         patch.object(pdd.ingestion_job_repository, "update_status") as mock_update:
+    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), patch.object(
+        pdd.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}
+    ), patch("repository.pipeline_delete_documents.remove_document_from_vectorstore") as mock_remove, patch.object(
+        pdd.rag_document_repository, "delete_by_id"
+    ) as mock_delete, patch.object(
+        pdd.ingestion_job_repository, "update_status"
+    ) as mock_update:
 
         pdd.pipeline_delete(job)
 
@@ -78,7 +83,6 @@ def test_pipeline_delete_success():
 
 def test_pipeline_delete_no_document_found():
     """Test pipeline delete when no document is found"""
-    import repository.pipeline_delete_documents as pdd
 
     job = make_job()
 
@@ -94,7 +98,6 @@ def test_pipeline_delete_no_document_found():
 
 def test_pipeline_delete_exception():
     """Test pipeline delete when an exception occurs"""
-    import repository.pipeline_delete_documents as pdd
 
     job = make_job()
 
@@ -110,15 +113,18 @@ def test_pipeline_delete_exception():
 
 def test_pipeline_delete_vectorstore_exception():
     """Test pipeline delete when vectorstore removal fails"""
-    import repository.pipeline_delete_documents as pdd
 
     job = make_job()
     doc = make_doc()
 
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), \
-         patch.object(pdd.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}), \
-         patch("repository.pipeline_delete_documents.remove_document_from_vectorstore", side_effect=Exception("Vector store error")), \
-         patch.object(pdd.ingestion_job_repository, "update_status") as mock_update:
+    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), patch.object(
+        pdd.vs_repo, "find_repository_by_id", return_value={"repositoryId": "repo-1", "type": "opensearch"}
+    ), patch(
+        "repository.pipeline_delete_documents.remove_document_from_vectorstore",
+        side_effect=Exception("Vector store error"),
+    ), patch.object(
+        pdd.ingestion_job_repository, "update_status"
+    ) as mock_update:
 
         with pytest.raises(Exception, match="Failed to delete document: Vector store error"):
             pdd.pipeline_delete(job)
@@ -128,7 +134,6 @@ def test_pipeline_delete_vectorstore_exception():
 
 def test_handle_pipeline_delete_event_success():
     """Test successful pipeline delete event handling"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {
         "detail": {
@@ -154,7 +159,6 @@ def test_handle_pipeline_delete_event_success():
 
 def test_handle_pipeline_delete_event_with_existing_job():
     """Test pipeline delete event handling when ingestion job already exists"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {
         "detail": {
@@ -178,7 +182,6 @@ def test_handle_pipeline_delete_event_with_existing_job():
 
 def test_handle_pipeline_delete_event_no_documents():
     """Test pipeline delete event handling when no documents are found"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {
         "detail": {
@@ -201,7 +204,6 @@ def test_handle_pipeline_delete_event_no_documents():
 
 def test_handle_pipeline_delete_event_multiple_documents():
     """Test pipeline delete event handling with multiple documents"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {
         "detail": {
@@ -227,7 +229,6 @@ def test_handle_pipeline_delete_event_multiple_documents():
 
 def test_handle_pipeline_delete_event_missing_detail():
     """Test pipeline delete event handling with missing detail"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {}
 
@@ -243,7 +244,6 @@ def test_handle_pipeline_delete_event_missing_detail():
 
 def test_handle_pipeline_delete_event_missing_pipeline_config():
     """Test pipeline delete event handling with missing pipeline config"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {"detail": {"bucket": "bucket", "key": "key.txt", "repositoryId": "repo-1"}}
 
@@ -259,7 +259,6 @@ def test_handle_pipeline_delete_event_missing_pipeline_config():
 
 def test_handle_pipeline_delete_event_missing_embedding_model():
     """Test pipeline delete event handling with missing embedding model"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {"detail": {"bucket": "bucket", "key": "key.txt", "repositoryId": "repo-1", "pipelineConfig": {}}}
 
@@ -275,7 +274,6 @@ def test_handle_pipeline_delete_event_missing_embedding_model():
 
 def test_handle_pipeline_delete_event_repository_error():
     """Test pipeline delete event handling when repository lookup fails"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {
         "detail": {
@@ -298,7 +296,6 @@ def test_handle_pipeline_delete_event_repository_error():
 
 def test_handle_pipeline_delete_event_ingestion_service_error():
     """Test pipeline delete event handling when ingestion service fails"""
-    import repository.pipeline_delete_documents as pdd
 
     event = {
         "detail": {

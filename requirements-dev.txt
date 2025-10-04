@@ -9,7 +9,7 @@ pre-commit==3.5.0
 pydantic==2.11.9
 pytest-xdist==3.6.1
 pytest-asyncio==0.25
-uvicorn==0.22.0
+uvicorn==0.37.0
 boto3==1.35.95
 tiktoken==0.11.0
 python-docx==1.1.2

@@ -15,7 +15,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@aws-sdk/client-iam": "^3.490.0",
-    "aws-cdk": "^2.153.0",
+    "aws-cdk": "^2.1029.4",
     "aws-cdk-lib": "^2.185.0",
     "zod": "^3.23.8"
   },

@@ -139,26 +139,6 @@ export class UserInterfaceConstruct extends Construct {
             },
         );
 
-        // Add specific OAuth callback route - serve index.html but preserve path
-        restApi.root.addResource('oauth').addResource('callback').addMethod(
-            'GET',
-            new AwsIntegration({
-                region: config.region,
-                service: 's3',
-                path: `${websiteBucket.bucketName}/index.html`,
-                integrationHttpMethod: 'GET',
-                options: {
-                    credentialsRole: s3ReaderRole,
-                    integrationResponses: proxyIntegrationResponse,
-                    requestParameters: proxyIntegrationRequestParameters,
-                },
-            }),
-            {
-                methodResponses: proxyMethodResponse,
-                requestParameters: proxyRequestParameters,
-            },
-        );
-
         restApi.root.addResource('{proxy+}').addMethod(
             'GET',
             new AwsIntegration({
@@ -205,6 +185,23 @@ export class UserInterfaceConstruct extends Construct {
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);
+        // Create oauth/callback file that redirects to hash-based routing
+        const oauthCallbackSource = Source.data('oauth/callback', `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OAuth Callback</title>
+    <script>
+        // Preserve the query parameters and redirect to hash-based routing
+        const currentUrl = new URL(window.location.href);
+        const queryString = currentUrl.search;
+        window.location.replace('/#/oauth/callback' + queryString);
+    </script>
+</head>
+<body>
+    <p>Processing OAuth callback...</p>
+</body>
+</html>`);
         const uriPrefix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
         console.log(`assets: deploymentStage=${config.deploymentStage}`);
         console.log(`uriSuffix=${uriPrefix}`);
@@ -255,7 +252,7 @@ export class UserInterfaceConstruct extends Construct {
         }
 
         new BucketDeployment(scope, 'AwsExportsDepolyment', {
-            sources: [webappAssets, appEnvSource],
+            sources: [webappAssets, appEnvSource, oauthCallbackSource],
             retainOnDelete: false,
             destinationBucket: websiteBucket,
             memoryLimit: 1024,

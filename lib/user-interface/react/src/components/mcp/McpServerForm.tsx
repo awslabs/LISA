@@ -157,6 +157,7 @@ export function McpServerForm (props: McpServerFormProps) {
         autoReconnect: false,
         autoRetry: false,
         debug: false,
+        callbackUrl: `${window.location.origin}${window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL}oauth/callback`,
     });
 
     const testConnection = () => {

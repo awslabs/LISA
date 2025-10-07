@@ -139,6 +139,7 @@ export function McpServerDetails () {
         autoReconnect: true,
         autoRetry: true,
         debug: false,
+        callbackUrl: `${window.location.origin}${window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL}oauth/callback`,
     });
 
     const { paginationProps, items, collectionProps } = useCollection(tools, {

@@ -27,7 +27,6 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
 }) => {
     const connection = useMcp({
         url: server?.url ?? ' ',
-        callbackUrl: `${window.location.origin}/#/oauth/callback`,
         clientName: server?.name,
         autoReconnect: true,
         autoRetry: true,

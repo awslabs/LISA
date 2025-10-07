@@ -139,6 +139,26 @@ export class UserInterfaceConstruct extends Construct {
             },
         );
 
+        // Add specific OAuth callback route - serve index.html like root route
+        restApi.root.addResource('oauth').addResource('callback').addMethod(
+            'GET',
+            new AwsIntegration({
+                region: config.region,
+                service: 's3',
+                path: `${websiteBucket.bucketName}/index.html`,
+                integrationHttpMethod: 'GET',
+                options: {
+                    credentialsRole: s3ReaderRole,
+                    integrationResponses: proxyIntegrationResponse,
+                    requestParameters: proxyIntegrationRequestParameters,
+                },
+            }),
+            {
+                methodResponses: proxyMethodResponse,
+                requestParameters: proxyRequestParameters,
+            },
+        );
+
         restApi.root.addResource('{proxy+}').addMethod(
             'GET',
             new AwsIntegration({

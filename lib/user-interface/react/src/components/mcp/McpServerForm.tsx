@@ -151,7 +151,6 @@ export function McpServerForm (props: McpServerFormProps) {
         tools,
     } = useMcp({
         url: testConnectionUrl,
-        callbackUrl: `${window.location.origin}/#/oauth/callback`,
         clientName: state.form.clientConfig?.name || 'Test Client',
         clientConfig: state.form.clientConfig || {},
         customHeaders: state.form.customHeaders?.reduce((r,{key,value}) => (r[key] = value,r), {}),

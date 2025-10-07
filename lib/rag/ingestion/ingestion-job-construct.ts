@@ -78,17 +78,21 @@ export class IngestionJobConstruct extends Construct {
             removalPolicy: config.removalPolicy
         });
 
+        // GSI for querying by document ID
+        ingestionJobTable.addGlobalSecondaryIndex({
+            indexName: 'documentId',
+            partitionKey: {
+                name: 'document_id',
+                type: dynamodb.AttributeType.STRING,
+            },
+            projectionType: dynamodb.ProjectionType.ALL
+        });
+
         // Add GSI for efficient querying by repository_id and created_date
         ingestionJobTable.addGlobalSecondaryIndex({
             indexName: 'repository_id-created_date-index',
-            partitionKey: {
-                name: 'repository_id',
-                type: dynamodb.AttributeType.STRING,
-            },
-            sortKey: {
-                name: 'created_date',
-                type: dynamodb.AttributeType.STRING,
-            },
+            partitionKey: { name: 'repository_id', type: dynamodb.AttributeType.STRING },
+            sortKey: { name: 'created_date', type: dynamodb.AttributeType.STRING }
         });
 
         ingestionJobTable.grantReadWriteData(props.lambdaRole);

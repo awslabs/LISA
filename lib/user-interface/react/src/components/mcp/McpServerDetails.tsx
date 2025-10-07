@@ -15,6 +15,7 @@
  */
 
 import {
+    Button,
     Grid,
     Header,
     Pagination,
@@ -129,9 +130,9 @@ export function McpServerDetails () {
     const {
         state,          // Connection state: 'discovering' | 'authenticating' | 'connecting' | 'loading' | 'ready' | 'failed'
         tools,          // Available tools from MCP server
+        clearStorage,   // Clear stored tokens and credentials
     } = useMcp({
         url: data?.url ?? ' ',
-        callbackUrl: new URL('/#/oauth/callback', window.location.origin).toString(),
         clientName: data?.name,
         clientConfig: data?.clientConfig ?? undefined,
         customHeaders: data?.customHeaders ?? undefined,
@@ -161,9 +162,12 @@ export function McpServerDetails () {
                         {data?.name} Tool Details
                     </Header>
                     <Box float='right' variant='div'>
-                        <StatusIndicator type={state === 'ready' ? 'success' : state.endsWith('ing') ? 'pending' : 'error'}>
-                            {state === 'ready' ? 'Connected' : state.endsWith('ing') ? 'Pending' : 'Error'}
-                        </StatusIndicator>
+                        <SpaceBetween direction='horizontal' size='s' alignItems='center'>
+                            <Button onClick={() => clearStorage() }>Reset Connection</Button>
+                            <StatusIndicator type={state === 'ready' ? 'success' : state.endsWith('ing') ? 'pending' : 'error'}>
+                                {state === 'ready' ? 'Connected' : state.endsWith('ing') ? 'Pending' : 'Error'}
+                            </StatusIndicator>
+                        </SpaceBetween>
                     </Box>
                 </Grid>
             }

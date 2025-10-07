@@ -94,7 +94,7 @@ function AppConfigured () {
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
 
     // Check if we're on an OAuth callback URL (without hash)
-    const isOAuthCallback = window.location.pathname === '/oauth/callback';
+    const isOAuthCallback = window.location.pathname.includes( '/oauth/callback');
 
     if (isOAuthCallback) {
         return <OAuthCallback />;

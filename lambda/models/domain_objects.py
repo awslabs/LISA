@@ -17,6 +17,7 @@
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
@@ -25,6 +26,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
+from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
 from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
 
 logger = logging.getLogger(__name__)
@@ -483,3 +485,56 @@ class IngestionJob(BaseModel):
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error_message: Optional[str] = Field(default=None)
+    document_name: Optional[str] = Field(default=None)
+    auto: Optional[bool] = Field(default=None)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+
+        self.document_name = self.s3_path.split("/")[-1] if self.s3_path else ""
+        self.auto = self.username == "system"
+
+
+class PaginatedResponse(BaseModel):
+    """Base class for paginated API responses."""
+
+    lastEvaluatedKey: Optional[Dict[str, str]] = None
+    hasNextPage: bool = False
+    hasPreviousPage: bool = False
+
+
+class ListJobsResponse(PaginatedResponse):
+    """Response structure for listing ingestion jobs with pagination."""
+
+    jobs: List[IngestionJob]
+
+
+@dataclass
+class PaginationResult:
+    """Result of pagination analysis."""
+
+    has_next_page: bool
+    has_previous_page: bool
+
+    @classmethod
+    def from_keys(
+        cls, original_key: Optional[Dict[str, str]], returned_key: Optional[Dict[str, str]]
+    ) -> "PaginationResult":
+        """Create pagination result from keys."""
+        return cls(has_next_page=returned_key is not None, has_previous_page=original_key is not None)
+
+
+@dataclass
+class PaginationParams:
+    """Shared pagination parameter handling."""
+
+    page_size: int = DEFAULT_PAGE_SIZE
+    last_evaluated_key: Optional[Dict[str, str]] = None
+
+    @staticmethod
+    def parse_page_size(
+        query_params: Dict[str, str], default: int = DEFAULT_PAGE_SIZE, max_size: int = MAX_PAGE_SIZE
+    ) -> int:
+        """Parse and validate page size with configurable limits."""
+        page_size = int(query_params.get("pageSize", str(default)))
+        return max(MIN_PAGE_SIZE, min(page_size, max_size))

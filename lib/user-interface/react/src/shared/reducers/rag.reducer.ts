@@ -63,10 +63,43 @@ type CreateRepositoryRequest = {
     ragConfig: RagRepositoryConfig
 };
 
+export type IngestionJob = {
+    id: string;
+    s3_path: string;
+    collection_id: string;
+    document_id: string;
+    repository_id: string;
+    chunk_strategy: {
+        type: string;
+        size: number;
+        overlap: number;
+    };
+    username: string;
+    status: string;
+    created_date: string;
+    error_message?: string | null;
+    document_name: string;
+    auto: boolean;
+};
+
+type GetIngestionJobsRequest = {
+    repositoryId: string;
+    pageSize?: number;
+    lastEvaluatedKey?: any | null; // Can be a complex object with repository_id, created_date, id
+    timeLimit?: number;
+};
+
+export type PaginatedIngestionJobsResponse = {
+    jobs: IngestionJob[];
+    lastEvaluatedKey?: any | null; // Can be a complex object with repository_id, created_date, id
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'docs', 'repository-status'],
+    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -74,7 +107,7 @@ export const ragApi = createApi({
             query: () => ({
                 url: '/repository'
             }),
-            providesTags:['repositories'],
+            providesTags: ['repositories'],
         }),
         createRagRepository: builder.mutation<RagRepositoryConfig, CreateRepositoryRequest>({
             query: (body) => ({
@@ -123,7 +156,7 @@ export const ragApi = createApi({
                 };
             },
         }),
-        ingestDocuments: builder.mutation<void, IngestDocumentRequest>({
+        ingestDocuments: builder.mutation<{ ingestionJobIds: string[] }, IngestDocumentRequest>({
             query: (request) => ({
                 url: `repository/${request.repositoryId}/bulk?repositoryType=${request.repostiroyType}&chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`,
                 method: 'POST',
@@ -144,7 +177,12 @@ export const ragApi = createApi({
         }),
         listRagDocuments: builder.query<PaginatedDocumentResponse, ListRagDocumentRequest>({
             query: (request) => {
-                const params: any = { collectionId: request.collectionId };
+                const params: any = {};
+
+                // Add collectionId parameter if provided
+                if (request.collectionId) {
+                    params.collectionId = request.collectionId;
+                }
 
                 // Add pageSize parameter if provided
                 if (request.pageSize) {
@@ -190,6 +228,23 @@ export const ragApi = createApi({
                 method: 'GET',
             }),
         }),
+        getIngestionJobs: builder.query<PaginatedIngestionJobsResponse, GetIngestionJobsRequest>({
+            query: (request) => {
+                let url = `/repository/${request.repositoryId}/jobs?timeLimit=${request.timeLimit || 1}&pageSize=${request.pageSize || 10}`;
+
+                // If lastEvaluatedKey is provided, JSON encode and URL encode it for the API
+                if (request.lastEvaluatedKey) {
+                    const encodedKey = encodeURIComponent(JSON.stringify(request.lastEvaluatedKey));
+                    url += `&lastEvaluatedKey=${encodedKey}`;
+                }
+
+                return {
+                    url,
+                    method: 'GET',
+                };
+            },
+            providesTags: ['jobs'], // Add cache tags for invalidation
+        }),
     }),
 });
 
@@ -206,4 +261,6 @@ export const {
     useDeleteRagDocumentsMutation,
     useLazyGetRelevantDocumentsQuery,
     useLazyDownloadRagDocumentQuery,
+    useGetIngestionJobsQuery,
+    useLazyGetIngestionJobsQuery,
 } = ragApi;

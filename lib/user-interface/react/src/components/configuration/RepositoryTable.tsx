@@ -40,7 +40,9 @@ export function getMatchesCountText (count: number) {
 
 export function RepositoryTable (): ReactElement {
     const [shouldPoll, setShouldPoll] = useState(true);
-    const { data: allRepos, isFetching } = useListRagRepositoriesQuery(undefined, {
+
+    // Use a separate query instance for polling to avoid affecting other components
+    const { data: allRepos, isLoading } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 30,
         pollingInterval: shouldPoll ? Duration.fromObject({seconds: 30}) : undefined
     });
@@ -102,7 +104,7 @@ export function RepositoryTable (): ReactElement {
                 resizableColumns
                 enableKeyboardNavigation
                 items={items}
-                loading={isFetching}
+                loading={isLoading && !allRepos}
                 loadingText='Loading repositories'
                 selectionType='single'
                 filter={<TextFilter

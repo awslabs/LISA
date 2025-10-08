@@ -73,6 +73,69 @@ class ModelType(str, Enum):
     EMBEDDING = "embedding"
 
 
+class GuardrailMode(str, Enum):
+    """Defines supported guardrail execution modes."""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value."""
+        return str(self.value)
+
+    PRE_CALL = "pre_call"
+    DURING_CALL = "during_call"
+    POST_CALL = "post_call"
+
+
+class GuardrailConfig(BaseModel):
+    """Defines configuration for a single guardrail."""
+
+    guardrail_name: str = Field(min_length=1)
+    guardrail_identifier: str = Field(min_length=1)
+    guardrail_version: str = Field(default="DRAFT")
+    mode: GuardrailMode = Field(default=GuardrailMode.PRE_CALL)
+    default_on: bool = Field(default=False)
+    description: Optional[str] = None
+    allowed_groups: List[str] = Field(default_factory=list)
+
+
+class GuardrailsConfig(BaseModel):
+    """Defines configuration for multiple guardrails per model."""
+
+    guardrails: Dict[str, GuardrailConfig] = Field(default_factory=dict)
+
+
+class GuardrailRequest(BaseModel):
+    """Defines request structure for guardrails API operations."""
+
+    model_id: str = Field(min_length=1)
+    guardrails_config: GuardrailsConfig
+
+
+class GuardrailResponse(BaseModel):
+    """Defines response structure for guardrails API operations."""
+
+    model_id: str
+    guardrails_config: GuardrailsConfig
+    success: bool
+    message: str
+
+
+class GuardrailsTableEntry(BaseModel):
+    """Represents a guardrail entry in DynamoDB table."""
+
+    model_id: str  # Partition key
+    guardrail_id: str  # Sort key  
+    guardrail_name: str
+    guardrail_identifier: str
+    guardrail_version: str
+    mode: str
+    default_on: bool
+    description: Optional[str]
+    allowed_groups: List[str]
+    litellm_guardrail_id: Optional[str] = None  # ID from LiteLLM
+    created_date: int = Field(default_factory=lambda: int(time.time() * 1000))
+    last_modified_date: int = Field(default_factory=lambda: int(time.time() * 1000))
+
+
 class MetricConfig(BaseModel):
     """Defines metrics configuration for auto-scaling policies."""
 
@@ -255,6 +318,7 @@ class CreateModelRequest(BaseModel):
     features: Optional[List[ModelFeature]] = None
     allowedGroups: Optional[List[str]] = None
     apiKey: Optional[str] = None
+    guardrailsConfig: Optional[GuardrailsConfig] = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
@@ -308,6 +372,7 @@ class UpdateModelRequest(BaseModel):
     allowedGroups: Optional[List[str]] = None
     features: Optional[List[ModelFeature]] = None
     containerConfig: Optional[ContainerConfigUpdatable] = None
+    guardrailsConfig: Optional[GuardrailsConfig] = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -321,11 +386,12 @@ class UpdateModelRequest(BaseModel):
             self.allowedGroups,
             self.features,
             self.containerConfig,
+            self.guardrailsConfig,
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
                 "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, "
-                "modelDescription, streaming, allowedGroups, or features must be defined in request payload."
+                "modelDescription, streaming, allowedGroups, features, or guardrailsConfig must be defined in request payload."
             )
 
         if self.modelType == ModelType.EMBEDDING and self.streaming:

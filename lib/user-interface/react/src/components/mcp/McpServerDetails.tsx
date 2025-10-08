@@ -15,6 +15,7 @@
  */
 
 import {
+    Button,
     Grid,
     Header,
     Pagination,
@@ -129,6 +130,7 @@ export function McpServerDetails () {
     const {
         state,          // Connection state: 'discovering' | 'authenticating' | 'connecting' | 'loading' | 'ready' | 'failed'
         tools,          // Available tools from MCP server
+        clearStorage,   // Clear stored tokens and credentials
     } = useMcp({
         url: data?.url ?? ' ',
         clientName: data?.name,
@@ -137,6 +139,7 @@ export function McpServerDetails () {
         autoReconnect: true,
         autoRetry: true,
         debug: false,
+        callbackUrl: `${window.location.origin}${window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL}oauth/callback`,
     });
 
     const { paginationProps, items, collectionProps } = useCollection(tools, {
@@ -160,9 +163,12 @@ export function McpServerDetails () {
                         {data?.name} Tool Details
                     </Header>
                     <Box float='right' variant='div'>
-                        <StatusIndicator type={state === 'ready' ? 'success' : state.endsWith('ing') ? 'pending' : 'error'}>
-                            {state === 'ready' ? 'Connected' : state.endsWith('ing') ? 'Pending' : 'Error'}
-                        </StatusIndicator>
+                        <SpaceBetween direction='horizontal' size='s' alignItems='center'>
+                            <Button onClick={() => clearStorage() }>Reset Connection</Button>
+                            <StatusIndicator type={state === 'ready' ? 'success' : state.endsWith('ing') ? 'pending' : 'error'}>
+                                {state === 'ready' ? 'Connected' : state.endsWith('ing') ? 'Pending' : 'Error'}
+                            </StatusIndicator>
+                        </SpaceBetween>
                     </Box>
                 </Grid>
             }
@@ -179,7 +185,7 @@ export function McpServerDetails () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Tool', cell: (item) => <Toggle checked={!preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name) ?? false} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
+                { header: 'Use Tool', cell: (item) => <Toggle checked={!preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
                 { header: 'Name', cell: (item) => item.name},
                 { header: 'Description', cell: (item) => item.description},
             ]}

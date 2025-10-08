@@ -76,6 +76,7 @@ import {
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
+import { conditionalDeps } from '../utils';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -347,7 +348,7 @@ export default function Chat ({ sessionId }) {
         if (sessionHealth) {
             setIsConnected(true);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+
     }, [sessionHealth]);
 
     // Handle tool calls with chaining support
@@ -600,7 +601,7 @@ export default function Chat ({ sessionId }) {
         <div className='h-[80vh]'>
             {/* MCP Connections - invisible components that manage the connections */}
             {McpConnections}
-            <DocumentSummarizationModal
+            {useMemo(() => (<DocumentSummarizationModal
                 showDocumentSummarizationModal={modals.documentSummarization}
                 setShowDocumentSummarizationModal={(show) => show ? openModal('documentSummarization') : closeModal('documentSummarization')}
                 fileContext={fileContext}
@@ -616,8 +617,10 @@ export default function Chat ({ sessionId }) {
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
                 setMemory={setMemory}
-            />
-            <SessionConfiguration
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest, setMemory])) }
+
+            {useMemo(() => (<SessionConfiguration
                 chatConfiguration={chatConfiguration}
                 setChatConfiguration={setChatConfiguration}
                 selectedModel={selectedModel}
@@ -628,20 +631,25 @@ export default function Chat ({ sessionId }) {
                 session={session}
                 updateSession={updateSession}
                 ragConfig={ragConfig}
-            />
-            <RagUploadModal
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig]))}
+
+            {useMemo(() => (<RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}
-            />
-            <ContextUploadModal
+            />), [ragConfig, modals.ragUpload, openModal, closeModal])}
+
+            {useMemo(() => (<ContextUploadModal
                 showContextUploadModal={modals.contextUpload}
                 setShowContextUploadModal={(show) => show ? openModal('contextUpload') : closeModal('contextUpload')}
                 fileContext={fileContext}
                 setFileContext={setFileContext}
                 selectedModel={selectedModel}
-            />
-            <PromptTemplateModal
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, selectedModel]))}
+
+            {useMemo(() => (<PromptTemplateModal
                 session={session}
                 showModal={modals.promptTemplate}
                 setShowModal={(show) => show ? openModal('promptTemplate') : closeModal('promptTemplate')}
@@ -651,7 +659,9 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
-            />
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType]))}
+
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
                 <ConfirmationModal
@@ -683,22 +693,23 @@ export default function Chat ({ sessionId }) {
             )}
             <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
-                    {session.history.map((message, idx) => (
-                        <Message
-                            key={idx}
-                            message={message}
-                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
-                            isRunning={false}
-                            callingToolName={undefined}
-                            isStreaming={isStreaming && idx === session.history.length - 1}
-                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                            setChatConfiguration={setChatConfiguration}
-                            handleSendGenerateRequest={handleSendGenerateRequest}
-                            chatConfiguration={chatConfiguration}
-                            setUserPrompt={setUserPrompt}
-                            onMermaidRenderComplete={handleMermaidRenderComplete}
-                        />
-                    ))}
+                    {useMemo(() => session.history.map((message, idx) => (<Message
+                        key={idx}
+                        message={message}
+                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                        isRunning={false}
+                        callingToolName={undefined}
+                        isStreaming={isStreaming && idx === session.history.length - 1}
+                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                        setChatConfiguration={setChatConfiguration}
+                        handleSendGenerateRequest={handleSendGenerateRequest}
+                        chatConfiguration={chatConfiguration}
+                        setUserPrompt={setUserPrompt}
+                        onMermaidRenderComplete={handleMermaidRenderComplete}
+                    />
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
+                    )), [session.history, chatConfiguration])}
+
                     {(isRunning || callingToolName) && !isStreaming && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}
@@ -782,6 +793,7 @@ export default function Chat ({ sessionId }) {
                                             onItemClick={handleButtonClick}
                                             items={getButtonItems(config, useRag, isImageGenerationMode)}
                                             variant='icon'
+                                            dropdownExpandToViewport={true}
                                         />
                                     </Box>
                                 }

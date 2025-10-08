@@ -185,6 +185,16 @@ export class RepositoryApi extends Construct {
                 environment: {
                     ...baseEnvironment,
                 },
+            },
+            {
+                name: 'list_jobs',
+                resource: 'repository',
+                description: 'List all ingestion jobs for a repository',
+                path: 'repository/{repositoryId}/jobs',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
             }
         ];
 

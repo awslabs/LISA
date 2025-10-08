@@ -13,8 +13,12 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     rebase-strategy: "auto"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - root directory
   - package-ecosystem: "pip"
@@ -29,7 +33,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - lisa-sdk
   - package-ecosystem: "pip"
@@ -44,7 +52,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - authorizer layer
   - package-ecosystem: "pip"
@@ -59,7 +71,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - common layer
   - package-ecosystem: "pip"
@@ -74,7 +90,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - fastapi layer
   - package-ecosystem: "pip"
@@ -89,7 +109,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - rest-api src
   - package-ecosystem: "pip"
@@ -104,7 +128,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable version updates for pip - rag layer
   - package-ecosystem: "pip"
@@ -119,7 +147,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   # Enable security updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -134,7 +166,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - RAG ingestion
   - package-ecosystem: "docker"
@@ -150,6 +186,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - vector store
   - package-ecosystem: "docker"
@@ -165,6 +205,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - REST API
   - package-ecosystem: "docker"
@@ -180,6 +224,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - MCP workbench
   - package-ecosystem: "docker"
@@ -195,6 +243,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - VLLM
   - package-ecosystem: "docker"
@@ -210,6 +262,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - TEI
   - package-ecosystem: "docker"
@@ -225,6 +281,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - instructor
   - package-ecosystem: "docker"
@@ -240,6 +300,10 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # Enable updates for Docker - TGI
   - package-ecosystem: "docker"
@@ -255,3 +319,7 @@ updates:
       prefix: "chore"
       include: "scope"
     open-pull-requests-limit: 3
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"

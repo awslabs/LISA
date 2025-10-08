@@ -34,10 +34,12 @@ type RagControlProps = {
 };
 
 export default function RagControls ({isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
-    const { data: repositories, isFetching: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {refetchOnMountOrArgChange: true});
-    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+    const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
+        refetchOnMountOrArgChange: 5
+    });
+    const { data: allModels, isLoading: isLoadingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
-            isFetching: state.isFetching,
+            isLoading: state.isLoading,
             data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
         })});
 
@@ -164,7 +166,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                 />
                 <Autosuggest
                     disabled={!selectedRepositoryOption || isRunning}
-                    statusType={isFetchingModels ? 'loading' : 'finished'}
+                    statusType={isLoadingModels ? 'loading' : 'finished'}
                     loadingText='Loading embedding models (might take few seconds)...'
                     placeholder='Select an embedding model'
                     empty={<div className='text-gray-500'>No embedding models available.</div>}

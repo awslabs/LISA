@@ -31,11 +31,10 @@ import { RagRepositoryConfig } from '#root/lib/schema';
 export function RepositoryLibraryComponent (): ReactElement {
     const {
         data: allRepos,
-        isFetching: fetchingRepos,
+        isLoading: fetchingRepos,
     } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: 5 });
 
     const [matchedRepos, setMatchedRepos] = useState<RagRepositoryConfig[]>([]);
-
     const [searchText, setSearchText] = useState<string>('');
     const [numberOfPages, setNumberOfPages] = useState<number>(1);
     const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
@@ -81,10 +80,10 @@ export function RepositoryLibraryComponent (): ReactElement {
                 items={matchedRepos}
                 trackBy='repositoryId'
                 variant='full-page'
-                loading={fetchingRepos}
+                loading={fetchingRepos && !allRepos}
                 cardsPerRow={[{ cards: 3 }]}
                 header={
-                    <Header counter={`(${count})` ?? ''}>
+                    <Header counter={`(${count})`}>
                         Repositories
                     </Header>
                 }

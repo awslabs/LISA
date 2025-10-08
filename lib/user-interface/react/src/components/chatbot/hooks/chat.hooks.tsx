@@ -284,7 +284,7 @@ export const useChatGeneration = ({
                                     if (toolCall.args) {
                                         parsedArgs = JSON.parse(toolCall.args);
                                     }
-                                } catch (e) {
+                                } catch {
                                     parsedArgs = {};
                                 }
 
@@ -319,7 +319,7 @@ export const useChatGeneration = ({
                                 if (toolCall.args && typeof toolCall.args === 'string') {
                                     parsedArgs = JSON.parse(toolCall.args.trim());
                                 }
-                            } catch (e) {
+                            } catch {
                                 parsedArgs = {};
                             }
 

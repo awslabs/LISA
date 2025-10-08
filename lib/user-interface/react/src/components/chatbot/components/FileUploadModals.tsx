@@ -27,19 +27,20 @@ import {
     StatusIndicator,
     TextContent,
 } from '@cloudscape-design/components';
-import {FileTypes, StatusTypes} from '../../types';
-import {useState} from 'react';
-import {RagConfig} from './RagOptions';
-import {useAppDispatch} from '@/config/store';
-import {useNotificationService} from '@/shared/util/hooks';
+import { FileTypes, StatusTypes } from '../../types';
+import React, { useState } from 'react';
+import { RagConfig } from './RagOptions';
+import { useAppDispatch } from '@/config/store';
+import { useNotificationService } from '@/shared/util/hooks';
 import {
     useIngestDocumentsMutation,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
 } from '@/shared/reducers/rag.reducer';
-import {uploadToS3Request} from '../../utils';
-import {RagRepositoryPipeline} from '#root/lib/schema';
+import { uploadToS3Request } from '../../utils';
+import { RagRepositoryPipeline } from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
+import { JobStatusTable } from './JobStatusTable';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -89,13 +90,13 @@ export type ContextUploadProps = {
     selectedModel: IModel;
 };
 
-export function ContextUploadModal ({
+export const ContextUploadModal = ({
     showContextUploadModal,
     setShowContextUploadModal,
     fileContext,
     setFileContext,
     selectedModel
-}: ContextUploadProps) {
+}: ContextUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
@@ -196,7 +197,7 @@ export function ContextUploadModal ({
             </SpaceBetween>
         </Modal>
     );
-}
+};
 
 export type RagUploadProps = {
     showRagUploadModal: boolean;
@@ -204,11 +205,12 @@ export type RagUploadProps = {
     ragConfig: RagConfig;
 };
 
-export function RagUploadModal ({
+
+export const RagUploadModal = ({
     showRagUploadModal,
     setShowRagUploadModal,
     ragConfig,
-}: RagUploadProps) {
+}: RagUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const [displayProgressBar, setDisplayProgressBar] = useState(false);
     const [progressBarValue, setProgressBarValue] = useState(0);
@@ -258,17 +260,19 @@ export function RagUploadModal ({
                 embeddingModel: { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
                 repostiroyType: ragConfig.repositoryType,
                 chunkSize,
-                chunkOverlap});
+                chunkOverlap
+            });
 
             if (ingestResp.error) {
                 throw new Error('Failed to ingest documents into RAG');
             } else {
                 setIngestionType(StatusTypes.SUCCESS);
-                setIngestionStatus('Successfully ingested documents into the selected repository');
-                notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository.`, 'success');
+                const jobIds = ingestResp.data?.ingestionJobIds || [];
+                setIngestionStatus(`Successfully ingested documents into the selected repository. Job IDs: ${jobIds.join(', ')}`);
+                notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository. Job IDs: ${jobIds.join(', ')}`, 'success');
                 setShowRagUploadModal(false);
             }
-        } catch (err) {
+        } catch {
             setIngestionType(StatusTypes.ERROR);
             setIngestionStatus('Failed to ingest documents into RAG');
         } finally {
@@ -385,7 +389,17 @@ export function RagUploadModal ({
                     />
                 )}
                 {ingestingFiles && <StatusIndicator type={ingestionType}>{ingestionStatus}</StatusIndicator>}
+
+                {/* Job Status Table */}
+                <JobStatusTable
+                    ragConfig={ragConfig}
+                    autoLoad={showRagUploadModal}
+                    showDescription={true}
+                    title='Recent Jobs'
+                />
             </SpaceBetween>
         </Modal>
     );
-}
+};
+
+export default RagUploadModal;

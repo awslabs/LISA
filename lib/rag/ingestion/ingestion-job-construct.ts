@@ -77,18 +77,26 @@ export class IngestionJobConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: config.removalPolicy
         });
-        ingestionJobTable.grantReadWriteData(props.lambdaRole);
-        baseEnvironment['LISA_INGESTION_JOB_TABLE_NAME'] = ingestionJobTable.tableName;
 
         // GSI for querying by document ID
         ingestionJobTable.addGlobalSecondaryIndex({
             indexName: 'documentId',
             partitionKey: {
                 name: 'document_id',
-                type: dynamodb.AttributeType.STRING
+                type: dynamodb.AttributeType.STRING,
             },
             projectionType: dynamodb.ProjectionType.ALL
         });
+
+        // Add GSI for efficient querying by repository_id and created_date
+        ingestionJobTable.addGlobalSecondaryIndex({
+            indexName: 'repository_id-created_date-index',
+            partitionKey: { name: 'repository_id', type: dynamodb.AttributeType.STRING },
+            sortKey: { name: 'created_date', type: dynamodb.AttributeType.STRING }
+        });
+
+        ingestionJobTable.grantReadWriteData(props.lambdaRole);
+        baseEnvironment['LISA_INGESTION_JOB_TABLE_NAME'] = ingestionJobTable.tableName;
 
         // CloudWatch log group for batch job container logs
         const logGroup = new logs.LogGroup(this, 'IngestionJobLogGroup', {

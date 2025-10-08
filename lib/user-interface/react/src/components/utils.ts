@@ -55,7 +55,7 @@ export const uploadToS3Request = (presignedUrlResponse: Response, file: File): S
     };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export const formatDocumentsAsString = (docs: any, forMetadata = false): string => {
     let contents = '';
     (docs || []).forEach((doc, index) => {
@@ -119,3 +119,33 @@ export function base64ToBlob (base64: string, mimeType: string): Blob {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
 }
+
+/**
+ * Conditionally merges dependency arrays for React hooks based on boolean conditions.
+ *
+ * This utility helps optimize hook dependencies by only including certain dependencies
+ * when specific conditions are met, preventing unnecessary re-computations when
+ * conditional dependencies change but aren't relevant to the current render state.
+ *
+ * @param {Array} baseDeps - Dependencies that should always be included
+ * @param {Array<boolean>} conditions - Array of boolean conditions that must ALL be true
+ * @param {Array} conditionalDeps - Dependencies to include only when all conditions are met
+ * @returns {Array} Combined dependency array for use in React hooks
+ *
+ * @example
+ * // Only depend on model.text when component is visible and enabled
+ * const memoizedValue = useMemo(() => {
+ *   return computeExpensiveValue(model.text);
+ * }, conditionalDeps(
+ *   [baseData, config],           // Always included
+ *   [isVisible, isEnabled],       // Both must be true
+ *   [model.text, model.metadata]  // Only included when conditions met
+ * ));
+ */
+export const conditionalDeps = (baseDeps, conditions, conditionalDeps) => {
+    // Check if all conditions are truthy using Array.every()
+    const allConditionsTrue = conditions.every((condition) => condition);
+
+    // Return merged arrays if conditions met, otherwise just base dependencies with null for other conditions so deps array is a constant size
+    return allConditionsTrue ? [...baseDeps, ...conditionalDeps] : [...baseDeps, ...conditionalDeps.map(() => null)];
+};

@@ -33,6 +33,7 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
         debug: false,
         clientConfig: server?.clientConfig ?? undefined,
         customHeaders: server?.customHeaders ?? undefined,
+        callbackUrl: `${window.location.origin}${window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL}oauth/callback`,
     });
 
     // Use refs to track previous values and avoid unnecessary updates

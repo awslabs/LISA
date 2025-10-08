@@ -22,7 +22,7 @@
   "devDependencies": {
     "esbuild": "^0.25.1",
     "@cdklabs/cdk-enterprise-iac": "^0.0.512",
-    "@types/aws-lambda": "8.10.147",
+    "@types/aws-lambda": "8.10.155",
     "@types/node": "^22.4.1"
   }
 }

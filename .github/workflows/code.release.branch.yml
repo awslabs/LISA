@@ -35,7 +35,6 @@ jobs:
         run: |
           # Fetch main branch with full history for proper commit comparison
           git fetch --no-tags origin main:main
-          git fetch --no-tags origin develop:develop
         env:
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
       - name: Generate PR Description with Bedrock

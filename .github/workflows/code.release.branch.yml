@@ -23,6 +23,7 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0  # Fetch full history for proper branch comparison
+          ssh-key: ${{ secrets.DEPLOYMENT_SSH_KEY }}
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
         with:
@@ -73,8 +74,6 @@ jobs:
           git add .
           git commit -m "Updating version for release ${{ github.event.inputs.release_tag }}"
           git push origin release/${{ github.event.inputs.release_tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
 
       - name: Draft Pull Request
         run: |

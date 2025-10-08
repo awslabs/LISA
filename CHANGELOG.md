@@ -2,48 +2,26 @@
 
 ## Key Features
 
-### Allowing Users to Reset Connections
-This release introduces the ability for users to reset their connections, providing more control and flexibility over their LISA sessions. Users can now easily disconnect and reconnect as needed.
+### Enabling OAuth Backed MCP Connections
+- **MCP OAuth Support**: LISA now supports OAuth authentication for the MCP (Model Context Protocol) connection feature, enabling users to securely authenticate and access their connections
+- **Connection Management**: Users can now reset their connections through the connection management interface allowing users to update previously configured settings stored in local storage
 
-**UserInterface:**
-- **Connection Management**: Users can now reset their connections through the connection management interface.
-- **Improved User Experience**: The connection reset feature enhances the overall user experience, enabling users to better manage their LISA sessions.
-
-### JobStatus GSI Update
-The GSI (Global Secondary Index) for the JobStatusTable has been updated to improve the querying and filtering capabilities of the job status information.
-
-**Database**:
-- **JobStatusTable GSI**: The original GSI has been modified, and a new GSI has been added to optimize the retrieval and management of job status data.
-
-### Oauth Callback for Hosted UI
-This release addresses an issue with the OAuth callback functionality for the hosted LISA UI, ensuring a seamless authentication experience for users.
-
-**Authentication**:
-- **OAuth Callback**: The OAuth callback process has been fixed to work correctly in S3 deployments, addressing a previous issue that was only present in the hosted environment.
-
-### Support for OAuth MCP and Route Refresh Fixes
-The release introduces support for OAuth MCP (Multi-Cloud Provisioning) and addresses issues related to route refreshing, ensuring a more reliable and consistent user experience.
-
-**Authentication**:
-- **MCP OAuth Support**: LISA now supports OAuth authentication for the MCP (Multi-Cloud Provisioning) feature, enabling users to securely authenticate and access their cloud resources.
-- **Route Refresh Improvements**: The issue with route refreshing on pages like  has been fixed, providing a more seamless navigation experience for users.
+### Rag Ingestion JobStatus Update
+- **DDB**: The GSI (Global Secondary Index) for the JobStatusTable has been updated to improve the querying and filtering capabilities of the job status information
+- **Job Status Widget**: The RAG ingestion UI now features a new status tracking widget that displays your recent document ingestion job history, enabling monitoring of processing progress
 
 ### Chat Widget Performance Optimization
-This release includes significant performance improvements to the chat widget, addressing performance degradation issues caused by excessive re-rendering.
+This release includes significant performance improvements to the chat widget, addressing performance degradation issues caused by excessive re-rendering
+- **Memoization**: The chat widget has been optimized using memoization techniques, reducing the number of unnecessary re-renders and improving the overall responsiveness of the application
+- **Conditional Dependencies**: The chat widget's dependency handling has been improved, ensuring that only the necessary components are re-rendered based on changes in the data
 
-**User Interface**:
-- **Memoization**: The chat widget has been optimized using memoization techniques, reducing the number of unnecessary re-renders and improving the overall responsiveness of the application.
-- **Conditional Dependencies**: The chat widget's dependency handling has been improved, ensuring that only the necessary components are re-rendered based on changes in the data.
-
-## Key Changes
-- **Dependency Updates**: The project dependencies have been updated to address security vulnerabilities and optimize performance.
-- **Logging and Metrics**: Improvements have been made to the logging and metrics functionality, ensuring better visibility and troubleshooting capabilities.
-- **Bug Fixes**: Various bug fixes have been implemented to address issues reported by users, improving the overall stability and reliability of the LISA application.
+### Langfuse Documentation
+This release includes updates to our [documentation site](https://awslabs.github.io/LISA/config/langfuse-tracing.html) where a guide was created on how to integrate Langfuse into LISA Serve to view your LLM traces
 
 ## Acknowledgements
 * @bedanley
 * @dustinps
-* @evmann
+* @estohlmann
 * @jmharold
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v5.3.1..v5.3.2

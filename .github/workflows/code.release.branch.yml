@@ -23,6 +23,15 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0  # Fetch full history for proper branch comparison
+      - name: Generate PR Description with Bedrock
+        id: generate_description
+        run: |
+          # Switch back to develop branch for accurate commit comparison
+          git checkout develop
+          chmod +x .github/scripts/generate-pr-description.sh
+          .github/scripts/generate-pr-description.sh "${{ github.event.inputs.release_tag }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
       - name: Create Release Branch and Update Version
         run: |
           git config --global user.email "evmann@amazon.com"
@@ -35,6 +44,17 @@ jobs:
           echo ${RELEASE_TAG:1} > VERSION
           # Update package-lock.json to reflect new version
           npm install
+          # Add the generated PR description to the top of CHANGELOG.md
+          echo "📝 Adding release notes to CHANGELOG.md..."
+          # Create a temporary file with the new content
+          {
+            echo "${{ steps.generate_description.outputs.DESCRIPTION }}"
+            echo ""  # Add blank line separator
+            cat CHANGELOG.md
+          } > CHANGELOG_temp.md
+          # Replace the original with the updated content
+          mv CHANGELOG_temp.md CHANGELOG.md
+          echo "✅ Changelog updated and committed to release branch"
           # Ensure all changes including package-lock.json are committed
           git add .
           git commit -m "Updating version for release ${{ github.event.inputs.release_tag }}"
@@ -56,42 +76,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
 
-      - name: Generate PR Description with Bedrock
-        id: generate_description
-        run: |
-          # Switch back to develop branch for accurate commit comparison
-          git checkout develop
-          chmod +x .github/scripts/generate-pr-description.sh
-          .github/scripts/generate-pr-description.sh "${{ github.event.inputs.release_tag }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
-
       - name: Draft Pull Request
         run: |
           # Switch to release branch to ensure proper context for PR creation
           git checkout release/${{ github.event.inputs.release_tag }}
-
-          # Add the generated PR description to the top of CHANGELOG.md
-          echo "📝 Adding release notes to CHANGELOG.md..."
-
-          # Create a temporary file with the new content
-          {
-            echo "${{ steps.generate_description.outputs.DESCRIPTION }}"
-            echo ""  # Add blank line separator
-            cat CHANGELOG.md
-          } > CHANGELOG_temp.md
-
-          # Replace the original with the updated content
-          mv CHANGELOG_temp.md CHANGELOG.md
-
-          # Commit the changelog update to the release branch
-          git config --global user.email "evmann@amazon.com"
-          git config --global user.name "github_actions_lisa"
-          git add CHANGELOG.md
-          git commit -m "Add ${{ github.event.inputs.release_tag }} changelog entry"
-          git push origin release/${{ github.event.inputs.release_tag }}
-
-          echo "✅ Changelog updated and committed to release branch"
 
           # Create the draft pull request
           gh pr create -d \

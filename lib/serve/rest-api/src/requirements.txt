@@ -1,5 +1,5 @@
 aioboto3==13.4.0
-aiobotocore==2.18.0
+aiobotocore==2.24.3
 aiohttp==3.12.15
 backoff==2.2.1
 boto3==1.36.0

@@ -4,7 +4,7 @@
 # Core RAG packages
 # psycopg2-binary==2.9.10 // provided by Common Layer
 langchain-text-splitters==0.3.11
-langchain-community==0.3.27
+langchain-community==0.3.31
 langchain-core==0.3.76
 # Required by langchain-community - Pin NumPy to avoid GCC 9.3+
 numpy<2.0.0

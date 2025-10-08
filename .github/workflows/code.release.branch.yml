@@ -23,6 +23,20 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0  # Fetch full history for proper branch comparison
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 14400
+      - name: Fetch Main Branch for Comparison
+        run: |
+          # Fetch main branch with full history for proper commit comparison
+          git fetch --no-tags origin main:main
+          git fetch --no-tags origin develop:develop
+        env:
+          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
       - name: Generate PR Description with Bedrock
         id: generate_description
         run: |
@@ -59,20 +73,6 @@ jobs:
           git add .
           git commit -m "Updating version for release ${{ github.event.inputs.release_tag }}"
           git push origin release/${{ github.event.inputs.release_tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          role-duration-seconds: 14400
-      - name: Fetch Main Branch for Comparison
-        run: |
-          # Fetch main branch with full history for proper commit comparison
-          git fetch --no-tags origin main:main
-          git fetch --no-tags origin develop:develop
         env:
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
 

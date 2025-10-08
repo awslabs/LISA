@@ -53,6 +53,29 @@ import { VERSION_PATH } from './util';
 
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
 
+/**
+ * Creates a DefaultStackSynthesizer with custom bootstrap qualifier and role ARNs.
+ *
+ * @param {BaseProps['config']} config - The configuration object containing AWS account details
+ * @param {string} rolePrefix - Optional prefix for role names
+ * @returns {DefaultStackSynthesizer} Configured stack synthesizer instance
+ */
+function createDefaultStackSynthesizer (config: BaseProps['config']): DefaultStackSynthesizer {
+    if (!config.bootstrapQualifier) {
+        return new DefaultStackSynthesizer();
+    }
+
+    const rolePrefix = config.bootstrapRolePrefix ?? '';
+
+    return new DefaultStackSynthesizer({
+        qualifier: config.bootstrapQualifier,
+        cloudFormationExecutionRole: `arn:${config.partition}:iam::${config.accountNumber}:role/${rolePrefix}cdk-${config.bootstrapQualifier}-cfn-exec-${config.accountNumber}-${config.region}`,
+        deployRoleArn: `arn:${config.partition}:iam::${config.accountNumber}:role/${rolePrefix}cdk-${config.bootstrapQualifier}-deploy-${config.accountNumber}-${config.region}`,
+        fileAssetPublishingRoleArn: `arn:${config.partition}:iam::${config.accountNumber}:role/${rolePrefix}cdk-${config.bootstrapQualifier}-file-pub-${config.accountNumber}-${config.region}`,
+        imageAssetPublishingRoleArn: `arn:${config.partition}:iam::${config.accountNumber}:role/${rolePrefix}cdk-${config.bootstrapQualifier}-image-pub-${config.accountNumber}-${config.region}`,
+        lookupRoleArn: `arn:${config.partition}:iam::${config.accountNumber}:role/${rolePrefix}cdk-${config.bootstrapQualifier}-lookup-${config.accountNumber}-${config.region}`
+    });
+}
 
 type CustomLisaServeApplicationStageProps = {} & BaseProps;
 type LisaServeApplicationStageProps = CustomLisaServeApplicationStageProps & StageProps;
@@ -171,10 +194,10 @@ export class LisaServeApplicationStage extends Stage {
                     baseStackProps.synthesizer = new CliCredentialsStackSynthesizer();
                     break;
                 case stackSynthesizerType.DefaultStackSynthesizer:
-                    baseStackProps.synthesizer = new DefaultStackSynthesizer();
+                    baseStackProps.synthesizer = createDefaultStackSynthesizer(config);
                     break;
                 case stackSynthesizerType.LegacyStackSynthesizer:
-                    baseStackProps.synthesizer = new DefaultStackSynthesizer();
+                    baseStackProps.synthesizer = createDefaultStackSynthesizer(config);
                     break;
                 default:
                     throw Error('Unrecognized config value: "stackSynthesizer"');

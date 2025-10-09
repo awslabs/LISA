@@ -54,15 +54,15 @@ export class GuardrailsTable extends Construct {
 
         this.table.addGlobalSecondaryIndex({
             indexName: 'ModelIdIndex',
-            partitionKey: { 
+            partitionKey: {
                 name: 'model_id',
-                type: AttributeType.STRING 
+                type: AttributeType.STRING
             },
             sortKey: {
                 name: 'guardrail_id',
                 type: AttributeType.STRING
             },
-        })
+        });
 
         // Create SSM parameter for guardrails table name
         new StringParameter(this, 'GuardrailsTableNameParameter', {

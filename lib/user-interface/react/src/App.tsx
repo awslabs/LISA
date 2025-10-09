@@ -26,7 +26,7 @@ import Chatbot from './pages/Chatbot';
 import Topbar from './components/Topbar';
 import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
-import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsUser } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
 import ModelLibrary from './pages/ModelLibrary';
 import NotificationBanner from './shared/notification/notification';
@@ -51,16 +51,23 @@ export type RouteProps = {
     configs?: IConfiguration
 };
 
-const PrivateRoute = ({ children, showConfig, configs }: RouteProps) => {
+const PrivateRoute = ({ children }: RouteProps) => {
 
     const auth = useAuth();
-    if (auth.isAuthenticated) {
-        if (showConfig && configs?.configuration.enabledComponents[showConfig] === false) {
-            return <Navigate to={import.meta.env.BASE_URL} />;
-        }
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isUser = useAppSelector(selectCurrentUserIsUser);
+
+    if (auth.isAuthenticated && (isUserAdmin || isUser)) {
         return children;
     } else if (auth.isLoading) {
         return <Spinner />;
+    } else if (auth.isAuthenticated && !isUserAdmin && !isUser) {
+        return (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h2>Access Denied</h2>
+                <p>You do not have permission to access this application. Please contact your administrator.</p>
+            </div>
+        );
     } else {
         return <Navigate to={import.meta.env.BASE_URL} />;
     }

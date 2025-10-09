@@ -11,8 +11,8 @@
 ## Software
 
 * AWS CLI installed and configured
-* Python 3.9 or later
-* Node.js 14 or later
+* Python 3.11
+* Node.js 20
 * Docker installed and running
 * Sufficient disk space for model downloads and conversions
 

@@ -897,6 +897,8 @@ export const RawConfigObject = z.object({
         .optional()
         .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
     stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
+    bootstrapQualifier: z.string().optional().describe('CDK bootstrap qualifier to use for stack synthesis. Defaults to CDK default if not specified.'),
+    bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
     iamRdsAuth: z.boolean().optional().default(false).describe('Enable IAM authentication for RDS'),

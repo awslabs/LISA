@@ -3,6 +3,7 @@ updates:
   # Enable version updates for npm
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -22,6 +23,7 @@ updates:
   # Enable version updates for pip - root directory
   - package-ecosystem: "pip"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -40,6 +42,7 @@ updates:
   # Enable version updates for pip - lisa-sdk
   - package-ecosystem: "pip"
     directory: "/lisa-sdk"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -58,6 +61,7 @@ updates:
   # Enable version updates for pip - authorizer layer
   - package-ecosystem: "pip"
     directory: "/lib/core/layers/authorizer"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -76,6 +80,7 @@ updates:
   # Enable version updates for pip - common layer
   - package-ecosystem: "pip"
     directory: "/lib/core/layers/common"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -94,6 +99,7 @@ updates:
   # Enable version updates for pip - fastapi layer
   - package-ecosystem: "pip"
     directory: "/lib/core/layers/fastapi"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -112,6 +118,7 @@ updates:
   # Enable version updates for pip - rest-api src
   - package-ecosystem: "pip"
     directory: "/lib/serve/rest-api/src"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -130,6 +137,7 @@ updates:
   # Enable version updates for pip - rag layer
   - package-ecosystem: "pip"
     directory: "/lib/rag/layer"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -148,6 +156,7 @@ updates:
   # Enable security updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "wednesday"
@@ -166,6 +175,7 @@ updates:
   # Enable updates for Docker - RAG ingestion
   - package-ecosystem: "docker"
     directory: "/lib/rag/ingestion/ingestion-image"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -184,6 +194,7 @@ updates:
   # Enable updates for Docker - vector store
   - package-ecosystem: "docker"
     directory: "/lib/rag/vector-store/state_machine"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -202,6 +213,7 @@ updates:
   # Enable updates for Docker - REST API
   - package-ecosystem: "docker"
     directory: "/lib/serve/rest-api"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -220,6 +232,7 @@ updates:
   # Enable updates for Docker - MCP workbench
   - package-ecosystem: "docker"
     directory: "/lib/serve/mcp-workbench"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -238,6 +251,7 @@ updates:
   # Enable updates for Docker - VLLM
   - package-ecosystem: "docker"
     directory: "/lib/serve/ecs-model/vllm"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -256,6 +270,7 @@ updates:
   # Enable updates for Docker - TEI
   - package-ecosystem: "docker"
     directory: "/lib/serve/ecs-model/embedding/tei"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -274,6 +289,7 @@ updates:
   # Enable updates for Docker - instructor
   - package-ecosystem: "docker"
     directory: "/lib/serve/ecs-model/embedding/instructor"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -292,6 +308,7 @@ updates:
   # Enable updates for Docker - TGI
   - package-ecosystem: "docker"
     directory: "/lib/serve/ecs-model/textgen/tgi"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "thursday"

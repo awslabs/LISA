@@ -21,10 +21,10 @@ import { Construct } from 'constructs';
 /**
  * Properties for GuardrailsTable Construct.
  */
-export interface GuardrailsTableProps {
+export type GuardrailsTableProps = {
     deploymentPrefix: string;
     removalPolicy: any;
-}
+};
 
 /**
  * DynamoDB table for storing Bedrock Guardrails configurations per model
@@ -32,7 +32,7 @@ export interface GuardrailsTableProps {
 export class GuardrailsTable extends Construct {
     public readonly table: Table;
 
-    constructor(scope: Construct, id: string, props: GuardrailsTableProps) {
+    constructor (scope: Construct, id: string, props: GuardrailsTableProps) {
         super(scope, id);
 
         const { deploymentPrefix, removalPolicy } = props;

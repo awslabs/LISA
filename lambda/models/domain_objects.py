@@ -123,7 +123,7 @@ class GuardrailsTableEntry(BaseModel):
     """Represents a guardrail entry in DynamoDB table."""
 
     model_id: str  # Partition key
-    guardrail_id: str  # Sort key  
+    guardrail_id: str  # Sort key
     guardrail_name: str
     guardrail_identifier: str
     guardrail_version: str
@@ -391,7 +391,8 @@ class UpdateModelRequest(BaseModel):
         if not validate_any_fields_defined(fields):
             raise ValueError(
                 "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, "
-                "modelDescription, streaming, allowedGroups, features, or guardrailsConfig must be defined in request payload."
+                "modelDescription, streaming, allowedGroups, features, or guardrailsConfig must be "
+                "defined in request payload."
             )
 
         if self.modelType == ModelType.EMBEDDING and self.streaming:

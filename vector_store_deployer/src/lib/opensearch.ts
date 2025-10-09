@@ -49,7 +49,8 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         }
 
         const vpc = Vpc.fromLookup(this, 'Vpc', {
-            vpcId
+            vpcId,
+            returnVpnGateways: false,
         });
 
         let subnetSelection: SubnetSelection | undefined;

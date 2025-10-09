@@ -57,7 +57,8 @@ export class LisaModelStack extends Stack {
         super(scope, id, props);
 
         const vpc = Vpc.fromLookup(this, `${id}-vpc`, {
-            vpcId: props.vpcId
+            vpcId: props.vpcId,
+            returnVpnGateways: false,
         });
 
         let subnetSelection: SubnetSelection | undefined;

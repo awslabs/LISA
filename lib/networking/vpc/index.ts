@@ -67,6 +67,7 @@ export class Vpc extends Construct {
             // Imports VPC for use by application if supplied, else creates a VPC.
             vpc = ec2Vpc.fromLookup(this, 'imported-vpc', {
                 vpcId: config.vpcId,
+                returnVpnGateways: false,
             });
 
             // Checks if SubnetIds are provided in the config, if so we import them for use.

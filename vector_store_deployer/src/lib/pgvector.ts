@@ -59,7 +59,8 @@ export class PGVectorStoreStack extends PipelineStack {
 
         // Lookup VPC with given vpcId
         const vpc = Vpc.fromLookup(this, 'Vpc', {
-            vpcId
+            vpcId,
+            returnVpnGateways: false,
         });
 
         // Optional subnet selection based on provided subnets

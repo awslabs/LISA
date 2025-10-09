@@ -1,3 +1,31 @@
+# v5.3.2
+
+## Key Features
+
+### Enabling OAuth Backed MCP Connections
+- **MCP OAuth Support**: LISA now supports OAuth authentication for the MCP (Model Context Protocol) connection feature, enabling users to securely authenticate and access their connections
+- **Connection Management**: Users can now reset their connections through the connection management interface allowing users to update previously configured settings stored in local storage
+
+### Rag Ingestion JobStatus Update
+- **DDB**: The GSI (Global Secondary Index) for the JobStatusTable has been updated to improve the querying and filtering capabilities of the job status information
+- **Job Status Widget**: The RAG ingestion UI now features a new status tracking widget that displays your recent document ingestion job history, enabling monitoring of processing progress
+
+### Chat Widget Performance Optimization
+This release includes significant performance improvements to the chat widget, addressing performance degradation issues caused by excessive re-rendering
+- **Memoization**: The chat widget has been optimized using memoization techniques, reducing the number of unnecessary re-renders and improving the overall responsiveness of the application
+- **Conditional Dependencies**: The chat widget's dependency handling has been improved, ensuring that only the necessary components are re-rendered based on changes in the data
+
+### Langfuse Documentation
+This release includes updates to our [documentation site](https://awslabs.github.io/LISA/config/langfuse-tracing.html) where a guide was created on how to integrate Langfuse into LISA Serve to view your LLM traces
+
+## Acknowledgements
+* @bedanley
+* @dustinps
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.3.1..v5.3.2
+
 # v5.3.1
 
 ## Key Features

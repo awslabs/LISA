@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Send Internal PR Created Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_TITLE: 'PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
@@ -27,7 +27,7 @@ jobs:
           SLACK_MESSAGE: 'PR Created ${{ github.event.pull_request.html_url }}'
       - name: Send Mission Solution PR Created Notification
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
           SLACK_WEBHOOK: ${{ secrets.MISSION_SOLUTION_PR_WEBHOOK }}
           SLACK_TITLE: '${{github.event.repository.name}} PR Created: ${{ github.event.pull_request.title }} by ${{ github.event.pull_request.user.login }}'
@@ -107,7 +107,7 @@ jobs:
       contents: read
     steps:
       - name: Send GitHub Action trigger data to Slack workflow
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         if: github.event_name != 'pull_request'
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}

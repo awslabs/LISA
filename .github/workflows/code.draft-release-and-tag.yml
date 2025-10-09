@@ -49,7 +49,7 @@ jobs:
         env:
           GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: Send Notification that Draft Release is Ready
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         if: (startsWith(github.event.pull_request.head.ref, 'release/' ) || startsWith(github.event.pull_request.head.ref, 'hotfix/')) && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
         with:
           status: success()

@@ -41,6 +41,37 @@ export enum InferenceContainer {
     INSTRUCTOR = 'instructor',
 }
 
+export enum GuardrailMode {
+    PRE_CALL = 'pre_call',
+    DURING_CALL = 'during_call',
+    POST_CALL = 'post_call'
+}
+
+export type IGuardrailConfig = {
+    guardrailName: string;
+    guardrailIdentifier: string;
+    guardrailVersion: string;
+    mode: GuardrailMode;
+    description?: string;
+    allowedGroups: string[];
+};
+
+export type IGuardrailsConfig = {
+    guardrails: Record<string, IGuardrailConfig>;
+};
+
+export type IGuardrailResponse = {
+    model_id: string;
+    guardrails_config: IGuardrailsConfig;
+    success: boolean;
+    message: string;
+};
+
+export type IGuardrailRequest = {
+    model_id: string;
+    guardrails_config: IGuardrailsConfig;
+};
+
 export type IContainerHealthCheckConfig = {
     command: string[];
     interval: number;
@@ -129,6 +160,7 @@ export type IModelRequest = {
     lisaHostedModel: boolean;
     allowedGroups?: string[];
     apiKey?: string;
+    guardrailsConfig?: IGuardrailsConfig;
 };
 
 export type ModelFeature = {
@@ -154,6 +186,7 @@ export type IModelUpdateRequest = {
     features?: ModelFeature[];
     autoScalingInstanceConfig?: IAutoScalingInstanceConfig;
     containerConfig?: IContainerConfig;
+    guardrailsConfig?: IGuardrailsConfig;
 };
 
 const containerHealthCheckConfigSchema = z.object({
@@ -213,6 +246,19 @@ export const autoScalingConfigSchema = z.object({
     }
 });
 
+export const guardrailConfigSchema = z.object({
+    guardrailName: z.string().min(1, {message: 'Guardrail name is required'}).default(''),
+    guardrailIdentifier: z.string().min(1, {message: 'Guardrail identifier is required'}).default(''),
+    guardrailVersion: z.string().default('DRAFT'),
+    mode: z.nativeEnum(GuardrailMode).default(GuardrailMode.PRE_CALL),
+    description: z.string().optional(),
+    allowedGroups: z.array(z.string()).default([]),
+});
+
+export const guardrailsConfigSchema = z.object({
+    guardrails: z.record(z.string(), guardrailConfigSchema).default({}),
+});
+
 export const containerConfigSchema = z.object({
     image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
     sharedMemorySize: z.number().min(0).default(2048),
@@ -241,6 +287,7 @@ export const ModelRequestSchema = z.object({
     autoScalingConfig: autoScalingConfigSchema.default(autoScalingConfigSchema.parse({})),
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
     allowedGroups: z.array(z.string()).default([]),
+    guardrailsConfig: guardrailsConfigSchema.optional(),
 }).superRefine((value, context) => {
     if (value.lisaHostedModel) {
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});

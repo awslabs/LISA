@@ -92,7 +92,6 @@ class GuardrailConfig(BaseModel):
     guardrail_identifier: str = Field(min_length=1)
     guardrail_version: str = Field(default="DRAFT")
     mode: GuardrailMode = Field(default=GuardrailMode.PRE_CALL)
-    default_on: bool = Field(default=False)
     description: Optional[str] = None
     allowed_groups: List[str] = Field(default_factory=list)
 
@@ -122,13 +121,12 @@ class GuardrailResponse(BaseModel):
 class GuardrailsTableEntry(BaseModel):
     """Represents a guardrail entry in DynamoDB table."""
 
-    model_id: str  # Partition key
-    guardrail_id: str  # Sort key
+    guardrail_id: str  # Partition key
+    model_id: str  # Sort key
     guardrail_name: str
     guardrail_identifier: str
     guardrail_version: str
     mode: str
-    default_on: bool
     description: Optional[str]
     allowed_groups: List[str]
     litellm_guardrail_id: Optional[str] = None  # ID from LiteLLM

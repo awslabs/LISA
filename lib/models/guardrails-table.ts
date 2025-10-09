@@ -40,17 +40,29 @@ export class GuardrailsTable extends Construct {
         // Create the guardrails table with composite key structure
         this.table = new Table(this, 'GuardrailsTable', {
             partitionKey: {
-                name: 'model_id',
+                name: 'guardrail_id',
                 type: AttributeType.STRING
             },
             sortKey: {
-                name: 'guardrail_id',
+                name: 'model_id',
                 type: AttributeType.STRING
             },
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: removalPolicy,
         });
+
+        this.table.addGlobalSecondaryIndex({
+            indexName: 'ModelIdIndex',
+            partitionKey: { 
+                name: 'model_id',
+                type: AttributeType.STRING 
+            },
+            sortKey: {
+                name: 'guardrail_id',
+                type: AttributeType.STRING
+            },
+        })
 
         // Create SSM parameter for guardrails table name
         new StringParameter(this, 'GuardrailsTableNameParameter', {

@@ -52,7 +52,6 @@ export type IGuardrailConfig = {
     guardrailIdentifier: string;
     guardrailVersion: string;
     mode: GuardrailMode;
-    defaultOn: boolean;
     description?: string;
     allowedGroups: string[];
 };
@@ -252,7 +251,6 @@ export const guardrailConfigSchema = z.object({
     guardrailIdentifier: z.string().min(1, {message: 'Guardrail identifier is required'}).default(''),
     guardrailVersion: z.string().default('DRAFT'),
     mode: z.nativeEnum(GuardrailMode).default(GuardrailMode.PRE_CALL),
-    defaultOn: z.boolean().default(false),
     description: z.string().optional(),
     allowedGroups: z.array(z.string()).default([]),
 });

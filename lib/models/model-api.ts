@@ -49,6 +49,7 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
+import { GuardrailsTable } from './guardrails-table';
 
 /**
  * Properties for ModelsApi Construct.
@@ -126,6 +127,12 @@ export class ModelsApi extends Construct {
             stringValue: modelTable.tableName,
         });
 
+        // Create guardrails table
+        const guardrailsTable = new GuardrailsTable(this, 'GuardrailsTable', {
+            deploymentPrefix: config.deploymentPrefix || '',
+            removalPolicy: config.removalPolicy,
+        });
+
         const ecsModelBuildRepo = new Repository(this, 'ecs-model-build-repo');
 
         const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {
@@ -200,6 +207,7 @@ export class ModelsApi extends Construct {
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.table.tableName,
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
@@ -320,6 +328,21 @@ export class ModelsApi extends Construct {
                     resources: [
                         modelTable.tableArn,
                         `${modelTable.tableArn}/*`
+                    ],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:GetItem',
+                        'dynamodb:PutItem',
+                        'dynamodb:UpdateItem',
+                        'dynamodb:DeleteItem',
+                        'dynamodb:Query',
+                        'dynamodb:Scan',
+                    ],
+                    resources: [
+                        guardrailsTable.table.tableArn,
+                        `${guardrailsTable.table.tableArn}/*`
                     ],
                 }),
                 new PolicyStatement({

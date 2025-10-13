@@ -928,11 +928,103 @@ def create(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
+def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Get a vector store configuration by ID.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository ID to retrieve
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: The repository configuration with default values for new fields
+
+    Raises:
+        ValidationError: If repositoryId is missing
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Get repository and check access
+    repository = get_repository(event, repository_id)
+
+    return repository
+
+
+@api_wrapper
+@admin_only
+def update_repository(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Update a vector store configuration. This function is only accessible by administrators.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository ID to update
+            - body: JSON with fields to update (UpdateVectorStoreRequest)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: The updated repository configuration
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If repository not found
+    """
+    from models.domain_objects import UpdateVectorStoreRequest
+    
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Parse request body
+    try:
+        body = json.loads(event.get("body", "{}"))
+        request = UpdateVectorStoreRequest(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {str(e)}")
+    except Exception as e:
+        raise ValidationError(f"Invalid request: {str(e)}")
+
+    # Ensure repository exists
+    _ = vs_repo.find_repository_by_id(repository_id)
+
+    # Build updates dictionary (only include fields that were provided)
+    updates = {}
+    if request.repositoryName is not None:
+        updates["repositoryName"] = request.repositoryName
+    if request.embeddingModelId is not None:
+        updates["embeddingModelId"] = request.embeddingModelId
+    if request.allowedGroups is not None:
+        updates["allowedGroups"] = request.allowedGroups
+    if request.allowUserCollections is not None:
+        updates["allowUserCollections"] = request.allowUserCollections
+    if request.metadata is not None:
+        updates["metadata"] = request.metadata.model_dump() if hasattr(request.metadata, "model_dump") else request.metadata
+    if request.pipelines is not None:
+        updates["pipelines"] = [p.model_dump() if hasattr(p, "model_dump") else p for p in request.pipelines]
+
+    # Update repository
+    updated_config = vs_repo.update(repository_id, updates)
+
+    return updated_config
+
+
+@api_wrapper
 @admin_only
 def delete(event: dict, context: dict) -> Any:
     """
     Delete a vector store process using AWS Step Functions. This function ensures
     that the user is an administrator or owns the vector store being deleted.
+    Also deletes all associated collections and their documents.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -954,6 +1046,36 @@ def delete(event: dict, context: dict) -> Any:
         raise ValidationError("repositoryId is required")
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
+    
+    # Delete all collections associated with this repository
+    try:
+        logger.info(f"Deleting all collections for repository: {repository_id}")
+        collections = collection_service.list_collections(
+            repository_id=repository_id,
+            user_id="admin",
+            user_groups=[],
+            is_admin=True,
+            pagination_params=PaginationParams(page_size=1000),  # Get all collections
+        )
+        
+        for collection in collections.collections:
+            try:
+                logger.info(f"Deleting collection: {collection.collectionId}")
+                collection_service.delete_collection(
+                    collection_id=collection.collectionId,
+                    repository_id=repository_id,
+                    user_id="admin",
+                    user_groups=[],
+                    is_admin=True,
+                    hard_delete=True,
+                )
+            except Exception as e:
+                logger.error(f"Error deleting collection {collection.collectionId}: {str(e)}")
+                # Continue with other collections even if one fails
+    except Exception as e:
+        logger.error(f"Error listing/deleting collections for repository {repository_id}: {str(e)}")
+        # Continue with repository deletion even if collection cleanup fails
+    
     if repository.get("legacy", False) is True:
         _remove_legacy(repository_id)
         vs_repo.delete(repository_id=repository_id)

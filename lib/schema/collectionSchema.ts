@@ -15,6 +15,7 @@
  */
 
 import { z } from 'zod';
+import { RagRepositoryPipeline } from './ragSchema';
 
 /**
  * Enum for collection status
@@ -23,14 +24,6 @@ export enum CollectionStatus {
     ACTIVE = 'ACTIVE',
     ARCHIVED = 'ARCHIVED',
     DELETED = 'DELETED',
-}
-
-/**
- * Enum for pipeline trigger types
- */
-export enum PipelineTrigger {
-    EVENT = 'event',
-    SCHEDULE = 'schedule',
 }
 
 /**
@@ -86,16 +79,9 @@ export const ChunkingStrategySchema = z.union([
 ]);
 
 /**
- * Pipeline configuration schema
+ * Pipeline configuration schema - reusing from ragSchema
  */
-export const PipelineConfigSchema = z.object({
-    autoRemove: z.boolean().default(true).describe('Automatically remove documents after ingestion'),
-    chunkOverlap: z.number().min(0).describe('Chunk overlap for pipeline ingestion'),
-    chunkSize: z.number().min(100).max(10000).describe('Chunk size for pipeline ingestion'),
-    s3Bucket: z.string().min(1).describe('S3 bucket for pipeline source'),
-    s3Prefix: z.string().describe('S3 prefix for pipeline source'),
-    trigger: z.nativeEnum(PipelineTrigger).describe('Pipeline trigger type'),
-});
+export const PipelineConfigSchema = RagRepositoryPipeline;
 
 /**
  * Collection metadata schema
@@ -224,7 +210,7 @@ export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
 export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
 export type SemanticChunkingStrategy = z.infer<typeof SemanticChunkingStrategySchema>;
 export type RecursiveChunkingStrategy = z.infer<typeof RecursiveChunkingStrategySchema>;
-export type PipelineConfig = z.infer<typeof PipelineConfigSchema>;
+// PipelineConfig type is exported from ragSchema via PipelineConfigSchema
 export type CollectionMetadata = z.infer<typeof CollectionMetadataSchema>;
 export type RagCollectionConfig = z.infer<typeof RagCollectionConfigSchema>;
 export type CreateCollectionRequest = z.infer<typeof CreateCollectionRequestSchema>;

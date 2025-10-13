@@ -786,3 +786,62 @@ class SortOrder(str, Enum):
 
     ASC = "asc"
     DESC = "desc"
+
+
+class RepositoryMetadata(BaseModel):
+    """Defines metadata for a repository/vector store."""
+
+    tags: List[str] = Field(default_factory=list, description="Tags for categorizing the repository")
+    customFields: Optional[Dict[str, Any]] = Field(default=None, description="Custom metadata fields")
+
+
+class VectorStoreConfig(BaseModel):
+    """Represents a vector store/repository configuration."""
+
+    repositoryId: str = Field(description="Unique identifier for the repository")
+    repositoryName: Optional[str] = Field(default=None, description="User-friendly name for the repository")
+    embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
+    type: str = Field(description="Type of vector store (opensearch, pgvector, bedrock_knowledge_base)")
+    allowedGroups: List[str] = Field(default_factory=list, description="User groups with access to this repository")
+    allowUserCollections: bool = Field(default=True, description="Whether non-admin users can create collections")
+    metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
+    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+    # Type-specific configurations
+    opensearchConfig: Optional[Dict[str, Any]] = Field(default=None, description="OpenSearch configuration")
+    rdsConfig: Optional[Dict[str, Any]] = Field(default=None, description="RDS/PGVector configuration")
+    bedrockKnowledgeBaseConfig: Optional[Dict[str, Any]] = Field(
+        default=None, description="Bedrock Knowledge Base configuration"
+    )
+    # Status and timestamps
+    status: Optional[str] = Field(default=None, description="Repository status")
+    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+
+
+class CreateVectorStoreRequest(BaseModel):
+    """Request model for creating a new vector store."""
+
+    repositoryId: str = Field(description="Unique identifier for the repository")
+    repositoryName: Optional[str] = Field(default=None, description="User-friendly name")
+    embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
+    type: str = Field(description="Type of vector store")
+    allowedGroups: List[str] = Field(default_factory=list, description="User groups with access")
+    allowUserCollections: bool = Field(default=True, description="Whether non-admin users can create collections")
+    metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
+    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+    opensearchConfig: Optional[Dict[str, Any]] = Field(default=None, description="OpenSearch configuration")
+    rdsConfig: Optional[Dict[str, Any]] = Field(default=None, description="RDS/PGVector configuration")
+    bedrockKnowledgeBaseConfig: Optional[Dict[str, Any]] = Field(
+        default=None, description="Bedrock Knowledge Base configuration"
+    )
+
+
+class UpdateVectorStoreRequest(BaseModel):
+    """Request model for updating a vector store."""
+
+    repositoryName: Optional[str] = Field(default=None, description="User-friendly name")
+    embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
+    allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
+    allowUserCollections: Optional[bool] = Field(default=None, description="Whether non-admin users can create collections")
+    metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
+    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")

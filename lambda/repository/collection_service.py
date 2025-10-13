@@ -141,16 +141,17 @@ class CollectionManagementService:
         Raises:
             ValidationError: If access denied or not found
         """
-        # Check permission
+        # First, check if collection exists
+        collection = self.collection_repo.find_by_id(collection_id, repository_id)
+        if not collection:
+            raise ValidationError(f"Collection '{collection_id}' not found")
+
+        # Then check permission
         access_decision = self.access_control_service.check_collection_permission(
             user_id, user_groups, is_admin, collection_id, repository_id, Permission.READ
         )
         if not access_decision.allowed:
             raise ValidationError(f"Permission denied: {access_decision.reason}")
-
-        collection = self.collection_repo.find_by_id(collection_id, repository_id)
-        if not collection:
-            raise ValidationError(f"Collection '{collection_id}' not found")
 
         return collection
 

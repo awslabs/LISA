@@ -31,6 +31,7 @@ from models.domain_objects import (
 from repository.collection_access_control import CollectionAccessControlService
 from repository.collection_repo import CollectionRepository, CollectionRepositoryError
 from repository.collection_validation import CollectionValidationService
+from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.access_control import Permission
 from utilities.validation import ValidationError
@@ -47,6 +48,7 @@ class CollectionManagementService:
         vector_store_repo: Optional[VectorStoreRepository] = None,
         validation_service: Optional[CollectionValidationService] = None,
         access_control_service: Optional[CollectionAccessControlService] = None,
+        document_repo: Optional[RagDocumentRepository] = None,
     ):
         """
         Initialize the collection management service.
@@ -56,8 +58,10 @@ class CollectionManagementService:
             vector_store_repo: Vector store repository
             validation_service: Validation service
             access_control_service: Access control service
+            document_repo: Document repository
         """
         self.collection_repo = collection_repo or CollectionRepository()
+        self.document_repo = document_repo
         self.vector_store_repo = vector_store_repo or VectorStoreRepository()
         self.validation_service = validation_service or CollectionValidationService(
             self.collection_repo, self.vector_store_repo
@@ -190,8 +194,14 @@ class CollectionManagementService:
             raise ValidationError(f"Collection '{collection_id}' not found")
 
         # Check if collection has documents (for chunking strategy warning)
-        # TODO: Implement document count check when document integration is ready
         has_documents = False
+        if self.document_repo:
+            try:
+                doc_count = self.document_repo.count_documents(repository_id, collection_id)
+                has_documents = doc_count > 0
+            except Exception as e:
+                logger.warning(f"Failed to check document count for collection {collection_id}: {e}")
+                # Continue without document count check
 
         # Validate update request
         validation_result = self.validation_service.validate_update_request(

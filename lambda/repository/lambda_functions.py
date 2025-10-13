@@ -23,6 +23,8 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import (
+    CollectionSortBy,
+    CollectionStatus,
     CreateCollectionRequest,
     FixedChunkingStrategy,
     IngestionJob,
@@ -32,6 +34,7 @@ from models.domain_objects import (
     PaginationResult,
     RagCollectionConfig,
     RagDocument,
+    SortOrder,
     UpdateCollectionRequest,
 )
 from repository.config.params import ListJobsParams
@@ -362,6 +365,151 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Include warnings if any
     if warnings:
         response["warnings"] = warnings
+
+    return response
+
+
+@api_wrapper
+def list_collections(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List collections in a repository with pagination, filtering, and sorting.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - queryStringParameters.page: Page number (optional, default: 1)
+            - queryStringParameters.pageSize: Items per page (optional, default: 20, max: 100)
+            - queryStringParameters.filter: Text filter for name/description (optional)
+            - queryStringParameters.status: Status filter (ACTIVE, ARCHIVED, DELETED) (optional)
+            - queryStringParameters.sortBy: Sort field (name, createdAt, updatedAt) (optional, default: createdAt)
+            - queryStringParameters.sortOrder: Sort order (asc, desc) (optional, default: desc)
+            - queryStringParameters.lastEvaluatedKey*: Pagination token fields (optional)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - collections: List of collection configurations
+            - pagination: Pagination metadata (totalCount, currentPage, totalPages)
+            - lastEvaluatedKey: Pagination token for next page
+            - hasNextPage: Whether there are more pages
+            - hasPreviousPage: Whether there is a previous page
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Get user context
+    username = get_username(event)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Parse query parameters
+    query_params = event.get("queryStringParameters", {}) or {}
+    
+    # Parse pagination parameters
+    page_size = PaginationParams.parse_page_size(query_params, default=20, max_size=100)
+    
+    # Parse last evaluated key if present
+    last_evaluated_key = None
+    if "lastEvaluatedKeyCollectionId" in query_params:
+        last_evaluated_key = {
+            "collectionId": urllib.parse.unquote(query_params["lastEvaluatedKeyCollectionId"]),
+            "repositoryId": urllib.parse.unquote(query_params.get("lastEvaluatedKeyRepositoryId", repository_id)),
+        }
+        # Add additional keys based on the index being used
+        if "lastEvaluatedKeyStatus" in query_params:
+            last_evaluated_key["status"] = urllib.parse.unquote(query_params["lastEvaluatedKeyStatus"])
+        if "lastEvaluatedKeyCreatedAt" in query_params:
+            last_evaluated_key["createdAt"] = urllib.parse.unquote(query_params["lastEvaluatedKeyCreatedAt"])
+
+    # Parse filter parameters
+    filter_text = query_params.get("filter")
+    
+    # Parse status filter
+    status_filter = None
+    if "status" in query_params:
+        try:
+            status_filter = CollectionStatus(query_params["status"])
+        except ValueError:
+            raise ValidationError(f"Invalid status value: {query_params['status']}")
+
+    # Parse sort parameters
+    sort_by = CollectionSortBy.CREATED_AT
+    if "sortBy" in query_params:
+        try:
+            sort_by = CollectionSortBy(query_params["sortBy"])
+        except ValueError:
+            raise ValidationError(f"Invalid sortBy value: {query_params['sortBy']}")
+
+    sort_order = SortOrder.DESC
+    if "sortOrder" in query_params:
+        try:
+            sort_order = SortOrder(query_params["sortOrder"])
+        except ValueError:
+            raise ValidationError(f"Invalid sortOrder value: {query_params['sortOrder']}")
+
+    # List collections via service (includes access control filtering)
+    collections, next_key = collection_service.list_collections(
+        repository_id=repository_id,
+        user_id=username,
+        user_groups=user_groups,
+        is_admin=admin,
+        page_size=page_size,
+        last_evaluated_key=last_evaluated_key,
+        filter_text=filter_text,
+        status_filter=status_filter,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+    # Calculate pagination metadata
+    pagination_result = PaginationResult.from_keys(
+        original_key=last_evaluated_key,
+        returned_key=next_key,
+    )
+
+    # Get total count (optional - can be expensive for large datasets)
+    total_count = None
+    current_page = None
+    total_pages = None
+    
+    # Only calculate total count if no filters are applied (for performance)
+    if not filter_text and not status_filter:
+        try:
+            from repository.collection_repo import CollectionRepository
+            repo = CollectionRepository()
+            total_count = repo.count_by_repository(repository_id)
+            
+            # Calculate page numbers if we have total count
+            if total_count is not None:
+                total_pages = (total_count + page_size - 1) // page_size
+                # Estimate current page based on whether we have a last_evaluated_key
+                current_page = 1 if not last_evaluated_key else None
+        except Exception as e:
+            logger.warning(f"Failed to get total count for repository {repository_id}: {e}")
+
+    # Build response
+    response = {
+        "collections": [c.model_dump(mode="json") for c in collections],
+        "pagination": {
+            "totalCount": total_count,
+            "currentPage": current_page,
+            "totalPages": total_pages,
+        },
+        "lastEvaluatedKey": next_key,
+        "hasNextPage": pagination_result.has_next_page,
+        "hasPreviousPage": pagination_result.has_previous_page,
+    }
 
     return response
 

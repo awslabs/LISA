@@ -351,6 +351,633 @@ fetch(url, {
   });
 ```
 
+### Update Collection
+
+Update a collection's configuration within a vector store. Supports partial updates - only specified fields will be modified.
+
+**Endpoint:** `PUT /repository/{repositoryId}/collection/{collectionId}`
+
+**Path Parameters:**
+- `repositoryId` (string, required): The parent vector store repository ID
+- `collectionId` (string, required): The collection ID (UUID)
+
+**Request Body:**
+
+All fields are optional. Only include fields you want to update.
+
+```json
+{
+  "name": "Updated Legal Documents",
+  "description": "Updated description for legal contracts",
+  "chunkingStrategy": {
+    "type": "FIXED_SIZE",
+    "parameters": {
+      "chunkSize": 1500,
+      "chunkOverlap": 300
+    }
+  },
+  "allowedGroups": ["legal-team", "compliance", "audit"],
+  "metadata": {
+    "tags": ["legal", "contracts", "confidential", "2025"]
+  },
+  "private": false,
+  "allowChunkingOverride": true,
+  "status": "ACTIVE"
+}
+```
+
+**Request Body Schema:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | No | Collection name (1-100 characters) |
+| `description` | string | No | Collection description |
+| `chunkingStrategy` | object | No | Chunking strategy configuration |
+| `chunkingStrategy.type` | enum | No | Strategy type: `FIXED_SIZE`, `SEMANTIC`, or `RECURSIVE` |
+| `chunkingStrategy.parameters` | object | No | Strategy-specific parameters |
+| `allowedGroups` | array[string] | No | User groups with access |
+| `metadata` | object | No | Collection-specific metadata |
+| `metadata.tags` | array[string] | No | Metadata tags (max 50 tags, 50 chars each) |
+| `private` | boolean | No | Whether collection is private to creator |
+| `allowChunkingOverride` | boolean | No | Allow chunking strategy override during ingestion |
+| `pipelines` | array[object] | No | Automated ingestion pipelines |
+| `status` | enum | No | Collection status: `ACTIVE`, `ARCHIVED`, or `DELETED` |
+
+**Immutable Fields:**
+
+The following fields cannot be modified after creation and will be ignored if included in the request:
+- `collectionId`
+- `repositoryId`
+- `embeddingModel`
+- `createdBy`
+- `createdAt`
+
+**Response (200 OK):**
+
+```json
+{
+  "collection": {
+    "collectionId": "550e8400-e29b-41d4-a716-446655440000",
+    "repositoryId": "repo-123",
+    "name": "Updated Legal Documents",
+    "description": "Updated description for legal contracts",
+    "chunkingStrategy": {
+      "type": "FIXED_SIZE",
+      "parameters": {
+        "chunkSize": 1500,
+        "chunkOverlap": 300
+      }
+    },
+    "allowChunkingOverride": true,
+    "metadata": {
+      "tags": ["legal", "contracts", "confidential", "2025"]
+    },
+    "allowedGroups": ["legal-team", "compliance", "audit"],
+    "embeddingModel": "amazon.titan-embed-text-v1",
+    "createdBy": "user-456",
+    "createdAt": "2025-10-13T10:30:00Z",
+    "updatedAt": "2025-10-13T14:45:00Z",
+    "status": "ACTIVE",
+    "private": false,
+    "pipelines": []
+  },
+  "warnings": [
+    "Changing chunking strategy will only affect new documents. Existing documents will retain their original chunking. Consider re-ingesting existing documents if needed."
+  ]
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `collection` | object | The updated collection configuration |
+| `warnings` | array[string] | Optional warnings about the update (e.g., chunking strategy changes) |
+
+**Error Responses:**
+
+| Status Code | Description | Example |
+|-------------|-------------|---------|
+| 400 | Bad Request - Invalid input | `{"error": "Collection name must be unique within repository"}` |
+| 403 | Forbidden - Insufficient permissions | `{"error": "Permission denied: User does not have write access to collection"}` |
+| 404 | Not Found - Collection not found | `{"error": "Collection '550e8400-e29b-41d4-a716-446655440000' not found"}` |
+| 404 | Not Found - Repository not found | `{"error": "Repository 'repo-123' not found"}` |
+| 500 | Internal Server Error | `{"error": "Failed to update collection"}` |
+
+**Example cURL Request:**
+
+```bash
+curl -X PUT "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer {YOUR_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Legal Documents",
+    "description": "Updated description for legal contracts",
+    "metadata": {
+      "tags": ["legal", "contracts", "confidential", "2025"]
+    }
+  }'
+```
+
+**Example Python Request:**
+
+```python
+import requests
+import json
+
+url = "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000"
+headers = {
+    "Authorization": "Bearer {YOUR_TOKEN}",
+    "Content-Type": "application/json"
+}
+payload = {
+    "name": "Updated Legal Documents",
+    "description": "Updated description for legal contracts",
+    "metadata": {
+        "tags": ["legal", "contracts", "confidential", "2025"]
+    }
+}
+
+response = requests.put(url, headers=headers, json=payload)
+if response.status_code == 200:
+    result = response.json()
+    collection = result['collection']
+    print(f"Updated collection: {collection['collectionId']}")
+    print(f"New name: {collection['name']}")
+    
+    # Check for warnings
+    if 'warnings' in result:
+        print("Warnings:")
+        for warning in result['warnings']:
+            print(f"  - {warning}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+```
+
+**Example JavaScript Request:**
+
+```javascript
+const url = 'https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000';
+const headers = {
+  'Authorization': 'Bearer {YOUR_TOKEN}',
+  'Content-Type': 'application/json'
+};
+const payload = {
+  name: 'Updated Legal Documents',
+  description: 'Updated description for legal contracts',
+  metadata: {
+    tags: ['legal', 'contracts', 'confidential', '2025']
+  }
+};
+
+fetch(url, {
+  method: 'PUT',
+  headers: headers,
+  body: JSON.stringify(payload)
+})
+  .then(response => {
+    if (response.status === 200) {
+      return response.json();
+    }
+    throw new Error(`Error: ${response.status}`);
+  })
+  .then(result => {
+    const collection = result.collection;
+    console.log(`Updated collection: ${collection.collectionId}`);
+    console.log(`New name: ${collection.name}`);
+    
+    // Check for warnings
+    if (result.warnings) {
+      console.log('Warnings:');
+      result.warnings.forEach(warning => {
+        console.log(`  - ${warning}`);
+      });
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+```
+
+**Partial Update Example:**
+
+You can update just one field without affecting others:
+
+```bash
+# Update only the description
+curl -X PUT "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer {YOUR_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "New description only"
+  }'
+```
+
+**Chunking Strategy Change Warning:**
+
+When updating the chunking strategy on a collection that already has documents, the API will return a warning:
+
+```json
+{
+  "collection": { ... },
+  "warnings": [
+    "Changing chunking strategy will only affect new documents. Existing documents will retain their original chunking. Consider re-ingesting existing documents if needed."
+  ]
+}
+```
+
+This warning indicates that:
+1. New documents uploaded after the change will use the new chunking strategy
+2. Existing documents will keep their original chunking
+3. You may want to re-ingest existing documents to apply the new strategy
+
+### List Collections
+
+List collections in a repository with pagination, filtering, and sorting.
+
+**Endpoint:** `GET /repository/{repositoryId}/collections`
+
+**Path Parameters:**
+- `repositoryId` (string, required): The parent vector store repository ID
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `pageSize` | integer | No | 20 | Number of items per page (max: 100) |
+| `filter` | string | No | - | Text filter for name/description (substring match) |
+| `status` | enum | No | - | Status filter: `ACTIVE`, `ARCHIVED`, or `DELETED` |
+| `sortBy` | enum | No | `createdAt` | Sort field: `name`, `createdAt`, or `updatedAt` |
+| `sortOrder` | enum | No | `desc` | Sort order: `asc` or `desc` |
+| `lastEvaluatedKeyCollectionId` | string | No | - | Pagination token: collection ID from previous response |
+| `lastEvaluatedKeyRepositoryId` | string | No | - | Pagination token: repository ID from previous response |
+| `lastEvaluatedKeyStatus` | string | No | - | Pagination token: status from previous response (if status filter used) |
+| `lastEvaluatedKeyCreatedAt` | string | No | - | Pagination token: createdAt from previous response |
+
+**Response (200 OK):**
+
+```json
+{
+  "collections": [
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440000",
+      "repositoryId": "repo-123",
+      "name": "Legal Documents",
+      "description": "Collection for legal contracts and agreements",
+      "chunkingStrategy": {
+        "type": "RECURSIVE",
+        "parameters": {
+          "chunkSize": 1000,
+          "chunkOverlap": 200,
+          "separators": ["\n\n", "\n", ". ", " "]
+        }
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "tags": ["legal", "contracts", "confidential"]
+      },
+      "allowedGroups": ["legal-team", "compliance"],
+      "embeddingModel": "amazon.titan-embed-text-v1",
+      "createdBy": "user-456",
+      "createdAt": "2025-10-13T10:30:00Z",
+      "updatedAt": "2025-10-13T10:30:00Z",
+      "status": "ACTIVE",
+      "private": false,
+      "pipelines": []
+    },
+    {
+      "collectionId": "660e8400-e29b-41d4-a716-446655440001",
+      "repositoryId": "repo-123",
+      "name": "Technical Documentation",
+      "description": "Collection for technical manuals and guides",
+      "chunkingStrategy": {
+        "type": "FIXED_SIZE",
+        "parameters": {
+          "chunkSize": 1500,
+          "chunkOverlap": 300
+        }
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "tags": ["technical", "documentation"]
+      },
+      "allowedGroups": ["engineering", "support"],
+      "embeddingModel": "amazon.titan-embed-text-v1",
+      "createdBy": "user-789",
+      "createdAt": "2025-10-12T15:20:00Z",
+      "updatedAt": "2025-10-12T15:20:00Z",
+      "status": "ACTIVE",
+      "private": false,
+      "pipelines": []
+    }
+  ],
+  "pagination": {
+    "totalCount": 45,
+    "currentPage": 1,
+    "totalPages": 3
+  },
+  "lastEvaluatedKey": {
+    "collectionId": "660e8400-e29b-41d4-a716-446655440001",
+    "repositoryId": "repo-123",
+    "createdAt": "2025-10-12T15:20:00Z"
+  },
+  "hasNextPage": true,
+  "hasPreviousPage": false
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `collections` | array[object] | List of collection configurations |
+| `pagination` | object | Pagination metadata |
+| `pagination.totalCount` | integer | Total number of collections (null if filters applied) |
+| `pagination.currentPage` | integer | Current page number (null if using lastEvaluatedKey) |
+| `pagination.totalPages` | integer | Total number of pages (null if filters applied) |
+| `lastEvaluatedKey` | object | Pagination token for next page (null if no more pages) |
+| `hasNextPage` | boolean | Whether there are more pages |
+| `hasPreviousPage` | boolean | Whether there is a previous page |
+
+**Access Control Filtering:**
+
+- **Admin users**: See all collections in the repository
+- **Non-admin users**: See only collections where:
+  - User's groups intersect with collection's allowed groups, AND
+  - Collection is not private OR user is the creator
+
+**Error Responses:**
+
+| Status Code | Description | Example |
+|-------------|-------------|---------|
+| 400 | Bad Request - Invalid parameters | `{"error": "Invalid sortBy value: invalid"}` |
+| 403 | Forbidden - Insufficient permissions | `{"error": "Permission denied: User does not have read access to repository"}` |
+| 404 | Not Found - Repository not found | `{"error": "Repository 'repo-123' not found"}` |
+| 500 | Internal Server Error | `{"error": "Failed to list collections"}` |
+
+**Example cURL Request (Basic):**
+
+```bash
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collections" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example cURL Request (With Filters):**
+
+```bash
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collections?pageSize=50&filter=legal&status=ACTIVE&sortBy=name&sortOrder=asc" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example cURL Request (Pagination):**
+
+```bash
+# First page
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collections?pageSize=20" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+
+# Next page (using lastEvaluatedKey from previous response)
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collections?pageSize=20&lastEvaluatedKeyCollectionId=660e8400-e29b-41d4-a716-446655440001&lastEvaluatedKeyRepositoryId=repo-123&lastEvaluatedKeyCreatedAt=2025-10-12T15:20:00Z" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example Python Request:**
+
+```python
+import requests
+import urllib.parse
+
+url = "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collections"
+headers = {
+    "Authorization": "Bearer {YOUR_TOKEN}"
+}
+
+# Basic request
+response = requests.get(url, headers=headers)
+if response.status_code == 200:
+    result = response.json()
+    collections = result['collections']
+    print(f"Found {len(collections)} collections")
+    
+    for collection in collections:
+        print(f"  - {collection['name']} ({collection['collectionId']})")
+    
+    # Check for more pages
+    if result['hasNextPage']:
+        print("More pages available")
+        last_key = result['lastEvaluatedKey']
+        print(f"Next page token: {last_key}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+
+# Request with filters
+params = {
+    "pageSize": 50,
+    "filter": "legal",
+    "status": "ACTIVE",
+    "sortBy": "name",
+    "sortOrder": "asc"
+}
+response = requests.get(url, headers=headers, params=params)
+if response.status_code == 200:
+    result = response.json()
+    print(f"Filtered results: {len(result['collections'])} collections")
+
+# Pagination example
+def get_all_collections(repository_id, page_size=20):
+    """Fetch all collections with pagination."""
+    all_collections = []
+    last_evaluated_key = None
+    
+    while True:
+        params = {"pageSize": page_size}
+        
+        # Add pagination token if available
+        if last_evaluated_key:
+            params["lastEvaluatedKeyCollectionId"] = last_evaluated_key["collectionId"]
+            params["lastEvaluatedKeyRepositoryId"] = last_evaluated_key["repositoryId"]
+            if "createdAt" in last_evaluated_key:
+                params["lastEvaluatedKeyCreatedAt"] = last_evaluated_key["createdAt"]
+        
+        response = requests.get(
+            f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/collections",
+            headers=headers,
+            params=params
+        )
+        
+        if response.status_code != 200:
+            print(f"Error: {response.status_code} - {response.text}")
+            break
+        
+        result = response.json()
+        all_collections.extend(result['collections'])
+        
+        # Check if there are more pages
+        if not result['hasNextPage']:
+            break
+        
+        last_evaluated_key = result['lastEvaluatedKey']
+    
+    return all_collections
+
+# Get all collections
+all_collections = get_all_collections("repo-123")
+print(f"Total collections: {len(all_collections)}")
+```
+
+**Example JavaScript Request:**
+
+```javascript
+const url = 'https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collections';
+const headers = {
+  'Authorization': 'Bearer {YOUR_TOKEN}'
+};
+
+// Basic request
+fetch(url, {
+  method: 'GET',
+  headers: headers
+})
+  .then(response => {
+    if (response.status === 200) {
+      return response.json();
+    }
+    throw new Error(`Error: ${response.status}`);
+  })
+  .then(result => {
+    const collections = result.collections;
+    console.log(`Found ${collections.length} collections`);
+    
+    collections.forEach(collection => {
+      console.log(`  - ${collection.name} (${collection.collectionId})`);
+    });
+    
+    // Check for more pages
+    if (result.hasNextPage) {
+      console.log('More pages available');
+      console.log('Next page token:', result.lastEvaluatedKey);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+
+// Request with filters
+const params = new URLSearchParams({
+  pageSize: '50',
+  filter: 'legal',
+  status: 'ACTIVE',
+  sortBy: 'name',
+  sortOrder: 'asc'
+});
+
+fetch(`${url}?${params}`, {
+  method: 'GET',
+  headers: headers
+})
+  .then(response => response.json())
+  .then(result => {
+    console.log(`Filtered results: ${result.collections.length} collections`);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+
+// Pagination example
+async function getAllCollections(repositoryId, pageSize = 20) {
+  const allCollections = [];
+  let lastEvaluatedKey = null;
+  
+  while (true) {
+    const params = new URLSearchParams({ pageSize: pageSize.toString() });
+    
+    // Add pagination token if available
+    if (lastEvaluatedKey) {
+      params.append('lastEvaluatedKeyCollectionId', lastEvaluatedKey.collectionId);
+      params.append('lastEvaluatedKeyRepositoryId', lastEvaluatedKey.repositoryId);
+      if (lastEvaluatedKey.createdAt) {
+        params.append('lastEvaluatedKeyCreatedAt', lastEvaluatedKey.createdAt);
+      }
+    }
+    
+    const response = await fetch(
+      `https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/${repositoryId}/collections?${params}`,
+      { method: 'GET', headers: headers }
+    );
+    
+    if (response.status !== 200) {
+      console.error(`Error: ${response.status}`);
+      break;
+    }
+    
+    const result = await response.json();
+    allCollections.push(...result.collections);
+    
+    // Check if there are more pages
+    if (!result.hasNextPage) {
+      break;
+    }
+    
+    lastEvaluatedKey = result.lastEvaluatedKey;
+  }
+  
+  return allCollections;
+}
+
+// Get all collections
+getAllCollections('repo-123')
+  .then(collections => {
+    console.log(`Total collections: ${collections.length}`);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+```
+
+**Filtering Examples:**
+
+1. **Filter by name/description:**
+   ```
+   GET /repository/repo-123/collections?filter=legal
+   ```
+   Returns collections with "legal" in name or description
+
+2. **Filter by status:**
+   ```
+   GET /repository/repo-123/collections?status=ACTIVE
+   ```
+   Returns only active collections
+
+3. **Combined filters:**
+   ```
+   GET /repository/repo-123/collections?filter=legal&status=ACTIVE
+   ```
+   Returns active collections with "legal" in name or description
+
+**Sorting Examples:**
+
+1. **Sort by name (ascending):**
+   ```
+   GET /repository/repo-123/collections?sortBy=name&sortOrder=asc
+   ```
+
+2. **Sort by creation date (newest first):**
+   ```
+   GET /repository/repo-123/collections?sortBy=createdAt&sortOrder=desc
+   ```
+
+3. **Sort by last update (oldest first):**
+   ```
+   GET /repository/repo-123/collections?sortBy=updatedAt&sortOrder=asc
+   ```
+
+**Pagination Notes:**
+
+1. **Page Size**: Maximum 100 items per page. Default is 20.
+2. **Total Count**: Only available when no filters are applied (for performance reasons)
+3. **Pagination Token**: Use `lastEvaluatedKey` from response to get next page
+4. **URL Encoding**: Ensure pagination token values are URL-encoded when constructing URLs
+
 ## Inheritance Rules
 
 Collections inherit configuration from their parent vector store:

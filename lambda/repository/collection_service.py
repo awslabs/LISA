@@ -288,25 +288,50 @@ class CollectionManagementService:
         # Delete associated documents if document_repo is available
         if self.document_repo:
             try:
-                # Get all documents in the collection
-                docs, _, _ = self.document_repo.list_all(
-                    repository_id=repository_id,
-                    collection_id=collection_id,
-                    last_evaluated_key=None,
-                    limit=1000  # Process in batches if needed
-                )
+                # Get all documents in the collection with pagination
+                last_key = None
+                total_deleted = 0
+                batch_size = 100
                 
-                if docs:
-                    logger.info(f"Deleting {len(docs)} documents from collection {collection_id}")
-                    # Delete documents from S3 and database
+                while True:
+                    docs, last_key, _ = self.document_repo.list_all(
+                        repository_id=repository_id,
+                        collection_id=collection_id,
+                        last_evaluated_key=last_key,
+                        limit=batch_size,
+                        join_docs=True  # Include subdoc IDs for vector store deletion
+                    )
+                    
+                    if not docs:
+                        break
+                    
+                    logger.info(f"Processing batch of {len(docs)} documents from collection {collection_id}")
+                    
+                    # Delete embeddings from vector store
+                    try:
+                        self._delete_embeddings_from_vector_store(docs, repository_id, collection_id)
+                    except Exception as e:
+                        logger.error(f"Failed to delete embeddings from vector store: {e}")
+                        # Continue with other deletions
+                    
+                    # Delete documents from S3
                     self.document_repo.delete_s3_docs(repository_id, [doc.model_dump() for doc in docs])
                     
                     # Delete document records from DynamoDB
                     for doc in docs:
                         try:
                             self.document_repo.delete_by_id(doc.document_id)
+                            total_deleted += 1
                         except Exception as e:
                             logger.warning(f"Failed to delete document {doc.document_id}: {e}")
+                    
+                    # Break if no more pages
+                    if not last_key:
+                        break
+                
+                if total_deleted > 0:
+                    logger.info(f"Deleted {total_deleted} documents from collection {collection_id}")
+                    
             except Exception as e:
                 logger.error(f"Failed to delete documents for collection {collection_id}: {e}")
                 # Continue with collection deletion even if document cleanup fails
@@ -526,6 +551,54 @@ class CollectionManagementService:
             private=request.private,
             pipelines=request.pipelines or [],
         )
+
+    def _delete_embeddings_from_vector_store(
+        self, docs: List, repository_id: str, collection_id: str
+    ) -> None:
+        """
+        Delete document embeddings from the vector store.
+
+        Args:
+            docs: List of documents with subdoc IDs
+            repository_id: Repository ID
+            collection_id: Collection ID
+        """
+        try:
+            from repository.embeddings import RagEmbeddings
+            from utilities.vector_store import get_vector_store_client
+
+            # Collect all subdoc IDs to delete
+            subdoc_ids = []
+            for doc in docs:
+                if hasattr(doc, 'subdocs') and doc.subdocs:
+                    subdoc_ids.extend(doc.subdocs)
+
+            if not subdoc_ids:
+                logger.info("No subdocuments to delete from vector store")
+                return
+
+            # Get vector store client
+            embeddings = RagEmbeddings(model_name=collection_id)
+            vector_store = get_vector_store_client(
+                repository_id,
+                index=collection_id,
+                embeddings=embeddings,
+            )
+
+            # Delete embeddings in batches to avoid overwhelming the vector store
+            batch_size = 100
+            for i in range(0, len(subdoc_ids), batch_size):
+                batch = subdoc_ids[i:i + batch_size]
+                try:
+                    vector_store.delete(batch)
+                    logger.info(f"Deleted {len(batch)} embeddings from vector store")
+                except Exception as e:
+                    logger.error(f"Failed to delete embedding batch: {e}")
+                    # Continue with next batch
+
+        except Exception as e:
+            logger.error(f"Error deleting embeddings from vector store: {e}")
+            raise
 
     def _can_user_access_collection(
         self, user_id: str, user_groups: List[str], collection: RagCollectionConfig

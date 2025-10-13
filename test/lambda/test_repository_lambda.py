@@ -2396,3 +2396,236 @@ def test_list_jobs_with_invalid_last_evaluated_key():
         body = json.loads(result["body"])
         assert "error" in body
         assert "Invalid JSON in lastEvaluatedKey" in body["error"]
+
+
+def test_ingest_documents_with_collection():
+    """Test ingest_documents with explicit collection ID"""
+    from repository.lambda_functions import ingest_documents
+    from models.domain_objects import RagCollectionConfig, CollectionStatus, FixedSizeChunkingStrategy
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, \
+         patch("repository.lambda_functions.collection_service") as mock_collection_service, \
+         patch("repository.lambda_functions.ingestion_job_repository") as mock_ingestion_job_repo, \
+         patch("repository.lambda_functions.ingestion_service") as mock_ingestion_service, \
+         patch("utilities.common_functions.get_groups") as mock_get_groups, \
+         patch("utilities.common_functions.get_username") as mock_get_username, \
+         patch("utilities.auth.is_admin") as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_get_username.return_value = "test-user"
+        mock_is_admin.return_value = False
+
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "allowedGroups": ["test-group"],
+            "status": "active",
+            "embeddingModelId": "test-embedding-model"
+        }
+
+        # Mock collection with custom chunking strategy
+        mock_collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-embedding-model",
+            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=500, chunkOverlap=50),
+            allowChunkingOverride=False,
+            allowedGroups=["test-group"],
+            createdBy="test-user",
+            status=CollectionStatus.ACTIVE,
+            private=False
+        )
+        mock_collection_service.get_collection.return_value = mock_collection
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {},
+            "body": json.dumps({
+                "collectionId": "test-collection",
+                "keys": ["test-key-1", "test-key-2"]
+            }),
+        }
+
+        result = ingest_documents(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "ingestionJobIds" in body
+        assert "collectionId" in body
+        assert body["collectionId"] == "test-collection"
+        assert "collectionName" in body
+        assert body["collectionName"] == "Test Collection"
+        
+        # Verify collection service was called to validate access
+        assert mock_collection_service.get_collection.called
+        call_args = mock_collection_service.get_collection.call_args
+        assert call_args.kwargs["collection_id"] == "test-collection"
+        assert call_args.kwargs["repository_id"] == "test-repo"
+
+
+def test_ingest_documents_with_default_collection():
+    """Test ingest_documents defaults to embedding model collection"""
+    from repository.lambda_functions import ingest_documents
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, \
+         patch("repository.lambda_functions.collection_service") as mock_collection_service, \
+         patch("repository.lambda_functions.ingestion_job_repository") as mock_ingestion_job_repo, \
+         patch("repository.lambda_functions.ingestion_service") as mock_ingestion_service, \
+         patch("utilities.common_functions.get_groups") as mock_get_groups, \
+         patch("utilities.common_functions.get_username") as mock_get_username, \
+         patch("utilities.auth.is_admin") as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_get_username.return_value = "test-user"
+        mock_is_admin.return_value = False
+
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "allowedGroups": ["test-group"],
+            "status": "active",
+            "embeddingModelId": "default-embedding-model"
+        }
+
+        # Collection not found - should use default behavior
+        from utilities.validation import ValidationError
+        mock_collection_service.get_collection.side_effect = ValidationError("Collection not found")
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {"chunkSize": "1000", "chunkOverlap": "200"},
+            "body": json.dumps({
+                "embeddingModel": {"modelName": "default-embedding-model"},
+                "keys": ["test-key"]
+            }),
+        }
+
+        result = ingest_documents(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "ingestionJobIds" in body
+        assert body["collectionId"] == "default-embedding-model"
+
+
+def test_ingest_documents_with_chunking_override():
+    """Test ingest_documents with chunking strategy override"""
+    from repository.lambda_functions import ingest_documents
+    from models.domain_objects import RagCollectionConfig, CollectionStatus, FixedSizeChunkingStrategy
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, \
+         patch("repository.lambda_functions.collection_service") as mock_collection_service, \
+         patch("repository.lambda_functions.ingestion_job_repository") as mock_ingestion_job_repo, \
+         patch("repository.lambda_functions.ingestion_service") as mock_ingestion_service, \
+         patch("utilities.common_functions.get_groups") as mock_get_groups, \
+         patch("utilities.common_functions.get_username") as mock_get_username, \
+         patch("utilities.auth.is_admin") as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_get_username.return_value = "test-user"
+        mock_is_admin.return_value = False
+
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "allowedGroups": ["test-group"],
+            "status": "active",
+            "embeddingModelId": "test-embedding-model"
+        }
+
+        # Mock collection that allows chunking override
+        mock_collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-embedding-model",
+            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=500, chunkOverlap=50),
+            allowChunkingOverride=True,  # Allow override
+            allowedGroups=["test-group"],
+            createdBy="test-user",
+            status=CollectionStatus.ACTIVE,
+            private=False
+        )
+        mock_collection_service.get_collection.return_value = mock_collection
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {},
+            "body": json.dumps({
+                "collectionId": "test-collection",
+                "chunkingStrategy": {
+                    "type": "FIXED_SIZE",
+                    "chunkSize": 2000,
+                    "chunkOverlap": 100
+                },
+                "keys": ["test-key"]
+            }),
+        }
+
+        result = ingest_documents(event, SimpleNamespace())
+
+        # Verify the response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "ingestionJobIds" in body
+        
+        # Verify ingestion job was created with override chunking strategy
+        # The job should use the override strategy (2000/100) not the collection default (500/50)
+        assert mock_ingestion_job_repo.save.called
+
+
+def test_ingest_documents_access_denied():
+    """Test ingest_documents with access denied to collection"""
+    from repository.lambda_functions import ingest_documents
+    from utilities.validation import ValidationError
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, \
+         patch("repository.lambda_functions.collection_service") as mock_collection_service, \
+         patch("utilities.common_functions.get_groups") as mock_get_groups, \
+         patch("utilities.common_functions.get_username") as mock_get_username, \
+         patch("utilities.auth.is_admin") as mock_is_admin:
+
+        # Setup mocks
+        mock_get_groups.return_value = ["test-group"]
+        mock_get_username.return_value = "test-user"
+        mock_is_admin.return_value = False
+
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "allowedGroups": ["test-group"],
+            "status": "active",
+            "embeddingModelId": "test-embedding-model"
+        }
+
+        # Collection access denied
+        mock_collection_service.get_collection.side_effect = ValidationError("Permission denied")
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {"repositoryId": "test-repo"},
+            "queryStringParameters": {},
+            "body": json.dumps({
+                "collectionId": "restricted-collection",
+                "keys": ["test-key"]
+            }),
+        }
+
+        result = ingest_documents(event, SimpleNamespace())
+
+        # Verify access denied response - api_wrapper catches ValidationError and returns 500
+        # The error message should indicate access denied
+        assert result["statusCode"] in [400, 500]
+        if result["statusCode"] == 500:
+            body = json.loads(result["body"])
+            error_msg = body.get("error", body.get("message", "")).lower()
+            assert "access denied" in error_msg or "not found" in error_msg

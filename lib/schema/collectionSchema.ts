@@ -28,11 +28,15 @@ export enum CollectionStatus {
 
 /**
  * Enum for chunking strategy types
+ * 
+ * Note: Only FIXED_SIZE is currently implemented.
+ * Additional strategies can be added by implementing a ChunkingStrategyHandler
+ * and registering it with the ChunkingStrategyFactory in the backend.
  */
 export enum ChunkingStrategyType {
     FIXED_SIZE = 'FIXED_SIZE',
-    SEMANTIC = 'SEMANTIC',
-    RECURSIVE = 'RECURSIVE',
+    // SEMANTIC = 'SEMANTIC',  // Not yet implemented
+    // RECURSIVE = 'RECURSIVE',  // Not yet implemented
 }
 
 /**
@@ -48,35 +52,36 @@ export const FixedSizeChunkingStrategySchema = z.object({
 );
 
 /**
- * Semantic chunking strategy schema
- */
-export const SemanticChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.SEMANTIC).describe('Semantic chunking strategy type'),
-    threshold: z.number().min(0.0).max(1.0).describe('Similarity threshold for semantic boundaries'),
-    chunkSize: z.number().min(100).max(10000).default(1000).optional().describe('Maximum chunk size'),
-});
-
-/**
- * Recursive chunking strategy schema
- */
-export const RecursiveChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.RECURSIVE).describe('Recursive chunking strategy type'),
-    chunkSize: z.number().min(100).max(10000).describe('Target size of each chunk'),
-    chunkOverlap: z.number().min(0).describe('Overlap between chunks'),
-    separators: z.array(z.string()).min(1).default(['\n\n', '\n', '. ', ' ']).describe('Separators to use for recursive splitting'),
-}).refine(
-    (data) => data.chunkOverlap <= data.chunkSize / 2,
-    { message: 'chunkOverlap must be less than or equal to half of chunkSize' }
-);
-
-/**
  * Union of all chunking strategy types
+ * 
+ * Currently only FIXED_SIZE is implemented. Additional strategies can be added here
+ * when their backend implementations are complete.
  */
-export const ChunkingStrategySchema = z.union([
-    FixedSizeChunkingStrategySchema,
-    SemanticChunkingStrategySchema,
-    RecursiveChunkingStrategySchema,
-]);
+export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
+
+// Future chunking strategies (not yet implemented):
+//
+// export const SemanticChunkingStrategySchema = z.object({
+//     type: z.literal(ChunkingStrategyType.SEMANTIC).describe('Semantic chunking strategy type'),
+//     threshold: z.number().min(0.0).max(1.0).describe('Similarity threshold for semantic boundaries'),
+//     chunkSize: z.number().min(100).max(10000).default(1000).optional().describe('Maximum chunk size'),
+// });
+//
+// export const RecursiveChunkingStrategySchema = z.object({
+//     type: z.literal(ChunkingStrategyType.RECURSIVE).describe('Recursive chunking strategy type'),
+//     chunkSize: z.number().min(100).max(10000).describe('Target size of each chunk'),
+//     chunkOverlap: z.number().min(0).describe('Overlap between chunks'),
+//     separators: z.array(z.string()).min(1).default(['\n\n', '\n', '. ', ' ']).describe('Separators to use for recursive splitting'),
+// }).refine(
+//     (data) => data.chunkOverlap <= data.chunkSize / 2,
+//     { message: 'chunkOverlap must be less than or equal to half of chunkSize' }
+// );
+//
+// When implementing new strategies:
+// 1. Add the strategy type to ChunkingStrategyType enum (uncomment above)
+// 2. Create the schema (uncomment and modify above)
+// 3. Update ChunkingStrategySchema to be a union: z.union([FixedSizeChunkingStrategySchema, SemanticChunkingStrategySchema, ...])
+// 4. Implement the backend handler in chunking_strategy_factory.py
 
 /**
  * Pipeline configuration schema - reusing from ragSchema
@@ -208,8 +213,8 @@ export const ListCollectionsResponseSchema = z.object({
  */
 export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
 export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
-export type SemanticChunkingStrategy = z.infer<typeof SemanticChunkingStrategySchema>;
-export type RecursiveChunkingStrategy = z.infer<typeof RecursiveChunkingStrategySchema>;
+// export type SemanticChunkingStrategy = z.infer<typeof SemanticChunkingStrategySchema>;  // Not yet implemented
+// export type RecursiveChunkingStrategy = z.infer<typeof RecursiveChunkingStrategySchema>;  // Not yet implemented
 // PipelineConfig type is exported from ragSchema via PipelineConfigSchema
 export type CollectionMetadata = z.infer<typeof CollectionMetadataSchema>;
 export type RagCollectionConfig = z.infer<typeof RagCollectionConfigSchema>;

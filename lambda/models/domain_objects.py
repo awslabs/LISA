@@ -376,8 +376,6 @@ class ChunkingStrategyType(str, Enum):
 
     FIXED_SIZE = "FIXED_SIZE"
     FIXED = "fixed"  # Legacy support
-    SEMANTIC = "SEMANTIC"
-    RECURSIVE = "RECURSIVE"
 
 
 class IngestionStatus(str, Enum):
@@ -417,35 +415,30 @@ class FixedSizeChunkingStrategy(BaseModel):
         return self
 
 
-class SemanticChunkingStrategy(BaseModel):
-    """Defines parameters for semantic document chunking."""
-
-    type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
-    threshold: float = Field(ge=0.0, le=1.0, description="Similarity threshold for semantic boundaries")
-    chunkSize: Optional[int] = Field(default=1000, ge=100, le=10000, description="Maximum chunk size")
+ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy, FixedSizeChunkingStrategy]
 
 
-class RecursiveChunkingStrategy(BaseModel):
-    """Defines parameters for recursive document chunking."""
-
-    type: ChunkingStrategyType = ChunkingStrategyType.RECURSIVE
-    chunkSize: int = Field(ge=100, le=10000, description="Target size of each chunk")
-    chunkOverlap: int = Field(ge=0, description="Overlap between chunks")
-    separators: List[str] = Field(default_factory=lambda: ["\n\n", "\n", ". ", " "], description="Separators to use")
-
-    @model_validator(mode="after")
-    def validate_overlap(self) -> Self:
-        """Validates that overlap is not greater than half the chunk size."""
-        if self.chunkOverlap > self.chunkSize / 2:
-            raise ValueError("chunkOverlap must be less than or equal to half of chunkSize")
-        if not self.separators:
-            raise ValueError("separators list cannot be empty")
-        return self
-
-
-ChunkingStrategy: TypeAlias = Union[
-    FixedChunkingStrategy, FixedSizeChunkingStrategy, SemanticChunkingStrategy, RecursiveChunkingStrategy
-]
+# Future chunking strategies can be added here when implemented:
+# 
+# class SemanticChunkingStrategy(BaseModel):
+#     """Defines parameters for semantic document chunking."""
+#     type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
+#     threshold: float = Field(ge=0.0, le=1.0, description="Similarity threshold for semantic boundaries")
+#     chunkSize: Optional[int] = Field(default=1000, ge=100, le=10000, description="Maximum chunk size")
+#
+# class RecursiveChunkingStrategy(BaseModel):
+#     """Defines parameters for recursive document chunking."""
+#     type: ChunkingStrategyType = ChunkingStrategyType.RECURSIVE
+#     chunkSize: int = Field(ge=100, le=10000, description="Target size of each chunk")
+#     chunkOverlap: int = Field(ge=0, description="Overlap between chunks")
+#     separators: List[str] = Field(default_factory=lambda: ["\n\n", "\n", ". ", " "], description="Separators to use")
+#
+# To implement a new strategy:
+# 1. Add the strategy type to ChunkingStrategyType enum
+# 2. Create a strategy model class (like above)
+# 3. Add it to the ChunkingStrategy TypeAlias union
+# 4. Create a handler class extending ChunkingStrategyHandler in chunking_strategy_factory.py
+# 5. Register the handler with ChunkingStrategyFactory.register_handler()
 
 
 class RagSubDocument(BaseModel):

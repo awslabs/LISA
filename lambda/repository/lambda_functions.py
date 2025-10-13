@@ -246,6 +246,55 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     return collection.model_dump(mode="json")
 
 
+@api_wrapper
+def get_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Get a collection by ID within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - pathParameters.collectionId: The collection ID
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the collection configuration
+
+    Raises:
+        ValidationError: If collection not found or user lacks permission
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+    collection_id = path_params.get("collectionId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    if not collection_id:
+        raise ValidationError("collectionId is required")
+
+    # Get user context
+    username = get_username(event)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Get collection via service (includes access control check)
+    collection = collection_service.get_collection(
+        collection_id=collection_id,
+        repository_id=repository_id,
+        user_id=username,
+        user_groups=user_groups,
+        is_admin=admin,
+    )
+
+    # Return collection configuration
+    return collection.model_dump(mode="json")
+
+
 def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:
     """Verify ownership of documents"""
     username = get_username(event)

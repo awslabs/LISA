@@ -195,6 +195,26 @@ export class RepositoryApi extends Construct {
                 environment: {
                     ...baseEnvironment,
                 },
+            },
+            {
+                name: 'create_collection',
+                resource: 'repository',
+                description: 'Create a new collection within a repository',
+                path: 'repository/{repositoryId}/collection',
+                method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'get_collection',
+                resource: 'repository',
+                description: 'Get a collection by ID within a repository',
+                path: 'repository/{repositoryId}/collection/{collectionId}',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
             }
         ];
 

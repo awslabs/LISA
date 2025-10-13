@@ -71,7 +71,9 @@ export const RagRepositoryPipeline = z.object({
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
 });
 
-export type PipelineConfig = z.infer<typeof RagRepositoryPipeline>;
+export type RagRepositoryPipelineConfig = z.infer<typeof RagRepositoryPipeline>;
+// Alias for backward compatibility
+export type PipelineConfig = RagRepositoryPipelineConfig;
 export type OpenSearchConfig =
     z.infer<typeof OpenSearchNewClusterConfig>
     | z.infer<typeof OpenSearchExistingClusterConfig>;
@@ -89,6 +91,11 @@ export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 
 export type BedrockKnowledgeBaseConfig = z.infer<typeof BedrockKnowledgeBaseInstanceConfig>;
 
+export const RagRepositoryMetadata = z.object({
+    tags: z.array(z.string()).default([]).describe('Tags for categorizing and organizing the repository.'),
+    customFields: z.record(z.any()).optional().describe('Custom metadata fields for the repository.'),
+});
+
 export const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string()
@@ -104,6 +111,8 @@ export const RagRepositoryConfigSchema = z
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
         allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        allowUserCollections: z.boolean().default(true).describe('Whether non-admin users can create collections in this repository.'),
+        metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||

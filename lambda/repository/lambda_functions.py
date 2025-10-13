@@ -32,6 +32,7 @@ from models.domain_objects import (
     PaginationResult,
     RagCollectionConfig,
     RagDocument,
+    UpdateCollectionRequest,
 )
 from repository.config.params import ListJobsParams
 from repository.collection_service import CollectionManagementService
@@ -71,7 +72,7 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 vs_repo = VectorStoreRepository()
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
-collection_service = CollectionManagementService()
+collection_service = CollectionManagementService(document_repo=doc_repo)
 
 
 @api_wrapper
@@ -293,6 +294,76 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Return collection configuration
     return collection.model_dump(mode="json")
+
+
+@api_wrapper
+def update_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Update a collection within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - pathParameters.collectionId: The collection ID
+            - body: JSON with partial collection updates (UpdateCollectionRequest)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - collection: The updated collection configuration
+            - warnings: List of warning messages (e.g., chunking strategy changes)
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository or collection not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+    collection_id = path_params.get("collectionId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    if not collection_id:
+        raise ValidationError("collectionId is required")
+
+    # Parse request body
+    try:
+        body = json.loads(event.get("body", "{}"))
+        request = UpdateCollectionRequest(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {str(e)}")
+    except Exception as e:
+        raise ValidationError(f"Invalid request: {str(e)}")
+
+    # Get user context
+    username = get_username(event)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Update collection via service (includes access control check)
+    updated_collection, warnings = collection_service.update_collection(
+        collection_id=collection_id,
+        repository_id=repository_id,
+        request=request,
+        user_id=username,
+        user_groups=user_groups,
+        is_admin=admin,
+    )
+
+    # Build response
+    response = {
+        "collection": updated_collection.model_dump(mode="json"),
+    }
+
+    # Include warnings if any
+    if warnings:
+        response["warnings"] = warnings
+
+    return response
 
 
 def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:

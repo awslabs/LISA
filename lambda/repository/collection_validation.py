@@ -22,9 +22,8 @@ from models.domain_objects import (
     ChunkingStrategy,
     CollectionMetadata,
     CreateCollectionRequest,
+    FixedChunkingStrategy,
     FixedSizeChunkingStrategy,
-    RecursiveChunkingStrategy,
-    SemanticChunkingStrategy,
     UpdateCollectionRequest,
 )
 from repository.collection_repo import CollectionRepository
@@ -276,7 +275,8 @@ class CollectionValidationService:
         Raises:
             ValidationError: If strategy is invalid
         """
-        if isinstance(strategy, (FixedSizeChunkingStrategy, RecursiveChunkingStrategy)):
+        # Handle both legacy (FixedChunkingStrategy) and new (FixedSizeChunkingStrategy) formats
+        if isinstance(strategy, FixedSizeChunkingStrategy):
             # Validate chunk size
             if strategy.chunkSize < MIN_CHUNK_SIZE or strategy.chunkSize > MAX_CHUNK_SIZE:
                 raise ValidationError(
@@ -292,23 +292,29 @@ class CollectionValidationService:
                     f"chunkOverlap ({strategy.chunkOverlap}) must be less than or equal to "
                     f"half of chunkSize ({strategy.chunkSize / 2})"
                 )
+        
+        elif isinstance(strategy, FixedChunkingStrategy):
+            # Legacy format validation
+            if strategy.size < MIN_CHUNK_SIZE or strategy.size > MAX_CHUNK_SIZE:
+                raise ValidationError(
+                    f"chunk size must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}"
+                )
 
-            # Validate separators for recursive strategy
-            if isinstance(strategy, RecursiveChunkingStrategy):
-                if not strategy.separators or len(strategy.separators) == 0:
-                    raise ValidationError("Recursive chunking strategy must have at least one separator")
+            if strategy.overlap < 0:
+                raise ValidationError("chunk overlap must be non-negative")
 
-        elif isinstance(strategy, SemanticChunkingStrategy):
-            # Validate threshold
-            if strategy.threshold < 0.0 or strategy.threshold > 1.0:
-                raise ValidationError("Semantic chunking threshold must be between 0.0 and 1.0")
-
-            # Validate optional chunk size
-            if strategy.chunkSize is not None:
-                if strategy.chunkSize < MIN_CHUNK_SIZE or strategy.chunkSize > MAX_CHUNK_SIZE:
-                    raise ValidationError(
-                        f"chunkSize must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}"
-                    )
+            if strategy.overlap > strategy.size / 2:
+                raise ValidationError(
+                    f"chunk overlap ({strategy.overlap}) must be less than or equal to "
+                    f"half of chunk size ({strategy.size / 2})"
+                )
+        
+        else:
+            # Unsupported strategy type
+            raise ValidationError(
+                f"Unsupported chunking strategy type: {strategy.type}. "
+                f"Only FIXED and FIXED_SIZE strategies are currently supported."
+            )
 
     def _validate_metadata(self, metadata: CollectionMetadata) -> None:
         """

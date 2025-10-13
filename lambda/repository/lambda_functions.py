@@ -651,48 +651,137 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
 @api_wrapper
 def ingest_documents(event: dict, context: dict) -> dict:
-    """Ingest documents into the RAG repository.
+    """Ingest documents into the RAG repository with collection support.
 
     Args:
         event (dict): The Lambda event object containing:
-            - body.embeddingModel.modelName: Document collection id
+            - body.embeddingModel.modelName: Embedding model name (for backward compatibility)
             - body.keys: List of s3 keys to ingest
+            - body.collectionId (optional): Target collection ID
+            - body.chunkingStrategy (optional): Override chunking strategy (if allowed)
+            - body.metadata (optional): Additional metadata tags
             - pathParameters.repositoryId: Repository id (VectorStore)
             - queryStringParameters.repositoryType: Repository type (VectorStore)
-            - queryStringParameters.chunkSize (optional): Size of text chunks
-            - queryStringParameters.chunkOverlap (optional): Overlap between chunks
+            - queryStringParameters.chunkSize (optional): Size of text chunks (legacy)
+            - queryStringParameters.chunkOverlap (optional): Overlap between chunks (legacy)
         context (dict): The Lambda context object
 
     Returns:
         dict: A dictionary containing:
-            - ids (list): List of generated document IDs
-            - count (int): Total number of documents ingested
+            - ingestionJobIds (list): List of generated ingestion job IDs
+            - collectionId (str): The collection ID used for ingestion
+            - collectionName (str): The collection name
 
     Raises:
         ValidationError: If required parameters are missing or invalid
+        HTTPException: If user lacks write access to collection
     """
     body = json.loads(event["body"])
-    embedding_model = body["embeddingModel"]
-    model_name = embedding_model["modelName"]
     bucket = os.environ["BUCKET_NAME"]
 
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
 
-    query_string_params = event["queryStringParameters"]
-    chunk_size = int(query_string_params["chunkSize"]) if "chunkSize" in query_string_params else None
-    chunk_overlap = int(query_string_params["chunkOverlap"]) if "chunkOverlap" in query_string_params else None
-    logger.info(f"using repository {repository_id}")
-
+    # Get user context
     username = get_username(event)
-    _ = get_repository(event, repository_id=repository_id)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
 
+    # Ensure repository exists and user has access
+    repository = get_repository(event, repository_id=repository_id)
+
+    # Determine collection ID
+    # Priority: 1. body.collectionId, 2. embedding model ID (default collection)
+    collection_id = body.get("collectionId")
+    
+    if not collection_id:
+        # Default to embedding model-based collection for backward compatibility
+        embedding_model = body.get("embeddingModel", {})
+        model_name = embedding_model.get("modelName")
+        if model_name:
+            collection_id = model_name
+        else:
+            # Fall back to repository's embedding model
+            collection_id = repository.get("embeddingModelId", "")
+    
+    if not collection_id:
+        raise ValidationError("collectionId is required or embeddingModel.modelName must be provided")
+
+    # Get collection configuration and validate access
+    try:
+        collection = collection_service.get_collection(
+            collection_id=collection_id,
+            repository_id=repository_id,
+            user_id=username,
+            user_groups=user_groups,
+            is_admin=admin,
+        )
+    except ValidationError as e:
+        # If collection not found, check if it's a default collection (embedding model ID)
+        # For backward compatibility, create a default collection on-the-fly
+        if collection_id == repository.get("embeddingModelId"):
+            logger.info(f"Using default collection {collection_id} for repository {repository_id}")
+            # Use legacy behavior - no collection-specific settings
+            collection = None
+        else:
+            raise ValidationError(f"Collection '{collection_id}' not found or access denied: {str(e)}")
+
+    # Determine chunking strategy
+    chunk_strategy = None
+    
+    # Check if user provided override chunking strategy
+    override_chunking = body.get("chunkingStrategy")
+    
+    if collection:
+        # Check if chunking override is allowed
+        if override_chunking and collection.allowChunkingOverride:
+            # Use provided chunking strategy
+            try:
+                # Parse the chunking strategy from the request
+                strategy_type = override_chunking.get("type")
+                if strategy_type == "FIXED_SIZE":
+                    from models.domain_objects import FixedSizeChunkingStrategy
+                    chunk_strategy = FixedSizeChunkingStrategy(**override_chunking)
+                elif strategy_type == "FIXED" or strategy_type == "fixed":
+                    from models.domain_objects import FixedChunkingStrategy
+                    chunk_strategy = FixedChunkingStrategy(**override_chunking)
+                else:
+                    logger.warning(
+                        f"Unsupported chunking strategy type: {strategy_type}. "
+                        f"Only FIXED and FIXED_SIZE are currently supported. Using collection default."
+                    )
+                    chunk_strategy = collection.chunkingStrategy
+            except Exception as e:
+                logger.warning(f"Failed to parse override chunking strategy: {e}, using collection default")
+                chunk_strategy = collection.chunkingStrategy
+        else:
+            # Use collection's chunking strategy
+            chunk_strategy = collection.chunkingStrategy
+    
+    # Fall back to legacy query parameters if no strategy determined
+    if not chunk_strategy:
+        query_string_params = event.get("queryStringParameters", {}) or {}
+        chunk_size = int(query_string_params.get("chunkSize", 1000))
+        chunk_overlap = int(query_string_params.get("chunkOverlap", 200))
+        chunk_strategy = FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap))
+
+    # Get metadata from collection and merge with request metadata
+    metadata = {}
+    if collection and collection.metadata:
+        metadata = collection.metadata.model_dump() if hasattr(collection.metadata, 'model_dump') else {}
+    
+    # Merge with request metadata
+    request_metadata = body.get("metadata", {})
+    if request_metadata:
+        metadata.update(request_metadata)
+
+    # Create ingestion jobs
     ingestion_document_ids = []
     for key in body["keys"]:
         job = IngestionJob(
             repository_id=repository_id,
-            collection_id=model_name,
-            chunk_strategy=FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap)),
+            collection_id=collection_id,
+            chunk_strategy=chunk_strategy,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
         )
@@ -700,7 +789,19 @@ def ingest_documents(event: dict, context: dict) -> dict:
         ingestion_service.create_ingest_job(job)
         ingestion_document_ids.append(job.id)
 
-    return {"ingestionJobIds": ingestion_document_ids}
+    logger.info(f"Created {len(ingestion_document_ids)} ingestion jobs for collection {collection_id}")
+
+    # Build response
+    response = {
+        "ingestionJobIds": ingestion_document_ids,
+        "collectionId": collection_id,
+    }
+    
+    # Add collection name if available
+    if collection:
+        response["collectionName"] = collection.name or collection_id
+
+    return response
 
 
 @api_wrapper

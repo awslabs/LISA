@@ -285,6 +285,33 @@ class CollectionManagementService:
         if collection_id == default_collection_id:
             raise ValidationError("Cannot delete the default collection")
 
+        # Delete associated documents if document_repo is available
+        if self.document_repo:
+            try:
+                # Get all documents in the collection
+                docs, _, _ = self.document_repo.list_all(
+                    repository_id=repository_id,
+                    collection_id=collection_id,
+                    last_evaluated_key=None,
+                    limit=1000  # Process in batches if needed
+                )
+                
+                if docs:
+                    logger.info(f"Deleting {len(docs)} documents from collection {collection_id}")
+                    # Delete documents from S3 and database
+                    self.document_repo.delete_s3_docs(repository_id, [doc.model_dump() for doc in docs])
+                    
+                    # Delete document records from DynamoDB
+                    for doc in docs:
+                        try:
+                            self.document_repo.delete_by_id(doc.document_id)
+                        except Exception as e:
+                            logger.warning(f"Failed to delete document {doc.document_id}: {e}")
+            except Exception as e:
+                logger.error(f"Failed to delete documents for collection {collection_id}: {e}")
+                # Continue with collection deletion even if document cleanup fails
+                # The documents will be orphaned but the collection will be deleted
+
         if hard_delete:
             # Hard delete - remove from database
             self.collection_repo.delete(collection_id, repository_id)

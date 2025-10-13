@@ -591,6 +591,203 @@ This warning indicates that:
 2. Existing documents will keep their original chunking
 3. You may want to re-ingest existing documents to apply the new strategy
 
+### Delete Collection
+
+Delete a collection within a vector store. This operation requires admin access and will remove all associated documents from S3 and the vector store.
+
+**Endpoint:** `DELETE /repository/{repositoryId}/collection/{collectionId}`
+
+**Path Parameters:**
+- `repositoryId` (string, required): The parent vector store repository ID
+- `collectionId` (string, required): The collection ID (UUID)
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `hardDelete` | boolean | No | false | Whether to permanently delete (true) or soft delete (false) |
+
+**Deletion Behavior:**
+
+- **Soft Delete (default)**: Marks the collection status as `DELETED` but retains the record in the database
+- **Hard Delete**: Permanently removes the collection record from the database
+- **Document Cleanup**: Both deletion types remove all associated documents from:
+  - S3 storage
+  - DynamoDB document table
+  - Vector store embeddings
+
+**Response (204 No Content):**
+
+No response body is returned on successful deletion.
+
+**Error Responses:**
+
+| Status Code | Description | Example |
+|-------------|-------------|---------|
+| 400 | Bad Request - Cannot delete default collection | `{"error": "Cannot delete the default collection"}` |
+| 403 | Forbidden - Insufficient permissions | `{"error": "Permission denied: User does not have admin access to collection"}` |
+| 404 | Not Found - Collection not found | `{"error": "Collection '550e8400-e29b-41d4-a716-446655440000' not found"}` |
+| 404 | Not Found - Repository not found | `{"error": "Repository 'repo-123' not found"}` |
+| 500 | Internal Server Error | `{"error": "Failed to delete collection"}` |
+
+**Example cURL Request (Soft Delete):**
+
+```bash
+curl -X DELETE "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example cURL Request (Hard Delete):**
+
+```bash
+curl -X DELETE "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000?hardDelete=true" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example Python Request:**
+
+```python
+import requests
+
+url = "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000"
+headers = {
+    "Authorization": "Bearer {YOUR_TOKEN}"
+}
+
+# Soft delete (default)
+response = requests.delete(url, headers=headers)
+if response.status_code == 204:
+    print("Collection soft deleted successfully")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+
+# Hard delete
+params = {"hardDelete": "true"}
+response = requests.delete(url, headers=headers, params=params)
+if response.status_code == 204:
+    print("Collection permanently deleted")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+```
+
+**Example JavaScript Request:**
+
+```javascript
+const url = 'https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000';
+const headers = {
+  'Authorization': 'Bearer {YOUR_TOKEN}'
+};
+
+// Soft delete (default)
+fetch(url, {
+  method: 'DELETE',
+  headers: headers
+})
+  .then(response => {
+    if (response.status === 204) {
+      console.log('Collection soft deleted successfully');
+    } else {
+      throw new Error(`Error: ${response.status}`);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+
+// Hard delete
+const hardDeleteUrl = `${url}?hardDelete=true`;
+fetch(hardDeleteUrl, {
+  method: 'DELETE',
+  headers: headers
+})
+  .then(response => {
+    if (response.status === 204) {
+      console.log('Collection permanently deleted');
+    } else {
+      throw new Error(`Error: ${response.status}`);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+```
+
+**Important Notes:**
+
+1. **Admin Access Required**: Only users with admin access to the collection can delete it
+2. **Default Collection Protection**: The default collection (based on embedding model ID) cannot be deleted
+3. **Document Cleanup**: All documents in the collection will be removed from S3, DynamoDB, and the vector store
+4. **Irreversible Operation**: Hard delete is permanent and cannot be undone
+5. **Soft Delete Recovery**: Soft-deleted collections can be restored by updating the status back to `ACTIVE`
+
+**Deletion Confirmation Workflow:**
+
+Before deleting a collection, it's recommended to:
+
+1. **Check document count**: Use the GET endpoint to see how many documents will be affected
+2. **Warn users**: Display a confirmation dialog showing the collection name and document count
+3. **Require confirmation**: Ask users to type the collection name to confirm deletion
+4. **Log the action**: Ensure audit logs capture who deleted the collection and when
+
+**Example Confirmation Flow:**
+
+```python
+import requests
+
+def delete_collection_with_confirmation(repository_id, collection_id, token):
+    """Delete a collection with user confirmation."""
+    url = f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/collection/{collection_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Step 1: Get collection details
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"Error fetching collection: {response.status_code}")
+        return False
+    
+    collection = response.json()
+    collection_name = collection['name']
+    
+    # Step 2: Get document count (from list_docs endpoint)
+    docs_url = f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/documents"
+    docs_response = requests.get(
+        docs_url,
+        headers=headers,
+        params={"collectionId": collection_id, "pageSize": 1}
+    )
+    
+    doc_count = 0
+    if docs_response.status_code == 200:
+        doc_count = docs_response.json().get('totalDocuments', 0)
+    
+    # Step 3: Display warning and get confirmation
+    print(f"\nWARNING: You are about to delete collection '{collection_name}'")
+    print(f"This will remove {doc_count} documents from S3 and the vector store.")
+    print("This action cannot be undone.")
+    
+    confirmation = input(f"\nType the collection name '{collection_name}' to confirm: ")
+    
+    if confirmation != collection_name:
+        print("Deletion cancelled - name did not match")
+        return False
+    
+    # Step 4: Delete the collection
+    response = requests.delete(url, headers=headers)
+    if response.status_code == 204:
+        print(f"Collection '{collection_name}' deleted successfully")
+        return True
+    else:
+        print(f"Error deleting collection: {response.status_code} - {response.text}")
+        return False
+
+# Usage
+delete_collection_with_confirmation(
+    "repo-123",
+    "550e8400-e29b-41d4-a716-446655440000",
+    "{YOUR_TOKEN}"
+)
+```
+
 ### List Collections
 
 List collections in a repository with pagination, filtering, and sorting.

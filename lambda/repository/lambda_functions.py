@@ -370,6 +370,61 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
+def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Delete a collection within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - pathParameters.collectionId: The collection ID
+            - queryStringParameters.hardDelete (optional): Whether to hard delete (default: false)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: Empty dictionary (204 No Content)
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository or collection not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+    collection_id = path_params.get("collectionId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    if not collection_id:
+        raise ValidationError("collectionId is required")
+
+    # Parse query parameters
+    query_params = event.get("queryStringParameters", {}) or {}
+    hard_delete = query_params.get("hardDelete", "false").lower() == "true"
+
+    # Get user context
+    username = get_username(event)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Delete collection via service (includes access control check)
+    collection_service.delete_collection(
+        collection_id=collection_id,
+        repository_id=repository_id,
+        user_id=username,
+        user_groups=user_groups,
+        is_admin=admin,
+        hard_delete=hard_delete,
+    )
+
+    # Return empty response for 204 No Content
+    return {}
+
+
+@api_wrapper
 def list_collections(event: dict, context: dict) -> Dict[str, Any]:
     """
     List collections in a repository with pagination, filtering, and sorting.

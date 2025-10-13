@@ -32,6 +32,7 @@ lib/rag/ingestion/ingestion-image/build
 *.code-workspace
 .cursor
 memory-bank/
+.kiro/
 
 # Coverage Statistic Folders
 coverage
@@ -46,3 +47,4 @@ config-custom.yaml
 # Test Artifacts
 /cypress/videos
 /cypress/screenshots
+

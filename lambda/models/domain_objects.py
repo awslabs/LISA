@@ -374,7 +374,10 @@ RagDocumentDict: TypeAlias = Dict[str, Any]
 class ChunkingStrategyType(str, Enum):
     """Defines supported document chunking strategies."""
 
-    FIXED = "fixed"
+    FIXED_SIZE = "FIXED_SIZE"
+    FIXED = "fixed"  # Legacy support
+    SEMANTIC = "SEMANTIC"
+    RECURSIVE = "RECURSIVE"
 
 
 class IngestionStatus(str, Enum):
@@ -399,7 +402,50 @@ class FixedChunkingStrategy(BaseModel):
     overlap: int
 
 
-ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
+class FixedSizeChunkingStrategy(BaseModel):
+    """Defines parameters for fixed-size document chunking (new format)."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.FIXED_SIZE
+    chunkSize: int = Field(ge=100, le=10000, description="Size of each chunk in characters")
+    chunkOverlap: int = Field(ge=0, description="Overlap between chunks in characters")
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> Self:
+        """Validates that overlap is not greater than half the chunk size."""
+        if self.chunkOverlap > self.chunkSize / 2:
+            raise ValueError("chunkOverlap must be less than or equal to half of chunkSize")
+        return self
+
+
+class SemanticChunkingStrategy(BaseModel):
+    """Defines parameters for semantic document chunking."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
+    threshold: float = Field(ge=0.0, le=1.0, description="Similarity threshold for semantic boundaries")
+    chunkSize: Optional[int] = Field(default=1000, ge=100, le=10000, description="Maximum chunk size")
+
+
+class RecursiveChunkingStrategy(BaseModel):
+    """Defines parameters for recursive document chunking."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.RECURSIVE
+    chunkSize: int = Field(ge=100, le=10000, description="Target size of each chunk")
+    chunkOverlap: int = Field(ge=0, description="Overlap between chunks")
+    separators: List[str] = Field(default_factory=lambda: ["\n\n", "\n", ". ", " "], description="Separators to use")
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> Self:
+        """Validates that overlap is not greater than half the chunk size."""
+        if self.chunkOverlap > self.chunkSize / 2:
+            raise ValueError("chunkOverlap must be less than or equal to half of chunkSize")
+        if not self.separators:
+            raise ValueError("separators list cannot be empty")
+        return self
+
+
+ChunkingStrategy: TypeAlias = Union[
+    FixedChunkingStrategy, FixedSizeChunkingStrategy, SemanticChunkingStrategy, RecursiveChunkingStrategy
+]
 
 
 class RagSubDocument(BaseModel):
@@ -538,3 +584,205 @@ class PaginationParams:
         """Parse and validate page size with configurable limits."""
         page_size = int(query_params.get("pageSize", str(default)))
         return max(MIN_PAGE_SIZE, min(page_size, max_size))
+
+
+# ============================================================================
+# Collection Management Models
+# ============================================================================
+
+
+class CollectionStatus(str, Enum):
+    """Defines possible states for a collection."""
+
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
+    DELETED = "DELETED"
+
+
+class PipelineTrigger(str, Enum):
+    """Defines trigger types for collection pipelines."""
+
+    EVENT = "event"
+    SCHEDULE = "schedule"
+
+
+class PipelineConfig(BaseModel):
+    """Defines pipeline configuration for automated document ingestion."""
+
+    autoRemove: bool = Field(default=True, description="Automatically remove documents after ingestion")
+    chunkOverlap: int = Field(ge=0, description="Chunk overlap for pipeline ingestion")
+    chunkSize: int = Field(ge=100, le=10000, description="Chunk size for pipeline ingestion")
+    s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
+    s3Prefix: str = Field(description="S3 prefix for pipeline source")
+    trigger: PipelineTrigger = Field(description="Pipeline trigger type")
+
+
+class CollectionMetadata(BaseModel):
+    """Defines metadata for a collection."""
+
+    tags: List[str] = Field(default_factory=list, description="Metadata tags for the collection")
+    customFields: Dict[str, Any] = Field(default_factory=dict, description="Custom metadata fields")
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, tags: List[str]) -> List[str]:
+        """Validates metadata tags."""
+        if len(tags) > 50:
+            raise ValueError("Maximum 50 tags allowed per collection")
+        for tag in tags:
+            if len(tag) > 50:
+                raise ValueError("Each tag must be 50 characters or less")
+            if not tag.replace("-", "").replace("_", "").isalnum():
+                raise ValueError("Tags must contain only alphanumeric characters, hyphens, and underscores")
+        return tags
+
+    @classmethod
+    def merge(cls, parent: Optional["CollectionMetadata"], child: Optional["CollectionMetadata"]) -> "CollectionMetadata":
+        """Merges parent and child metadata.
+        
+        Args:
+            parent: Parent vector store metadata
+            child: Collection-specific metadata
+            
+        Returns:
+            Merged metadata with combined tags and merged custom fields
+        """
+        if parent is None and child is None:
+            return cls()
+        if parent is None:
+            return child or cls()
+        if child is None:
+            return parent
+        
+        # Combine tags (deduplicate while preserving order)
+        merged_tags = list(dict.fromkeys(parent.tags + child.tags))
+        
+        # Merge custom fields (child overrides parent)
+        merged_custom_fields = {**parent.customFields, **child.customFields}
+        
+        return cls(tags=merged_tags, customFields=merged_custom_fields)
+
+
+class RagCollectionConfig(BaseModel):
+    """Represents a RAG collection configuration."""
+
+    collectionId: str = Field(default_factory=lambda: str(uuid4()), description="Unique collection identifier")
+    repositoryId: str = Field(min_length=1, description="Parent vector store ID")
+    name: Optional[str] = Field(default=None, max_length=100, description="User-friendly collection name")
+    description: Optional[str] = Field(default=None, description="Collection description")
+    chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy for documents")
+    allowChunkingOverride: bool = Field(
+        default=True, description="Allow users to override chunking strategy during ingestion"
+    )
+    metadata: Optional[CollectionMetadata] = Field(default=None, description="Collection-specific metadata (merged with parent)")
+    allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
+    embeddingModel: str = Field(min_length=1, description="Embedding model ID (can be set at creation, immutable after)")
+    createdBy: str = Field(min_length=1, description="User ID of creator")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
+    status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
+    private: bool = Field(default=False, description="Whether collection is private to creator")
+    pipelines: List[PipelineConfig] = Field(default_factory=list, description="Automated ingestion pipelines")
+
+    model_config = ConfigDict(use_enum_values=True, validate_default=True)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, name: Optional[str]) -> Optional[str]:
+        """Validates collection name."""
+        if name is not None:
+            if len(name) > 100:
+                raise ValueError("Collection name must be 100 characters or less")
+            # Allow alphanumeric, spaces, hyphens, underscores
+            if not all(c.isalnum() or c in " -_" for c in name):
+                raise ValueError("Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores")
+        return name
+
+    @field_validator("allowedGroups")
+    @classmethod
+    def validate_allowed_groups(cls, groups: Optional[List[str]]) -> Optional[List[str]]:
+        """Validates allowed groups."""
+        if groups is not None and len(groups) == 0:
+            # Empty list should be treated as None (inherit from parent)
+            return None
+        return groups
+
+
+class CreateCollectionRequest(BaseModel):
+    """Request model for creating a new collection."""
+
+    name: str = Field(min_length=1, max_length=100, description="Collection name (required)")
+    description: Optional[str] = Field(default=None, description="Collection description")
+    embeddingModel: Optional[str] = Field(
+        default=None, description="Embedding model ID (inherits from parent if omitted, immutable after creation)"
+    )
+    chunkingStrategy: Optional[ChunkingStrategy] = Field(
+        default=None, description="Chunking strategy (inherits from parent if omitted)"
+    )
+    allowedGroups: Optional[List[str]] = Field(
+        default=None, description="User groups with access (inherits from parent if omitted)"
+    )
+    metadata: Optional[CollectionMetadata] = Field(
+        default=None, description="Collection-specific metadata (merged with parent metadata)"
+    )
+    private: bool = Field(default=False, description="Whether collection is private to creator")
+    allowChunkingOverride: bool = Field(default=True, description="Allow chunking strategy override during ingestion")
+    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+
+
+class UpdateCollectionRequest(BaseModel):
+    """Request model for updating a collection."""
+
+    name: Optional[str] = Field(default=None, max_length=100, description="Collection name")
+    description: Optional[str] = Field(default=None, description="Collection description")
+    chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy")
+    allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
+    metadata: Optional[CollectionMetadata] = Field(default=None, description="Collection metadata")
+    private: Optional[bool] = Field(default=None, description="Whether collection is private to creator")
+    allowChunkingOverride: Optional[bool] = Field(
+        default=None, description="Allow chunking strategy override during ingestion"
+    )
+    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+    status: Optional[CollectionStatus] = Field(default=None, description="Collection status")
+
+    @model_validator(mode="after")
+    def validate_update_request(self) -> Self:
+        """Validates that at least one field is provided for update."""
+        fields = [
+            self.name,
+            self.description,
+            self.chunkingStrategy,
+            self.allowedGroups,
+            self.metadata,
+            self.private,
+            self.allowChunkingOverride,
+            self.pipelines,
+            self.status,
+        ]
+        if not validate_any_fields_defined(fields):
+            raise ValueError("At least one field must be provided for update")
+        return self
+
+
+class ListCollectionsResponse(PaginatedResponse):
+    """Response model for listing collections."""
+
+    collections: List[RagCollectionConfig] = Field(description="List of collections")
+    totalCount: Optional[int] = Field(default=None, description="Total number of collections")
+    currentPage: Optional[int] = Field(default=None, description="Current page number")
+    totalPages: Optional[int] = Field(default=None, description="Total number of pages")
+
+
+class CollectionSortBy(str, Enum):
+    """Defines sort options for collection listing."""
+
+    NAME = "name"
+    CREATED_AT = "createdAt"
+    UPDATED_AT = "updatedAt"
+
+
+class SortOrder(str, Enum):
+    """Defines sort order options."""
+
+    ASC = "asc"
+    DESC = "desc"

@@ -246,6 +246,111 @@ fetch(url, {
   });
 ```
 
+### Get Collection
+
+Retrieve a collection by ID within a vector store.
+
+**Endpoint:** `GET /repository/{repositoryId}/collection/{collectionId}`
+
+**Path Parameters:**
+- `repositoryId` (string, required): The parent vector store repository ID
+- `collectionId` (string, required): The collection ID (UUID)
+
+**Response (200 OK):**
+
+```json
+{
+  "collectionId": "550e8400-e29b-41d4-a716-446655440000",
+  "repositoryId": "repo-123",
+  "name": "Legal Documents",
+  "description": "Collection for legal contracts and agreements",
+  "chunkingStrategy": {
+    "type": "RECURSIVE",
+    "parameters": {
+      "chunkSize": 1000,
+      "chunkOverlap": 200,
+      "separators": ["\n\n", "\n", ". ", " "]
+    }
+  },
+  "allowChunkingOverride": true,
+  "metadata": {
+    "tags": ["legal", "contracts", "confidential"]
+  },
+  "allowedGroups": ["legal-team", "compliance"],
+  "embeddingModel": "amazon.titan-embed-text-v1",
+  "createdBy": "user-456",
+  "createdAt": "2025-10-13T10:30:00Z",
+  "updatedAt": "2025-10-13T10:30:00Z",
+  "status": "ACTIVE",
+  "private": false,
+  "pipelines": []
+}
+```
+
+**Error Responses:**
+
+| Status Code | Description | Example |
+|-------------|-------------|---------|
+| 403 | Forbidden - Insufficient permissions | `{"error": "Permission denied: User does not have read access to collection"}` |
+| 404 | Not Found - Collection not found | `{"error": "Collection '550e8400-e29b-41d4-a716-446655440000' not found"}` |
+| 404 | Not Found - Repository not found | `{"error": "Repository 'repo-123' not found"}` |
+| 500 | Internal Server Error | `{"error": "Failed to retrieve collection"}` |
+
+**Example cURL Request:**
+
+```bash
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example Python Request:**
+
+```python
+import requests
+
+url = "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000"
+headers = {
+    "Authorization": "Bearer {YOUR_TOKEN}"
+}
+
+response = requests.get(url, headers=headers)
+if response.status_code == 200:
+    collection = response.json()
+    print(f"Collection: {collection['name']}")
+    print(f"Status: {collection['status']}")
+    print(f"Allowed Groups: {collection['allowedGroups']}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+```
+
+**Example JavaScript Request:**
+
+```javascript
+const url = 'https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/repo-123/collection/550e8400-e29b-41d4-a716-446655440000';
+const headers = {
+  'Authorization': 'Bearer {YOUR_TOKEN}'
+};
+
+fetch(url, {
+  method: 'GET',
+  headers: headers
+})
+  .then(response => {
+    if (response.status === 200) {
+      return response.json();
+    }
+    throw new Error(`Error: ${response.status}`);
+  })
+  .then(collection => {
+    console.log(`Collection: ${collection.name}`);
+    console.log(`Status: ${collection.status}`);
+    console.log(`Allowed Groups: ${collection.allowedGroups}`);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+```
+
 ## Inheritance Rules
 
 Collections inherit configuration from their parent vector store:

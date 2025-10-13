@@ -23,15 +23,18 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import (
+    CreateCollectionRequest,
     FixedChunkingStrategy,
     IngestionJob,
     IngestionStatus,
     ListJobsResponse,
     PaginationParams,
     PaginationResult,
+    RagCollectionConfig,
     RagDocument,
 )
 from repository.config.params import ListJobsParams
+from repository.collection_service import CollectionManagementService
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -68,6 +71,7 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 vs_repo = VectorStoreRepository()
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
+collection_service = CollectionManagementService()
 
 
 @api_wrapper
@@ -185,6 +189,61 @@ def get_repository(event: dict[str, Any], repository_id: str) -> None:
         if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
             raise HTTPException(status_code=403, message="User does not have permission to access this repository")
     return repo
+
+
+@api_wrapper
+def create_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Create a new collection within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - body: JSON with collection configuration (CreateCollectionRequest)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the created collection configuration
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Parse request body
+    try:
+        body = json.loads(event.get("body", "{}"))
+        request = CreateCollectionRequest(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {str(e)}")
+    except Exception as e:
+        raise ValidationError(f"Invalid request: {str(e)}")
+
+    # Get user context
+    username = get_username(event)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Create collection via service
+    collection = collection_service.create_collection(
+        request=request,
+        repository_id=repository_id,
+        user_id=username,
+        user_groups=user_groups,
+        is_admin=admin,
+    )
+
+    # Return collection configuration
+    return collection.model_dump(mode="json")
 
 
 def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:

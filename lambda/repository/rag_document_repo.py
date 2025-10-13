@@ -338,20 +338,52 @@ class RagDocumentRepository:
             logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
             raise
 
-    def delete_s3_docs(self, repository_id: str, docs: list[RagDocument]) -> list[str]:
-        """Remove documents from S3"""
+    def delete_s3_docs(self, repository_id: str, docs: list[dict]) -> list[str]:
+        """Remove documents from S3.
+        
+        Args:
+            repository_id: The repository ID
+            docs: List of document dictionaries
+            
+        Returns:
+            List of S3 URIs that were removed
+        """
         repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
+        
+        # Build mapping of embedding models to autoRemove setting
         pipelines = {
             pipeline.get("embeddingModel"): pipeline.get("autoRemove", False) is True
             for pipeline in repo.get("pipelines", [])
         }
-        removed_source: list[str] = [
-            doc.source
-            for doc in docs
-            if doc and (doc.ingestion_type != IngestionType.AUTO or pipelines.get(doc.collection_id))
-        ]
+        
+        # Determine which documents should be removed from S3
+        removed_source: list[str] = []
+        for doc in docs:
+            if not doc:
+                continue
+                
+            doc_source = doc.get("source")
+            doc_ingestion_type = doc.get("ingestion_type")
+            doc_collection_id = doc.get("collection_id")
+            
+            if not doc_source:
+                continue
+            
+            # Manual ingestion: always remove from S3
+            if doc_ingestion_type != IngestionType.AUTO.value:
+                removed_source.append(doc_source)
+            # Auto ingestion: only remove if pipeline has autoRemove enabled
+            # Check if the collection's pipeline has autoRemove enabled
+            elif doc_collection_id and pipelines.get(doc_collection_id):
+                removed_source.append(doc_source)
+        
+        # Delete from S3
         for source in removed_source:
-            logging.info(f"Removing S3 doc: {source}")
-            self.delete_s3_object(uri=source)
+            try:
+                logging.info(f"Removing S3 doc: {source}")
+                self.delete_s3_object(uri=source)
+            except Exception as e:
+                logging.error(f"Failed to delete S3 object {source}: {e}")
+                # Continue with other deletions
 
         return removed_source

@@ -90,7 +90,13 @@ class RagMixin(BaseMixin):
             raise parse_error(response.status_code, response)
 
     def ingest_document(
-        self, repo_id: str, model_id: str, file: str, chuck_size: int = 512, chuck_overlap: int = 51
+        self,
+        repo_id: str,
+        model_id: str,
+        file: str,
+        chuck_size: int = 512,
+        chuck_overlap: int = 51,
+        collection_id: str = None,
     ) -> None:
         url = f"{self.url}/repository/{repo_id}/bulk"
         params: Dict[str, str | int] = {
@@ -98,6 +104,9 @@ class RagMixin(BaseMixin):
             "chunkSize": chuck_size,
             "chunkOverlap": chuck_overlap,
         }
+        if collection_id:
+            params["collectionId"] = collection_id
+
         payload = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
         response = self._session.post(url, params=params, json=payload)
         if response.status_code == 200:
@@ -106,9 +115,14 @@ class RagMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def similarity_search(self, repo_id: str, model_name: str, query: str, k: int = 3) -> List[Dict]:
+    def similarity_search(
+        self, repo_id: str, model_name: str, query: str, k: int = 3, collection_id: str = None
+    ) -> List[Dict]:
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
         params: dict[str, str | int] = {"query": query, "modelName": model_name, "repositoryType": repo_id, "topK": k}
+
+        if collection_id:
+            params["collectionId"] = collection_id
 
         response = self._session.get(url, params=params)
         if response.status_code == 200:

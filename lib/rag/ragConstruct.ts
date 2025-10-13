@@ -152,6 +152,62 @@ export class LisaRagConstruct extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
+        // Create Collections table for RAG 2.0
+        const collectionsTableName = createCdkId([config.deploymentName, 'RagCollectionsTable']);
+        const collectionsTable = new Table(scope, collectionsTableName, {
+            partitionKey: {
+                name: 'collectionId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'repositoryId',
+                type: AttributeType.STRING
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+            timeToLiveAttribute: 'ttl',
+        });
+        
+        // Add GSI for querying collections by repository
+        collectionsTable.addGlobalSecondaryIndex({
+            indexName: 'RepositoryIndex',
+            partitionKey: {
+                name: 'repositoryId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'createdAt',
+                type: AttributeType.STRING,
+            }
+        });
+        
+        // Add GSI for filtering collections by status
+        collectionsTable.addGlobalSecondaryIndex({
+            indexName: 'StatusIndex',
+            partitionKey: {
+                name: 'repositoryId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'status',
+                type: AttributeType.STRING,
+            }
+        });
+        
+        // Add GSI to document table for querying documents by collection
+        docMetaTable.addGlobalSecondaryIndex({
+            indexName: 'CollectionIndex',
+            partitionKey: {
+                name: 'collectionId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'createdAt',
+                type: AttributeType.STRING,
+            }
+        });
+
         const modelTableNameStringParameter = StringParameter.fromStringParameterName(this, 'ModelTableNameStringParameter', `${config.deploymentPrefix}/modelTableName`);
 
         const baseEnvironment: Record<string, string> = {
@@ -160,6 +216,7 @@ export class LisaRagConstruct extends Construct {
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
+            LISA_RAG_COLLECTIONS_TABLE: collectionsTable.tableName,
             LOG_LEVEL: config.logLevel,
             MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
             MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
@@ -358,6 +415,7 @@ export class LisaRagConstruct extends Construct {
         endpointUrl.grantRead(lambdaRole);
         docMetaTable.grantReadWriteData(lambdaRole);
         subDocTable.grantReadWriteData(lambdaRole);
+        collectionsTable.grantReadWriteData(lambdaRole);
     }
 
     legacyRepositories (

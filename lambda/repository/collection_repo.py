@@ -125,7 +125,8 @@ class CollectionRepository:
                 Key={
                     "collectionId": collection_id,
                     "repositoryId": repository_id,
-                }
+                },
+                ConsistentRead=True,
             )
 
             if "Item" not in response:

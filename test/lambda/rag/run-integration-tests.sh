@@ -29,17 +29,11 @@ fi
 
 # Read config values with defaults (handle missing file gracefully)
 if [ -f "$CONFIG_FILE" ]; then
-  PROFILE=$(cat ${CONFIG_FILE} | yq -r '.profile // "default"' 2>/dev/null || echo "lisa")
-  REGION=$(cat ${CONFIG_FILE} | yq -r '.region // "us-west-2"' 2>/dev/null || echo "us-west-2")
-  DEPLOYMENT_NAME=$(cat ${CONFIG_FILE} | yq -r '.deploymentName // "lisa"' 2>/dev/null || echo "lisa")
-  APP_NAME=$(cat ${CONFIG_FILE} | yq -r '.appName // "lisa"' 2>/dev/null || echo "lisa")
-  DEPLOYMENT_STAGE=$(cat ${CONFIG_FILE} | yq -r '.deploymentStage // "dev"' 2>/dev/null || echo "prod")
-else
-  PROFILE="lisa"
-  REGION="us-west-2"
-  DEPLOYMENT_NAME="lisa"
-  APP_NAME="lisa"
-  DEPLOYMENT_STAGE="prod"
+  PROFILE=$(cat ${CONFIG_FILE} | yq -r '.profile' 2>/dev/null)
+  REGION=$(cat ${CONFIG_FILE} | yq -r '.region' 2>/dev/null)
+  DEPLOYMENT_NAME=$(cat ${CONFIG_FILE} | yq -r '.deploymentName' 2>/dev/null)
+  APP_NAME=$(cat ${CONFIG_FILE} | yq -r '.appName' 2>/dev/null)
+  DEPLOYMENT_STAGE=$(cat ${CONFIG_FILE} | yq -r '.deploymentStage' 2>/dev/null)
 fi
 
 # Override with null check and provide defaults
@@ -48,11 +42,11 @@ if [ "$PROFILE" = "null" ]; then
 fi
 
 if [ "$REGION" = "null" ]; then
-  REGION="us-east-1"
+  REGION="us-west-2"
 fi
 
 if [ "$DEPLOYMENT_NAME" = "null" ]; then
-  DEPLOYMENT_NAME="lisa"
+  DEPLOYMENT_NAME="prod"
 fi
 
 if [ "$APP_NAME" = "null" ]; then
@@ -60,7 +54,7 @@ if [ "$APP_NAME" = "null" ]; then
 fi
 
 if [ "$DEPLOYMENT_STAGE" = "null" ]; then
-  DEPLOYMENT_STAGE="dev"
+  DEPLOYMENT_STAGE="prod"
 fi
 
 # Parse command line arguments
@@ -102,9 +96,9 @@ echo "Using settings: PROFILE=${PROFILE}, DEPLOYMENT_NAME=${DEPLOYMENT_NAME}, AP
 
 # Get API URL from CloudFormation if not provided
 if [ -z "$API_URL" ]; then
-  echo "Grabbing API URL from CloudFormation ${DEPLOYMENT_STAGE}-${APP_NAME}-api-deployment-${DEPLOYMENT_STAGE}..."
+  echo "Grabbing API URL from CloudFormation ${DEPLOYMENT_NAME}-${APP_NAME}-api-deployment-${DEPLOYMENT_STAGE}..."
   API_URL=$(aws cloudformation describe-stacks \
-    --stack-name ${DEPLOYMENT_STAGE}-${APP_NAME}-api-deployment-${DEPLOYMENT_STAGE} \
+    --stack-name ${DEPLOYMENT_NAME}-${APP_NAME}-api-deployment-${DEPLOYMENT_STAGE} \
     --region ${REGION} \
     --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
     --output text 2>/dev/null || echo "")

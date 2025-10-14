@@ -237,7 +237,7 @@ export class ECSCluster extends Construct {
                 environment,
                 logging: LogDriver.awsLogs({ streamPrefix: identifier }),
                 gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
-                memoryReservationMiB: taskDefinition.containerConfig.memoryReservation ?? 
+                memoryReservationMiB: taskDefinition.containerConfig.memoryReservation ??
                     (Ec2Metadata.get(ecsConfig.instanceType).memory - ecsConfig.containerMemoryBuffer),
                 portMappings: [{ hostPort: 80, containerPort: 8080, protocol: Protocol.TCP }],
                 healthCheck: containerHealthCheck,

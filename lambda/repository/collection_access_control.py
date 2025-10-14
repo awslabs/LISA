@@ -80,7 +80,7 @@ class CollectionAccessControlPolicy(BaseAccessControlPolicy[RagCollectionConfig]
                 owner_id=collection.createdBy,
                 is_private=collection.private,
                 parent_id=repository_id,
-                metadata={"status": collection.status.value},
+                metadata={"status": collection.status},
             )
         except Exception as e:
             logger.error(f"Error getting collection context: {e}")

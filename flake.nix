@@ -31,9 +31,11 @@
           packages = with pkgs; [
             awscli2     # AWS command-line interface for deployment and management
             jq          # JSON processor for parsing AWS responses and configuration
+            pnpm        # Fast, disk space efficient package manager for JavaScript
             pre-commit  # Git hook framework for code quality checks
             python3     # Python runtime for LISA backend services
             nodejs      # Node.js runtime for CDK infrastructure and frontend tooling
+            nodePackages.aws-cdk # AWS CDK CLI, the command line tool for CDK apps
             uv          # Fast Python package installer and virtual environment manager
             yq          # YAML processor for configuration management
           ];
@@ -89,7 +91,7 @@
 
             # Install Node.js dependencies
             echo "Installing Node.js dependencies..."
-            npm install
+            pnpm install
 
             # Configure git hooks for pre-commit
             # Unset any existing hooks path to ensure pre-commit can manage hooks

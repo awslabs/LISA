@@ -5,6 +5,7 @@
 !esbuild.js
 !eslint.config.js
 *.d.ts
+.npmrc
 node_modules/
 /build
 /dist

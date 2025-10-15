@@ -1,13 +1,29 @@
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
 /*
   https://code.amazon.com/packages/GenesisWebAppAssets/blobs/mainline/--/src/auth/MidwayJwtToken.ts
 */
 import jwtDecode, {JwtPayload} from 'jwt-decode';
- 
+
 const TIMEOUT_BUFFER_SECONDS =  30;
 const RETRY_ATTEMPTS = 3;
 const ID_TOKEN = 'id_token';
 const STATE = 'state';
- 
+
 const token = { value: '', sub: '' };
 const midwayParams = {
   scope: 'openid',
@@ -16,28 +32,28 @@ const midwayParams = {
   redirect_uri: '',
   nonce: '',
 };
- 
+
 export interface JwtMidwayPayload extends JwtPayload {
   nonce: string
 }
- 
+
 export async function getMidwayJwtToken(): Promise<string> {
   if (!token.value) {
     await refreshToken();
   }
- 
+
   return token.value;
 }
- 
+
 // Gets the Midway user that came from the Midway JWT token
 export async function getMidwayUser(): Promise<string> {
   if (!token.sub) {
     await refreshToken();
   }
- 
+
   return token.sub;
 }
- 
+
 async function refreshToken() {
   updateMidwayParams();
   // Save the current nonce for verification later - this prevents issues when function is called multiple times
@@ -71,7 +87,7 @@ async function refreshToken() {
     ((expiration - Math.round(Date.now() / 1000)) - TIMEOUT_BUFFER_SECONDS) * 1000,
   );
 }
- 
+
 /**
    * Calls an asynchronous function with retries and jitter built in using timeouts to simulate recursion
    * @param func Function reference to the function that should be executed
@@ -90,18 +106,18 @@ async function retryWithJitter(func: Function, attempt: number = 0, error: any |
     window.setTimeout(() => retryWithJitter(func, attempt + 1, e), 500);
   }
 }
- 
+
 function randomString() {
   return Math.random().toString(36).substring(2);
 }
- 
+
 function updateMidwayParams() {
   midwayParams.nonce = randomString() + randomString();
   midwayParams.redirect_uri = encodeURIComponent(`${window.location}`);
 }
- 
+
 /**
- * Removes from current location the URL params retuned by Midway (e.g. 'id_token',
+ * Removes from current location the URL params returned by Midway (e.g. 'id_token',
  * 'state') after login redirection and updates browser history so they do not
  * appear in the current URL
  */
@@ -109,7 +125,7 @@ function removeMidwaySearchParams() {
   const newLocation = removeLocationSearchParameters(ID_TOKEN, STATE);
   window.history.replaceState({}, '', newLocation);
 }
- 
+
 /**
  * Removes the passed keys from the current location search (query)
  * @param keys

@@ -1,5 +1,5 @@
 annotated-types==0.7.0 ; python_version >= "3.11" and python_version < "4.0"
-pydantic-core==2.33.2 ; python_version >= "3.11" and python_version < "4.0"
-pydantic==2.11.9 ; python_version >= "3.11" and python_version < "4.0"
+pydantic-core==2.41.4 ; python_version >= "3.11" and python_version < "4.0"
+pydantic==2.12.2 ; python_version >= "3.11" and python_version < "4.0"
 typing-extensions==4.15.0 ; python_version >= "3.11" and python_version < "4.0"
 toml==0.10.2 ; python_version >= "3.11" and python_version < "4.0"

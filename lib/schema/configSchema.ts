@@ -814,6 +814,7 @@ export const RawConfigObject = z.object({
     partition: z.string().default('aws').describe('AWS partition for deployment.'),
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema.describe('Image override for Rest API'),
+    mcpWorkbenchConfig: ImageAssetSchema.optional().describe('Image override for MCP Workbench'),
     batchIngestionConfig: ImageAssetSchema.optional().describe('Image override for Batch Ingestion'),
     vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
     subnets: z.array(z.object({

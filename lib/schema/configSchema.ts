@@ -781,6 +781,8 @@ const RoleConfig = z.object({
     ECSRestApiRole: z.string().max(64),
     ECSRestApiExRole: z.string().max(64),
     LambdaExecutionRole: z.string().max(64),
+    ECSMcpWorkbenchApiRole: z.string().max(64),
+    ECSMcpWorkbenchApiExRole: z.string().max(64),
     LambdaConfigurationApiExecutionRole: z.string().max(64),
     ModelApiRole: z.string().max(64),
     ModelsSfnLambdaRole: z.string().max(64),

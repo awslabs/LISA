@@ -4,9 +4,15 @@ dev:
   roles:
     #RagRole / LisaServeIam Roles
     RagLambdaExecutionRole: TestRagRole
+    VectorStoreCreatorRole: TestVectorStoreCreatorRole
+
+    #RestAPI ECS Roles
     ECSRestApiRole: TestEcsRestApiRole
     ECSRestApiExRole: TestEcsRestApiRole
-    VectorStoreCreatorRole: TestVectorStoreCreatorRole
+
+    #McpWorkbench ECS Roles
+    ECSMcpWorkbenchApiExRole: TestEcsMcpWorkbenchApiExRole
+    ECSMcpWorkbenchApiRole: TestEcsMcpWorkbenchApiRole
 
     #ImageBuilderRoles
     DockerImageBuilderEC2Role: TestImageBuilderRole #ImageBuilder

@@ -95,17 +95,6 @@
     {
       "Effect": "Allow",
       "Action": [
-        "logs:DescribeLogGroups",
-        "logs:CreateLogStream",
-        "logs:FilterLogEvents",
-        "logs:PutLogEvents",
-        "logs:DescribeLogStreams"
-      ],
-      "Resource": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
         "ecs:CreateCluster",
         "ecs:DescribeClusters",
         "ecs:DescribeContainerInstances",

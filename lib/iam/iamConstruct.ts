@@ -78,6 +78,10 @@ export class LisaServeIAMSConstruct extends Construct {
                 id: 'REST',
                 type: ECSTaskType.API,
             },
+            {
+                id: 'MCPWORKBENCH',
+                type: ECSTaskType.API,
+            },
         ];
 
         ecsRoles.forEach((role) => {
@@ -95,17 +99,18 @@ export class LisaServeIAMSConstruct extends Construct {
                 description: `Role ARN for LISA ${role.type} ${role.id} ECS Task`,
             });
 
-            if (config.roles) {
-                const executionRoleOverride = getRoleId(`ECS_${role.id}_${role.type}_EX_ROLE`.toUpperCase());
+            const executionRoleId = createCdkId([role.id, 'ExRole']);
+            const executionRoleName = createCdkId([config.deploymentName, role.id, 'ExRole']);
+            const executionRole = config.roles ? (
                 // @ts-expect-error - dynamic key lookup of object
-                const executionRole = Role.fromRoleName(scope, createCdkId([role.id, 'ExRole']), config.roles[executionRoleOverride]);
+                Role.fromRoleName(scope, executionRoleId, config.roles[getRoleId(`ECS_${role.id}_${role.type}_EX_ROLE`.toUpperCase())])
+            ) : this.createEcsExecutionRole(role, executionRoleId, executionRoleName);
 
-                new StringParameter(scope, createCdkId([config.deploymentName, role.id, 'EX', 'SP']), {
-                    parameterName: `${config.deploymentPrefix}/roles/${role.id}EX`,
-                    stringValue: executionRole.roleArn,
-                    description: `Role ARN for LISA ${role.type} ${role.id} ECS Execution`,
-                });
-            }
+            new StringParameter(scope, createCdkId([config.deploymentName, role.id, 'EX', 'SP']), {
+                parameterName: `${config.deploymentPrefix}/roles/${role.id}EX`,
+                stringValue: executionRole.roleArn,
+                description: `Role ARN for LISA ${role.type} ${role.id} ECS Execution`,
+            });
         });
     }
 
@@ -173,6 +178,17 @@ export class LisaServeIAMSConstruct extends Construct {
             roleName,
             description: `Allow ${role.id} ${role.type} task access to AWS resources`,
             managedPolicies: [taskPolicy],
+        });
+    }
+
+    private createEcsExecutionRole (role: ECSRole, roleId: string, roleName: string): IRole {
+        return new Role(this.scope, roleId, {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+            roleName,
+            description: `Allow ${role.id} ${role.type} execution role to pull images and write logs`,
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+            ],
         });
     }
 }

@@ -40,6 +40,7 @@ import { LAMBDA_PATH } from '../../util';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
+    guardrailsTable: ITable,
     lambdaLayers: ILayerVersion[];
     dockerImageBuilderFnArn: string;
     ecsModelDeployerFnArn: string;
@@ -70,6 +71,7 @@ export class CreateModelStateMachine extends Construct {
             ECS_MODEL_DEPLOYER_FN_ARN: ecsModelDeployerFnArn,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             MODEL_TABLE_NAME: modelTable.tableName,
+            GUARDRAILS_TABLE_NAME: props.guardrailsTable.tableName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
@@ -211,11 +213,31 @@ export class CreateModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const addGuardrailsToLitellm = new LambdaInvoke(this, 'AddGuardrailsToLitellm', {
+            lambdaFunction: new Function(this, 'AddGuardrailsToLitellmFunc', {
+                runtime: getDefaultRuntime(),
+                handler: 'models.state_machine.create_model.handle_add_guardrails_to_litellm',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const successState = new Succeed(this, 'CreateSuccess');
         const failState = new Fail(this, 'CreateFailed');
 
         // Check if image is pre-existing ECR image
         const checkImageTypeChoice = new Choice(this, 'CheckImageTypeChoice');
+        
+        // Check if guardrails need to be added
+        const checkGuardrailsChoice = new Choice(this, 'CheckGuardrailsChoice');
 
         // State Machine definition
         setModelToCreating.next(createModelInfraChoice);
@@ -259,9 +281,18 @@ export class CreateModelStateMachine extends Construct {
             .otherwise(addModelToLitellm);
         waitBeforePollingCreateStack.next(pollCreateStack);
 
+        // Check for guardrails and add them if present
+        addModelToLitellm.next(checkGuardrailsChoice);
+        checkGuardrailsChoice
+            .when(Condition.isPresent('$.guardrailsConfig.guardrails'), addGuardrailsToLitellm)
+            .otherwise(successState);
+
         // terminal states
         handleFailureState.next(failState);
-        addModelToLitellm.next(successState);
+        addGuardrailsToLitellm.next(successState);
+        addGuardrailsToLitellm.addCatch(handleFailureState, {  // fail if guardrail creation fails
+            errors: ['States.TaskFailed'],
+        });
 
         const stateMachine = new StateMachine(this, 'CreateModelSM', {
             definitionBody: DefinitionBody.fromChainable(setModelToCreating),

@@ -157,12 +157,13 @@ export class ModelsApi extends Construct {
 
         const stateMachinesLambdaRole = config.roles ?
             Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
-            this.createStateMachineLambdaRole(modelTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
+            this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.table.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
+            guardrailsTable: guardrailsTable.table,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -178,6 +179,7 @@ export class ModelsApi extends Construct {
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
             config: config,
             modelTable: modelTable,
+            guardrailsTable: guardrailsTable.table,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -190,6 +192,7 @@ export class ModelsApi extends Construct {
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
             config: config,
             modelTable: modelTable,
+            guardrailsTable: guardrailsTable.table,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -399,7 +402,7 @@ export class ModelsApi extends Construct {
      * @param managementKeyName - Name of the management key secret
      * @returns The created role
      */
-    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
+    createStateMachineLambdaRole (modelTableArn: string, guardrailTableArn: string ,dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
         return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -420,6 +423,8 @@ export class ModelsApi extends Construct {
                             resources: [
                                 modelTableArn,
                                 `${modelTableArn}/*`,
+                                guardrailTableArn,
+                                `${guardrailTableArn}/*`,
                             ]
                         }),
                         new PolicyStatement({
@@ -521,6 +526,7 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'bedrock:InvokeModel',
                                 'bedrock:InvokeModelWithResponseStream',
+                                'bedrock:ApplyGuardrail'
                             ],
                             resources: ['*'],  // Bedrock model ARNs are dynamic and region-specific
                         }),

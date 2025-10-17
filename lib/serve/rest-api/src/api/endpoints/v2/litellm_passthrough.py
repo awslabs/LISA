@@ -114,7 +114,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers["Authorization"] = f"Bearer {LITELLM_KEY}"
 
     http_method = request.method
-    if http_method == "GET":
+    if http_method == "GET" or http_method == "DELETE":
         response = requests.request(method=http_method, url=litellm_path, headers=headers)
         return JSONResponse(response.json(), status_code=response.status_code)
     # not a GET request, so expect a JSON payload as part of the request

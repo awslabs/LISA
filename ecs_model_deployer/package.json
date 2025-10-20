@@ -14,13 +14,13 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "aws-cdk": "^2.177.0",
-    "aws-cdk-lib": "^2.185.0",
-    "zod": "^3.24.1"
+    "aws-cdk": "^2.1030.0",
+    "aws-cdk-lib": "^2.220.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "esbuild": "^0.25.1",
-    "@cdklabs/cdk-enterprise-iac": "^0.0.512",
-    "@types/node": "^22.4.1"
+    "esbuild": "^0.25.11",
+    "@cdklabs/cdk-enterprise-iac": "^0.1.0",
+    "@types/node": "^24.8.1"
   }
 }

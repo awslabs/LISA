@@ -461,7 +461,8 @@ export const ContainerConfigSchema = z.object({
         .describe('Environment variables for the container.'),
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
     healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
-    privileged: z.boolean().optional()
+    privileged: z.boolean().optional(),
+    memoryReservation: z.number().min(0).optional().describe('Memory reservation in MiB for the container.')
 }).describe('Configuration for the container.');
 
 export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;
@@ -780,6 +781,8 @@ const RoleConfig = z.object({
     ECSRestApiRole: z.string().max(64),
     ECSRestApiExRole: z.string().max(64),
     LambdaExecutionRole: z.string().max(64),
+    ECSMcpWorkbenchApiRole: z.string().max(64),
+    ECSMcpWorkbenchApiExRole: z.string().max(64),
     LambdaConfigurationApiExecutionRole: z.string().max(64),
     ModelApiRole: z.string().max(64),
     ModelsSfnLambdaRole: z.string().max(64),
@@ -813,6 +816,7 @@ export const RawConfigObject = z.object({
     partition: z.string().default('aws').describe('AWS partition for deployment.'),
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema.describe('Image override for Rest API'),
+    mcpWorkbenchConfig: ImageAssetSchema.optional().describe('Image override for MCP Workbench'),
     batchIngestionConfig: ImageAssetSchema.optional().describe('Image override for Batch Ingestion'),
     vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
     subnets: z.array(z.object({

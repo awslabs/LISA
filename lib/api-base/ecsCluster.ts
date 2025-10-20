@@ -45,7 +45,7 @@ import {
     ListenerCondition,
     SslPolicy,
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { Effect, IRole, ManagedPolicy, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { IRole, ManagedPolicy, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -124,24 +124,9 @@ export class ECSCluster extends Construct {
             ...(executionRole && { executionRole }),
         });
 
-        // Grant CloudWatch logs permissions to both task role and execution role
+        // Grant CloudWatch logs write permissions to task role and execution role
         logGroup.grantWrite(taskRole);
-        if (executionRole) {
-            logGroup.grantWrite(executionRole);
-        } else {
-            // If no custom execution role, ensure the default execution role has CloudWatch permissions
-            // This is critical for log stream creation during container startup
-            ec2TaskDefinition.addToExecutionRolePolicy(new PolicyStatement({
-                effect: Effect.ALLOW,
-                actions: [
-                    'logs:CreateLogGroup',
-                    'logs:CreateLogStream',
-                    'logs:PutLogEvents',
-                    'logs:DescribeLogStreams'
-                ],
-                resources: [logGroup.logGroupArn, `${logGroup.logGroupArn}:*`]
-            }));
-        }
+        logGroup.grantWrite(ec2TaskDefinition.obtainExecutionRole());
 
         // Add container to task definition
         const containerHealthCheckConfig = taskDefinition.containerConfig.healthCheckConfig;
@@ -192,20 +177,6 @@ export class ECSCluster extends Construct {
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, identifier, vpc, securityGroup, ecsConfig } = props;
-
-        // Retrieve execution role if it has been overridden
-        const executionRole = config.roles ? Role.fromRoleArn(
-            this,
-            createCdkId([identifier, 'ER']),
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${identifier}EX`),
-        ) : undefined;
-
-        // Create ECS task definition
-        const taskRole = Role.fromRoleArn(
-            this,
-            createCdkId([identifier, 'TR']),
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${identifier}`),
-        );
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
@@ -414,6 +385,18 @@ export class ECSCluster extends Construct {
             .join(',');
 
         Object.entries(ecsConfig.tasks).forEach(([name, definition]) => {
+            // Retrieve task role and execution role for each task
+            const taskRole = Role.fromRoleArn(
+                this,
+                createCdkId([name, 'TR']),
+                StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${name}`),
+            );
+            const executionRole = Role.fromRoleArn(
+                this,
+                createCdkId([name, 'ER']),
+                StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${name}EX`),
+            );
+
             const taskResult = this.createTaskDefinition(
                 name,
                 config,

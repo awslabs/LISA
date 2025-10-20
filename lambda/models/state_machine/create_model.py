@@ -138,7 +138,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
 
             # Remove registry URL if present to get just the repository name
             if "/" in repository_name:
-                repository_name = repository_name.split("/")[-1]
+                repository_name = repository_name.split("/", 1)[1]
 
             # Verify image exists in ECR
             ecrClient.describe_images(repositoryName=repository_name, imageIds=[{"imageTag": image_tag}])

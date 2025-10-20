@@ -110,7 +110,8 @@
   },
   "ts-node": {
     "esm": true,
-    "experimentalSpecifierResolution": "node"
+    "experimentalSpecifierResolution": "node",
+    "experimentalSpecifiers": true
   },
   "main": "jest.config.js",
   "directories": {

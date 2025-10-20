@@ -123,6 +123,28 @@ The example provided is an export from a deployed LISA instance based on Least P
       }
     }
   },
+  "ECSMcpWorkbenchApiExRole": {
+    "Type": "AWS::IAM::Role",
+    "Properties": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+              "Effect": "Allow",
+              "Action": [
+                  "ecr:GetAuthorizationToken",
+                  "ecr:BatchCheckLayerAvailability",
+                  "ecr:GetDownloadUrlForLayer",
+                  "ecr:BatchGetImage",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+              ],
+              "Resource": "*"
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
   "ECSRestApiExRoleDefaultPolicy": {
     "Type": "AWS::IAM::Policy",
     "Properties": {
@@ -728,6 +750,30 @@ The example provided is an export from a deployed LISA instance based on Least P
         "Version": "2012-10-17"
       },
       "Description": "Allow REST API task access to AWS resources",
+      "ManagedPolicyArns": [
+        {
+          "Ref": "appECSPolicy361D8A62"
+        }
+      ],
+      "RoleName": "app-REST-Role"
+    }
+  },
+  "ECSMcpWorkbenchApiRole": {
+    "Type": "AWS::IAM::Role",
+    "Properties": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "ecs-tasks.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Description": "Allow MCP Workbench API task access to AWS resources",
       "ManagedPolicyArns": [
         {
           "Ref": "appECSPolicy361D8A62"

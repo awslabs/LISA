@@ -121,7 +121,8 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     Args:
         event (dict): The Lambda event object containing:
-            - queryStringParameters.modelName: Name of the embedding model
+            - queryStringParameters.modelName (optional): Name of the embedding model (not needed if collectionId provided)
+            - queryStringParameters.collectionId (optional): Collection ID to search within
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
@@ -136,13 +137,42 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         ValidationError: If required parameters are missing or invalid
     """
     query_string_params = event["queryStringParameters"]
-    model_name = query_string_params["modelName"]
     query = query_string_params["query"]
     top_k = query_string_params.get("topK", 3)
     include_score = query_string_params.get("score", "false").lower() == "true"
     repository_id = event["pathParameters"]["repositoryId"]
+    collection_id = query_string_params.get("collectionId")
 
     repository = get_repository(event, repository_id=repository_id)
+    
+    # Get user context for collection access
+    username = get_username(event)
+    user_groups = get_groups(event)
+    admin = is_admin(event)
+
+    # Determine embedding model
+    model_name = None
+    if collection_id:
+        # Get embedding model from collection
+        try:
+            collection = collection_service.get_collection(
+                collection_id=collection_id,
+                repository_id=repository_id,
+                user_id=username,
+                user_groups=user_groups,
+                is_admin=admin,
+            )
+            model_name = collection.embeddingModel if hasattr(collection, 'embeddingModel') and collection.embeddingModel else repository.get("embeddingModelId")
+            logger.info(f"Using embedding model from collection: {model_name}")
+        except Exception as e:
+            logger.warning(f"Failed to get collection {collection_id}: {e}, falling back to modelName parameter")
+            model_name = query_string_params.get("modelName")
+    else:
+        # Use modelName from query parameters
+        model_name = query_string_params.get("modelName")
+    
+    if not model_name:
+        raise ValidationError("modelName is required when collectionId is not provided")
 
     id_token = get_id_token(event)
 
@@ -156,14 +186,17 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             repository_id=repository_id,
         )
     else:
+        # Use collection_id as index if provided, otherwise use model_name
+        index_name = collection_id if collection_id else model_name
+        logger.info(f"Searching in index: {index_name} with embedding model: {model_name}")
         embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-        vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+        vs = get_vector_store_client(repository_id, index=index_name, embeddings=embeddings)
 
         # empty vector stores do not have an initialize index. Return empty docs
         if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH) and not vs.client.indices.exists(
-            index=model_name
+            index=index_name
         ):
-            logger.info(f"Index {model_name} does not exist. Returning empty docs.")
+            logger.info(f"Index {index_name} does not exist. Returning empty docs.")
         else:
             docs = (
                 _similarity_search_with_score(vs, query, top_k, repository)
@@ -569,13 +602,13 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
     return response
 
 
-def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:
+def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -> None:
     """Verify ownership of documents"""
     username = get_username(event)
     if is_admin(event) is False:
         for doc in docs:
-            if not (doc.get("username") == username):
-                raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
+            if not (doc.username == username):
+                raise ValueError(f"Document {doc.document_id} is not owned by {username}")
 
 
 @api_wrapper
@@ -626,6 +659,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     # delete s3 files if
     doc_repo.delete_s3_docs(repository_id, rag_documents)
 
+    jobs = []
     for rag_document in rag_documents:
         logger.info(f"Deleting document {rag_document.model_dump()}")
 
@@ -645,8 +679,15 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
         ingestion_job_repository.save(ingestion_job)
         ingestion_service.create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
+        
+        jobs.append({
+            "jobId": ingestion_job.id,
+            "documentId": ingestion_job.document_id,
+            "status": ingestion_job.status,
+            "s3Path": ingestion_job.s3_path,
+        })
 
-    return {"documentIds": document_ids}
+    return {"jobs": jobs}
 
 
 @api_wrapper
@@ -775,6 +816,15 @@ def ingest_documents(event: dict, context: dict) -> dict:
     if request_metadata:
         metadata.update(request_metadata)
 
+    # Get embedding model from collection or repository
+    embedding_model_id = None
+    if collection:
+        # Use collection's embedding model if specified
+        embedding_model_id = collection.embeddingModel if hasattr(collection, 'embeddingModel') else None
+    if not embedding_model_id:
+        # Fall back to repository's embedding model
+        embedding_model_id = repository.get("embeddingModelId")
+    
     # Create ingestion jobs
     ingestion_document_ids = []
     for key in body["keys"]:
@@ -782,6 +832,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             repository_id=repository_id,
             collection_id=collection_id,
             chunk_strategy=chunk_strategy,
+            embedding_model=embedding_model_id,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
         )
@@ -791,9 +842,23 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     logger.info(f"Created {len(ingestion_document_ids)} ingestion jobs for collection {collection_id}")
 
-    # Build response
+    # Build response with job details
+    jobs = []
+    for job_id in ingestion_document_ids:
+        try:
+            job = ingestion_job_repository.find_by_id(job_id)
+            jobs.append({
+                "jobId": job.id,
+                "documentId": job.document_id,
+                "status": job.status,
+                "s3Path": job.s3_path,
+            })
+        except Exception as e:
+            logger.warning(f"Failed to retrieve job {job_id}: {e}")
+            jobs.append({"jobId": job_id, "status": "UNKNOWN"})
+    
     response = {
-        "ingestionJobIds": ingestion_document_ids,
+        "jobs": jobs,
         "collectionId": collection_id,
     }
     
@@ -802,6 +867,29 @@ def ingest_documents(event: dict, context: dict) -> dict:
         response["collectionName"] = collection.name or collection_id
 
     return response
+
+
+@api_wrapper
+def get_document(event: dict, context: dict) -> Dict[str, Any]:
+    """Get a document by ID.
+    
+    Args:
+        event (dict): The Lambda event object containing:
+            path_params:
+                repositoryId - the repository
+                documentId - the document
+
+    Returns:
+        dict: The document object
+    """
+    path_params = event.get("pathParameters", {}) or {}
+    repository_id = path_params.get("repositoryId")
+    document_id = path_params.get("documentId")
+
+    _ = get_repository(event, repository_id=repository_id)
+    doc = doc_repo.find_by_id(document_id=document_id)
+
+    return doc.model_dump()
 
 
 @api_wrapper
@@ -1210,26 +1298,26 @@ def delete_index(event: dict, context: dict) -> None:
     repository_id = path_params.get("repositoryId", None)
     if not repository_id:
         raise ValidationError("repositoryId is required")
-    model_name = path_params.get("modelName", None)
-    if not model_name:
-        raise ValidationError("modelName is required")
+    collection_id = path_params.get("collectionId", None)
+    if not collection_id:
+        raise ValidationError("collectionId is required")
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id)
     id_token = get_id_token(event)
-    embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+    embeddings = RagEmbeddings(model_name=collection_id, id_token=id_token) # model_name can be anything
+    vs = get_vector_store_client(repository_id, index=collection_id, embeddings=embeddings)
 
     try:
         if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            if vs.client.indices.exists(index=model_name):
-                vs.client.indices.delete(index=model_name)
-                logger.info(f"Deleted OpenSearch index: {model_name}")
+            if vs.client.indices.exists(index=collection_id):
+                vs.client.indices.delete(index=collection_id)
+                logger.info(f"Deleted OpenSearch index: {collection_id}")
             else:
-                logger.info(f"OpenSearch index {model_name} does not exist")
+                logger.info(f"OpenSearch index {collection_id} does not exist")
         elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
             # For PGVector, delete all documents in the collection
             vs.delete_collection()
-            logger.info(f"Deleted PGVector collection: {model_name}")
+            logger.info(f"Deleted PGVector collection: {collection_id}")
         else:
             logger.error(f"Unsupported repository type: {repository.get('type')}")
             return {"status": "error", "message": "Repository is not supported"}

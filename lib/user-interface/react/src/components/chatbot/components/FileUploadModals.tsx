@@ -267,9 +267,11 @@ export const RagUploadModal = ({
                 throw new Error('Failed to ingest documents into RAG');
             } else {
                 setIngestionType(StatusTypes.SUCCESS);
-                const jobIds = ingestResp.data?.ingestionJobIds || [];
-                setIngestionStatus(`Successfully ingested documents into the selected repository. Job IDs: ${jobIds.join(', ')}`);
-                notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository. Job IDs: ${jobIds.join(', ')}`, 'success');
+                const jobs = ingestResp.data?.jobs || [];
+                const jobIds = jobs.map(job => job.jobId);
+                const collectionName = ingestResp.data?.collectionName || ingestResp.data?.collectionId || 'repository';
+                setIngestionStatus(`Successfully submitted documents for ingestion into ${collectionName}. Job IDs: ${jobIds.join(', ')}`);
+                notificationService.generateNotification(`Successfully submitted ${fileKeys.length} document(s) for ingestion into ${collectionName}. ${jobs.length} job(s) created.`, 'success');
                 setShowRagUploadModal(false);
             }
         } catch {

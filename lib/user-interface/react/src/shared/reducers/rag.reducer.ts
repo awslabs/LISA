@@ -35,6 +35,19 @@ type IngestDocumentRequest = {
     chunkOverlap: number
 };
 
+type IngestDocumentJob = {
+    jobId: string;
+    documentId: string;
+    status: string;
+    s3Path: string;
+};
+
+type IngestDocumentResponse = {
+    jobs: IngestDocumentJob[];
+    collectionId: string;
+    collectionName?: string;
+};
+
 type RelevantDocRequest = {
     repositoryId: string,
     query: string,
@@ -156,7 +169,7 @@ export const ragApi = createApi({
                 };
             },
         }),
-        ingestDocuments: builder.mutation<{ ingestionJobIds: string[] }, IngestDocumentRequest>({
+        ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
             query: (request) => ({
                 url: `repository/${request.repositoryId}/bulk?repositoryType=${request.repostiroyType}&chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`,
                 method: 'POST',
@@ -174,6 +187,7 @@ export const ragApi = createApi({
                     message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
                 };
             },
+            invalidatesTags: ['jobs'], // Invalidate jobs cache when new ingestion starts
         }),
         listRagDocuments: builder.query<PaginatedDocumentResponse, ListRagDocumentRequest>({
             query: (request) => {

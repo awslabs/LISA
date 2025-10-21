@@ -124,7 +124,7 @@ class CollectionManagementService:
         user_id: str,
         user_groups: List[str],
         is_admin: bool,
-    ) -> RagCollectionConfig:
+    ) -> Optional[RagCollectionConfig]:
         """
         Get a collection by ID with access control.
 
@@ -136,7 +136,7 @@ class CollectionManagementService:
             is_admin: Whether user is admin
 
         Returns:
-            Collection configuration
+            Collection configuration, or None if using default collection (model ID)
 
         Raises:
             ValidationError: If access denied or not found
@@ -144,6 +144,13 @@ class CollectionManagementService:
         # First, check if collection exists
         collection = self.collection_repo.find_by_id(collection_id, repository_id)
         if not collection:
+            # Check if this is a default collection (using model ID as collection)
+            # For backward compatibility, allow model IDs as collection IDs
+            repository = self.vector_store_repo.find_repository_by_id(repository_id)
+            if repository and repository.get("embeddingModelId") == collection_id:
+                # This is the default collection using the embedding model ID
+                logger.info(f"Using default collection (model ID) for repository {repository_id}")
+                return None
             raise ValidationError(f"Collection '{collection_id}' not found")
 
         # Then check permission
@@ -316,7 +323,7 @@ class CollectionManagementService:
                         # Continue with other deletions
                     
                     # Delete documents from S3
-                    self.document_repo.delete_s3_docs(repository_id, [doc.model_dump() for doc in docs])
+                    self.document_repo.delete_s3_docs(repository_id, docs)
                     
                     # Delete document records from DynamoDB
                     for doc in docs:
@@ -579,7 +586,8 @@ class CollectionManagementService:
                 return
 
             # Get vector store client
-            embeddings = RagEmbeddings(model_name=collection_id)
+            # Model_name can be anything since we aren't embedding the doc
+            embeddings = RagEmbeddings(model_name="collection_id")
             vector_store = get_vector_store_client(
                 repository_id,
                 index=collection_id,

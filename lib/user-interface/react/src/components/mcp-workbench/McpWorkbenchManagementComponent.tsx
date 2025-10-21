@@ -14,13 +14,9 @@
  limitations under the License.
  */
 
-import { Button, CodeEditor, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination } from '@cloudscape-design/components';
+import { Button, CodeEditor, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, CodeEditorProps, Link } from '@cloudscape-design/components';
 import 'react';
-import 'ace-builds';
-import ace from 'ace-builds';
-import 'ace-builds/src-noconflict/mode-python';
-import 'ace-builds/src-noconflict/theme-tomorrow';
-import 'ace-builds/src-noconflict/ext-language_tools';
+import { CancellableEventHandler } from '@cloudscape-design/components/internal/events';
 import { ReactElement, useEffect, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -47,10 +43,19 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     // API hooks
     const { data: tools = [], isFetching: isLoadingTools, refetch } = useListMcpToolsQuery();
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
-    const { data: selectedToolData, isFetching: isLoadingTool, } = useGetMcpToolQuery(selectedToolId!, {
+    const { data: selectedToolData, isFetching: isLoadingTool, isUninitialized } = useGetMcpToolQuery(selectedToolId!, {
+        skip: selectedToolId === null,
         refetchOnMountOrArgChange: true,
         refetchOnFocus: true
     });
+
+    const [isDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const [preferences, setPreferences] = useState<CodeEditorProps.Preferences>({
+        wrapLines: true,
+        theme: isDarkMode ? 'cloud_editor_dark' : 'cloud_editor',
+    });
+    const [loadingAce, setLoadingAce] = useState(true);
+    const [ace, setAce] = useState();
 
     const [createToolMutation, { isLoading: isCreating }] = useCreateMcpToolMutation();
     const [updateToolMutation, { isLoading: isUpdating }] = useUpdateMcpToolMutation();
@@ -64,7 +69,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     });
 
     const { errors, touchFields, setFields, isValid, state } = useValidationReducer(schema, {
-        form: { id: `my_new_tool_${Date.now()}`, contents: DEFAULT_CONTENT} as IMcpTool,
+        form: { } as Partial<IMcpTool>,
         formSubmitting: false,
         touched: {},
         validateAll: false
@@ -95,18 +100,37 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         setCurrentPageIndex(1);
     }, [filterText]);
 
+    useEffect(() => {
+        async function loadAce () {
+            const ace = await import('ace-builds');
+
+            // Import language modes you need
+            await import('ace-builds/src-noconflict/mode-python');
+
+            // Import themes
+            await import('ace-builds/src-noconflict/theme-cloud_editor');
+            await import('ace-builds/src-noconflict/theme-cloud_editor_dark');
+
+            setAce(ace);
+            setLoadingAce(false);
+        }
+
+        loadAce();
+    }, []);
+
     // Update editor content when a tool is selected
     useEffect(() => {
-        if (selectedToolId !== null && selectedToolData && isDirty === false) {
+        if (!isUninitialized) {
             setFields({
                 id: selectedToolData.id,
                 contents: selectedToolData.contents,
                 size: selectedToolData.size,
-                updated_at : selectedToolData.updated_at
+                updated_at: selectedToolData.updated_at
             });
-            setIsDirty(true);
+            setIsDirty(false);
         }
-    }, [selectedToolId, selectedToolData, setFields, isDirty]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUninitialized, selectedToolData]);
 
     // Handle tool selection
     const handleToolSelect = (tool: IMcpTool) => {
@@ -117,7 +141,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                     resourceName: 'Unsaved change',
                     onConfirm: () => {
                         setSelectedToolId(tool.id);
-                        setIsDirty(false);
                     },
                     description: 'You have unsaved changes. Switching tools will lose these changes.'
                 })
@@ -127,17 +150,10 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         }
     };
 
-    // Handle editor content change
-    const handleEditorChange = (value: string) => {
-        setFields({
-            contents: value
-        });
-        setIsDirty(true);
-        touchFields(['contents']);
-    };
-
     // Handle creating new tool
-    const handleCreateNew = () => {
+    const handleCreateNew = (event: CancellableEventHandler) => {
+        event.preventDefault();
+
         const newTool = {
             id: ['my_new_tool', Date.now()].join('-'),
             contents: DEFAULT_CONTENT,
@@ -159,7 +175,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         } else {
             setSelectedToolId(null);
             setFields(newTool);
-            setIsDirty(true);
+            setIsDirty(false);
         }
     };
 
@@ -218,7 +234,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                 id: '',
                                 contents: '',
                                 size: undefined,
-                                updated_at : undefined
+                                updated_at: undefined
                             });
                             setIsDirty(false);
                         }
@@ -254,7 +270,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                 ariaLabel='Refresh'
                             ></Button> */}
                                 <Button
-                                // iconName='file'
+                                    // iconName='file'
                                     variant='primary'
                                     onClick={handleCreateNew}
                                     ariaLabel='New Tool File'
@@ -303,7 +319,10 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                         <Box>
                                             <Button
                                                 variant='inline-link'
-                                                onClick={() => handleToolSelect(item)}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    handleToolSelect(item);
+                                                }}
                                                 disabled={selectedToolId === item.id}
                                                 ariaLabel={`Load ${item.id} in editor`}
                                             >
@@ -346,65 +365,104 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                     )}
                 </SpaceBetween>
 
-                <SpaceBetween size='s' direction='vertical'>
+                {(!loadingAce && state.form.contents) ?
+                    <SpaceBetween size='s' direction='vertical'>
 
-                    <FormField
-                        errorText={errors?.id}
-                    >
-                        <Input
-                            disabled={!!selectedToolId}
-                            value={state.form.id}
-                            onChange={({ detail }) => {
-                                touchFields(['id']);
-                                const value = detail.value;
-                                setFields({id: value});
+                        <FormField
+                            errorText={errors?.id}
+                        >
+                            <Input
+                                disabled={!!selectedToolId}
+                                value={state.form.id}
+                                onChange={({ detail }) => {
+                                    touchFields(['id']);
+                                    const value = detail.value;
+                                    setFields({ id: value });
+                                }}
+                                placeholder='my_tool'
+                            />
+                        </FormField>
+
+                        <CodeEditor
+                            language='python'
+                            value={state.form.contents}
+                            ace={ace}
+                            loading={isLoadingTool}
+                            i18nStrings={{
+                                loadingState: 'Loading code editor',
+                                errorState: 'There was an error loading the code editor.',
+                                errorStateRecovery: 'Retry',
+
+                                editorGroupAriaLabel: 'Code editor',
+                                statusBarGroupAriaLabel: 'Status bar',
+
+                                cursorPosition: (row, column) => `Ln ${row}, Col ${column}`,
+                                errorsTab: 'Errors',
+                                warningsTab: 'Warnings',
+                                preferencesButtonAriaLabel: 'Preferences',
+
+                                paneCloseButtonAriaLabel: 'Close',
+
+                                preferencesModalHeader: 'Preferences',
+                                preferencesModalCancel: 'Cancel',
+                                preferencesModalConfirm: 'Confirm',
+                                preferencesModalWrapLines: 'Wrap lines',
+                                preferencesModalTheme: 'Theme',
+                                preferencesModalLightThemes: 'Light themes',
+                                preferencesModalDarkThemes: 'Dark themes',
                             }}
-                            placeholder='my_tool'
+                            onDelayedChange={({ detail }) => {
+                                // Only allow changes if we're creating new or editing
+                                setFields({
+                                    contents: detail.value
+                                });
+                                setIsDirty(true);
+                                touchFields(['contents']);
+                            }}
+                            preferences={preferences}
+                            onPreferencesChange={({ detail }) => setPreferences(detail)}
+                            themes={{
+                                light: ['cloud_editor'],
+                                dark: ['cloud_editor_dark']
+                            }}
                         />
-                    </FormField>
 
-                    <CodeEditor
-                        language='python'
-                        value={state.form.contents}
-                        ace={ace}
-                        loading={isLoadingTool}
-                        onDelayedChange={({ detail }) => {
-                        // Only allow changes if we're creating new or editing
-                            handleEditorChange(detail.value);
-                        }}
-                        preferences={{
-                            wrapLines: true,
-                            theme: 'cloud_editor',
-                        }}
-                        onPreferencesChange={() => {}}
-                        themes={{
-                            light: ['cloud_editor'],
-                            dark: ['cloud_editor_dark']
-                        }}
-                    />
-
-                    <Box float='right'>
-                        {selectedToolId === null ? (
-                            <Button
-                                variant='primary'
-                                onClick={handleCreateTool}
-                                loading={isCreating}
-                                disabled={!isDirty || !isValid}
-                            >
-                                Create Tool
-                            </Button>
-                        ) : (
-                            <Button
-                                variant='primary'
-                                onClick={handleUpdateTool}
-                                loading={isUpdating}
-                                disabled={!isDirty || !isValid}
-                            >
-                                Save Changes
-                            </Button>
-                        )}
-                    </Box>
-                </SpaceBetween>
+                        <Box float='right'>
+                            <SpaceBetween direction='horizontal' size='s'>
+                                <Button onClick={() => {
+                                    setSelectedToolId(null);
+                                    setFields({
+                                        id: null,
+                                        contents: null
+                                    });
+                                    setIsDirty(false);
+                                }}>
+                                    Cancel
+                                </Button>
+                                {selectedToolId === null ? (
+                                    <Button
+                                        variant='primary'
+                                        onClick={handleCreateTool}
+                                        loading={isCreating}
+                                        disabled={!isDirty || !isValid}
+                                    >
+                                        Create Tool
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant='primary'
+                                        onClick={handleUpdateTool}
+                                        loading={isUpdating}
+                                        disabled={!isDirty || !isValid}
+                                    >
+                                        Save Changes
+                                    </Button>
+                                )}
+                            </SpaceBetween>
+                        </Box>
+                    </SpaceBetween> : <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
+                        <p style={{textAlign: 'center'}}>Select an existing tool or <Link onClick={handleCreateNew}>Create Tool</Link></p>
+                    </div>}
             </Grid>
         </Container>
     );

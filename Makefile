@@ -96,8 +96,8 @@ DEPLOYMENT_STAGE := prod
 endif
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR
-ifneq ($(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.accountNumbersEcr'), null)
-ACCOUNT_NUMBERS_ECR := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumbersEcr[])
+ifneq ($(shell yq '.accountNumbersEcr' $(PROJECT_DIR)/config-custom.yaml), null)
+ACCOUNT_NUMBERS_ECR := $(shell yq '.accountNumbersEcr[]' $(PROJECT_DIR)/config-custom.yaml)
 endif
 
 # Append deployed account number to array for dockerLogin rule
@@ -151,9 +151,9 @@ createPythonEnvironment:
 
 ## Install Python dependencies for development
 installPythonRequirements:
-	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install pip --upgrade
-	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install --prefer-binary -r requirements-dev.txt
-	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lisa-sdk
+# 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install pip --upgrade
+# 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install --prefer-binary -r requirements-dev.txt
+# 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lisa-sdk
 
 ## Set up TypeScript interpreter environment
 createTypeScriptEnvironment:

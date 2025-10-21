@@ -48,6 +48,7 @@
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },
   "devDependencies": {
+    "@eslint/js": "^9.38.0",
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
     "@aws-sdk/client-iam": "^3.738.0",
     "@aws-sdk/client-ssm": "^3.738.0",

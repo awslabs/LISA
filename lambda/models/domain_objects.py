@@ -96,6 +96,7 @@ class GuardrailConfig(BaseModel):
     allowed_groups: List[str] = Field(default_factory=list)
     marked_for_deletion: Optional[bool] = Field(default=False)
 
+
 class GuardrailsConfig(BaseModel):
     """Defines configuration for multiple guardrails per model."""
 

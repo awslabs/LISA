@@ -1,0 +1,5 @@
+packages:
+  - lib/user-interface/react
+  - lib/docs
+  - ecs_model_deployer
+  - vector_store_deployer

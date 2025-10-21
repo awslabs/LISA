@@ -163,9 +163,9 @@ if ! python3 -m pytest --version &> /dev/null; then
   exit 1
 fi
 
-# Run pytest
+# Run pytest with -x flag to stop on first failure
 cd "${PROJECT_DIR}"
-python3 -m pytest test/lambda/rag/test_rag_collections_integration.py -v -s
+python3 -m pytest test/lambda/rag/test_rag_collections_integration.py -v -s -x
 
 echo ""
 echo "✓ Integration tests completed"

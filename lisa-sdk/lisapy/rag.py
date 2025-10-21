@@ -22,15 +22,41 @@ class RagMixin(BaseMixin):
     """Mixin for rag-related operations."""
 
     def list_documents(self, repo_id: str, collection_id: str) -> List[Dict]:
-        """Add collection_id as query parameter to request"""
+        """List documents in a collection.
+        
+        Args:
+            repo_id: Repository ID
+            collection_id: Collection ID
+            
+        Returns:
+            List of document dictionaries
+        """
         url = f"{self.url}/repository/{repo_id}/document"
         params = {
             "collectionId": collection_id,
         }
         response = self._session.get(url, params=params)
         if response.status_code == 200:
-            docs: List[Dict] = response.json()
-            return docs
+            result = response.json()
+            # API returns {"documents": [...], "lastEvaluated": ..., ...}
+            return result.get("documents", [])
+        else:
+            raise parse_error(response.status_code, response)
+
+    def get_document(self, repo_id: str, document_id: str) -> Dict:
+        """Get a single document by ID.
+        
+        Args:
+            repo_id: Repository ID
+            document_id: Document ID
+            
+        Returns:
+            Document dictionary
+        """
+        url = f"{self.url}/repository/{repo_id}/document/{document_id}"
+        response = self._session.get(url)
+        if response.status_code == 200:
+            return response.json()
         else:
             raise parse_error(response.status_code, response)
 
@@ -42,7 +68,7 @@ class RagMixin(BaseMixin):
         body = {
             "documentIds": doc_ids,
         }
-        response = self._session.delete(url=url, params=params, data=body)
+        response = self._session.delete(url=url, params=params, json=body)
         if response.status_code == 200:
             deleted_docs: dict = response.json()
             return deleted_docs
@@ -69,24 +95,54 @@ class RagMixin(BaseMixin):
 
         if response.status_code == 200:
             json_resp: dict = response.json().get("response")
+            # Extract key from fields for convenience
+            if "fields" in json_resp and "key" in json_resp["fields"]:
+                json_resp["key"] = json_resp["fields"]["key"]
+            logging.debug(f"Presigned URL response: {json_resp}")
             return json_resp
         else:
             raise parse_error(response.status_code, response)
 
-    def _upload_document(self, presigned_url: str, filename: str) -> bool:
+    def _upload_document(self, presigned_data: dict, filename: str) -> bool:
+        """Upload document using presigned POST data.
+        
+        Args:
+            presigned_data: Dictionary containing 'url' and 'fields' from presigned POST
+            filename: Path to file to upload
+            
+        Returns:
+            True if upload successful
+        """
+        import os
+        import requests
+        
+        url = presigned_data.get("url")
+        fields = presigned_data.get("fields", {})
+        
         with open(filename, "rb") as f:
-            files: Mapping[str, tuple[str | None, BinaryIO | str, str]] = {
-                "key": (None, filename, "text/plain"),
-                "file": (filename, f, "application/octet-stream"),
-            }
-            response = self._session.post(presigned_url, files=files)
+            # Use basename for the filename in the upload
+            basename = os.path.basename(filename)
+            files = {"file": (basename, f)}
+            # Use a new session without auth headers for S3 upload
+            response = requests.post(url, data=fields, files=files)
 
         if response.status_code == 204 or response.status_code == 200:
             logging.info("File uploaded successfully")
             return True
         else:
-            logging.info(f"Error uploading file: {response.status_code}")
-            logging.info(response.text)
+            logging.error(f"S3 upload failed with status {response.status_code}")
+            logging.error(f"Response headers: {dict(response.headers)}")
+            logging.error(f"Response body: {response.text[:500]}")
+            # Try to parse XML error from S3
+            try:
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(response.text)
+                error_code = root.find(".//Code")
+                error_msg = root.find(".//Message")
+                if error_code is not None and error_msg is not None:
+                    logging.error(f"S3 Error: {error_code.text} - {error_msg.text}")
+            except:
+                pass
             raise parse_error(response.status_code, response)
 
     def ingest_document(
@@ -97,32 +153,55 @@ class RagMixin(BaseMixin):
         chuck_size: int = 512,
         chuck_overlap: int = 51,
         collection_id: str = None,
-    ) -> None:
+    ) -> List[Dict]:
+        """Ingest a document and return job information.
+        
+        Returns:
+            List of job dictionaries with jobId, documentId, status, s3Path
+        """
         url = f"{self.url}/repository/{repo_id}/bulk"
         params: Dict[str, str | int] = {
             "repositoryType": repo_id,
             "chunkSize": chuck_size,
             "chunkOverlap": chuck_overlap,
         }
-        if collection_id:
-            params["collectionId"] = collection_id
 
         payload = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
+        # Add collectionId to body, not query params
+        if collection_id:
+            payload["collectionId"] = collection_id
+            
         response = self._session.post(url, params=params, json=payload)
         if response.status_code == 200:
+            result = response.json()
             logging.info("Request successful")
-            logging.info(response.json())
+            logging.info(f"Full response: {result}")
+            jobs = result.get("jobs", [])
+            logging.info(f"Jobs extracted: {jobs}")
+            return jobs
         else:
             raise parse_error(response.status_code, response)
 
     def similarity_search(
-        self, repo_id: str, model_name: str, query: str, k: int = 3, collection_id: str = None
+        self, repo_id: str, query: str, k: int = 3, collection_id: str = None, model_name: str = None
     ) -> List[Dict]:
+        """Perform similarity search.
+        
+        Args:
+            repo_id: Repository ID
+            query: Search query
+            k: Number of results
+            collection_id: Optional collection ID (will use collection's embedding model)
+            model_name: Optional model name (required if collection_id not provided)
+        """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
-        params: dict[str, str | int] = {"query": query, "modelName": model_name, "repositoryType": repo_id, "topK": k}
+        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}
 
         if collection_id:
             params["collectionId"] = collection_id
+        
+        if model_name:
+            params["modelName"] = model_name
 
         response = self._session.get(url, params=params)
         if response.status_code == 200:

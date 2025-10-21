@@ -22,8 +22,10 @@ import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
 from utilities.common_functions import retry_config
 
-dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
+def _get_ingestion_job_table():
+    """Lazy initialization of DynamoDB table."""
+    dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+    return dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
 
 
 class IngestionJobListResponse:
@@ -46,14 +48,33 @@ class RepositoryError(Exception):
 
 class IngestionJobRepository:
     def __init__(self):
-        self.ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-        self.table_name = os.environ["LISA_INGESTION_JOB_TABLE_NAME"]
+        self._ddb_client = None
+        self._table_name = None
+        self._batch_client = None
+    
+    @property
+    def ddb_client(self):
+        if self._ddb_client is None:
+            self._ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+        return self._ddb_client
+    
+    @property
+    def table_name(self):
+        if self._table_name is None:
+            self._table_name = os.environ["LISA_INGESTION_JOB_TABLE_NAME"]
+        return self._table_name
+    
+    @property
+    def batch_client(self):
+        if self._batch_client is None:
+            self._batch_client = boto3.client("batch", region_name=os.environ["AWS_REGION"], config=retry_config)
+        return self._batch_client
 
     def save(self, job: IngestionJob) -> None:
-        ingestion_job_table.put_item(Item=job.model_dump(exclude_none=True))
+        _get_ingestion_job_table().put_item(Item=job.model_dump(exclude_none=True))
 
     def find_by_id(self, id: str) -> IngestionJob:
-        response = ingestion_job_table.get_item(Key={"id": id})
+        response = _get_ingestion_job_table().get_item(Key={"id": id})
 
         if not response.get("Item"):
             raise Exception(f"Ingestion job with id {id} not found")
@@ -61,7 +82,7 @@ class IngestionJobRepository:
         return IngestionJob(**response.get("Item"))
 
     def find_by_path(self, s3_path: str) -> list[IngestionJob]:
-        response = ingestion_job_table.query(
+        response = _get_ingestion_job_table().query(
             IndexName="s3Path", KeyConditionExpression="s3Path = :path", ExpressionAttributeValues={":path": s3_path}
         )
 
@@ -69,7 +90,7 @@ class IngestionJobRepository:
         return [IngestionJob(**item) for item in items]
 
     def find_by_document(self, document_id: str) -> Optional[IngestionJob]:
-        response = ingestion_job_table.query(
+        response = _get_ingestion_job_table().query(
             IndexName="documentId",
             KeyConditionExpression="document_id = :document_id",
             ExpressionAttributeValues={":document_id": document_id},
@@ -84,7 +105,7 @@ class IngestionJobRepository:
 
     def update_status(self, job: IngestionJob, status: IngestionStatus) -> IngestionJob:
         job.status = status
-        ingestion_job_table.update_item(
+        _get_ingestion_job_table().update_item(
             Key={
                 "id": job.id,
             },
@@ -148,7 +169,7 @@ class IngestionJobRepository:
             if last_evaluated_key:
                 query_params["ExclusiveStartKey"] = last_evaluated_key
 
-            response = ingestion_job_table.query(**query_params)
+            response = _get_ingestion_job_table().query(**query_params)
 
             logger.info(f"GSI query returned {len(response.get('Items', []))} items")
 
@@ -165,3 +186,78 @@ class IngestionJobRepository:
         last_evaluated_key_response = response.get("LastEvaluatedKey")
 
         return jobs, last_evaluated_key_response
+
+    def get_batch_job_status(self, job_id: str) -> Optional[str]:
+        """Get the status of a batch job by job ID.
+        
+        Args:
+            job_id: AWS Batch job ID
+            
+        Returns:
+            Job status (SUBMITTED, PENDING, RUNNABLE, STARTING, RUNNING, SUCCEEDED, FAILED) or None
+        """
+        try:
+            response = self.batch_client.describe_jobs(jobs=[job_id])
+            if response.get("jobs"):
+                return response["jobs"][0].get("status")
+        except Exception:
+            pass
+        return None
+
+    def find_batch_job_for_document(self, document_id: str, job_queue: str) -> Optional[Dict]:
+        """Find the batch job associated with a document ingestion.
+        
+        Args:
+            document_id: Document ID
+            job_queue: Batch job queue name
+            
+        Returns:
+            Dict with jobId and status, or None if not found
+        """
+        job_name_prefix = f"document-ingest-{document_id}"
+        
+        for status in ["RUNNING", "SUCCEEDED", "FAILED", "PENDING", "RUNNABLE", "STARTING"]:
+            try:
+                response = self.batch_client.list_jobs(jobQueue=job_queue, jobStatus=status)
+                for job in response.get("jobSummaryList", []):
+                    if job["jobName"].startswith(job_name_prefix):
+                        return {"jobId": job["jobId"], "status": status, "jobName": job["jobName"]}
+            except Exception:
+                continue
+        
+        return None
+
+    def wait_for_batch_job_completion(self, document_id: str, job_queue: str, timeout_seconds: int = 300) -> bool:
+        """Wait for a batch job to complete.
+        
+        Args:
+            document_id: Document ID
+            job_queue: Batch job queue name
+            timeout_seconds: Maximum time to wait
+            
+        Returns:
+            True if job succeeded, False if failed or timed out
+        """
+        import time
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout_seconds:
+            job_info = self.find_batch_job_for_document(document_id, job_queue)
+            
+            if job_info:
+                status = job_info["status"]
+                logger.info(f"Batch job {job_info['jobName']}: {status}")
+                
+                if status == "SUCCEEDED":
+                    return True
+                elif status == "FAILED":
+                    logger.error(f"Batch job failed: {job_info['jobName']}")
+                    return False
+            
+            time.sleep(10)
+        
+        logger.error(f"Batch job timeout for document {document_id}")
+        return False

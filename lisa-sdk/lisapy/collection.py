@@ -28,6 +28,7 @@ class CollectionMixin(BaseMixin):
         repository_id: str,
         name: str,
         description: Optional[str] = None,
+        embedding_model: Optional[str] = None,
         chunking_strategy: Optional[Dict] = None,
         allowed_groups: Optional[List[str]] = None,
         metadata: Optional[Dict] = None,
@@ -41,6 +42,7 @@ class CollectionMixin(BaseMixin):
             repository_id: The repository ID to create the collection in
             name: Name of the collection (required)
             description: Optional description of the collection
+            embedding_model: Optional embedding model ID (inherits from repository if not provided)
             chunking_strategy: Optional chunking strategy configuration
             allowed_groups: Optional list of groups allowed to access the collection
             metadata: Optional metadata tags for the collection
@@ -57,6 +59,7 @@ class CollectionMixin(BaseMixin):
         payload = {
             "name": name,
             "description": description,
+            "embeddingModel": embedding_model,
             "chunkingStrategy": chunking_strategy,
             "allowedGroups": allowed_groups,
             "metadata": metadata,

@@ -338,12 +338,12 @@ class RagDocumentRepository:
             logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
             raise
 
-    def delete_s3_docs(self, repository_id: str, docs: list[dict]) -> list[str]:
+    def delete_s3_docs(self, repository_id: str, docs: list[RagDocument]) -> list[str]:
         """Remove documents from S3.
         
         Args:
             repository_id: The repository ID
-            docs: List of document dictionaries
+            docs: List of RagDocument objects
             
         Returns:
             List of S3 URIs that were removed
@@ -362,9 +362,9 @@ class RagDocumentRepository:
             if not doc:
                 continue
                 
-            doc_source = doc.get("source")
-            doc_ingestion_type = doc.get("ingestion_type")
-            doc_collection_id = doc.get("collection_id")
+            doc_source = doc.source
+            doc_ingestion_type = doc.ingestion_type
+            doc_collection_id = doc.collection_id
             
             if not doc_source:
                 continue

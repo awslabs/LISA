@@ -167,6 +167,16 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
+                name: 'get_document',
+                resource: 'repository',
+                description: 'Get a document by ID',
+                path: 'repository/{repositoryId}/document/{documentId}',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
                 name: 'download_document',
                 resource: 'repository',
                 description: 'Creates presigned url to download document within repository',

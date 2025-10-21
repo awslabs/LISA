@@ -64,7 +64,9 @@ def pipeline_ingest(job: IngestionJob) -> None:
         else:
             documents = generate_chunks(job)
             texts, metadatas = prepare_chunks(documents, job.repository_id)
-            all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
+            # Use embedding_model from job, fall back to collection_id for backward compatibility
+            embedding_model = job.embedding_model if job.embedding_model else job.collection_id
+            all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id, embedding_model)
 
         # remove old
         for rag_document in rag_document_repository.find_by_source(
@@ -279,13 +281,13 @@ def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict
 
 
 def store_chunks_in_vectorstore(
-    texts: List[str], metadatas: List[Dict], repository_id: str, embedding_model: str
+    texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
 ) -> List[str]:
     """Store document chunks in vector store."""
     embeddings = RagEmbeddings(model_name=embedding_model)
     vs = get_vector_store_client(
         repository_id,
-        index=embedding_model,
+        index=collection_id,
         embeddings=embeddings,
     )
 

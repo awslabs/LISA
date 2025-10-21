@@ -255,7 +255,6 @@ class CollectionManagementService:
         user_id: str,
         user_groups: List[str],
         is_admin: bool,
-        hard_delete: bool = True,
     ) -> bool:
         """
         Delete a collection (soft or hard delete).
@@ -266,7 +265,6 @@ class CollectionManagementService:
             user_id: User deleting the collection
             user_groups: User's group memberships
             is_admin: Whether user is admin
-            hard_delete: Whether to hard delete (remove from DB) or soft delete (mark as deleted)
 
         Returns:
             True if deletion was successful
@@ -345,15 +343,8 @@ class CollectionManagementService:
                 # Continue with collection deletion even if document cleanup fails
                 # The documents will be orphaned but the collection will be deleted
 
-        if hard_delete:
-            # Hard delete - remove from database
-            self.collection_repo.delete(collection_id, repository_id)
-            logger.info(f"Hard deleted collection {collection_id}")
-        else:
-            # Soft delete - mark as deleted
-            updates = {"status": CollectionStatus.DELETED}
-            self.collection_repo.update(collection_id, repository_id, updates)
-            logger.info(f"Soft deleted collection {collection_id}")
+        self.collection_repo.delete(collection_id, repository_id)
+        logger.info(f"Hard deleted collection {collection_id}")
 
         # Clear access control cache
         self.access_control_service.clear_cache_for_collection(collection_id)

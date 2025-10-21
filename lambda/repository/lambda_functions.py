@@ -433,7 +433,6 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Parse query parameters
     query_params = event.get("queryStringParameters", {}) or {}
-    hard_delete = query_params.get("hardDelete", "false").lower() == "true"
 
     # Get user context
     username = get_username(event)
@@ -450,7 +449,6 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
         user_id=username,
         user_groups=user_groups,
         is_admin=admin,
-        hard_delete=hard_delete,
     )
 
     # Return empty response for 204 No Content
@@ -1254,7 +1252,6 @@ def delete(event: dict, context: dict) -> Any:
                     user_id="admin",
                     user_groups=[],
                     is_admin=True,
-                    hard_delete=True,
                 )
             except Exception as e:
                 logger.error(f"Error deleting collection {collection.collectionId}: {str(e)}")

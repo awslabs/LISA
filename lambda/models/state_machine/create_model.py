@@ -24,7 +24,7 @@ from typing import Any, Dict
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, InferenceContainer, ModelStatus, GuardrailsTableEntry
+from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -411,23 +411,23 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
     """Add guardrails to LiteLLM and store them in DynamoDB."""
     logger.info(f"Adding guardrails to LiteLLM for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
-    
+
     # Check if guardrails config exists
     if not event.get("guardrailsConfig") or not event["guardrailsConfig"].get("guardrails"):
         logger.info("No guardrails configuration found, skipping guardrail creation")
         output_dict["guardrail_ids"] = []
         return output_dict
-    
+
     guardrail_ids = []
     created_guardrails = []
-    
+
     try:
         # Process each guardrail in the configuration
         for guardrail_key, guardrail_config in event["guardrailsConfig"]["guardrails"].items():
             logger.info(f"Processing guardrail: {guardrail_key}")
-            
-            model_id=event["modelId"]
-            
+
+            model_id = event["modelId"]
+
             # Transform guardrail config to LiteLLM format
             litellm_guardrail_config = {
                 "guardrail": {
@@ -441,16 +441,14 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
                         # TODO: https://github.com/BerriAI/litellm/issues/13126
                         # "disable_exception_on_block": True,
                     },
-                    "guardrail_info": {
-                        "description": guardrail_config.get("description", "")
-                    }
+                    "guardrail_info": {"description": guardrail_config.get("description", "")},
                 }
             }
-            
+
             # Create guardrail in LiteLLM
             logger.info(f"Creating guardrail in LiteLLM: {guardrail_config['guardrail_name']}")
             litellm_response = litellm_client.create_guardrail(litellm_guardrail_config)
-            
+
             # Extract LiteLLM guardrail ID from response
             litellm_guardrail_id = None
             if "guardrail_id" in litellm_response:
@@ -458,7 +456,7 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
             else:
                 logger.error(f"Unexpected LiteLLM guardrail response structure: {litellm_response}")
                 raise KeyError(f"Could not find guardrail ID in LiteLLM response: {litellm_response}")
-            
+
             # Create guardrail entry for DynamoDB
             guardrail_entry = GuardrailsTableEntry(
                 guardrail_id=litellm_guardrail_id,
@@ -470,44 +468,45 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
                 description=guardrail_config.get("description"),
                 allowed_groups=guardrail_config.get("allowed_groups", []),
             )
-            
+
             # Store in DynamoDB
             logger.info(f"Storing guardrail in DynamoDB: {litellm_guardrail_id}")
             guardrails_table.put_item(Item=guardrail_entry.model_dump())
-            
+
             guardrail_ids.append(litellm_guardrail_id)
-            created_guardrails.append({
-                "guardrail_id": litellm_guardrail_id,
-                "guardrail_name": guardrail_config["guardrail_name"],
-            })
-            
-            logger.info(f"Successfully created guardrail: {guardrail_config['guardrail_name']} with ID: {litellm_guardrail_id}")
-    
+            created_guardrails.append(
+                {
+                    "guardrail_id": litellm_guardrail_id,
+                    "guardrail_name": guardrail_config["guardrail_name"],
+                }
+            )
+
+            logger.info(
+                f"Successfully created guardrail: {guardrail_config['guardrail_name']} with ID: {litellm_guardrail_id}"
+            )
+
     except Exception as e:
         logger.error(f"Error creating guardrails: {str(e)}")
-        
+
         # Clean up any created guardrails on failure
         for created_guardrail in created_guardrails:
             try:
                 logger.info(f"Cleaning up guardrail: {created_guardrail['guardrail_id']}")
                 # Delete from DynamoDB
                 guardrails_table.delete_item(
-                    Key={
-                        "guardrail_id": created_guardrail["guardrail_id"],
-                        "model_id": event["modelId"]
-                    }
+                    Key={"guardrail_id": created_guardrail["guardrail_id"], "model_id": event["modelId"]}
                 )
                 # Delete from LiteLLM
                 litellm_client.delete_guardrail(created_guardrail["litellm_guardrail_id"])
             except Exception as cleanup_error:
                 logger.error(f"Error during guardrail cleanup: {str(cleanup_error)}")
-        
+
         # Re-raise the original exception
         raise e
-    
+
     output_dict["guardrail_ids"] = guardrail_ids
     output_dict["created_guardrails"] = created_guardrails
-    
+
     logger.info(f"Successfully created {len(guardrail_ids)} guardrails for model: {event['modelId']}")
     return output_dict
 
@@ -525,12 +524,12 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     to Failed. Cleaning up the CloudFormation stack, if it still exists, will happen in the DeleteModel API.
     """
     logger.error(f"Handling state machine failure: {event}")
-    
+
     try:
         # Parse the error from Step Functions
         cause_data = json.loads(event["Cause"])
         error_message = cause_data["errorMessage"]
-        
+
         # Try to parse the error message as JSON (for our custom exceptions)
         try:
             error_dict = json.loads(error_message)
@@ -545,12 +544,12 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # If error_message is not JSON, use it directly
             error_reason = error_message
             original_event = event
-            
+
     except (json.JSONDecodeError, KeyError, TypeError) as e:
         logger.error(f"Error parsing failure event: {str(e)}")
         error_reason = f"Failed to parse error details: {str(e)}"
         original_event = event
-    
+
     logger.error(f"Failure reason: {error_reason}, Model ID: {original_event.get('modelId', 'unknown')}")
 
     # terminate EC2 instance if we have one recorded

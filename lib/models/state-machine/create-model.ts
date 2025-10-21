@@ -235,7 +235,7 @@ export class CreateModelStateMachine extends Construct {
 
         // Check if image is pre-existing ECR image
         const checkImageTypeChoice = new Choice(this, 'CheckImageTypeChoice');
-        
+
         // Check if guardrails need to be added
         const checkGuardrailsChoice = new Choice(this, 'CheckGuardrailsChoice');
 

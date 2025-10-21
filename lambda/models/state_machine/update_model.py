@@ -17,14 +17,13 @@
 import json
 import logging
 import os
-import uuid
 from copy import deepcopy
 from datetime import datetime, UTC
 from typing import Any, Callable, Dict, List, Optional
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import ModelStatus, GuardrailsTableEntry
+from models.domain_objects import GuardrailsTableEntry, ModelStatus
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 
 ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -442,108 +441,111 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Update guardrails for a model in LiteLLM and DynamoDB.
-    
+
     This handler will:
     1. Process guardrails configuration updates from the event
-    2. Update existing guardrails in LiteLLM 
+    2. Update existing guardrails in LiteLLM
     3. Update guardrail entries in DynamoDB
     4. Handle creation of new guardrails and deletion of removed ones
     """
     logger.info(f"Updating guardrails for model: {event.get('model_id')}")
     output_dict = deepcopy(event)
-    
+
     model_id = event["model_id"]
     guardrails_config = event["update_payload"].get("guardrailsConfig")
-    
+
     # Check if guardrails config exists
     if not guardrails_config or not guardrails_config.get("guardrails"):
         logger.info("No guardrails configuration found, skipping guardrail updates")
         output_dict["guardrail_update_ids"] = []
         return output_dict
-    
+
     updated_guardrails = []
     created_guardrails = []
     deleted_guardrails = []
-    
+
     try:
         # Get existing guardrails for this model from DynamoDB
         existing_guardrails = {}
         response = guardrails_table.query(
             IndexName="ModelIdIndex",
             KeyConditionExpression="model_id = :model_id",
-            ExpressionAttributeValues={":model_id": model_id}
+            ExpressionAttributeValues={":model_id": model_id},
         )
-        
+
         for item in response.get("Items", []):
             existing_guardrails[item["guardrail_name"]] = item
-        
+
         # Process each guardrail in the new configuration
         processed_guardrail_names = set()
-        
+
         for guardrail_key, guardrail_config in guardrails_config["guardrails"].items():
             guardrail_name = guardrail_config["guardrail_name"]
-            
+
             logger.info(f"Processing guardrail update: {guardrail_name}")
-            
+
             # Check if this guardrail is marked for deletion
             if guardrail_name == "LISA_MARKED_FOR_DELETION":
                 logger.info(f"Found guardrail marked for deletion: {guardrail_key}")
-                
+
                 # Find the existing guardrail by key instead of name
                 # Since we're using the key to identify which specific guardrail to delete
                 guardrail_to_delete = None
-                for existing_name, existing_guardrail in existing_guardrails.items():
+                for _existing_name, existing_guardrail in existing_guardrails.items():
                     # We need to match by some other criteria since the name is now "LISA_MARKED_FOR_DELETION"
                     # Let's use the guardrail_identifier if provided, or check if this is the only one
-                    if (guardrail_config.get("guardrail_identifier") and 
-                        existing_guardrail.get("guardrail_identifier") == guardrail_config.get("guardrail_identifier")):
+                    if guardrail_config.get("guardrail_identifier") and existing_guardrail.get(
+                        "guardrail_identifier"
+                    ) == guardrail_config.get("guardrail_identifier"):
                         guardrail_to_delete = existing_guardrail
                         break
                     # If no identifier provided and only one guardrail exists, delete that one
                     elif not guardrail_config.get("guardrail_identifier") and len(existing_guardrails) == 1:
                         guardrail_to_delete = existing_guardrail
                         break
-                
+
                 if guardrail_to_delete:
                     try:
-                        logger.info(f"Deleting guardrail: {guardrail_to_delete['guardrail_name']} (ID: {guardrail_to_delete['guardrail_id']})")
-                        
+                        logger.info(
+                            f"Deleting guardrail: {guardrail_to_delete['guardrail_name']} "
+                            f" (ID: {guardrail_to_delete['guardrail_id']})"
+                        )
+
                         # Delete from LiteLLM
                         litellm_client.delete_guardrail(guardrail_to_delete["guardrail_id"])
-                        
+
                         # Delete from DynamoDB
                         guardrails_table.delete_item(
-                            Key={
+                            Key={"guardrail_id": guardrail_to_delete["guardrail_id"], "model_id": model_id}
+                        )
+
+                        deleted_guardrails.append(
+                            {
                                 "guardrail_id": guardrail_to_delete["guardrail_id"],
-                                "model_id": model_id
+                                "guardrail_name": guardrail_to_delete["guardrail_name"],
+                                "action": "deleted",
                             }
                         )
-                        
-                        deleted_guardrails.append({
-                            "guardrail_id": guardrail_to_delete["guardrail_id"],
-                            "guardrail_name": guardrail_to_delete["guardrail_name"],
-                            "action": "deleted"
-                        })
-                        
+
                         logger.info(f"Successfully deleted guardrail: {guardrail_to_delete['guardrail_name']}")
-                        
+
                     except Exception as delete_error:
                         logger.error(f"Error deleting guardrail marked for deletion: {str(delete_error)}")
                         # Continue with other operations even if one deletion fails
                 else:
                     logger.warning(f"No matching guardrail found for deletion marker: {guardrail_key}")
-                
+
                 # Skip normal processing for deletion markers
                 continue
-            
+
             processed_guardrail_names.add(guardrail_name)
-            
+
             # Check if this is an existing guardrail or a new one
             if guardrail_name in existing_guardrails:
                 # Update existing guardrail
                 existing_guardrail = existing_guardrails[guardrail_name]
                 litellm_guardrail_id = existing_guardrail["guardrail_id"]
-                
+
                 # Transform guardrail config to LiteLLM format for update
                 litellm_guardrail_config = {
                     "guardrail": {
@@ -553,25 +555,24 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                             "mode": str(guardrail_config.get("mode", "pre_call")),
                             "guardrailIdentifier": guardrail_config["guardrail_identifier"],
                             "guardrailVersion": guardrail_config.get("guardrail_version", "DRAFT"),
-                            "default_on": guardrail_config.get("default_on", False)
+                            "default_on": guardrail_config.get("default_on", False),
                         },
-                        "guardrail_info": {
-                            "description": guardrail_config.get("description", "")
-                        }
+                        "guardrail_info": {"description": guardrail_config.get("description", "")},
                     }
                 }
-                
+
                 # Update guardrail in LiteLLM
                 logger.info(f"Updating guardrail in LiteLLM: {guardrail_name}")
                 litellm_client.update_guardrail(litellm_guardrail_id, litellm_guardrail_config)
-                
+
                 # Update guardrail entry in DynamoDB
+                update_expression = (
+                    "SET guardrail_identifier = :gi, guardrail_version = :gv, #mode = :m, "
+                    "description = :d, allowed_groups = :ag, last_modified_date = :lm"
+                )
                 guardrails_table.update_item(
-                    Key={
-                        "guardrail_id": existing_guardrail["guardrail_id"],
-                        "model_id": model_id
-                    },
-                    UpdateExpression="SET guardrail_identifier = :gi, guardrail_version = :gv, #mode = :m, description = :d, allowed_groups = :ag, last_modified_date = :lm",
+                    Key={"guardrail_id": existing_guardrail["guardrail_id"], "model_id": model_id},
+                    UpdateExpression=update_expression,
                     ExpressionAttributeNames={"#mode": "mode"},  # mode is a reserved keyword in DynamoDB
                     ExpressionAttributeValues={
                         ":gi": guardrail_config["guardrail_identifier"],
@@ -579,20 +580,22 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                         ":m": str(guardrail_config.get("mode", "pre_call")),
                         ":d": guardrail_config.get("description"),
                         ":ag": guardrail_config.get("allowed_groups", []),
-                        ":lm": int(datetime.now(UTC).timestamp() * 1000)
+                        ":lm": int(datetime.now(UTC).timestamp() * 1000),
+                    },
+                )
+
+                updated_guardrails.append(
+                    {
+                        "guardrail_id": existing_guardrail["guardrail_id"],
+                        "guardrail_name": guardrail_name,
+                        "action": "updated",
                     }
                 )
-                
-                updated_guardrails.append({
-                    "guardrail_id": existing_guardrail["guardrail_id"],
-                    "guardrail_name": guardrail_name,
-                    "action": "updated"
-                })
-                
+
                 logger.info(f"Successfully updated guardrail: {guardrail_name}")
-                
+
             else:
-                
+
                 # Transform guardrail config to LiteLLM format
                 litellm_guardrail_config = {
                     "guardrail": {
@@ -602,18 +605,16 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                             "mode": str(guardrail_config.get("mode", "pre_call")),
                             "guardrailIdentifier": guardrail_config["guardrail_identifier"],
                             "guardrailVersion": guardrail_config.get("guardrail_version", "DRAFT"),
-                            "default_on": guardrail_config.get("default_on", False)
+                            "default_on": guardrail_config.get("default_on", False),
                         },
-                        "guardrail_info": {
-                            "description": guardrail_config.get("description", "")
-                        }
+                        "guardrail_info": {"description": guardrail_config.get("description", "")},
                     }
                 }
-                
+
                 # Create guardrail in LiteLLM
                 logger.info(f"Creating new guardrail in LiteLLM: {guardrail_name}")
                 litellm_response = litellm_client.create_guardrail(litellm_guardrail_config)
-                
+
                 # Extract LiteLLM guardrail ID from response
                 litellm_guardrail_id = None
                 if "guardrail_id" in litellm_response:
@@ -621,7 +622,7 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                 else:
                     logger.error(f"Unexpected LiteLLM guardrail response structure: {litellm_response}")
                     raise KeyError(f"Could not find guardrail ID in LiteLLM response: {litellm_response}")
-                
+
                 # Create guardrail entry for DynamoDB
                 guardrail_entry = GuardrailsTableEntry(
                     guardrail_id=litellm_guardrail_id,
@@ -633,81 +634,79 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                     description=guardrail_config.get("description"),
                     allowed_groups=guardrail_config.get("allowed_groups", []),
                 )
-                
+
                 # Store in DynamoDB
                 logger.info(f"Storing new guardrail in DynamoDB: {litellm_guardrail_id}")
                 guardrails_table.put_item(Item=guardrail_entry.model_dump())
-                
-                created_guardrails.append({
-                    "guardrail_id": litellm_guardrail_id,
-                    "guardrail_name": guardrail_name,
-                    "action": "created"
-                })
-                
+
+                created_guardrails.append(
+                    {"guardrail_id": litellm_guardrail_id, "guardrail_name": guardrail_name, "action": "created"}
+                )
+
                 logger.info(f"Successfully created new guardrail: {guardrail_name}")
-        
+
         # Delete guardrails that are no longer in the configuration
         for guardrail_name, existing_guardrail in existing_guardrails.items():
             if guardrail_name not in processed_guardrail_names:
                 logger.info(f"Deleting removed guardrail: {guardrail_name}")
-                
+
                 try:
                     # Delete from LiteLLM
                     litellm_client.delete_guardrail(existing_guardrail["guardrail_id"])
-                    
+
                     # Delete from DynamoDB
                     guardrails_table.delete_item(
-                        Key={
+                        Key={"guardrail_id": existing_guardrail["guardrail_id"], "model_id": model_id}
+                    )
+
+                    deleted_guardrails.append(
+                        {
                             "guardrail_id": existing_guardrail["guardrail_id"],
-                            "model_id": model_id
+                            "guardrail_name": guardrail_name,
+                            "action": "deleted",
                         }
                     )
-                    
-                    deleted_guardrails.append({
-                        "guardrail_id": existing_guardrail["guardrail_id"],
-                        "guardrail_name": guardrail_name,
-                        "action": "deleted"
-                    })
-                    
+
                     logger.info(f"Successfully deleted guardrail: {guardrail_name}")
-                    
+
                 except Exception as delete_error:
                     logger.error(f"Error deleting guardrail {guardrail_name}: {str(delete_error)}")
                     # Continue with other operations even if one deletion fails
-        
+
         # Combine all operations for output
         all_guardrail_operations = updated_guardrails + created_guardrails + deleted_guardrails
-        
+
     except Exception as e:
         logger.error(f"Error updating guardrails: {str(e)}")
-        
+
         # Clean up any newly created guardrails on failure
         for created_guardrail in created_guardrails:
             try:
                 logger.info(f"Cleaning up created guardrail: {created_guardrail['guardrail_id']}")
                 # Delete from DynamoDB
                 guardrails_table.delete_item(
-                    Key={
-                        "guardrail_id": created_guardrail["guardrail_id"],
-                        "model_id": model_id
-                    }
+                    Key={"guardrail_id": created_guardrail["guardrail_id"], "model_id": model_id}
                 )
                 # Delete from LiteLLM
                 litellm_client.delete_guardrail(created_guardrail["guardrail_id"])
             except Exception as cleanup_error:
                 logger.error(f"Error during guardrail cleanup: {str(cleanup_error)}")
-        
+
         # Re-raise the original exception
         raise e
-    
+
     output_dict["guardrail_updates"] = all_guardrail_operations
     output_dict["guardrail_update_summary"] = {
         "updated": len(updated_guardrails),
         "created": len(created_guardrails),
-        "deleted": len(deleted_guardrails)
+        "deleted": len(deleted_guardrails),
     }
-    
-    logger.info(f"Successfully processed guardrail updates for model: {model_id}. Updated: {len(updated_guardrails)}, Created: {len(created_guardrails)}, Deleted: {len(deleted_guardrails)}")
+
+    logger.info(
+        f"Successfully processed guardrail updates for model: {model_id}. "
+        f"Updated: {len(updated_guardrails)}, Created: {len(created_guardrails)}, "
+        f"Deleted: {len(deleted_guardrails)}"
+    )
     return output_dict
 
 

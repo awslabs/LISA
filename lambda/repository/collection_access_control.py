@@ -86,9 +86,7 @@ class CollectionAccessControlPolicy(BaseAccessControlPolicy[RagCollectionConfig]
             logger.error(f"Error getting collection context: {e}")
             return None
 
-    def check_repository_access(
-        self, user: UserContext, repository_id: str, permission: Permission
-    ) -> AccessDecision:
+    def check_repository_access(self, user: UserContext, repository_id: str, permission: Permission) -> AccessDecision:
         """
         Check if user has permission for a repository (for creating collections).
 
@@ -102,9 +100,7 @@ class CollectionAccessControlPolicy(BaseAccessControlPolicy[RagCollectionConfig]
         """
         # Admin users have full access
         if user.is_admin:
-            return AccessDecision(
-                allowed=True, permission=permission, granting_groups=["admin"]
-            )
+            return AccessDecision(allowed=True, permission=permission, granting_groups=["admin"])
 
         try:
             # Get repository configuration

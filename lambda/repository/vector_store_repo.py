@@ -45,16 +45,16 @@ class VectorStoreRepository:
             config = item.get("config", {})
             if item.get("legacy", False):
                 config["legacy"] = True
-            
+
             # Apply default values for new fields if not present
             if "allowUserCollections" not in config:
                 config["allowUserCollections"] = True
-            
+
             if "metadata" not in config:
                 config["metadata"] = {"tags": []}
             elif isinstance(config["metadata"], dict) and "tags" not in config["metadata"]:
                 config["metadata"]["tags"] = []
-            
+
             registered_repositories.append(config)
 
         return registered_repositories
@@ -102,22 +102,22 @@ class VectorStoreRepository:
             raise ValueError(f"Repository with ID '{repository_id}' not found")
 
         repository: dict[str, Any] = convert_decimal(response.get("Item"))
-        
+
         if raw_config:
             return repository
-        
+
         # Get config and apply defaults for backward compatibility
         config = cast(dict[str, Any], repository.get("config", {}))
-        
+
         # Apply default values for new fields if not present
         if "allowUserCollections" not in config:
             config["allowUserCollections"] = True
-        
+
         if "metadata" not in config:
             config["metadata"] = {"tags": []}
         elif isinstance(config["metadata"], dict) and "tags" not in config["metadata"]:
             config["metadata"]["tags"] = []
-        
+
         return config
 
     def update(self, repository_id: str, updates: dict[str, Any]) -> dict[str, Any]:
@@ -139,13 +139,13 @@ class VectorStoreRepository:
             current = self.table.get_item(Key={"repositoryId": repository_id})
             if "Item" not in current:
                 raise ValueError(f"Repository with ID '{repository_id}' not found")
-            
+
             current_item = convert_decimal(current["Item"])
             config = current_item.get("config", {})
-            
+
             # Update the config with new values
             config.update(updates)
-            
+
             # Update the item in DynamoDB
             self.table.update_item(
                 Key={"repositoryId": repository_id},
@@ -159,7 +159,7 @@ class VectorStoreRepository:
                     ":updatedAt": int(time.time() * 1000),
                 },
             )
-            
+
             return config
         except Exception as e:
             raise ValueError(f"Failed to update repository: {repository_id}", e)

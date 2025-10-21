@@ -66,7 +66,9 @@ def pipeline_ingest(job: IngestionJob) -> None:
             texts, metadatas = prepare_chunks(documents, job.repository_id)
             # Use embedding_model from job, fall back to collection_id for backward compatibility
             embedding_model = job.embedding_model if job.embedding_model else job.collection_id
-            all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id, embedding_model)
+            all_ids = store_chunks_in_vectorstore(
+                texts, metadatas, job.repository_id, job.collection_id, embedding_model
+            )
 
         # remove old
         for rag_document in rag_document_repository.find_by_source(

@@ -340,35 +340,35 @@ class RagDocumentRepository:
 
     def delete_s3_docs(self, repository_id: str, docs: list[RagDocument]) -> list[str]:
         """Remove documents from S3.
-        
+
         Args:
             repository_id: The repository ID
             docs: List of RagDocument objects
-            
+
         Returns:
             List of S3 URIs that were removed
         """
         repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
-        
+
         # Build mapping of embedding models to autoRemove setting
         pipelines = {
             pipeline.get("embeddingModel"): pipeline.get("autoRemove", False) is True
             for pipeline in repo.get("pipelines", [])
         }
-        
+
         # Determine which documents should be removed from S3
         removed_source: list[str] = []
         for doc in docs:
             if not doc:
                 continue
-                
+
             doc_source = doc.source
             doc_ingestion_type = doc.ingestion_type
             doc_collection_id = doc.collection_id
-            
+
             if not doc_source:
                 continue
-            
+
             # Manual ingestion: always remove from S3
             if doc_ingestion_type != IngestionType.AUTO.value:
                 removed_source.append(doc_source)
@@ -376,7 +376,7 @@ class RagDocumentRepository:
             # Check if the collection's pipeline has autoRemove enabled
             elif doc_collection_id and pipelines.get(doc_collection_id):
                 removed_source.append(doc_source)
-        
+
         # Delete from S3
         for source in removed_source:
             try:

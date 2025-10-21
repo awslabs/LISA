@@ -66,6 +66,7 @@ repos:
       args:
         - --exit-non-zero-on-fix
         - --per-file-ignores=test/**/*.py:E402
+        - --fix
       exclude: \.ipynb$
 
 - repo: https://github.com/pycqa/flake8

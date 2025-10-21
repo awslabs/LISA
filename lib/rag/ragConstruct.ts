@@ -168,7 +168,7 @@ export class LisaRagConstruct extends Construct {
             removalPolicy: config.removalPolicy,
             timeToLiveAttribute: 'ttl',
         });
-        
+
         // Add GSI for querying collections by repository
         collectionsTable.addGlobalSecondaryIndex({
             indexName: 'RepositoryIndex',
@@ -181,7 +181,7 @@ export class LisaRagConstruct extends Construct {
                 type: AttributeType.STRING,
             }
         });
-        
+
         // Add GSI for filtering collections by status
         collectionsTable.addGlobalSecondaryIndex({
             indexName: 'StatusIndex',
@@ -194,7 +194,7 @@ export class LisaRagConstruct extends Construct {
                 type: AttributeType.STRING,
             }
         });
-        
+
         // Add GSI to document table for querying documents by collection
         docMetaTable.addGlobalSecondaryIndex({
             indexName: 'CollectionIndex',

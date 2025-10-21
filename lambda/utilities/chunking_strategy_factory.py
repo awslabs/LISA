@@ -16,7 +16,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import List
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
@@ -69,7 +69,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
             List of chunked documents
         """
         # Handle both legacy (size/overlap) and new (chunkSize/chunkOverlap) formats
-        if hasattr(strategy, 'chunkSize'):
+        if hasattr(strategy, "chunkSize"):
             chunk_size = strategy.chunkSize
             chunk_overlap = strategy.chunkOverlap
         else:
@@ -89,7 +89,9 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
         if chunk_overlap < 0 or chunk_overlap >= chunk_size:
             raise RagUploadException("Invalid chunk overlap: must be non-negative and less than chunk size")
 
-        logger.info(f"Chunking documents with fixed size strategy: chunk_size={chunk_size}, chunk_overlap={chunk_overlap}")
+        logger.info(
+            f"Chunking documents with fixed size strategy: chunk_size={chunk_size}, chunk_overlap={chunk_overlap}"
+        )
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
@@ -132,7 +134,9 @@ class ChunkingStrategyFactory:
         handler = cls._handlers.get(strategy.type)
         if not handler:
             supported_strategies = ", ".join([s.value for s in cls._handlers.keys()])
-            logger.error(f"Unsupported chunking strategy: {strategy.type}. Supported strategies: {supported_strategies}")
+            logger.error(
+                f"Unsupported chunking strategy: {strategy.type}. Supported strategies: {supported_strategies}"
+            )
             raise ValueError(f"Unsupported chunking strategy: {strategy.type}")
 
         return handler.chunk_documents(docs, strategy)

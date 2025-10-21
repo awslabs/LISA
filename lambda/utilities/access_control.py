@@ -19,7 +19,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Generic, List, Optional, Set, TypeVar
+from typing import Dict, Generic, List, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +83,7 @@ class AccessControlPolicy(ABC, Generic[TResource]):
     """Abstract base class for access control policies."""
 
     @abstractmethod
-    def check_access(
-        self, user: UserContext, resource: ResourceContext, permission: Permission
-    ) -> AccessDecision:
+    def check_access(self, user: UserContext, resource: ResourceContext, permission: Permission) -> AccessDecision:
         """
         Check if user has permission for resource.
 
@@ -117,9 +115,7 @@ class AccessControlPolicy(ABC, Generic[TResource]):
 class BaseAccessControlPolicy(AccessControlPolicy[TResource]):
     """Base implementation of common access control logic."""
 
-    def check_access(
-        self, user: UserContext, resource: ResourceContext, permission: Permission
-    ) -> AccessDecision:
+    def check_access(self, user: UserContext, resource: ResourceContext, permission: Permission) -> AccessDecision:
         """
         Check if user has permission for resource.
 
@@ -139,17 +135,17 @@ class BaseAccessControlPolicy(AccessControlPolicy[TResource]):
         # Admin users have full access
         if user.is_admin:
             logger.info(
-                f"Admin user {user.user_id} granted {permission} access to {resource.resource_type} {resource.resource_id}"
+                f"Admin user {user.user_id} granted {permission} access to "
+                f"{resource.resource_type} {resource.resource_id}"
             )
-            return AccessDecision(
-                allowed=True, permission=permission, granting_groups=["admin"]
-            )
+            return AccessDecision(allowed=True, permission=permission, granting_groups=["admin"])
 
         # Check if resource is private
         if resource.is_private:
             if resource.owner_id and resource.owner_id != user.user_id:
                 logger.info(
-                    f"User {user.user_id} denied {permission} access to private {resource.resource_type} {resource.resource_id}"
+                    f"User {user.user_id} denied {permission} access to private "
+                    f"{resource.resource_type} {resource.resource_id}"
                 )
                 return AccessDecision(
                     allowed=False,
@@ -183,9 +179,7 @@ class BaseAccessControlPolicy(AccessControlPolicy[TResource]):
         """
         # If no groups specified, allow access to everyone
         if not allowed_groups or len(allowed_groups) == 0:
-            return AccessDecision(
-                allowed=True, permission=permission, granting_groups=["public"]
-            )
+            return AccessDecision(allowed=True, permission=permission, granting_groups=["public"])
 
         # Check for group intersection
         user_groups_set = set(user_groups)
@@ -193,9 +187,7 @@ class BaseAccessControlPolicy(AccessControlPolicy[TResource]):
         granting_groups = list(user_groups_set & allowed_groups_set)
 
         if granting_groups:
-            return AccessDecision(
-                allowed=True, permission=permission, granting_groups=granting_groups
-            )
+            return AccessDecision(allowed=True, permission=permission, granting_groups=granting_groups)
 
         return AccessDecision(
             allowed=False,
@@ -279,11 +271,7 @@ class CachedAccessControlService:
 
         # Simple cache cleanup: remove entries older than TTL
         current_time = time.time()
-        expired_keys = [
-            key
-            for key, dec in self._cache.items()
-            if current_time - dec.timestamp >= self.CACHE_TTL
-        ]
+        expired_keys = [key for key, dec in self._cache.items() if current_time - dec.timestamp >= self.CACHE_TTL]
         for key in expired_keys:
             del self._cache[key]
 

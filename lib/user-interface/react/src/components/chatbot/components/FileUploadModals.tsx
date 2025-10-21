@@ -268,7 +268,7 @@ export const RagUploadModal = ({
             } else {
                 setIngestionType(StatusTypes.SUCCESS);
                 const jobs = ingestResp.data?.jobs || [];
-                const jobIds = jobs.map(job => job.jobId);
+                const jobIds = jobs.map((job) => job.jobId);
                 const collectionName = ingestResp.data?.collectionName || ingestResp.data?.collectionId || 'repository';
                 setIngestionStatus(`Successfully submitted documents for ingestion into ${collectionName}. Job IDs: ${jobIds.join(', ')}`);
                 notificationService.generateNotification(`Successfully submitted ${fileKeys.length} document(s) for ingestion into ${collectionName}. ${jobs.length} job(s) created.`, 'success');

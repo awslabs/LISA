@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import logging
-from typing import BinaryIO, Dict, List, Mapping
+from typing import Dict, List
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -23,11 +23,11 @@ class RagMixin(BaseMixin):
 
     def list_documents(self, repo_id: str, collection_id: str) -> List[Dict]:
         """List documents in a collection.
-        
+
         Args:
             repo_id: Repository ID
             collection_id: Collection ID
-            
+
         Returns:
             List of document dictionaries
         """
@@ -45,11 +45,11 @@ class RagMixin(BaseMixin):
 
     def get_document(self, repo_id: str, document_id: str) -> Dict:
         """Get a single document by ID.
-        
+
         Args:
             repo_id: Repository ID
             document_id: Document ID
-            
+
         Returns:
             Document dictionary
         """
@@ -105,26 +105,27 @@ class RagMixin(BaseMixin):
 
     def _upload_document(self, presigned_data: dict, filename: str) -> bool:
         """Upload document using presigned POST data.
-        
+
         Args:
             presigned_data: Dictionary containing 'url' and 'fields' from presigned POST
             filename: Path to file to upload
-            
+
         Returns:
             True if upload successful
         """
         import os
+
         import requests
-        
+
         url = presigned_data.get("url")
         fields = presigned_data.get("fields", {})
-        
+
         with open(filename, "rb") as f:
             # Use basename for the filename in the upload
             basename = os.path.basename(filename)
             files = {"file": (basename, f)}
             # Use a new session without auth headers for S3 upload
-            response = requests.post(url, data=fields, files=files)
+            response = requests.post(url, data=fields, files=files, timeout=300)  # nosec B113
 
         if response.status_code == 204 or response.status_code == 200:
             logging.info("File uploaded successfully")
@@ -135,13 +136,14 @@ class RagMixin(BaseMixin):
             logging.error(f"Response body: {response.text[:500]}")
             # Try to parse XML error from S3
             try:
-                import xml.etree.ElementTree as ET
-                root = ET.fromstring(response.text)
+                from defusedxml import ElementTree as ET  # nosec B405
+
+                root = ET.fromstring(response.text)  # nosec B314
                 error_code = root.find(".//Code")
                 error_msg = root.find(".//Message")
                 if error_code is not None and error_msg is not None:
                     logging.error(f"S3 Error: {error_code.text} - {error_msg.text}")
-            except:
+            except Exception:
                 pass
             raise parse_error(response.status_code, response)
 
@@ -155,7 +157,7 @@ class RagMixin(BaseMixin):
         collection_id: str = None,
     ) -> List[Dict]:
         """Ingest a document and return job information.
-        
+
         Returns:
             List of job dictionaries with jobId, documentId, status, s3Path
         """
@@ -170,7 +172,7 @@ class RagMixin(BaseMixin):
         # Add collectionId to body, not query params
         if collection_id:
             payload["collectionId"] = collection_id
-            
+
         response = self._session.post(url, params=params, json=payload)
         if response.status_code == 200:
             result = response.json()
@@ -186,7 +188,7 @@ class RagMixin(BaseMixin):
         self, repo_id: str, query: str, k: int = 3, collection_id: str = None, model_name: str = None
     ) -> List[Dict]:
         """Perform similarity search.
-        
+
         Args:
             repo_id: Repository ID
             query: Search query
@@ -199,7 +201,7 @@ class RagMixin(BaseMixin):
 
         if collection_id:
             params["collectionId"] = collection_id
-        
+
         if model_name:
             params["modelName"] = model_name
 

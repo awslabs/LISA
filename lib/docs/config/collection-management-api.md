@@ -504,7 +504,7 @@ if response.status_code == 200:
     collection = result['collection']
     print(f"Updated collection: {collection['collectionId']}")
     print(f"New name: {collection['name']}")
-    
+
     # Check for warnings
     if 'warnings' in result:
         print("Warnings:")
@@ -545,7 +545,7 @@ fetch(url, {
     const collection = result.collection;
     console.log(`Updated collection: ${collection.collectionId}`);
     console.log(`New name: ${collection.name}`);
-    
+
     // Check for warnings
     if (result.warnings) {
       console.log('Warnings:');
@@ -738,16 +738,16 @@ def delete_collection_with_confirmation(repository_id, collection_id, token):
     """Delete a collection with user confirmation."""
     url = f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/collection/{collection_id}"
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     # Step 1: Get collection details
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         print(f"Error fetching collection: {response.status_code}")
         return False
-    
+
     collection = response.json()
     collection_name = collection['name']
-    
+
     # Step 2: Get document count (from list_docs endpoint)
     docs_url = f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/documents"
     docs_response = requests.get(
@@ -755,22 +755,22 @@ def delete_collection_with_confirmation(repository_id, collection_id, token):
         headers=headers,
         params={"collectionId": collection_id, "pageSize": 1}
     )
-    
+
     doc_count = 0
     if docs_response.status_code == 200:
         doc_count = docs_response.json().get('totalDocuments', 0)
-    
+
     # Step 3: Display warning and get confirmation
     print(f"\nWARNING: You are about to delete collection '{collection_name}'")
     print(f"This will remove {doc_count} documents from S3 and the vector store.")
     print("This action cannot be undone.")
-    
+
     confirmation = input(f"\nType the collection name '{collection_name}' to confirm: ")
-    
+
     if confirmation != collection_name:
         print("Deletion cancelled - name did not match")
         return False
-    
+
     # Step 4: Delete the collection
     response = requests.delete(url, headers=headers)
     if response.status_code == 204:
@@ -955,10 +955,10 @@ if response.status_code == 200:
     result = response.json()
     collections = result['collections']
     print(f"Found {len(collections)} collections")
-    
+
     for collection in collections:
         print(f"  - {collection['name']} ({collection['collectionId']})")
-    
+
     # Check for more pages
     if result['hasNextPage']:
         print("More pages available")
@@ -985,36 +985,36 @@ def get_all_collections(repository_id, page_size=20):
     """Fetch all collections with pagination."""
     all_collections = []
     last_evaluated_key = None
-    
+
     while True:
         params = {"pageSize": page_size}
-        
+
         # Add pagination token if available
         if last_evaluated_key:
             params["lastEvaluatedKeyCollectionId"] = last_evaluated_key["collectionId"]
             params["lastEvaluatedKeyRepositoryId"] = last_evaluated_key["repositoryId"]
             if "createdAt" in last_evaluated_key:
                 params["lastEvaluatedKeyCreatedAt"] = last_evaluated_key["createdAt"]
-        
+
         response = requests.get(
             f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/collections",
             headers=headers,
             params=params
         )
-        
+
         if response.status_code != 200:
             print(f"Error: {response.status_code} - {response.text}")
             break
-        
+
         result = response.json()
         all_collections.extend(result['collections'])
-        
+
         # Check if there are more pages
         if not result['hasNextPage']:
             break
-        
+
         last_evaluated_key = result['lastEvaluatedKey']
-    
+
     return all_collections
 
 # Get all collections
@@ -1044,11 +1044,11 @@ fetch(url, {
   .then(result => {
     const collections = result.collections;
     console.log(`Found ${collections.length} collections`);
-    
+
     collections.forEach(collection => {
       console.log(`  - ${collection.name} (${collection.collectionId})`);
     });
-    
+
     // Check for more pages
     if (result.hasNextPage) {
       console.log('More pages available');
@@ -1084,10 +1084,10 @@ fetch(`${url}?${params}`, {
 async function getAllCollections(repositoryId, pageSize = 20) {
   const allCollections = [];
   let lastEvaluatedKey = null;
-  
+
   while (true) {
     const params = new URLSearchParams({ pageSize: pageSize.toString() });
-    
+
     // Add pagination token if available
     if (lastEvaluatedKey) {
       params.append('lastEvaluatedKeyCollectionId', lastEvaluatedKey.collectionId);
@@ -1096,28 +1096,28 @@ async function getAllCollections(repositoryId, pageSize = 20) {
         params.append('lastEvaluatedKeyCreatedAt', lastEvaluatedKey.createdAt);
       }
     }
-    
+
     const response = await fetch(
       `https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/${repositoryId}/collections?${params}`,
       { method: 'GET', headers: headers }
     );
-    
+
     if (response.status !== 200) {
       console.error(`Error: ${response.status}`);
       break;
     }
-    
+
     const result = await response.json();
     allCollections.push(...result.collections);
-    
+
     // Check if there are more pages
     if (!result.hasNextPage) {
       break;
     }
-    
+
     lastEvaluatedKey = result.lastEvaluatedKey;
   }
-  
+
   return allCollections;
 }
 

@@ -419,7 +419,7 @@ ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy, FixedSizeChunkingStra
 
 
 # Future chunking strategies can be added here when implemented:
-# 
+#
 # class SemanticChunkingStrategy(BaseModel):
 #     """Defines parameters for semantic document chunking."""
 #     type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
@@ -631,13 +631,15 @@ class CollectionMetadata(BaseModel):
         return tags
 
     @classmethod
-    def merge(cls, parent: Optional["CollectionMetadata"], child: Optional["CollectionMetadata"]) -> "CollectionMetadata":
+    def merge(
+        cls, parent: Optional["CollectionMetadata"], child: Optional["CollectionMetadata"]
+    ) -> "CollectionMetadata":
         """Merges parent and child metadata.
-        
+
         Args:
             parent: Parent vector store metadata
             child: Collection-specific metadata
-            
+
         Returns:
             Merged metadata with combined tags and merged custom fields
         """
@@ -647,13 +649,13 @@ class CollectionMetadata(BaseModel):
             return child or cls()
         if child is None:
             return parent
-        
+
         # Combine tags (deduplicate while preserving order)
         merged_tags = list(dict.fromkeys(parent.tags + child.tags))
-        
+
         # Merge custom fields (child overrides parent)
         merged_custom_fields = {**parent.customFields, **child.customFields}
-        
+
         return cls(tags=merged_tags, customFields=merged_custom_fields)
 
 
@@ -668,9 +670,13 @@ class RagCollectionConfig(BaseModel):
     allowChunkingOverride: bool = Field(
         default=True, description="Allow users to override chunking strategy during ingestion"
     )
-    metadata: Optional[CollectionMetadata] = Field(default=None, description="Collection-specific metadata (merged with parent)")
+    metadata: Optional[CollectionMetadata] = Field(
+        default=None, description="Collection-specific metadata (merged with parent)"
+    )
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
-    embeddingModel: str = Field(min_length=1, description="Embedding model ID (can be set at creation, immutable after)")
+    embeddingModel: str = Field(
+        min_length=1, description="Embedding model ID (can be set at creation, immutable after)"
+    )
     createdBy: str = Field(min_length=1, description="User ID of creator")
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
@@ -689,7 +695,9 @@ class RagCollectionConfig(BaseModel):
                 raise ValueError("Collection name must be 100 characters or less")
             # Allow alphanumeric, spaces, hyphens, underscores
             if not all(c.isalnum() or c in " -_" for c in name):
-                raise ValueError("Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores")
+                raise ValueError(
+                    "Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores"
+                )
         return name
 
     @field_validator("allowedGroups")
@@ -836,6 +844,8 @@ class UpdateVectorStoreRequest(BaseModel):
     repositoryName: Optional[str] = Field(default=None, description="User-friendly name")
     embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
-    allowUserCollections: Optional[bool] = Field(default=None, description="Whether non-admin users can create collections")
+    allowUserCollections: Optional[bool] = Field(
+        default=None, description="Whether non-admin users can create collections"
+    )
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")

@@ -146,9 +146,7 @@ class CollectionMixin(BaseMixin):
         # Remove None values
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        response = self._session.put(
-            f"{self.url}/repository/{repository_id}/collection/{collection_id}", json=payload
-        )
+        response = self._session.put(f"{self.url}/repository/{repository_id}/collection/{collection_id}", json=payload)
         if response.status_code == 200:
             return response.json()
         else:

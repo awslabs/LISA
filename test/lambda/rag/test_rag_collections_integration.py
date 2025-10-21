@@ -31,16 +31,14 @@ import os
 import sys
 import tempfile
 import time
-from typing import Dict, List, Optional
+from typing import Dict
 
 import pytest
 
 # Add test utils to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from test.utils import (
-    create_lisa_client,
-)
+from test.utils import create_lisa_client
 
 # Add lisa-sdk to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../lisa-sdk"))
@@ -73,12 +71,12 @@ class TestRagCollectionsIntegration:
     def cleanup_all_resources(self, lisa_client, test_repository_id):
         """Cleanup fixture that runs after all tests in the class."""
         yield  # Let tests run first
-        
+
         # Cleanup all created collections
         logger.info("=" * 60)
         logger.info("CLEANUP: Removing all test collections created during tests")
         logger.info("=" * 60)
-        
+
         for collection_id in self.created_collections:
             try:
                 logger.info(f"Deleting collection: {collection_id}")
@@ -86,7 +84,7 @@ class TestRagCollectionsIntegration:
                 logger.info(f"✓ Deleted collection: {collection_id}")
             except Exception as e:
                 logger.warning(f"Failed to delete collection {collection_id}: {e}")
-        
+
         # Clear the list
         self.created_collections.clear()
         logger.info("✓ Cleanup complete")
@@ -131,7 +129,6 @@ class TestRagCollectionsIntegration:
             pytest.skip: If no suitable repository is available
         """
         return os.getenv("TEST_REPOSITORY_ID", "test-pgvector-rag")
-       
 
     @pytest.fixture(scope="class")
     def test_embedding_model(self) -> str:
@@ -173,7 +170,7 @@ class TestRagCollectionsIntegration:
             )
             collection_id = collection.get("collectionId")
             logger.info(f"Created collection: {collection_id}")
-            
+
             # Track for cleanup
             self.created_collections.append(collection_id)
 
@@ -239,9 +236,9 @@ class TestRagCollectionsIntegration:
         assert retrieved is not None
         assert retrieved.get("collectionId") == collection_id
         assert retrieved.get("name") == collection_name
-        logger.info(f"✓ Collection retrieved successfully via API")
+        logger.info("✓ Collection retrieved successfully via API")
 
-        logger.info(f"✓ Test 1 completed successfully")
+        logger.info("✓ Test 1 completed successfully")
 
     def test_02_ingest_document_to_collection(
         self,
@@ -279,9 +276,9 @@ class TestRagCollectionsIntegration:
             file=s3_key,
             collection_id=collection_id,
         )
-        logger.info(f"✓ Ingestion job started")
+        logger.info("✓ Ingestion job started")
         logger.info(f"Jobs response: {jobs}")
-        
+
         assert len(jobs) > 0, f"No jobs returned from ingestion. Response: {jobs}"
         job_info = jobs[0]
         job_id = job_info.get("jobId")
@@ -291,8 +288,7 @@ class TestRagCollectionsIntegration:
         # Wait for batch job to complete and document to appear
         max_wait = 360  # 6 minutes to account for infrastructure spin-up
         start_time = time.time()
-        document_id = None
-        
+
         logger.info(f"Waiting for batch job to complete (up to {max_wait}s)...")
         while time.time() - start_time < max_wait:
             try:
@@ -305,7 +301,7 @@ class TestRagCollectionsIntegration:
             except Exception as e:
                 logger.debug(f"Waiting for ingestion: {e}")
             time.sleep(10)
-        
+
         assert documents and len(documents) > 0, f"Document ingestion timed out after {max_wait}s"
 
         # Verify document exists and has correct attributes
@@ -320,7 +316,7 @@ class TestRagCollectionsIntegration:
         assert source_uri.startswith("s3://"), f"Invalid S3 source URI: {source_uri}"
         logger.info(f"✓ Document has valid S3 source: {source_uri}")
 
-        logger.info(f"✓ Test 2 completed successfully")
+        logger.info("✓ Test 2 completed successfully")
 
     def test_03_similarity_search_on_collection(
         self,
@@ -348,15 +344,12 @@ class TestRagCollectionsIntegration:
         query = "machine learning and artificial intelligence"
         max_retries = 3
         results = None
-        
+
         for attempt in range(max_retries):
             try:
                 logger.info(f"Similarity search attempt {attempt + 1}/{max_retries}")
                 results = lisa_client.similarity_search(
-                    repo_id=test_repository_id, 
-                    query=query, 
-                    k=5, 
-                    collection_id=collection_id
+                    repo_id=test_repository_id, query=query, k=5, collection_id=collection_id
                 )
                 break
             except Exception as e:
@@ -380,9 +373,9 @@ class TestRagCollectionsIntegration:
                 break
 
         assert found_relevant, "Search results did not contain relevant content"
-        logger.info(f"✓ Search results contain relevant content")
+        logger.info("✓ Search results contain relevant content")
 
-        logger.info(f"✓ Test 3 completed successfully")
+        logger.info("✓ Test 3 completed successfully")
 
     def test_04_delete_document_and_verify_cleanup(
         self,
@@ -401,7 +394,7 @@ class TestRagCollectionsIntegration:
         """
         # collection_id = "b387966e-e377-44fb-b4aa-5568cd1033ef"
         collection_id = test_collection.get("collectionId")
-        logger.info(f"Test 4: Deleting document and verifying cleanup")
+        logger.info("Test 4: Deleting document and verifying cleanup")
 
         # Get documents in collection
         documents = lisa_client.list_documents(test_repository_id, collection_id)
@@ -412,9 +405,9 @@ class TestRagCollectionsIntegration:
 
         # Delete document
         delete_response = lisa_client.delete_document_by_ids(test_repository_id, collection_id, [document_id])
-        logger.info(f"✓ Document deletion requested")
+        logger.info("✓ Document deletion requested")
         logger.info(f"Delete response: {delete_response}")
-        
+
         # Get job info from response
         jobs = delete_response.get("jobs", [])
         assert len(jobs) > 0, "No jobs returned from deletion"
@@ -424,7 +417,7 @@ class TestRagCollectionsIntegration:
         # Wait for batch job to complete
         max_wait = 120
         start_time = time.time()
-        
+
         logger.info(f"Waiting for deletion job to complete (up to {max_wait}s)...")
         while time.time() - start_time < max_wait:
             try:
@@ -438,22 +431,22 @@ class TestRagCollectionsIntegration:
             except Exception as e:
                 logger.debug(f"Waiting for deletion: {e}")
             time.sleep(10)
-        
+
         # Verify document removed
         remaining_docs = lisa_client.list_documents(test_repository_id, collection_id)
         remaining_ids = [doc.get("document_id") for doc in remaining_docs]
         assert document_id not in remaining_ids, f"Document deletion timed out after {max_wait}s"
-        logger.info(f"✓ Document removed from collection listing")
+        logger.info("✓ Document removed from collection listing")
 
         # Verify document removed using SDK get_document (should fail/return None)
         try:
-            deleted_doc = lisa_client.get_document(test_repository_id, document_id)
+            _ = lisa_client.get_document(test_repository_id, document_id)
             assert False, f"Document {document_id} still exists after deletion"
         except Exception:
             # Expected - document should not be found
-            logger.info(f"✓ Document removed (get_document failed as expected)")
+            logger.info("✓ Document removed (get_document failed as expected)")
 
-        logger.info(f"✓ Test 4 completed successfully")
+        logger.info("✓ Test 4 completed successfully")
 
     def test_05_delete_collection_with_documents(
         self,
@@ -473,12 +466,11 @@ class TestRagCollectionsIntegration:
         - All embeddings removed from vector store
         - Collection marked as DELETED or removed from DynamoDB
         """
-        logger.info(f"Test 5: Deleting collection with documents")
+        logger.info("Test 5: Deleting collection with documents")
 
-    
         collection_id = test_collection.get("collectionId")
         logger.info(f"Created test collection: {collection_id}")
-        
+
         # Track for cleanup (in case test fails before deletion)
         self.created_collections.append(collection_id)
 
@@ -504,8 +496,8 @@ class TestRagCollectionsIntegration:
 
         # Delete collection
         lisa_client.delete_collection(test_repository_id, collection_id)
-        logger.info(f"✓ Collection deletion requested")
-        
+        logger.info("✓ Collection deletion requested")
+
         # Remove from tracking list since we're testing deletion
         if collection_id in self.created_collections:
             self.created_collections.remove(collection_id)
@@ -516,13 +508,13 @@ class TestRagCollectionsIntegration:
         # Verify all documents removed using SDK
         for document_id in document_ids:
             try:
-                deleted_doc = lisa_client.get_document(test_repository_id, document_id)
+                _ = lisa_client.get_document(test_repository_id, document_id)
                 assert False, f"Document {document_id} still exists after collection deletion"
             except Exception:
                 # Expected - document should not be found
                 pass
 
-        logger.info(f"✓ All documents removed")
+        logger.info("✓ All documents removed")
 
         # Verify collection no longer returns documents
         try:
@@ -532,9 +524,9 @@ class TestRagCollectionsIntegration:
             # Collection may not exist anymore, which is also acceptable
             pass
 
-        logger.info(f"✓ Collection cleanup verified")
+        logger.info("✓ Collection cleanup verified")
 
-        logger.info(f"✓ Test 5 completed successfully")
+        logger.info("✓ Test 5 completed successfully")
 
 
 if __name__ == "__main__":

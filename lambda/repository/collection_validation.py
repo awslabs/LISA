@@ -60,9 +60,7 @@ class CollectionValidationService:
         self.collection_repo = collection_repo or CollectionRepository()
         self.vector_store_repo = vector_store_repo or VectorStoreRepository()
 
-    def validate_create_request(
-        self, request: CreateCollectionRequest, repository_id: str
-    ) -> Dict[str, Any]:
+    def validate_create_request(self, request: CreateCollectionRequest, repository_id: str) -> Dict[str, Any]:
         """
         Validate a collection creation request.
 
@@ -279,9 +277,7 @@ class CollectionValidationService:
         if isinstance(strategy, FixedSizeChunkingStrategy):
             # Validate chunk size
             if strategy.chunkSize < MIN_CHUNK_SIZE or strategy.chunkSize > MAX_CHUNK_SIZE:
-                raise ValidationError(
-                    f"chunkSize must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}"
-                )
+                raise ValidationError(f"chunkSize must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}")
 
             # Validate chunk overlap
             if strategy.chunkOverlap < 0:
@@ -292,13 +288,11 @@ class CollectionValidationService:
                     f"chunkOverlap ({strategy.chunkOverlap}) must be less than or equal to "
                     f"half of chunkSize ({strategy.chunkSize / 2})"
                 )
-        
+
         elif isinstance(strategy, FixedChunkingStrategy):
             # Legacy format validation
             if strategy.size < MIN_CHUNK_SIZE or strategy.size > MAX_CHUNK_SIZE:
-                raise ValidationError(
-                    f"chunk size must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}"
-                )
+                raise ValidationError(f"chunk size must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}")
 
             if strategy.overlap < 0:
                 raise ValidationError("chunk overlap must be non-negative")
@@ -308,7 +302,7 @@ class CollectionValidationService:
                     f"chunk overlap ({strategy.overlap}) must be less than or equal to "
                     f"half of chunk size ({strategy.size / 2})"
                 )
-        
+
         else:
             # Unsupported strategy type
             raise ValidationError(

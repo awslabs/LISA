@@ -28,7 +28,7 @@ export enum CollectionStatus {
 
 /**
  * Enum for chunking strategy types
- * 
+ *
  * Note: Only FIXED_SIZE is currently implemented.
  * Additional strategies can be added by implementing a ChunkingStrategyHandler
  * and registering it with the ChunkingStrategyFactory in the backend.
@@ -53,7 +53,7 @@ export const FixedSizeChunkingStrategySchema = z.object({
 
 /**
  * Union of all chunking strategy types
- * 
+ *
  * Currently only FIXED_SIZE is implemented. Additional strategies can be added here
  * when their backend implementations are complete.
  */
@@ -162,7 +162,7 @@ export const UpdateCollectionRequestSchema = z.object({
     pipelines: z.array(PipelineConfigSchema).optional().describe('Automated ingestion pipelines'),
     status: z.nativeEnum(CollectionStatus).optional().describe('Collection status'),
 }).refine(
-    (data) => Object.values(data).some(value => value !== undefined),
+    (data) => Object.values(data).some((value) => value !== undefined),
     { message: 'At least one field must be provided for update' }
 );
 

@@ -18,19 +18,11 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
-from uuid import uuid4
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from models.domain_objects import (
-    CollectionSortBy,
-    CollectionStatus,
-    PaginationParams,
-    PaginationResult,
-    RagCollectionConfig,
-    SortOrder,
-)
+from models.domain_objects import CollectionSortBy, CollectionStatus, RagCollectionConfig, SortOrder
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
 
@@ -81,7 +73,7 @@ class CollectionRepository:
 
             # Convert to dict for DynamoDB
             item = collection.model_dump()
-            
+
             # Convert datetime objects to ISO strings
             item["createdAt"] = collection.createdAt.isoformat()
             item["updatedAt"] = collection.updatedAt.isoformat()
@@ -97,9 +89,7 @@ class CollectionRepository:
 
         except ClientError as e:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                raise CollectionRepositoryError(
-                    f"Collection with ID '{collection.collectionId}' already exists"
-                )
+                raise CollectionRepositoryError(f"Collection with ID '{collection.collectionId}' already exists")
             logger.error(f"Failed to create collection: {e}")
             raise CollectionRepositoryError(f"Failed to create collection: {str(e)}")
         except Exception as e:
@@ -214,9 +204,7 @@ class CollectionRepository:
         except ClientError as e:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 if expected_version:
-                    raise CollectionRepositoryError(
-                        f"Collection was modified by another process. Please retry."
-                    )
+                    raise CollectionRepositoryError("Collection was modified by another process. Please retry.")
                 raise CollectionRepositoryError(f"Collection '{collection_id}' not found")
             logger.error(f"Failed to update collection {collection_id}: {e}")
             raise CollectionRepositoryError(f"Failed to update collection: {str(e)}")
@@ -328,7 +316,7 @@ class CollectionRepository:
 
             # Sort collections if needed (for non-default sort fields)
             if sort_by != CollectionSortBy.CREATED_AT:
-                reverse = (sort_order == SortOrder.DESC)
+                reverse = sort_order == SortOrder.DESC
                 if sort_by == CollectionSortBy.NAME:
                     collections.sort(key=lambda c: c.name or "", reverse=reverse)
                 elif sort_by == CollectionSortBy.UPDATED_AT:
@@ -337,9 +325,7 @@ class CollectionRepository:
             # Get pagination token
             next_key = response.get("LastEvaluatedKey")
 
-            logger.info(
-                f"Listed {len(collections)} collections for repository {repository_id}"
-            )
+            logger.info(f"Listed {len(collections)} collections for repository {repository_id}")
             return collections, next_key
 
         except Exception as e:

@@ -16,7 +16,6 @@
 import logging
 import os
 from io import BytesIO
-from typing import Any, List
 from urllib.parse import urlparse
 
 import boto3
@@ -57,9 +56,6 @@ def _extract_text_by_content_type(content_type: str, s3_object: dict) -> str:
     else:
         logger.error(f"File has unsupported content type: {content_type}")
         raise RagUploadException("Unsupported file type")
-
-
-
 
 
 def _extract_pdf_content(s3_object: dict) -> str:

@@ -37,8 +37,8 @@ from models.domain_objects import (
     SortOrder,
     UpdateCollectionRequest,
 )
-from repository.config.params import ListJobsParams
 from repository.collection_service import CollectionManagementService
+from repository.config.params import ListJobsParams
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -121,7 +121,8 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     Args:
         event (dict): The Lambda event object containing:
-            - queryStringParameters.modelName (optional): Name of the embedding model (not needed if collectionId provided)
+            - queryStringParameters.modelName (optional): Name of the embedding model
+              (not needed if collectionId provided)
             - queryStringParameters.collectionId (optional): Collection ID to search within
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
@@ -144,7 +145,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     collection_id = query_string_params.get("collectionId")
 
     repository = get_repository(event, repository_id=repository_id)
-    
+
     # Get user context for collection access
     username = get_username(event)
     user_groups = get_groups(event)
@@ -162,7 +163,11 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
                 user_groups=user_groups,
                 is_admin=admin,
             )
-            model_name = collection.embeddingModel if hasattr(collection, 'embeddingModel') and collection.embeddingModel else repository.get("embeddingModelId")
+            model_name = (
+                collection.embeddingModel
+                if hasattr(collection, "embeddingModel") and collection.embeddingModel
+                else repository.get("embeddingModelId")
+            )
             logger.info(f"Using embedding model from collection: {model_name}")
         except Exception as e:
             logger.warning(f"Failed to get collection {collection_id}: {e}, falling back to modelName parameter")
@@ -170,7 +175,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     else:
         # Use modelName from query parameters
         model_name = query_string_params.get("modelName")
-    
+
     if not model_name:
         raise ValidationError("modelName is required when collectionId is not provided")
 
@@ -255,12 +260,12 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Parse request body
     try:
-        body = json.loads(event.get("body", "{}"))
+        body = json.loads(event.get("body", {}))
         request = CreateCollectionRequest(**body)
     except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON in request body: {str(e)}")
+        raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
-        raise ValidationError(f"Invalid request: {str(e)}")
+        raise ValidationError(f"Invalid request: {e}")
 
     # Get user context
     username = get_username(event)
@@ -365,12 +370,12 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Parse request body
     try:
-        body = json.loads(event.get("body", "{}"))
+        body = json.loads(event.get("body", {}))
         request = UpdateCollectionRequest(**body)
     except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON in request body: {str(e)}")
+        raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
-        raise ValidationError(f"Invalid request: {str(e)}")
+        raise ValidationError(f"Invalid request: {e}")
 
     # Get user context
     username = get_username(event)
@@ -430,9 +435,6 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("repositoryId is required")
     if not collection_id:
         raise ValidationError("collectionId is required")
-
-    # Parse query parameters
-    query_params = event.get("queryStringParameters", {}) or {}
 
     # Get user context
     username = get_username(event)
@@ -501,10 +503,10 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
 
     # Parse query parameters
     query_params = event.get("queryStringParameters", {}) or {}
-    
+
     # Parse pagination parameters
     page_size = PaginationParams.parse_page_size(query_params, default=20, max_size=100)
-    
+
     # Parse last evaluated key if present
     last_evaluated_key = None
     if "lastEvaluatedKeyCollectionId" in query_params:
@@ -520,7 +522,7 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
 
     # Parse filter parameters
     filter_text = query_params.get("filter")
-    
+
     # Parse status filter
     status_filter = None
     if "status" in query_params:
@@ -568,14 +570,15 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
     total_count = None
     current_page = None
     total_pages = None
-    
+
     # Only calculate total count if no filters are applied (for performance)
     if not filter_text and not status_filter:
         try:
             from repository.collection_repo import CollectionRepository
+
             repo = CollectionRepository()
             total_count = repo.count_by_repository(repository_id)
-            
+
             # Calculate page numbers if we have total count
             if total_count is not None:
                 total_pages = (total_count + page_size - 1) // page_size
@@ -677,13 +680,15 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
         ingestion_job_repository.save(ingestion_job)
         ingestion_service.create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
-        
-        jobs.append({
-            "jobId": ingestion_job.id,
-            "documentId": ingestion_job.document_id,
-            "status": ingestion_job.status,
-            "s3Path": ingestion_job.s3_path,
-        })
+
+        jobs.append(
+            {
+                "jobId": ingestion_job.id,
+                "documentId": ingestion_job.document_id,
+                "status": ingestion_job.status,
+                "s3Path": ingestion_job.s3_path,
+            }
+        )
 
     return {"jobs": jobs}
 
@@ -732,7 +737,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     # Determine collection ID
     # Priority: 1. body.collectionId, 2. embedding model ID (default collection)
     collection_id = body.get("collectionId")
-    
+
     if not collection_id:
         # Default to embedding model-based collection for backward compatibility
         embedding_model = body.get("embeddingModel", {})
@@ -742,7 +747,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
         else:
             # Fall back to repository's embedding model
             collection_id = repository.get("embeddingModelId", "")
-    
+
     if not collection_id:
         raise ValidationError("collectionId is required or embeddingModel.modelName must be provided")
 
@@ -767,10 +772,10 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     # Determine chunking strategy
     chunk_strategy = None
-    
+
     # Check if user provided override chunking strategy
     override_chunking = body.get("chunkingStrategy")
-    
+
     if collection:
         # Check if chunking override is allowed
         if override_chunking and collection.allowChunkingOverride:
@@ -794,7 +799,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
         else:
             # Use collection's chunking strategy
             chunk_strategy = collection.chunkingStrategy
-    
+
     # Fall back to legacy query parameters if no strategy determined
     if not chunk_strategy:
         query_string_params = event.get("queryStringParameters", {}) or {}
@@ -805,8 +810,8 @@ def ingest_documents(event: dict, context: dict) -> dict:
     # Get metadata from collection and merge with request metadata
     metadata = {}
     if collection and collection.metadata:
-        metadata = collection.metadata.model_dump() if hasattr(collection.metadata, 'model_dump') else {}
-    
+        metadata = collection.metadata.model_dump() if hasattr(collection.metadata, "model_dump") else {}
+
     # Merge with request metadata
     request_metadata = body.get("metadata", {})
     if request_metadata:
@@ -816,11 +821,11 @@ def ingest_documents(event: dict, context: dict) -> dict:
     embedding_model_id = None
     if collection:
         # Use collection's embedding model if specified
-        embedding_model_id = collection.embeddingModel if hasattr(collection, 'embeddingModel') else None
+        embedding_model_id = collection.embeddingModel if hasattr(collection, "embeddingModel") else None
     if not embedding_model_id:
         # Fall back to repository's embedding model
         embedding_model_id = repository.get("embeddingModelId")
-    
+
     # Create ingestion jobs
     ingestion_document_ids = []
     for key in body["keys"]:
@@ -843,21 +848,23 @@ def ingest_documents(event: dict, context: dict) -> dict:
     for job_id in ingestion_document_ids:
         try:
             job = ingestion_job_repository.find_by_id(job_id)
-            jobs.append({
-                "jobId": job.id,
-                "documentId": job.document_id,
-                "status": job.status,
-                "s3Path": job.s3_path,
-            })
+            jobs.append(
+                {
+                    "jobId": job.id,
+                    "documentId": job.document_id,
+                    "status": job.status,
+                    "s3Path": job.s3_path,
+                }
+            )
         except Exception as e:
             logger.warning(f"Failed to retrieve job {job_id}: {e}")
             jobs.append({"jobId": job_id, "status": "UNKNOWN"})
-    
+
     response = {
         "jobs": jobs,
         "collectionId": collection_id,
     }
-    
+
     # Add collection name if available
     if collection:
         response["collectionName"] = collection.name or collection_id
@@ -868,7 +875,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 @api_wrapper
 def get_document(event: dict, context: dict) -> Dict[str, Any]:
     """Get a document by ID.
-    
+
     Args:
         event (dict): The Lambda event object containing:
             path_params:
@@ -1162,7 +1169,7 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
         HTTPException: If repository not found
     """
     from models.domain_objects import UpdateVectorStoreRequest
-    
+
     # Extract path parameters
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")
@@ -1172,12 +1179,12 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
 
     # Parse request body
     try:
-        body = json.loads(event.get("body", "{}"))
+        body = json.loads(event.get("body", {}))
         request = UpdateVectorStoreRequest(**body)
     except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON in request body: {str(e)}")
+        raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
-        raise ValidationError(f"Invalid request: {str(e)}")
+        raise ValidationError(f"Invalid request: {e}")
 
     # Ensure repository exists
     _ = vs_repo.find_repository_by_id(repository_id)
@@ -1193,7 +1200,9 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     if request.allowUserCollections is not None:
         updates["allowUserCollections"] = request.allowUserCollections
     if request.metadata is not None:
-        updates["metadata"] = request.metadata.model_dump() if hasattr(request.metadata, "model_dump") else request.metadata
+        updates["metadata"] = (
+            request.metadata.model_dump() if hasattr(request.metadata, "model_dump") else request.metadata
+        )
     if request.pipelines is not None:
         updates["pipelines"] = [p.model_dump() if hasattr(p, "model_dump") else p for p in request.pipelines]
 
@@ -1231,7 +1240,7 @@ def delete(event: dict, context: dict) -> Any:
         raise ValidationError("repositoryId is required")
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
-    
+
     # Delete all collections associated with this repository
     try:
         logger.info(f"Deleting all collections for repository: {repository_id}")
@@ -1242,7 +1251,7 @@ def delete(event: dict, context: dict) -> Any:
             is_admin=True,
             pagination_params=PaginationParams(page_size=1000),  # Get all collections
         )
-        
+
         for collection in collections.collections:
             try:
                 logger.info(f"Deleting collection: {collection.collectionId}")
@@ -1259,7 +1268,7 @@ def delete(event: dict, context: dict) -> Any:
     except Exception as e:
         logger.error(f"Error listing/deleting collections for repository {repository_id}: {str(e)}")
         # Continue with repository deletion even if collection cleanup fails
-    
+
     if repository.get("legacy", False) is True:
         _remove_legacy(repository_id)
         vs_repo.delete(repository_id=repository_id)
@@ -1299,7 +1308,7 @@ def delete_index(event: dict, context: dict) -> None:
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id)
     id_token = get_id_token(event)
-    embeddings = RagEmbeddings(model_name=collection_id, id_token=id_token) # model_name can be anything
+    embeddings = RagEmbeddings(model_name=collection_id, id_token=id_token)  # model_name can be anything
     vs = get_vector_store_client(repository_id, index=collection_id, embeddings=embeddings)
 
     try:

@@ -29,7 +29,7 @@ from models.domain_objects import (
     UpdateCollectionRequest,
 )
 from repository.collection_access_control import CollectionAccessControlService
-from repository.collection_repo import CollectionRepository, CollectionRepositoryError
+from repository.collection_repo import CollectionRepository
 from repository.collection_validation import CollectionValidationService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
@@ -298,31 +298,31 @@ class CollectionManagementService:
                 last_key = None
                 total_deleted = 0
                 batch_size = 100
-                
+
                 while True:
                     docs, last_key, _ = self.document_repo.list_all(
                         repository_id=repository_id,
                         collection_id=collection_id,
                         last_evaluated_key=last_key,
                         limit=batch_size,
-                        join_docs=True  # Include subdoc IDs for vector store deletion
+                        join_docs=True,  # Include subdoc IDs for vector store deletion
                     )
-                    
+
                     if not docs:
                         break
-                    
+
                     logger.info(f"Processing batch of {len(docs)} documents from collection {collection_id}")
-                    
+
                     # Delete embeddings from vector store
                     try:
                         self._delete_embeddings_from_vector_store(docs, repository_id, collection_id)
                     except Exception as e:
                         logger.error(f"Failed to delete embeddings from vector store: {e}")
                         # Continue with other deletions
-                    
+
                     # Delete documents from S3
                     self.document_repo.delete_s3_docs(repository_id, docs)
-                    
+
                     # Delete document records from DynamoDB
                     for doc in docs:
                         try:
@@ -330,14 +330,14 @@ class CollectionManagementService:
                             total_deleted += 1
                         except Exception as e:
                             logger.warning(f"Failed to delete document {doc.document_id}: {e}")
-                    
+
                     # Break if no more pages
                     if not last_key:
                         break
-                
+
                 if total_deleted > 0:
                     logger.info(f"Deleted {total_deleted} documents from collection {collection_id}")
-                    
+
             except Exception as e:
                 logger.error(f"Failed to delete documents for collection {collection_id}: {e}")
                 # Continue with collection deletion even if document cleanup fails
@@ -517,8 +517,6 @@ class CollectionManagementService:
         # Inherit chunking strategy if not specified
         chunking_strategy = request.chunkingStrategy
         if chunking_strategy is None and parent_config.get("pipelines"):
-            # Get chunking strategy from first pipeline
-            first_pipeline = parent_config["pipelines"][0]
             # TODO: Convert pipeline config to chunking strategy
             # For now, leave as None
             pass
@@ -551,9 +549,7 @@ class CollectionManagementService:
             pipelines=request.pipelines or [],
         )
 
-    def _delete_embeddings_from_vector_store(
-        self, docs: List, repository_id: str, collection_id: str
-    ) -> None:
+    def _delete_embeddings_from_vector_store(self, docs: List, repository_id: str, collection_id: str) -> None:
         """
         Delete document embeddings from the vector store.
 
@@ -569,7 +565,7 @@ class CollectionManagementService:
             # Collect all subdoc IDs to delete
             subdoc_ids = []
             for doc in docs:
-                if hasattr(doc, 'subdocs') and doc.subdocs:
+                if hasattr(doc, "subdocs") and doc.subdocs:
                     subdoc_ids.extend(doc.subdocs)
 
             if not subdoc_ids:
@@ -588,7 +584,7 @@ class CollectionManagementService:
             # Delete embeddings in batches to avoid overwhelming the vector store
             batch_size = 100
             for i in range(0, len(subdoc_ids), batch_size):
-                batch = subdoc_ids[i:i + batch_size]
+                batch = subdoc_ids[i : i + batch_size]
                 try:
                     vector_store.delete(batch)
                     logger.info(f"Deleted {len(batch)} embeddings from vector store")

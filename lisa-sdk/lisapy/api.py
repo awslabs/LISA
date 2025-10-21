@@ -26,9 +26,7 @@ from .repository import RepositoryMixin
 from .session import SessionMixin
 
 
-class LisaApi(
-    BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, RagMixin, SessionMixin, CollectionMixin
-):
+class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, RagMixin, SessionMixin, CollectionMixin):
     url: str = Field(..., description="REST API url for LiteLLM")
     headers: Optional[Dict[str, str]] = Field(None, description="Headers for request.")
     cookies: Optional[Dict[str, str]] = Field(None, description="Cookies for request.")

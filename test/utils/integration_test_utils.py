@@ -27,7 +27,7 @@ import logging
 import os
 import sys
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Optional
 
 import boto3
 
@@ -39,7 +39,9 @@ from lisapy.api import LisaApi
 logger = logging.getLogger(__name__)
 
 
-def get_management_key(deployment_name: str, region: Optional[str] = None, deployment_stage: Optional[str] = None) -> str:
+def get_management_key(
+    deployment_name: str, region: Optional[str] = None, deployment_stage: Optional[str] = None
+) -> str:
     """Retrieve management key from AWS Secrets Manager.
 
     Args:
@@ -54,17 +56,19 @@ def get_management_key(deployment_name: str, region: Optional[str] = None, deplo
         Exception: If the key cannot be retrieved
     """
     secrets_client = boto3.client("secretsmanager", region_name=region) if region else boto3.client("secretsmanager")
-    
+
     # Try different secret name patterns
     secret_patterns = []
     if deployment_stage:
         secret_patterns.append(f"{deployment_stage}-{deployment_name}-management-key")
-    secret_patterns.extend([
-        f"{deployment_name}-lisa-management-key",
-        f"{deployment_name}-management-key",
-        f"lisa-{deployment_name}-management-key",
-    ])
-    
+    secret_patterns.extend(
+        [
+            f"{deployment_name}-lisa-management-key",
+            f"{deployment_name}-management-key",
+            f"lisa-{deployment_name}-management-key",
+        ]
+    )
+
     last_error = None
     for secret_name in secret_patterns:
         try:
@@ -77,7 +81,7 @@ def get_management_key(deployment_name: str, region: Optional[str] = None, deplo
             last_error = e
             logger.debug(f"Secret {secret_name} not found, trying next pattern...")
             continue
-    
+
     # If we get here, none of the patterns worked
     logger.error(f"Failed to retrieve management key. Tried patterns: {secret_patterns}")
     logger.error(f"Last error: {last_error}")
@@ -120,7 +124,9 @@ def create_api_token(deployment_name: str, api_key: str, region: Optional[str] =
         raise
 
 
-def setup_authentication(deployment_name: str, region: Optional[str] = None, deployment_stage: Optional[str] = None) -> Dict[str, str]:
+def setup_authentication(
+    deployment_name: str, region: Optional[str] = None, deployment_stage: Optional[str] = None
+) -> Dict[str, str]:
     """Set up authentication for LISA API calls.
 
     Args:

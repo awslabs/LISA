@@ -125,6 +125,11 @@ export class FastApiContainer extends Construct {
             path: REST_API_PATH,
             type: EcsSourceType.ASSET
         };
+        const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
+            baseImage: config.baseImage,
+            path: MCP_WORKBENCH_PATH,
+            type: EcsSourceType.ASSET
+        };
         const instanceType = 'm5.large';
         const healthCheckConfig = {
             command: ['CMD-SHELL', 'exit 0'],
@@ -167,11 +172,7 @@ export class FastApiContainer extends Construct {
                         MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
                     },
                     containerConfig: {
-                        image: {
-                            baseImage: config.baseImage,
-                            path: MCP_WORKBENCH_PATH,
-                            type: EcsSourceType.ASSET
-                        },
+                        image: mcpWorkbenchImage,
                         healthCheckConfig,
                         environment: {},
                         sharedMemorySize: 0,

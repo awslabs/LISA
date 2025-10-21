@@ -180,7 +180,7 @@ export class RepositoryApi extends Construct {
                 name: 'download_document',
                 resource: 'repository',
                 description: 'Creates presigned url to download document within repository',
-                path: 'repository/{repositoryId}/{documentId}/download',
+                path: 'repository/{repositoryId}/document/{documentId}/download',
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,
@@ -222,6 +222,16 @@ export class RepositoryApi extends Construct {
                 description: 'Get a collection by ID within a repository',
                 path: 'repository/{repositoryId}/collection/{collectionId}',
                 method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'delete_collection',
+                resource: 'repository',
+                description: 'Delete a collection within a repository',
+                path: 'repository/{repositoryId}/collection/{collectionId}',
+                method: 'DELETE',
                 environment: {
                     ...baseEnvironment,
                 },

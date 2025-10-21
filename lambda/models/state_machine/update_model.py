@@ -460,7 +460,9 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
         output_dict["guardrail_update_ids"] = []
         return output_dict
 
-    updated_guardrails = created_guardrails = deleted_guardrails = []
+    updated_guardrails = []
+    created_guardrails = []
+    deleted_guardrails = []
 
     try:
         # Get existing guardrails for this model from DynamoDB

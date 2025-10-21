@@ -36,6 +36,7 @@ os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["GUARDRAILS_TABLE_NAME"] = "guardrails-table"
 os.environ["MANAGEMENT_KEY_NAME"] = "test-management-key"
 
 # Create a real retry config
@@ -50,6 +51,7 @@ mock_common.retry_config = retry_config
 # Create mock LiteLLMClient
 mock_litellm_client = MagicMock()
 mock_litellm_client.delete_model.return_value = {"status": "deleted"}
+mock_litellm_client.delete_guardrail.return_value = {"status": "deleted"}
 
 # First, patch sys.modules
 patch.dict(
@@ -108,6 +110,7 @@ from models.domain_objects import ModelStatus
 from models.state_machine.delete_model import (
     handle_delete_from_ddb,
     handle_delete_from_litellm,
+    handle_delete_guardrails,
     handle_delete_stack,
     handle_monitor_delete_stack,
     handle_set_model_to_deleting,
@@ -142,6 +145,32 @@ def model_table(dynamodb):
         TableName="model-table",
         KeySchema=[{"AttributeName": "model_id", "KeyType": "HASH"}],
         AttributeDefinitions=[{"AttributeName": "model_id", "AttributeType": "S"}],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+    return table
+
+
+@pytest.fixture(scope="function")
+def guardrails_table(dynamodb):
+    """Create a mock DynamoDB table for guardrails."""
+    table = dynamodb.create_table(
+        TableName="guardrails-table",
+        KeySchema=[
+            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
+            {"AttributeName": "model_id", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "guardrail_id", "AttributeType": "S"},
+            {"AttributeName": "model_id", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "ModelIdIndex",
+                "KeySchema": [{"AttributeName": "model_id", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+                "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+            }
+        ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
     return table
@@ -452,3 +481,52 @@ def test_handle_monitor_delete_stack_cloudformation_error(sample_event, lambda_c
     # The function should propagate the exception
     with pytest.raises(Exception, match="CloudFormation describe error"):
         handle_monitor_delete_stack(event, lambda_context)
+
+
+def test_handle_delete_guardrails_with_guardrails(guardrails_table, lambda_context):
+    """Test deleting guardrails associated with a model."""
+    # Set up guardrails
+    guardrail1 = {
+        "guardrail_id": "guardrail-1",
+        "model_id": "test-model",
+        "guardrail_name": "test-guardrail-1",
+        "guardrail_identifier": "identifier-1",
+        "guardrail_version": "1",
+        "mode": "pre_call",
+    }
+    guardrail2 = {
+        "guardrail_id": "guardrail-2",
+        "model_id": "test-model",
+        "guardrail_name": "test-guardrail-2",
+        "guardrail_identifier": "identifier-2",
+        "guardrail_version": "1",
+        "mode": "post_call",
+    }
+    guardrails_table.put_item(Item=guardrail1)
+    guardrails_table.put_item(Item=guardrail2)
+
+    event = {"modelId": "test-model"}
+
+    with patch("models.state_machine.delete_model.guardrails_table", guardrails_table):
+        result = handle_delete_guardrails(event, lambda_context)
+
+        assert len(result["deleted_guardrails"]) == 2
+        assert result["deleted_guardrails"][0]["action"] == "deleted"
+
+        # Verify guardrails were deleted from DynamoDB
+        response = guardrails_table.query(
+            IndexName="ModelIdIndex",
+            KeyConditionExpression="model_id = :model_id",
+            ExpressionAttributeValues={":model_id": "test-model"},
+        )
+        assert len(response.get("Items", [])) == 0
+
+
+def test_handle_delete_guardrails_no_guardrails(guardrails_table, lambda_context):
+    """Test deleting guardrails when none exist."""
+    event = {"modelId": "test-model"}
+
+    with patch("models.state_machine.delete_model.guardrails_table", guardrails_table):
+        result = handle_delete_guardrails(event, lambda_context)
+
+        assert result["deleted_guardrails"] == []

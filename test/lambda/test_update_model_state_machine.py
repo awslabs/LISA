@@ -35,6 +35,7 @@ os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["GUARDRAILS_TABLE_NAME"] = "guardrails-table"
 os.environ["MANAGEMENT_KEY_NAME"] = "test-management-key"
 os.environ["LITELLM_CONFIG_OBJ"] = '{"litellm_settings": {"drop_params": true}}'
 
@@ -51,6 +52,9 @@ mock_common.retry_config = retry_config
 mock_litellm_client = MagicMock()
 mock_litellm_client.add_model.return_value = {"model_info": {"id": "test-litellm-id"}}
 mock_litellm_client.delete_model.return_value = {"status": "deleted"}
+mock_litellm_client.create_guardrail.return_value = {"guardrail_id": "test-guardrail-id"}
+mock_litellm_client.update_guardrail.return_value = {"status": "updated"}
+mock_litellm_client.delete_guardrail.return_value = {"status": "deleted"}
 
 # Patch sys.modules
 patch.dict(
@@ -182,6 +186,7 @@ from models.state_machine.update_model import (
     handle_job_intake,
     handle_poll_capacity,
     handle_poll_ecs_deployment,
+    handle_update_guardrails,
     update_ecs_service,
 )
 
@@ -214,6 +219,32 @@ def model_table(dynamodb):
         TableName="model-table",
         KeySchema=[{"AttributeName": "model_id", "KeyType": "HASH"}],
         AttributeDefinitions=[{"AttributeName": "model_id", "AttributeType": "S"}],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+    return table
+
+
+@pytest.fixture(scope="function")
+def guardrails_table(dynamodb):
+    """Create a mock DynamoDB table for guardrails."""
+    table = dynamodb.create_table(
+        TableName="guardrails-table",
+        KeySchema=[
+            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
+            {"AttributeName": "model_id", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "guardrail_id", "AttributeType": "S"},
+            {"AttributeName": "model_id", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "ModelIdIndex",
+                "KeySchema": [{"AttributeName": "model_id", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+                "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+            }
+        ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
     return table
@@ -756,3 +787,61 @@ def test_edge_cases_and_json_error(model_table, lambda_context):
             lambda_context,
         )
         assert result_litellm["needs_ecs_update"] is False
+
+
+def test_handle_update_guardrails(model_table, guardrails_table, lambda_context):
+    """Test updating guardrails for a model."""
+    # Set up existing guardrail
+    existing_guardrail = {
+        "guardrail_id": "existing-guardrail-id",
+        "model_id": "test-model",
+        "guardrail_name": "existing-guardrail",
+        "guardrail_identifier": "old-identifier",
+        "guardrail_version": "1",
+        "mode": "pre_call",
+        "description": "Old description",
+        "allowed_groups": ["group1"],
+    }
+    guardrails_table.put_item(Item=existing_guardrail)
+
+    event = {
+        "model_id": "test-model",
+        "update_payload": {
+            "guardrailsConfig": {
+                "guardrails": {
+                    "guardrail1": {
+                        "guardrail_name": "existing-guardrail",
+                        "guardrail_identifier": "new-identifier",
+                        "guardrail_version": "2",
+                        "mode": "post_call",
+                        "description": "Updated description",
+                        "allowed_groups": ["group2"],
+                    },
+                    "guardrail2": {
+                        "guardrail_name": "new-guardrail",
+                        "guardrail_identifier": "new-identifier",
+                        "guardrail_version": "1",
+                        "mode": "pre_call",
+                        "description": "New guardrail",
+                        "allowed_groups": ["group1"],
+                    },
+                }
+            }
+        },
+    }
+
+    with patch("models.state_machine.update_model.guardrails_table", guardrails_table):
+        result = handle_update_guardrails(event, lambda_context)
+
+        assert result["guardrail_update_summary"]["updated"] == 1
+        assert result["guardrail_update_summary"]["created"] == 1
+        assert result["guardrail_update_summary"]["deleted"] == 0
+
+
+def test_handle_update_guardrails_no_config(lambda_context):
+    """Test updating guardrails when no config provided."""
+    event = {"model_id": "test-model", "update_payload": {}}
+
+    result = handle_update_guardrails(event, lambda_context)
+
+    assert result["guardrail_update_ids"] == []

@@ -27,12 +27,12 @@ from models.domain_objects import (
     CollectionStatus,
     CreateCollectionRequest,
     FixedChunkingStrategy,
+    FixedSizeChunkingStrategy,
     IngestionJob,
     IngestionStatus,
     ListJobsResponse,
     PaginationParams,
     PaginationResult,
-    RagCollectionConfig,
     RagDocument,
     SortOrder,
     UpdateCollectionRequest,
@@ -781,10 +781,8 @@ def ingest_documents(event: dict, context: dict) -> dict:
                 # Parse the chunking strategy from the request
                 strategy_type = override_chunking.get("type")
                 if strategy_type == "FIXED_SIZE":
-                    from models.domain_objects import FixedSizeChunkingStrategy
                     chunk_strategy = FixedSizeChunkingStrategy(**override_chunking)
                 elif strategy_type == "FIXED" or strategy_type == "fixed":
-                    from models.domain_objects import FixedChunkingStrategy
                     chunk_strategy = FixedChunkingStrategy(**override_chunking)
                 else:
                     logger.warning(

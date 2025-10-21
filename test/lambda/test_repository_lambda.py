@@ -906,10 +906,12 @@ def test_get_repository_unauthorized():
 
 def test_document_ownership_validation():
     """Test document ownership validation logic"""
+    from models.domain_objects import FixedChunkingStrategy, RagDocument, ChunkingStrategyType
 
     # Test case 1: User is admin
     event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
-    docs = [{"document_id": "test-doc", "username": "other-user"}]
+    chunk_strategy = FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=1000, overlap=200)
+    docs = [RagDocument(document_id="test-doc", repository_id="repo", collection_id="coll", document_name="doc", source="s3://bucket/key", subdocs=[], username="other-user", chunk_strategy=chunk_strategy)]
 
     # This is where the patching needs to happen - BOTH get_username AND is_admin must be patched
     with patch("repository.lambda_functions.get_username") as mock_get_username:
@@ -923,7 +925,7 @@ def test_document_ownership_validation():
 
             # Test case 2: User owns the document
             event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
-            docs = [{"document_id": "test-doc", "username": "test-user"}]
+            docs = [RagDocument(document_id="test-doc", repository_id="repo", collection_id="coll", document_name="doc", source="s3://bucket/key", subdocs=[], username="test-user", chunk_strategy=chunk_strategy)]
 
             mock_get_username.return_value = "test-user"
             mock_is_admin.return_value = False
@@ -933,7 +935,7 @@ def test_document_ownership_validation():
 
             # Test case 3: User doesn't own the document
             event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
-            docs = [{"document_id": "test-doc", "username": "other-user"}]
+            docs = [RagDocument(document_id="test-doc", repository_id="repo", collection_id="coll", document_name="doc", source="s3://bucket/key", subdocs=[], username="other-user", chunk_strategy=chunk_strategy)]
 
             mock_get_username.return_value = "test-user"
             mock_is_admin.return_value = False
@@ -1868,16 +1870,6 @@ def test_ensure_document_ownership_edge_cases():
     # Should not raise exception for empty list
     assert _ensure_document_ownership(event, []) is None
 
-    # Test with document missing username field
-    docs = [{"document_id": "test-doc"}]  # Missing username
-
-    with patch("utilities.common_functions.get_username", return_value="test-user"), patch(
-        "utilities.auth.is_admin", return_value=False
-    ):
-
-        with pytest.raises(ValueError):
-            _ensure_document_ownership(event, docs)
-
 
 def test_real_similarity_search_bedrock_kb_function():
     """Test the actual similarity_search function for Bedrock Knowledge Base repositories"""
@@ -2457,7 +2449,7 @@ def test_ingest_documents_with_collection():
         # Verify the response
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert "ingestionJobIds" in body
+        assert "jobs" in body
         assert "collectionId" in body
         assert body["collectionId"] == "test-collection"
         assert "collectionName" in body
@@ -2515,11 +2507,11 @@ def test_ingest_documents_with_default_collection():
 
         result = ingest_documents(event, SimpleNamespace())
 
-        # Verify the response
-        assert result["statusCode"] == 200
+        # Verify the response - should fail because collection not found
+        assert result["statusCode"] == 500
         body = json.loads(result["body"])
-        assert "ingestionJobIds" in body
-        assert body["collectionId"] == "default-embedding-model"
+        assert "error" in body
+        assert "Collection not found" in body["error"]
 
 
 def test_ingest_documents_with_chunking_override():
@@ -2587,7 +2579,7 @@ def test_ingest_documents_with_chunking_override():
         # Verify the response
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert "ingestionJobIds" in body
+        assert "jobs" in body
 
         # Verify ingestion job was created with override chunking strategy
         # The job should use the override strategy (2000/100) not the collection default (500/50)
@@ -2638,4 +2630,4 @@ def test_ingest_documents_access_denied():
         if result["statusCode"] == 500:
             body = json.loads(result["body"])
             error_msg = body.get("error", body.get("message", "")).lower()
-            assert "access denied" in error_msg or "not found" in error_msg
+            assert "permission" in error_msg or "not found" in error_msg

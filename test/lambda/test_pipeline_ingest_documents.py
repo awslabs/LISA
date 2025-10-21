@@ -173,7 +173,7 @@ def test_store_chunks_in_vectorstore_success():
         mock_vs.return_value.add_texts.return_value = ["id1", "id2"]
         texts = ["a", "b"]
         metadatas = [{}, {}]
-        ids = pid.store_chunks_in_vectorstore(texts, metadatas, "repo-1", "coll-1")
+        ids = pid.store_chunks_in_vectorstore(texts, metadatas, "repo-1", "coll-1", "embedding-model")
         assert ids == ["id1", "id2"]
 
 
@@ -187,7 +187,7 @@ def test_store_chunks_in_vectorstore_empty_batch():
         texts = ["a"]
         metadatas = [{}]
         with pytest.raises(Exception, match="Failed to store documents in vector store for batch 1"):
-            pid.store_chunks_in_vectorstore(texts, metadatas, "repo-1", "coll-1")
+            pid.store_chunks_in_vectorstore(texts, metadatas, "repo-1", "coll-1", "embedding-model")
 
 
 def test_batch_texts():

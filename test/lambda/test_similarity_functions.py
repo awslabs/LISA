@@ -94,7 +94,7 @@ def test_similarity_search_with_score_opensearch():
 def test_delete_index_opensearch():
     """Test delete_index with OpenSearch repository"""
     event = {
-        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
         "requestContext": {"authorizer": {"groups": "[]"}},
     }
     context = {}
@@ -116,14 +116,14 @@ def test_delete_index_opensearch():
 
         delete_index(event, context)
 
-        mock_vs.client.indices.exists.assert_called_once_with(index="test-model")
-        mock_vs.client.indices.delete.assert_called_once_with(index="test-model")
+        mock_vs.client.indices.exists.assert_called_once_with(index="test-collection")
+        mock_vs.client.indices.delete.assert_called_once_with(index="test-collection")
 
 
 def test_delete_index_opensearch_index_not_exists():
     """Test delete_index with OpenSearch when index doesn't exist"""
     event = {
-        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
         "requestContext": {"authorizer": {"groups": "[]"}},
     }
     context = {}
@@ -145,14 +145,14 @@ def test_delete_index_opensearch_index_not_exists():
 
         delete_index(event, context)
 
-        mock_vs.client.indices.exists.assert_called_once_with(index="test-model")
+        mock_vs.client.indices.exists.assert_called_once_with(index="test-collection")
         mock_vs.client.indices.delete.assert_not_called()
 
 
 def test_delete_index_pgvector():
     """Test delete_index with PGVector repository"""
     event = {
-        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
         "requestContext": {"authorizer": {"groups": "[]"}},
     }
     context = {}
@@ -179,7 +179,7 @@ def test_delete_index_pgvector():
 def test_delete_index_exception():
     """Test delete_index handles exceptions"""
     event = {
-        "pathParameters": {"repositoryId": "test-repo", "modelName": "test-model"},
+        "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
         "requestContext": {"authorizer": {"groups": "[]"}},
     }
     context = {}

@@ -141,7 +141,7 @@ class TestRagCollectionsIntegration:
             str: Embedding model ID
         """
         # Use a common embedding model
-        return os.getenv("TEST_EMBEDDING_MODEL", "titan")
+        return os.getenv("TEST_EMBEDDING_MODEL", "titan-embed")
 
     @pytest.fixture(scope="class")
     def test_collection(self, lisa_client: LisaApi, test_repository_id: str, test_embedding_model: str) -> Dict:
@@ -460,6 +460,7 @@ class TestRagCollectionsIntegration:
         lisa_client: LisaApi,
         test_repository_id: str,
         test_embedding_model: str,
+        test_collection: str,
         test_document_file: str,
     ):
         """Test 5: Ingest document and delete collection.
@@ -474,14 +475,8 @@ class TestRagCollectionsIntegration:
         """
         logger.info(f"Test 5: Deleting collection with documents")
 
-        # Create a new collection for this test
-        collection_name = f"{TEST_COLLECTION_NAME}-delete-{int(time.time())}"
-        collection = lisa_client.create_collection(
-            repository_id=test_repository_id,
-            name=collection_name,
-            description="Test collection for deletion test",
-        )
-        collection_id = collection.get("collectionId")
+    
+        collection_id = test_collection.get("collectionId")
         logger.info(f"Created test collection: {collection_id}")
         
         # Track for cleanup (in case test fails before deletion)
@@ -505,8 +500,6 @@ class TestRagCollectionsIntegration:
         # Get document IDs before deletion
         documents = lisa_client.list_documents(test_repository_id, collection_id)
         document_ids = [doc.get("document_id") for doc in documents]
-        source_uris = [doc.get("source") for doc in documents]
-
         logger.info(f"Collection has {len(document_ids)} documents")
 
         # Delete collection

@@ -255,7 +255,7 @@ class CollectionManagementService:
         user_id: str,
         user_groups: List[str],
         is_admin: bool,
-        hard_delete: bool = False,
+        hard_delete: bool = True,
     ) -> bool:
         """
         Delete a collection (soft or hard delete).

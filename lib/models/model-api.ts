@@ -419,6 +419,7 @@ export class ModelsApi extends Construct {
                                 'dynamodb:PutItem',
                                 'dynamodb:UpdateItem',
                                 'dynamodb:Scan',
+                                'dynamodb:Query'
                             ],
                             resources: [
                                 modelTableArn,

@@ -433,13 +433,11 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
                 "guardrail": {
                     "guardrail_name": f'{guardrail_config["guardrail_name"]}-{model_id}',
                     "litellm_params": {
-                        "guardrail": guardrail_config.get("guardrail_type", "bedrock"),
+                        "guardrail": "bedrock",
                         "mode": str(guardrail_config.get("mode", "pre_call")),
                         "guardrailIdentifier": guardrail_config["guardrail_identifier"],
                         "guardrailVersion": guardrail_config.get("guardrail_version", "DRAFT"),
-                        "default_on": guardrail_config.get("default_on", False),
-                        # TODO: https://github.com/BerriAI/litellm/issues/13126
-                        # "disable_exception_on_block": True,
+                        "default_on": False,
                     },
                     "guardrail_info": {"description": guardrail_config.get("description", "")},
                 }

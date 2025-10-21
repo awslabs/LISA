@@ -89,13 +89,12 @@ class GuardrailConfig(BaseModel):
     """Defines configuration for a single guardrail."""
 
     guardrail_name: str = Field(min_length=1)
-    # guardrail_type: str = Field(default="bedrock")
     guardrail_identifier: str = Field(min_length=1)
     guardrail_version: str = Field(default="DRAFT")
-    # default_on: bool = Field(default=False)
     mode: GuardrailMode = Field(default=GuardrailMode.PRE_CALL)
     description: Optional[str] = None
     allowed_groups: List[str] = Field(default_factory=list)
+    marked_for_deletion: Optional[bool] = Field(default=False)
 
 
 class GuardrailsConfig(BaseModel):

@@ -460,9 +460,7 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
         output_dict["guardrail_update_ids"] = []
         return output_dict
 
-    updated_guardrails = []
-    created_guardrails = []
-    deleted_guardrails = []
+    updated_guardrails = created_guardrails = deleted_guardrails = []
 
     try:
         # Get existing guardrails for this model from DynamoDB
@@ -484,31 +482,18 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
 
             logger.info(f"Processing guardrail update: {guardrail_name}")
 
-            # Check if this guardrail is marked for deletion
-            if guardrail_name == "LISA_MARKED_FOR_DELETION":
-                logger.info(f"Found guardrail marked for deletion: {guardrail_key}")
+            # Check if this guardrail is marked for deletion using deletion flag
+            if guardrail_config.get("marked_for_deletion", False):
+                logger.info(f"Found guardrail marked for deletion: {guardrail_key} (name: {guardrail_name})")
 
-                # Find the existing guardrail by key instead of name
-                # Since we're using the key to identify which specific guardrail to delete
-                guardrail_to_delete = None
-                for _existing_name, existing_guardrail in existing_guardrails.items():
-                    # We need to match by some other criteria since the name is now "LISA_MARKED_FOR_DELETION"
-                    # Let's use the guardrail_identifier if provided, or check if this is the only one
-                    if guardrail_config.get("guardrail_identifier") and existing_guardrail.get(
-                        "guardrail_identifier"
-                    ) == guardrail_config.get("guardrail_identifier"):
-                        guardrail_to_delete = existing_guardrail
-                        break
-                    # If no identifier provided and only one guardrail exists, delete that one
-                    elif not guardrail_config.get("guardrail_identifier") and len(existing_guardrails) == 1:
-                        guardrail_to_delete = existing_guardrail
-                        break
+                # Find the existing guardrail to delete by name
+                guardrail_to_delete = existing_guardrails.get(guardrail_name)
 
                 if guardrail_to_delete:
                     try:
                         logger.info(
                             f"Deleting guardrail: {guardrail_to_delete['guardrail_name']} "
-                            f" (ID: {guardrail_to_delete['guardrail_id']})"
+                            f"(ID: {guardrail_to_delete['guardrail_id']})"
                         )
 
                         # Delete from LiteLLM
@@ -533,7 +518,7 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                         logger.error(f"Error deleting guardrail marked for deletion: {str(delete_error)}")
                         # Continue with other operations even if one deletion fails
                 else:
-                    logger.warning(f"No matching guardrail found for deletion marker: {guardrail_key}")
+                    logger.warning(f"No matching guardrail found for deletion: {guardrail_name}")
 
                 # Skip normal processing for deletion markers
                 continue
@@ -551,11 +536,11 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                     "guardrail": {
                         "guardrail_name": f'{guardrail_config["guardrail_name"]}-{model_id}',
                         "litellm_params": {
-                            "guardrail": guardrail_config.get("guardrail_type", "bedrock"),
+                            "guardrail": "bedrock",
                             "mode": str(guardrail_config.get("mode", "pre_call")),
                             "guardrailIdentifier": guardrail_config["guardrail_identifier"],
                             "guardrailVersion": guardrail_config.get("guardrail_version", "DRAFT"),
-                            "default_on": guardrail_config.get("default_on", False),
+                            "default_on": False,
                         },
                         "guardrail_info": {"description": guardrail_config.get("description", "")},
                     }
@@ -601,11 +586,11 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                     "guardrail": {
                         "guardrail_name": f'{guardrail_config["guardrail_name"]}-{model_id}',
                         "litellm_params": {
-                            "guardrail": guardrail_config.get("guardrail_type", "bedrock"),
+                            "guardrail": "bedrock",
                             "mode": str(guardrail_config.get("mode", "pre_call")),
                             "guardrailIdentifier": guardrail_config["guardrail_identifier"],
                             "guardrailVersion": guardrail_config.get("guardrail_version", "DRAFT"),
-                            "default_on": guardrail_config.get("default_on", False),
+                            "default_on": False,
                         },
                         "guardrail_info": {"description": guardrail_config.get("description", "")},
                     }

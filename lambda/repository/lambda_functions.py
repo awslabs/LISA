@@ -37,7 +37,7 @@ from models.domain_objects import (
     SortOrder,
     UpdateCollectionRequest,
 )
-from repository.collection_service import CollectionManagementService
+from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
@@ -75,7 +75,7 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 vs_repo = VectorStoreRepository()
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
-collection_service = CollectionManagementService(document_repo=doc_repo)
+collection_service = CollectionService()
 
 
 @api_wrapper

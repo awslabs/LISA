@@ -98,3 +98,100 @@ class LiteLLMClient:
         if len(filtered_models) < 1:
             raise ModelNotFoundError("Specified model was not found.")
         return filtered_models[0]
+
+    def create_guardrail(self, guardrail_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a new guardrail configuration in LiteLLM.
+
+        Args:
+            guardrail_config: Dictionary containing guardrail configuration including
+                            guardrail_name, guardrail_identifier, guardrail_version, mode, etc.
+
+        Returns:
+            Dictionary containing the created guardrail information including LiteLLM guardrail ID
+        """
+        resp = requests.post(
+            self._base_uri + "/guardrails",
+            headers=self._headers,
+            json=guardrail_config,
+            timeout=self._timeout,
+            verify=self._verify,
+        )
+        resp.raise_for_status()
+        return resp.json()  # type: ignore [no-any-return]
+
+    def update_guardrail(self, guardrail_id: str, guardrail_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update an existing guardrail configuration in LiteLLM.
+
+        Args:
+            guardrail_id: The LiteLLM guardrail ID to update
+            guardrail_config: Dictionary containing updated guardrail configuration
+
+        Returns:
+            Dictionary containing the updated guardrail information
+        """
+        resp = requests.put(
+            self._base_uri + f"/guardrails/{guardrail_id}",
+            headers=self._headers,
+            json=guardrail_config,
+            timeout=self._timeout,
+            verify=self._verify,
+        )
+        resp.raise_for_status()
+        return resp.json()  # type: ignore [no-any-return]
+
+    def delete_guardrail(self, guardrail_id: str) -> None:
+        """
+        Delete a guardrail configuration from LiteLLM.
+
+        Args:
+            guardrail_id: The LiteLLM guardrail ID to delete
+        """
+        resp = requests.delete(
+            self._base_uri + f"/guardrails/{guardrail_id}",
+            headers=self._headers,
+            timeout=self._timeout,
+            verify=self._verify,
+        )
+        resp.raise_for_status()
+
+    def get_guardrail_info(self, guardrail_id: str) -> Dict[str, Any]:
+        """
+        Get information about a specific guardrail.
+
+        Args:
+            guardrail_id: The LiteLLM guardrail ID to retrieve
+
+        Returns:
+            Dictionary containing guardrail information
+        """
+        resp = requests.get(
+            self._base_uri + f"/guardrails/{guardrail_id}",
+            headers=self._headers,
+            timeout=self._timeout,
+            verify=self._verify,
+        )
+        resp.raise_for_status()
+        return resp.json()  # type: ignore [no-any-return]
+
+    def apply_guardrail(self, guardrail_name: str, text: str) -> Dict[str, Any]:
+        """
+        Apply a guardrail to text content for validation.
+
+        Args:
+            guardrail_name: Name of the guardrail to apply
+            text: Text content to validate against the guardrail
+
+        Returns:
+            Dictionary containing validation results
+        """
+        resp = requests.post(
+            self._base_uri + "/guardrails/apply_guardrail",
+            headers=self._headers,
+            json={"guardrail_name": guardrail_name, "text": text},
+            timeout=self._timeout,
+            verify=self._verify,
+        )
+        resp.raise_for_status()
+        return resp.json()  # type: ignore [no-any-return]

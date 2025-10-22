@@ -183,7 +183,6 @@ export class DeleteModelStateMachine extends Construct {
 
         // State Machine definition
         setModelToDeleting.next(deleteFromLitellm);
-        // deleteFromLitellm.next(deleteStackChoice);
         deleteFromLitellm.next(deleteGuardrails);
         deleteGuardrails.next(deleteStackChoice);
 

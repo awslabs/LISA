@@ -16,7 +16,7 @@
 
 """Repository service for vector store operations."""
 
-from typing import Any, Dict, List
+from typing import Any, cast, Dict, List
 
 from repository.vector_store_repo import VectorStoreRepository
 
@@ -25,17 +25,17 @@ _vs_repo = VectorStoreRepository()
 
 def get_repository(repository_id: str) -> Dict[str, Any]:
     """Get a repository by ID."""
-    return _vs_repo.find_repository_by_id(repository_id)
+    return cast(Dict[str, Any], _vs_repo.find_repository_by_id(repository_id))
 
 
 def list_repositories() -> List[Dict[str, Any]]:
     """List all repositories."""
-    return _vs_repo.get_registered_repositories()
+    return cast(List[Dict[str, Any]], _vs_repo.get_registered_repositories())
 
 
 def get_repository_status() -> Dict[str, str]:
     """Get status of all repositories."""
-    return _vs_repo.get_repository_status()
+    return cast(Dict[str, str], _vs_repo.get_repository_status())
 
 
 def save_repository(repo_data: Dict[str, Any]) -> None:

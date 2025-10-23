@@ -43,7 +43,7 @@ from models.domain_objects import (
     IngestionType,
 )
 from utilities.exceptions import RagUploadException
-from utilities.file_processing import _generate_chunks, generate_chunks
+from utilities.file_processing import generate_chunks
 
 
 @pytest.fixture
@@ -61,15 +61,6 @@ def sample_ingestion_job():
         username="test-user",
         created_date="2024-01-01T00:00:00Z",
     )
-
-
-def test_generate_chunks_success(sample_ingestion_job):
-    """Test _generate_chunks function."""
-    docs = [Document(page_content="This is a test document with some content to split into chunks.", metadata={})]
-    # Use valid chunk_size and chunk_overlap
-    result = _generate_chunks(docs, chunk_size=512, chunk_overlap=51)
-    assert len(result) > 0
-    assert all(isinstance(doc, Document) for doc in result)
 
 
 def test_generate_chunks_invalid_s3_path(sample_ingestion_job):
@@ -101,78 +92,6 @@ def test_generate_chunks_success_with_valid_path(sample_ingestion_job):
         mock_s3_global.get_object.assert_called_once_with(Bucket="test-bucket", Key="test-key.txt")
         assert isinstance(result, list)
         assert all(isinstance(doc, Document) for doc in result)
-
-
-def test_generate_fixed_chunks_with_none_values():
-    """Test _generate_chunks with None values in documents."""
-    docs = [Document(page_content="Valid content", metadata={}), Document(page_content="", metadata={})]
-
-    result = _generate_chunks(docs, chunk_size=512, chunk_overlap=51)
-
-    # Should handle empty content
-    assert len(result) > 0
-    assert all(doc.page_content for doc in result)
-
-
-def test_generate_chunks_with_large_content():
-    """Test _generate_chunks with content larger than chunk size."""
-    long_content = "This is a very long document with lots of content. " * 100
-    docs = [Document(page_content=long_content, metadata={})]
-
-    result = _generate_chunks(docs, chunk_size=512, chunk_overlap=51)
-
-    assert len(result) > 1  # Should create multiple chunks
-    assert all(len(doc.page_content) <= 512 for doc in result)
-
-
-def test_generate_chunks_with_overlap():
-    """Test _generate_chunks with overlap."""
-    content = "This is a test document with some content to split into chunks. " * 20  # Make it longer
-    docs = [Document(page_content=content, metadata={})]
-
-    result = _generate_chunks(docs, chunk_size=512, chunk_overlap=51)
-
-    assert len(result) > 1
-    # Check that chunks have some overlap by looking for common text
-    if len(result) > 1:
-        first_chunk = result[0].page_content
-        second_chunk = result[1].page_content
-        # Find common text between chunks (overlap)
-        common_text = ""
-        for i in range(len(first_chunk)):
-            if first_chunk[i:] in second_chunk:
-                common_text = first_chunk[i:]
-                break
-        # Should have some overlap
-        assert len(common_text) > 0
-
-
-def test_generate_chunks_empty_documents():
-    """Test _generate_chunks with empty documents list."""
-    result = _generate_chunks([], chunk_size=512, chunk_overlap=51)
-
-    assert result == []
-
-
-def test_generate_chunks_single_document():
-    """Test _generate_chunks with single document."""
-    docs = [Document(page_content="Single document content", metadata={})]
-
-    result = _generate_chunks(docs, chunk_size=512, chunk_overlap=51)
-
-    assert len(result) == 1
-    assert result[0].page_content == "Single document content"
-
-
-def test_generate_chunks_preserves_metadata():
-    """Test _generate_chunks preserves document metadata."""
-    metadata = {"source": "test-source", "author": "test-author"}
-    docs = [Document(page_content="Test content", metadata=metadata)]
-
-    result = _generate_chunks(docs, chunk_size=512, chunk_overlap=51)
-
-    assert len(result) == 1
-    assert result[0].metadata == metadata
 
 
 def test_extract_text_by_content_type_pdf():
@@ -228,37 +147,6 @@ def test_extract_text_by_content_type_unsupported():
 
     with pytest.raises(RagUploadException, match="Unsupported file type"):
         _extract_text_by_content_type("unsupported", mock_s3_object)
-
-
-def test_generate_chunks_invalid_chunk_size():
-    """Test _generate_chunks with invalid chunk size."""
-    docs = [Document(page_content="Test content", metadata={})]
-
-    with pytest.raises(RagUploadException, match="Invalid chunk size"):
-        _generate_chunks(docs, chunk_size=50, chunk_overlap=51)  # chunk_size < 100
-
-    with pytest.raises(RagUploadException, match="Invalid chunk size"):
-        _generate_chunks(docs, chunk_size=15000, chunk_overlap=51)  # chunk_size > 10000
-
-
-def test_generate_chunks_invalid_chunk_overlap():
-    """Test _generate_chunks with invalid chunk overlap."""
-    docs = [Document(page_content="Test content", metadata={})]
-
-    with pytest.raises(RagUploadException, match="Invalid chunk overlap"):
-        _generate_chunks(docs, chunk_size=512, chunk_overlap=-1)  # negative overlap
-
-    with pytest.raises(RagUploadException, match="Invalid chunk overlap"):
-        _generate_chunks(docs, chunk_size=512, chunk_overlap=512)  # overlap >= chunk_size
-
-
-def test_generate_chunks_with_none_values():
-    """Test _generate_chunks with None chunk_size and chunk_overlap."""
-    docs = [Document(page_content="Test content", metadata={})]
-
-    with patch.dict(os.environ, {"CHUNK_SIZE": "256", "CHUNK_OVERLAP": "25"}):
-        result = _generate_chunks(docs, chunk_size=None, chunk_overlap=None)
-        assert len(result) > 0
 
 
 def test_extract_pdf_content_error():
@@ -345,26 +233,5 @@ def test_generate_chunks_unrecognized_strategy(sample_ingestion_job):
     with patch("utilities.file_processing.s3") as mock_s3:
         mock_s3.get_object.return_value = {"Body": BytesIO(b"test content")}
 
-        with pytest.raises(Exception, match="Unrecognized chunk strategy"):
+        with pytest.raises(ValueError, match="Unsupported chunking strategy"):
             generate_chunks(job)
-
-
-def test_generate_fixed_chunks_with_metadata(sample_ingestion_job):
-    """Test generate_fixed_chunks updates metadata with part numbers."""
-    from utilities.file_processing import generate_fixed_chunks
-
-    job = sample_ingestion_job
-    job.s3_path = "s3://test-bucket/test-key.txt"
-
-    mock_s3_object = {"Body": BytesIO(b"test content for chunking " * 100)}
-
-    with patch("utilities.file_processing._extract_text_by_content_type") as mock_extract:
-        mock_extract.return_value = "test content for chunking " * 100
-
-        result = generate_fixed_chunks(job, "txt", mock_s3_object)
-
-        assert len(result) > 1
-        for i, doc in enumerate(result):
-            assert doc.metadata["part"] == i + 1
-            assert doc.metadata["source"] == job.s3_path
-            assert doc.metadata["name"] == "test-key.txt"

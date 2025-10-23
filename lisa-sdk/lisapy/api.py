@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 from requests import Session
 
+from .collection import CollectionMixin
 from .config import ConfigMixin
 from .doc import DocsMixin
 from .model import ModelMixin
@@ -25,7 +26,7 @@ from .repository import RepositoryMixin
 from .session import SessionMixin
 
 
-class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, RagMixin, SessionMixin):
+class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, RagMixin, SessionMixin, CollectionMixin):
     url: str = Field(..., description="REST API url for LiteLLM")
     headers: Optional[Dict[str, str]] = Field(None, description="Headers for request.")
     cookies: Optional[Dict[str, str]] = Field(None, description="Cookies for request.")

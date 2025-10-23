@@ -166,7 +166,7 @@ def api_wrapper(f: F) -> F:
         logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {_sanitize_event(event)}")
         try:
             result = f(event, context)
-            return generate_html_response(200, result)
+            return generate_html_response(200 if result else 204, result)
         except Exception as e:
             return generate_exception_response(e)
 

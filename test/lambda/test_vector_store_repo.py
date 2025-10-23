@@ -1,8 +1,23 @@
 #   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 import os
 import sys
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import Mock, patch
+
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
@@ -17,8 +32,9 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-table")
     # Clear any cached modules
     import sys
-    if 'repository.vector_store_repo' in sys.modules:
-        del sys.modules['repository.vector_store_repo']
+
+    if "repository.vector_store_repo" in sys.modules:
+        del sys.modules["repository.vector_store_repo"]
 
 
 def test_vector_store_repo_find_by_id():
@@ -26,10 +42,11 @@ def test_vector_store_repo_find_by_id():
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
-        
+
         from repository.vector_store_repo import VectorStoreRepository
+
         repo = VectorStoreRepository()
-        
+
         mock_table.get_item.return_value = {
             "Item": {
                 "repositoryId": "test-repo",
@@ -42,9 +59,9 @@ def test_vector_store_repo_find_by_id():
                 "status": "active",
             }
         }
-        
+
         result = repo.find_repository_by_id("test-repo")
-        
+
         assert result is not None
         assert result["repositoryId"] == "test-repo"
         mock_table.get_item.assert_called_once()
@@ -55,10 +72,11 @@ def test_vector_store_repo_get_registered():
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
-        
+
         from repository.vector_store_repo import VectorStoreRepository
+
         repo = VectorStoreRepository()
-        
+
         mock_table.scan.return_value = {
             "Items": [
                 {
@@ -73,9 +91,9 @@ def test_vector_store_repo_get_registered():
                 }
             ]
         }
-        
+
         result = repo.get_registered_repositories()
-        
+
         assert len(result) == 1
         mock_table.scan.assert_called_once()
 
@@ -85,10 +103,11 @@ def test_vector_store_repo_save():
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
-        
+
         from repository.vector_store_repo import VectorStoreRepository
+
         repo = VectorStoreRepository()
-        
+
         # Mock get_item for update method
         mock_table.get_item.return_value = {
             "Item": {
@@ -97,16 +116,16 @@ def test_vector_store_repo_save():
             }
         }
         mock_table.update_item.return_value = {}
-        
+
         repo_data = {
             "repositoryId": "test-repo",
             "name": "Test Repo",
             "type": "opensearch",
             "status": "active",
         }
-        
+
         repo.update("test-repo", repo_data)
-        
+
         mock_table.update_item.assert_called_once()
 
 
@@ -115,14 +134,15 @@ def test_vector_store_repo_delete():
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
-        
+
         from repository.vector_store_repo import VectorStoreRepository
+
         repo = VectorStoreRepository()
-        
+
         mock_table.delete_item.return_value = {}
-        
+
         repo.delete("test-repo")
-        
+
         mock_table.delete_item.assert_called_once()
 
 
@@ -131,10 +151,11 @@ def test_vector_store_repo_get_status():
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
-        
+
         from repository.vector_store_repo import VectorStoreRepository
+
         repo = VectorStoreRepository()
-        
+
         mock_table.scan.return_value = {
             "Items": [
                 {
@@ -143,9 +164,9 @@ def test_vector_store_repo_get_status():
                 }
             ]
         }
-        
+
         result = repo.get_repository_status()
-        
+
         assert "repo1" in result
         assert result["repo1"] == "active"
         mock_table.scan.assert_called_once()

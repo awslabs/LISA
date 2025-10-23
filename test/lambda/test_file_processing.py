@@ -63,9 +63,6 @@ def sample_ingestion_job():
     )
 
 
-
-
-
 def test_generate_chunks_invalid_s3_path(sample_ingestion_job):
     """Test generate_chunks with invalid S3 path."""
     job = sample_ingestion_job
@@ -95,24 +92,6 @@ def test_generate_chunks_success_with_valid_path(sample_ingestion_job):
         mock_s3_global.get_object.assert_called_once_with(Bucket="test-bucket", Key="test-key.txt")
         assert isinstance(result, list)
         assert all(isinstance(doc, Document) for doc in result)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def test_extract_text_by_content_type_pdf():
@@ -168,15 +147,6 @@ def test_extract_text_by_content_type_unsupported():
 
     with pytest.raises(RagUploadException, match="Unsupported file type"):
         _extract_text_by_content_type("unsupported", mock_s3_object)
-
-
-
-
-
-
-
-
-
 
 
 def test_extract_pdf_content_error():
@@ -265,6 +235,3 @@ def test_generate_chunks_unrecognized_strategy(sample_ingestion_job):
 
         with pytest.raises(ValueError, match="Unsupported chunking strategy"):
             generate_chunks(job)
-
-
-

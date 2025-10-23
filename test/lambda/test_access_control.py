@@ -1,19 +1,32 @@
 #   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 import os
 import sys
-import pytest
 from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
 from utilities.access_control import (
-    Permission,
     AccessDecision,
-    UserContext,
-    ResourceContext,
     BaseAccessControlPolicy,
     CachedAccessControlService,
+    Permission,
+    ResourceContext,
+    UserContext,
 )
 
 
@@ -52,18 +65,18 @@ def test_base_policy_check_group_access():
     class ConcretePolicy(BaseAccessControlPolicy):
         def get_resource_context(self, resource_id, **kwargs):
             return None
-    
+
     policy = ConcretePolicy()
-    
+
     # Test public resource
     decision = policy._check_group_access(["group1"], [], Permission.READ)
     assert decision.allowed
-    
+
     # Test matching groups
     decision = policy._check_group_access(["group1"], ["group1", "group2"], Permission.READ)
     assert decision.allowed
     assert "group1" in decision.granting_groups
-    
+
     # Test no matching groups
     decision = policy._check_group_access(["group3"], ["group1", "group2"], Permission.READ)
     assert not decision.allowed
@@ -74,14 +87,14 @@ def test_cached_service():
     policy.check_access.return_value = AccessDecision(
         allowed=True, permission=Permission.READ, granting_groups=["group1"]
     )
-    
+
     service = CachedAccessControlService(policy)
     user = UserContext(user_id="user1", groups=["group1"], is_admin=False)
     resource = ResourceContext(resource_id="res1", resource_type="test")
-    
+
     decision1 = service.check_access(user, resource, Permission.READ)
     decision2 = service.check_access(user, resource, Permission.READ)
-    
+
     assert decision1.allowed
     assert decision2.allowed
     assert policy.check_access.call_count == 1
@@ -90,23 +103,23 @@ def test_cached_service():
 def test_cached_service_clear_cache():
     policy = MagicMock(spec=BaseAccessControlPolicy)
     service = CachedAccessControlService(policy)
-    
+
     service._cache["key1"] = AccessDecision(allowed=True, permission=Permission.READ)
     service.clear_cache()
-    
+
     assert len(service._cache) == 0
 
 
 def test_cached_service_clear_resource():
     policy = MagicMock(spec=BaseAccessControlPolicy)
     service = CachedAccessControlService(policy)
-    
+
     service._cache["user1:res1:read"] = AccessDecision(allowed=True, permission=Permission.READ)
     service._cache["user2:res1:write"] = AccessDecision(allowed=True, permission=Permission.WRITE)
     service._cache["user1:res2:read"] = AccessDecision(allowed=True, permission=Permission.READ)
-    
+
     service.clear_cache_for_resource("res1")
-    
+
     assert "user1:res1:read" not in service._cache
     assert "user2:res1:write" not in service._cache
     assert "user1:res2:read" in service._cache

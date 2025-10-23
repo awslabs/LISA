@@ -19,11 +19,6 @@
 from typing import Dict, List, Optional, Tuple
 
 from models.domain_objects import RagCollectionConfig
-from repository.collection_access_control_helpers import (
-    can_access_collection,
-    can_modify_collection,
-    validate_collection_access,
-)
 from repository.collection_repo import CollectionRepository
 from utilities.validation import ValidationError
 
@@ -33,6 +28,25 @@ class CollectionService:
 
     def __init__(self, collection_repo: Optional[CollectionRepository] = None):
         self.collection_repo = collection_repo or CollectionRepository()
+
+    def has_access(
+        self,
+        collection: RagCollectionConfig,
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+        require_write: bool = False,
+    ) -> bool:
+        """Check if user has access to a collection."""
+        if is_admin:
+            return True
+        if collection.createdBy == username:
+            return True
+        if require_write:
+            return False
+        if not collection.private and bool(set(user_groups) & set(collection.allowedGroups or [])):
+            return True
+        return False
 
     def create_collection(
         self,
@@ -55,7 +69,8 @@ class CollectionService:
         collection = self.collection_repo.find_by_id(collection_id, repository_id)
         if not collection:
             raise ValidationError(f"Collection {collection_id} not found")
-        validate_collection_access(collection, username, user_groups, is_admin)
+        if not self.has_access(collection, username, user_groups, is_admin):
+            raise ValidationError(f"Permission denied for collection {collection_id}")
         return collection
 
     def list_collections(
@@ -71,7 +86,7 @@ class CollectionService:
         collections, key = self.collection_repo.list_by_repository(
             repository_id, page_size=page_size, last_evaluated_key=last_evaluated_key
         )
-        filtered = [c for c in collections if can_access_collection(c, username, user_groups, is_admin)]
+        filtered = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
         return filtered, key
 
     def delete_collection(
@@ -86,6 +101,6 @@ class CollectionService:
         collection = self.collection_repo.find_by_id(collection_id, repository_id)
         if not collection:
             raise ValidationError(f"Collection {collection_id} not found")
-        if not can_modify_collection(collection, username, is_admin):
+        if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
             raise ValidationError(f"Permission denied to delete collection {collection_id}")
         self.collection_repo.delete(collection_id, repository_id)

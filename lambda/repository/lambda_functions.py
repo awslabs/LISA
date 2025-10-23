@@ -705,8 +705,8 @@ def ingest_documents(event: dict, context: dict) -> dict:
             - body.metadata (optional): Additional metadata tags
             - pathParameters.repositoryId: Repository id (VectorStore)
             - queryStringParameters.repositoryType: Repository type (VectorStore)
-            - queryStringParameters.chunkSize (optional): Size of text chunks (legacy)
-            - queryStringParameters.chunkOverlap (optional): Overlap between chunks (legacy)
+            - queryStringParameters.chunkSize (optional): Size of text chunks
+            - queryStringParameters.chunkOverlap (optional): Overlap between chunks
         context (dict): The Lambda context object
 
     Returns:

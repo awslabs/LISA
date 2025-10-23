@@ -2372,7 +2372,7 @@ def test_list_jobs_with_last_evaluated_key():
 @mock_aws()
 def test_ingest_documents_with_chunking_override():
     """Test ingest_documents with chunking strategy override"""
-    from models.domain_objects import CollectionStatus, FixedSizeChunkingStrategy, RagCollectionConfig
+    from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
     from repository.lambda_functions import ingest_documents
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -2406,7 +2406,7 @@ def test_ingest_documents_with_chunking_override():
             repositoryId="test-repo",
             name="Test Collection",
             embeddingModel="test-embedding-model",
-            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=500, chunkOverlap=50),
+            chunkingStrategy=FixedChunkingStrategy(size=500, overlap=50),
             allowChunkingOverride=True,  # Allow override
             allowedGroups=["test-group"],
             createdBy="test-user",
@@ -2438,7 +2438,7 @@ def test_ingest_documents_with_chunking_override():
             "body": json.dumps(
                 {
                     "collectionId": "test-collection",
-                    "chunkingStrategy": {"type": "FIXED_SIZE", "chunkSize": 2000, "chunkOverlap": 100},
+                    "chunkingStrategy": {"type": "FIXED", "chunkSize": 2000, "chunkOverlap": 100},
                     "keys": ["test-key"],
                 }
             ),

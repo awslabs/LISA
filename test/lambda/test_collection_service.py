@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionStatus, FixedSizeChunkingStrategy, RagCollectionConfig
+from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
 
 
 @pytest.fixture(autouse=True)
@@ -47,7 +47,7 @@ def test_create_collection():
             repositoryId="test-repo",
             name="Test",
             embeddingModel="model",
-            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=1000, chunkOverlap=100),
+            chunkingStrategy=FixedChunkingStrategy(size=1000, overlap=100),
             allowedGroups=["group1"],
             createdBy="user",
             status=CollectionStatus.ACTIVE,
@@ -75,7 +75,7 @@ def test_get_collection():
             repositoryId="test-repo",
             name="Test",
             embeddingModel="model",
-            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=1000, chunkOverlap=100),
+            chunkingStrategy=FixedChunkingStrategy(size=1000, overlap=100),
             allowedGroups=["group1"],
             createdBy="user",
             status=CollectionStatus.ACTIVE,
@@ -102,7 +102,7 @@ def test_list_collections():
             repositoryId="test-repo",
             name="Test",
             embeddingModel="model",
-            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=1000, chunkOverlap=100),
+            chunkingStrategy=FixedChunkingStrategy(size=1000, overlap=100),
             allowedGroups=["group1"],
             createdBy="user",
             status=CollectionStatus.ACTIVE,
@@ -130,7 +130,7 @@ def test_delete_collection():
             repositoryId="test-repo",
             name="Test",
             embeddingModel="model",
-            chunkingStrategy=FixedSizeChunkingStrategy(chunkSize=1000, chunkOverlap=100),
+            chunkingStrategy=FixedChunkingStrategy(size=1000, overlap=100),
             allowedGroups=["group1"],
             createdBy="user",
             status=CollectionStatus.ACTIVE,

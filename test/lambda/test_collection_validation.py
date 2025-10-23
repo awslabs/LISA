@@ -77,11 +77,11 @@ def test_validate_allowed_groups_not_subset(mock_collection_repo, mock_vector_st
 
 
 def test_validate_chunking_strategy_fixed_size(mock_collection_repo, mock_vector_store_repo):
-    from models.domain_objects import FixedSizeChunkingStrategy
+    from models.domain_objects import FixedChunkingStrategy
     from repository.collection_validation import CollectionValidationService
 
     service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
-    strategy = FixedSizeChunkingStrategy(chunkSize=500, chunkOverlap=50)
+    strategy = FixedChunkingStrategy(size=500, overlap=50)
     service._validate_chunking_strategy(strategy)
 
 

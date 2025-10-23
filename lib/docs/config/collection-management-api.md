@@ -55,7 +55,7 @@ Create a new collection within a vector store.
 | `description` | string | No | Collection description |
 | `embeddingModel` | string | No | Embedding model ID (inherits from parent if omitted) |
 | `chunkingStrategy` | object | No | Chunking strategy configuration (inherits from parent if omitted) |
-| `chunkingStrategy.type` | enum | No | Strategy type: `FIXED_SIZE`, `SEMANTIC`, or `RECURSIVE` |
+| `chunkingStrategy.type` | enum | No | Strategy type: `FIXED` |
 | `chunkingStrategy.parameters` | object | No | Strategy-specific parameters |
 | `allowedGroups` | array[string] | No | User groups with access (inherits from parent if omitted) |
 | `metadata` | object | No | Collection-specific metadata |
@@ -66,10 +66,10 @@ Create a new collection within a vector store.
 
 **Chunking Strategy Types:**
 
-1. **FIXED_SIZE**: Fixed-size chunks with overlap
+1. **FIXED**: Fixed-size chunks with overlap
    ```json
    {
-     "type": "FIXED_SIZE",
+     "type": "fixed",
      "parameters": {
        "chunkSize": 1000,
        "chunkOverlap": 200
@@ -370,7 +370,7 @@ All fields are optional. Only include fields you want to update.
   "name": "Updated Legal Documents",
   "description": "Updated description for legal contracts",
   "chunkingStrategy": {
-    "type": "FIXED_SIZE",
+    "type": "FIXED",
     "parameters": {
       "chunkSize": 1500,
       "chunkOverlap": 300
@@ -393,7 +393,7 @@ All fields are optional. Only include fields you want to update.
 | `name` | string | No | Collection name (1-100 characters) |
 | `description` | string | No | Collection description |
 | `chunkingStrategy` | object | No | Chunking strategy configuration |
-| `chunkingStrategy.type` | enum | No | Strategy type: `FIXED_SIZE`, `SEMANTIC`, or `RECURSIVE` |
+| `chunkingStrategy.type` | enum | No | Strategy type: `FIXED`, `SEMANTIC`, or `RECURSIVE` |
 | `chunkingStrategy.parameters` | object | No | Strategy-specific parameters |
 | `allowedGroups` | array[string] | No | User groups with access |
 | `metadata` | object | No | Collection-specific metadata |
@@ -422,7 +422,7 @@ The following fields cannot be modified after creation and will be ignored if in
     "name": "Updated Legal Documents",
     "description": "Updated description for legal contracts",
     "chunkingStrategy": {
-      "type": "FIXED_SIZE",
+      "type": "FIXED",
       "parameters": {
         "chunkSize": 1500,
         "chunkOverlap": 300
@@ -848,7 +848,7 @@ List collections in a repository with pagination, filtering, and sorting.
       "name": "Technical Documentation",
       "description": "Collection for technical manuals and guides",
       "chunkingStrategy": {
-        "type": "FIXED_SIZE",
+        "type": "FIXED",
         "parameters": {
           "chunkSize": 1500,
           "chunkOverlap": 300
@@ -1224,7 +1224,7 @@ Collections inherit configuration from their parent vector store:
 1. **Use Descriptive Names**: Choose clear, descriptive names for collections to make them easy to identify
 2. **Organize by Content Type**: Create separate collections for different document types (e.g., legal, technical, marketing)
 3. **Optimize Chunking Strategy**: Select chunking strategies appropriate for your content:
-   - Use `FIXED_SIZE` for uniform documents
+   - Use `FIXED` for uniform documents
    - Use `SEMANTIC` for documents with clear semantic boundaries
    - Use `RECURSIVE` for documents with hierarchical structure
 4. **Manage Access Control**: Use allowed groups to restrict access to sensitive collections

@@ -374,8 +374,7 @@ RagDocumentDict: TypeAlias = Dict[str, Any]
 class ChunkingStrategyType(str, Enum):
     """Defines supported document chunking strategies."""
 
-    FIXED_SIZE = "FIXED_SIZE"
-    FIXED = "fixed"  # Legacy support
+    FIXED = "fixed"
 
 
 class IngestionStatus(str, Enum):
@@ -400,22 +399,7 @@ class FixedChunkingStrategy(BaseModel):
     overlap: int
 
 
-class FixedSizeChunkingStrategy(BaseModel):
-    """Defines parameters for fixed-size document chunking (new format)."""
-
-    type: ChunkingStrategyType = ChunkingStrategyType.FIXED_SIZE
-    chunkSize: int = Field(ge=100, le=10000, description="Size of each chunk in characters")
-    chunkOverlap: int = Field(ge=0, description="Overlap between chunks in characters")
-
-    @model_validator(mode="after")
-    def validate_overlap(self) -> Self:
-        """Validates that overlap is not greater than half the chunk size."""
-        if self.chunkOverlap > self.chunkSize / 2:
-            raise ValueError("chunkOverlap must be less than or equal to half of chunkSize")
-        return self
-
-
-ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy, FixedSizeChunkingStrategy]
+ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
 
 
 # Future chunking strategies can be added here when implemented:

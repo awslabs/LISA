@@ -23,7 +23,6 @@ from models.domain_objects import (
     CollectionMetadata,
     CreateCollectionRequest,
     FixedChunkingStrategy,
-    FixedSizeChunkingStrategy,
     UpdateCollectionRequest,
 )
 from repository.collection_repo import CollectionRepository
@@ -273,23 +272,7 @@ class CollectionValidationService:
         Raises:
             ValidationError: If strategy is invalid
         """
-        # Handle both legacy (FixedChunkingStrategy) and new (FixedSizeChunkingStrategy) formats
-        if isinstance(strategy, FixedSizeChunkingStrategy):
-            # Validate chunk size
-            if strategy.chunkSize < MIN_CHUNK_SIZE or strategy.chunkSize > MAX_CHUNK_SIZE:
-                raise ValidationError(f"chunkSize must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}")
-
-            # Validate chunk overlap
-            if strategy.chunkOverlap < 0:
-                raise ValidationError("chunkOverlap must be non-negative")
-
-            if strategy.chunkOverlap > strategy.chunkSize / 2:
-                raise ValidationError(
-                    f"chunkOverlap ({strategy.chunkOverlap}) must be less than or equal to "
-                    f"half of chunkSize ({strategy.chunkSize / 2})"
-                )
-
-        elif isinstance(strategy, FixedChunkingStrategy):
+        if isinstance(strategy, FixedChunkingStrategy):
             # Legacy format validation
             if strategy.size < MIN_CHUNK_SIZE or strategy.size > MAX_CHUNK_SIZE:
                 raise ValidationError(f"chunk size must be between {MIN_CHUNK_SIZE} and {MAX_CHUNK_SIZE}")
@@ -307,7 +290,7 @@ class CollectionValidationService:
             # Unsupported strategy type
             raise ValidationError(
                 f"Unsupported chunking strategy type: {strategy.type}. "
-                f"Only FIXED and FIXED_SIZE strategies are currently supported."
+                f"Only FIXED strategies are currently supported."
             )
 
     def _validate_metadata(self, metadata: CollectionMetadata) -> None:

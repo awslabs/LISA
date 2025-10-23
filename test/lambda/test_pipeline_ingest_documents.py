@@ -21,7 +21,14 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
+from models.domain_objects import (
+    ChunkingStrategyType,
+    FixedChunkingStrategy,
+    IngestionJob,
+    IngestionStatus,
+    IngestionType,
+    RagDocument,
+)
 
 # Patch environment variables for boto3
 os.environ["AWS_REGION"] = "us-east-1"
@@ -37,7 +44,7 @@ def make_job():
         collection_id="coll-1",
         document_id="doc-1",
         s3_path="s3://bucket/key.txt",
-        chunk_strategy=FixedChunkingStrategy(type="fixed", size=1000, overlap=200),
+        chunk_strategy=FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=1000, overlap=200),
         status=IngestionStatus.INGESTION_PENDING,
         ingestion_type=IngestionType.MANUAL,
         username="user1",
@@ -52,7 +59,7 @@ def make_doc():
         document_name="key.txt",
         source="s3://bucket/key.txt",
         subdocs=["chunk1", "chunk2"],
-        chunk_strategy=FixedChunkingStrategy(type="fixed", size=1000, overlap=200),
+        chunk_strategy=FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=1000, overlap=200),
         username="user1",
         ingestion_type=IngestionType.MANUAL,
     )

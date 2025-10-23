@@ -61,7 +61,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
         docs : List[Document]
             List of documents to chunk
         strategy : ChunkingStrategy
-            The chunking strategy configuration (FixedChunkingStrategy or FixedSizeChunkingStrategy)
+            The chunking strategy configuration (FixedChunkingStrategy)
 
         Returns
         -------
@@ -69,12 +69,8 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
             List of chunked documents
         """
         # Handle both legacy (size/overlap) and new (chunkSize/chunkOverlap) formats
-        if hasattr(strategy, "chunkSize"):
-            chunk_size = strategy.chunkSize
-            chunk_overlap = strategy.chunkOverlap
-        else:
-            chunk_size = strategy.size if strategy.size else None
-            chunk_overlap = strategy.overlap if strategy.overlap else None
+        chunk_size = strategy.size
+        chunk_overlap = strategy.overlap
 
         # Apply defaults from environment if not specified
         if not chunk_size:
@@ -89,9 +85,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
         if chunk_overlap < 0 or chunk_overlap >= chunk_size:
             raise RagUploadException("Invalid chunk overlap: must be non-negative and less than chunk size")
 
-        logger.info(
-            f"Chunking documents with fixed size strategy: chunk_size={chunk_size}, chunk_overlap={chunk_overlap}"
-        )
+        logger.info(f"Chunking documents with fixed size strategy: size={chunk_size}, overlap={chunk_overlap}")
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
@@ -106,7 +100,6 @@ class ChunkingStrategyFactory:
 
     _handlers = {
         ChunkingStrategyType.FIXED: FixedSizeChunkingHandler(),
-        ChunkingStrategyType.FIXED_SIZE: FixedSizeChunkingHandler(),
     }
 
     @classmethod

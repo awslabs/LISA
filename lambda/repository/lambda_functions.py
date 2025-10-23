@@ -27,7 +27,6 @@ from models.domain_objects import (
     CollectionStatus,
     CreateCollectionRequest,
     FixedChunkingStrategy,
-    FixedSizeChunkingStrategy,
     IngestionJob,
     IngestionStatus,
     ListJobsResponse,
@@ -783,14 +782,12 @@ def ingest_documents(event: dict, context: dict) -> dict:
             try:
                 # Parse the chunking strategy from the request
                 strategy_type = override_chunking.get("type")
-                if strategy_type == "FIXED_SIZE":
-                    chunk_strategy = FixedSizeChunkingStrategy(**override_chunking)
-                elif strategy_type == "FIXED" or strategy_type == "fixed":
+                if strategy_type == "FIXED" or strategy_type == "fixed":
                     chunk_strategy = FixedChunkingStrategy(**override_chunking)
                 else:
                     logger.warning(
                         f"Unsupported chunking strategy type: {strategy_type}. "
-                        f"Only FIXED and FIXED_SIZE are currently supported. Using collection default."
+                        f"Only FIXED is currently supported. Using collection default."
                     )
                     chunk_strategy = collection.chunkingStrategy
             except Exception as e:

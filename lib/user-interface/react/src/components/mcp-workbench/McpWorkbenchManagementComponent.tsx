@@ -14,12 +14,14 @@
  limitations under the License.
  */
 
-import { Button, CodeEditor, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, CodeEditorProps, Link } from '@cloudscape-design/components';
-import 'react';
+import { Button, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, Link } from '@cloudscape-design/components';
+import AceEditor from 'react-ace';
+import {Editor} from 'ace-builds';
 import { CancellableEventHandler } from '@cloudscape-design/components/internal/events';
-import { ReactElement, useEffect, useState } from 'react';
+import 'react';
+import { ReactElement, useCallback, useEffect, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
-import { useNotificationService } from '@/shared/util/hooks';
+import { useDebounce, useNotificationService } from '@/shared/util/hooks';
 import * as z from 'zod';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import {
@@ -28,11 +30,13 @@ import {
     useCreateMcpToolMutation,
     useUpdateMcpToolMutation,
     useDeleteMcpToolMutation,
-    mcpToolsApi
+    mcpToolsApi,
+    useValidateMcpToolMutation,
 } from '@/shared/reducers/mcp-tools.reducer';
 import { IMcpTool } from '@/shared/model/mcp-tools.model';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 import { useValidationReducer } from '@/shared/validation';
+import { ModifyMethod } from '@/shared/validation/modify-method';
 
 const DEFAULT_CONTENT = 'from mcpworkbench.core.annotations import mcp_tool\nfrom mcpworkbench.core.base_tool import BaseTool\nfrom typing import Annotated\n\n\n# =============================================================================\n# METHOD 1: FUNCTION-BASED APPROACH WITH @mcp_tool DECORATOR\n# =============================================================================\n# This is a simpler approach for straightforward tools that don\'t need\n# complex initialization or state management.\n\n@mcp_tool(\n    name="simple_calculator",\n    description="A simple calculator using the decorator approach"\n)\nasync def simple_calculator(\n    operator: Annotated[str, "The arithmetic operation: add, subtract, multiply, or divide"],\n    left_operand: Annotated[float, "The first number in the operation"],\n    right_operand: Annotated[float, "The second number in the operation"]\n) -> dict:\n    \'\'\'\n    Perform basic arithmetic operations using the decorator approach.\n    \n    The @mcp_tool decorator automatically:\n    1. Registers the function as an MCP tool\n    2. Extracts parameter information from type annotations\n    3. Uses the Annotated descriptions for parameter documentation\n    4. Handles the MCP protocol communication\n    \n    This approach is ideal for:\n    - Simple, stateless operations\n    - Quick prototyping\n    - Tools that don\'t need complex initialization\n    \'\'\'\n    \n    if operator == "add":\n        result = left_operand + right_operand\n    elif operator == "subtract":\n        result = left_operand - right_operand\n    elif operator == "multiply":\n        result = left_operand * right_operand\n    elif operator == "divide":\n        if right_operand == 0:\n            raise ValueError("Cannot divide by zero")\n        result = left_operand / right_operand\n    else:\n        raise ValueError(f"Unknown operator: {operator}")\n    \n    return {\n        "operator": operator,\n        "left_operand": left_operand,\n        "right_operand": right_operand,\n        "result": result\n    }\n\n\n# =============================================================================\n# METHOD 2: CLASS-BASED APPROACH\n# =============================================================================\n# This is the more structured approach, ideal for complex tools that need\n# initialization, state management, or multiple related operations.\n\nclass CalculatorTool(BaseTool):\n    """\n    A simple calculator tool that performs basic arithmetic operations.\n    \n    This class demonstrates the class-based approach to creating MCP tools:\n    1. Inherit from BaseTool\n    2. Initialize with name and description in __init__\n    3. Implement execute() method that returns the callable function\n    4. Define the actual tool function with proper type annotations\n    """\n    \n    def __init__(self):\n        """\n        Initialize the tool with metadata.\n        \n        The BaseTool constructor requires:\n        - name: A unique identifier for the tool\n        - description: A clear description of what the tool does\n        """\n        super().__init__(\n            name="calculator",\n            description="Performs basic arithmetic operations (add, subtract, multiply, divide)"\n        )\n\n    async def execute(self):\n        """\n        Return the callable function that implements the tool\'s functionality.\n        \n        This method is called by the MCP framework to get the actual function\n        that will be executed when the tool is invoked.\n        """\n        return self.calculate\n    \n    async def calculate(\n        self,\n        operator: Annotated[str, "add, subtract, multiply, or divide"],\n        left_operand: Annotated[float, "The first number"],\n        right_operand: Annotated[float, "The second number"]\n    ):\n        """\n        Execute the calculator operation.\n        \n        Parameter Type Annotations with Context:\n        =======================================\n        Notice the use of Annotated[type, "description"] for each parameter.\n        This is OPTIONAL but highly recommended because it provides:\n        \n        1. Type information for the MCP framework\n        2. Human-readable descriptions that help AI models understand\n           what each parameter is for\n        3. Better error messages and validation\n        \n        The Annotated type comes from typing module and follows this pattern:\n        Annotated[actual_type, "description_string"]\n        \n        Examples:\n        - Annotated[str, "The operation to perform"]\n        - Annotated[int, "A positive integer between 1 and 100"]\n        - Annotated[list[str], "A list of file paths to process"]\n        """        \n        if operator == "add":\n            result = left_operand + right_operand\n        elif operator == "subtract":\n            result = left_operand - right_operand\n        elif operator == "multiply":\n            result = left_operand * right_operand\n        elif operator == "divide":\n            if right_operand == 0:\n                raise ValueError("Cannot divide by zero")\n            result = left_operand / right_operand\n        else:\n            raise ValueError(f"Unknown operator: {operator}")\n        \n        return {\n            "operator": operator,\n            "left_operand": left_operand,\n            "right_operand": right_operand,\n            "result": result\n        }';
 
@@ -43,37 +47,33 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     // API hooks
     const { data: tools = [], isFetching: isLoadingTools, refetch } = useListMcpToolsQuery();
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
-    const { data: selectedToolData, isFetching: isLoadingTool, isUninitialized } = useGetMcpToolQuery(selectedToolId!, {
+    const { data: selectedToolData, isUninitialized } = useGetMcpToolQuery(selectedToolId!, {
         skip: selectedToolId === null,
         refetchOnMountOrArgChange: true,
         refetchOnFocus: true
     });
 
-    const [isDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
-    const [preferences, setPreferences] = useState<CodeEditorProps.Preferences>({
-        wrapLines: true,
-        theme: isDarkMode ? 'cloud_editor_dark' : 'cloud_editor',
-    });
+    const [isDarkMode, setIsDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
     const [loadingAce, setLoadingAce] = useState(true);
-    const [ace, setAce] = useState();
-
+    const [isDirty, setIsDirty] = useState<boolean>(false);
     const [createToolMutation, { isLoading: isCreating }] = useCreateMcpToolMutation();
     const [updateToolMutation, { isLoading: isUpdating }] = useUpdateMcpToolMutation();
     const [deleteToolMutation] = useDeleteMcpToolMutation();
-
-    const [isDirty, setIsDirty] = useState<boolean>(false);
 
     const schema = z.object({
         id: z.string().regex(/^[a-z0-9_.]+?(\.py)?$/).trim().min(3, 'String cannot be empty.'),
         contents: z.string().trim().min(1, 'String cannot be empty.'),
     });
 
-    const { errors, touchFields, setFields, isValid, state } = useValidationReducer(schema, {
+    const { errors, touchFields, setFields, isValid, state, setState } = useValidationReducer(schema, {
         form: { } as Partial<IMcpTool>,
         formSubmitting: false,
         touched: {},
         validateAll: false
     });
+
+    const [validateMcpToolMutation, {isLoading: isLoadingValidateMcpTool, data: validMcpToolResponse} ] = useValidateMcpToolMutation();
+    const [editor, setEditor] = useState<Editor>();
 
     // Filtering and pagination state
     const [filterText, setFilterText] = useState<string>('');
@@ -92,6 +92,105 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         currentPageIndex * pageSize
     );
 
+    const [ waitingForValidation, setWaitingForValidation ] = useState<boolean>(false);
+
+    // Dont validate immediately, wait until this hasn't been called for 300ms
+    const debouncedValidation = useDebounce(useCallback((contents: string) => {
+        validateMcpToolMutation(contents).then((response) => {
+            setWaitingForValidation(false);
+            // Handle validation response
+            if ('data' in response) {
+                // Successful validation response
+                const validationData = response.data;
+                const annotations = [];
+
+                // Add syntax error annotations
+                if (validationData.syntax_errors && validationData.syntax_errors.length > 0) {
+                    validationData.syntax_errors.forEach((error) => {
+                        annotations.push({
+                            row: Math.max(0, error.line - 1), // Ace editor is 0-indexed
+                            column: error.column,
+                            type: 'error',
+                            text: `${error.type}: ${error.message}`
+                        });
+                    });
+                }
+
+                if (validationData.missing_required_imports.length > 0) {
+                    validationData.missing_required_imports.forEach((error) => {
+                        annotations.push({
+                            row: 0,
+                            column: 0,
+                            type: 'error',
+                            text: error
+                        });
+                    });
+                }
+
+                // Apply annotations to editor
+                if (editor) {
+                    console.log('annotations', annotations);
+                    editor.getSession().setAnnotations(annotations);
+                }
+
+                // Show validation status in console for debugging
+                console.log('Validation result:', {
+                    isValid: validationData.is_valid,
+                    syntaxErrors: validationData.syntax_errors?.length || 0,
+                    missingRequiredImports: validationData.missing_required_imports?.length || 0,
+                });
+
+            } else if ('error' in response) {
+                // Error response from validation API
+                console.error('Validation API error:', response.error);
+
+                // Clear any existing annotations
+                if (editor) {
+                    editor.getSession().setAnnotations([]);
+                }
+
+                // Show error notification
+                const errorMessage = 'data' in response.error && response.error.data?.message
+                    ? response.error.data.message
+                    : 'Unknown validation error';
+                notificationService.generateNotification(
+                    `Validation error: ${errorMessage}`,
+                    'error'
+                );
+            }
+        }).catch((error) => {
+            // Handle promise rejection
+            console.error('Validation request failed:', error);
+
+            // Clear any existing annotations
+            if (editor) {
+                editor.getSession().setAnnotations([]);
+            }
+
+            // Show error notification
+            notificationService.generateNotification(
+                `Validation failed: ${error.message || 'Unknown error'}`,
+                'error'
+            );
+        });
+    }, [validateMcpToolMutation, editor, notificationService]), 300);
+
+
+    useEffect(() => {
+        const mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
+
+        const handleChange = (e) => {
+            setIsDarkMode(e.matches);
+        };
+
+        mediaQueryList.addEventListener('change', handleChange);
+
+        return () => {
+            mediaQueryList.removeEventListener('change', handleChange);
+        };
+    }, [setIsDarkMode]);
+    console.log('isDarkMode', isDarkMode);
+
     // remove top breadcrumbs
     dispatch(setBreadcrumbs([]));
 
@@ -102,7 +201,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
     useEffect(() => {
         async function loadAce () {
-            const ace = await import('ace-builds');
+            await import('ace-builds');
 
             // Import language modes you need
             await import('ace-builds/src-noconflict/mode-python');
@@ -111,16 +210,21 @@ export function McpWorkbenchManagementComponent (): ReactElement {
             await import('ace-builds/src-noconflict/theme-cloud_editor');
             await import('ace-builds/src-noconflict/theme-cloud_editor_dark');
 
-            setAce(ace);
             setLoadingAce(false);
         }
 
         loadAce();
     }, []);
 
+    console.log({
+        isDirty,
+        isLoadingVlidateMcpTool: isLoadingValidateMcpTool,
+        validMcpToolResponse
+    });
+
     // Update editor content when a tool is selected
     useEffect(() => {
-        if (!isUninitialized) {
+        if (!isUninitialized && selectedToolData?.id) {
             setFields({
                 id: selectedToolData.id,
                 contents: selectedToolData.contents,
@@ -137,12 +241,12 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         if (isDirty) {
             dispatch(
                 setConfirmationModal({
-                    action: 'Switch Tool?',
-                    resourceName: 'Unsaved change',
+                    title: 'Switch Tool?',
+                    action: 'Switch Tool',
                     onConfirm: () => {
                         setSelectedToolId(tool.id);
                     },
-                    description: 'You have unsaved changes. Switching tools will lose these changes.'
+                    description: 'You have unsaved changes. Switching tools will discard these changes.'
                 })
             );
         } else {
@@ -155,25 +259,27 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         event.preventDefault();
 
         const newTool = {
-            id: ['my_new_tool', Date.now()].join('-'),
+            id: '',
             contents: DEFAULT_CONTENT,
         };
 
         if (isDirty && selectedToolId) {
             dispatch(
                 setConfirmationModal({
+                    title: 'Create New Tool?',
                     action: 'Create New Tool',
-                    resourceName: '',
                     onConfirm: () => {
                         setSelectedToolId(null);
+                        touchFields(['id'], ModifyMethod.Unset);
                         setFields(newTool);
                         setIsDirty(false);
                     },
-                    description: 'You have unsaved changes. Creating a new tool will lose these changes.'
+                    description: 'You have unsaved changes. Creating a new tool will discard these changes.'
                 })
             );
         } else {
             setSelectedToolId(null);
+            touchFields(['id'], ModifyMethod.Unset);
             setFields(newTool);
             setIsDirty(false);
         }
@@ -181,13 +287,24 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
     // Handle create tool
     const handleCreateTool = async () => {
+        const result = schema.safeParse(state.form);
+        if (!result.success) {
+            setState({
+                ...state,
+                validateAll: true
+            });
+
+            return;
+        }
+
         try {
-            await createToolMutation({
+            const result = await createToolMutation({
                 id: state.form.id,
                 contents: state.form.contents
             }).unwrap();
 
             notificationService.generateNotification(`Successfully created tool: ${state.form.id}`, 'success');
+            setSelectedToolId(result.id);
             setIsDirty(false);
             dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
             refetch();
@@ -249,6 +366,14 @@ export function McpWorkbenchManagementComponent (): ReactElement {
             })
         );
     };
+
+    const disabled = !isDirty || !isValid || (isLoadingValidateMcpTool || waitingForValidation) || !validMcpToolResponse?.is_valid;
+    const disabledReason = [
+        {predicate: !isDirty, message: 'Tool has not been modified.'},
+        {predicate: !isValid, message: 'Ensure all fields are valid'},
+        {predicate: isLoadingValidateMcpTool || waitingForValidation, message: 'Validating tool.'},
+        {predicate: !validMcpToolResponse?.is_valid, message: 'Please correct all errors.'}
+    ].find((reason) => reason.predicate)?.message;
 
     return (
         <Container
@@ -383,49 +508,40 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                             />
                         </FormField>
 
-                        <CodeEditor
-                            language='python'
-                            value={state.form.contents}
-                            ace={ace}
-                            loading={isLoadingTool}
-                            i18nStrings={{
-                                loadingState: 'Loading code editor',
-                                errorState: 'There was an error loading the code editor.',
-                                errorStateRecovery: 'Retry',
+                        <Container
+                            disableContentPaddings={true}
+                            // disableHeaderPaddings={true}
+                        >
+                            <div style={{overflow: 'hidden', borderRadius: '16px'}}>
+                                <AceEditor
+                                    theme={isDarkMode ? 'cloud_editor_dark' : 'cloud_editor'}
+                                    showGutter={true}
+                                    value={state.form.contents}
+                                    mode='python'
+                                    setOptions={{
+                                        firstLineNumber: 0,
+                                        dragEnabled: true
+                                    }}
+                                    onChange={(contents) => {
+                                        setFields({
+                                            contents
+                                        });
+                                        debouncedValidation(contents);
+                                        setIsDirty(true);
+                                        touchFields(['contents']);
 
-                                editorGroupAriaLabel: 'Code editor',
-                                statusBarGroupAriaLabel: 'Status bar',
-
-                                cursorPosition: (row, column) => `Ln ${row}, Col ${column}`,
-                                errorsTab: 'Errors',
-                                warningsTab: 'Warnings',
-                                preferencesButtonAriaLabel: 'Preferences',
-
-                                paneCloseButtonAriaLabel: 'Close',
-
-                                preferencesModalHeader: 'Preferences',
-                                preferencesModalCancel: 'Cancel',
-                                preferencesModalConfirm: 'Confirm',
-                                preferencesModalWrapLines: 'Wrap lines',
-                                preferencesModalTheme: 'Theme',
-                                preferencesModalLightThemes: 'Light themes',
-                                preferencesModalDarkThemes: 'Dark themes',
-                            }}
-                            onDelayedChange={({ detail }) => {
-                                // Only allow changes if we're creating new or editing
-                                setFields({
-                                    contents: detail.value
-                                });
-                                setIsDirty(true);
-                                touchFields(['contents']);
-                            }}
-                            preferences={preferences}
-                            onPreferencesChange={({ detail }) => setPreferences(detail)}
-                            themes={{
-                                light: ['cloud_editor'],
-                                dark: ['cloud_editor_dark']
-                            }}
-                        />
+                                        if (!waitingForValidation) {
+                                            setWaitingForValidation(true);
+                                        }
+                                    }}
+                                    onLoad={(editor) => {
+                                        console.log(editor);
+                                        setEditor(editor);
+                                    }}
+                                    width='100%'
+                                />
+                            </div>
+                        </Container>
 
                         <Box float='right'>
                             <SpaceBetween direction='horizontal' size='s'>
@@ -444,7 +560,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                         variant='primary'
                                         onClick={handleCreateTool}
                                         loading={isCreating}
-                                        disabled={!isDirty || !isValid}
+                                        disabled={disabled}
+                                        disabledReason={disabledReason}
                                     >
                                         Create Tool
                                     </Button>
@@ -453,7 +570,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                         variant='primary'
                                         onClick={handleUpdateTool}
                                         loading={isUpdating}
-                                        disabled={!isDirty || !isValid}
+                                        disabled={disabled}
+                                        disabledReason={disabledReason}
                                     >
                                         Save Changes
                                     </Button>

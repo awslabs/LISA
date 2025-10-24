@@ -62,6 +62,28 @@ export type IMcpToolDeleteResponse = {
 };
 
 /**
+ * Interface for MCP tool validation response
+ */
+export type IMcpToolValidationResponse = {
+    /** Whether the code is valid */
+    is_valid: boolean;
+
+    /** List of syntax errors */
+    syntax_errors: Array<{
+        type: string;
+        message: string;
+        line: number;
+        column: number;
+        text?: string;
+    }>;
+    /** Missing required MCP imports */
+    missing_required_imports: string[];
+
+    /** Timestamp of validation */
+    validation_timestamp: string;
+};
+
+/**
  * Default empty MCP tool for forms
  */
 export const DefaultMcpTool: IMcpToolRequest = {

@@ -22,7 +22,8 @@ import {
     IMcpToolListResponse,
     IMcpToolRequest,
     IMcpToolUpdateRequest,
-    IMcpToolDeleteResponse
+    IMcpToolDeleteResponse,
+    IMcpToolValidationResponse
 } from '../model/mcp-tools.model';
 
 export const mcpToolsApi = createApi({
@@ -72,6 +73,13 @@ export const mcpToolsApi = createApi({
             }),
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Delete MCP Tool', baseQueryReturnValue),
             invalidatesTags: ['mcpTools'],
+        }),
+        validateMcpTool: builder.mutation<IMcpToolValidationResponse, string>({
+            query: (code) => ({
+                url: '/mcp-workbench/validate-syntax',
+                method: 'POST',
+                data: {code}
+            })
         })
     }),
 });
@@ -82,5 +90,6 @@ export const {
     useLazyGetMcpToolQuery,
     useCreateMcpToolMutation,
     useUpdateMcpToolMutation,
-    useDeleteMcpToolMutation
+    useDeleteMcpToolMutation,
+    useValidateMcpToolMutation,
 } = mcpToolsApi;

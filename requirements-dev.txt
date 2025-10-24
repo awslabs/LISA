@@ -1,4 +1,4 @@
-pyarrow==17.0.0
+pyarrow==20.0.0
 datasets==2.20.0
 fastapi==0.111.1
 fastapi_utils==0.8.0

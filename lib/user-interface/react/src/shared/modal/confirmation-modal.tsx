@@ -23,13 +23,14 @@ export type CallbackFunction<T = any, R = void> = (props?: T) => R;
 
 export type ConfirmationModalProps = {
     action: string;
-    resourceName: string;
+    resourceName?: string;
     onConfirm: () => void;
     postConfirm?: CallbackFunction;
     description?: string | ReactElement;
     disabled?: boolean;
     onDismiss?: (event?: NonCancelableCustomEvent<ModalProps.DismissDetail>) => void;
     ignoreResponses?: boolean;
+    title?: string
 };
 
 function ConfirmationModal ({
@@ -40,10 +41,16 @@ function ConfirmationModal ({
     description,
     disabled,
     onDismiss,
-    ignoreResponses
+    ignoreResponses,
+    title
 }: ConfirmationModalProps): ReactElement {
     const [processing, setProcessing] = useState(false);
     const dispatch = useAppDispatch();
+
+    const headerText = title || [
+        action,
+        resourceName ? `"${resourceName}"` : ''
+    ].join(' ');
 
     return (
         <CloudscapeModal
@@ -88,7 +95,7 @@ function ConfirmationModal ({
                     </SpaceBetween>
                 </Box>
             }
-            header={`${action} "${resourceName}"`}
+            header={headerText}
         >
             {description}
         </CloudscapeModal>

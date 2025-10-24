@@ -1,3 +1,4 @@
+.direnv
 *.js
 !tailwind.config.js
 !postcss.config.js

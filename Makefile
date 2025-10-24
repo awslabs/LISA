@@ -151,9 +151,9 @@ createPythonEnvironment:
 
 ## Install Python dependencies for development
 installPythonRequirements:
-# 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install pip --upgrade
-# 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install --prefer-binary -r requirements-dev.txt
-# 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lisa-sdk
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install pip --upgrade
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install --prefer-binary -r requirements-dev.txt
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lisa-sdk
 
 ## Set up TypeScript interpreter environment
 createTypeScriptEnvironment:

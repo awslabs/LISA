@@ -43,6 +43,8 @@ import { ConfigurationContext } from './shared/configuration.provider';
 import McpServers from '@/pages/Mcp';
 import ModelComparisonPage from './pages/ModelComparison';
 import McpWorkbench from './pages/McpWorkbench';
+import ColorSchemeContext from './shared/color-scheme.provider';
+import { applyMode, Mode } from '@cloudscape-design/global-styles';
 
 
 export type RouteProps = {
@@ -95,6 +97,23 @@ function App () {
     });
     const config = fullConfig?.[0];
 
+    const [colorScheme, setColorScheme] = useState(() => {
+        // Check to see if Media-Queries are supported
+        if (window.matchMedia) {
+            // Check if the dark-mode Media-Query matches
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                // Dark
+                return Mode.Dark;
+            }
+        }
+        
+        return Mode.Light;
+    });
+    
+    useEffect(() => {
+        applyMode(colorScheme);
+    }, [colorScheme]);
+
     useEffect(() => {
         if (nav) {
             setShowNavigation(true);
@@ -104,6 +123,7 @@ function App () {
     }, [nav]);
 
     return (
+        <ColorSchemeContext.Provider value={{colorScheme, setColorScheme}}>
         <ConfigurationContext.Provider value={config}>
             {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
             <div
@@ -232,6 +252,7 @@ function App () {
             {confirmationModal && <ConfirmationModal {...confirmationModal} />}
             {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
         </ConfigurationContext.Provider>
+        </ColorSchemeContext.Provider>
     );
 }
 

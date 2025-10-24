@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useContext, useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/global-styles';
@@ -24,6 +24,7 @@ import { purgeStore, useAppSelector } from '../config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '../shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
+import ColorSchemeContext from '@/shared/color-scheme.provider';
 
 applyDensity(Density.Comfortable);
 
@@ -36,31 +37,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const userName = useAppSelector(selectCurrentUsername);
-    const [isDarkMode, setIsDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-    useEffect(() => {
-        if (isDarkMode) {
-            applyMode(Mode.Dark);
-        } else {
-            applyMode(Mode.Light);
-        }
-    }, [isDarkMode]);
-
-    useEffect(() => {
-    // Check to see if Media-Queries are supported
-        if (window.matchMedia) {
-            // Check if the dark-mode Media-Query matches
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                // Dark
-                applyMode(Mode.Dark);
-            } else {
-                // Light
-                applyMode(Mode.Light);
-            }
-        } else {
-            // Default (when Media-Queries are not supported)
-        }
-    }, []);
+    const {colorScheme, setColorScheme} = useContext(ColorSchemeContext);
 
     const libraryItems = [
         ...(configs?.configuration.enabledComponents?.modelLibrary ? [{
@@ -183,7 +160,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 await auth.signoutSilent();
                                 break;
                             case 'color-mode':
-                                setIsDarkMode(!isDarkMode);
+                                setColorScheme(colorScheme == Mode.Light ? Mode.Dark : Mode.Light);
                                 break;
                             default:
                                 break;
@@ -192,7 +169,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     iconName: 'user-profile',
                     items: [
                         { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
-                        { id: 'color-mode', text: isDarkMode ? 'Light mode' : 'Dark mode', iconSvg: (
+                        { id: 'color-mode', text: colorScheme == Mode.Light ? 'Dark mode': 'Light mode', iconSvg: (
                             <svg
                                 width='24'
                                 height='24'

@@ -500,7 +500,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                         >
                             <div style={{overflow: 'hidden', borderRadius: '16px'}}>
                                 <AceEditor
-                                    theme={colorScheme == Mode.Light ? 'cloud_editor' : 'cloud_editor_dark'}
+                                    theme={colorScheme === Mode.Light ? 'cloud_editor' : 'cloud_editor_dark'}
                                     showGutter={true}
                                     value={state.form.contents}
                                     mode='python'

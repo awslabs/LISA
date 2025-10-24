@@ -14,10 +14,10 @@
   limitations under the License.
 */
 
-import { ReactElement, useContext, useEffect, useState } from 'react';
+import { ReactElement, useContext } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { useHref, useNavigate } from 'react-router-dom';
-import { applyDensity, applyMode, Density, Mode } from '@cloudscape-design/global-styles';
+import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
 import { purgeStore, useAppSelector } from '../config/store';
@@ -160,7 +160,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 await auth.signoutSilent();
                                 break;
                             case 'color-mode':
-                                setColorScheme(colorScheme == Mode.Light ? Mode.Dark : Mode.Light);
+                                setColorScheme(colorScheme === Mode.Light ? Mode.Dark : Mode.Light);
                                 break;
                             default:
                                 break;
@@ -169,7 +169,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     iconName: 'user-profile',
                     items: [
                         { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
-                        { id: 'color-mode', text: colorScheme == Mode.Light ? 'Dark mode': 'Light mode', iconSvg: (
+                        { id: 'color-mode', text: colorScheme === Mode.Light ? 'Dark mode' : 'Light mode', iconSvg: (
                             <svg
                                 width='24'
                                 height='24'

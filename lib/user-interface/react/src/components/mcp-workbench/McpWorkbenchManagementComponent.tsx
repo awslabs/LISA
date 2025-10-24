@@ -131,16 +131,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
                 // Apply annotations to editor
                 if (editor) {
-                    console.log('annotations', annotations);
                     editor.getSession().setAnnotations(annotations);
                 }
-
-                // Show validation status in console for debugging
-                console.log('Validation result:', {
-                    isValid: validationData.is_valid,
-                    syntaxErrors: validationData.syntax_errors?.length || 0,
-                    missingRequiredImports: validationData.missing_required_imports?.length || 0,
-                });
 
             } else if ('error' in response) {
                 // Error response from validation API
@@ -201,12 +193,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
         loadAce();
     }, []);
-
-    console.log({
-        isDirty,
-        isLoadingVlidateMcpTool: isLoadingValidateMcpTool,
-        validMcpToolResponse
-    });
 
     // Update editor content when a tool is selected
     useEffect(() => {
@@ -521,7 +507,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                         }
                                     }}
                                     onLoad={(editor) => {
-                                        console.log(editor);
                                         setEditor(editor);
                                     }}
                                     width='100%'

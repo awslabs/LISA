@@ -90,6 +90,15 @@ export class ECSCluster extends Construct {
     /** Map of all services by identifier */
     public readonly services: Partial<Record<ECSTasks, Ec2Service>> = {};
 
+    /** Application Load Balancer */
+    public readonly loadBalancer: ApplicationLoadBalancer;
+
+    /** Application Listener */
+    public readonly listener: any;
+
+    /** ECS Cluster */
+    public readonly cluster: Cluster;
+
     private readonly targetGroups: Partial<Record<ECSTasks, ApplicationTargetGroup>> = {};
 
     /**
@@ -372,6 +381,11 @@ export class ECSCluster extends Construct {
             createCdkId([identifier, 'ApplicationListener']),
             listenerProps,
         );
+
+        // Expose load balancer, listener, and cluster for shared use
+        this.loadBalancer = loadBalancer;
+        this.listener = listener;
+        this.cluster = cluster;
         const protocol = listenerProps.port === 443 ? 'https' : 'http';
 
         const domain =

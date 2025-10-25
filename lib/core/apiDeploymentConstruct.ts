@@ -49,7 +49,7 @@ export class LisaApiDeploymentConstruct extends Construct {
 
         const api_url = `https://${restApiId}.execute-api.${Aws.REGION}.${Aws.URL_SUFFIX}/${config.deploymentStage}`;
         new StringParameter(scope, 'LisaApiDeploymentStringParameter', {
-            parameterName: `${config.deploymentPrefix}/${config.deploymentName}/${config.appName}/LisaApiUrl`,
+            parameterName: `${config.deploymentPrefix}/LisaApiUrl`,
             stringValue: api_url,
             description: 'API Gateway URL for LISA',
         });

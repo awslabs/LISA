@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { CfnOutput, Duration } from 'aws-cdk-lib';
+import { CfnOutput } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
@@ -25,24 +25,17 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster, ECSTasks } from './ecsCluster';
 import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { MCP_WORKBENCH_PATH, REST_API_PATH } from '../util';
+import { REST_API_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
-import { letIfDefined } from '../util/common-functions';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { LAMBDA_PATH } from '../util';
-import { getDefaultRuntime } from './utils';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
 // the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
 const INSTANCE_MEMORY_RESERVATION = 1024;
 const SERVE_CONTAINER_MEMORY_RESERVATION = 1024 * 2;
 const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024;
+
 
 /**
  * Properties for FastApiContainer Construct.
@@ -70,6 +63,15 @@ export class FastApiContainer extends Construct {
 
     /** FastAPI URL **/
     public readonly endpoint: string;
+
+    /** ECS Cluster **/
+    public readonly ecsCluster: any;
+
+    /** Application Load Balancer **/
+    public readonly loadBalancer: any;
+
+    /** Application Listener **/
+    public readonly listener: any;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -125,11 +127,7 @@ export class FastApiContainer extends Construct {
             path: REST_API_PATH,
             type: EcsSourceType.ASSET
         };
-        const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
-            baseImage: config.baseImage,
-            path: MCP_WORKBENCH_PATH,
-            type: EcsSourceType.ASSET
-        };
+
         const instanceType = 'm5.large';
         const healthCheckConfig = {
             command: ['CMD-SHELL', 'exit 0'],
@@ -166,30 +164,10 @@ export class FastApiContainer extends Construct {
                     // set a softlimit of what we expect to use
                     containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION
                 },
-                [ECSTasks.MCPWORKBENCH]: {
-                    environment: {...baseEnvironment,
-                        RCLONE_CONFIG_S3_REGION: config.region,
-                        MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
-                    },
-                    containerConfig: {
-                        image: mcpWorkbenchImage,
-                        healthCheckConfig,
-                        environment: {},
-                        sharedMemorySize: 0,
-                        privileged: true
-                    },
-                    applicationTarget: {
-                        port: 8000,
-                        priority: 80,
-                        conditions: [
-                            { type: 'pathPatterns', values: ['/v2/mcp/*'] }
-                        ]
-                    },
-                    containerMemoryReservationMiB: WORKBENCH_CONTAINER_MEMORY_RESERVATION,
-                }
+
             },
             // reserve at least enough memory for each task and a buffer for the instance to use
-            containerMemoryBuffer: Ec2Metadata.get(instanceType).memory - (INSTANCE_MEMORY_RESERVATION + SERVE_CONTAINER_MEMORY_RESERVATION + WORKBENCH_CONTAINER_MEMORY_RESERVATION),
+            containerMemoryBuffer: Ec2Metadata.get(instanceType).memory - (INSTANCE_MEMORY_RESERVATION + SERVE_CONTAINER_MEMORY_RESERVATION + (config.deployMcpWorkbench ? WORKBENCH_CONTAINER_MEMORY_RESERVATION : 0)),
             instanceType,
             internetFacing: config.restApiConfig.internetFacing,
             loadBalancerConfig: {
@@ -213,83 +191,7 @@ export class FastApiContainer extends Construct {
             vpc
         });
 
-        const workbenchService = apiCluster.services.MCPWORKBENCH;
 
-        // Create Lambda function to handle S3 events and trigger MCP Workbench service redeployment
-        const s3EventHandlerRole = new Role(this, 'S3EventHandlerRole', {
-            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            inlinePolicies: {
-                'S3EventHandlerPolicy': new PolicyDocument({
-                    statements: [
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'logs:CreateLogGroup',
-                                'logs:CreateLogStream',
-                                'logs:PutLogEvents'
-                            ],
-                            resources: [`arn:${config.partition}:logs:*:*:*`]
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'ecs:UpdateService',
-                                'ecs:DescribeServices',
-                                'ecs:DescribeClusters'
-                            ],
-                            resources: [
-                                `arn:${config.partition}:ecs:${config.region}:*:cluster/${workbenchService?.cluster?.clusterName}*`,
-                                `arn:${config.partition}:ecs:${config.region}:*:service/${workbenchService?.cluster?.clusterName}*/${workbenchService?.serviceName}*`
-                            ]
-                        }),
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: [
-                                'ssm:GetParameter'
-                            ],
-                            resources: [
-                                `arn:${config.partition}:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
-                            ]
-                        })
-                    ]
-                })
-            }
-        });
-
-        const s3EventHandlerLambda = new lambda.Function(this, 'S3EventHandlerLambda', {
-            runtime: getDefaultRuntime(),
-            handler: 'mcp_workbench.s3_event_handler.handler',
-            code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
-            timeout: Duration.minutes(2),
-            role: s3EventHandlerRole,
-            environment: {
-                DEPLOYMENT_PREFIX: config.deploymentPrefix!,
-                API_NAME: props.apiName,
-                ECS_CLUSTER_NAME: workbenchService!.cluster?.clusterName,
-                MCPWORKBENCH_SERVICE_NAME: workbenchService!.serviceName
-            }
-        });
-
-        // Create EventBridge rule to trigger Lambda when S3 objects are created/deleted
-        const rescanMcpWorkbenchRule = new events.Rule(this, 'RescanMCPWorkbenchRule', {
-            eventPattern: {
-                source: ['aws.s3', 'debug'],
-                detailType: [
-                    'Object Created',
-                    'Object Deleted'
-                ],
-                detail: {
-                    bucket: {
-                        name: [[config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase()]
-                    }
-                }
-            },
-        });
-
-        rescanMcpWorkbenchRule.addTarget(new targets.LambdaFunction(s3EventHandlerLambda, {
-            retryAttempts: 2,
-            maxEventAge: Duration.minutes(5)
-        }));
 
         if (tokenTable) {
             Object.entries(apiCluster.taskRoles).forEach(([, role]) => {
@@ -297,11 +199,7 @@ export class FastApiContainer extends Construct {
             });
         }
 
-        letIfDefined(apiCluster.taskRoles.MCPWORKBENCH, (taskRole) => {
-            const bucketName = [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase();
-            const workbenchBucket = Bucket.fromBucketName(scope, 'MCPWorkbenchBucket', bucketName);
-            workbenchBucket.grantRead(taskRole);
-        });
+
 
         this.endpoint = apiCluster.endpointUrl;
 
@@ -313,6 +211,9 @@ export class FastApiContainer extends Construct {
         // Update
         this.containers = Object.values(apiCluster.containers);
         this.taskRoles = apiCluster.taskRoles;
+        this.ecsCluster = apiCluster.cluster;
+        this.loadBalancer = apiCluster.loadBalancer;
+        this.listener = apiCluster.listener;
 
         // CFN output
         new CfnOutput(this, `${props.apiName}Url`, {

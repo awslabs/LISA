@@ -14,6 +14,7 @@
 
 """Repository for ingestion job DynamoDB operations."""
 
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
@@ -21,6 +22,8 @@ from typing import Dict, Optional
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
 from utilities.common_functions import retry_config
+
+logger = logging.getLogger(__name__)
 
 
 def _get_ingestion_job_table():
@@ -197,12 +200,9 @@ class IngestionJobRepository:
         Returns:
             Job status (SUBMITTED, PENDING, RUNNABLE, STARTING, RUNNING, SUCCEEDED, FAILED) or None
         """
-        try:
-            response = self.batch_client.describe_jobs(jobs=[job_id])
-            if response.get("jobs"):
-                return response["jobs"][0].get("status")
-        except Exception:
-            pass
+        response = self.batch_client.describe_jobs(jobs=[job_id])
+        if response.get("jobs"):
+            return response["jobs"][0].get("status")
         return None
 
     def find_batch_job_for_document(self, document_id: str, job_queue: str) -> Optional[Dict]:
@@ -215,9 +215,6 @@ class IngestionJobRepository:
         Returns:
             Dict with jobId and status, or None if not found
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
         job_name_prefix = f"document-ingest-{document_id}"
 
         for status in ["RUNNING", "SUCCEEDED", "FAILED", "PENDING", "RUNNABLE", "STARTING"]:

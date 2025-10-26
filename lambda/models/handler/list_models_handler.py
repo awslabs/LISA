@@ -16,7 +16,7 @@
 
 from typing import List, Optional
 
-from utilities.common_functions import user_has_group_access
+from utilities.auth import user_has_group_access
 
 from ..domain_objects import ListModelsResponse
 from .base_handler import BaseApiHandler

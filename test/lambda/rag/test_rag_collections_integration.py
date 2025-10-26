@@ -53,7 +53,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Test configuration
-TEST_COLLECTION_NAME = "test-collection-integration"
+TEST_COLLECTION_ID = "test-collection-integration"
 TEST_DOCUMENT_CONTENT = """
 This is a test document for RAG collections integration testing.
 It contains information about artificial intelligence and machine learning.
@@ -156,14 +156,14 @@ class TestRagCollectionsIntegration:
             Dict: Collection configuration for tests
         """
         # Create test collection
-        collection_name = f"{TEST_COLLECTION_NAME}-{int(time.time())}"
-        logger.info(f"Creating test collection: {collection_name}")
+        collection_id = f"{TEST_COLLECTION_ID}-{int(time.time())}"
+        logger.info(f"Creating test collection: {collection_id}")
 
         collection = None
         try:
             collection = lisa_client.create_collection(
                 repository_id=test_repository_id,
-                name=collection_name,
+                name=collection_id,
                 description="Integration test collection",
                 embedding_model=test_embedding_model,
                 chunking_strategy={"type": "fixed", "size": 512, "overlap": 51},

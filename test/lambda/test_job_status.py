@@ -33,27 +33,23 @@ def setup_env(monkeypatch):
 
 
 def test_is_terminal_status():
-    """Test is_terminal_status function"""
-    from repository.job_status import is_terminal_status
+    """Test is_terminal method on IngestionStatus enum"""
+    assert IngestionStatus.INGESTION_COMPLETED.is_terminal() is True
+    assert IngestionStatus.INGESTION_FAILED.is_terminal() is True
+    assert IngestionStatus.DELETE_COMPLETED.is_terminal() is True
+    assert IngestionStatus.DELETE_FAILED.is_terminal() is True
 
-    assert is_terminal_status(IngestionStatus.INGESTION_COMPLETED) is True
-    assert is_terminal_status(IngestionStatus.INGESTION_FAILED) is True
-    assert is_terminal_status(IngestionStatus.DELETE_COMPLETED) is True
-    assert is_terminal_status(IngestionStatus.DELETE_FAILED) is True
-
-    assert is_terminal_status(IngestionStatus.INGESTION_PENDING) is False
-    assert is_terminal_status(IngestionStatus.INGESTION_IN_PROGRESS) is False
-    assert is_terminal_status(IngestionStatus.DELETE_PENDING) is False
-    assert is_terminal_status(IngestionStatus.DELETE_IN_PROGRESS) is False
+    assert IngestionStatus.INGESTION_PENDING.is_terminal() is False
+    assert IngestionStatus.INGESTION_IN_PROGRESS.is_terminal() is False
+    assert IngestionStatus.DELETE_PENDING.is_terminal() is False
+    assert IngestionStatus.DELETE_IN_PROGRESS.is_terminal() is False
 
 
 def test_is_success_status():
-    """Test is_success_status function"""
-    from repository.job_status import is_success_status
+    """Test is_success method on IngestionStatus enum"""
+    assert IngestionStatus.INGESTION_COMPLETED.is_success() is True
+    assert IngestionStatus.DELETE_COMPLETED.is_success() is True
 
-    assert is_success_status(IngestionStatus.INGESTION_COMPLETED) is True
-    assert is_success_status(IngestionStatus.DELETE_COMPLETED) is True
-
-    assert is_success_status(IngestionStatus.INGESTION_FAILED) is False
-    assert is_success_status(IngestionStatus.DELETE_FAILED) is False
-    assert is_success_status(IngestionStatus.INGESTION_PENDING) is False
+    assert IngestionStatus.INGESTION_FAILED.is_success() is False
+    assert IngestionStatus.DELETE_FAILED.is_success() is False
+    assert IngestionStatus.INGESTION_PENDING.is_success() is False

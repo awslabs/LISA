@@ -16,18 +16,27 @@
 
 """Collection service for business logic."""
 
+import logging
 from typing import Dict, List, Optional, Tuple
 
 from models.domain_objects import RagCollectionConfig
 from repository.collection_repo import CollectionRepository
+from repository.vector_store_repo import VectorStoreRepository
 from utilities.validation import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class CollectionService:
     """Service for collection operations."""
 
-    def __init__(self, collection_repo: Optional[CollectionRepository] = None):
+    def __init__(
+        self,
+        collection_repo: Optional[CollectionRepository] = None,
+        vector_store_repo: Optional[VectorStoreRepository] = None,
+    ):
         self.collection_repo = collection_repo or CollectionRepository()
+        self.vector_store_repo = vector_store_repo or VectorStoreRepository()
 
     def has_access(
         self,
@@ -104,3 +113,39 @@ class CollectionService:
         if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
             raise ValidationError(f"Permission denied to delete collection {collection_id}")
         self.collection_repo.delete(collection_id, repository_id)
+
+    def get_collection_model(
+        self,
+        repository_id: str,
+        collection_id: str,
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+    ) -> Optional[str]:
+        """Get embedding model from collection or repository default.
+
+        Args:
+            repository_id: Repository ID
+            collection_id: Collection ID
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+
+        Returns:
+            Embedding model name from collection or repository default
+        """
+        try:
+            collection = self.get_collection(
+                collection_id=collection_id,
+                repository_id=repository_id,
+                username=username,
+                user_groups=user_groups,
+                is_admin=is_admin,
+            )
+            if collection.embeddingModel:
+                return collection.embeddingModel
+        except ValidationError as e:
+            logger.warning(f"Failed to get collection {collection_id}: {e}, using repository default")
+
+        repository = self.vector_store_repo.find_repository_by_id(repository_id)
+        return repository.get("embeddingModelId")

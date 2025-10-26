@@ -126,16 +126,6 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'delete_index',
-                resource: 'repository',
-                description: 'Delete an index within a repository',
-                path: 'repository/{repositoryId}/index/{modelName}',
-                method: 'DELETE',
-                environment: {
-                    ...baseEnvironment,
-                },
-            },
-            {
                 name: 'similarity_search',
                 resource: 'repository',
                 description: 'Run a similarity search against the specified repository using the specified query',

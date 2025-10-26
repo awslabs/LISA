@@ -12,13 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
 import os
 import sys
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
@@ -35,31 +34,114 @@ def mock_vector_store_repo():
         yield mock.return_value
 
 
-def test_validate_name_valid(mock_collection_repo, mock_vector_store_repo):
-    from repository.collection_validation import CollectionValidationService
+# Pydantic validation tests for domain objects
+def test_create_collection_request_name_valid():
+    from models.domain_objects import CreateCollectionRequest
 
-    service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
-    service._validate_name("Valid Name 123")
-
-
-def test_validate_name_empty(mock_collection_repo, mock_vector_store_repo):
-    from repository.collection_validation import CollectionValidationService
-    from utilities.validation import ValidationError
-
-    service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
-    with pytest.raises(ValidationError):
-        service._validate_name("")
+    request = CreateCollectionRequest(name="Valid Name 123")
+    assert request.name == "Valid Name 123"
 
 
-def test_validate_name_too_long(mock_collection_repo, mock_vector_store_repo):
-    from repository.collection_validation import CollectionValidationService
-    from utilities.validation import ValidationError
+def test_create_collection_request_name_empty():
+    from models.domain_objects import CreateCollectionRequest
 
-    service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
-    with pytest.raises(ValidationError):
-        service._validate_name("a" * 101)
+    with pytest.raises(PydanticValidationError):
+        CreateCollectionRequest(name="")
 
 
+def test_create_collection_request_name_invalid_chars():
+    from models.domain_objects import CreateCollectionRequest
+
+    with pytest.raises(PydanticValidationError):
+        CreateCollectionRequest(name="Invalid@Name!")
+
+
+def test_create_collection_request_name_too_long():
+    from models.domain_objects import CreateCollectionRequest
+
+    with pytest.raises(PydanticValidationError):
+        CreateCollectionRequest(name="a" * 101)
+
+
+def test_update_collection_request_name_valid():
+    from models.domain_objects import UpdateCollectionRequest
+
+    request = UpdateCollectionRequest(name="Valid Name")
+    assert request.name == "Valid Name"
+
+
+def test_update_collection_request_name_invalid():
+    from models.domain_objects import UpdateCollectionRequest
+
+    with pytest.raises(PydanticValidationError):
+        UpdateCollectionRequest(name="Invalid@Name")
+
+
+def test_fixed_chunking_strategy_valid():
+    from models.domain_objects import FixedChunkingStrategy
+
+    strategy = FixedChunkingStrategy(size=500, overlap=50)
+    assert strategy.size == 500
+    assert strategy.overlap == 50
+
+
+def test_fixed_chunking_strategy_size_too_small():
+    from models.domain_objects import FixedChunkingStrategy
+
+    with pytest.raises(PydanticValidationError):
+        FixedChunkingStrategy(size=50, overlap=10)
+
+
+def test_fixed_chunking_strategy_size_too_large():
+    from models.domain_objects import FixedChunkingStrategy
+
+    with pytest.raises(PydanticValidationError):
+        FixedChunkingStrategy(size=20000, overlap=100)
+
+
+def test_fixed_chunking_strategy_overlap_negative():
+    from models.domain_objects import FixedChunkingStrategy
+
+    with pytest.raises(PydanticValidationError):
+        FixedChunkingStrategy(size=500, overlap=-10)
+
+
+def test_fixed_chunking_strategy_overlap_too_large():
+    from models.domain_objects import FixedChunkingStrategy
+
+    with pytest.raises(PydanticValidationError):
+        FixedChunkingStrategy(size=500, overlap=300)
+
+
+def test_collection_metadata_tags_valid():
+    from models.domain_objects import CollectionMetadata
+
+    metadata = CollectionMetadata(tags=["tag1", "tag-2", "tag_3"])
+    assert len(metadata.tags) == 3
+
+
+def test_collection_metadata_tags_too_many():
+    from models.domain_objects import CollectionMetadata
+
+    with pytest.raises(PydanticValidationError):
+        CollectionMetadata(tags=[f"tag{i}" for i in range(51)])
+
+
+def test_collection_metadata_tag_too_long():
+    from models.domain_objects import CollectionMetadata
+
+    with pytest.raises(PydanticValidationError):
+        CollectionMetadata(tags=["a" * 51])
+
+
+def test_collection_metadata_tag_invalid_chars():
+    from models.domain_objects import CollectionMetadata
+
+    with pytest.raises(PydanticValidationError):
+        CollectionMetadata(tags=["invalid@tag"])
+
+
+# Repository-specific validation tests
 def test_validate_allowed_groups_subset(mock_collection_repo, mock_vector_store_repo):
     from repository.collection_validation import CollectionValidationService
 
@@ -74,24 +156,6 @@ def test_validate_allowed_groups_not_subset(mock_collection_repo, mock_vector_st
     service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
     with pytest.raises(ValidationError):
         service._validate_allowed_groups(["group3"], ["group1", "group2"])
-
-
-def test_validate_chunking_strategy_fixed_size(mock_collection_repo, mock_vector_store_repo):
-    from models.domain_objects import FixedChunkingStrategy
-    from repository.collection_validation import CollectionValidationService
-
-    service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
-    strategy = FixedChunkingStrategy(size=500, overlap=50)
-    service._validate_chunking_strategy(strategy)
-
-
-def test_validate_metadata(mock_collection_repo, mock_vector_store_repo):
-    from models.domain_objects import CollectionMetadata
-    from repository.collection_validation import CollectionValidationService
-
-    service = CollectionValidationService(mock_collection_repo, mock_vector_store_repo)
-    metadata = CollectionMetadata(tags=["tag1", "tag2"])
-    service._validate_metadata(metadata)
 
 
 def test_validate_create_request(mock_collection_repo, mock_vector_store_repo):
@@ -117,12 +181,6 @@ def test_validate_update_request(mock_collection_repo, mock_vector_store_repo):
     request = UpdateCollectionRequest(name="Updated Name")
     result = service.validate_update_request(request, "coll1", "repo1")
     assert result["valid"]
-
-
-def test_validate_collection_name_function():
-    from repository.collection_validation import validate_collection_name
-
-    assert validate_collection_name("Valid Name")
 
 
 def test_validate_groups_subset_function():

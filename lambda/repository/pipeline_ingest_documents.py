@@ -121,7 +121,7 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
     embeddings = RagEmbeddings(model_name=doc.collection_id)
     vector_store = get_vector_store_client(
         doc.repository_id,
-        index=doc.collection_id,
+        collection_name=doc.collection_id,
         embeddings=embeddings,
     )
     vector_store.delete(doc.subdocs)
@@ -283,13 +283,13 @@ def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict
 
 
 def store_chunks_in_vectorstore(
-    texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
+    texts: List[str], metadatas: List[Dict], repository_id: str, collection_name: str, embedding_model: str
 ) -> List[str]:
     """Store document chunks in vector store."""
     embeddings = RagEmbeddings(model_name=embedding_model)
     vs = get_vector_store_client(
         repository_id,
-        index=collection_id,
+        collection_name=collection_name,
         embeddings=embeddings,
     )
 

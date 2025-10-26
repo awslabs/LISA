@@ -22,8 +22,8 @@ from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
-from utilities.auth import get_username, is_admin
-from utilities.common_functions import api_wrapper, get_groups, get_item, retry_config
+from utilities.auth import get_user_context, get_username
+from utilities.common_functions import api_wrapper, get_item, retry_config
 
 from .models import PromptTemplateModel
 
@@ -85,7 +85,7 @@ def _get_prompt_templates(
 @api_wrapper
 def get(event: dict, context: dict) -> Any:
     """Retrieve a specific prompt template from DynamoDB."""
-    user_id = get_username(event)
+    user_id, is_admin, groups = get_user_context(event)
     prompt_template_id = get_prompt_template_id(event)
 
     # Query for the latest prompt template revision
@@ -97,7 +97,7 @@ def get(event: dict, context: dict) -> Any:
 
     # Check if the user is authorized to get the prompt template
     is_owner = item["owner"] == user_id
-    if is_owner or is_admin(event) or is_member(get_groups(event), item["groups"]):
+    if is_owner or is_admin or is_member(groups, item["groups"]):
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
             item["isOwner"] = True
@@ -117,15 +117,14 @@ def is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
 def list(event: dict, context: dict) -> Dict[str, Any]:
     """List prompt templates for a user from DynamoDB."""
     query_params = event.get("queryStringParameters", {})
-    user_id = get_username(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Check whether to list public or private templates
     if query_params.get("public") == "true":
-        if is_admin(event):
+        if is_admin:
             logger.info(f"Listing all templates for user {user_id} (is_admin)")
             return _get_prompt_templates(latest=True)
         else:
-            groups = get_groups(event)
             logger.info(f"Listing public templates for user {user_id} with groups {groups}")
             return _get_prompt_templates(groups=groups, latest=True)
     else:
@@ -149,7 +148,7 @@ def create(event: dict, context: dict) -> Any:
 @api_wrapper
 def update(event: dict, context: dict) -> Any:
     """Update an existing prompt template in DynamoDB."""
-    user_id = get_username(event)
+    user_id, is_admin, _ = get_user_context(event)
     prompt_template_id = get_prompt_template_id(event)
     body = json.loads(event["body"], parse_float=Decimal)
     prompt_template_model = PromptTemplateModel(**body)
@@ -165,7 +164,7 @@ def update(event: dict, context: dict) -> Any:
         raise ValueError(f"Prompt template {prompt_template_model} not found.")
 
     # Check if the user is authorized to update the prompt template
-    if is_admin(event) or item["owner"] == user_id:
+    if is_admin or item["owner"] == user_id:
         logger.info(f"Removing latest attribute from prompt_template with ID {prompt_template_id} for user {user_id}")
 
         # Remove latest attribute indicating no longer the latest version
@@ -189,7 +188,7 @@ def update(event: dict, context: dict) -> Any:
 @api_wrapper
 def delete(event: dict, context: dict) -> Dict[str, str]:
     """Logically delete a prompt template from DynamoDB."""
-    user_id = get_username(event)
+    user_id, is_admin, _ = get_user_context(event)
     prompt_template_id = get_prompt_template_id(event)
 
     # Query for the latest prompt template revision
@@ -200,7 +199,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
         raise ValueError(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to delete the prompt template
-    if is_admin(event) or item["owner"] == user_id:
+    if is_admin or item["owner"] == user_id:
         logger.info(f"Removing latest attribute from prompt_template with ID {prompt_template_id} for user {user_id}")
 
         # Logical delete by removing the latest attribute

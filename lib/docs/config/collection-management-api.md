@@ -746,7 +746,7 @@ def delete_collection_with_confirmation(repository_id, collection_id, token):
         return False
 
     collection = response.json()
-    collection_name = collection['name']
+    collection_id = collection['name']
 
     # Step 2: Get document count (from list_docs endpoint)
     docs_url = f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/{repository_id}/documents"
@@ -761,20 +761,20 @@ def delete_collection_with_confirmation(repository_id, collection_id, token):
         doc_count = docs_response.json().get('totalDocuments', 0)
 
     # Step 3: Display warning and get confirmation
-    print(f"\nWARNING: You are about to delete collection '{collection_name}'")
+    print(f"\nWARNING: You are about to delete collection '{collection_id}'")
     print(f"This will remove {doc_count} documents from S3 and the vector store.")
     print("This action cannot be undone.")
 
-    confirmation = input(f"\nType the collection name '{collection_name}' to confirm: ")
+    confirmation = input(f"\nType the collection name '{collection_id}' to confirm: ")
 
-    if confirmation != collection_name:
+    if confirmation != collection_id:
         print("Deletion cancelled - name did not match")
         return False
 
     # Step 4: Delete the collection
     response = requests.delete(url, headers=headers)
     if response.status_code == 204:
-        print(f"Collection '{collection_name}' deleted successfully")
+        print(f"Collection '{collection_id}' deleted successfully")
         return True
     else:
         print(f"Error deleting collection: {response.status_code} - {response.text}")

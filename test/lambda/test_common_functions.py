@@ -27,53 +27,11 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_REGION", "us-east-1")
 
 
-def test_get_username(setup_env):
-    from utilities.common_functions import get_username
-
-    event = {"requestContext": {"authorizer": {"username": "testuser"}}}
-    assert get_username(event) == "testuser"
-
-
-def test_get_username_default(setup_env):
-    from utilities.common_functions import get_username
-
-    event = {}
-    assert get_username(event) == "system"
-
-
-def test_get_groups(setup_env):
-    import json
-
-    from utilities.common_functions import get_groups
-
-    event = {"requestContext": {"authorizer": {"groups": json.dumps(["group1"])}}}
-    groups = get_groups(event)
-    assert len(groups) >= 1
-
-
 def test_get_principal_id(setup_env):
     from utilities.common_functions import get_principal_id
 
     event = {"requestContext": {"authorizer": {"principal": "principal123"}}}
     assert get_principal_id(event) == "principal123"
-
-
-def test_user_has_group_access_public(setup_env):
-    from utilities.common_functions import user_has_group_access
-
-    assert user_has_group_access(["group1"], [])
-
-
-def test_user_has_group_access_match(setup_env):
-    from utilities.common_functions import user_has_group_access
-
-    assert user_has_group_access(["group1", "group2"], ["group2", "group3"])
-
-
-def test_user_has_group_access_no_match(setup_env):
-    from utilities.common_functions import user_has_group_access
-
-    assert not user_has_group_access(["group1"], ["group2", "group3"])
 
 
 def test_merge_fields_simple(setup_env):

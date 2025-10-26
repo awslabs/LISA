@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for RAG repository API."""
+
 import json
 import logging
 import os
@@ -43,9 +44,9 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_user_context, get_username, is_admin
+from utilities.auth import admin_only, get_user_context, get_username, is_admin, user_has_group_access
 from utilities.bedrock_kb import retrieve_documents
-from utilities.common_functions import api_wrapper, get_groups, get_id_token, retry_config, user_has_group_access
+from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
@@ -89,13 +90,12 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     Returns:
         List of repository configurations user can access
     """
-    user_groups = get_groups(event)
+    _, is_admin, groups = get_user_context(event)
     registered_repositories = vs_repo.get_registered_repositories()
-    admin_override = is_admin(event)
     return [
         repo
         for repo in registered_repositories
-        if admin_override or user_has_group_access(user_groups, repo.get("allowedGroups", []))
+        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", []))
     ]
 
 
@@ -122,7 +122,8 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         event (dict): The Lambda event object containing:
             - queryStringParameters.modelName (optional): Name of the embedding model
               (not needed if collectionId provided)
-            - queryStringParameters.collectionId (optional): Collection ID to search within
+            - queryStringParameters.collectionId (optional): Collection ID to search within. Will override
+                any modelName.
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
@@ -146,34 +147,20 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     repository = get_repository(event, repository_id=repository_id)
 
     # Get user context for collection access
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Determine embedding model
-    model_name = None
-    if collection_id:
-        # Get embedding model from collection
-        try:
-            collection = collection_service.get_collection(
-                collection_id=collection_id,
-                repository_id=repository_id,
-                user_id=username,
-                user_groups=user_groups,
-                is_admin=admin,
-            )
-            model_name = (
-                collection.embeddingModel
-                if hasattr(collection, "embeddingModel") and collection.embeddingModel
-                else repository.get("embeddingModelId")
-            )
-            logger.info(f"Using embedding model from collection: {model_name}")
-        except Exception as e:
-            logger.warning(f"Failed to get collection {collection_id}: {e}, falling back to modelName parameter")
-            model_name = query_string_params.get("modelName")
-    else:
-        # Use modelName from query parameters
-        model_name = query_string_params.get("modelName")
+    model_name = (
+        collection_service.get_collection_model(
+            repository_id=repository_id,
+            collection_id=collection_id,
+            username=user_id,
+            user_groups=groups,
+            is_admin=is_admin,
+        )
+        if collection_id
+        else query_string_params.get("modelName")
+    )
 
     if not model_name:
         raise ValidationError("modelName is required when collectionId is not provided")
@@ -190,17 +177,17 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             repository_id=repository_id,
         )
     else:
-        # Use collection_id as index if provided, otherwise use model_name
-        index_name = collection_id if collection_id else model_name
-        logger.info(f"Searching in index: {index_name} with embedding model: {model_name}")
+        # Use collection_id as vector store index if provided, otherwise use model_name
+        collection_id = collection_id if collection_id else model_name
+        logger.info(f"Searching in collection: {collection_id} with embedding model: {model_name}")
         embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-        vs = get_vector_store_client(repository_id, index=index_name, embeddings=embeddings)
+        vs = get_vector_store_client(repository_id, collection_id=collection_id, embeddings=embeddings)
 
         # empty vector stores do not have an initialize index. Return empty docs
         if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH) and not vs.client.indices.exists(
-            index=index_name
+            index=collection_id
         ):
-            logger.info(f"Index {index_name} does not exist. Returning empty docs.")
+            logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
         else:
             docs = (
                 _similarity_search_with_score(vs, query, top_k, repository)
@@ -222,9 +209,9 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def get_repository(event: dict[str, Any], repository_id: str) -> None:
-    repo = vs_repo.find_repository_by_id(repository_id)
+def get_repository(event: dict[str, Any], repository_id: str) -> dict:
     """Ensures a user has access to the repository or else raises an HTTPException"""
+    repo = vs_repo.find_repository_by_id(repository_id)
     if is_admin(event) is False:
         user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
         if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
@@ -267,9 +254,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError(f"Invalid request: {e}")
 
     # Get user context
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -278,9 +263,9 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     collection = collection_service.create_collection(
         request=request,
         repository_id=repository_id,
-        user_id=username,
-        user_groups=user_groups,
-        is_admin=admin,
+        user_id=user_id,
+        user_groups=groups,
+        is_admin=is_admin,
     )
 
     # Return collection configuration
@@ -316,9 +301,7 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("collectionId is required")
 
     # Get user context
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -327,9 +310,9 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
     collection = collection_service.get_collection(
         collection_id=collection_id,
         repository_id=repository_id,
-        user_id=username,
-        user_groups=user_groups,
-        is_admin=admin,
+        user_id=user_id,
+        user_groups=groups,
+        is_admin=is_admin,
     )
 
     # Return collection configuration
@@ -377,9 +360,7 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError(f"Invalid request: {e}")
 
     # Get user context
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -389,9 +370,9 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
         collection_id=collection_id,
         repository_id=repository_id,
         request=request,
-        user_id=username,
-        user_groups=user_groups,
-        is_admin=admin,
+        user_id=user_id,
+        user_groups=groups,
+        is_admin=is_admin,
     )
 
     # Build response
@@ -436,9 +417,7 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("collectionId is required")
 
     # Get user context
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -447,9 +426,9 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     collection_service.delete_collection(
         collection_id=collection_id,
         repository_id=repository_id,
-        user_id=username,
-        user_groups=user_groups,
-        is_admin=admin,
+        user_id=user_id,
+        user_groups=groups,
+        is_admin=is_admin,
     )
 
     # Return empty response for 204 No Content
@@ -493,9 +472,7 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("repositoryId is required")
 
     # Get user context
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -548,9 +525,9 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
     # List collections via service (includes access control filtering)
     collections, next_key = collection_service.list_collections(
         repository_id=repository_id,
-        user_id=username,
-        user_groups=user_groups,
-        is_admin=admin,
+        user_id=user_id,
+        user_groups=groups,
+        is_admin=is_admin,
         page_size=page_size,
         last_evaluated_key=last_evaluated_key,
         filter_text=filter_text,
@@ -726,9 +703,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository_id = path_params.get("repositoryId")
 
     # Get user context
-    username = get_username(event)
-    user_groups = get_groups(event)
-    admin = is_admin(event)
+    user_id, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     repository = get_repository(event, repository_id=repository_id)
@@ -755,9 +730,9 @@ def ingest_documents(event: dict, context: dict) -> dict:
         collection = collection_service.get_collection(
             collection_id=collection_id,
             repository_id=repository_id,
-            user_id=username,
-            user_groups=user_groups,
-            is_admin=admin,
+            user_id=user_id,
+            user_groups=groups,
+            is_admin=is_admin,
         )
     except ValidationError as e:
         # If collection not found, check if it's a default collection (embedding model ID)
@@ -832,7 +807,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             chunk_strategy=chunk_strategy,
             embedding_model=embedding_model_id,
             s3_path=f"s3://{bucket}/{key}",
-            username=username,
+            username=user_id,
         )
         ingestion_job_repository.save(job)
         ingestion_service.create_ingest_job(job)
@@ -1047,7 +1022,7 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
     _ = get_repository(event, repository_id=params.repository_id)
 
     # Get user context
-    username, is_admin_user = get_user_context(event)
+    username, is_admin_user, _ = get_user_context(event)
 
     # Fetch jobs from repository
     jobs, returned_last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
@@ -1283,48 +1258,6 @@ def delete(event: dict, context: dict) -> Any:
 
         # Return success status and execution ARN
         return {"status": "success", "executionArn": response["executionArn"]}
-
-
-@api_wrapper
-@admin_only
-def delete_index(event: dict, context: dict) -> None:
-    """
-    Clear the vector store for the specified repository and model.
-
-    Args:
-        event (dict): The Lambda event object containing path parameters
-        context (dict): The Lambda context object
-    """
-    path_params = event.get("pathParameters", {}) or {}
-    repository_id = path_params.get("repositoryId", None)
-    if not repository_id:
-        raise ValidationError("repositoryId is required")
-    collection_id = path_params.get("collectionId", None)
-    if not collection_id:
-        raise ValidationError("collectionId is required")
-
-    repository = vs_repo.find_repository_by_id(repository_id=repository_id)
-    id_token = get_id_token(event)
-    embeddings = RagEmbeddings(model_name=collection_id, id_token=id_token)  # model_name can be anything
-    vs = get_vector_store_client(repository_id, index=collection_id, embeddings=embeddings)
-
-    try:
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            if vs.client.indices.exists(index=collection_id):
-                vs.client.indices.delete(index=collection_id)
-                logger.info(f"Deleted OpenSearch index: {collection_id}")
-            else:
-                logger.info(f"OpenSearch index {collection_id} does not exist")
-        elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
-            # For PGVector, delete all documents in the collection
-            vs.delete_collection()
-            logger.info(f"Deleted PGVector collection: {collection_id}")
-        else:
-            logger.error(f"Unsupported repository type: {repository.get('type')}")
-            return {"status": "error", "message": "Repository is not supported"}
-    except Exception as e:
-        logger.error(f"Failed to clear vector store: {e}")
-        return {"status": "error", "message": str(e)}
 
 
 def _remove_legacy(repository_id: str) -> None:

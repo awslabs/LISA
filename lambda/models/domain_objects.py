@@ -15,6 +15,7 @@
 """Defines domain objects for model endpoint interactions."""
 
 import logging
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -390,13 +391,38 @@ class IngestionStatus(str, Enum):
     DELETE_COMPLETED = "DELETE_COMPLETED"
     DELETE_FAILED = "DELETE_FAILED"
 
+    def is_terminal(self) -> bool:
+        """Check if status is terminal."""
+        return self in [
+            IngestionStatus.INGESTION_COMPLETED,
+            IngestionStatus.INGESTION_FAILED,
+            IngestionStatus.DELETE_COMPLETED,
+            IngestionStatus.DELETE_FAILED,
+        ]
+
+    def is_success(self) -> bool:
+        """Check if status is success."""
+        return self in [
+            IngestionStatus.INGESTION_COMPLETED,
+            IngestionStatus.DELETE_COMPLETED,
+        ]
+
 
 class FixedChunkingStrategy(BaseModel):
     """Defines parameters for fixed-size document chunking."""
 
     type: ChunkingStrategyType = ChunkingStrategyType.FIXED
-    size: int
-    overlap: int
+    size: int = Field(ge=100, le=10000)
+    overlap: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> Self:
+        """Validates overlap is not more than half of chunk size."""
+        if self.overlap > self.size / 2:
+            raise ValueError(
+                f"chunk overlap ({self.overlap}) must be less than or equal to " f"half of chunk size ({self.size / 2})"
+            )
+        return self
 
 
 ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
@@ -598,20 +624,22 @@ class PipelineConfig(BaseModel):
 class CollectionMetadata(BaseModel):
     """Defines metadata for a collection."""
 
-    tags: List[str] = Field(default_factory=list, description="Metadata tags for the collection")
+    tags: List[str] = Field(default_factory=list, max_length=50, description="Metadata tags for the collection")
     customFields: Dict[str, Any] = Field(default_factory=dict, description="Custom metadata fields")
 
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, tags: List[str]) -> List[str]:
         """Validates metadata tags."""
-        if len(tags) > 50:
-            raise ValueError("Maximum 50 tags allowed per collection")
+        tag_pattern = re.compile(r"^[a-zA-Z0-9_-]+$")
         for tag in tags:
             if len(tag) > 50:
                 raise ValueError("Each tag must be 50 characters or less")
-            if not tag.replace("-", "").replace("_", "").isalnum():
-                raise ValueError("Tags must contain only alphanumeric characters, hyphens, and underscores")
+            if not tag_pattern.match(tag):
+                raise ValueError(
+                    f"Tag '{tag}' contains invalid characters. "
+                    "Tags must contain only alphanumeric characters, hyphens, and underscores"
+                )
         return tags
 
     @classmethod
@@ -700,7 +728,9 @@ class CreateCollectionRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100, description="Collection name (required)")
     description: Optional[str] = Field(default=None, description="Collection description")
     embeddingModel: Optional[str] = Field(
-        default=None, description="Embedding model ID (inherits from parent if omitted, immutable after creation)"
+        default=None,
+        min_length=1,
+        description="Embedding model ID (inherits from parent if omitted, immutable after creation)",
     )
     chunkingStrategy: Optional[ChunkingStrategy] = Field(
         default=None, description="Chunking strategy (inherits from parent if omitted)"
@@ -714,6 +744,21 @@ class CreateCollectionRequest(BaseModel):
     private: bool = Field(default=False, description="Whether collection is private to creator")
     allowChunkingOverride: bool = Field(default=True, description="Allow chunking strategy override during ingestion")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_format(cls, name: str) -> str:
+        """Validates collection name format."""
+        import re
+
+        if not name.strip():
+            raise ValueError("Collection name cannot be empty")
+        name_pattern = re.compile(r"^[a-zA-Z0-9 _-]+$")
+        if not name_pattern.match(name):
+            raise ValueError(
+                "Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores"
+            )
+        return name
 
 
 class UpdateCollectionRequest(BaseModel):
@@ -730,6 +775,22 @@ class UpdateCollectionRequest(BaseModel):
     )
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
     status: Optional[CollectionStatus] = Field(default=None, description="Collection status")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_format(cls, name: Optional[str]) -> Optional[str]:
+        """Validates collection name format."""
+        if name is not None:
+            import re
+
+            if not name.strip():
+                raise ValueError("Collection name cannot be empty")
+            name_pattern = re.compile(r"^[a-zA-Z0-9 _-]+$")
+            if not name_pattern.match(name):
+                raise ValueError(
+                    "Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores"
+                )
+        return name
 
     @model_validator(mode="after")
     def validate_update_request(self) -> Self:

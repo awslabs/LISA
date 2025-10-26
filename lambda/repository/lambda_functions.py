@@ -966,7 +966,8 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
     last_evaluated: Optional[dict[str, Optional[str]]] = None
 
-    _ = 
+    # Validate repository access
+    _ = get_repository(event, repository_id=repository_id)
 
     if "lastEvaluatedKeyPk" in query_string_params:
         last_evaluated = {

@@ -368,7 +368,7 @@ class CollectionRepository:
             logger.error(f"Failed to count collections for repository {repository_id}: {e}")
             raise CollectionRepositoryError(f"Failed to count collections: {str(e)}")
 
-    def find_by_name(self, repository_id: str, name: str) -> Optional[RagCollectionConfig]:
+    def find_by_name(self, repository_id: str, collection_name: str) -> Optional[RagCollectionConfig]:
         """
         Find a collection by repository ID and name.
 
@@ -393,11 +393,11 @@ class CollectionRepository:
 
             # Filter by name (case-sensitive)
             for item in items:
-                if item.get("name") == name:
+                if item.get("name") == collection_name:
                     return RagCollectionConfig(**item)
 
             return None
 
         except Exception as e:
-            logger.error(f"Failed to find collection by name '{name}': {e}")
+            logger.error(f"Failed to find collection by name '{collection_name}': {e}")
             raise CollectionRepositoryError(f"Failed to find collection by name: {str(e)}")

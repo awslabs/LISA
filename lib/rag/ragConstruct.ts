@@ -152,7 +152,7 @@ export class LisaRagConstruct extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
-        // Create Collections table for RAG 2.0
+        // Create Collections table
         const collectionsTableName = createCdkId([config.deploymentName, 'RagCollectionsTable']);
         const collectionsTable = new Table(scope, collectionsTableName, {
             partitionKey: {

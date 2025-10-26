@@ -114,6 +114,22 @@ class CollectionService:
             raise ValidationError(f"Permission denied to delete collection {collection_id}")
         self.collection_repo.delete(collection_id, repository_id)
 
+    def get_collection_by_name(
+        self,
+        repository_id: str,
+        collection_name: str,
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+    ) -> RagCollectionConfig:
+        """Get a collection by name with access control."""
+        collection = self.collection_repo.find_by_name(repository_id, collection_name)
+        if not collection:
+            raise ValidationError(f"Collection '{collection_name}' not found")
+        if not self.has_access(collection, username, user_groups, is_admin):
+            raise ValidationError(f"Permission denied for collection '{collection_name}'")
+        return collection
+
     def get_collection_model(
         self,
         repository_id: str,
@@ -135,17 +151,11 @@ class CollectionService:
             Embedding model name from collection or repository default
         """
         try:
-            collection = self.get_collection(
-                collection_id=collection_id,
-                repository_id=repository_id,
-                username=username,
-                user_groups=user_groups,
-                is_admin=is_admin,
-            )
+            collection = self.collection_repo.find_by_id(collection_id, repository_id)
             if collection.embeddingModel:
                 return collection.embeddingModel
         except ValidationError as e:
-            logger.warning(f"Failed to get collection {collection_id}: {e}, using repository default")
+            logger.warning(f"Failed to get collection '{collection_id}': {e}, using repository default")
 
         repository = self.vector_store_repo.find_repository_by_id(repository_id)
         return repository.get("embeddingModelId")

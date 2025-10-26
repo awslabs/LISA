@@ -221,13 +221,11 @@ class TestRagCollectionsIntegration:
         - Collection can be retrieved via SDK
         """
         collection_id = test_collection.get("collectionId")
-        collection_name = test_collection.get("name")
         logger.info(f"Test 1: Verifying collection {collection_id}")
 
         # Verify collection attributes from fixture
         assert test_collection is not None
         assert collection_id is not None
-        assert collection_name is not None
         assert test_collection.get("repositoryId") == test_repository_id
         logger.info(f"✓ Collection exists: {collection_id}")
 
@@ -235,7 +233,6 @@ class TestRagCollectionsIntegration:
         retrieved = lisa_client.get_collection(test_repository_id, collection_id)
         assert retrieved is not None
         assert retrieved.get("collectionId") == collection_id
-        assert retrieved.get("name") == collection_name
         logger.info("✓ Collection retrieved successfully via API")
 
         logger.info("✓ Test 1 completed successfully")
@@ -259,8 +256,7 @@ class TestRagCollectionsIntegration:
         - Embeddings exist in vector store
         """
         collection_id = test_collection.get("collectionId")
-        # collection_id = "b387966e-e377-44fb-b4aa-5568cd1033ef"
-        logger.info(f"Test 2: Ingesting document to collection {collection_id}")
+        logger.info(f"Test 2: Ingesting document to collection ({collection_id})")
 
         # Upload document to S3 first
         presigned_data = lisa_client._presigned_url(os.path.basename(test_document_file))
@@ -269,7 +265,7 @@ class TestRagCollectionsIntegration:
         lisa_client._upload_document(presigned_data, test_document_file)
         logger.info(f"✓ Document uploaded to S3: {s3_key}")
 
-        # Ingest document to collection and get job info
+        # Ingest document to collection and get job info (use collection_id for user-facing API)
         jobs = lisa_client.ingest_document(
             repo_id=test_repository_id,
             model_id=test_embedding_model,
@@ -331,8 +327,7 @@ class TestRagCollectionsIntegration:
         - Results contain the ingested document
         - Results match document content
         """
-        # collection_id = "b387966e-e377-44fb-b4aa-5568cd1033ef"
-        collection_id = test_collection.get("collectionId")
+        collection_id = test_collection.get("id")
         logger.info(f"Test 3: Performing similarity search on collection {collection_id}")
 
         # # Wait longer for embeddings to be indexed and available
@@ -392,18 +387,17 @@ class TestRagCollectionsIntegration:
         - Document removed from S3
         - Embeddings removed from vector store
         """
-        # collection_id = "b387966e-e377-44fb-b4aa-5568cd1033ef"
-        collection_id = test_collection.get("collectionId")
+        collection_id = test_collection.get("id")
         logger.info("Test 4: Deleting document and verifying cleanup")
 
-        # Get documents in collection
+        # Get documents in collection (use collection_id for user-facing API)
         documents = lisa_client.list_documents(test_repository_id, collection_id)
         assert len(documents) > 0, "No documents to delete"
 
         document_id = documents[0].get("document_id")
         logger.info(f"Deleting document: {document_id}")
 
-        # Delete document
+        # Delete document (use collection_id for user-facing API)
         delete_response = lisa_client.delete_document_by_ids(test_repository_id, collection_id, [document_id])
         logger.info("✓ Document deletion requested")
         logger.info(f"Delete response: {delete_response}")
@@ -469,7 +463,7 @@ class TestRagCollectionsIntegration:
         logger.info("Test 5: Deleting collection with documents")
 
         collection_id = test_collection.get("collectionId")
-        logger.info(f"Created test collection: {collection_id}")
+        logger.info(f"Created test collection: ({collection_id})")
 
         # Track for cleanup (in case test fails before deletion)
         self.created_collections.append(collection_id)

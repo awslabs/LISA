@@ -193,7 +193,7 @@ class RagMixin(BaseMixin):
             repo_id: Repository ID
             query: Search query
             k: Number of results
-            collection_id: Optional collection ID (will use collection's embedding model)
+            collection_id: Optional collection id (will use collection's embedding model)
             model_name: Optional model name (required if collection_id not provided)
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"

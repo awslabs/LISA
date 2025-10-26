@@ -122,7 +122,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         event (dict): The Lambda event object containing:
             - queryStringParameters.modelName (optional): Name of the embedding model
               (not needed if collectionId provided)
-            - queryStringParameters.collectionId (optional): Collection ID to search within. Will override
+            - queryStringParameters.collectionName (optional): Collection ID to search within. Will override
                 any modelName.
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
@@ -163,7 +163,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     )
 
     if not model_name:
-        raise ValidationError("modelName is required when collectionId is not provided")
+        raise ValidationError("modelName is required when collectionName is not provided")
 
     id_token = get_id_token(event)
 
@@ -178,7 +178,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         )
     else:
         # Use collection_id as vector store index if provided, otherwise use model_name
-        collection_id = collection_id if collection_id else model_name
+        collection_id = collection_id or model_name
         logger.info(f"Searching in collection: {collection_id} with embedding model: {model_name}")
         embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
         vs = get_vector_store_client(repository_id, collection_id=collection_id, embeddings=embeddings)
@@ -596,7 +596,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The repository id of VectorStore
-            - queryStringParameters.collectionId: The collection identifier
+            - queryStringParameters.collectionId: The collection ID
             - queryStringParameters.repositoryType: Type of repository of VectorStore
             - queryStringParameters.documentIds (optional): Array of document IDs to purge
             - queryStringParameters.documentName (optional): Name of document to purge
@@ -614,6 +614,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     repository_id = path_params.get("repositoryId")
     query_string_params = event.get("queryStringParameters", {}) or {}
     collection_id = query_string_params.get("collectionId", None)
+
     body = json.loads(event.get("body", ""))
     document_ids = body.get("documentIds", None)
 
@@ -835,11 +836,8 @@ def ingest_documents(event: dict, context: dict) -> dict:
     response = {
         "jobs": jobs,
         "collectionId": collection_id,
+        "collectionName": collection.name if collection else collection_id,
     }
-
-    # Add collection name if available
-    if collection:
-        response["collectionName"] = collection.name or collection_id
 
     return response
 
@@ -950,7 +948,7 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
     Args:
         event (dict): The Lambda event object containing query parameters
             - pathParameters.repositoryId: The repository id to list documents for
-            - queryStringParameters.collectionId: The collection id to list documents for
+            - queryStringParameters.collectionName: The collection name to list documents for
         context (dict): The Lambda context object
 
     Returns:
@@ -965,7 +963,10 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
     query_string_params = event.get("queryStringParameters", {}) or {}
     collection_id = query_string_params.get("collectionId")
+
     last_evaluated: Optional[dict[str, Optional[str]]] = None
+
+    _ = 
 
     if "lastEvaluatedKeyPk" in query_string_params:
         last_evaluated = {

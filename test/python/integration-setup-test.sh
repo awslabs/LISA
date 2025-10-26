@@ -80,32 +80,71 @@ if [ -z $VERIFY ]; then
 fi
 
 echo "Using settings: PROFILE-${PROFILE}, DEPLOYMENT_NAME-${DEPLOYMENT_NAME}, APP_NAME-${APP_NAME}, DEPLOYMENT_STAGE-${DEPLOYMENT_STAGE}, REGION-${REGION}, VERIFY-${VERIFY}, API_URL-${API_URL}, ALB_URL-${ALB_URL}"
+PREFIX="/${DEPLOYMENT_STAGE}/${DEPLOYMENT_NAME}/${APP_NAME}"
+echo "Prefix: ${PREFIX}"
+
+# Check for AWS credentials - try with env vars first, then profile
+AWS_ARGS=""
+if [ -n "${AWS_ACCESS_KEY_ID}" ] && [ -n "${AWS_SECRET_ACCESS_KEY}" ]; then
+  echo "Using AWS credentials from environment variables"
+  if ! aws sts get-caller-identity --region "${REGION}" &>/dev/null; then
+    echo "❌ Error: AWS credentials from environment are invalid"
+    exit 1
+  fi
+else
+  echo "Using AWS profile: ${PROFILE}"
+  AWS_ARGS="--profile ${PROFILE}"
+  if ! aws sts get-caller-identity ${AWS_ARGS} --region "${REGION}" &>/dev/null; then
+    echo "❌ Error: AWS credentials not configured for profile '${PROFILE}'"
+    exit 1
+  fi
+fi
 
 if [ -z "$ALB_URL" ]; then
   echo "Grabbing ALB from SSM..."
+  SSM_PARAM="${PREFIX}/lisaServeRestApiUri"
+  echo "  Checking SSM parameter: ${SSM_PARAM}"
+  echo "  Using profile: ${PROFILE}, region: ${REGION}"
   ALB_URL=$(aws ssm get-parameter \
-      --name "/${DEPLOYMENT_STAGE}/${DEPLOYMENT_NAME}/${APP_NAME}/lisaServeRestApiUri" \
+      --name "${SSM_PARAM}" \
+      --region "${REGION}" \
+      ${AWS_ARGS} \
       --query "Parameter.Value" \
-      --output text 2>/dev/null || echo "")
+      --output text 2>&1)
+  ALB_EXIT_CODE=$?
 
-  if [ -z "$ALB_URL" ] || [ "$ALB_URL" = "None" ]; then
+  if [ $ALB_EXIT_CODE -ne 0 ]; then
+    echo "  ❌ SSM parameter not found or access denied"
+    ALB_URL=""
+  elif [ -z "$ALB_URL" ] || [ "$ALB_URL" = "None" ]; then
     echo "⚠️  Could not retrieve ALB URL from SSM. You may need to provide it manually with --alb-url"
     ALB_URL=""
   else
-    echo "Using ALB: ${ALB_URL}"
+    echo "✓ Using ALB: ${ALB_URL}"
   fi
 fi
 
 if [ -z "$API_URL" ]; then
-  echo "Grabbing API from CFN..."
-  API_URL=$(aws cloudformation describe-stacks --stack-name ${DEPLOYMENT_NAME}-${APP_NAME}-api-deployment-${DEPLOYMENT_STAGE} --region ${REGION} \
-        --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text 2>/dev/null || echo "")
+  echo "Grabbing API from SSM..."
+  SSM_PARAM="${PREFIX}/LisaApiUrl"
+  echo "  Checking SSM parameter: ${SSM_PARAM}"
+  echo "  Using profile: ${PROFILE}, region: ${REGION}"
+  API_URL=$(aws ssm get-parameter \
+      --name "${SSM_PARAM}" \
+      --region "${REGION}" \
+      ${AWS_ARGS} \
+      --query "Parameter.Value" \
+      --output text 2>&1)
+  API_EXIT_CODE=$?
 
-  if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
-    echo "⚠️  Could not retrieve API URL from CloudFormation. You may need to provide it manually with --rest-url"
+  if [ $API_EXIT_CODE -ne 0 ]; then
+    echo "  ❌ SSM parameter not found or access denied"
+    API_URL=""
+  elif [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+    echo "⚠️  Could not retrieve API URL from SSM. You may need to provide it manually with --rest-url"
     API_URL=""
   else
-    echo "Using API: ${API_URL}"
+    echo "✓ Using API: ${API_URL}"
   fi
 fi
 
@@ -127,7 +166,7 @@ if [ -z "$ALB_URL" ] || [ -z "$API_URL" ]; then
 fi
 
 # Construct Python script arguments
-PYTHON_ARGS="--url $ALB_URL --api $API_URL --deployment-name $DEPLOYMENT_NAME --verify $VERIFY"
+PYTHON_ARGS="--url $ALB_URL --api $API_URL --deployment-name $DEPLOYMENT_NAME --deployment-stage $DEPLOYMENT_STAGE --deployment-prefix $PREFIX --verify $VERIFY"
 
 if [ ! -z "$PROFILE" ]; then
   PYTHON_ARGS="$PYTHON_ARGS --profile $PROFILE"

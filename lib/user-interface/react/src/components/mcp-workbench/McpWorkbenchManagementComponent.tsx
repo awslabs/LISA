@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { Button, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, Link } from '@cloudscape-design/components';
+import { Button, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, Link, TextContent, Spinner } from '@cloudscape-design/components';
 import AceEditor from 'react-ace';
 import {Editor} from 'ace-builds';
 import { CancellableEventHandler } from '@cloudscape-design/components/internal/events';
@@ -61,6 +61,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     const [updateToolMutation, { isLoading: isUpdating }] = useUpdateMcpToolMutation();
     const [deleteToolMutation] = useDeleteMcpToolMutation();
     const {colorScheme} = useContext(ColorSchemeContext);
+    const [statusText, setStatusText] = useState<string | undefined>('');
 
     const schema = z.object({
         id: z.string().regex(/^[a-z0-9_.]+?(\.py)?$/).trim().min(3, 'String cannot be empty.'),
@@ -100,6 +101,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     const debouncedValidation = useDebounce(useCallback((contents: string) => {
         validateMcpToolMutation(contents).then((response) => {
             setWaitingForValidation(false);
+            setStatusText(undefined);
+
             // Handle validation response
             if ('data' in response) {
                 // Successful validation response
@@ -204,6 +207,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                 updated_at: selectedToolData.updated_at
             });
             setIsDirty(false);
+            setStatusText(undefined);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUninitialized, selectedToolData]);
@@ -217,12 +221,14 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                     action: 'Switch Tool',
                     onConfirm: () => {
                         setSelectedToolId(tool.id);
+                        setStatusText('Loading MCP tool.');
                     },
                     description: 'You have unsaved changes. Switching tools will discard these changes.'
                 })
             );
         } else {
             setSelectedToolId(tool.id);
+            setStatusText('Loading MCP tool.');
         }
     };
 
@@ -342,7 +348,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     const disabled = !isDirty || !isValid || (isLoadingValidateMcpTool || waitingForValidation) || !validMcpToolResponse?.is_valid;
     const disabledReason = [
         {predicate: !isDirty, message: 'Tool has not been modified.'},
-        {predicate: !isValid, message: 'Ensure all fields are valid'},
+        {predicate: !isValid, message: 'Ensure all fields are valid.'},
         {predicate: isLoadingValidateMcpTool || waitingForValidation, message: 'Validating tool.'},
         {predicate: !validMcpToolResponse?.is_valid, message: 'Please correct all errors.'}
     ].find((reason) => reason.predicate)?.message;
@@ -499,6 +505,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                                             contents
                                         });
                                         debouncedValidation(contents);
+                                        setStatusText('Validating MCP tool.');
                                         setIsDirty(true);
                                         touchFields(['contents']);
 
@@ -516,6 +523,10 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
                         <Box float='right'>
                             <SpaceBetween direction='horizontal' size='s'>
+                                { statusText ? <TextContent>
+                                    <p><Spinner /> {statusText}</p>
+                                </TextContent> : null}
+
                                 <Button onClick={() => {
                                     setSelectedToolId(null);
                                     setFields({
@@ -550,7 +561,13 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                             </SpaceBetween>
                         </Box>
                     </SpaceBetween> : <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
-                        <p style={{textAlign: 'center'}}>Select an existing tool or <Link onClick={handleCreateNew}>Create Tool</Link></p>
+                        <SpaceBetween direction='vertical' size='m'>
+                            <p style={{textAlign: 'center'}}>Select an existing tool or <Link onClick={handleCreateNew}>Create Tool</Link></p>
+                            {statusText ? <TextContent>
+                                <p style={{textAlign: 'center'}}><Spinner /> {statusText}</p>
+                            </TextContent> : null}
+                        </SpaceBetween>
+
                     </div>}
             </Grid>
         </Container>

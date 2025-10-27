@@ -25,6 +25,10 @@ WORKDIR /app
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
+# Pre-create nodeenv for prisma-client-py (used by litellm) so it doesn't
+# have to pull it at runtime
+RUN python -m nodeenv /root/.cache/prisma-python/nodeenv
+
 # Copy the source code into the container
 COPY src/ ./src
 

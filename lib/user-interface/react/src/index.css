@@ -4,3 +4,8 @@
 div :first-child {
     margin-top: 0;
 }
+
+#promptholder textarea {
+    min-height: 15vh !important;
+    max-height: 80vh !important;
+}

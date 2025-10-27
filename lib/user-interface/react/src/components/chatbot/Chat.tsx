@@ -691,134 +691,136 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
-                <SpaceBetween direction='vertical' size='l'>
-                    {useMemo(() => session.history.map((message, idx) => (<Message
-                        key={idx}
-                        message={message}
-                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
-                        isRunning={false}
-                        callingToolName={undefined}
-                        isStreaming={isStreaming && idx === session.history.length - 1}
-                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                        setChatConfiguration={setChatConfiguration}
-                        handleSendGenerateRequest={handleSendGenerateRequest}
-                        chatConfiguration={chatConfiguration}
-                        setUserPrompt={setUserPrompt}
-                        onMermaidRenderComplete={handleMermaidRenderComplete}
-                    />
-                    // eslint-disable-next-line react-hooks/exhaustive-deps
-                    )), [session.history, chatConfiguration])}
-
-                    {(isRunning || callingToolName) && !isStreaming && <Message
-                        isRunning={isRunning}
-                        callingToolName={callingToolName}
-                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                        message={new LisaChatMessage({ type: 'ai', content: '' })}
-                        setChatConfiguration={setChatConfiguration}
-                        handleSendGenerateRequest={handleSendGenerateRequest}
-                        chatConfiguration={chatConfiguration}
-                        setUserPrompt={setUserPrompt}
-                        onMermaidRenderComplete={handleMermaidRenderComplete}
-                    />}
-                    {session.history.length === 0 && sessionId === undefined && (
-                        <WelcomeScreen
-                            navigate={navigate}
-                            modelSelectRef={modelSelectRef}
-                            config={config}
-                            refreshPromptTemplate={refreshPromptTemplate}
-                            setFilterPromptTemplateType={setFilterPromptTemplateType}
-                            openModal={openModal}
+            <div style={{height: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
+                <div style={{flex: 1, overflowY: 'auto', minHeight: '10vh'}}>
+                    <SpaceBetween direction='vertical' size='l'>
+                        {useMemo(() => session.history.map((message, idx) => (<Message
+                            key={idx}
+                            message={message}
+                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                            isRunning={false}
+                            callingToolName={undefined}
+                            isStreaming={isStreaming && idx === session.history.length - 1}
+                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                            setChatConfiguration={setChatConfiguration}
+                            handleSendGenerateRequest={handleSendGenerateRequest}
+                            chatConfiguration={chatConfiguration}
+                            setUserPrompt={setUserPrompt}
+                            onMermaidRenderComplete={handleMermaidRenderComplete}
                         />
-                    )}
-                    <div ref={bottomRef} />
-                </SpaceBetween>
-            </div>
-            <div className='sticky bottom-8 mt-2'>
-                <form onSubmit={(e) => e.preventDefault()}>
-                    <Form>
-                        <SpaceBetween size='m' direction='vertical'>
-                            <Grid
-                                gridDefinition={[
-                                    { colspan: { default: 4 } },
-                                    { colspan: { default: 8 } },
-                                ]}
-                            >
-                                <FormField
-                                    label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
-                                >
-                                    <Autosuggest
-                                        disabled={isRunning || session.history.length > 0}
-                                        statusType={isFetchingModels ? 'loading' : 'finished'}
-                                        loadingText='Loading models (might take few seconds)...'
-                                        placeholder='Select a model'
-                                        empty={<div className='text-gray-500'>No models available.</div>}
-                                        filteringType='auto'
-                                        value={modelFilterValue}
-                                        enteredTextLabel={(text) => `Use: "${text}"`}
-                                        onChange={({ detail: { value } }) => handleUserModelChange(value)}
-                                        options={modelsOptions}
-                                        ref={modelSelectRef}
-                                    />
-                                </FormField>
-                                {window.env.RAG_ENABLED && !isImageGenerationMode && (
-                                    <RagControls
-                                        isRunning={isRunning}
-                                        setUseRag={setUseRag}
-                                        setRagConfig={setRagConfig}
-                                        ragConfig={ragConfig}
-                                    />
-                                )}
-                            </Grid>
-                            <PromptInput
-                                value={userPrompt}
-                                actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
-                                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
-                                maxRows={4}
-                                minRows={2}
-                                spellcheck={true}
-                                placeholder={
-                                    !selectedModel ? 'You must select a model before sending a message' :
-                                        isImageGenerationMode ? 'Describe the image you want to generate...' :
-                                            'Send a message'
-                                }
-                                disabled={!selectedModel || loadingSession}
-                                onChange={({ detail }) => setUserPrompt(detail.value)}
-                                onAction={handleAction}
-                                onKeyDown={handleKeyPress}
-                                secondaryActions={
-                                    <Box padding={{ left: 'xxs', top: 'xs' }}>
-                                        <ButtonGroup
-                                            ariaLabel='Chat actions'
-                                            onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode)}
-                                            variant='icon'
-                                            dropdownExpandToViewport={true}
-                                        />
-                                    </Box>
-                                }
+                            // eslint-disable-next-line react-hooks/exhaustive-deps
+                        )), [session.history, chatConfiguration])}
+
+                        {(isRunning || callingToolName) && !isStreaming && <Message
+                            isRunning={isRunning}
+                            callingToolName={callingToolName}
+                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                            message={new LisaChatMessage({ type: 'ai', content: '' })}
+                            setChatConfiguration={setChatConfiguration}
+                            handleSendGenerateRequest={handleSendGenerateRequest}
+                            chatConfiguration={chatConfiguration}
+                            setUserPrompt={setUserPrompt}
+                            onMermaidRenderComplete={handleMermaidRenderComplete}
+                        />}
+                        {session.history.length === 0 && sessionId === undefined && (
+                            <WelcomeScreen
+                                navigate={navigate}
+                                modelSelectRef={modelSelectRef}
+                                config={config}
+                                refreshPromptTemplate={refreshPromptTemplate}
+                                setFilterPromptTemplateType={setFilterPromptTemplateType}
+                                openModal={openModal}
                             />
-                            <SpaceBetween direction='vertical' size='xs'>
-                                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
-                                    {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (
-                                        <Box>
-                                            <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
-                                        </Box>
-                                    )
-                                        : !selectedModel || !enabledServers || enabledServers.length === 0 ? (<div></div>)
-                                            : (<Box>
-                                                <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
-                                            </Box>)}
-                                    <Box float='right' variant='div'>
-                                        <StatusIndicator type={isConnected ? 'success' : 'error'}>
-                                            {isConnected ? 'Connected' : 'Disconnected'}
-                                        </StatusIndicator>
-                                    </Box>
+                        )}
+                        <div ref={bottomRef} />
+                    </SpaceBetween>
+                </div>
+                <div style={{flex: '0 0 auto'}} id='promptholder'>
+                    <form onSubmit={(e) => e.preventDefault()}>
+                        <Form>
+                            <SpaceBetween size='m' direction='vertical'>
+                                <Grid
+                                    gridDefinition={[
+                                        { colspan: { default: 4 } },
+                                        { colspan: { default: 8 } },
+                                    ]}
+                                >
+                                    <FormField
+                                        label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
+                                    >
+                                        <Autosuggest
+                                            disabled={isRunning || session.history.length > 0}
+                                            statusType={isFetchingModels ? 'loading' : 'finished'}
+                                            loadingText='Loading models (might take few seconds)...'
+                                            placeholder='Select a model'
+                                            empty={<div className='text-gray-500'>No models available.</div>}
+                                            filteringType='auto'
+                                            value={modelFilterValue}
+                                            enteredTextLabel={(text) => `Use: "${text}"`}
+                                            onChange={({ detail: { value } }) => handleUserModelChange(value)}
+                                            options={modelsOptions}
+                                            ref={modelSelectRef}
+                                        />
+                                    </FormField>
+                                    {window.env.RAG_ENABLED && !isImageGenerationMode && (
+                                        <RagControls
+                                            isRunning={isRunning}
+                                            setUseRag={setUseRag}
+                                            setRagConfig={setRagConfig}
+                                            ragConfig={ragConfig}
+                                        />
+                                    )}
                                 </Grid>
+                                <PromptInput
+                                    value={userPrompt}
+                                    actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
+                                    actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
+                                    maxRows={20}
+                                    minRows={4}
+                                    spellcheck={true}
+                                    placeholder={
+                                        !selectedModel ? 'You must select a model before sending a message' :
+                                            isImageGenerationMode ? 'Describe the image you want to generate...' :
+                                                'Send a message'
+                                    }
+                                    disabled={!selectedModel || loadingSession}
+                                    onChange={({ detail }) => setUserPrompt(detail.value)}
+                                    onAction={handleAction}
+                                    onKeyDown={handleKeyPress}
+                                    secondaryActions={
+                                        <Box padding={{ left: 'xxs', top: 'xs' }}>
+                                            <ButtonGroup
+                                                ariaLabel='Chat actions'
+                                                onItemClick={handleButtonClick}
+                                                items={getButtonItems(config, useRag, isImageGenerationMode)}
+                                                variant='icon'
+                                                dropdownExpandToViewport={true}
+                                            />
+                                        </Box>
+                                    }
+                                />
+                                <SpaceBetween direction='vertical' size='xs'>
+                                    <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                                        {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (
+                                            <Box>
+                                                <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
+                                            </Box>
+                                        )
+                                            : !selectedModel || !enabledServers || enabledServers.length === 0 ? (<div></div>)
+                                                : (<Box>
+                                                    <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
+                                                </Box>)}
+                                        <Box float='right' variant='div'>
+                                            <StatusIndicator type={isConnected ? 'success' : 'error'}>
+                                                {isConnected ? 'Connected' : 'Disconnected'}
+                                            </StatusIndicator>
+                                        </Box>
+                                    </Grid>
+                                </SpaceBetween>
                             </SpaceBetween>
-                        </SpaceBetween>
-                    </Form>
-                </form>
+                        </Form>
+                    </form>
+                </div>
             </div>
         </div>
     );

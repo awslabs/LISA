@@ -22,6 +22,7 @@ import { ARCHITECTURE, CoreStack } from '../../../lib/core/index';
 import { LisaApiDeploymentStack } from '../../../lib/core/api_deployment';
 import { LisaServeIAMStack } from '../../../lib/iam/iam_stack';
 import { LisaServeApplicationStack } from '../../../lib/serve/index';
+import { McpWorkbenchStack } from '../../../lib/serve/mcpWorkbenchStack';
 import { UserInterfaceStack } from '../../../lib/user-interface/index';
 import { LisaMetricsStack } from '../../../lib/metrics/index';
 import ConfigParser from './ConfigParser';
@@ -158,6 +159,18 @@ export default class MockApp {
             vpc: networkingStack.vpc,
         });
 
+        const mcpWorkbenchStack = new McpWorkbenchStack(app, 'LisaMcpWorkbench', {
+            ...baseStackProps,
+            stackName: 'LisaMcpWorkbench',
+            vpc: networkingStack.vpc,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            authorizerId: apiBaseStack.authorizer?.authorizerId || '',
+            ecsCluster: serveStack.ecsCluster,
+            loadBalancer: serveStack.loadBalancer,
+            listener: serveStack.listener,
+        });
+
         const stacks = [
             networkingStack,
             iamStack,
@@ -171,6 +184,7 @@ export default class MockApp {
             coreStack,
             modelsStack,
             ragStack,
+            mcpWorkbenchStack
         ];
 
         return { app, stacks };

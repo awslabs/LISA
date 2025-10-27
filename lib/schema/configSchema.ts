@@ -847,6 +847,7 @@ export const RawConfigObject = z.object({
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
+    deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),

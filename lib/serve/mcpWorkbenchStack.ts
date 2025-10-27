@@ -16,7 +16,7 @@
 
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { BaseProps, EcsSourceType } from '../schema';
+import { BaseProps, EcsSourceType, PartialConfig } from '../schema';
 import McpWorkbenchConstruct from './mcpWorkbenchConstruct';
 import { Vpc } from '../networking/vpc';
 import { ICluster, Ec2Service, Ec2TaskDefinition, Protocol, LogDriver, HealthCheck } from 'aws-cdk-lib/aws-ecs';
@@ -67,35 +67,42 @@ export class McpWorkbenchStack extends Stack {
         this.createMcpWorkbenchEcsService(config, vpc, ecsCluster, loadBalancer, listener);
     }
 
-    private createMcpWorkbenchEcsService (config: any, vpc: Vpc, ecsCluster: ICluster, loadBalancer: any, listener: any) {
+    private createMcpWorkbenchEcsService (config: PartialConfig, vpc: Vpc, ecsCluster: ICluster, loadBalancer: any, listener: any) {
         const baseEnvironment: Record<string, string> = {
-            LOG_LEVEL: config.logLevel,
-            AWS_REGION: config.region,
-            AWS_REGION_NAME: config.region,
-            LITELLM_KEY: config.litellmConfig.db_key,
-            OPENAI_API_KEY: config.litellmConfig.db_key,
+            LOG_LEVEL: config.logLevel!,
+            AWS_REGION: config.region || '',
+            AWS_REGION_NAME: config.region || '',
+            LITELLM_KEY: config.litellmConfig?.db_key || '',
+            OPENAI_API_KEY: config.litellmConfig?.db_key || '',
             USE_AUTH: 'true',
             AUTHORITY: config.authConfig!.authority,
             CLIENT_ID: config.authConfig!.clientId,
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-            RCLONE_CONFIG_S3_REGION: config.region,
+            RCLONE_CONFIG_S3_REGION: config.region || '',
             MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
         };
 
         const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
-            baseImage: config.baseImage,
+            baseImage: config.baseImage!,
             path: MCP_WORKBENCH_PATH,
             type: EcsSourceType.ASSET
         };
 
-        const buildArgs: Record<string, string> = {
+        const buildArgs: Record<string, string | undefined> = {
             BASE_IMAGE: config.baseImage,
-            PYPI_INDEX_URL: config.pypiConfig.indexUrl,
-            PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
+            PYPI_INDEX_URL: config.pypiConfig?.indexUrl,
+            PYPI_TRUSTED_HOST: config.pypiConfig?.trustedHost,
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
         };
+
+        // allow mcp workbench overrides
+        Object.entries(config.mcpWorkbenchBuildConfig!).forEach(([key, value]) => {
+            if (value) {
+                buildArgs[key] = value;
+            }
+        });
 
         // Create CloudWatch log group
         const logGroup = new LogGroup(this, createCdkId([config.deploymentPrefix, 'MCPWorkbench', 'LogGroup']), {
@@ -164,7 +171,7 @@ export class McpWorkbenchStack extends Stack {
             cluster: ecsCluster,
             serviceName: createCdkId(['MCPWorkbench'], 32, 2),
             taskDefinition: taskDefinition,
-            circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
+            circuitBreaker: config?.region?.includes('iso') ? { rollback: true } : undefined,
         });
 
         const scalableTaskCount = service.autoScaleTaskCount({

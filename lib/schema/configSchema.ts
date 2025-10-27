@@ -710,6 +710,9 @@ const FastApiContainerConfigSchema = z.object({
     domainName: z.string().nullish().default(null),
     sslCertIamArn: z.string().nullish().default(null).describe('ARN of the self-signed cert to be used throughout the system'),
     imageConfig: ImageAssetSchema.optional().describe('Override image configuration for ECS FastAPI Containers'),
+    buildConfig: z.object({
+        NODEENV_CACHE_DIR: z.string().optional().describe('Override with a path relative to the build directory for a pre-cached nodeenv directory. Defaults to NODEENV_CACHE. For offline environments, populate using: python -m nodeenv <path>')
+    }).default({}),
     rdsConfig: RdsInstanceConfig
         .default({
             dbName: 'postgres',
@@ -817,6 +820,11 @@ export const RawConfigObject = z.object({
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema.describe('Image override for Rest API'),
     mcpWorkbenchConfig: ImageAssetSchema.optional().describe('Image override for MCP Workbench'),
+    mcpWorkbenchBuildConfig: z.object({
+        S6_OVERLAY_NOARCH_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for the architecture independent S6 overlay tar.xz.'),
+        S6_OVERLAY_ARCH_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for the architecture specific S6 overlay tar.xz.'),
+        RCLONE_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for an rclone .zip')
+    }).default({}),
     batchIngestionConfig: ImageAssetSchema.optional().describe('Image override for Batch Ingestion'),
     vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
     subnets: z.array(z.object({

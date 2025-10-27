@@ -88,6 +88,11 @@ export class FastApiContainer extends Construct {
             PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
         };
+
+        // Add build config overrides if provided
+        if (config.restApiConfig.buildConfig?.NODEENV_CACHE_DIR) {
+            buildArgs.NODEENV_CACHE_DIR = config.restApiConfig.buildConfig.NODEENV_CACHE_DIR;
+        }
         const baseEnvironment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,

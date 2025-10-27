@@ -49,7 +49,6 @@ export class McpWorkbenchStack extends Stack {
 
         new McpWorkbenchServiceConstruct(this, 'McpWorkbenchService', {
             config,
-            vpc,
             apiCluster
         });
     }

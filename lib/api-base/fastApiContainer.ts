@@ -69,20 +69,21 @@ export class FastApiContainer extends Construct {
         super(scope, id);
 
         const { config, securityGroup, tokenTable, vpc } = props;
+
+        const instanceType = 'm5.large';
+
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
             PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
         };
-        const baseEnvironment: Record<string, string> = {
+
+        const environment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
-            THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
-            LITELLM_KEY: config.litellmConfig.db_key,
-            OPENAI_API_KEY: config.litellmConfig.db_key,
-            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE',
+            THREADS: Ec2Metadata.get(instanceType).vCpus.toString(),
             USE_AUTH: 'true',
             AUTHORITY: config.authConfig!.authority,
             CLIENT_ID: config.authConfig!.clientId,
@@ -92,7 +93,16 @@ export class FastApiContainer extends Construct {
         };
 
         if (tokenTable) {
-            baseEnvironment.TOKEN_TABLE_NAME = tokenTable.tableName;
+            environment.TOKEN_TABLE_NAME = tokenTable.tableName;
+        }
+
+        // Requires mount point /etc/pki from host
+        if (config.region.includes('iso')) {
+            environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
+            environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
+            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
         }
 
         // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
@@ -115,7 +125,6 @@ export class FastApiContainer extends Construct {
             type: EcsSourceType.ASSET
         };
 
-        const instanceType = 'm5.large';
         const healthCheckConfig = {
             command: ['CMD-SHELL', 'exit 0'],
             interval: 10,
@@ -162,12 +171,17 @@ export class FastApiContainer extends Construct {
             ecsConfig,
             config,
             securityGroup,
-            vpc
+            vpc,
+            environment
         });
 
         // Add the REST API task to the cluster (default target, no priority/conditions)
         apiCluster.addTask(ECSTasks.REST, {
-            environment: baseEnvironment,
+            environment: {
+                LITELLM_KEY: config.litellmConfig.db_key,
+                OPENAI_API_KEY: config.litellmConfig.db_key,
+                TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE',
+            },
             containerConfig: {
                 image: restApiImage,
                 healthCheckConfig,

@@ -71,6 +71,7 @@ type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: Vpc;
+    environment: Record<string, string>;
 } & BaseProps;
 
 /**
@@ -127,7 +128,6 @@ export class ECSCluster extends Construct {
         taskDefinitionName: string,
         config: Config,
         taskDefinition: TaskDefinition,
-        baseEnvironment: Record<string, string>,
         ecsConfig: ECSConfig,
         volumes: Volume[],
         mountPoints: MountPoint[],
@@ -169,7 +169,7 @@ export class ECSCluster extends Construct {
         const container = ec2TaskDefinition.addContainer(createCdkId([taskDefinitionName, 'Container']), {
             containerName: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             image,
-            environment: {...baseEnvironment, ...taskDefinition.environment},
+            environment: {...this.baseEnvironment, ...taskDefinition.environment},
             logging: LogDriver.awsLogs({
                 logGroup: logGroup,
                 streamPrefix: taskDefinitionName
@@ -195,7 +195,7 @@ export class ECSCluster extends Construct {
    */
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
-        const { config, identifier, vpc, securityGroup, ecsConfig } = props;
+        const { config, identifier, vpc, securityGroup, ecsConfig, environment } = props;
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
@@ -284,7 +284,7 @@ export class ECSCluster extends Construct {
 
         const baseEnvironment: {
             [key: string]: string;
-        } = {};
+        } = {...environment};
         const volumes: Volume[] = [];
         const mountPoints: MountPoint[] = [];
 
@@ -425,7 +425,8 @@ export class ECSCluster extends Construct {
      * Add a task to the ECS cluster with its own target group and service.
      *
      * @param taskName - The name of the task (e.g., ECSTasks.REST, ECSTasks.MCPWORKBENCH)
-     * @param taskDefinition - The task definition configuration
+     * @param taskDefinition - The task definition configuration. Environment variables within task definition will be merged with
+     *                         cluster environment variables.
      * @param identifier - The identifier for naming resources
      * @returns Object containing the created service and target group
      */
@@ -450,7 +451,6 @@ export class ECSCluster extends Construct {
             taskName,
             this.config,
             taskDefinition,
-            this.baseEnvironment,
             this.ecsConfig,
             this.volumes,
             this.mountPoints,

@@ -17,7 +17,6 @@
 import { Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { BaseProps, EcsSourceType } from '../schema';
-import { Vpc } from '../networking/vpc';
 import { Ec2Service } from 'aws-cdk-lib/aws-ecs';
 import { ECSCluster, ECSTasks } from '../api-base/ecsCluster';
 import { MCP_WORKBENCH_PATH } from '../util';
@@ -29,7 +28,6 @@ import { LAMBDA_PATH } from '../util';
 import { getDefaultRuntime } from '../api-base/utils';
 
 export type McpWorkbenchServiceConstructProps = {
-    vpc: Vpc;
     apiCluster: ECSCluster;
 } & BaseProps;
 
@@ -39,23 +37,7 @@ export default class McpWorkbenchServiceConstruct extends Construct {
     constructor (scope: Construct, id: string, props: McpWorkbenchServiceConstructProps) {
         super(scope, id);
 
-        const { config, vpc, apiCluster } = props;
-
-        const baseEnvironment: Record<string, string> = {
-            LOG_LEVEL: config.logLevel,
-            AWS_REGION: config.region,
-            AWS_REGION_NAME: config.region,
-            LITELLM_KEY: config.litellmConfig.db_key,
-            OPENAI_API_KEY: config.litellmConfig.db_key,
-            USE_AUTH: 'true',
-            AUTHORITY: config.authConfig!.authority,
-            CLIENT_ID: config.authConfig!.clientId,
-            ADMIN_GROUP: config.authConfig!.adminGroup,
-            USER_GROUP: config.authConfig!.userGroup,
-            JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-            RCLONE_CONFIG_S3_REGION: config.region,
-            MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
-        };
+        const { config, apiCluster } = props;
 
         const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
             baseImage: config.baseImage,
@@ -63,19 +45,20 @@ export default class McpWorkbenchServiceConstruct extends Construct {
             type: EcsSourceType.ASSET
         };
 
-        const healthCheckConfig = {
-            command: ['CMD-SHELL', 'exit 0'],
-            interval: 10,
-            startPeriod: 30,
-            timeout: 5,
-            retries: 3
-        };
-
         const mcpWorkbenchTaskDefinition = {
-            environment: baseEnvironment,
+            environment: {
+                RCLONE_CONFIG_S3_REGION: config.region,
+                MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
+            },
             containerConfig: {
                 image: mcpWorkbenchImage,
-                healthCheckConfig,
+                healthCheckConfig: {
+                    command: ['CMD-SHELL', 'exit 0'],
+                    interval: 10,
+                    startPeriod: 30,
+                    timeout: 5,
+                    retries: 3
+                },
                 environment: {},
                 sharedMemorySize: 0,
                 privileged: true

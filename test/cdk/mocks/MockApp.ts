@@ -167,9 +167,7 @@ export default class MockApp {
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             authorizerId: apiBaseStack.authorizer?.authorizerId || '',
-            ecsCluster: serveStack.ecsCluster,
-            loadBalancer: serveStack.loadBalancer,
-            listener: serveStack.listener,
+            apiCluster: serveStack.restApi.apiCluster
         });
 
         const stacks: cdk.Stack[] = [

@@ -1,0 +1,5654 @@
+{
+  "Resources": {
+    "McpApiMcpServersTable96D5EF7B": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "owner",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "created",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "byOwner",
+            "KeySchema": [
+              {
+                "AttributeName": "owner",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "byOwnerSorted",
+            "KeySchema": [
+              {
+                "AttributeName": "owner",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "created",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "owner",
+            "KeyType": "RANGE"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "McpApiMcpServersTableNameParameter40CBF850": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "Name of the MCP servers DynamoDB table",
+        "Name": "/dev/test-lisa/lisa/table/mcpServersTable",
+        "Type": "String",
+        "Value": {
+          "Ref": "McpApiMcpServersTable96D5EF7B"
+        }
+      }
+    },
+    "McpApiRestApimcpserver98B9AA02": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "mcp-server",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverOPTIONSBDFFD30B": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserver98B9AA02"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverGETApiPermissionLisaChatMcpApiRestApi21151341GETmcpserver6BDDE98F": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlist6AA9C7D0",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/mcp-server"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverGETApiPermissionTestLisaChatMcpApiRestApi21151341GETmcpserver126C039E": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlist6AA9C7D0",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/mcp-server"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverGETBE58B913": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverlist6AA9C7D0",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserver98B9AA02"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverId53F0C4B8": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpApiRestApimcpserver98B9AA02"
+        },
+        "PathPart": "{serverId}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdOPTIONSB7066F81": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserverserverId53F0C4B8"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdGETApiPermissionLisaChatMcpApiRestApi21151341GETmcpserverserverIdA3F6D4A1": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverget2921E1D3",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/mcp-server/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdGETApiPermissionTestLisaChatMcpApiRestApi21151341GETmcpserverserverId2CCBA2B7": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverget2921E1D3",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/mcp-server/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdGETD8368189": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverget2921E1D3",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserverserverId53F0C4B8"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdDELETEApiPermissionLisaChatMcpApiRestApi21151341DELETEmcpserverserverIdB3F749E4": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverdeleteB1B6EC65",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/DELETE/mcp-server/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdDELETEApiPermissionTestLisaChatMcpApiRestApi21151341DELETEmcpserverserverId971619E5": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverdeleteB1B6EC65",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/DELETE/mcp-server/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdDELETEC2D3E2DF": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "DELETE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverdeleteB1B6EC65",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserverserverId53F0C4B8"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdPUTApiPermissionLisaChatMcpApiRestApi21151341PUTmcpserverserverId12A5A0C6": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverupdate2F094A10",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/mcp-server/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdPUTApiPermissionTestLisaChatMcpApiRestApi21151341PUTmcpserverserverIdDE097B6B": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverupdate2F094A10",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/mcp-server/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverserverIdPUT03827812": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverupdate2F094A10",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserverserverId53F0C4B8"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApimcpserverPOSTApiPermissionLisaChatMcpApiRestApi21151341POSTmcpserver091916E8": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpservercreate8CAC0C43",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/POST/mcp-server"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverPOSTApiPermissionTestLisaChatMcpApiRestApi21151341POSTmcpserver376E6365": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpservercreate8CAC0C43",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/POST/mcp-server"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApimcpserverPOST54760652": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpservercreate8CAC0C43",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApimcpserver98B9AA02"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Role used by LISA McpServerApi lambdas to access AWS resources",
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:ConditionCheckItem",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "McpApiMcpServersTable96D5EF7B",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "McpApiMcpServersTable96D5EF7B",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ],
+        "RoleName": "test-lisa-LisaMcpServerApiLambdaExecutionRole"
+      }
+    },
+    "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiMcpServersTable96D5EF7B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTable96D5EF7B",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiMcpServersTable96D5EF7B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTable96D5EF7B",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiMcpServersTable96D5EF7B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTable96D5EF7B",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "Roles": [
+          {
+            "Ref": "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+          }
+        ]
+      }
+    },
+    "McpApiLisaChatmcpserverlist6AA9C7D0": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Lists available mcp servers for user",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-list",
+        "Handler": "mcp_server.lambda_functions.list",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverget2921E1D3": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Returns the selected mcp server",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-get",
+        "Handler": "mcp_server.lambda_functions.get",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpservercreate8CAC0C43": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Creates the mcp server",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-create",
+        "Handler": "mcp_server.lambda_functions.create",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverdeleteB1B6EC65": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Deletes selected mcp server",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-delete",
+        "Handler": "mcp_server.lambda_functions.delete",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverupdate2F094A10": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Creates or updates selected mcp server",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-update",
+        "Handler": "mcp_server.lambda_functions.update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "ConfigurationApiConfigurationTable4B2B7EE1": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "configScope",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "versionId",
+            "AttributeType": "N"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "configScope",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "versionId",
+            "KeyType": "RANGE"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Role used by LISA ConfigurationApi lambdas to access AWS resources",
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:ConditionCheckItem",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ConfigurationApiConfigurationTable4B2B7EE1",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "ConfigurationApiConfigurationTable4B2B7EE1",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ],
+        "RoleName": "test-lisa-LisaConfigurationApiLambdaExecutionRole"
+      }
+    },
+    "ConfigurationApiLisaConfigurationApiLambdaExecutionRoleDefaultPolicy61BCD4DD": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTableNameParameter40CBF850",
+                          "Value"
+                        ]
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiConfigurationTable4B2B7EE1",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiConfigurationTable4B2B7EE1",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ConfigurationApiLisaConfigurationApiLambdaExecutionRoleDefaultPolicy61BCD4DD",
+        "Roles": [
+          {
+            "Ref": "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6"
+          }
+        ]
+      }
+    },
+    "ConfigurationApilisainitddbconfig1F5E665A": {
+      "Type": "Custom::AWS",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+            "Arn"
+          ]
+        },
+        "Create": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"service\":\"DynamoDB\",\"action\":\"putItem\",\"physicalResourceId\":{\"id\":\"initConfigData\"},\"parameters\":{\"TableName\":\"",
+              {
+                "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+              },
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1761597546\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"False\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+            ]
+          ]
+        },
+        "InstallLatestAwsSdk": true
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ConfigurationApiRestApiconfigurationD60D7FC0": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "configuration",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationOPTIONSE0FA2B6B": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "ConfigurationApiRestApiconfigurationD60D7FC0"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationGETApiPermissionLisaChatConfigurationApiRestApiBDBDE1ADGETconfiguration0A0B9F64": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaChatconfigurationgetconfiguration19178EAF",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/configuration"
+            ]
+          ]
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationGETApiPermissionTestLisaChatConfigurationApiRestApiBDBDE1ADGETconfiguration4DDA737D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaChatconfigurationgetconfiguration19178EAF",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/configuration"
+            ]
+          ]
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationGETA0E186D1": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiLisaChatconfigurationgetconfiguration19178EAF",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ConfigurationApiRestApiconfigurationD60D7FC0"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationconfigScope7534F355": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "ConfigurationApiRestApiconfigurationD60D7FC0"
+        },
+        "PathPart": "{configScope}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationconfigScopeOPTIONSFF7B983C": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "ConfigurationApiRestApiconfigurationconfigScope7534F355"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationconfigScopePUTApiPermissionLisaChatConfigurationApiRestApiBDBDE1ADPUTconfigurationconfigScope680DC68F": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaChatconfigurationupdateconfigurationB328F68F",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/configuration/*"
+            ]
+          ]
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationconfigScopePUTApiPermissionTestLisaChatConfigurationApiRestApiBDBDE1ADPUTconfigurationconfigScope1E1BEE6D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaChatconfigurationupdateconfigurationB328F68F",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/configuration/*"
+            ]
+          ]
+        }
+      }
+    },
+    "ConfigurationApiRestApiconfigurationconfigScopePUTA6AA6233": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiLisaChatconfigurationupdateconfigurationB328F68F",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ConfigurationApiRestApiconfigurationconfigScope7534F355"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ConfigurationApiLisaChatconfigurationgetconfiguration19178EAF": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Get configuration",
+        "Environment": {
+          "Variables": {
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "FASTAPI_ENDPOINT": {
+              "Ref": "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "MCP_SERVERS_TABLE_NAME": {
+              "Fn::GetAtt": [
+                "McpApiMcpServersTableNameParameter40CBF850",
+                "Value"
+              ]
+            }
+          }
+        },
+        "FunctionName": "LisaChat-configuration-get_configuration",
+        "Handler": "configuration.lambda_functions.get_configuration",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ConfigurationApiLisaConfigurationApiLambdaExecutionRoleDefaultPolicy61BCD4DD",
+        "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6"
+      ]
+    },
+    "ConfigurationApiLisaChatconfigurationupdateconfigurationB328F68F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Updates config data",
+        "Environment": {
+          "Variables": {
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "FASTAPI_ENDPOINT": {
+              "Ref": "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "MCP_SERVERS_TABLE_NAME": {
+              "Fn::GetAtt": [
+                "McpApiMcpServersTableNameParameter40CBF850",
+                "Value"
+              ]
+            }
+          }
+        },
+        "FunctionName": "LisaChat-configuration-update_configuration",
+        "Handler": "configuration.lambda_functions.update_configuration",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ConfigurationApiLisaConfigurationApiLambdaExecutionRoleDefaultPolicy61BCD4DD",
+        "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6"
+      ]
+    },
+    "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "34a66902956b031404ef497526f619b900363fe7fd65ff02b1de4c30fe10c034.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "ConfigurationApiLisaConfigurationApiLambdaExecutionRoleDefaultPolicy61BCD4DD",
+        "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6"
+      ]
+    },
+    "SessionApiSessionsTableDA695141": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "sessionId",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "userId",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "startTime",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "byUserId",
+            "KeySchema": [
+              {
+                "AttributeName": "userId",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "byUserIdSorted",
+            "KeySchema": [
+              {
+                "AttributeName": "userId",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "startTime",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "sessionId",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "userId",
+            "KeyType": "RANGE"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "SessionApiSessionEncryptionKeyA03622E8": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": "KMS key for encrypting session data at rest",
+        "EnableKeyRotation": true,
+        "KeyPolicy": {
+          "Statement": [
+            {
+              "Action": "kms:*",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":iam::012345678901:root"
+                    ]
+                  ]
+                }
+              },
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "SessionApiSessionEncryptionKeyArnParameterB8786542": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Name": "/dev/test-lisa/lisa/sessionEncryptionKeyArn",
+        "Type": "String",
+        "Value": {
+          "Fn::GetAtt": [
+            "SessionApiSessionEncryptionKeyA03622E8",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionADA907DB": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "session",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionOPTIONSBBD31823": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionADA907DB"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionGETApiPermissionLisaChatSessionApiRestApiDD07298DGETsession74C1CDE3": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionlistsessionsB88A4A44",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/session"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionGETApiPermissionTestLisaChatSessionApiRestApiDD07298DGETsessionEC01D86D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionlistsessionsB88A4A44",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/session"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionGET0BD1FCA4": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessionlistsessionsB88A4A44",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionADA907DB"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionId2D6ACCD9": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "SessionApiRestApisessionADA907DB"
+        },
+        "PathPart": "{sessionId}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdOPTIONS2308AE82": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdGETApiPermissionLisaChatSessionApiRestApiDD07298DGETsessionsessionIdE4A5F22B": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiongetsessionBC2FF1E4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/session/*"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdGETApiPermissionTestLisaChatSessionApiRestApiDD07298DGETsessionsessionIdC4F097A5": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiongetsessionBC2FF1E4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/session/*"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdGET58FB905A": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessiongetsessionBC2FF1E4",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdDELETEApiPermissionLisaChatSessionApiRestApiDD07298DDELETEsessionsessionIdFC81FEF0": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiondeletesession88A67D12",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/DELETE/session/*"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdDELETEApiPermissionTestLisaChatSessionApiRestApiDD07298DDELETEsessionsessionId6B8AF9A4": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiondeletesession88A67D12",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/DELETE/session/*"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdDELETED0E27EDE": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "DELETE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessiondeletesession88A67D12",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdPUTApiPermissionLisaChatSessionApiRestApiDD07298DPUTsessionsessionId87E28A4C": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionputsession28059E77",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/session/*"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdPUTApiPermissionTestLisaChatSessionApiRestApiDD07298DPUTsessionsessionId5BB295D9": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionputsession28059E77",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/session/*"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdPUTFC291EB3": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessionputsession28059E77",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdname2D15D080": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "PathPart": "name",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdnameOPTIONSE93CD5DC": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdname2D15D080"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdnamePUTApiPermissionLisaChatSessionApiRestApiDD07298DPUTsessionsessionIdname31B5E2B2": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionrenamesession93520CEA",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/session/*/name"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdnamePUTApiPermissionTestLisaChatSessionApiRestApiDD07298DPUTsessionsessionIdname7C2B8DFB": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionrenamesession93520CEA",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/session/*/name"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdnamePUT525B7514": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessionrenamesession93520CEA",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdname2D15D080"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdattachImageB793D205": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "PathPart": "attachImage",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdattachImageOPTIONSBB2E4DC3": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdattachImageB793D205"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdattachImagePUTApiPermissionLisaChatSessionApiRestApiDD07298DPUTsessionsessionIdattachImage81E3E2BD": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionattachimagetosessionA482E30C",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/session/*/attachImage"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdattachImagePUTApiPermissionTestLisaChatSessionApiRestApiDD07298DPUTsessionsessionIdattachImage893F6138": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionattachimagetosessionA482E30C",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/session/*/attachImage"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdattachImagePUT51934F4F": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessionattachimagetosessionA482E30C",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdattachImageB793D205"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionDELETEApiPermissionLisaChatSessionApiRestApiDD07298DDELETEsession8799785A": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiondeleteusersessions7AADE5ED",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/DELETE/session"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionDELETEApiPermissionTestLisaChatSessionApiRestApiDD07298DDELETEsession75F06CA1": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiondeleteusersessions7AADE5ED",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/DELETE/session"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionDELETE0DFE30DB": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "DELETE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessiondeleteusersessions7AADE5ED",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionADA907DB"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Role used by LISA SessionApi lambdas to access AWS resources",
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:ConditionCheckItem",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "SessionApiSessionsTableDA695141",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "SessionApiSessionsTableDA695141",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ],
+        "RoleName": "test-lisa-LisaSessionApiLambdaExecutionRole"
+      }
+    },
+    "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "dynamodb:GetItem",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:dynamodb:us-iso-east-1:012345678901:table/",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:Query"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ConfigurationApiConfigurationTable4B2B7EE1",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "sqs:SendMessage",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:sqs:us-iso-east-1:012345678901:",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "kms:GenerateDataKey",
+                "kms:Decrypt",
+                "kms:DescribeKey"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "SessionApiSessionEncryptionKeyA03622E8",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiSessionsTableDA695141",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "SessionApiSessionsTableDA695141",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "GeneratedImagesBucketC3465633",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "GeneratedImagesBucketC3465633",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiSessionsTableDA695141",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "SessionApiSessionsTableDA695141",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "s3:DeleteObject*",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "GeneratedImagesBucketC3465633",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiSessionsTableDA695141",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "SessionApiSessionsTableDA695141",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "GeneratedImagesBucketC3465633",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "GeneratedImagesBucketC3465633",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "Roles": [
+          {
+            "Ref": "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+          }
+        ]
+      }
+    },
+    "SessionApiLisaChatsessionlistsessionsB88A4A44": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Lists available sessions for user",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-list_sessions",
+        "Handler": "session.lambda_functions.list_sessions",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessiongetsessionBC2FF1E4": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Returns the selected session",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-get_session",
+        "Handler": "session.lambda_functions.get_session",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessiondeletesession88A67D12": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Deletes selected session",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-delete_session",
+        "Handler": "session.lambda_functions.delete_session",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessiondeleteusersessions7AADE5ED": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Deletes all sessions for selected user",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-delete_user_sessions",
+        "Handler": "session.lambda_functions.delete_user_sessions",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessionputsession28059E77": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Creates or updates selected session",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-put_session",
+        "Handler": "session.lambda_functions.put_session",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessionrenamesession93520CEA": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Updates session name",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-rename_session",
+        "Handler": "session.lambda_functions.rename_session",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessionattachimagetosessionA482E30C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Attaches image to session",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "GeneratedImagesBucketC3465633"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-attach_image_to_session",
+        "Handler": "session.lambda_functions.attach_image_to_session",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "GeneratedImagesBucketC3465633": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "CorsConfiguration": {
+          "CorsRules": [
+            {
+              "AllowedHeaders": [
+                "*"
+              ],
+              "AllowedMethods": [
+                "GET",
+                "POST"
+              ],
+              "AllowedOrigins": [
+                "*"
+              ],
+              "ExposedHeaders": [
+                "Access-Control-Allow-Origin"
+              ]
+            }
+          ]
+        },
+        "LoggingConfiguration": {
+          "DestinationBucketName": {
+            "Fn::Select": [
+              0,
+              {
+                "Fn::Split": [
+                  "/",
+                  {
+                    "Fn::Select": [
+                      5,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "LogFilePrefix": "logs/generated-images-bucket/"
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "GeneratedImagesBucketPolicyA72A6FC9": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "GeneratedImagesBucketC3465633"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "GeneratedImagesBucketC3465633",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "GeneratedImagesBucketC3465633",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:PutBucketPolicy",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "GeneratedImagesBucketC3465633",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "GeneratedImagesBucketC3465633",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "GeneratedImagesBucketAutoDeleteObjectsCustomResource907225F0": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "GeneratedImagesBucketC3465633"
+        }
+      },
+      "DependsOn": [
+        "GeneratedImagesBucketPolicyA72A6FC9"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ]
+      }
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+        },
+        "Timeout": 900,
+        "MemorySize": 128,
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "Lambda function for auto-deleting objects in ",
+              {
+                "Ref": "GeneratedImagesBucketC3465633"
+              },
+              " S3 bucket."
+            ]
+          ]
+        }
+      },
+      "DependsOn": [
+        "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+      ]
+    },
+    "PromptTemplateApiPromptTemplatesTable2B59FA4A": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "created",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "owner",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "byOwner",
+            "KeySchema": [
+              {
+                "AttributeName": "owner",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "created",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          },
+          {
+            "IndexName": "byLatest",
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "created",
+                "KeyType": "RANGE"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "created",
+            "KeyType": "RANGE"
+          }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Role used by LISA PromptTemplatesApi lambdas to access AWS resources",
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:ConditionCheckItem",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ],
+        "RoleName": "test-lisa-LisaPromptTemplatesApiLambdaExecutionRole"
+      }
+    },
+    "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F",
+        "Roles": [
+          {
+            "Ref": "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
+          }
+        ]
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplates78FD216B": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "prompt-templates",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesOPTIONSF9B1B2D1": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplates78FD216B"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesPOSTApiPermissionLisaChatPromptTemplateApiRestApiF7D4C874POSTprompttemplates17A56F2E": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatescreateC453FE00",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/POST/prompt-templates"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesPOSTApiPermissionTestLisaChatPromptTemplateApiRestApiF7D4C874POSTprompttemplatesB52CD905": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatescreateC453FE00",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/POST/prompt-templates"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesPOST30586757": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiLisaChatprompttemplatescreateC453FE00",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplates78FD216B"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateId0A2BE223": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplates78FD216B"
+        },
+        "PathPart": "{promptTemplateId}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdOPTIONSD02AC196": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplatespromptTemplateId0A2BE223"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdGETApiPermissionLisaChatPromptTemplateApiRestApiF7D4C874GETprompttemplatespromptTemplateIdA936EC7C": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatesgetA1792182",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/prompt-templates/*"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdGETApiPermissionTestLisaChatPromptTemplateApiRestApiF7D4C874GETprompttemplatespromptTemplateId4FE0C8DE": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatesgetA1792182",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/prompt-templates/*"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdGETC3F57ABA": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiLisaChatprompttemplatesgetA1792182",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplatespromptTemplateId0A2BE223"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdPUTApiPermissionLisaChatPromptTemplateApiRestApiF7D4C874PUTprompttemplatespromptTemplateId03327213": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatesupdateDA9BD670",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/prompt-templates/*"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdPUTApiPermissionTestLisaChatPromptTemplateApiRestApiF7D4C874PUTprompttemplatespromptTemplateId95AE4205": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatesupdateDA9BD670",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/prompt-templates/*"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdPUTCFAC9871": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiLisaChatprompttemplatesupdateDA9BD670",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplatespromptTemplateId0A2BE223"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdDELETEApiPermissionLisaChatPromptTemplateApiRestApiF7D4C874DELETEprompttemplatespromptTemplateIdC2A4EFEE": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatesdelete41FB2B92",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/DELETE/prompt-templates/*"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdDELETEApiPermissionTestLisaChatPromptTemplateApiRestApiF7D4C874DELETEprompttemplatespromptTemplateIdD401F4D8": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplatesdelete41FB2B92",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/DELETE/prompt-templates/*"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatespromptTemplateIdDELETE46CD0D26": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "DELETE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiLisaChatprompttemplatesdelete41FB2B92",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplatespromptTemplateId0A2BE223"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesGETApiPermissionLisaChatPromptTemplateApiRestApiF7D4C874GETprompttemplates2250C01D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplateslist70C16F55",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/prompt-templates"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesGETApiPermissionTestLisaChatPromptTemplateApiRestApiF7D4C874GETprompttemplatesC0A0C088": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaChatprompttemplateslist70C16F55",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/prompt-templates"
+            ]
+          ]
+        }
+      }
+    },
+    "PromptTemplateApiRestApiprompttemplatesGETB12AB0B0": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiLisaChatprompttemplateslist70C16F55",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "PromptTemplateApiRestApiprompttemplates78FD216B"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "PromptTemplateApiLisaChatprompttemplatescreateC453FE00": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Creates prompt template",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "PROMPT_TEMPLATES_TABLE_NAME": {
+              "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
+            },
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-prompt_templates-create",
+        "Handler": "prompt_templates.lambda_functions.create",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F",
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
+      ]
+    },
+    "PromptTemplateApiLisaChatprompttemplatesgetA1792182": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Retrieves specific prompt template by ID",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "PROMPT_TEMPLATES_TABLE_NAME": {
+              "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
+            },
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-prompt_templates-get",
+        "Handler": "prompt_templates.lambda_functions.get",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F",
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
+      ]
+    },
+    "PromptTemplateApiLisaChatprompttemplateslist70C16F55": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Lists all available prompt templates",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "PROMPT_TEMPLATES_TABLE_NAME": {
+              "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
+            },
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-prompt_templates-list",
+        "Handler": "prompt_templates.lambda_functions.list",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F",
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
+      ]
+    },
+    "PromptTemplateApiLisaChatprompttemplatesupdateDA9BD670": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Updates an existing prompt template",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "PROMPT_TEMPLATES_TABLE_NAME": {
+              "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
+            },
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-prompt_templates-update",
+        "Handler": "prompt_templates.lambda_functions.update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F",
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
+      ]
+    },
+    "PromptTemplateApiLisaChatprompttemplatesdelete41FB2B92": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Deletes a specific prompt template by ID",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "PROMPT_TEMPLATES_TABLE_NAME": {
+              "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
+            },
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+          }
+        },
+        "FunctionName": "LisaChat-prompt_templates-delete",
+        "Handler": "prompt_templates.lambda_functions.delete",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRoleDefaultPolicyF1F54E4F",
+        "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
+      ]
+    },
+    "UserPreferencesApiUserPreferencesTableD7C804C6": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "user",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "user",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "UserPreferencesApiRestApiuserpreferencesECCFBF5F": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "user-preferences",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesOPTIONS5396137B": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "UserPreferencesApiRestApiuserpreferencesECCFBF5F"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesGETApiPermissionLisaChatUserPreferencesApiRestApi1A0B6696GETuserpreferencesD3DF88F8": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "UserPreferencesApiLisaChatuserpreferencesgetCAACC747",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/user-preferences"
+            ]
+          ]
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesGETApiPermissionTestLisaChatUserPreferencesApiRestApi1A0B6696GETuserpreferences3D302555": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "UserPreferencesApiLisaChatuserpreferencesgetCAACC747",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/user-preferences"
+            ]
+          ]
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesGET30F3E592": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiLisaChatuserpreferencesgetCAACC747",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "UserPreferencesApiRestApiuserpreferencesECCFBF5F"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesPUTApiPermissionLisaChatUserPreferencesApiRestApi1A0B6696PUTuserpreferences75727D9C": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "UserPreferencesApiLisaChatuserpreferencesupdateC679459F",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/user-preferences"
+            ]
+          ]
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesPUTApiPermissionTestLisaChatUserPreferencesApiRestApi1A0B6696PUTuserpreferences6193E000": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "UserPreferencesApiLisaChatuserpreferencesupdateC679459F",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/user-preferences"
+            ]
+          ]
+        }
+      }
+    },
+    "UserPreferencesApiRestApiuserpreferencesPUT19B326BE": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiLisaChatuserpreferencesupdateC679459F",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "UserPreferencesApiRestApiuserpreferencesECCFBF5F"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Role used by LISA UserPreferencesApi lambdas to access AWS resources",
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:ConditionCheckItem",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "UserPreferencesApiUserPreferencesTableD7C804C6",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "UserPreferencesApiUserPreferencesTableD7C804C6",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ],
+        "RoleName": "test-lisa-LisaUserPreferencesApiLambdaExecutionRole"
+      }
+    },
+    "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRoleDefaultPolicyA4B6F391": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiUserPreferencesTableD7C804C6",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiUserPreferencesTableD7C804C6",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRoleDefaultPolicyA4B6F391",
+        "Roles": [
+          {
+            "Ref": "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29"
+          }
+        ]
+      }
+    },
+    "UserPreferencesApiLisaChatuserpreferencesgetCAACC747": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Returns the preferences for the calling user",
+        "Environment": {
+          "Variables": {
+            "USER_PREFERENCES_TABLE_NAME": {
+              "Ref": "UserPreferencesApiUserPreferencesTableD7C804C6"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-user_preferences-get",
+        "Handler": "user_preferences.lambda_functions.get",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRoleDefaultPolicyA4B6F391",
+        "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29"
+      ]
+    },
+    "UserPreferencesApiLisaChatuserpreferencesupdateC679459F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+        },
+        "Description": "Creates or updates user preferences for user",
+        "Environment": {
+          "Variables": {
+            "USER_PREFERENCES_TABLE_NAME": {
+              "Ref": "UserPreferencesApiUserPreferencesTableD7C804C6"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-user_preferences-update",
+        "Handler": "user_preferences.lambda_functions.update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRoleDefaultPolicyA4B6F391",
+        "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29"
+      ]
+    }
+  },
+  "Parameters": {
+    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/common"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/serve/endpoint"
+    },
+    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
+    },
+    "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/modelTableName"
+    },
+    "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/queue-name/usage-metrics"
+    },
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5"
+                  ],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}

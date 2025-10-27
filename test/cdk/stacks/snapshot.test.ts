@@ -26,7 +26,7 @@ describe('Stack Migration Tests', () => {
     const stacks = MockApp.getStacks();
 
     stacks?.forEach((stack: Stack) => {
-        xit(`${stack.stackName} is compatible with baseline`, () => {
+        it(`${stack.stackName} is compatible with baseline`, () => {
             const template = Template.fromStack(stack);
             const current = template.toJSON();
             const baselinePath = path.join(BASELINE_DIR, `${stack.stackName}.json`);
@@ -46,7 +46,7 @@ describe('Stack Migration Tests', () => {
     });
 });
 
-function detectResourceReplacements(baseline: any, current: any): string[] {
+function detectResourceReplacements (baseline: any, current: any): string[] {
     const replacements: string[] = [];
     const baselineResources = baseline.Resources || {};
     const currentResources = current.Resources || {};

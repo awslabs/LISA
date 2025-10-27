@@ -29,7 +29,7 @@ describe('Override Configuration Tests', () => {
 
     it('should use provided layer assets instead of building', () => {
         // Find the core stack which should contain the layers
-        const coreStack = stacks.find(stack => stack.stackName.includes('Core'));
+        const coreStack = stacks.find((stack) => stack.stackName.includes('Core'));
         expect(coreStack).toBeDefined();
 
         if (coreStack) {
@@ -47,7 +47,7 @@ describe('Override Configuration Tests', () => {
     });
 
     it('should use provided container images instead of building', () => {
-        stacks.forEach(stack => {
+        stacks.forEach((stack) => {
             const template = Template.fromStack(stack);
             const resources = template.toJSON().Resources || {};
 
@@ -71,7 +71,7 @@ describe('Override Configuration Tests', () => {
     });
 
     it('should not create CodeBuild projects when overrides are provided', () => {
-        stacks.forEach(stack => {
+        stacks.forEach((stack) => {
             const template = Template.fromStack(stack);
             const resources = template.toJSON().Resources || {};
 

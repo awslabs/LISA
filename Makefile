@@ -120,6 +120,18 @@ endif
 # MODEL_BUCKET - S3 bucket containing model artifacts
 MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketModels')
 
+# BASE_URL - Base URL for web UI assets based on domain name and deployment stage
+DOMAIN_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.apiGatewayConfig.domainName')
+ifeq ($(DOMAIN_NAME), null)
+DOMAIN_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq '.apiGatewayConfig.domainName')
+endif
+
+ifeq ($(DOMAIN_NAME), null)
+BASE_URL := /$(DEPLOYMENT_STAGE)/
+else
+BASE_URL := /
+endif
+
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -270,7 +282,7 @@ listStacks:
 	@npx cdk list
 
 buildNpmModules:
-	npm run build
+	BASE_URL=$(BASE_URL) npm run build
 
 buildArchive:
 	BUILD_ASSETS=true npm run build

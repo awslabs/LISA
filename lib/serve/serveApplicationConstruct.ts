@@ -19,6 +19,7 @@ import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-l
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ICluster } from 'aws-cdk-lib/aws-ecs';
 import { FastApiContainer } from '../api-base/fastApiContainer';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
@@ -57,6 +58,9 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
     public readonly tokenTable?: ITable;
+    public readonly ecsCluster: ICluster;
+    public readonly loadBalancer: any;
+    public readonly listener: any;
 
     /**
      * @param {Stack} scope - The parent or owner of the construct.
@@ -324,6 +328,9 @@ export class LisaServeApplicationConstruct extends Construct {
 
         // Update
         this.restApi = restApi;
+        this.ecsCluster = restApi.ecsCluster;
+        this.loadBalancer = restApi.loadBalancer;
+        this.listener = restApi.listener;
 
         // Grant permissions after restApi is fully constructed
         // Additional permissions for REST API Role

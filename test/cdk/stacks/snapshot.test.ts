@@ -43,7 +43,7 @@ describe('Stack Migration Tests', () => {
 
             if (replacements.length > 0) {
                 console.warn(`\nResource changes detected in ${stack.stackName}:`);
-                replacements.forEach(r => console.warn(`  - ${r}`));
+                replacements.forEach((r) => console.warn(`  - ${r}`));
             }
 
             expect(replacements).toEqual([]);

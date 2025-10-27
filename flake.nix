@@ -9,7 +9,7 @@
 
   inputs = {
     # Use the unstable channel for latest package versions
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
     # Utility functions for creating flakes that work across multiple systems
     flake-utils.url = "github:numtide/flake-utils";
@@ -30,10 +30,12 @@
           # Core development tools needed for LISA
           packages = with pkgs; [
             awscli2     # AWS command-line interface for deployment and management
+            gnumake
             jq          # JSON processor for parsing AWS responses and configuration
             pre-commit  # Git hook framework for code quality checks
-            python3     # Python runtime for LISA backend services
+            python311Full     # Python runtime for LISA backend services
             nodejs      # Node.js runtime for CDK infrastructure and frontend tooling
+            nodePackages.aws-cdk # AWS CDK CLI, the command line tool for CDK apps
             uv          # Fast Python package installer and virtual environment manager
             yq          # YAML processor for configuration management
           ];

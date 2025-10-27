@@ -17,8 +17,7 @@
 import { CfnOutput } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
 import { dump as yamlDump } from 'js-yaml';
 
@@ -55,23 +54,11 @@ type FastApiContainerProps = {
  * FastApiContainer Construct.
  */
 export class FastApiContainer extends Construct {
-    /** Map of all container definitions by identifier */
-    public readonly containers: ContainerDefinition[] = [];
-
-    /** Map of all task roles by identifier */
-    public readonly taskRoles: Partial<Record<ECSTasks, IRole>> = {};
+    /** ECS Cluster **/
+    public readonly apiCluster: ECSCluster;
 
     /** FastAPI URL **/
     public readonly endpoint: string;
-
-    /** ECS Cluster **/
-    public readonly ecsCluster: any;
-
-    /** Application Load Balancer **/
-    public readonly loadBalancer: any;
-
-    /** Application Listener **/
-    public readonly listener: any;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -152,20 +139,7 @@ export class FastApiContainer extends Construct {
                 }
             },
             buildArgs,
-            tasks: {
-                [ECSTasks.REST]: {
-                    environment: baseEnvironment,
-                    containerConfig: {
-                        image: restApiImage,
-                        healthCheckConfig,
-                        environment: {},
-                        sharedMemorySize: 0
-                    },
-                    // set a softlimit of what we expect to use
-                    containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION
-                },
-
-            },
+            tasks: {},
             // reserve at least enough memory for each task and a buffer for the instance to use
             containerMemoryBuffer: Ec2Metadata.get(instanceType).memory - (INSTANCE_MEMORY_RESERVATION + SERVE_CONTAINER_MEMORY_RESERVATION + (config.deployMcpWorkbench ? WORKBENCH_CONTAINER_MEMORY_RESERVATION : 0)),
             instanceType,
@@ -191,29 +165,36 @@ export class FastApiContainer extends Construct {
             vpc
         });
 
-
+        // Add the REST API task to the cluster (default target, no priority/conditions)
+        apiCluster.addTask(ECSTasks.REST, {
+            environment: baseEnvironment,
+            containerConfig: {
+                image: restApiImage,
+                healthCheckConfig,
+                environment: {},
+                sharedMemorySize: 0
+            },
+            containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION,
+            applicationTarget: {
+                port: 8080
+            }
+        }, props.apiName);
 
         if (tokenTable) {
-            Object.entries(apiCluster.taskRoles).forEach(([, role]) => {
-                tokenTable.grantReadData(role);
-            });
+            // Grant token table access to REST API task role only
+            const restTaskRole = apiCluster.taskRoles[ECSTasks.REST];
+            if (restTaskRole) {
+                tokenTable.grantReadData(restTaskRole);
+            }
         }
 
-
-
+        this.apiCluster = apiCluster;
         this.endpoint = apiCluster.endpointUrl;
 
         new StringParameter(scope, 'FastApiEndpoint', {
             parameterName: `${config.deploymentPrefix}/serve/endpoint`,
             stringValue: this.endpoint
         });
-
-        // Update
-        this.containers = Object.values(apiCluster.containers);
-        this.taskRoles = apiCluster.taskRoles;
-        this.ecsCluster = apiCluster.cluster;
-        this.loadBalancer = apiCluster.loadBalancer;
-        this.listener = apiCluster.listener;
 
         // CFN output
         new CfnOutput(this, `${props.apiName}Url`, {

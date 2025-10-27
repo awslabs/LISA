@@ -44,6 +44,7 @@ import { LisaNetworkingStack } from './networking';
 import { LisaRagStack } from './rag';
 import { BaseProps, stackSynthesizerType } from './schema';
 import { LisaServeApplicationStack } from './serve';
+import { McpWorkbenchStack } from './serve/mcpWorkbenchStack';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
 import { LisaMetricsStack } from './metrics';
@@ -292,6 +293,25 @@ export class LisaServeApplicationStage extends Stage {
         modelsApiDeploymentStack.addDependency(serveStack);
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
         this.stacks.push(modelsApiDeploymentStack);
+
+        if (config.deployMcpWorkbench) {
+            const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
+                ...baseStackProps,
+                stackName: createCdkId([config.deploymentName, config.appName, 'mcp-workbench', config.deploymentStage]),
+                description: `LISA-mcp-workbench: ${config.deploymentName}-${config.deploymentStage}`,
+                vpc: networkingStack.vpc,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                authorizerId: apiBaseStack.authorizer?.authorizerId || '',
+                ecsCluster: serveStack.ecsCluster,
+                loadBalancer: serveStack.loadBalancer,
+                listener: serveStack.listener,
+            });
+            mcpWorkbenchStack.addDependency(apiBaseStack);
+            mcpWorkbenchStack.addDependency(serveStack);
+            apiDeploymentStack.addDependency(mcpWorkbenchStack);
+            this.stacks.push(mcpWorkbenchStack);
+        }
 
         if (config.deployRag) {
             const ragStack = new LisaRagStack(this, 'LisaRAG', {

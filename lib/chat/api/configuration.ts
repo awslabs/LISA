@@ -46,7 +46,7 @@ type ConfigurationApiProps = {
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
     vpc: Vpc;
-    mcpApi: McpApi;
+    mcpApi?: McpApi;
 } & BaseProps;
 
 /**
@@ -88,10 +88,7 @@ export class ConfigurationApi extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
-        const mcpServersTable = dynamodb.Table.fromTableName(this, 'McpServersTable', mcpApi.mcpServersTableNameParameter.stringValue);
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
-
-        mcpServersTable.grantReadWriteData(lambdaRole);
 
         // Populate the App Config table with default config
         const date = new Date();
@@ -103,36 +100,42 @@ export class ConfigurationApi extends Construct {
                 parameters: {
                     TableName: this.configTable.tableName,
                     Item: {
-                        'versionId': {'N': '0'},
-                        'changedBy': {'S': 'System'},
-                        'configScope': {'S': 'global'},
-                        'changeReason': {'S': 'Initial deployment default config'},
-                        'createdAt': {'S': Math.round(date.getTime() / 1000).toString()},
-                        'configuration': {'M': {
-                            'enabledComponents': {'M': {
-                                'deleteSessionHistory': {'BOOL': 'True'},
-                                'viewMetaData': {'BOOL': 'True'},
-                                'editKwargs': {'BOOL': 'True'},
-                                'editPromptTemplate': {'BOOL': 'True'},
-                                'editChatHistoryBuffer': {'BOOL': 'True'},
-                                'editNumOfRagDocument': {'BOOL': 'True'},
-                                'uploadRagDocs': {'BOOL': 'True'},
-                                'uploadContextDocs': {'BOOL': 'True'},
-                                'documentSummarization': {'BOOL': 'True'},
-                                'showRagLibrary': {'BOOL': 'True'},
-                                'showMcpWorkbench': {'BOOL': 'False'},
-                                'showPromptTemplateLibrary': {'BOOL': 'True'},
-                                'mcpConnections': {'BOOL': 'True'},
-                                'modelLibrary': {'BOOL': 'True'},
-                                'encryptSession': {'BOOL': 'False'},
-                            }},
-                            'systemBanner': {'M': {
-                                'isEnabled': {'BOOL': 'False'},
-                                'text': {'S': ''},
-                                'textColor': {'S': ''},
-                                'backgroundColor': {'S': ''}
-                            }}
-                        }}
+                        'versionId': { 'N': '0' },
+                        'changedBy': { 'S': 'System' },
+                        'configScope': { 'S': 'global' },
+                        'changeReason': { 'S': 'Initial deployment default config' },
+                        'createdAt': { 'S': Math.round(date.getTime() / 1000).toString() },
+                        'configuration': {
+                            'M': {
+                                'enabledComponents': {
+                                    'M': {
+                                        'deleteSessionHistory': { 'BOOL': 'True' },
+                                        'viewMetaData': { 'BOOL': 'True' },
+                                        'editKwargs': { 'BOOL': 'True' },
+                                        'editPromptTemplate': { 'BOOL': 'True' },
+                                        'editChatHistoryBuffer': { 'BOOL': 'True' },
+                                        'editNumOfRagDocument': { 'BOOL': 'True' },
+                                        'uploadRagDocs': { 'BOOL': 'True' },
+                                        'uploadContextDocs': { 'BOOL': 'True' },
+                                        'documentSummarization': { 'BOOL': 'True' },
+                                        'showRagLibrary': { 'BOOL': 'True' },
+                                        'showMcpWorkbench': { 'BOOL': 'False' },
+                                        'showPromptTemplateLibrary': { 'BOOL': 'True' },
+                                        'mcpConnections': { 'BOOL': 'True' },
+                                        'modelLibrary': { 'BOOL': 'True' },
+                                        'encryptSession': { 'BOOL': 'False' },
+                                    }
+                                },
+                                'systemBanner': {
+                                    'M': {
+                                        'isEnabled': { 'BOOL': 'False' },
+                                        'text': { 'S': '' },
+                                        'textColor': { 'S': '' },
+                                        'backgroundColor': { 'S': '' }
+                                    }
+                                }
+                            }
+                        }
                     },
                 },
             },
@@ -146,12 +149,14 @@ export class ConfigurationApi extends Construct {
 
         const fastApiEndpoint = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/serve/endpoint`);
 
-        const environment = {
+        let environment = {
             CONFIG_TABLE_NAME: this.configTable.tableName,
-            FASTAPI_ENDPOINT: fastApiEndpoint,
-            // add MCP_SERVERS_TABLE_NAME so we can update it if the configuration changes
-            MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName
+            FASTAPI_ENDPOINT: fastApiEndpoint
         };
+
+        if (mcpApi) {
+            this.createMcpApiTable(mcpApi, lambdaRole, environment);
+        }
 
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
@@ -195,5 +200,13 @@ export class ConfigurationApi extends Construct {
                 this.configTable.grantReadWriteData(lambdaFunction);
             }
         });
+    }
+
+    private createMcpApiTable (mcpApi: McpApi, lambdaRole: IRole, environment: Record<string, string>) {
+        const mcpServersTable = dynamodb.Table.fromTableName(this, 'McpServersTable', mcpApi.mcpServersTableNameParameter.stringValue);
+        mcpServersTable.grantReadWriteData(lambdaRole);
+
+        // add MCP_SERVERS_TABLE_NAME so we can update it if the configuration changes
+        environment.MCP_SERVERS_TABLE_NAME = mcpServersTable.tableName;
     }
 }

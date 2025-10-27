@@ -110,6 +110,13 @@ export default class McpWorkbenchConstruct extends Construct {
             method: 'DELETE',
             environment: env,
             path: 'mcp-workbench/{toolId}'
+        }, {
+            name: 'validate_syntax',
+            resource: 'mcp_workbench',
+            description: 'Validate Python code syntax',
+            method: 'POST',
+            environment: env,
+            path: 'mcp-workbench/validate-syntax'
         }];
 
         // Create IAM role for Lambda
@@ -148,7 +155,11 @@ export default class McpWorkbenchConstruct extends Construct {
                 authorizer,
                 lambdaRole,
             );
-            if (f.method === 'POST' || f.method === 'PUT') {
+
+            // Grant S3 permissions based on function type
+            if (['validate_syntax'].includes(f.name)) {
+                // No S3 permissions needed for syntax validation
+            } else if (f.method === 'POST' || f.method === 'PUT') {
                 workbenchBucket.grantWrite(lambdaFunction);
             } else if (f.method === 'GET') {
                 workbenchBucket.grantRead(lambdaFunction);

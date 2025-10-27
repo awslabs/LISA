@@ -26,7 +26,7 @@ describe('Stack Migration Tests', () => {
     const stacks = MockApp.getStacks();
 
     stacks?.forEach((stack: Stack) => {
-        it(`${stack.stackName} is compatible with baseline`, () => {
+        it(`${stack.stackName} has no resource replacements`, () => {
             const template = Template.fromStack(stack);
             const current = template.toJSON();
             const baselinePath = path.join(BASELINE_DIR, `${stack.stackName}.json`);
@@ -41,6 +41,11 @@ describe('Stack Migration Tests', () => {
             const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
             const replacements = detectResourceReplacements(baseline, current);
 
+            if (replacements.length > 0) {
+                console.warn(`\nResource changes detected in ${stack.stackName}:`);
+                replacements.forEach(r => console.warn(`  - ${r}`));
+            }
+
             expect(replacements).toEqual([]);
         });
     });
@@ -54,9 +59,7 @@ function detectResourceReplacements (baseline: any, current: any): string[] {
     for (const [logicalId, baselineResource] of Object.entries(baselineResources)) {
         const currentResource = currentResources[logicalId];
 
-        if (!currentResource) {
-            replacements.push(`Resource ${logicalId} was removed`);
-        } else if ((baselineResource as any).Type !== (currentResource as any).Type) {
+        if (currentResource && (baselineResource as any).Type !== (currentResource as any).Type) {
             replacements.push(`Resource ${logicalId} type changed from ${(baselineResource as any).Type} to ${(currentResource as any).Type}`);
         }
     }

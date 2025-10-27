@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate baseline templates from a specific release tag
+# Generate baseline templates from MockApp
 
 set -e
 
@@ -18,8 +18,11 @@ git checkout "$RELEASE_TAG"
 npm ci
 npm run build
 
-# Generate templates
+# Remove existing baselines to force regeneration
+rm -rf "$BASELINE_DIR"
 mkdir -p "$BASELINE_DIR"
+
+# Run snapshot tests which will generate baselines from MockApp
 npm test -- test/cdk/stacks/snapshot.test.ts --testNamePattern="is compatible with baseline"
 
 # Return to previous branch

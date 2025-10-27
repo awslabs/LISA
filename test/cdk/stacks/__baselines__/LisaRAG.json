@@ -1034,7 +1034,7 @@
     "IngestionStackConstructIngestionJobFargateEnvD92342F8": {
       "Type": "AWS::Batch::ComputeEnvironment",
       "Properties": {
-        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-05f84580be3a",
+        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-aa0aa494bf77",
         "ComputeResources": {
           "MaxvCpus": 128,
           "SecurityGroupIds": [
@@ -1075,7 +1075,7 @@
             "Order": 1
           }
         ],
-        "JobQueueName": "test-lisa-dev-ingestion-job-05f84580be3a",
+        "JobQueueName": "test-lisa-dev-ingestion-job-aa0aa494bf77",
         "Priority": 1,
         "State": "ENABLED"
       }
@@ -1323,7 +1323,7 @@
           ],
           "RuntimePlatform": {}
         },
-        "JobDefinitionName": "test-lisa-dev-ingestion-job-05f84580be3a",
+        "JobDefinitionName": "test-lisa-dev-ingestion-job-aa0aa494bf77",
         "PlatformCapabilities": [
           "FARGATE"
         ],
@@ -1444,7 +1444,7 @@
             }
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-ingest-schedule-05f84580be3a",
+        "FunctionName": "test-lisa-dev-ingestion-ingest-schedule-aa0aa494bf77",
         "Handler": "repository.pipeline_ingest_documents.handle_pipline_ingest_schedule",
         "Layers": [
           {
@@ -1617,7 +1617,7 @@
             }
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-ingest-event-05f84580be3a",
+        "FunctionName": "test-lisa-dev-ingestion-ingest-event-aa0aa494bf77",
         "Handler": "repository.pipeline_ingest_documents.handle_pipeline_ingest_event",
         "Layers": [
           {
@@ -1790,7 +1790,7 @@
             }
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-delete-event-05f84580be3a",
+        "FunctionName": "test-lisa-dev-ingestion-delete-event-aa0aa494bf77",
         "Handler": "repository.pipeline_ingest_documents.handle_pipeline_delete_event",
         "Layers": [
           {

@@ -3451,7 +3451,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4845C59F5DB5": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4a9eC2C78690": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3490,7 +3490,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler7d20C4A1E1EF": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8e30CA5B0DC1": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3596,7 +3596,7 @@
         "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
       ]
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlera8d328BEE6B8": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler5f34ADCFCD5F": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",

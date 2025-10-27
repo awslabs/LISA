@@ -1525,7 +1525,7 @@
         "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
       ]
     },
-    "S3EventHandlerRole50F090CE": {
+    "McpWorkbenchServiceS3EventHandlerRole49FEE688": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "AssumeRolePolicyDocument": {
@@ -1604,7 +1604,7 @@
         ]
       }
     },
-    "S3EventHandlerLambda6F4CC66A": {
+    "McpWorkbenchServiceS3EventHandlerLambda833B80DB": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
@@ -1626,7 +1626,7 @@
         "Handler": "mcp_workbench.s3_event_handler.handler",
         "Role": {
           "Fn::GetAtt": [
-            "S3EventHandlerRole50F090CE",
+            "McpWorkbenchServiceS3EventHandlerRole49FEE688",
             "Arn"
           ]
         },
@@ -1634,10 +1634,10 @@
         "Timeout": 120
       },
       "DependsOn": [
-        "S3EventHandlerRole50F090CE"
+        "McpWorkbenchServiceS3EventHandlerRole49FEE688"
       ]
     },
-    "RescanMCPWorkbenchRule483B9C5D": {
+    "McpWorkbenchServiceRescanMCPWorkbenchRule7B9F0946": {
       "Type": "AWS::Events::Rule",
       "Properties": {
         "EventPattern": {
@@ -1662,7 +1662,7 @@
           {
             "Arn": {
               "Fn::GetAtt": [
-                "S3EventHandlerLambda6F4CC66A",
+                "McpWorkbenchServiceS3EventHandlerLambda833B80DB",
                 "Arn"
               ]
             },
@@ -1675,20 +1675,20 @@
         ]
       }
     },
-    "RescanMCPWorkbenchRuleAllowEventRuleLisaMcpWorkbenchS3EventHandlerLambdaC2E6797595B45F43": {
+    "McpWorkbenchServiceRescanMCPWorkbenchRuleAllowEventRuleLisaMcpWorkbenchMcpWorkbenchServiceS3EventHandlerLambdaDAC36E6D19509B7A": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
           "Fn::GetAtt": [
-            "S3EventHandlerLambda6F4CC66A",
+            "McpWorkbenchServiceS3EventHandlerLambda833B80DB",
             "Arn"
           ]
         },
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "RescanMCPWorkbenchRule483B9C5D",
+            "McpWorkbenchServiceRescanMCPWorkbenchRule7B9F0946",
             "Arn"
           ]
         }

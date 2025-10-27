@@ -1185,6 +1185,52 @@
           {
             "Environment": [
               {
+                "Name": "LOG_LEVEL",
+                "Value": "DEBUG"
+              },
+              {
+                "Name": "AWS_REGION",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "AWS_REGION_NAME",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "THREADS",
+                "Value": "2"
+              },
+              {
+                "Name": "USE_AUTH",
+                "Value": "true"
+              },
+              {
+                "Name": "AUTHORITY",
+                "Value": "test"
+              },
+              {
+                "Name": "CLIENT_ID",
+                "Value": "test"
+              },
+              {
+                "Name": "ADMIN_GROUP",
+                "Value": ""
+              },
+              {
+                "Name": "USER_GROUP",
+                "Value": ""
+              },
+              {
+                "Name": "JWT_GROUPS_PROP",
+                "Value": ""
+              },
+              {
+                "Name": "TOKEN_TABLE_NAME",
+                "Value": {
+                  "Ref": "TokenTable3625D248"
+                }
+              },
+              {
                 "Name": "SSL_CERT_DIR",
                 "Value": "/etc/pki/tls/certs"
               },
@@ -1223,22 +1269,6 @@
                 }
               },
               {
-                "Name": "LOG_LEVEL",
-                "Value": "DEBUG"
-              },
-              {
-                "Name": "AWS_REGION",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "AWS_REGION_NAME",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "THREADS",
-                "Value": "2"
-              },
-              {
                 "Name": "LITELLM_KEY",
                 "Value": "sk-012345"
               },
@@ -1249,36 +1279,6 @@
               {
                 "Name": "TIKTOKEN_CACHE_DIR",
                 "Value": "/app/TIKTOKEN_CACHE"
-              },
-              {
-                "Name": "USE_AUTH",
-                "Value": "true"
-              },
-              {
-                "Name": "AUTHORITY",
-                "Value": "test"
-              },
-              {
-                "Name": "CLIENT_ID",
-                "Value": "test"
-              },
-              {
-                "Name": "ADMIN_GROUP",
-                "Value": ""
-              },
-              {
-                "Name": "USER_GROUP",
-                "Value": ""
-              },
-              {
-                "Name": "JWT_GROUPS_PROP",
-                "Value": ""
-              },
-              {
-                "Name": "TOKEN_TABLE_NAME",
-                "Value": {
-                  "Ref": "TokenTable3625D248"
-                }
               },
               {
                 "Name": "MANAGEMENT_KEY_NAME",
@@ -1712,6 +1712,52 @@
           {
             "Environment": [
               {
+                "Name": "LOG_LEVEL",
+                "Value": "DEBUG"
+              },
+              {
+                "Name": "AWS_REGION",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "AWS_REGION_NAME",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "THREADS",
+                "Value": "2"
+              },
+              {
+                "Name": "USE_AUTH",
+                "Value": "true"
+              },
+              {
+                "Name": "AUTHORITY",
+                "Value": "test"
+              },
+              {
+                "Name": "CLIENT_ID",
+                "Value": "test"
+              },
+              {
+                "Name": "ADMIN_GROUP",
+                "Value": ""
+              },
+              {
+                "Name": "USER_GROUP",
+                "Value": ""
+              },
+              {
+                "Name": "JWT_GROUPS_PROP",
+                "Value": ""
+              },
+              {
+                "Name": "TOKEN_TABLE_NAME",
+                "Value": {
+                  "Ref": "TokenTable3625D248"
+                }
+              },
+              {
                 "Name": "SSL_CERT_DIR",
                 "Value": "/etc/pki/tls/certs"
               },
@@ -1748,50 +1794,6 @@
                     ]
                   ]
                 }
-              },
-              {
-                "Name": "LOG_LEVEL",
-                "Value": "DEBUG"
-              },
-              {
-                "Name": "AWS_REGION",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "AWS_REGION_NAME",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "LITELLM_KEY",
-                "Value": "sk-012345"
-              },
-              {
-                "Name": "OPENAI_API_KEY",
-                "Value": "sk-012345"
-              },
-              {
-                "Name": "USE_AUTH",
-                "Value": "true"
-              },
-              {
-                "Name": "AUTHORITY",
-                "Value": "test"
-              },
-              {
-                "Name": "CLIENT_ID",
-                "Value": "test"
-              },
-              {
-                "Name": "ADMIN_GROUP",
-                "Value": ""
-              },
-              {
-                "Name": "USER_GROUP",
-                "Value": ""
-              },
-              {
-                "Name": "JWT_GROUPS_PROP",
-                "Value": ""
               },
               {
                 "Name": "RCLONE_CONFIG_S3_REGION",

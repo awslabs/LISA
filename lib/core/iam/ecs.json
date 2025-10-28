@@ -198,6 +198,15 @@
         "arn:${AWS::Partition}:s3:::*-mcpworkbench-*",
         "arn:${AWS::Partition}:s3:::*-mcpworkbench-*/*"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+      ],
+      "Resource": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*-LISAApiTokenTable"
     }
   ]
 }

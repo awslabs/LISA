@@ -39,7 +39,7 @@ export class McpWorkbenchStack extends Stack {
         // Import authorizer
         const authorizer = { authorizerId };
 
-        new McpWorkbenchConstruct(this, 'McpWorkbench', {
+        const { workbenchBucket } = new McpWorkbenchConstruct(this, 'McpWorkbench', {
             ...props,
             authorizer: authorizer as any,
             restApiId,
@@ -49,7 +49,8 @@ export class McpWorkbenchStack extends Stack {
 
         new McpWorkbenchServiceConstruct(this, 'McpWorkbenchService', {
             config,
-            apiCluster
+            apiCluster,
+            workbenchBucket,
         });
     }
 

@@ -305,6 +305,7 @@ export class LisaServeApplicationStage extends Stage {
                 authorizerId: apiBaseStack.authorizer?.authorizerId || '',
                 apiCluster: serveStack.restApi.apiCluster,
             });
+            mcpWorkbenchStack.addDependency(coreStack);
             mcpWorkbenchStack.addDependency(apiBaseStack);
             mcpWorkbenchStack.addDependency(serveStack);
             apiDeploymentStack.addDependency(mcpWorkbenchStack);

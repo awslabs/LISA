@@ -48,6 +48,7 @@ type FastApiContainerProps = {
     securityGroup: ISecurityGroup;
     tokenTable: ITable | undefined;
     vpc: Vpc;
+    managementKeyName: string;
 } & BaseProps;
 
 /**
@@ -68,7 +69,7 @@ export class FastApiContainer extends Construct {
     constructor (scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);
 
-        const { config, securityGroup, tokenTable, vpc } = props;
+        const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
 
         const instanceType = 'm5.large';
 
@@ -79,6 +80,7 @@ export class FastApiContainer extends Construct {
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
         };
 
+        // Environment variables for all containers
         const environment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,
@@ -90,6 +92,7 @@ export class FastApiContainer extends Construct {
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
+            MANAGEMENT_KEY_NAME: managementKeyName
         };
 
         if (tokenTable) {

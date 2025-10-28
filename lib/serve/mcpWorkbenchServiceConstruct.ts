@@ -26,9 +26,11 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH } from '../util';
 import { getDefaultRuntime } from '../api-base/utils';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 
 export type McpWorkbenchServiceConstructProps = {
     apiCluster: ECSCluster;
+    workbenchBucket: IBucket;
 } & BaseProps;
 
 export default class McpWorkbenchServiceConstruct extends Construct {

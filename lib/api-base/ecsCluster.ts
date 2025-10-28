@@ -71,6 +71,7 @@ type ECSClusterProps = {
     ecsConfig: ECSConfig;
     securityGroup: ISecurityGroup;
     vpc: Vpc;
+    environment: Record<string, string>;
 } & BaseProps;
 
 /**
@@ -100,6 +101,16 @@ export class ECSCluster extends Construct {
     public readonly cluster: Cluster;
 
     private readonly targetGroups: Partial<Record<ECSTasks, ApplicationTargetGroup>> = {};
+    private readonly config: Config;
+    private readonly ecsConfig: ECSConfig;
+    private readonly vpc: Vpc;
+    private readonly securityGroup: ISecurityGroup;
+    private readonly logGroup: LogGroup;
+    private readonly volumes: Volume[];
+    private readonly mountPoints: MountPoint[];
+    private readonly baseEnvironment: Record<string, string>;
+    private readonly autoScalingGroup: AutoScalingGroup;
+    private readonly asgCapacityProvider: AsgCapacityProvider;
 
     /**
      * Creates a task definition with its associated container and IAM role (base method).
@@ -117,7 +128,6 @@ export class ECSCluster extends Construct {
         taskDefinitionName: string,
         config: Config,
         taskDefinition: TaskDefinition,
-        baseEnvironment: Record<string, string>,
         ecsConfig: ECSConfig,
         volumes: Volume[],
         mountPoints: MountPoint[],
@@ -159,7 +169,7 @@ export class ECSCluster extends Construct {
         const container = ec2TaskDefinition.addContainer(createCdkId([taskDefinitionName, 'Container']), {
             containerName: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             image,
-            environment: {...baseEnvironment, ...taskDefinition.environment},
+            environment: {...this.baseEnvironment, ...taskDefinition.environment},
             logging: LogDriver.awsLogs({
                 logGroup: logGroup,
                 streamPrefix: taskDefinitionName
@@ -185,7 +195,7 @@ export class ECSCluster extends Construct {
    */
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
-        const { config, identifier, vpc, securityGroup, ecsConfig } = props;
+        const { config, identifier, vpc, securityGroup, ecsConfig, environment } = props;
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
@@ -274,7 +284,7 @@ export class ECSCluster extends Construct {
 
         const baseEnvironment: {
             [key: string]: string;
-        } = {};
+        } = {...environment};
         const volumes: Volume[] = [];
         const mountPoints: MountPoint[] = [];
 
@@ -398,60 +408,94 @@ export class ECSCluster extends Construct {
             .concat('*')
             .join(',');
 
-        Object.entries(ecsConfig.tasks).forEach(([name, definition]) => {
-            // Retrieve task role and execution role for each task
-            const taskRole = Role.fromRoleArn(
-                this,
-                createCdkId([name, 'TR']),
-                StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${name}`),
-            );
-            const executionRole = Role.fromRoleArn(
-                this,
-                createCdkId([name, 'ER']),
-                StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/roles/${name}EX`),
-            );
+        // Store configuration for later use by addTask method
+        this.config = config;
+        this.ecsConfig = ecsConfig;
+        this.vpc = vpc;
+        this.securityGroup = securityGroup;
+        this.logGroup = logGroup;
+        this.volumes = volumes;
+        this.mountPoints = mountPoints;
+        this.baseEnvironment = baseEnvironment;
+        this.autoScalingGroup = autoScalingGroup;
+        this.asgCapacityProvider = asgCapacityProvider;
+    }
 
-            const taskResult = this.createTaskDefinition(
-                name,
-                config,
-                definition,
-                baseEnvironment,
-                ecsConfig,
-                volumes,
-                mountPoints,
-                logGroup,
-                taskRole,
-                executionRole
-            );
-            const { taskDefinition, container } = taskResult;
+    /**
+     * Add a task to the ECS cluster with its own target group and service.
+     *
+     * @param taskName - The name of the task (e.g., ECSTasks.REST, ECSTasks.MCPWORKBENCH)
+     * @param taskDefinition - The task definition configuration. Environment variables within task definition will be merged with
+     *                         cluster environment variables.
+     * @param identifier - The identifier for naming resources
+     * @returns Object containing the created service and target group
+     */
+    public addTask (
+        taskName: ECSTasks,
+        taskDefinition: TaskDefinition,
+        identifier: string
+    ): { service: Ec2Service; targetGroup?: ApplicationTargetGroup } {
+        // Retrieve task role and execution role for the task
+        const taskRole = Role.fromRoleArn(
+            this,
+            createCdkId([taskName, 'TR']),
+            StringParameter.valueForStringParameter(this, `${this.config.deploymentPrefix}/roles/${taskName}`),
+        );
+        const executionRole = Role.fromRoleArn(
+            this,
+            createCdkId([taskName, 'ER']),
+            StringParameter.valueForStringParameter(this, `${this.config.deploymentPrefix}/roles/${taskName}EX`),
+        );
 
-            // Create ECS service for primary task
-            const serviceProps: Ec2ServiceProps = {
-                cluster: cluster,
-                serviceName: createCdkId([name], 32, 2),
-                taskDefinition: taskDefinition,
-                circuitBreaker: !config.region.includes('iso') ? { rollback: true } : undefined,
-                capacityProviderStrategies: [
-                    { capacityProvider: asgCapacityProvider.capacityProviderName, weight: 1 }
-                ]
-            };
+        const taskResult = this.createTaskDefinition(
+            taskName,
+            this.config,
+            taskDefinition,
+            this.ecsConfig,
+            this.volumes,
+            this.mountPoints,
+            this.logGroup,
+            taskRole,
+            executionRole
+        );
+        const { taskDefinition: ec2TaskDefinition, container } = taskResult;
 
-            const service = new Ec2Service(this, createCdkId([config.deploymentName, name, 'Ec2Svc']), serviceProps);
-            const scalableTaskCount = service.autoScaleTaskCount({
-                minCapacity: 1,
-                // 10 is just a magic number we don't expect to hit because we don't have better data on this
-                maxCapacity: 10
-            });
-            service.node.addDependency(autoScalingGroup);
+        // Store references
+        this.containers[taskName] = container;
+        this.taskRoles[taskName] = taskRole;
 
-            // since our containers are using ephemeral ports, the load balancer must be allowed to access them
-            service.connections.allowFrom(loadBalancer, Port.allTcp());
+        // Create ECS service
+        const serviceProps: Ec2ServiceProps = {
+            cluster: this.cluster,
+            serviceName: createCdkId([taskName], 32, 2),
+            taskDefinition: ec2TaskDefinition,
+            circuitBreaker: !this.config.region.includes('iso') ? { rollback: true } : undefined,
+            capacityProviderStrategies: [
+                { capacityProvider: this.asgCapacityProvider.capacityProviderName, weight: 1 }
+            ]
+        };
 
-            // Create target groups for both services
-            const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
+        const service = new Ec2Service(this, createCdkId([this.config.deploymentName, taskName, 'Ec2Svc']), serviceProps);
+        const scalableTaskCount = service.autoScaleTaskCount({
+            minCapacity: 1,
+            maxCapacity: 10
+        });
+        service.node.addDependency(this.autoScalingGroup);
 
-            const targetGroup = listener.addTargets(createCdkId([identifier, name, 'TgtGrp']), {
-                targetGroupName: createCdkId([config.deploymentName, identifier, name], 32, 2).toLowerCase(),
+        // Store service reference
+        this.services[taskName] = service;
+
+        // Allow load balancer to access the service
+        service.connections.allowFrom(this.loadBalancer, Port.allTcp());
+
+        let targetGroup: ApplicationTargetGroup | undefined;
+
+        // Only create target group if the task has application target configuration
+        if (taskDefinition.applicationTarget) {
+            const loadBalancerHealthCheckConfig = this.ecsConfig.loadBalancerConfig.healthCheckConfig;
+
+            targetGroup = this.listener.addTargets(createCdkId([identifier, taskName, 'TgtGrp']), {
+                targetGroupName: createCdkId([this.config.deploymentName, identifier, taskName], 32, 2).toLowerCase(),
                 healthCheck: {
                     path: loadBalancerHealthCheckConfig.path,
                     interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
@@ -461,28 +505,30 @@ export class ECSCluster extends Construct {
                 },
                 port: 80,
                 targets: [service],
-                priority: definition.applicationTarget?.priority,
-                conditions: definition.applicationTarget?.conditions?.map(({ type, values }) => {
-                    switch (type) {
-                        case 'pathPatterns':
-                            return ListenerCondition.pathPatterns(values);
-                    }
+                ...(taskDefinition.applicationTarget.priority && {
+                    priority: taskDefinition.applicationTarget.priority,
+                    conditions: taskDefinition.applicationTarget.conditions?.map(({ type, values }) => {
+                        switch (type) {
+                            case 'pathPatterns':
+                                return ListenerCondition.pathPatterns(values);
+                        }
+                    })
                 })
             });
 
-            scalableTaskCount.scaleOnRequestCount(createCdkId([identifier, 'ScalingPolicy']), {
-                requestsPerTarget: ecsConfig.autoScalingConfig.metricConfig.targetValue,
-                targetGroup,
-                scaleInCooldown: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
-                scaleOutCooldown: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration)
-            });
+            // Store target group reference
+            this.targetGroups[taskName] = targetGroup;
 
-            // Store in maps for future reference
-            const ecsTasksKey = name as keyof typeof ECSTasks;
-            this.containers[ecsTasksKey] = container;
-            this.taskRoles[ecsTasksKey] = taskRole;
-            this.services[ecsTasksKey] = service;
-            this.targetGroups[ecsTasksKey] = targetGroup;
-        });
+            if (targetGroup) {
+                scalableTaskCount.scaleOnRequestCount(createCdkId([identifier, taskName, 'ScalingPolicy']), {
+                    requestsPerTarget: this.ecsConfig.autoScalingConfig.metricConfig.targetValue,
+                    targetGroup,
+                    scaleInCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.metricConfig.duration),
+                    scaleOutCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.metricConfig.duration)
+                });
+            }
+        }
+
+        return { service, targetGroup };
     }
 }

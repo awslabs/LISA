@@ -17,8 +17,7 @@
 import { CfnOutput } from 'aws-cdk-lib';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { AmiHardwareType, ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { AmiHardwareType } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
 import { dump as yamlDump } from 'js-yaml';
 
@@ -49,29 +48,18 @@ type FastApiContainerProps = {
     securityGroup: ISecurityGroup;
     tokenTable: ITable | undefined;
     vpc: Vpc;
+    managementKeyName: string;
 } & BaseProps;
 
 /**
  * FastApiContainer Construct.
  */
 export class FastApiContainer extends Construct {
-    /** Map of all container definitions by identifier */
-    public readonly containers: ContainerDefinition[] = [];
-
-    /** Map of all task roles by identifier */
-    public readonly taskRoles: Partial<Record<ECSTasks, IRole>> = {};
+    /** ECS Cluster **/
+    public readonly apiCluster: ECSCluster;
 
     /** FastAPI URL **/
     public readonly endpoint: string;
-
-    /** ECS Cluster **/
-    public readonly ecsCluster: any;
-
-    /** Application Load Balancer **/
-    public readonly loadBalancer: any;
-
-    /** Application Listener **/
-    public readonly listener: any;
 
     /**
    * @param {Construct} scope - The parent or owner of the construct.
@@ -81,31 +69,43 @@ export class FastApiContainer extends Construct {
     constructor (scope: Construct, id: string, props: FastApiContainerProps) {
         super(scope, id);
 
-        const { config, securityGroup, tokenTable, vpc } = props;
+        const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
+
+        const instanceType = 'm5.large';
+
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,
             PYPI_INDEX_URL: config.pypiConfig.indexUrl,
             PYPI_TRUSTED_HOST: config.pypiConfig.trustedHost,
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
         };
-        const baseEnvironment: Record<string, string> = {
+
+        // Environment variables for all containers
+        const environment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
-            THREADS: Ec2Metadata.get('m5.large').vCpus.toString(),
-            LITELLM_KEY: config.litellmConfig.db_key,
-            OPENAI_API_KEY: config.litellmConfig.db_key,
-            TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE',
+            THREADS: Ec2Metadata.get(instanceType).vCpus.toString(),
             USE_AUTH: 'true',
             AUTHORITY: config.authConfig!.authority,
             CLIENT_ID: config.authConfig!.clientId,
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
+            MANAGEMENT_KEY_NAME: managementKeyName
         };
 
         if (tokenTable) {
-            baseEnvironment.TOKEN_TABLE_NAME = tokenTable.tableName;
+            environment.TOKEN_TABLE_NAME = tokenTable.tableName;
+        }
+
+        // Requires mount point /etc/pki from host
+        if (config.region.includes('iso')) {
+            environment.SSL_CERT_DIR = '/etc/pki/tls/certs';
+            environment.SSL_CERT_FILE = config.certificateAuthorityBundle;
+            environment.REQUESTS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.AWS_CA_BUNDLE = config.certificateAuthorityBundle;
+            environment.CURL_CA_BUNDLE = config.certificateAuthorityBundle;
         }
 
         // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
@@ -128,7 +128,6 @@ export class FastApiContainer extends Construct {
             type: EcsSourceType.ASSET
         };
 
-        const instanceType = 'm5.large';
         const healthCheckConfig = {
             command: ['CMD-SHELL', 'exit 0'],
             interval: 10,
@@ -152,20 +151,7 @@ export class FastApiContainer extends Construct {
                 }
             },
             buildArgs,
-            tasks: {
-                [ECSTasks.REST]: {
-                    environment: baseEnvironment,
-                    containerConfig: {
-                        image: restApiImage,
-                        healthCheckConfig,
-                        environment: {},
-                        sharedMemorySize: 0
-                    },
-                    // set a softlimit of what we expect to use
-                    containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION
-                },
-
-            },
+            tasks: {},
             // reserve at least enough memory for each task and a buffer for the instance to use
             containerMemoryBuffer: Ec2Metadata.get(instanceType).memory - (INSTANCE_MEMORY_RESERVATION + SERVE_CONTAINER_MEMORY_RESERVATION + (config.deployMcpWorkbench ? WORKBENCH_CONTAINER_MEMORY_RESERVATION : 0)),
             instanceType,
@@ -188,32 +174,44 @@ export class FastApiContainer extends Construct {
             ecsConfig,
             config,
             securityGroup,
-            vpc
+            vpc,
+            environment
         });
 
-
+        // Add the REST API task to the cluster (default target, no priority/conditions)
+        apiCluster.addTask(ECSTasks.REST, {
+            environment: {
+                LITELLM_KEY: config.litellmConfig.db_key,
+                OPENAI_API_KEY: config.litellmConfig.db_key,
+                TIKTOKEN_CACHE_DIR: '/app/TIKTOKEN_CACHE',
+            },
+            containerConfig: {
+                image: restApiImage,
+                healthCheckConfig,
+                environment: {},
+                sharedMemorySize: 0
+            },
+            containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION,
+            applicationTarget: {
+                port: 8080
+            }
+        }, props.apiName);
 
         if (tokenTable) {
-            Object.entries(apiCluster.taskRoles).forEach(([, role]) => {
-                tokenTable.grantReadData(role);
-            });
+            // Grant token table access to REST API task role only
+            const restTaskRole = apiCluster.taskRoles[ECSTasks.REST];
+            if (restTaskRole) {
+                tokenTable.grantReadData(restTaskRole);
+            }
         }
 
-
-
+        this.apiCluster = apiCluster;
         this.endpoint = apiCluster.endpointUrl;
 
         new StringParameter(scope, 'FastApiEndpoint', {
             parameterName: `${config.deploymentPrefix}/serve/endpoint`,
             stringValue: this.endpoint
         });
-
-        // Update
-        this.containers = Object.values(apiCluster.containers);
-        this.taskRoles = apiCluster.taskRoles;
-        this.ecsCluster = apiCluster.cluster;
-        this.loadBalancer = apiCluster.loadBalancer;
-        this.listener = apiCluster.listener;
 
         // CFN output
         new CfnOutput(this, `${props.apiName}Url`, {

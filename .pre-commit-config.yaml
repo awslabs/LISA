@@ -23,7 +23,7 @@ repos:
   hooks:
     - id: detect-secrets
       exclude: (?x)^(
-        .*.ipynb|config.yaml|.*.md|.*test.*.py
+        .*.ipynb|config.yaml|.*.md|.*test.*.py|test/cdk/stacks/__baselines__/.*\.json
         )$
 
 - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -33,6 +33,7 @@ import { LisaRagStack } from '../../../lib/rag';
 import fs from 'node:fs';
 import { DOCS_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH, WEBAPP_DIST_PATH } from '../../../lib/util';
 
+const TEST_LAYER_DIR = './test/cdk/mocks/layers';
 export default class MockApp {
 
     private static mockApp: any;
@@ -71,7 +72,7 @@ export default class MockApp {
         };
 
         // Create dist folders to ensure stack creation
-        [VECTOR_STORE_DEPLOYER_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, DOCS_DIST_PATH, WEBAPP_DIST_PATH].forEach((distFolder) =>
+        [VECTOR_STORE_DEPLOYER_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, DOCS_DIST_PATH, WEBAPP_DIST_PATH, TEST_LAYER_DIR].forEach((distFolder) =>
             fs.mkdirSync(distFolder, { recursive: true })
         );
 
@@ -166,12 +167,10 @@ export default class MockApp {
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             authorizerId: apiBaseStack.authorizer?.authorizerId || '',
-            ecsCluster: serveStack.ecsCluster,
-            loadBalancer: serveStack.loadBalancer,
-            listener: serveStack.listener,
+            apiCluster: serveStack.restApi.apiCluster
         });
 
-        const stacks = [
+        const stacks: cdk.Stack[] = [
             networkingStack,
             iamStack,
             apiBaseStack,

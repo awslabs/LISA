@@ -195,7 +195,7 @@ export class FastApiContainer extends Construct {
             applicationTarget: {
                 port: 8080
             }
-        }, props.apiName);
+        });
 
         if (tokenTable) {
             // Grant token table access to REST API task role only

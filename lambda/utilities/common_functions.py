@@ -22,7 +22,7 @@ import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
 from functools import cache
-from typing import Any, Callable, cast, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, cast, Dict, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
@@ -166,7 +166,7 @@ def api_wrapper(f: F) -> F:
         logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {_sanitize_event(event)}")
         try:
             result = f(event, context)
-            return generate_html_response(200, result)
+            return generate_html_response(200 if result else 204, result)
         except Exception as e:
             return generate_exception_response(e)
 
@@ -363,22 +363,10 @@ def get_rest_api_container_endpoint() -> str:
     return f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
 
 
-def get_username(event: dict) -> str:
-    """Get the username from the event."""
-    username: str = event.get("requestContext", {}).get("authorizer", {}).get("username", "system")
-    return username
-
-
 def get_session_id(event: dict) -> str:
     """Get the session ID from the event."""
     session_id: str = event.get("pathParameters", {}).get("sessionId")
     return session_id
-
-
-def get_groups(event: Any) -> List[str]:
-    """Get user groups from event."""
-    groups: List[str] = json.loads(event.get("requestContext", {}).get("authorizer", {}).get("groups", "[]"))
-    return groups
 
 
 def get_principal_id(event: Any) -> str:
@@ -464,25 +452,6 @@ def get_lambda_role_name() -> str:
 def get_item(response: Any) -> Any:
     items = response.get("Items", [])
     return items[0] if items else None
-
-
-def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
-    """
-    Check if user has access based on group membership.
-
-    Args:
-        user_groups: List of groups the user belongs to
-        allowed_groups: List of groups allowed to access the resource
-
-    Returns:
-        True if user has access (either no restrictions or user has required group)
-    """
-    # Public resource (no group restrictions)
-    if not allowed_groups:
-        return True
-
-    # Check if user has at least one matching group
-    return len(set(user_groups).intersection(set(allowed_groups))) > 0
 
 
 def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:

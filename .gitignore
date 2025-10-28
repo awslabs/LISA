@@ -33,6 +33,7 @@ lib/rag/ingestion/ingestion-image/build
 *.code-workspace
 .cursor
 memory-bank/
+.kiro/
 
 # Coverage Statistic Folders
 coverage

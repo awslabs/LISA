@@ -36,6 +36,7 @@ from models.domain_objects import (
     RagDocument,
     SortOrder,
     UpdateCollectionRequest,
+    UpdateVectorStoreRequest,
 )
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
@@ -550,10 +551,7 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
     # Only calculate total count if no filters are applied (for performance)
     if not filter_text and not status_filter:
         try:
-            from repository.collection_repo import CollectionRepository
-
-            repo = CollectionRepository()
-            total_count = repo.count_by_repository(repository_id)
+            total_count = collection_service.count_collections(repository_id=repository_id)
 
             # Calculate page numbers if we have total count
             if total_count is not None:
@@ -1142,8 +1140,6 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
         ValidationError: If validation fails
         HTTPException: If repository not found
     """
-    from models.domain_objects import UpdateVectorStoreRequest
-
     # Extract path parameters
     path_params = event.get("pathParameters", {})
     repository_id = path_params.get("repositoryId")

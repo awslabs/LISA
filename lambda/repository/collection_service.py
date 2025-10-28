@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 """Collection service for business logic."""
 
@@ -129,6 +128,17 @@ class CollectionService:
         if not self.has_access(collection, username, user_groups, is_admin):
             raise ValidationError(f"Permission denied for collection '{collection_name}'")
         return collection
+
+    def count_collections(self, repository_id: str) -> int:
+        """Count total collections in a repository.
+
+        Args:
+            repository_id: Repository ID
+
+        Returns:
+            Total count of collections
+        """
+        return self.collection_repo.count_by_repository(repository_id)
 
     def get_collection_model(
         self,

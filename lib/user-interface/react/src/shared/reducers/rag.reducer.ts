@@ -238,7 +238,7 @@ export const ragApi = createApi({
         }),
         downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
             query: ({ documentId, repositoryId }) => ({
-                url: `/repository/${repositoryId}/document/${documentId}/download`,
+                url: `/repository/${repositoryId}/${documentId}/download`,
                 method: 'GET',
             }),
         }),

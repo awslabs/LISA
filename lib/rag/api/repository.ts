@@ -160,7 +160,7 @@ export class RepositoryApi extends Construct {
                 name: 'get_document',
                 resource: 'repository',
                 description: 'Get a document by ID',
-                path: 'repository/{repositoryId}/document/{documentId}',
+                path: 'repository/{repositoryId}/{documentId}',
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,
@@ -170,7 +170,7 @@ export class RepositoryApi extends Construct {
                 name: 'download_document',
                 resource: 'repository',
                 description: 'Creates presigned url to download document within repository',
-                path: 'repository/{repositoryId}/document/{documentId}/download',
+                path: 'repository/{repositoryId}/{documentId}/download',
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,

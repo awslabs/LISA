@@ -71,9 +71,7 @@ export const RagRepositoryPipeline = z.object({
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
 });
 
-export type RagRepositoryPipelineConfig = z.infer<typeof RagRepositoryPipeline>;
-// Alias for backward compatibility
-export type PipelineConfig = RagRepositoryPipelineConfig;
+export type PipelineConfig = z.infer<typeof RagRepositoryPipeline>;
 export type OpenSearchConfig =
     z.infer<typeof OpenSearchNewClusterConfig>
     | z.infer<typeof OpenSearchExistingClusterConfig>;

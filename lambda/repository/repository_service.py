@@ -12,8 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
 """Repository service for vector store operations."""
 
 from typing import Any, cast, Dict, List

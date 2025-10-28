@@ -53,7 +53,7 @@ class RagMixin(BaseMixin):
         Returns:
             Document dictionary
         """
-        url = f"{self.url}/repository/{repo_id}/document/{document_id}"
+        url = f"{self.url}/repository/{repo_id}/{document_id}"
         response = self._session.get(url)
         if response.status_code == 200:
             return response.json()

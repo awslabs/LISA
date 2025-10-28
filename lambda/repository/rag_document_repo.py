@@ -370,7 +370,7 @@ class RagDocumentRepository:
                 continue
 
             # Manual ingestion: always remove from S3
-            if doc_ingestion_type != IngestionType.AUTO.value:
+            if doc_ingestion_type != IngestionType.AUTO:
                 removed_source.append(doc_source)
             # Auto ingestion: only remove if pipeline has autoRemove enabled
             # Check if the collection's pipeline has autoRemove enabled

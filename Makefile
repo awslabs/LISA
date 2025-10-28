@@ -16,8 +16,8 @@ DOCKER_CMD ?= $(or $(CDK_DOCKER),docker)
 # Function to read config with fallback to base config and default value
 # Usage: VAR := $(call get_config,property,default_value)
 define get_config
-$(shell test -f $(PROJECT_DIR)/config-custom.yaml && yq $(1) $(PROJECT_DIR)/config-custom.yaml 2>/dev/null | grep -v '^null$$' || \
-        (test -f $(PROJECT_DIR)/config-base.yaml && yq $(1) $(PROJECT_DIR)/config-base.yaml 2>/dev/null | grep -v '^null$$') || \
+$(shell test -f $(PROJECT_DIR)/config-custom.yaml && yq -r $(1) $(PROJECT_DIR)/config-custom.yaml 2>/dev/null | grep -v '^null$$' || \
+        (test -f $(PROJECT_DIR)/config-base.yaml && yq -r $(1) $(PROJECT_DIR)/config-base.yaml 2>/dev/null | grep -v '^null$$') || \
         echo "$(2)")
 endef
 
@@ -99,12 +99,11 @@ MODEL_BUCKET := $(call get_config,.s3BucketModels,)
 
 # BASE_URL - Base URL for web UI assets based on domain name and deployment stage
 DOMAIN_NAME := $(call get_config,.apiGatewayConfig.domainName,)
-ifeq ($(DOMAIN_NAME), null)
+ifeq ($(DOMAIN_NAME),)
 BASE_URL := /$(DEPLOYMENT_STAGE)/
 else
 BASE_URL := /
 endif
-
 
 #################################################################################
 # COMMANDS                                                                      #

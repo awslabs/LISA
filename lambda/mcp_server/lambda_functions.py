@@ -22,8 +22,8 @@ from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
-from utilities.auth import get_username, is_admin
-from utilities.common_functions import api_wrapper, get_bearer_token, get_groups, get_item, retry_config
+from utilities.auth import get_user_context, get_username
+from utilities.common_functions import api_wrapper, get_bearer_token, get_item, retry_config
 
 from .models import McpServerModel, McpServerStatus
 
@@ -141,7 +141,7 @@ def _get_mcp_servers(
 @api_wrapper
 def get(event: dict, context: dict) -> Any:
     """Retrieve a specific mcp server from DynamoDB."""
-    user_id = get_username(event)
+    user_id, is_admin, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
 
     # Check if showPlaceholder query parameter is present
@@ -158,7 +158,7 @@ def get(event: dict, context: dict) -> Any:
     # Check if the user is authorized to get the mcp server
     is_owner = item["owner"] == user_id or item["owner"] == "lisa:public"
     groups = item.get("groups", [])
-    if is_owner or is_admin(event) or _is_member(get_groups(event), groups):
+    if is_owner or is_admin or _is_member(groups, groups):
         # add extra attribute so the frontend doesn't have to determine this
         if is_owner:
             item["isOwner"] = True
@@ -198,12 +198,10 @@ def _set_can_use(
 @api_wrapper
 def list(event: dict, context: dict) -> Dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
-    user_id = get_username(event)
-
     bearer_token = get_bearer_token(event)
-    groups = get_groups(event)
+    user_id, is_admin, groups = get_user_context(event)
 
-    if is_admin(event):
+    if is_admin:
         logger.info(f"Listing all mcp servers for user {user_id} (is_admin)")
         return _set_can_use(_get_mcp_servers(replace_bearer_token=bearer_token), user_id, groups)
 
@@ -232,7 +230,7 @@ def create(event: dict, context: dict) -> Any:
 @api_wrapper
 def update(event: dict, context: dict) -> Any:
     """Update an existing mcp server in DynamoDB."""
-    user_id = get_username(event)
+    user_id, is_admin, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
     body = json.loads(event["body"], parse_float=Decimal)
     body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
@@ -249,7 +247,7 @@ def update(event: dict, context: dict) -> Any:
         raise ValueError(f"MCP Server {mcp_server_model} not found.")
 
     # Check if the user is authorized to update the mcp server
-    if is_admin(event) or item["owner"] == user_id:
+    if is_admin or item["owner"] == user_id:
         # Check if switching to global
         if item["owner"] != mcp_server_model.owner:
             table.delete_item(Key={"id": mcp_server_id, "owner": item["owner"]})
@@ -264,7 +262,7 @@ def update(event: dict, context: dict) -> Any:
 @api_wrapper
 def delete(event: dict, context: dict) -> Dict[str, str]:
     """Logically delete a mcp server from DynamoDB."""
-    user_id = get_username(event)
+    user_id, is_admin, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
 
     # Query for the mcp server
@@ -275,7 +273,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
         raise ValueError(f"MCP Server {mcp_server_id} not found.")
 
     # Check if the user is authorized to delete the mcp server
-    if is_admin(event) or item["owner"] == user_id:
+    if is_admin or item["owner"] == user_id:
         logger.info(f"Deleting mcp server {mcp_server_id} for user {user_id}")
         table.delete_item(Key={"id": mcp_server_id, "owner": item.get("owner")})
         return {"status": "ok"}

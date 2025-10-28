@@ -53,6 +53,4 @@ export class McpWorkbenchStack extends Stack {
             workbenchBucket,
         });
     }
-
-
 }

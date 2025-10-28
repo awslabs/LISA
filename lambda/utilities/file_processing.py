@@ -16,17 +16,16 @@
 import logging
 import os
 from io import BytesIO
-from typing import Any, List, Optional
 from urllib.parse import urlparse
 
 import boto3
 import docx
 from botocore.exceptions import ClientError
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from models.domain_objects import ChunkingStrategyType, IngestionJob
+from models.domain_objects import IngestionJob
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
+from utilities.chunking_strategy_factory import ChunkingStrategyFactory
 from utilities.constants import DOCX_FILE, PDF_FILE, RICH_TEXT_FILE, TEXT_FILE
 from utilities.exceptions import RagUploadException
 
@@ -57,26 +56,6 @@ def _extract_text_by_content_type(content_type: str, s3_object: dict) -> str:
     else:
         logger.error(f"File has unsupported content type: {content_type}")
         raise RagUploadException("Unsupported file type")
-
-
-def _generate_chunks(docs: List[Document], chunk_size: Optional[int], chunk_overlap: Optional[int]) -> List[Document]:
-    if not chunk_size:
-        chunk_size = int(os.getenv("CHUNK_SIZE", "512"))
-    if not chunk_overlap:
-        chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "51"))
-
-    if chunk_size < 100 or chunk_size > 10000:
-        raise RagUploadException("Invalid chunk size")
-
-    if chunk_overlap < 0 or chunk_overlap >= chunk_size:
-        raise RagUploadException("Invalid chunk overlap")
-
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-    )
-    return text_splitter.split_documents(docs)  # type: ignore [no-any-return]
 
 
 def _extract_pdf_content(s3_object: dict) -> str:
@@ -140,15 +119,24 @@ def _extract_text_content(s3_object: dict) -> str:
 
 
 def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
-    """Generate chunks from an ingestion job.
+    """Generate chunks from an ingestion job using the configured chunking strategy.
 
     Parameters
     ----------
-    ingestion_job (IngestionJob): Ingestion job containing file information and chunking strategy
+    ingestion_job : IngestionJob
+        Ingestion job containing file information and chunking strategy
 
     Returns
     -------
-    List[Document]: List of document chunks for the processed file
+    list[Document]
+        List of document chunks for the processed file
+
+    Raises
+    ------
+    RagUploadException
+        If S3 path is invalid or file processing fails
+    ValueError
+        If chunking strategy is not supported
     """
     # Parse S3 URI using urlparse
     parsed_uri = urlparse(ingestion_job.s3_path)
@@ -166,29 +154,18 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
         logger.error(f"Error getting object from S3: {key}")
         raise e
 
-    chunk_strategy = ingestion_job.chunk_strategy
-    if chunk_strategy.type == ChunkingStrategyType.FIXED:
-        return generate_fixed_chunks(ingestion_job, content_type, s3_object)
-
-    logger.error(f"Unrecognized chunk strategy {chunk_strategy.type}")
-    raise Exception("Unrecognized chunk strategy")
-
-
-def generate_fixed_chunks(ingestion_job: IngestionJob, content_type: str, s3_object: Any) -> list[Document]:
-    # Get chunk parameters from chunking strategy
-    chunk_size = ingestion_job.chunk_strategy.size if ingestion_job.chunk_strategy.size else None
-    chunk_overlap = ingestion_job.chunk_strategy.overlap if ingestion_job.chunk_strategy.overlap else None
-
     # Extract text and create initial document
     extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
     basename = os.path.basename(ingestion_job.s3_path)
     docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=ingestion_job.s3_path, name=basename))]
 
-    # Generate chunks using existing helper function
-    doc_chunks = _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    # Use factory to chunk documents based on strategy
+    logger.info(f"Processing document with chunking strategy: {ingestion_job.chunk_strategy.type}")
+    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, ingestion_job.chunk_strategy)
 
     # Update part number of doc metadata
     for i, doc in enumerate(doc_chunks):
         doc.metadata["part"] = i + 1
 
+    logger.info(f"Generated {len(doc_chunks)} chunks for document: {basename}")
     return doc_chunks

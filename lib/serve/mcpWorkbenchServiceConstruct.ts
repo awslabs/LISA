@@ -76,7 +76,7 @@ export default class McpWorkbenchServiceConstruct extends Construct {
             }
         };
 
-        const { service } = apiCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition, 'REST');
+        const { service } = apiCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition);
         this.service = service;
 
         this.createS3EventHandler(config, service);

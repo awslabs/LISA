@@ -111,6 +111,7 @@ export class ECSCluster extends Construct {
     private readonly baseEnvironment: Record<string, string>;
     private readonly autoScalingGroup: AutoScalingGroup;
     private readonly asgCapacityProvider: AsgCapacityProvider;
+    private readonly identifier: string;
 
     /**
      * Creates a task definition with its associated container and IAM role (base method).
@@ -196,6 +197,7 @@ export class ECSCluster extends Construct {
     constructor (scope: Construct, id: string, props: ECSClusterProps) {
         super(scope, id);
         const { config, identifier, vpc, securityGroup, ecsConfig, environment } = props;
+        this.identifier = identifier;
 
         // Create ECS cluster
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
@@ -433,7 +435,6 @@ export class ECSCluster extends Construct {
     public addTask (
         taskName: ECSTasks,
         taskDefinition: TaskDefinition,
-        identifier: string
     ): { service: Ec2Service; targetGroup?: ApplicationTargetGroup } {
         // Retrieve task role and execution role for the task
         const taskRole = Role.fromRoleArn(
@@ -476,10 +477,6 @@ export class ECSCluster extends Construct {
         };
 
         const service = new Ec2Service(this, createCdkId([this.config.deploymentName, taskName, 'Ec2Svc']), serviceProps);
-        const scalableTaskCount = service.autoScaleTaskCount({
-            minCapacity: 1,
-            maxCapacity: 10
-        });
         service.node.addDependency(this.autoScalingGroup);
 
         // Store service reference
@@ -488,46 +485,29 @@ export class ECSCluster extends Construct {
         // Allow load balancer to access the service
         service.connections.allowFrom(this.loadBalancer, Port.allTcp());
 
-        let targetGroup: ApplicationTargetGroup | undefined;
+        const loadBalancerHealthCheckConfig = this.ecsConfig.loadBalancerConfig.healthCheckConfig;
 
-        // Only create target group if the task has application target configuration
-        if (taskDefinition.applicationTarget) {
-            const loadBalancerHealthCheckConfig = this.ecsConfig.loadBalancerConfig.healthCheckConfig;
-
-            targetGroup = this.listener.addTargets(createCdkId([identifier, taskName, 'TgtGrp']), {
-                targetGroupName: createCdkId([this.config.deploymentName, identifier, taskName], 32, 2).toLowerCase(),
-                healthCheck: {
-                    path: loadBalancerHealthCheckConfig.path,
-                    interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
-                    timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
-                    healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
-                    unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
-                },
-                port: 80,
-                targets: [service],
-                ...(taskDefinition.applicationTarget.priority && {
-                    priority: taskDefinition.applicationTarget.priority,
-                    conditions: taskDefinition.applicationTarget.conditions?.map(({ type, values }) => {
-                        switch (type) {
-                            case 'pathPatterns':
-                                return ListenerCondition.pathPatterns(values);
-                        }
-                    })
+        const targetGroup = this.listener.addTargets(createCdkId([this.identifier, taskName, 'TgtGrp']), {
+            targetGroupName: createCdkId([this.config.deploymentName, this.identifier, taskName], 32, 2).toLowerCase(),
+            healthCheck: {
+                path: loadBalancerHealthCheckConfig.path,
+                interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
+                timeout: Duration.seconds(loadBalancerHealthCheckConfig.timeout),
+                healthyThresholdCount: loadBalancerHealthCheckConfig.healthyThresholdCount,
+                unhealthyThresholdCount: loadBalancerHealthCheckConfig.unhealthyThresholdCount,
+            },
+            port: 80,
+            targets: [service],
+            ...(taskDefinition.applicationTarget?.priority && {
+                priority: taskDefinition.applicationTarget.priority,
+                conditions: taskDefinition.applicationTarget.conditions?.map(({ type, values }) => {
+                    switch (type) {
+                        case 'pathPatterns':
+                            return ListenerCondition.pathPatterns(values);
+                    }
                 })
-            });
-
-            // Store target group reference
-            this.targetGroups[taskName] = targetGroup;
-
-            if (targetGroup) {
-                scalableTaskCount.scaleOnRequestCount(createCdkId([identifier, taskName, 'ScalingPolicy']), {
-                    requestsPerTarget: this.ecsConfig.autoScalingConfig.metricConfig.targetValue,
-                    targetGroup,
-                    scaleInCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.metricConfig.duration),
-                    scaleOutCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.metricConfig.duration)
-                });
-            }
-        }
+            })
+        });
 
         return { service, targetGroup };
     }

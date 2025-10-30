@@ -85,10 +85,11 @@ export function registerAPIEndpoint (
     authorizer?: IAuthorizer,
     role?: IRole,
 ): IFunction {
-    const functionId = `${
+    // Validate the function id
+    const functionId = (
         funcDef.id ||
-    [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
-    }`;
+        [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
+    ).replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 63);
     const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
     let handler;
 

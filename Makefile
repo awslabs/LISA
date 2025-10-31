@@ -13,33 +13,30 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HEADLESS = false
 DOCKER_CMD ?= $(or $(CDK_DOCKER),docker)
 
+# Function to read config with fallback to base config and default value
+# Usage: VAR := $(call get_config,property,default_value)
+define get_config
+$(shell test -f $(PROJECT_DIR)/config-custom.yaml && yq -r $(1) $(PROJECT_DIR)/config-custom.yaml 2>/dev/null | grep -v '^null$$' || \
+        (test -f $(PROJECT_DIR)/config-base.yaml && yq -r $(1) $(PROJECT_DIR)/config-base.yaml 2>/dev/null | grep -v '^null$$') || \
+        echo "$(2)")
+endef
 
 # PROFILE (optional argument)
 ifeq (${PROFILE},)
-TEMP_PROFILE := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .profile)
-ifneq ($(TEMP_PROFILE), null)
-PROFILE := ${TEMP_PROFILE}
-else
-$(warning profile is not set in the command line using PROFILE variable or config files, attempting deployment without this variable)
+PROFILE := $(call get_config,.profile,)
+ifeq ($(PROFILE),)
+$(warning profile is not set in command line using PROFILE variable or config files, attempting deployment without this variable)
 endif
 endif
 
 # DEPLOYMENT_NAME
 ifeq (${DEPLOYMENT_NAME},)
-DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .deploymentName)
-endif
-
-ifeq (${DEPLOYMENT_NAME}, null)
-DEPLOYMENT_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentName)
-endif
-
-ifeq (${DEPLOYMENT_NAME}, null)
-DEPLOYMENT_NAME := prod
+DEPLOYMENT_NAME := $(call get_config,.deploymentName,prod)
 endif
 
 # ACCOUNT_NUMBER
 ifeq (${ACCOUNT_NUMBER},)
-ACCOUNT_NUMBER := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .accountNumber)
+ACCOUNT_NUMBER := $(call get_config,.accountNumber,)
 endif
 
 ifeq (${ACCOUNT_NUMBER},)
@@ -48,18 +45,16 @@ endif
 
 # REGION
 ifeq (${REGION},)
-REGION := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .region)
+REGION := $(call get_config,.region,)
 endif
 
 ifeq (${REGION},)
 $(error region must be set in command line using REGION variable or config files)
 endif
 
+# PARTITION
 ifeq (${PARTITION},)
-PARTITION := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .partition )
-endif
-ifeq (${PARTITION}, null)
-PARTITION := aws
+PARTITION := $(call get_config,.partition,aws)
 endif
 
 # DOMAIN - used for the docker login
@@ -76,29 +71,13 @@ endif
 # Arguments defined through config files
 
 # APP_NAME
-APP_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .appName)
-ifeq (${APP_NAME}, null)
-APP_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .appName)
-endif
-
-ifeq (${APP_NAME}, null)
-APP_NAME := lisa
-endif
+APP_NAME := $(call get_config,.appName,lisa)
 
 # DEPLOYMENT_STAGE
-DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq .deploymentStage)
-ifeq (${DEPLOYMENT_STAGE}, null)
-DEPLOYMENT_STAGE := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq .deploymentStage)
-endif
-
-ifeq (${DEPLOYMENT_STAGE}, null)
-DEPLOYMENT_STAGE := prod
-endif
+DEPLOYMENT_STAGE := $(call get_config,.deploymentStage,prod)
 
 # ACCOUNT_NUMBERS_ECR - AWS account numbers that need to be logged into with Docker CLI to use ECR
-ifneq ($(shell yq '.accountNumbersEcr' $(PROJECT_DIR)/config-custom.yaml), null)
-ACCOUNT_NUMBERS_ECR := $(shell yq '.accountNumbersEcr[]' $(PROJECT_DIR)/config-custom.yaml)
-endif
+ACCOUNT_NUMBERS_ECR := $(shell test -f $(PROJECT_DIR)/config-custom.yaml && yq '.accountNumbersEcr[]' $(PROJECT_DIR)/config-custom.yaml 2>/dev/null || echo "")
 
 # Append deployed account number to array for dockerLogin rule
 ACCOUNT_NUMBERS_ECR := $(ACCOUNT_NUMBERS_ECR) $(ACCOUNT_NUMBER)
@@ -113,25 +92,18 @@ ifneq ($(findstring $(DEPLOYMENT_STAGE),$(STACK)),$(DEPLOYMENT_STAGE))
 endif
 
 # MODEL_IDS - IDs of models to deploy
-ifneq ($(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels'), null)
-MODEL_IDS := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.ecsModels[].modelName')
-endif
+MODEL_IDS := $(shell test -f $(PROJECT_DIR)/config-custom.yaml && yq '.ecsModels[].modelName' $(PROJECT_DIR)/config-custom.yaml 2>/dev/null || echo "")
 
 # MODEL_BUCKET - S3 bucket containing model artifacts
-MODEL_BUCKET := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.s3BucketModels')
+MODEL_BUCKET := $(call get_config,.s3BucketModels,)
 
 # BASE_URL - Base URL for web UI assets based on domain name and deployment stage
-DOMAIN_NAME := $(shell cat $(PROJECT_DIR)/config-custom.yaml | yq '.apiGatewayConfig.domainName')
-ifeq ($(DOMAIN_NAME), null)
-DOMAIN_NAME := $(shell cat $(PROJECT_DIR)/config-base.yaml | yq '.apiGatewayConfig.domainName')
-endif
-
-ifeq ($(DOMAIN_NAME), null)
+DOMAIN_NAME := $(call get_config,.apiGatewayConfig.domainName,)
+ifeq ($(DOMAIN_NAME),)
 BASE_URL := /$(DEPLOYMENT_STAGE)/
 else
 BASE_URL := /
 endif
-
 
 #################################################################################
 # COMMANDS                                                                      #

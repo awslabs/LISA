@@ -37,6 +37,8 @@ export type McpWorkbenchConstructProps = {
 } & BaseProps & StackProps;
 
 export default class McpWorkbenchConstruct extends Construct {
+    public readonly workbenchBucket: s3.Bucket;
+
     constructor (scope: Construct, id: string, props: McpWorkbenchConstructProps) {
         super(scope, id);
 
@@ -65,6 +67,8 @@ export default class McpWorkbenchConstruct extends Construct {
         const lambdaLayers = [commonLambdaLayer,  fastapiLambdaLayer];
 
         this.createWorkbenchApi(restApi, rootResourceId, config, vpc, securityGroups, authorizer, workbenchBucket, lambdaLayers);
+
+        this.workbenchBucket = workbenchBucket;
     }
 
     private createWorkbenchApi (restApi: IRestApi, rootResourceId: string, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], authorizer: IAuthorizer, workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[]) {

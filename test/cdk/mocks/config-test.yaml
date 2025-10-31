@@ -42,49 +42,7 @@ dev:
   logLevel: DEBUG
   restApiConfig:
     sslCertIamArn: arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev
-  ragRepositories:
-    - repositoryId: pgvector-rag
-      repositoryName: "PGVector"
-      type: pgvector
-      rdsConfig:
-        username: postgres
-    - repositoryId: pgvector-rag2
-      repositoryName: "PGVector 2"
-      type: pgvector
-      rdsConfig:
-        username: postgres
-        allowedGroups:
-          - group1
-    - repositoryId: opensearch-rag
-      type: opensearch
-      repositoryName: "Opensearch 2"
-      opensearchConfig:
-        dataNodes: 2
-        dataNodeInstanceType: r7g.large.search
-        masterNodes: 0
-        masterNodeInstanceType: r7g.large.search
-        volumeSize: 20
-        multiAzWithStandby: false
-    # - repositoryId: default
-    #   type: opensearch
-    #   opensearchConfig:
-    #     dataNodes: 2
-    #     dataNodeInstanceType: r6g.large.search
-    #     masterNodes: 0
-    #     masterNodeInstanceType: r6g.large.search
-    #     volumeSize: 300
-    # If adding an existing PGVector database, this configurations assumes:
-    # 1. The database has been configured to have pgvector installed and enabled: https://aws.amazon.com/about-aws/whats-new/2023/05/amazon-rds-postgresql-pgvector-ml-model-integration/
-    # 2. The database is accessible by RAG-related lambda functions (add inbound PostgreSQL access on the database's security group for all Lambda RAG security groups)
-    # 3. A secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'. This is the same format that RDS natively provides a password in SecretsManager.
-    # If the passwordSecretId or dbHost are not provided, then a sample database will be created for you. Only the username is required.
-    # - repositoryId: pgvector-rag
-    #  type: pgvector
-    #  rdsConfig:
-    #    username: postgres
-    #    passwordSecretId: # password ID as stored in SecretsManager. Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
-    #    dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
-    #    dbName: postgres
+  ragRepositories: []
   ragFileProcessingConfig:
     chunkSize: 512
     chunkOverlap: 51

@@ -97,6 +97,11 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
         )
     )
 
+    # Create a copy of event without guardrailsConfig
+    # Guardrails are stored separately in the guardrails table
+    model_config_data = deepcopy(event)
+    model_config_data.pop("guardrailsConfig", None)
+
     model_table.update_item(
         Key={"model_id": request.modelId},
         UpdateExpression=(
@@ -105,7 +110,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
         ),
         ExpressionAttributeValues={
             ":model_status": ModelStatus.CREATING,
-            ":model_config": event,
+            ":model_config": model_config_data,
             ":model_description": request.modelDescription,
             ":lm": int(datetime.now(UTC).timestamp()),
         },

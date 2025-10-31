@@ -291,6 +291,7 @@ class LISAModel(BaseModel):
     streaming: bool
     features: Optional[List[ModelFeature]] = None
     allowedGroups: Optional[List[str]] = None
+    guardrailsConfig: Optional[GuardrailsConfig] = None
 
 
 class ApiResponseBase(BaseModel):

@@ -20,7 +20,7 @@ from utilities.common_functions import user_has_group_access
 
 from ..domain_objects import ListModelsResponse
 from .base_handler import BaseApiHandler
-from .utils import to_lisa_model
+from .utils import attach_guardrails_to_model, fetch_all_guardrails, group_guardrails_by_model, to_lisa_model
 
 
 class ListModelsHandler(BaseApiHandler):
@@ -38,6 +38,15 @@ class ListModelsHandler(BaseApiHandler):
             pagination_key = models_response.get("LastEvaluatedKey", None)
 
         models_list = [to_lisa_model(m) for m in ddb_models]
+
+        # Fetch all guardrails and group them by model ID
+        all_guardrails = fetch_all_guardrails(self._guardrails_table)
+        guardrails_by_model = group_guardrails_by_model(all_guardrails)
+
+        # Attach guardrails to models
+        for model in models_list:
+            if model.modelId in guardrails_by_model:
+                attach_guardrails_to_model(model, guardrails_by_model[model.modelId])
 
         # Filter models based on user groups if not admin
         if not is_admin and user_groups is not None:

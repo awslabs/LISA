@@ -58,6 +58,8 @@ export const sessionApi = createApi({
                             type: elem.type,
                             metadata: elem.metadata,
                             toolCalls: elem.toolCalls,
+                            usage: elem.usage,
+                            guardrailTriggered: elem.guardrailTriggered,
                         };
                         return message;
                     }),

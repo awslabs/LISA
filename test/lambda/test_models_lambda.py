@@ -94,6 +94,34 @@ def model_table(dynamodb):
 
 
 @pytest.fixture
+def guardrails_table(dynamodb):
+    """Create mock guardrails table."""
+    table = dynamodb.create_table(
+        TableName="guardrails-table",
+        KeySchema=[
+            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
+            {"AttributeName": "model_id", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "guardrail_id", "AttributeType": "S"},
+            {"AttributeName": "model_id", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "ModelIdIndex",
+                "KeySchema": [
+                    {"AttributeName": "model_id", "KeyType": "HASH"},
+                    {"AttributeName": "guardrail_id", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    return table
+
+
+@pytest.fixture
 def sample_model():
     """Create a sample model dictionary."""
     return {
@@ -172,6 +200,7 @@ def test_to_lisa_model():
 def test_base_api_handler():
     """Test BaseApiHandler initialization."""
     model_table = MagicMock()
+    guardrails_table = MagicMock()
     autoscaling_client = MagicMock()
     stepfunctions_client = MagicMock()
 
@@ -179,20 +208,23 @@ def test_base_api_handler():
         model_table_resource=model_table,
         autoscaling_client=autoscaling_client,
         stepfunctions_client=stepfunctions_client,
+        guardrails_table_resource=guardrails_table,
     )
 
     assert handler._model_table == model_table
     assert handler._autoscaling == autoscaling_client
     assert handler._stepfunctions == stepfunctions_client
+    assert handler._guardrails_table == guardrails_table
 
 
-def test_create_model_handler(mock_stepfunctions_client, model_table, mock_autoscaling_client):
+def test_create_model_handler(mock_stepfunctions_client, model_table, mock_autoscaling_client, guardrails_table):
     """Test CreateModelHandler.__call__ method."""
     # Create handler instance
     handler = CreateModelHandler(
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Create a request
@@ -230,13 +262,14 @@ def test_create_model_handler(mock_stepfunctions_client, model_table, mock_autos
         handler(request)
 
 
-def test_create_model_validation(mock_autoscaling_client, mock_stepfunctions_client, model_table):
+def test_create_model_validation(mock_autoscaling_client, mock_stepfunctions_client, model_table, guardrails_table):
     """Test validation in CreateModelHandler."""
     # Create handler instance
     handler = CreateModelHandler(
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Create a request with containerConfig, autoScalingConfig, and loadBalancerConfig
@@ -283,7 +316,9 @@ def test_create_model_validation(mock_autoscaling_client, mock_stepfunctions_cli
     # Should not raise exceptions
 
 
-def test_delete_model_handler(mock_stepfunctions_client, model_table, sample_model, mock_autoscaling_client):
+def test_delete_model_handler(
+    mock_stepfunctions_client, model_table, sample_model, mock_autoscaling_client, guardrails_table
+):
     """Test DeleteModelHandler.__call__ method."""
     # Add sample model to table
     model_table.put_item(Item=sample_model)
@@ -293,6 +328,7 @@ def test_delete_model_handler(mock_stepfunctions_client, model_table, sample_mod
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Call handler
@@ -307,7 +343,9 @@ def test_delete_model_handler(mock_stepfunctions_client, model_table, sample_mod
         handler("non-existent-model")
 
 
-def test_get_model_handler(model_table, sample_model, mock_autoscaling_client, mock_stepfunctions_client):
+def test_get_model_handler(
+    model_table, sample_model, mock_autoscaling_client, mock_stepfunctions_client, guardrails_table
+):
     """Test GetModelHandler.__call__ method."""
     # Add sample model to table
     model_table.put_item(Item=sample_model)
@@ -317,6 +355,7 @@ def test_get_model_handler(model_table, sample_model, mock_autoscaling_client, m
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Call handler
@@ -331,7 +370,9 @@ def test_get_model_handler(model_table, sample_model, mock_autoscaling_client, m
         handler("non-existent-model")
 
 
-def test_list_models_handler(model_table, sample_model, mock_autoscaling_client, mock_stepfunctions_client):
+def test_list_models_handler(
+    model_table, sample_model, mock_autoscaling_client, mock_stepfunctions_client, guardrails_table
+):
     """Test ListModelsHandler.__call__ method."""
     # Add sample model to table
     model_table.put_item(Item=sample_model)
@@ -347,6 +388,7 @@ def test_list_models_handler(model_table, sample_model, mock_autoscaling_client,
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Call handler
@@ -359,7 +401,9 @@ def test_list_models_handler(model_table, sample_model, mock_autoscaling_client,
     assert "another-model" in model_ids
 
 
-def test_update_model_handler(model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model):
+def test_update_model_handler(
+    model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model, guardrails_table
+):
     """Test UpdateModelHandler.__call__ method."""
     # Add sample model to table
     model_table.put_item(Item=sample_model)
@@ -376,6 +420,7 @@ def test_update_model_handler(model_table, mock_autoscaling_client, mock_stepfun
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Mock the to_lisa_model function to return a model with streaming=False
@@ -434,7 +479,9 @@ def test_update_model_handler(model_table, mock_autoscaling_client, mock_stepfun
             handler("non-existent-model", UpdateModelRequest(streaming=False))
 
 
-def test_update_model_validation(model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model):
+def test_update_model_validation(
+    model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model, guardrails_table
+):
     """Test validation in UpdateModelHandler."""
     # Add sample model to table
     model_table.put_item(Item=sample_model)
@@ -458,6 +505,7 @@ def test_update_model_validation(model_table, mock_autoscaling_client, mock_step
         autoscaling_client=mock_autoscaling_client,
         stepfunctions_client=mock_stepfunctions_client,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     # Test validation for model in invalid state

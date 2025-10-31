@@ -48,12 +48,13 @@ export enum GuardrailMode {
 }
 
 export type IGuardrailConfig = {
-    guardrailName: string;
-    guardrailIdentifier: string;
-    guardrailVersion: string;
+    guardrail_name: string;
+    guardrail_identifier: string;
+    guardrail_version: string;
     mode: GuardrailMode;
     description?: string;
-    allowedGroups: string[];
+    allowed_groups: string[];
+    marked_for_deletion?: boolean;
 };
 
 export type IGuardrailsConfig = {
@@ -247,12 +248,12 @@ export const autoScalingConfigSchema = z.object({
 });
 
 export const guardrailConfigSchema = z.object({
-    guardrailName: z.string().min(1, {message: 'Guardrail name is required'}).default(''),
-    guardrailIdentifier: z.string().min(1, {message: 'Guardrail identifier is required'}).default(''),
-    guardrailVersion: z.string().default('DRAFT'),
+    guardrail_name: z.string().min(1, {message: 'Guardrail name is required'}).default(''),
+    guardrail_identifier: z.string().min(1, {message: 'Guardrail identifier is required'}).default(''),
+    guardrail_version: z.string().default('DRAFT'),
     mode: z.nativeEnum(GuardrailMode).default(GuardrailMode.PRE_CALL),
     description: z.string().optional(),
-    allowedGroups: z.array(z.string()).default([]),
+    allowed_groups: z.array(z.string()).default([]),
 });
 
 export const guardrailsConfigSchema = z.object({

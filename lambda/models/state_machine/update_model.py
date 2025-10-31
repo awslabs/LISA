@@ -298,6 +298,9 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     has_metadata_update = has_metadata_update or is_autoscaling_update
 
     if has_metadata_update:
+        # Remove guardrailsConfig from model_config before storing
+        # Guardrails are stored separately in the guardrails table
+        model_config.pop("guardrailsConfig", None)
         ddb_update_expression += ", model_config = :mc"
         ddb_update_values[":mc"] = model_config
 
@@ -479,14 +482,17 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
         # Process each guardrail in the new configuration
         processed_guardrail_names = set()
 
-        for guardrail_key, guardrail_config in guardrails_config["guardrails"].items():
+        for _guardrail_key, guardrail_config in guardrails_config["guardrails"].items():
             guardrail_name = guardrail_config["guardrail_name"]
 
             logger.info(f"Processing guardrail update: {guardrail_name}")
 
             # Check if this guardrail is marked for deletion using deletion flag
             if guardrail_config.get("marked_for_deletion", False):
-                logger.info(f"Found guardrail marked for deletion: {guardrail_key} (name: {guardrail_name})")
+                logger.info(f"Found guardrail marked for deletion: {guardrail_name}")
+
+                # Add to processed names to prevent double deletion later
+                processed_guardrail_names.add(guardrail_name)
 
                 # Find the existing guardrail to delete by name
                 guardrail_to_delete = existing_guardrails.get(guardrail_name)

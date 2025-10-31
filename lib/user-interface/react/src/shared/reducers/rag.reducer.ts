@@ -29,7 +29,7 @@ export type S3UploadRequest = {
 type IngestDocumentRequest = {
     documents: string[],
     repositoryId: string,
-    embeddingModel: Model,
+    collectionId?: string,
     repostiroyType: string,
     chunkSize: number,
     chunkOverlap: number
@@ -109,10 +109,68 @@ export type PaginatedIngestionJobsResponse = {
     hasPreviousPage?: boolean;
 };
 
+// Collection types
+export type RagCollectionConfig = {
+    collectionId: string;
+    repositoryId: string;
+    name?: string;
+    description?: string;
+    embeddingModel: string;
+    chunkingStrategy?: {
+        type: string;
+        chunkSize: number;
+        chunkOverlap: number;
+    };
+    allowedGroups?: string[];
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+    status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
+    private: boolean;
+    metadata?: {
+        tags?: string[];
+        customFields?: Record<string, any>;
+    };
+};
+
+type ListCollectionsRequest = {
+    repositoryId: string;
+    pageSize?: number;
+    lastEvaluatedKey?: any;
+};
+
+type ListCollectionsResponse = {
+    collections: RagCollectionConfig[];
+    totalCount?: number;
+    hasNextPage?: boolean;
+    lastEvaluatedKey?: any;
+};
+
+type CreateCollectionRequest = {
+    repositoryId: string;
+    name: string;
+    description?: string;
+    embeddingModel?: string;
+    chunkingStrategy?: any;
+    allowedGroups?: string[];
+    metadata?: any;
+    private?: boolean;
+};
+
+type DeleteCollectionRequest = {
+    repositoryId: string;
+    collectionId: string;
+};
+
+type GetCollectionRequest = {
+    repositoryId: string;
+    collectionId: string;
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs'],
+    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs', 'collections'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -170,16 +228,22 @@ export const ragApi = createApi({
             },
         }),
         ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
-            query: (request) => ({
-                url: `repository/${request.repositoryId}/bulk?repositoryType=${request.repostiroyType}&chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`,
-                method: 'POST',
-                data: {
-                    embeddingModel: {
-                        modelName: request.embeddingModel.id
-                    },
-                    keys: request.documents
+            query: (request) => {
+                let url = `repository/${request.repositoryId}/bulk?chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`;
+
+                // Add collectionId parameter if provided
+                if (request.collectionId) {
+                    url += `&collectionId=${request.collectionId}`;
                 }
-            }),
+
+                return {
+                    url,
+                    method: 'POST',
+                    data: {
+                        keys: request.documents
+                    }
+                };
+            },
             transformErrorResponse: (baseQueryReturnValue) => {
                 // transform into SerializedError
                 return {
@@ -259,6 +323,62 @@ export const ragApi = createApi({
             },
             providesTags: ['jobs'], // Add cache tags for invalidation
         }),
+        listCollections: builder.query<RagCollectionConfig[], ListCollectionsRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection`,
+                params: {
+                    pageSize: request.pageSize,
+                    lastEvaluatedKey: request.lastEvaluatedKey,
+                },
+            }),
+            transformResponse: (response: ListCollectionsResponse) => response.collections,
+            providesTags: ['collections'],
+        }),
+        getCollection: builder.query<RagCollectionConfig, GetCollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+            }),
+            providesTags: ['collections'],
+        }),
+        createCollection: builder.mutation<RagCollectionConfig, CreateCollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection`,
+                method: 'POST',
+                data: {
+                    name: request.name,
+                    description: request.description,
+                    embeddingModel: request.embeddingModel,
+                    chunkingStrategy: request.chunkingStrategy,
+                    allowedGroups: request.allowedGroups,
+                    metadata: request.metadata,
+                    private: request.private,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Create Collection Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                        : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['collections'],
+        }),
+        deleteCollection: builder.mutation<void, DeleteCollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+                method: 'DELETE',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Delete Collection Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                        : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['collections'],
+        }),
     }),
 });
 
@@ -277,4 +397,8 @@ export const {
     useLazyDownloadRagDocumentQuery,
     useGetIngestionJobsQuery,
     useLazyGetIngestionJobsQuery,
+    useListCollectionsQuery,
+    useGetCollectionQuery,
+    useCreateCollectionMutation,
+    useDeleteCollectionMutation,
 } = ragApi;

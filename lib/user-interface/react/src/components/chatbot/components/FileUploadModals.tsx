@@ -257,7 +257,7 @@ export const RagUploadModal = ({
             const ingestResp = await ingestDocuments({
                 documents: fileKeys,
                 repositoryId: ragConfig.repositoryId,
-                embeddingModel: { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
+                collectionId: ragConfig.collection?.collectionId,
                 repostiroyType: ragConfig.repositoryType,
                 chunkSize,
                 chunkOverlap

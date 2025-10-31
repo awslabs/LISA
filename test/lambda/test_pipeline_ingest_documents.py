@@ -122,7 +122,7 @@ def test_handle_pipeline_ingest_event():
     }
     with patch.object(pid, "get_username", return_value="user1"), patch.object(pid, "IngestionJob"), patch.object(
         pid.ingestion_job_repository, "save"
-    ), patch.object(pid.ingestion_service, "create_ingest_job") as mock_create:
+    ), patch.object(pid.ingestion_service, "submit_create_job") as mock_create:
         pid.handle_pipeline_ingest_event(event, MagicMock())
         mock_create.assert_called()
 
@@ -146,7 +146,7 @@ def test_handle_pipline_ingest_schedule_success():
     with patch.object(pid, "get_username", return_value="user1"), patch.object(
         pid.s3, "get_paginator", return_value=paginator
     ), patch.object(pid.ingestion_job_repository, "save"), patch.object(
-        pid.ingestion_service, "create_ingest_job"
+        pid.ingestion_service, "submit_create_job"
     ) as mock_create:
         pid.handle_pipline_ingest_schedule(event, MagicMock())
         mock_create.assert_called()

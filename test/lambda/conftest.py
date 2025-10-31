@@ -101,7 +101,7 @@ def mock_auth():
 
 
 @pytest.fixture(autouse=True)
-def setup_auth_patches(request, mock_auth):
+def setup_auth_patches(request, mock_auth, aws_credentials):
     """Automatically patch auth functions for all tests except test_auth.py."""
     # Skip patching for test_auth.py since it tests the auth module itself
     if "test_auth" in request.node.nodeid:

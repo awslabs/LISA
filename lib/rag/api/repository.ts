@@ -197,6 +197,16 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
+                name: 'list_collections',
+                resource: 'repository',
+                description: 'List all collections within a repository',
+                path: 'repository/{repositoryId}/collection',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
                 name: 'create_collection',
                 resource: 'repository',
                 description: 'Create a new collection within a repository',

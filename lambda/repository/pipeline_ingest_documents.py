@@ -21,6 +21,7 @@ from typing import Any, Dict, List
 
 import boto3
 from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
+from repository.collection_service import CollectionService
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -38,6 +39,7 @@ ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"]
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
 vs_repo = VectorStoreRepository()
+collection_service = CollectionService()
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
@@ -145,6 +147,10 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
 
     chunk_strategy = extract_chunk_strategy(pipeline_config)
 
+    # Get repository and metadata
+    repository = vs_repo.find_repository_by_id(repository_id)
+    metadata = collection_service.get_collection_metadata(repository, None)
+
     # create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
@@ -153,9 +159,10 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         s3_path=s3_path,
         username=username,
         ingestion_type=IngestionType.MANUAL,
+        metadata=metadata,
     )
     ingestion_job_repository.save(job)
-    ingestion_service.create_ingest_job(job)
+    ingestion_service.submit_create_job(job)
 
     logger.info(f"Ingesting document {s3_path} for repository {repository_id}")
 
@@ -223,6 +230,10 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
             logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
             raise
 
+        # Get repository and metadata
+        repository = vs_repo.find_repository_by_id(repository_id)
+        metadata = collection_service.get_collection_metadata(repository, None)
+
         # create an IngestionJob for every object created/modified
         for key in modified_keys:
             job = IngestionJob(
@@ -232,9 +243,10 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
                 s3_path=f"s3://{bucket}/{key}",
                 username=username,
                 ingestion_type=IngestionType.AUTO,
+                metadata=metadata,
             )
             ingestion_job_repository.save(job)
-            ingestion_service.create_ingest_job(job)
+            ingestion_service.submit_create_job(job)
 
         logger.info(f"Found {len(modified_keys)} modified files in {bucket}{prefix}")
     except Exception as e:

@@ -50,7 +50,5 @@ export class LisaServeApplicationStack extends Stack {
         this.restApi = app.restApi;
         this.tokenTable = app.tokenTable;
         this.ecsCluster = app.ecsCluster;
-        this.loadBalancer = app.loadBalancer;
-        this.listener = app.listener;
     }
 }

@@ -34,6 +34,7 @@ lib/rag/ingestion/ingestion-image/build
 .cursor
 memory-bank/
 .kiro/
+.amazonq/
 
 # Coverage Statistic Folders
 coverage

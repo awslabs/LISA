@@ -16,9 +16,9 @@
 """Collection service for business logic."""
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from models.domain_objects import RagCollectionConfig
+from models.domain_objects import CollectionMetadata, RagCollectionConfig
 from repository.collection_repo import CollectionRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.validation import ValidationError
@@ -73,11 +73,22 @@ class CollectionService:
         user_groups: List[str],
         is_admin: bool,
     ) -> RagCollectionConfig:
-        """Get a collection with access control."""
+        """Get a collection with access control.
+
+        Args:
+            repository_id: Repository ID
+            collection_id: Collection ID
+            username: Username for access control (deprecated, use username)
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+            username: Username for access control (preferred over username)
+        """
+        # Support both username and username parameters for backwards compatibility
+        effective_username = username or username
         collection = self.collection_repo.find_by_id(collection_id, repository_id)
         if not collection:
             raise ValidationError(f"Collection {collection_id} not found")
-        if not self.has_access(collection, username, user_groups, is_admin):
+        if not self.has_access(collection, effective_username, user_groups, is_admin):
             raise ValidationError(f"Permission denied for collection {collection_id}")
         return collection
 
@@ -96,6 +107,58 @@ class CollectionService:
         )
         filtered = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
         return filtered, key
+
+    def update_collection(
+        self,
+        collection_id: str,
+        repository_id: str,
+        request: Any,
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+    ) -> RagCollectionConfig:
+        """Update a collection with access control.
+
+        Args:
+            collection_id: Collection ID to update
+            repository_id: Repository ID
+            request: UpdateCollectionRequest with fields to update
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+
+        Returns:
+            Updated collection
+        """
+        collection = self.collection_repo.find_by_id(collection_id, repository_id)
+        if not collection:
+            raise ValidationError(f"Collection {collection_id} not found")
+        if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
+            raise ValidationError(f"Permission denied to update collection {collection_id}")
+
+        updates = {}
+
+        # Build updates from request
+        if hasattr(request, "description") and request.description is not None:
+            updates["description"] = request.description
+        if hasattr(request, "embeddingModel") and request.embeddingModel is not None:
+            updates["embeddingModel"] = request.embeddingModel
+        if hasattr(request, "chunkingStrategy") and request.chunkingStrategy is not None:
+            updates["chunkingStrategy"] = request.chunkingStrategy
+        if hasattr(request, "allowedGroups") and request.allowedGroups is not None:
+            updates["allowedGroups"] = request.allowedGroups
+        if hasattr(request, "metadata") and request.metadata is not None:
+            updates["metadata"] = request.metadata
+        if hasattr(request, "private") and request.private is not None:
+            updates["private"] = request.private
+        if hasattr(request, "allowChunkingOverride") and request.allowChunkingOverride is not None:
+            updates["allowChunkingOverride"] = request.allowChunkingOverride
+        if hasattr(request, "pipelines") and request.pipelines is not None:
+            updates["pipelines"] = request.pipelines
+
+        # Update collection
+        updated = self.collection_repo.update(collection_id, repository_id, updates)
+        return updated
 
     def delete_collection(
         self,
@@ -138,7 +201,8 @@ class CollectionService:
         Returns:
             Total count of collections
         """
-        return self.collection_repo.count_by_repository(repository_id)
+        count = self.collection_repo.count_by_repository(repository_id)
+        return int(count) if count is not None else 0
 
     def get_collection_model(
         self,
@@ -168,4 +232,40 @@ class CollectionService:
             logger.warning(f"Failed to get collection '{collection_id}': {e}, using repository default")
 
         repository = self.vector_store_repo.find_repository_by_id(repository_id)
-        return repository.get("embeddingModelId")
+        embedding_model_id = repository.get("embeddingModelId")
+        return str(embedding_model_id) if embedding_model_id is not None else None
+
+    def get_collection_metadata(
+        self,
+        repository: VectorStoreRepository,
+        collection: RagCollectionConfig,
+        metadata: Optional[CollectionMetadata] = None,
+    ) -> Dict[str, Any]:
+        """Get collection metadata with merges from repository."""
+        merged_metadata: Dict[str, Any] = {}
+
+        # Repository metadata
+        repo_metadata = repository.get("metadata") if isinstance(repository, dict) else None
+        if repo_metadata:
+            if isinstance(repo_metadata, CollectionMetadata):
+                merged_metadata.update(repo_metadata.customFields)
+            elif isinstance(repo_metadata, dict):
+                merged_metadata.update(repo_metadata)
+
+        # Collection metadata
+        if collection:
+            coll_metadata = collection.get("metadata") if isinstance(collection, dict) else collection.metadata
+            if coll_metadata:
+                if isinstance(coll_metadata, CollectionMetadata):
+                    merged_metadata.update(coll_metadata.customFields)
+                elif isinstance(coll_metadata, dict):
+                    merged_metadata.update(coll_metadata)
+
+        # Passed metadata
+        if metadata:
+            if isinstance(metadata, CollectionMetadata):
+                merged_metadata.update(metadata.customFields)
+            elif isinstance(metadata, dict):
+                merged_metadata.update(metadata)
+
+        return merged_metadata

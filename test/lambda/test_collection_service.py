@@ -21,7 +21,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+from models.domain_objects import CollectionMetadata, CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
 
 
 @pytest.fixture(autouse=True)
@@ -142,3 +142,135 @@ def test_delete_collection():
         service.delete_collection("test-repo", "test-coll", "user", ["group1"], False)
 
         mock_repo.delete.assert_called_once()
+
+
+class TestCollectionMetadataMerging:
+    """Test metadata merging from repository, collection, and passed-in metadata."""
+
+    @pytest.fixture
+    def service(self, setup_env):
+        """Create CollectionService instance with mocked repositories."""
+        from repository.collection_service import CollectionService
+
+        # Create service without initializing repositories (they're not needed for metadata merging)
+        service = CollectionService.__new__(CollectionService)
+        service.collection_repo = None
+        service.vector_store_repo = None
+        return service
+
+    def test_metadata_merging_all_layers(self, service):
+        """Test metadata from all three layers are merged with correct precedence."""
+        repository = {
+            "metadata": CollectionMetadata(
+                customFields={
+                    "repo_key": "repo_value",
+                    "shared_key": "from_repo",
+                    "override_key": "from_repo",
+                }
+            )
+        }
+        collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-model",
+            createdBy="test-user",
+            metadata=CollectionMetadata(
+                customFields={
+                    "collection_key": "collection_value",
+                    "shared_key": "from_collection",
+                    "override_key": "from_collection",
+                }
+            ),
+        )
+        passed_metadata = CollectionMetadata(
+            customFields={
+                "passed_key": "passed_value",
+                "override_key": "from_passed",
+            }
+        )
+
+        result = service.get_collection_metadata(repository, collection, passed_metadata)
+
+        assert result["repo_key"] == "repo_value"
+        assert result["collection_key"] == "collection_value"
+        assert result["passed_key"] == "passed_value"
+        assert result["shared_key"] == "from_collection"
+        assert result["override_key"] == "from_passed"
+
+    def test_metadata_merging_no_passed_metadata(self, service):
+        """Test metadata merging when no passed metadata provided."""
+        repository = {
+            "metadata": CollectionMetadata(customFields={"repo_key": "repo_value", "shared_key": "from_repo"})
+        }
+        collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-model",
+            createdBy="test-user",
+            metadata=CollectionMetadata(
+                customFields={"collection_key": "collection_value", "shared_key": "from_collection"}
+            ),
+        )
+
+        result = service.get_collection_metadata(repository, collection, None)
+
+        assert result["repo_key"] == "repo_value"
+        assert result["collection_key"] == "collection_value"
+        assert result["shared_key"] == "from_collection"
+
+    def test_metadata_merging_no_collection_metadata(self, service):
+        """Test metadata merging when collection has no metadata."""
+        repository = {
+            "metadata": CollectionMetadata(customFields={"repo_key": "repo_value", "shared_key": "from_repo"})
+        }
+        collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-model",
+            createdBy="test-user",
+            metadata=None,
+        )
+        passed_metadata = CollectionMetadata(customFields={"passed_key": "passed_value", "shared_key": "from_passed"})
+
+        result = service.get_collection_metadata(repository, collection, passed_metadata)
+
+        assert result["repo_key"] == "repo_value"
+        assert result["passed_key"] == "passed_value"
+        assert result["shared_key"] == "from_passed"
+
+    def test_metadata_merging_no_repository_metadata(self, service):
+        """Test metadata merging when repository has no metadata."""
+        repository = {"metadata": None}
+        collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-model",
+            createdBy="test-user",
+            metadata=CollectionMetadata(customFields={"collection_key": "collection_value"}),
+        )
+        passed_metadata = CollectionMetadata(customFields={"passed_key": "passed_value"})
+
+        result = service.get_collection_metadata(repository, collection, passed_metadata)
+
+        assert result["collection_key"] == "collection_value"
+        assert result["passed_key"] == "passed_value"
+
+    def test_metadata_merging_empty_metadata(self, service):
+        """Test metadata merging when all metadata is empty or None."""
+        repository = {"metadata": None}
+        collection = RagCollectionConfig(
+            collectionId="test-collection",
+            repositoryId="test-repo",
+            name="Test Collection",
+            embeddingModel="test-model",
+            createdBy="test-user",
+            metadata=None,
+        )
+
+        result = service.get_collection_metadata(repository, collection, None)
+
+        assert result == {}

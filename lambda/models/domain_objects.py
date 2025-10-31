@@ -589,6 +589,114 @@ class PaginationParams:
         page_size = int(query_params.get("pageSize", str(default)))
         return max(MIN_PAGE_SIZE, min(page_size, max_size))
 
+    @staticmethod
+    def parse_last_evaluated_key(query_params: Dict[str, str], key_fields: List[str]) -> Optional[Dict[str, str]]:
+        """Parse last evaluated key from query parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+            key_fields: List of field names to extract from query params (e.g., ['collectionId', 'status', 'createdAt'])
+
+        Returns:
+            Dictionary with last evaluated key fields, or None if no key present
+
+        Notes:
+            Query params should be formatted as lastEvaluatedKey{FieldName}, e.g.:
+            - lastEvaluatedKeyCollectionId
+            - lastEvaluatedKeyStatus
+            - lastEvaluatedKeyCreatedAt
+        """
+        import urllib.parse
+
+        # Check if any lastEvaluatedKey fields are present
+        has_key = any(f"lastEvaluatedKey{field.capitalize()}" in query_params for field in key_fields)
+
+        if not has_key:
+            return None
+
+        last_evaluated_key = {}
+        for field in key_fields:
+            # Convert field name to camelCase for query param (e.g., collectionId -> CollectionId)
+            param_name = f"lastEvaluatedKey{field[0].upper()}{field[1:]}"
+
+            if param_name in query_params:
+                last_evaluated_key[field] = urllib.parse.unquote(query_params[param_name])
+
+        return last_evaluated_key if last_evaluated_key else None
+
+
+@dataclass
+class FilterParams:
+    """Shared filtering parameter handling for collections."""
+
+    filter_text: Optional[str] = None
+    status_filter: Optional["CollectionStatus"] = None
+
+    @staticmethod
+    def from_query_params(query_params: Dict[str, str]) -> "FilterParams":
+        """Parse filter parameters from query string parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            FilterParams object with parsed filter parameters
+
+        Raises:
+            ValidationError: If status value is invalid
+        """
+        from utilities.validation import ValidationError
+
+        filter_text = query_params.get("filter")
+
+        status_filter = None
+        if "status" in query_params:
+            try:
+                status_filter = CollectionStatus(query_params["status"])
+            except ValueError:
+                raise ValidationError(f"Invalid status value: {query_params['status']}")
+
+        return FilterParams(filter_text=filter_text, status_filter=status_filter)
+
+
+@dataclass
+class SortParams:
+    """Shared sorting parameter handling for collections."""
+
+    sort_by: "CollectionSortBy" = None  # Will be set to default in from_query_params
+    sort_order: "SortOrder" = None  # Will be set to default in from_query_params
+
+    @staticmethod
+    def from_query_params(query_params: Dict[str, str]) -> "SortParams":
+        """Parse sort parameters from query string parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            SortParams object with parsed sort parameters
+
+        Raises:
+            ValidationError: If sortBy or sortOrder values are invalid
+        """
+        from utilities.validation import ValidationError
+
+        sort_by = CollectionSortBy.CREATED_AT
+        if "sortBy" in query_params:
+            try:
+                sort_by = CollectionSortBy(query_params["sortBy"])
+            except ValueError:
+                raise ValidationError(f"Invalid sortBy value: {query_params['sortBy']}")
+
+        sort_order = SortOrder.DESC
+        if "sortOrder" in query_params:
+            try:
+                sort_order = SortOrder(query_params["sortOrder"])
+            except ValueError:
+                raise ValidationError(f"Invalid sortOrder value: {query_params['sortOrder']}")
+
+        return SortParams(sort_by=sort_by, sort_order=sort_order)
+
 
 # ============================================================================
 # Collection Management Models
@@ -720,6 +828,16 @@ class RagCollectionConfig(BaseModel):
             # Empty list should be treated as None (inherit from parent)
             return None
         return groups
+
+
+class IngestDocumentRequest(BaseModel):
+    """Request model for ingesting documents."""
+
+    keys: List[str] = Field(description="S3 keys to ingest")
+    collectionId: Optional[str] = Field(default=None, description="Target collection ID")
+    embeddingModel: Optional[Dict[str, str]] = Field(default=None, description="Embedding model config")
+    chunkingStrategy: Optional[Dict[str, Any]] = Field(default=None, description="Chunking strategy override")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
 
 
 class CreateCollectionRequest(BaseModel):

@@ -14,6 +14,7 @@ ARG LITELLM_CONFIG
 #### POINT TO NEW PYPI CONFIG
 ARG PYPI_INDEX_URL
 ARG PYPI_TRUSTED_HOST
+ARG NODEENV_CACHE_DIR=NODEENV_CACHE
 RUN if [ "$PYPI_INDEX_URL" != "" ]; then \
         pip config set global.index-url $PYPI_INDEX_URL && \
         pip config set global.trusted-host $PYPI_TRUSTED_HOST;fi
@@ -24,6 +25,22 @@ WORKDIR /app
 # Install dependencies
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Copy nodeenv cache directory (always exists, may be empty or populated)
+COPY ${NODEENV_CACHE_DIR} /tmp/nodeenv-cache/
+
+# Pre-cache nodeenv for prisma-client-py
+# If the copied directory has content, use it (for offline environments)
+# Otherwise, download it during build (requires internet)
+RUN mkdir -p /root/.cache/prisma-python && \
+    if [ -d "/tmp/nodeenv-cache" ] && [ -n "$(ls -A /tmp/nodeenv-cache 2>/dev/null)" ]; then \
+        echo "Using pre-cached nodeenv from host" && \
+        cp -r /tmp/nodeenv-cache /root/.cache/prisma-python/nodeenv && \
+        rm -rf /tmp/nodeenv-cache; \
+    else \
+        echo "Downloading nodeenv (requires internet)" && \
+        python -m nodeenv /root/.cache/prisma-python/nodeenv; \
+    fi
 
 # Copy the source code into the container
 COPY src/ ./src

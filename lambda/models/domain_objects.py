@@ -98,6 +98,212 @@ class LoadBalancerConfig(BaseModel):
     healthCheckConfig: LoadBalancerHealthCheckConfig
 
 
+class ScheduleType(str, Enum):
+    """Defines supported schedule types for resource scheduling"""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value"""
+        return str(self.value)
+
+    EACH_DAY = "EACH_DAY"
+    RECURRING_DAILY = "RECURRING_DAILY"
+    WEEKDAYS_ONLY = "WEEKDAYS_ONLY"
+    NONE = "NONE"
+
+
+class DaySchedule(BaseModel):
+    """Defines start and stop times for a single day"""
+
+    startTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    stopTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+
+    @field_validator("startTime", "stopTime")
+    @classmethod
+    def validate_time_format(cls, v: str) -> str:
+        """Validates time format is HH:MM"""
+        try:
+            from datetime import datetime
+
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Time must be in HH:MM format")
+        return v
+
+    @model_validator(mode="after")
+    def validate_stop_after_start(self) -> Self:
+        """Validates that stop time is after start time and at least 2 hours later"""
+        from datetime import datetime, timedelta
+
+        start_time = datetime.strptime(self.startTime, "%H:%M").time()
+        stop_time = datetime.strptime(self.stopTime, "%H:%M").time()
+
+        # Convert to datetime objects for easier calculation
+        start_dt = datetime.combine(datetime.today(), start_time)
+        stop_dt = datetime.combine(datetime.today(), stop_time)
+
+        # Handle case where stop time is next day (e.g., start at 23:00, stop at 01:00)
+        if stop_time <= start_time:
+            stop_dt += timedelta(days=1)
+
+        # Calculate the time difference
+        time_diff = stop_dt - start_dt
+
+        # Ensure stop time is at least 2 hours after start time
+        min_duration = timedelta(hours=2)
+        if time_diff < min_duration:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        return self
+
+
+class WeeklySchedule(BaseModel):
+    """Defines schedule for each day of the week with support for multiple time periods per day"""
+
+    monday: Optional[List[DaySchedule]] = None
+    tuesday: Optional[List[DaySchedule]] = None
+    wednesday: Optional[List[DaySchedule]] = None
+    thursday: Optional[List[DaySchedule]] = None
+    friday: Optional[List[DaySchedule]] = None
+    saturday: Optional[List[DaySchedule]] = None
+    sunday: Optional[List[DaySchedule]] = None
+
+    @model_validator(mode="after")
+    def validate_daily_schedules(self) -> Self:
+        """Validates that each day's schedules don't overlap and are properly ordered"""
+        from datetime import datetime, timedelta
+
+        days = [
+            ("monday", self.monday),
+            ("tuesday", self.tuesday),
+            ("wednesday", self.wednesday),
+            ("thursday", self.thursday),
+            ("friday", self.friday),
+            ("saturday", self.saturday),
+            ("sunday", self.sunday),
+        ]
+
+        for day_name, day_schedules in days:
+            "Each day isn't required to have a schedule"
+            if not day_schedules:
+                continue
+
+            # Convert all times to datetime objects for comparison
+            time_periods = []
+            for schedule in day_schedules:
+                start_time = datetime.strptime(schedule.startTime, "%H:%M").time()
+                stop_time = datetime.strptime(schedule.stopTime, "%H:%M").time()
+
+                start_dt = datetime.combine(datetime.today(), start_time)
+                stop_dt = datetime.combine(datetime.today(), stop_time)
+
+                # Handle cross-midnight schedules
+                if stop_time <= start_time:
+                    stop_dt += timedelta(days=1)
+
+                time_periods.append((start_dt, stop_dt, schedule))
+
+            # Sort by start time
+            time_periods.sort(key=lambda x: x[0])
+
+            # Check for overlaps
+            for i in range(len(time_periods) - 1):
+                current_end = time_periods[i][1]
+                next_start = time_periods[i + 1][0]
+
+                if current_end > next_start:
+                    raise ValueError(
+                        f"{day_name.capitalize()} has overlapping schedules: "
+                        f"{time_periods[i][2].startTime}-{time_periods[i][2].stopTime} "
+                        f"overlaps with {time_periods[i + 1][2].startTime}-{time_periods[i + 1][2].stopTime}"
+                    )
+
+        return self
+
+
+class NextScheduledAction(BaseModel):
+    """Defines the next scheduled action for a model"""
+
+    action: str = Field(pattern=r"^(START|STOP)$")
+    scheduledTime: str
+
+
+class ScheduleFailure(BaseModel):
+    """Defines schedule failure information"""
+
+    timestamp: str
+    error: str
+    retryCount: int
+
+
+class SchedulingConfig(BaseModel):
+    """Defines scheduling configuration for model resource management"""
+
+    scheduleType: ScheduleType = ScheduleType.NONE
+    timezone: str = Field(default="UTC", pattern=r"^[A-Za-z_]+/[A-Za-z_]+$")
+
+    # Weekly schedule (for EACH_DAY type)
+    weeklySchedule: Optional[WeeklySchedule] = None
+
+    # Daily schedule (for RECURRING_DAILY and WEEKDAYS_ONLY types)
+    dailySchedule: Optional[DaySchedule] = None
+
+    # Schedule metadata and tracking
+    scheduleEnabled: bool = False
+    lastScheduleUpdate: Optional[str] = None
+    scheduledActionArns: Optional[List[str]] = None
+
+    # Status tracking
+    scheduleConfigured: bool = False
+    lastScheduleFailed: bool = False
+
+    # Next scheduled action info (computed field)
+    nextScheduledAction: Optional[NextScheduledAction] = None
+
+    # Failure tracking
+    lastScheduleFailure: Optional[ScheduleFailure] = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validates timezone is a valid IANA timezone identifier"""
+        try:
+            from zoneinfo import ZoneInfo
+
+            ZoneInfo(v)
+        except Exception:
+            raise ValueError(f"Invalid timezone: {v}, timezone must be a valid IANA timezone identifier")
+        return v
+
+    @model_validator(mode="after")
+    def validate_schedule_consistency(self) -> Self:
+        """Validates schedule configuration consistency"""
+        if self.scheduleType == ScheduleType.EACH_DAY:
+            if not self.weeklySchedule or not any(
+                [
+                    self.weeklySchedule.monday,
+                    self.weeklySchedule.tuesday,
+                    self.weeklySchedule.wednesday,
+                    self.weeklySchedule.thursday,
+                    self.weeklySchedule.friday,
+                    self.weeklySchedule.saturday,
+                    self.weeklySchedule.sunday,
+                ]
+            ):
+                raise ValueError("weeklySchedule with at least one day required for EACH_DAY type")
+            if self.dailySchedule:
+                raise ValueError("dailySchedule not allowed for EACH_DAY type")
+        elif self.scheduleType in [ScheduleType.RECURRING_DAILY, ScheduleType.WEEKDAYS_ONLY]:
+            if not self.dailySchedule:
+                raise ValueError(f"dailySchedule required for {self.scheduleType} type")
+            if self.weeklySchedule:
+                raise ValueError(f"weeklySchedule not allowed for {self.scheduleType} type")
+        elif self.scheduleType == ScheduleType.NONE:
+            if self.weeklySchedule or self.dailySchedule:
+                raise ValueError("No schedule configuration allowed for NONE type")
+
+        return self
+
+
 class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
@@ -107,6 +313,7 @@ class AutoScalingConfig(BaseModel):
     cooldown: PositiveInt
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
+    scheduling: Optional[SchedulingConfig] = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_config(self) -> Self:

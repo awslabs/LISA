@@ -174,11 +174,7 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
         logger.error(f"Failed to get schedule for model {model_id}: {str(e)}")
         raise ScheduleManagementError(f"Failed to get schedule: {str(e)}")
 
-def create_scheduled_actions(
-    model_id: str,
-    auto_scaling_group: str,
-    schedule_config: SchedulingConfig
-) -> List[str]:
+def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_config: SchedulingConfig) -> List[str]:
     """Create Auto Scaling scheduled actions based on schedule configuration"""
     scheduled_action_arns = []
     

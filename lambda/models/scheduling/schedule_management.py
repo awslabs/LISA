@@ -32,9 +32,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             raise ValueError("Both 'operation' and 'modelId' are required")
         
         # Route to appropriate handler
-        if operation == "create":
-            return create_schedule(event)
-        elif operation == "update":
+        if operation == "update":
             return update_schedule(event)
         elif operation == "delete":
             return delete_schedule(event)
@@ -52,55 +50,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "message": str(e)
             })
         }
-
-
-def create_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a new schedule for a model"""
-    model_id = event["modelId"]
-    schedule_config = event.get("scheduleConfig")
-    auto_scaling_group = event.get("autoScalingGroup")
-    
-    if not schedule_config:
-        raise ValueError("scheduleConfig is required for create operation")
-    
-    if not auto_scaling_group:
-        raise ValueError("autoScalingGroup is required for create operation")
-    
-    try:
-        # Validate schedule configuration
-        scheduling_config = SchedulingConfig(**schedule_config)
-        
-        # Create Auto Scaling scheduled actions
-        scheduled_action_arns = create_scheduled_actions(
-            model_id=model_id,
-            auto_scaling_group=auto_scaling_group,
-            schedule_config=scheduling_config
-        )
-        
-        # Update model record with schedule information
-        update_model_schedule_record(
-            model_id=model_id,
-            scheduling_config=scheduling_config,
-            scheduled_action_arns=scheduled_action_arns,
-            enabled=True
-        )
-        
-        logger.info(f"Successfully created schedule for model {model_id} with {len(scheduled_action_arns)} actions")
-        
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "message": "Schedule created successfully",
-                "modelId": model_id,
-                "scheduledActionArns": scheduled_action_arns,
-                "scheduleEnabled": True
-            })
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to create schedule for model {model_id}: {str(e)}")
-        raise ScheduleManagementError(f"Failed to create schedule: {str(e)}")
-
 
 def update_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
     """Update an existing schedule for a model"""
@@ -192,7 +141,6 @@ def delete_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
         logger.error(f"Failed to delete schedule for model {model_id}: {str(e)}")
         raise ScheduleManagementError(f"Failed to delete schedule: {str(e)}")
 
-
 def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
     """Get current schedule configuration for a model"""
     model_id = event["modelId"]
@@ -225,7 +173,6 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get schedule for model {model_id}: {str(e)}")
         raise ScheduleManagementError(f"Failed to get schedule: {str(e)}")
-
 
 def create_scheduled_actions(
     model_id: str,
@@ -323,12 +270,7 @@ def get_capacity_config(model_id: str, auto_scaling_group: str) -> Dict[str, int
         raise ScheduleManagementError(f"Failed to get capacity configuration: {str(e)}")
 
 
-def create_daily_scheduled_actions(
-    model_id: str,
-    auto_scaling_group: str,
-    day_schedule: DaySchedule,
-    timezone_name: str
-) -> List[str]:
+def create_daily_scheduled_actions(model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str) -> List[str]:
     """Create scheduled actions for daily recurring schedule"""
     scheduled_action_arns = []
     
@@ -390,12 +332,7 @@ def create_daily_scheduled_actions(
     return scheduled_action_arns
 
 
-def create_weekdays_scheduled_actions(
-    model_id: str,
-    auto_scaling_group: str,
-    day_schedule: DaySchedule,
-    timezone_name: str
-) -> List[str]:
+def create_weekdays_scheduled_actions(model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str) -> List[str]:
     """Create scheduled actions for weekdays-only schedule"""
     scheduled_action_arns = []
     
@@ -457,12 +394,7 @@ def create_weekdays_scheduled_actions(
     return scheduled_action_arns
 
 
-def create_weekly_scheduled_actions(
-    model_id: str,
-    auto_scaling_group: str,
-    weekly_schedule: WeeklySchedule,
-    timezone_name: str
-) -> List[str]:
+def create_weekly_scheduled_actions( model_id: str, auto_scaling_group: str, weekly_schedule: WeeklySchedule, timezone_name: str) -> List[str]:
     """Create scheduled actions for weekly schedule (different times each day with support for multiple periods)"""
     scheduled_action_arns = []
     
@@ -670,12 +602,7 @@ def get_existing_scheduled_action_arns(model_id: str) -> List[str]:
         return []
 
 
-def update_model_schedule_record(
-    model_id: str,
-    scheduling_config: SchedulingConfig,
-    scheduled_action_arns: List[str],
-    enabled: bool
-) -> None:
+def update_model_schedule_record(model_id: str, scheduling_config: SchedulingConfig, scheduled_action_arns: List[str], enabled: bool) -> None:
     """Update model record in DynamoDB with schedule information"""
     try:
         # Prepare the scheduling configuration for storage
@@ -684,9 +611,8 @@ def update_model_schedule_record(
         schedule_data["scheduleEnabled"] = enabled
         schedule_data["lastScheduleUpdate"] = datetime.now(dt_timezone.utc).isoformat()
         
-        # Use boolean flags instead of scheduleStatus enum
         schedule_data["scheduleConfigured"] = enabled
-        schedule_data["lastScheduleFailed"] = False  # Reset failure flag on successful update
+        schedule_data["lastScheduleFailed"] = False
         
         # Calculate next scheduled action
         if enabled:

@@ -334,6 +334,13 @@ export const ragApi = createApi({
             transformResponse: (response: ListCollectionsResponse) => response.collections,
             providesTags: ['collections'],
         }),
+        listAllCollections: builder.query<RagCollectionConfig[], void>({
+            query: () => ({
+                url: '/repository/collections',
+            }),
+            transformResponse: (response: ListCollectionsResponse) => response.collections,
+            providesTags: ['collections'],
+        }),
         getCollection: builder.query<RagCollectionConfig, GetCollectionRequest>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
@@ -398,6 +405,7 @@ export const {
     useGetIngestionJobsQuery,
     useLazyGetIngestionJobsQuery,
     useListCollectionsQuery,
+    useListAllCollectionsQuery,
     useGetCollectionQuery,
     useCreateCollectionMutation,
     useDeleteCollectionMutation,

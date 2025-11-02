@@ -29,6 +29,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
     ragApi,
     useDeleteRagDocumentsMutation,
+    useGetCollectionQuery,
     useLazyDownloadRagDocumentQuery,
     useListRagDocumentsQuery,
 } from '../../shared/reducers/rag.reducer';
@@ -46,6 +47,7 @@ import { downloadFile } from '../../shared/util/downloader';
 
 type DocumentLibraryComponentProps = {
     repositoryId?: string;
+    collectionId?: string;
 };
 
 export function getMatchesCountText (count) {
@@ -60,7 +62,7 @@ function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
     return selectedItems.length === 0 ? 'Please select an item' : 'You are not an owner of all selected items';
 }
 
-export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryComponentProps): ReactElement {
+export function DocumentLibraryComponent ({ repositoryId, collectionId }: DocumentLibraryComponentProps): ReactElement {
     const [deleteMutation, { isLoading: isDeleteLoading }] = useDeleteRagDocumentsMutation();
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -80,9 +82,16 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
+    // Fetch collection data if collectionId is provided
+    const { data: collectionData } = useGetCollectionQuery(
+        { repositoryId, collectionId },
+        { skip: !repositoryId || !collectionId }
+    );
+
     const { data: paginatedDocs, isLoading } = useListRagDocumentsQuery(
         {
             repositoryId,
+            collectionId,
             lastEvaluatedKey: lastEvaluatedKey || undefined,
             pageSize: preferences.pageSize
         },
@@ -214,7 +223,9 @@ export function DocumentLibraryComponent ({ repositoryId }: DocumentLibraryCompo
                         </SpaceBetween>
                     }
                 >
-                    {repositoryId} Documents
+                    {collectionId && collectionData 
+                        ? `${collectionData.name || collectionId} Documents` 
+                        : `${repositoryId} Documents`}
                 </Header>
             }
             pagination={

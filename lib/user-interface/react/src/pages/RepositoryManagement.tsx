@@ -15,17 +15,18 @@
  */
 
 import { ReactElement, useEffect } from 'react';
-import DocumentLibraryComponent from '../components/document-library/DocumentLibraryComponent';
-import { useParams } from 'react-router-dom';
+import RepositoryManagementComponent from '../components/repository-management/RepositoryManagementComponent';
 
-export function DocumentLibrary ({ setNav }): ReactElement {
-    const { repoId, collectionId } = useParams();
+export interface RepositoryManagementProps {
+    setNav: (nav: React.ReactNode | null) => void;
+}
 
+export function RepositoryManagement({ setNav }: RepositoryManagementProps): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);
 
-    return <DocumentLibraryComponent repositoryId={repoId} collectionId={collectionId} />;
+    return <RepositoryManagementComponent />;
 }
 
-export default DocumentLibrary;
+export default RepositoryManagement;

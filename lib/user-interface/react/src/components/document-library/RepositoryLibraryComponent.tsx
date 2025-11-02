@@ -14,114 +14,113 @@
  limitations under the License.
  */
 
-import { ReactElement, useEffect, useState } from 'react';
-import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
+import { ReactElement } from 'react';
+import { Box, CollectionPreferences, Header, Pagination, Table, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
-    CARD_DEFINITIONS,
-    DEFAULT_PREFERENCES,
+    COLLECTION_COLUMN_DEFINITIONS,
+    getCollectionTablePreference,
+    getDefaultCollectionPreferences,
     PAGE_SIZE_OPTIONS,
-    VISIBLE_CONTENT_OPTIONS,
-} from './RepositoryLibraryConfig';
-import { useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
+} from './CollectionTableConfig';
+import { useListAllCollectionsQuery } from '../../shared/reducers/rag.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { useNavigate } from 'react-router-dom';
-import { RagRepositoryConfig } from '#root/lib/schema';
+import { useCollection } from '@cloudscape-design/collection-hooks';
 
-export function RepositoryLibraryComponent (): ReactElement {
+export function RepositoryLibraryComponent(): ReactElement {
     const {
-        data: allRepos,
-        isLoading: fetchingRepos,
-    } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: 5 });
+        data: allCollections,
+        isLoading: fetchingCollections,
+    } = useListAllCollectionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
 
-    const [matchedRepos, setMatchedRepos] = useState<RagRepositoryConfig[]>([]);
-    const [searchText, setSearchText] = useState<string>('');
-    const [numberOfPages, setNumberOfPages] = useState<number>(1);
-    const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
-    const [selectedItems, setSelectedItems] = useState([]);
-    const [preferences, setPreferences] = useLocalStorage('RagPreferences', DEFAULT_PREFERENCES);
-    const [count, setCount] = useState(0);
+    const [preferences, setPreferences] = useLocalStorage(
+        'CollectionLibraryPreferences',
+        getDefaultCollectionPreferences()
+    );
 
     const navigate = useNavigate();
 
-    useEffect(() => {
-        let newPageCount: number;
-        if (searchText) {
-            const filteredRepos = allRepos.filter((repo) => JSON.stringify(repo).toLowerCase().includes(searchText.toLowerCase()));
-            setMatchedRepos(
-                filteredRepos.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex),
-            );
-            newPageCount = Math.ceil(filteredRepos.length / preferences.pageSize);
-            setCount(filteredRepos.length);
-        } else {
-            setMatchedRepos(allRepos ? allRepos.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
-            newPageCount = Math.ceil(allRepos ? (allRepos.length / preferences.pageSize) : 1);
-            setCount(allRepos ? allRepos.length : 0);
-        }
-
-        if (newPageCount < numberOfPages) {
-            setCurrentPageIndex(1);
-        }
-        setNumberOfPages(newPageCount);
-    }, [allRepos, searchText, preferences, currentPageIndex, numberOfPages]);
-
-    return (
-        <>
-            <Cards
-                onSelectionChange={({ detail }) => setSelectedItems(detail?.selectedItems ?? [])}
-                selectedItems={selectedItems}
-                ariaLabels={{
-                    itemSelectionLabel: (e, t) => `select ${t.modelName}`,
-                    selectionGroupLabel: 'Repo selection',
-                }}
-                cardDefinition={CARD_DEFINITIONS(navigate)}
-                visibleSections={preferences.visibleContent}
-                loadingText='Loading repos'
-                items={matchedRepos}
-                trackBy='repositoryId'
-                variant='full-page'
-                loading={fetchingRepos && !allRepos}
-                cardsPerRow={[{ cards: 3 }]}
-                header={
-                    <Header counter={`(${count})`}>
-                        Repositories
-                    </Header>
-                }
-                filter={<TextFilter filteringText={searchText}
-                    filteringPlaceholder='Find repos'
-                    filteringAriaLabel='Find repos'
-                    onChange={({ detail }) => {
-                        setSearchText(detail.filteringText);
-                    }} />}
-                pagination={<Pagination currentPageIndex={currentPageIndex}
-                    onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
-                    pagesCount={numberOfPages} />}
-                preferences={
-                    <CollectionPreferences
-                        title='Preferences'
-                        confirmLabel='Confirm'
-                        cancelLabel='Cancel'
-                        preferences={preferences}
-                        onConfirm={({ detail }) => setPreferences(detail)}
-                        pageSizePreference={{
-                            title: 'Page size',
-                            options: PAGE_SIZE_OPTIONS,
-                        }}
-                        visibleContentPreference={{
-                            title: 'Select visible columns',
-                            options: VISIBLE_CONTENT_OPTIONS,
-                        }}
-                    />
-                }
-                empty={
-                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+    const { items, actions, filteredItemsCount, collectionProps, filterProps, paginationProps } = useCollection(
+        allCollections ?? [],
+        {
+            filtering: {
+                empty: (
+                    <Box margin={{ vertical: 'xs' }} textAlign='center'>
                         <SpaceBetween size='m'>
-                            <b>No repositories</b>
+                            <b>No collections</b>
                         </SpaceBetween>
                     </Box>
-                }
-            />
-        </>
+                ),
+            },
+            pagination: { pageSize: preferences.pageSize },
+            sorting: {
+                defaultState: {
+                    sortingColumn: {
+                        sortingField: 'name',
+                    },
+                },
+            },
+            selection: { trackBy: 'collectionId' },
+        }
+    );
+
+    const handleSelectionChange = ({ detail }) => {
+        actions.setSelectedItems(detail.selectedItems);
+        if (detail.selectedItems.length > 0) {
+            const selectedCollection = detail.selectedItems[0];
+            navigate(`/document-library/${selectedCollection.repositoryId}/${selectedCollection.collectionId}`);
+        }
+    };
+
+    return (
+        <Table
+            {...collectionProps}
+            selectedItems={collectionProps.selectedItems}
+            onSelectionChange={handleSelectionChange}
+            columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
+            columnDisplay={preferences.contentDisplay}
+            stickyColumns={{ first: 1, last: 0 }}
+            resizableColumns
+            enableKeyboardNavigation
+            items={items}
+            loading={fetchingCollections && !allCollections}
+            loadingText='Loading collections'
+            selectionType='single'
+            filter={
+                <TextFilter
+                    {...filterProps}
+                    countText={`${filteredItemsCount} ${filteredItemsCount === 1 ? 'match' : 'matches'}`}
+                    filteringPlaceholder='Find collections'
+                />
+            }
+            header={
+                <Header
+                    counter={
+                        collectionProps.selectedItems.length
+                            ? `(${collectionProps.selectedItems.length}/${allCollections?.length || 0})`
+                            : `${allCollections?.length || 0}`
+                    }
+                >
+                    Collections
+                </Header>
+            }
+            pagination={<Pagination {...paginationProps} />}
+            preferences={
+                <CollectionPreferences
+                    title='Preferences'
+                    preferences={preferences}
+                    confirmLabel='Confirm'
+                    cancelLabel='Cancel'
+                    onConfirm={({ detail }) => setPreferences(detail)}
+                    contentDisplayPreference={{
+                        title: 'Select visible columns',
+                        options: getCollectionTablePreference(),
+                    }}
+                    pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}
+                />
+            }
+        />
     );
 }
 

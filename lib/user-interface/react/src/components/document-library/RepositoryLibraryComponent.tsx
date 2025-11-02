@@ -15,7 +15,7 @@
  */
 
 import { ReactElement } from 'react';
-import { Box, CollectionPreferences, Header, Pagination, Table, TextFilter } from '@cloudscape-design/components';
+import { Box, Button, ButtonDropdown, CollectionPreferences, Header, Icon, Pagination, Table, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
     COLLECTION_COLUMN_DEFINITIONS,
@@ -23,16 +23,21 @@ import {
     getDefaultCollectionPreferences,
     PAGE_SIZE_OPTIONS,
 } from './CollectionTableConfig';
-import { useListAllCollectionsQuery } from '../../shared/reducers/rag.reducer';
+import { ragApi, useDeleteCollectionMutation, useListAllCollectionsQuery } from '../../shared/reducers/rag.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { useNavigate } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
+import { useAppDispatch } from '../../config/store';
+import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 
 export function RepositoryLibraryComponent(): ReactElement {
     const {
         data: allCollections,
         isLoading: fetchingCollections,
     } = useListAllCollectionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
+
+    const [deleteCollection, { isLoading: isDeleteLoading }] = useDeleteCollectionMutation();
+    const dispatch = useAppDispatch();
 
     const [preferences, setPreferences] = useLocalStorage(
         'CollectionLibraryPreferences',
@@ -67,9 +72,37 @@ export function RepositoryLibraryComponent(): ReactElement {
 
     const handleSelectionChange = ({ detail }) => {
         actions.setSelectedItems(detail.selectedItems);
-        if (detail.selectedItems.length > 0) {
-            const selectedCollection = detail.selectedItems[0];
-            navigate(`/document-library/${selectedCollection.repositoryId}/${selectedCollection.collectionId}`);
+        // Navigation is now handled by onRowClick to separate selection from navigation
+    };
+
+    const handleAction = async (e: any) => {
+        switch (e.detail.id) {
+            case 'delete': {
+                const selectedCollection = collectionProps.selectedItems[0];
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Delete',
+                        resourceName: 'Collection',
+                        onConfirm: () =>
+                            deleteCollection({
+                                repositoryId: selectedCollection.repositoryId,
+                                collectionId: selectedCollection.collectionId,
+                            }),
+                        description: (
+                            <div>
+                                Are you sure you want to delete the collection{' '}
+                                <strong>{selectedCollection.name || selectedCollection.collectionId}</strong>?
+                                <br />
+                                <br />
+                                This action cannot be undone.
+                            </div>
+                        ),
+                    }),
+                );
+                break;
+            }
+            default:
+                console.error('Action not implemented', e.detail.id);
         }
     };
 
@@ -78,6 +111,10 @@ export function RepositoryLibraryComponent(): ReactElement {
             {...collectionProps}
             selectedItems={collectionProps.selectedItems}
             onSelectionChange={handleSelectionChange}
+            onRowClick={({ detail }) => {
+                const collection = detail.item;
+                navigate(`/document-library/${collection.repositoryId}/${collection.collectionId}`);
+            }}
             columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
             columnDisplay={preferences.contentDisplay}
             stickyColumns={{ first: 1, last: 0 }}
@@ -100,6 +137,33 @@ export function RepositoryLibraryComponent(): ReactElement {
                         collectionProps.selectedItems.length
                             ? `(${collectionProps.selectedItems.length}/${allCollections?.length || 0})`
                             : `${allCollections?.length || 0}`
+                    }
+                    actions={
+                        <SpaceBetween direction='horizontal' size='xs'>
+                            <Button
+                                onClick={() => {
+                                    actions.setSelectedItems([]);
+                                    dispatch(ragApi.util.invalidateTags(['collections']));
+                                }}
+                                ariaLabel='Refresh collections'
+                            >
+                                <Icon name='refresh' />
+                            </Button>
+                            <ButtonDropdown
+                                items={[
+                                    {
+                                        id: 'delete',
+                                        text: 'Delete',
+                                        disabled: collectionProps.selectedItems.length === 0,
+                                    },
+                                ]}
+                                loading={isDeleteLoading}
+                                disabled={collectionProps.selectedItems.length === 0}
+                                onItemClick={handleAction}
+                            >
+                                Actions
+                            </ButtonDropdown>
+                        </SpaceBetween>
                     }
                 >
                     Collections

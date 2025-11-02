@@ -11,9 +11,9 @@
     "preview": "vite preview",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(tsx|js|ts|json)\"",
     "clean": "rm -rf ./dist ./node_modules",
-    "test": "vitest",
+    "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run",
+    "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {

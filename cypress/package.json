@@ -17,7 +17,8 @@
         "cypress:smoke:run": "cypress run --config-file cypress.smoke.config.ts",
         "clean": "rm -rf node_modules/",
         "lint:fix": "eslint --fix src/",
-        "format": "eslint --fix src/"
+        "format": "eslint --fix src/",
+        "test": "echo \"E2E tests run separately via cypress:e2e:run or cypress:smoke:run\""
     },
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [

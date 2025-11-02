@@ -39,7 +39,7 @@
     "copy-dist": "cp VERSION ./dist/",
     "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
-    "test": "jest",
+    "test": "npm run test -ws",
     "cdk": "cdk",
     "prepare": "husky",
     "dev": "cd lib/user-interface/react/ && npm run dev",

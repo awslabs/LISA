@@ -553,6 +553,111 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
     return response
 
 
+@api_wrapper
+def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List all collections user has access to across all repositories.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - queryStringParameters.pageSize: Items per page (optional, default: 20, max: 100)
+            - queryStringParameters.filter: Text filter for name/description (optional)
+            - queryStringParameters.sortBy: Sort field (name, createdAt, updatedAt) (optional, default: createdAt)
+            - queryStringParameters.sortOrder: Sort order (asc, desc) (optional, default: desc)
+            - queryStringParameters.lastEvaluatedKey: Pagination token (optional, JSON string)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - collections: List of collection configurations with repositoryName
+            - pagination: Pagination metadata
+            - lastEvaluatedKey: Pagination token for next page
+            - hasNextPage: Whether there are more pages
+            - hasPreviousPage: Whether there is a previous page
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If authentication fails
+    """
+    # Get user context
+    username, is_admin, groups = get_user_context(event)
+    logger.info(f"list_user_collections called by user={username}, is_admin={is_admin}")
+
+    # Parse query parameters
+    query_params = event.get("queryStringParameters", {}) or {}
+
+    # Parse pagination parameters
+    page_size = PaginationParams.parse_page_size(query_params, default=20, max_size=100)
+
+    # Parse pagination token
+    pagination_token = None
+    if "lastEvaluatedKey" in query_params:
+        try:
+            import json as json_lib
+            pagination_token = json_lib.loads(query_params["lastEvaluatedKey"])
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Failed to parse pagination token: {e}")
+            # Continue without token (start from beginning)
+
+    # Parse filter parameters
+    filter_params = FilterParams.from_query_params(query_params)
+    filter_text = filter_params.filter_text
+
+    # Parse sort parameters
+    sort_by = query_params.get("sortBy", "createdAt")
+    sort_order = query_params.get("sortOrder", "desc")
+
+    # Validate sort parameters
+    valid_sort_by = ["name", "createdAt", "updatedAt"]
+    if sort_by not in valid_sort_by:
+        raise ValidationError(f"Invalid sortBy value. Must be one of: {', '.join(valid_sort_by)}")
+
+    valid_sort_order = ["asc", "desc"]
+    if sort_order not in valid_sort_order:
+        raise ValidationError(f"Invalid sortOrder value. Must be one of: {', '.join(valid_sort_order)}")
+
+    # List collections via service
+    collections, next_token = collection_service.list_all_user_collections(
+        username=username,
+        user_groups=groups,
+        is_admin=is_admin,
+        page_size=page_size,
+        pagination_token=pagination_token,
+        filter_text=filter_text,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+    # Calculate pagination metadata
+    has_next_page = next_token is not None
+    has_previous_page = pagination_token is not None
+
+    # Encode next token as JSON string if present
+    encoded_next_token = None
+    if next_token:
+        try:
+            import json as json_lib
+            encoded_next_token = json_lib.dumps(next_token)
+        except Exception as e:
+            logger.error(f"Failed to encode pagination token: {e}")
+
+    # Build response
+    response = {
+        "collections": collections,
+        "pagination": {
+            "totalCount": None,  # Not calculated for cross-repository queries
+            "currentPage": None,
+            "totalPages": None,
+        },
+        "lastEvaluatedKey": encoded_next_token,
+        "hasNextPage": has_next_page,
+        "hasPreviousPage": has_previous_page,
+    }
+
+    logger.info(f"Returning {len(collections)} collections, hasNextPage={has_next_page}")
+    return response
+
+
 def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -> None:
     """Verify ownership of documents"""
     username = get_username(event)

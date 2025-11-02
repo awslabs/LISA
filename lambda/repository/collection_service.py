@@ -15,10 +15,11 @@
 
 """Collection service for business logic."""
 
+import heapq
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from models.domain_objects import CollectionMetadata, RagCollectionConfig
+from models.domain_objects import CollectionMetadata, CollectionSortBy, RagCollectionConfig, SortOrder
 from repository.collection_repo import CollectionRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.validation import ValidationError
@@ -269,3 +270,557 @@ class CollectionService:
                 merged_metadata.update(metadata)
 
         return merged_metadata
+
+    def list_all_user_collections(
+        self,
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+        page_size: int = 20,
+        pagination_token: Optional[Dict[str, Any]] = None,
+        filter_text: Optional[str] = None,
+        sort_by: str = "createdAt",
+        sort_order: str = "desc",
+    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        List all collections user has access to across all repositories.
+
+        This method orchestrates the complete workflow:
+        1. Get accessible repositories
+        2. Estimate collection count
+        3. Select pagination strategy
+        4. Execute query and return results
+
+        Args:
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+            page_size: Number of items per page
+            pagination_token: Pagination token from previous request
+            filter_text: Optional text filter for name/description
+            sort_by: Field to sort by (name, createdAt, updatedAt)
+            sort_order: Sort order (asc, desc)
+
+        Returns:
+            Tuple of (list of enriched collections, pagination token)
+        """
+        logger.info(
+            f"Listing all user collections for user={username}, is_admin={is_admin}, "
+            f"page_size={page_size}, filter={filter_text}, sort_by={sort_by}"
+        )
+
+        # Get repositories user can access
+        repositories = self._get_accessible_repositories(username, user_groups, is_admin)
+        logger.debug(f"User has access to {len(repositories)} repositories")
+
+        if not repositories:
+            logger.info("User has no accessible repositories, returning empty list")
+            return [], None
+
+        # Estimate total collections
+        estimated_total = self._estimate_total_collections(repositories)
+        logger.info(f"Estimated total collections: {estimated_total}")
+
+        # Select and execute pagination strategy
+        if estimated_total > 1000:
+            logger.info("Using scalable pagination strategy for large dataset")
+            collections, next_token = self._paginate_large_collections(
+                repositories, username, user_groups, is_admin,
+                page_size, pagination_token, filter_text, sort_by, sort_order
+            )
+        else:
+            logger.info("Using simple pagination strategy")
+            collections, next_token = self._paginate_collections(
+                repositories, username, user_groups, is_admin,
+                page_size, pagination_token, filter_text, sort_by, sort_order
+            )
+
+        logger.info(f"Returning {len(collections)} collections")
+        return collections, next_token
+
+    def _get_accessible_repositories(
+        self,
+        username: str,
+        user_groups: List[str],
+        is_admin: bool
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all repositories user has access to.
+
+        Args:
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+
+        Returns:
+            List of repository configurations user can access
+        """
+        all_repos = self.vector_store_repo.get_registered_repositories()
+        
+        if is_admin:
+            logger.debug(f"Admin user has access to all {len(all_repos)} repositories")
+            return all_repos
+        
+        accessible = [
+            repo for repo in all_repos
+            if self._has_repository_access(user_groups, repo)
+        ]
+        logger.debug(f"User has access to {len(accessible)} of {len(all_repos)} repositories")
+        return accessible
+
+    def _has_repository_access(self, user_groups: List[str], repository: Dict[str, Any]) -> bool:
+        """
+        Check if user has access to repository based on groups.
+
+        Args:
+            user_groups: User groups for access control
+            repository: Repository configuration
+
+        Returns:
+            True if user has access, False otherwise
+        """
+        allowed_groups = repository.get("allowedGroups", [])
+        
+        # Public repository (no group restrictions)
+        if not allowed_groups:
+            return True
+        
+        # Check if user has at least one matching group
+        has_access = bool(set(user_groups) & set(allowed_groups))
+        logger.debug(
+            f"Repository {repository.get('repositoryId')} access check: "
+            f"user_groups={user_groups}, allowed_groups={allowed_groups}, has_access={has_access}"
+        )
+        return has_access
+
+    def _enrich_with_repository_metadata(
+        self,
+        collections: List[RagCollectionConfig],
+        repositories: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich collections with repository metadata.
+
+        Args:
+            collections: List of collection configurations
+            repositories: List of repository configurations
+
+        Returns:
+            List of enriched collection dictionaries with repositoryName
+        """
+        # Create repository lookup map
+        repo_map = {repo["repositoryId"]: repo for repo in repositories}
+        
+        enriched = []
+        for collection in collections:
+            collection_dict = collection.model_dump(mode="json")
+            
+            # Add repository name
+            repo_id = collection.repositoryId
+            repository = repo_map.get(repo_id)
+            if repository:
+                collection_dict["repositoryName"] = repository.get("repositoryName", repo_id)
+            else:
+                # Fallback if repository not in map
+                logger.warning(f"Repository {repo_id} not found in accessible repositories")
+                collection_dict["repositoryName"] = repo_id
+            
+            enriched.append(collection_dict)
+        
+        return enriched
+
+    def _estimate_total_collections(self, repositories: List[Dict[str, Any]]) -> int:
+        """
+        Estimate total number of collections across repositories.
+
+        Args:
+            repositories: List of repository configurations
+
+        Returns:
+            Estimated total collection count
+        """
+        total = 0
+        for repo in repositories:
+            try:
+                count = self.collection_repo.count_by_repository(repo["repositoryId"])
+                total += count
+            except Exception as e:
+                logger.warning(f"Failed to count collections for repository {repo['repositoryId']}: {e}")
+                # Continue with other repositories
+        
+        return total
+
+    def _paginate_collections(
+        self,
+        repositories: List[Dict[str, Any]],
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+        page_size: int,
+        pagination_token: Optional[Dict[str, Any]],
+        filter_text: Optional[str],
+        sort_by: str,
+        sort_order: str,
+    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Simple pagination strategy for small-to-medium deployments.
+
+        Aggregates all collections in memory, applies filtering and sorting,
+        then returns requested page.
+
+        Args:
+            repositories: List of accessible repositories
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+            page_size: Number of items per page
+            pagination_token: Pagination token from previous request
+            filter_text: Optional text filter
+            sort_by: Field to sort by
+            sort_order: Sort order (asc/desc)
+
+        Returns:
+            Tuple of (list of enriched collections, next pagination token)
+        """
+        # Parse pagination token
+        offset = 0
+        if pagination_token and pagination_token.get("version") == "v1":
+            offset = pagination_token.get("offset", 0)
+            # Verify filter consistency
+            token_filter = pagination_token.get("filters", {})
+            if (token_filter.get("filter") != filter_text or
+                token_filter.get("sortBy") != sort_by or
+                token_filter.get("sortOrder") != sort_order):
+                logger.warning("Pagination token filters don't match request, resetting to offset 0")
+                offset = 0
+
+        # Aggregate all collections from accessible repositories
+        all_collections: List[RagCollectionConfig] = []
+        
+        for repo in repositories:
+            repo_id = repo["repositoryId"]
+            try:
+                # Query collections for this repository (fetch up to 100 per repo)
+                collections, _ = self.collection_repo.list_by_repository(
+                    repository_id=repo_id,
+                    page_size=100,
+                    last_evaluated_key=None,
+                )
+                
+                # Filter by collection-level permissions
+                accessible = [
+                    c for c in collections
+                    if self.has_access(c, username, user_groups, is_admin)
+                ]
+                
+                all_collections.extend(accessible)
+                logger.debug(f"Repository {repo_id}: {len(accessible)} accessible collections")
+                
+            except Exception as e:
+                logger.error(f"Failed to query collections for repository {repo_id}: {e}")
+                # Continue with other repositories
+
+        # Apply text filtering
+        if filter_text:
+            all_collections = [
+                c for c in all_collections
+                if self._matches_filter(c, filter_text)
+            ]
+            logger.debug(f"After filtering: {len(all_collections)} collections")
+
+        # Apply sorting
+        all_collections = self._sort_collections(all_collections, sort_by, sort_order)
+
+        # Apply pagination
+        start_idx = offset
+        end_idx = start_idx + page_size
+        page_collections = all_collections[start_idx:end_idx]
+
+        # Enrich with repository metadata
+        enriched = self._enrich_with_repository_metadata(page_collections, repositories)
+
+        # Build next token if more pages exist
+        next_token = None
+        if end_idx < len(all_collections):
+            next_token = {
+                "version": "v1",
+                "offset": end_idx,
+                "filters": {
+                    "filter": filter_text,
+                    "sortBy": sort_by,
+                    "sortOrder": sort_order,
+                }
+            }
+
+        return enriched, next_token
+
+    def _matches_filter(self, collection: RagCollectionConfig, filter_text: str) -> bool:
+        """
+        Check if collection matches text filter.
+
+        Args:
+            collection: Collection to check
+            filter_text: Text to search for (case-insensitive)
+
+        Returns:
+            True if collection name or description contains filter text
+        """
+        filter_lower = filter_text.lower()
+        
+        # Check name
+        if collection.name and filter_lower in collection.name.lower():
+            return True
+        
+        # Check description
+        if collection.description and filter_lower in collection.description.lower():
+            return True
+        
+        return False
+
+    def _sort_collections(
+        self,
+        collections: List[RagCollectionConfig],
+        sort_by: str,
+        sort_order: str
+    ) -> List[RagCollectionConfig]:
+        """
+        Sort collections by specified field and order.
+
+        Args:
+            collections: List of collections to sort
+            sort_by: Field to sort by (name, createdAt, updatedAt)
+            sort_order: Sort order (asc, desc)
+
+        Returns:
+            Sorted list of collections
+        """
+        reverse = (sort_order.lower() == "desc")
+        
+        if sort_by == "name":
+            return sorted(collections, key=lambda c: c.name or "", reverse=reverse)
+        elif sort_by == "updatedAt":
+            return sorted(collections, key=lambda c: c.updatedAt, reverse=reverse)
+        else:  # Default to createdAt
+            return sorted(collections, key=lambda c: c.createdAt, reverse=reverse)
+
+    def _paginate_large_collections(
+        self,
+        repositories: List[Dict[str, Any]],
+        username: str,
+        user_groups: List[str],
+        is_admin: bool,
+        page_size: int,
+        pagination_token: Optional[Dict[str, Any]],
+        filter_text: Optional[str],
+        sort_by: str,
+        sort_order: str,
+    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Scalable pagination strategy for large deployments.
+
+        Uses incremental merge with per-repository cursors to handle
+        1000+ collections efficiently without loading all into memory.
+
+        Args:
+            repositories: List of accessible repositories
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
+            page_size: Number of items per page
+            pagination_token: Pagination token from previous request
+            filter_text: Optional text filter
+            sort_by: Field to sort by
+            sort_order: Sort order (asc/desc)
+
+        Returns:
+            Tuple of (list of enriched collections, next pagination token)
+        """
+        # Initialize or restore repository cursors
+        if pagination_token and pagination_token.get("version") == "v2":
+            cursors = pagination_token.get("repositoryCursors", {})
+            global_offset = pagination_token.get("globalOffset", 0)
+            
+            # Verify filter consistency
+            token_filters = pagination_token.get("filters", {})
+            if (token_filters.get("filter") != filter_text or
+                token_filters.get("sortBy") != sort_by or
+                token_filters.get("sortOrder") != sort_order):
+                logger.warning("Pagination token filters don't match, resetting cursors")
+                cursors = {}
+                global_offset = 0
+        else:
+            cursors = {}
+            global_offset = 0
+
+        # Initialize cursors for new repositories
+        for repo in repositories:
+            repo_id = repo["repositoryId"]
+            if repo_id not in cursors:
+                cursors[repo_id] = {
+                    "lastEvaluatedKey": None,
+                    "exhausted": False
+                }
+
+        # Fetch batches from each non-exhausted repository
+        batches = []
+        for repo in repositories:
+            repo_id = repo["repositoryId"]
+            cursor = cursors[repo_id]
+            
+            if cursor["exhausted"]:
+                continue
+            
+            try:
+                # Query collections for this repository
+                collections, next_key = self.collection_repo.list_by_repository(
+                    repository_id=repo_id,
+                    page_size=page_size,  # Fetch page_size per repo
+                    last_evaluated_key=cursor["lastEvaluatedKey"],
+                )
+                
+                # Filter by collection-level permissions
+                accessible = [
+                    c for c in collections
+                    if self.has_access(c, username, user_groups, is_admin)
+                ]
+                
+                # Apply text filtering
+                if filter_text:
+                    accessible = [c for c in accessible if self._matches_filter(c, filter_text)]
+                
+                batches.append({
+                    "repositoryId": repo_id,
+                    "collections": accessible,
+                    "nextKey": next_key
+                })
+                
+                # Update cursor
+                cursors[repo_id]["lastEvaluatedKey"] = next_key
+                cursors[repo_id]["exhausted"] = (next_key is None)
+                
+                logger.debug(
+                    f"Repository {repo_id}: fetched {len(accessible)} collections, "
+                    f"exhausted={cursors[repo_id]['exhausted']}"
+                )
+                
+            except Exception as e:
+                logger.error(f"Failed to query collections for repository {repo_id}: {e}")
+                cursors[repo_id]["exhausted"] = True
+
+        # Merge batches using heap for efficient sorting
+        merged = self._merge_sorted_batches(batches, sort_by, sort_order)
+        
+        # Extract requested page
+        start_idx = global_offset
+        end_idx = start_idx + page_size
+        page_collections = merged[start_idx:end_idx]
+        
+        # Enrich with repository metadata
+        enriched = self._enrich_with_repository_metadata(page_collections, repositories)
+        
+        # Determine if more pages exist
+        has_more = (end_idx < len(merged)) or any(not c["exhausted"] for c in cursors.values())
+        
+        # Build next token
+        next_token = None
+        if has_more:
+            # If we consumed all merged results, reset offset for next fetch
+            new_offset = end_idx if end_idx < len(merged) else 0
+            
+            next_token = {
+                "version": "v2",
+                "repositoryCursors": cursors,
+                "globalOffset": new_offset,
+                "filters": {
+                    "filter": filter_text,
+                    "sortBy": sort_by,
+                    "sortOrder": sort_order,
+                }
+            }
+        
+        return enriched, next_token
+
+    def _merge_sorted_batches(
+        self,
+        batches: List[Dict[str, Any]],
+        sort_by: str,
+        sort_order: str
+    ) -> List[RagCollectionConfig]:
+        """
+        Merge pre-sorted batches from multiple repositories using min-heap.
+
+        Time Complexity: O(N log K) where N = total collections, K = number of repositories
+        Space Complexity: O(N) for merged result
+
+        Args:
+            batches: List of batch dictionaries with collections from each repository
+            sort_by: Field to sort by
+            sort_order: Sort order (asc/desc)
+
+        Returns:
+            Merged and sorted list of collections
+        """
+        if not batches:
+            return []
+        
+        # Create heap with first item from each batch
+        heap: List[Tuple[Any, str, int, Dict[str, Any]]] = []
+        
+        for batch in batches:
+            if batch["collections"]:
+                collection = batch["collections"][0]
+                sort_key = self._get_sort_key(collection, sort_by)
+                
+                # For descending order, negate numeric keys or reverse string comparison
+                if sort_order.lower() == "desc":
+                    if isinstance(sort_key, str):
+                        # For strings, we'll reverse the final list instead
+                        pass
+                    else:
+                        # For datetime/numeric, negate for heap
+                        sort_key = -sort_key.timestamp() if hasattr(sort_key, 'timestamp') else -sort_key
+                
+                heapq.heappush(heap, (sort_key, batch["repositoryId"], 0, batch))
+        
+        merged = []
+        while heap:
+            _, repo_id, idx, batch = heapq.heappop(heap)
+            merged.append(batch["collections"][idx])
+            
+            # Add next item from same batch
+            next_idx = idx + 1
+            if next_idx < len(batch["collections"]):
+                next_collection = batch["collections"][next_idx]
+                next_sort_key = self._get_sort_key(next_collection, sort_by)
+                
+                if sort_order.lower() == "desc":
+                    if isinstance(next_sort_key, str):
+                        pass
+                    else:
+                        next_sort_key = -next_sort_key.timestamp() if hasattr(next_sort_key, 'timestamp') else -next_sort_key
+                
+                heapq.heappush(heap, (next_sort_key, repo_id, next_idx, batch))
+        
+        # For descending string sorts, reverse the final list
+        if sort_order.lower() == "desc" and sort_by == "name":
+            merged.reverse()
+        
+        return merged
+
+    def _get_sort_key(self, collection: RagCollectionConfig, sort_by: str) -> Any:
+        """
+        Extract sort key from collection.
+
+        Args:
+            collection: Collection to extract key from
+            sort_by: Field to sort by
+
+        Returns:
+            Sort key value
+        """
+        if sort_by == "name":
+            return collection.name or ""
+        elif sort_by == "updatedAt":
+            return collection.updatedAt
+        else:  # Default to createdAt
+            return collection.createdAt

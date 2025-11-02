@@ -624,6 +624,54 @@ class PaginationParams:
 
         return last_evaluated_key if last_evaluated_key else None
 
+    @staticmethod
+    def parse_last_evaluated_key_v2(query_params: Dict[str, str]) -> Optional[Dict[str, Any]]:
+        """Parse v2 pagination token from query parameters.
+
+        The v2 token format supports scalable pagination with per-repository cursors.
+        It is passed as a JSON string in the lastEvaluatedKey query parameter.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            Dictionary with v2 pagination token structure, or None if not present
+
+        Token Structure:
+            {
+                "version": "v2",
+                "repositoryCursors": {
+                    "repo-id": {
+                        "lastEvaluatedKey": {...},
+                        "exhausted": bool
+                    }
+                },
+                "globalOffset": int,
+                "filters": {
+                    "filter": str,
+                    "sortBy": str,
+                    "sortOrder": str
+                }
+            }
+        """
+        import json
+        import urllib.parse
+
+        if "lastEvaluatedKey" not in query_params:
+            return None
+
+        try:
+            token_str = urllib.parse.unquote(query_params["lastEvaluatedKey"])
+            token = json.loads(token_str)
+
+            # Validate it's a v2 token
+            if not isinstance(token, dict) or token.get("version") != "v2":
+                return None
+
+            return token
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+
 
 @dataclass
 class FilterParams:

@@ -1249,3 +1249,442 @@ Collections inherit configuration from their parent vector store:
 
 **"Cannot create collection: allowUserCollections is false"**
 - Solution: Contact an administrator to enable user collections or have an admin create the collection
+
+
+### List User Collections (Cross-Repository)
+
+List all collections the user has access to across all repositories. This endpoint aggregates collections from multiple repositories based on user permissions.
+
+**Endpoint:** `GET /repository/collections`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `pageSize` | integer | No | 20 | Number of items per page (max: 100) |
+| `filter` | string | No | - | Text filter for name/description (substring match) |
+| `sortBy` | enum | No | `createdAt` | Sort field: `name`, `createdAt`, or `updatedAt` |
+| `sortOrder` | enum | No | `desc` | Sort order: `asc` or `desc` |
+| `lastEvaluatedKey` | string | No | - | Pagination token (JSON string) from previous response |
+
+**Response (200 OK):**
+
+```json
+{
+  "collections": [
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440000",
+      "repositoryId": "repo-123",
+      "repositoryName": "Legal Repository",
+      "name": "Legal Documents",
+      "description": "Collection for legal contracts and agreements",
+      "chunkingStrategy": {
+        "type": "RECURSIVE",
+        "parameters": {
+          "chunkSize": 1000,
+          "chunkOverlap": 200,
+          "separators": ["\n\n", "\n", ". ", " "]
+        }
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "tags": ["legal", "contracts", "confidential"]
+      },
+      "allowedGroups": ["legal-team", "compliance"],
+      "embeddingModel": "amazon.titan-embed-text-v1",
+      "createdBy": "user-456",
+      "createdAt": "2025-10-13T10:30:00Z",
+      "updatedAt": "2025-10-13T10:30:00Z",
+      "status": "ACTIVE",
+      "private": false,
+      "pipelines": []
+    },
+    {
+      "collectionId": "660e8400-e29b-41d4-a716-446655440001",
+      "repositoryId": "repo-456",
+      "repositoryName": "Technical Repository",
+      "name": "Technical Documentation",
+      "description": "Collection for technical manuals and guides",
+      "chunkingStrategy": {
+        "type": "FIXED",
+        "parameters": {
+          "chunkSize": 1500,
+          "chunkOverlap": 300
+        }
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "tags": ["technical", "documentation"]
+      },
+      "allowedGroups": ["engineering", "support"],
+      "embeddingModel": "amazon.titan-embed-text-v1",
+      "createdBy": "user-789",
+      "createdAt": "2025-10-12T15:20:00Z",
+      "updatedAt": "2025-10-12T15:20:00Z",
+      "status": "ACTIVE",
+      "private": false,
+      "pipelines": []
+    }
+  ],
+  "pagination": {
+    "totalCount": null,
+    "currentPage": null,
+    "totalPages": null
+  },
+  "lastEvaluatedKey": "{\"version\":\"v1\",\"offset\":20,\"filters\":{\"filter\":null,\"sortBy\":\"createdAt\",\"sortOrder\":\"desc\"}}",
+  "hasNextPage": true,
+  "hasPreviousPage": false
+}
+```
+
+**Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `collections` | array[object] | List of collection configurations with repository names |
+| `collections[].repositoryName` | string | Name of the parent repository (enriched field) |
+| `pagination` | object | Pagination metadata (totalCount not available for cross-repo queries) |
+| `lastEvaluatedKey` | string | Pagination token for next page (JSON string, null if no more pages) |
+| `hasNextPage` | boolean | Whether there are more pages |
+| `hasPreviousPage` | boolean | Whether there is a previous page |
+
+**Access Control:**
+
+This endpoint implements a **repository-first permission model**:
+
+1. **Repository-Level Filtering**: First filters repositories based on user's group membership
+2. **Collection-Level Filtering**: Then filters collections within accessible repositories
+3. **Admin Access**: Admin users see all collections from all repositories
+4. **Non-Admin Access**: Non-admin users see collections where:
+   - User's groups intersect with repository's allowed groups, AND
+   - User's groups intersect with collection's allowed groups (or collection inherits from repository), AND
+   - Collection is not private OR user is the creator
+
+**Pagination Strategy:**
+
+The endpoint automatically selects an appropriate pagination strategy based on dataset size:
+
+- **Simple Strategy** (<1000 collections): In-memory aggregation with offset-based pagination
+- **Scalable Strategy** (1000+ collections): Incremental merge with per-repository cursors
+
+**Pagination Token Format:**
+
+The pagination token is a JSON string with two possible formats:
+
+**V1 Token (Simple Strategy):**
+```json
+{
+  "version": "v1",
+  "offset": 20,
+  "filters": {
+    "filter": "legal",
+    "sortBy": "name",
+    "sortOrder": "asc"
+  }
+}
+```
+
+**V2 Token (Scalable Strategy):**
+```json
+{
+  "version": "v2",
+  "repositoryCursors": {
+    "repo-123": {
+      "lastEvaluatedKey": {"collectionId": "...", "repositoryId": "..."},
+      "exhausted": false
+    },
+    "repo-456": {
+      "lastEvaluatedKey": null,
+      "exhausted": true
+    }
+  },
+  "globalOffset": 0,
+  "filters": {
+    "filter": null,
+    "sortBy": "createdAt",
+    "sortOrder": "desc"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status Code | Description | Example |
+|-------------|-------------|---------|
+| 400 | Bad Request - Invalid parameters | `{"error": "Invalid sortBy value. Must be one of: name, createdAt, updatedAt"}` |
+| 401 | Unauthorized - Missing authentication | `{"error": "Authentication required"}` |
+| 500 | Internal Server Error | `{"error": "Failed to retrieve collections"}` |
+
+**Example cURL Request (Basic):**
+
+```bash
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example cURL Request (With Filters):**
+
+```bash
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections?pageSize=50&filter=legal&sortBy=name&sortOrder=asc" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example cURL Request (Pagination):**
+
+```bash
+# First page
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections?pageSize=20" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+
+# Next page (using lastEvaluatedKey from previous response)
+NEXT_TOKEN='{"version":"v1","offset":20,"filters":{"filter":null,"sortBy":"createdAt","sortOrder":"desc"}}'
+curl -X GET "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections?pageSize=20&lastEvaluatedKey=$(echo $NEXT_TOKEN | jq -R -r @uri)" \
+  -H "Authorization: Bearer {YOUR_TOKEN}"
+```
+
+**Example Python Request:**
+
+```python
+import requests
+import json
+import urllib.parse
+
+url = "https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections"
+headers = {
+    "Authorization": "Bearer {YOUR_TOKEN}"
+}
+
+# Basic request
+response = requests.get(url, headers=headers)
+if response.status_code == 200:
+    result = response.json()
+    collections = result['collections']
+    print(f"Found {len(collections)} collections across all repositories")
+
+    for collection in collections:
+        print(f"  - {collection['name']} (Repository: {collection['repositoryName']})")
+
+    # Check for more pages
+    if result['hasNextPage']:
+        print("More pages available")
+        next_token = result['lastEvaluatedKey']
+        print(f"Next page token: {next_token}")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+
+# Request with filters
+params = {
+    "pageSize": 50,
+    "filter": "legal",
+    "sortBy": "name",
+    "sortOrder": "asc"
+}
+response = requests.get(url, headers=headers, params=params)
+if response.status_code == 200:
+    result = response.json()
+    print(f"Filtered results: {len(result['collections'])} collections")
+
+# Pagination example
+def get_all_user_collections(page_size=20):
+    """Fetch all accessible collections with pagination."""
+    all_collections = []
+    last_evaluated_key = None
+
+    while True:
+        params = {"pageSize": page_size}
+
+        # Add pagination token if available
+        if last_evaluated_key:
+            params["lastEvaluatedKey"] = last_evaluated_key
+
+        response = requests.get(
+            f"https://{{API-GATEWAY-DOMAIN}}/{{STAGE}}/repository/collections",
+            headers=headers,
+            params=params
+        )
+
+        if response.status_code != 200:
+            print(f"Error: {response.status_code} - {response.text}")
+            break
+
+        result = response.json()
+        all_collections.extend(result['collections'])
+
+        # Check if there are more pages
+        if not result['hasNextPage']:
+            break
+
+        last_evaluated_key = result['lastEvaluatedKey']
+
+    return all_collections
+
+# Get all accessible collections
+all_collections = get_all_user_collections()
+print(f"Total accessible collections: {len(all_collections)}")
+
+# Group by repository
+from collections import defaultdict
+by_repo = defaultdict(list)
+for collection in all_collections:
+    by_repo[collection['repositoryName']].append(collection['name'])
+
+print("\nCollections by repository:")
+for repo_name, coll_names in by_repo.items():
+    print(f"  {repo_name}: {len(coll_names)} collections")
+    for name in coll_names:
+        print(f"    - {name}")
+```
+
+**Example JavaScript Request:**
+
+```javascript
+const url = 'https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections';
+const headers = {
+  'Authorization': 'Bearer {YOUR_TOKEN}'
+};
+
+// Basic request
+fetch(url, {
+  method: 'GET',
+  headers: headers
+})
+  .then(response => {
+    if (response.status === 200) {
+      return response.json();
+    }
+    throw new Error(`Error: ${response.status}`);
+  })
+  .then(result => {
+    const collections = result.collections;
+    console.log(`Found ${collections.length} collections across all repositories`);
+
+    collections.forEach(collection => {
+      console.log(`  - ${collection.name} (Repository: ${collection.repositoryName})`);
+    });
+
+    // Check for more pages
+    if (result.hasNextPage) {
+      console.log('More pages available');
+      console.log('Next page token:', result.lastEvaluatedKey);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+
+// Request with filters
+const params = new URLSearchParams({
+  pageSize: '50',
+  filter: 'legal',
+  sortBy: 'name',
+  sortOrder: 'asc'
+});
+
+fetch(`${url}?${params}`, {
+  method: 'GET',
+  headers: headers
+})
+  .then(response => response.json())
+  .then(result => {
+    console.log(`Filtered results: ${result.collections.length} collections`);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+
+// Pagination example
+async function getAllUserCollections(pageSize = 20) {
+  const allCollections = [];
+  let lastEvaluatedKey = null;
+
+  while (true) {
+    const params = new URLSearchParams({ pageSize: pageSize.toString() });
+
+    // Add pagination token if available
+    if (lastEvaluatedKey) {
+      params.append('lastEvaluatedKey', lastEvaluatedKey);
+    }
+
+    const response = await fetch(
+      `https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/collections?${params}`,
+      { method: 'GET', headers: headers }
+    );
+
+    if (response.status !== 200) {
+      console.error(`Error: ${response.status}`);
+      break;
+    }
+
+    const result = await response.json();
+    allCollections.push(...result.collections);
+
+    // Check if there are more pages
+    if (!result.hasNextPage) {
+      break;
+    }
+
+    lastEvaluatedKey = result.lastEvaluatedKey;
+  }
+
+  return allCollections;
+}
+
+// Get all accessible collections
+getAllUserCollections()
+  .then(collections => {
+    console.log(`Total accessible collections: ${collections.length}`);
+
+    // Group by repository
+    const byRepo = collections.reduce((acc, collection) => {
+      const repoName = collection.repositoryName;
+      if (!acc[repoName]) {
+        acc[repoName] = [];
+      }
+      acc[repoName].push(collection.name);
+      return acc;
+    }, {});
+
+    console.log('\nCollections by repository:');
+    Object.entries(byRepo).forEach(([repoName, collNames]) => {
+      console.log(`  ${repoName}: ${collNames.length} collections`);
+      collNames.forEach(name => {
+        console.log(`    - ${name}`);
+      });
+    });
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+```
+
+**Use Cases:**
+
+1. **Document Library UI**: Display all collections user can access in a single view
+2. **Collection Browser**: Allow users to browse and search across all their collections
+3. **Access Audit**: Verify which collections a user has access to
+4. **Collection Discovery**: Help users find collections they didn't know existed
+
+**Performance Considerations:**
+
+- **Small Deployments** (<1000 collections): Response time ~100-200ms
+- **Large Deployments** (1000+ collections): Response time ~200-500ms per page
+- **Caching**: Consider caching results for frequently accessed data
+- **Pagination**: Use appropriate page sizes (20-50) for optimal performance
+
+**Comparison with Single-Repository Endpoint:**
+
+| Feature | `/repository/{repositoryId}/collection` | `/repository/collections` |
+|---------|----------------------------------------|---------------------------|
+| Scope | Single repository | All accessible repositories |
+| Repository Name | Not included | Included in response |
+| Total Count | Available | Not available (performance) |
+| Pagination | DynamoDB native | Hybrid (simple/scalable) |
+| Use Case | Repository-specific operations | Cross-repository browsing |
+
+**Best Practices:**
+
+1. **Use Appropriate Page Size**: Start with default (20) and adjust based on UI needs
+2. **Handle Pagination Tokens**: Store and pass tokens as opaque strings
+3. **Filter Early**: Use filter parameter to reduce result set size
+4. **Cache Results**: Cache responses for read-heavy workloads
+5. **Monitor Performance**: Track response times for large datasets

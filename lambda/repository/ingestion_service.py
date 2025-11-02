@@ -85,9 +85,7 @@ class DocumentIngestionService:
             )
 
         # Get embedding model
-        embedding_model_id = (collection.get("embeddingModel") if collection else None) or repository.get(
-            "embeddingModelId"
-        )
+        embedding_model = collection.get("embeddingModel") if collection else repository.get("embeddingModelId")
 
         # Get metadata tags
         metadata = collection_server.get_collection_metadata(repository, collection, request.metadata)
@@ -96,7 +94,7 @@ class DocumentIngestionService:
             repository_id=repository.get("repositoryId"),
             collection_id=collection_id,
             chunk_strategy=chunk_strategy,
-            embedding_model=embedding_model_id,
+            embedding_model=embedding_model,
             s3_path=s3_path,
             username=username,
             metadata=metadata,

@@ -727,6 +727,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
                 document_id=rag_document.document_id,
                 repository_id=rag_document.repository_id,
                 collection_id=rag_document.collection_id,
+                embedding_model=rag_document.collection_id,  # Not needed for deletion
                 chunk_strategy=None,
                 s3_path=rag_document.source,
                 username=rag_document.username,

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict, List
+from models.domain_objects import IngestionJob
 
 
 def retrieve_documents(
@@ -72,7 +73,7 @@ def retrieve_documents(
 def ingest_document_to_kb(
     s3_client: Any,
     bedrock_agent_client: Any,
-    job: Any,
+    job: IngestionJob,
     repository: Dict[str, Any],
 ) -> None:
     """Copy the source object into the KB datasource bucket and trigger ingestion."""
@@ -93,7 +94,7 @@ def ingest_document_to_kb(
 def delete_document_from_kb(
     s3_client: Any,
     bedrock_agent_client: Any,
-    job: Any,
+    job: IngestionJob,
     repository: Dict[str, Any],
 ) -> None:
     """Remove the source object from the KB datasource bucket and re-sync the KB."""

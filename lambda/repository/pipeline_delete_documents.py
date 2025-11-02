@@ -76,6 +76,7 @@ def pipeline_delete(job: IngestionJob) -> None:
 
 
 def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
+    """TODO: Update to handle collection"""
     """Handle pipeline document ingestion."""
 
     # Extract and validate inputs
@@ -109,6 +110,7 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
             ingestion_job = IngestionJob(
                 repository_id=repository_id,
                 collection_id=embedding_model,
+                embedding_model=embedding_model,
                 chunk_strategy=None,
                 s3_path=rag_document.source,
                 username=rag_document.username,

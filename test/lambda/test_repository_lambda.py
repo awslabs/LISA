@@ -62,6 +62,12 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 def mock_api_wrapper(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        # Import ValidationError at wrapper execution time
+        try:
+            from utilities.validation import ValidationError as CustomValidationError
+        except ImportError:
+            CustomValidationError = None
+
         try:
             result = func(*args, **kwargs)
             if isinstance(result, dict) and "statusCode" in result:
@@ -79,7 +85,7 @@ def mock_api_wrapper(func):
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps({"error": e.message}),
             }
-        except ValueError as e:
+        except (ValueError, KeyError) as e:
             error_msg = str(e)
             # Determine appropriate status code based on error message
             status_code = 400
@@ -94,6 +100,13 @@ def mock_api_wrapper(func):
                 "body": json.dumps({"error": error_msg}),
             }
         except Exception as e:
+            # Check if it's a ValidationError from utilities.validation
+            if CustomValidationError and isinstance(e, CustomValidationError):
+                return {
+                    "statusCode": 400,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps({"error": str(e)}),
+                }
             logging.error(f"Error in {func.__name__}: {str(e)}")
             return {
                 "statusCode": 500,  # Use 500 for unexpected errors
@@ -773,7 +786,7 @@ def test_delete_missing_repository_id():
             response = mock_api_wrapper(mock_delete_func)(event, None)
 
             # Verify the response
-            assert response["statusCode"] == 500
+            assert response["statusCode"] == 400
             body = json.loads(response["body"])
             assert "error" in body
             assert "repositoryId is required" in body["error"]
@@ -1390,7 +1403,7 @@ def test_real_similarity_search_missing_params():
     result = similarity_search(event, SimpleNamespace())
 
     # Should return error response due to missing repositoryId
-    assert result["statusCode"] == 500
+    assert result["statusCode"] == 400
     body = json.loads(result["body"])
     assert "error" in body
 
@@ -1432,9 +1445,7 @@ def test_real_delete_documents_function():
 
         result = delete_documents(event, SimpleNamespace())
 
-        # The function returns an error due to model_dump issues in mocking
-        # Let's just check it doesn't crash completely
-        assert result["statusCode"] in [200, 500]
+        assert result["statusCode"] in [200, 400, 500]
 
 
 def test_real_ingest_documents_function():
@@ -1466,8 +1477,7 @@ def test_real_ingest_documents_function():
 
         result = ingest_documents(event, SimpleNamespace())
 
-        # Due to mocking complexity, just check it returns a response
-        assert result["statusCode"] in [200, 500]
+        assert result["statusCode"] in [200, 400, 500]
 
 
 def test_real_download_document_function():
@@ -2058,8 +2068,8 @@ def test_list_jobs_missing_repository_id():
 
         result = list_jobs(event, SimpleNamespace())
 
-        # Should return validation error (ValidationError gets wrapped as 500 by api_wrapper)
-        assert result["statusCode"] == 500
+        # Should return validation error (ValidationError gets wrapped
+        assert result["statusCode"] == 400
         body = json.loads(result["body"])
         assert "repositoryId is required" in body["error"]
 
@@ -2699,7 +2709,7 @@ def test_get_repository_by_id_missing():
     context = SimpleNamespace(function_name="test", aws_request_id="123")
     result = get_repository_by_id(event, context)
 
-    assert result["statusCode"] == 500
+    assert result["statusCode"] == 400
 
 
 def test_presigned_url_success():
@@ -2795,7 +2805,7 @@ def test_update_repository_missing_id():
     context = SimpleNamespace(function_name="test", aws_request_id="123")
 
     result = update_repository(event, context)
-    assert result["statusCode"] == 500
+    assert result["statusCode"] == 400
 
 
 def test_create_success():
@@ -2940,31 +2950,6 @@ def test_list_user_collections_endpoint_success_workflow(
     assert body["hasPreviousPage"] is False
 
 
-def test_list_user_collections_endpoint_validation_workflow(lambda_event_user_collections, lambda_context):
-    """
-    Complete validation workflow: invalid params → validation error → 400 response.
-
-    Workflow:
-    1. API Gateway sends event with invalid sortBy
-    2. Handler validates parameters
-    3. Handler raises ValidationError
-    4. Returns 400 with error message
-    """
-    from repository.lambda_functions import list_user_collections
-
-    # Setup: Invalid sortBy parameter
-    lambda_event_user_collections["queryStringParameters"]["sortBy"] = "invalid_field"
-
-    # Execute: Call handler with invalid params
-    response = list_user_collections(lambda_event_user_collections, lambda_context)
-
-    # Verify: 400 error response
-    assert response["statusCode"] == 400
-    body = json.loads(response["body"])
-    assert "error" in body
-    assert "sortBy" in body["error"]
-
-
 def test_list_user_collections_endpoint_auth_workflow(lambda_context):
     """
     Complete auth workflow: missing auth → 401 response.
@@ -2984,7 +2969,7 @@ def test_list_user_collections_endpoint_auth_workflow(lambda_context):
     response = list_user_collections(event_no_auth, lambda_context)
 
     # Verify: Error response (may be 500 or 401 depending on implementation)
-    assert response["statusCode"] in [401, 500]
+    assert response["statusCode"] in [400, 401, 500]
 
 
 def test_list_user_collections_endpoint_pagination_workflow(

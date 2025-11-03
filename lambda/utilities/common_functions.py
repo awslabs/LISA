@@ -26,6 +26,8 @@ from typing import Any, Callable, cast, Dict, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
+from pydantic import ValidationError
+from utilities.validation import RequestValidationError
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -261,7 +263,12 @@ def generate_exception_response(
     Dict[str, Union[str, int, Dict[str, str]]]
         An HTML response.
     """
+    # Check for ValidationError from utilities.validation or pydantic
     status_code = 400
+    if isinstance(e, RequestValidationError) or isinstance(e, ValidationError):
+        logger.exception(e)
+        return generate_html_response(status_code, str(e))
+
     if hasattr(e, "response"):  # i.e. validate the exception was from an API call
         metadata = e.response.get("ResponseMetadata")
         if metadata:

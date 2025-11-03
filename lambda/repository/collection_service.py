@@ -21,9 +21,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from models.domain_objects import CollectionMetadata, CollectionSortBy, RagCollectionConfig, SortOrder, SortParams
-from pydantic import ValidationError
 from repository.collection_repo import CollectionRepository
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
 

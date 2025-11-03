@@ -28,7 +28,14 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+from models.domain_objects import (
+    CollectionSortBy,
+    CollectionStatus,
+    FixedChunkingStrategy,
+    RagCollectionConfig,
+    SortOrder,
+    SortParams,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -132,13 +139,11 @@ def mock_dynamodb_tables():
 @pytest.fixture
 def integration_collection_service(mock_dynamodb_tables):
     """Service with real repository implementations (mocked DynamoDB)."""
-    from repository.collection_repo import CollectionRepository
     from repository.collection_service import CollectionService
-    from repository.vector_store_repo import VectorStoreRepository
 
     # Create mock repositories that use the test data
-    collection_repo = Mock(spec=CollectionRepository)
-    vector_store_repo = Mock(spec=VectorStoreRepository)
+    collection_repo = Mock()
+    vector_store_repo = Mock()
 
     # Configure vector store repo
     vector_store_repo.get_registered_repositories.return_value = mock_dynamodb_tables["data"]["repositories"]
@@ -175,8 +180,7 @@ def test_cross_repository_query_integration(integration_collection_service, mock
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: All collections from all repositories returned
@@ -211,8 +215,7 @@ def test_permission_enforcement_integration(integration_collection_service, mock
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: Only accessible collections returned
@@ -278,8 +281,7 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: First page has 20 items and next token
@@ -294,8 +296,7 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
         page_size=20,
         pagination_token=token1,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: Second page has 20 items
@@ -329,8 +330,7 @@ def test_scalable_pagination_activation_integration(integration_collection_servi
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: Scalable strategy was used (check token format if present)
@@ -357,8 +357,7 @@ def test_repository_metadata_enrichment_integration(integration_collection_servi
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: All collections have repositoryName

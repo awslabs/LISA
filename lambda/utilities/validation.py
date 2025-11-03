@@ -28,6 +28,11 @@ class ValidationError(Exception):
     pass
 
 
+# Alias for backward compatibility and
+# clarity with Pydantic ValidationError
+RequestValidationError = ValidationError
+
+
 class SecurityError(Exception):
     """Custom exception for security-related errors."""
 

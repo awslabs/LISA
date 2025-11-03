@@ -576,9 +576,7 @@ def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
     pagination_token = None
     if "lastEvaluatedKey" in query_params:
         try:
-            import json as json_lib
-
-            pagination_token = json_lib.loads(query_params["lastEvaluatedKey"])
+            pagination_token = json.loads(query_params["lastEvaluatedKey"])
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning(f"Failed to parse pagination token: {e}")
             # Continue without token (start from beginning)
@@ -609,9 +607,7 @@ def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
     encoded_next_token = None
     if next_token:
         try:
-            import json as json_lib
-
-            encoded_next_token = json_lib.dumps(next_token)
+            encoded_next_token = json.dumps(next_token)
         except Exception as e:
             logger.error(f"Failed to encode pagination token: {e}")
 

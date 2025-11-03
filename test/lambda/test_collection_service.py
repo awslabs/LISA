@@ -38,8 +38,9 @@ def test_create_collection():
 
     with patch("repository.collection_repo.CollectionRepository") as MockRepo:
         mock_repo = Mock()
+        mock_vector_store_repo = Mock()
         MockRepo.return_value = mock_repo
-        service = CollectionService(mock_repo)
+        service = CollectionService(mock_repo, mock_vector_store_repo)
 
         collection = RagCollectionConfig(
             collectionId="test-coll",
@@ -53,6 +54,7 @@ def test_create_collection():
             private=False,
         )
 
+        mock_repo.find_by_name.return_value = None  # No existing collection
         mock_repo.create.return_value = collection
         result = service.create_collection(collection, "user", False)
 

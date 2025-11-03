@@ -30,7 +30,14 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+from models.domain_objects import (
+    CollectionSortBy,
+    CollectionStatus,
+    FixedChunkingStrategy,
+    RagCollectionConfig,
+    SortOrder,
+    SortParams,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -178,8 +185,7 @@ def test_list_all_user_collections_admin_workflow(
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: All collections returned with repository names
@@ -220,8 +226,7 @@ def test_list_all_user_collections_group_access_workflow(
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: Only collections from accessible repositories
@@ -252,8 +257,7 @@ def test_list_all_user_collections_no_access_workflow(
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: Empty list returned
@@ -291,14 +295,29 @@ def test_list_all_user_collections_private_collections_workflow(
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: User sees their own private collection
     collection_ids = [c["collectionId"] for c in collections]
     assert "coll-2" in collection_ids  # User's own private collection
-    assert "coll-3" in collection_ids  # Public collection from repo-2
+
+    # Execute: User1 requests collections (does NOT own private coll-2)
+    collections, next_token = collection_service.list_all_user_collections(
+        username="user1",
+        user_groups=["group1", "group2"],  # Has access to repo-1 and repo-2
+        is_admin=False,
+        page_size=20,
+        pagination_token=None,
+        filter_text=None,
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
+    )
+
+    # Verify: User1 should NOT see user2's private collection
+    collection_ids = [c["collectionId"] for c in collections]
+    assert "coll-2" not in collection_ids  # Private collection owned by user2
+    assert "coll-1" in collection_ids  # User1's own public collection in repo-1
+    assert "coll-3" in collection_ids  # User1's own public collection in repo-2 (creator always has access)
 
 
 def test_pagination_strategy_selection_workflow(
@@ -326,8 +345,7 @@ def test_pagination_strategy_selection_workflow(
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: Scalable strategy was used (indicated by v2 token format if more pages exist)
@@ -366,8 +384,7 @@ def test_paginate_collections_workflow(
         page_size=20,
         pagination_token=None,
         filter_text="First",  # Should match "First collection"
-        sort_by="name",
-        sort_order="asc",
+        sort_params=SortParams(sort_by=CollectionSortBy.NAME, sort_order=SortOrder.ASC),
     )
 
     # Verify: Filtered and sorted results
@@ -405,8 +422,7 @@ def test_repository_metadata_enrichment_workflow(
         page_size=20,
         pagination_token=None,
         filter_text=None,
-        sort_by="createdAt",
-        sort_order="desc",
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
     # Verify: All collections have repositoryName

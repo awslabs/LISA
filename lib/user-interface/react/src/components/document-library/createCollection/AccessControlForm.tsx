@@ -19,11 +19,11 @@ import FormField from '@cloudscape-design/components/form-field';
 import { Alert, SpaceBetween } from '@cloudscape-design/components';
 import { ArrayInputField } from '../../../shared/form/array-input';
 import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
-import { CreateCollectionRequest } from '#root/lib/schema';
+import { RagCollectionConfig } from '#root/lib/schema';
 import { ModifyMethod } from '../../../shared/form/form-props';
 
 export type AccessControlFormProps = {
-    item: CreateCollectionRequest & { repositoryId: string };
+    item: RagCollectionConfig;
     setFields(values: { [key: string]: any }, method?: ModifyMethod): void;
     touchFields(fields: string[], method?: ModifyMethod): void;
     formErrors: any;

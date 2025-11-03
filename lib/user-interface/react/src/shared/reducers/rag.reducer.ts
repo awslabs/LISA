@@ -15,11 +15,15 @@
  */
 
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { lisaBaseQuery } from './reducer.utils';
-import { Model, PaginatedDocumentResponse } from '../../components/types';
+import { lisaBaseQuery } from '@/shared/reducers/reducer.utils';
+import { Model, PaginatedDocumentResponse } from '@/components/types';
 import { Document } from '@langchain/core/documents';
-import { RagRepositoryConfig } from '#root/lib/schema';
-import { RagStatus } from '../model/rag.model';
+import {
+    RagRepositoryConfig,
+    ChunkingStrategy,
+    RagCollectionConfig as SchemaRagCollectionConfig,
+} from '#root/lib/schema';
+import { RagStatus } from '@/shared/model/rag.model';
 
 export type S3UploadRequest = {
     url: string;
@@ -31,8 +35,7 @@ type IngestDocumentRequest = {
     repositoryId: string,
     collectionId?: string,
     repostiroyType: string,
-    chunkSize: number,
-    chunkOverlap: number
+    chunkingStrategy?: ChunkingStrategy;
 };
 
 type IngestDocumentJob = {
@@ -82,11 +85,7 @@ export type IngestionJob = {
     collection_id: string;
     document_id: string;
     repository_id: string;
-    chunk_strategy: {
-        type: string;
-        size: number;
-        overlap: number;
-    };
+    chunk_strategy: ChunkingStrategy;
     username: string;
     status: string;
     created_date: string;
@@ -109,39 +108,8 @@ export type PaginatedIngestionJobsResponse = {
     hasPreviousPage?: boolean;
 };
 
-// Collection types
-export type RagCollectionConfig = {
-    collectionId: string;
-    repositoryId: string;
-    name?: string;
-    description?: string;
-    embeddingModel: string;
-    chunkingStrategy?: {
-        type: string;
-        size: number;
-        overlap: number;
-    };
-    allowedGroups?: string[];
-    createdBy: string;
-    createdAt: string;
-    updatedAt: string;
-    status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
-    private: boolean;
-    metadata?: {
-        tags?: string[];
-        customFields?: Record<string, any>;
-    };
-    allowChunkingOverride?: boolean;
-    pipelines?: Array<{
-        chunkSize?: number;
-        chunkOverlap?: number;
-        embeddingModel?: string;
-        s3Bucket: string;
-        s3Prefix?: string;
-        trigger?: 'daily' | 'event';
-        autoRemove?: boolean;
-    }>;
-};
+// Collection types - using schema definitions
+export type RagCollectionConfig = SchemaRagCollectionConfig;
 
 type ListCollectionsRequest = {
     repositoryId: string;
@@ -156,56 +124,9 @@ type ListCollectionsResponse = {
     lastEvaluatedKey?: any;
 };
 
-type CreateCollectionRequest = {
-    repositoryId: string;
-    name: string;
-    description?: string;
-    embeddingModel?: string;
-    chunkingStrategy?: any;
-    allowedGroups?: string[];
-    metadata?: any;
-    private?: boolean;
-    pipelines?: Array<{
-        chunkSize?: number;
-        chunkOverlap?: number;
-        embeddingModel?: string;
-        s3Bucket?: string;
-        s3Prefix?: string;
-        trigger?: 'daily' | 'event';
-        autoRemove?: boolean;
-    }>;
-};
-
-type DeleteCollectionRequest = {
+type CollectionRequest = {
     repositoryId: string;
     collectionId: string;
-};
-
-type GetCollectionRequest = {
-    repositoryId: string;
-    collectionId: string;
-};
-
-type UpdateCollectionRequest = {
-    repositoryId: string;
-    collectionId: string;
-    name?: string;
-    description?: string;
-    chunkingStrategy?: any;
-    allowedGroups?: string[];
-    metadata?: any;
-    private?: boolean;
-    allowChunkingOverride?: boolean;
-    pipelines?: Array<{
-        chunkSize?: number;
-        chunkOverlap?: number;
-        embeddingModel?: string;
-        s3Bucket?: string;
-        s3Prefix?: string;
-        trigger?: 'daily' | 'event';
-        autoRemove?: boolean;
-    }>;
-    status?: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
 };
 
 export const ragApi = createApi({
@@ -270,7 +191,8 @@ export const ragApi = createApi({
         }),
         ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
             query: (request) => {
-                let url = `repository/${request.repositoryId}/bulk?chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`;
+
+                let url = `repository/${request.repositoryId}/bulk?chunkSize=${request.chunkingStrategy.size}&chunkOverlap=${request.chunkingStrategy.overlap}`;
 
                 // Add collectionId parameter if provided
                 if (request.collectionId) {
@@ -281,7 +203,8 @@ export const ragApi = createApi({
                     url,
                     method: 'POST',
                     data: {
-                        keys: request.documents
+                        keys: request.documents,
+                        chunkingStrategy: request.chunkingStrategy
                     }
                 };
             },
@@ -382,13 +305,13 @@ export const ragApi = createApi({
             transformResponse: (response: ListCollectionsResponse) => response.collections,
             providesTags: ['collections'],
         }),
-        getCollection: builder.query<RagCollectionConfig, GetCollectionRequest>({
+        getCollection: builder.query<RagCollectionConfig, CollectionRequest>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
             }),
             providesTags: ['collections'],
         }),
-        createCollection: builder.mutation<RagCollectionConfig, CreateCollectionRequest>({
+        createCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection`,
                 method: 'POST',
@@ -413,7 +336,7 @@ export const ragApi = createApi({
             },
             invalidatesTags: ['collections'],
         }),
-        deleteCollection: builder.mutation<void, DeleteCollectionRequest>({
+        deleteCollection: builder.mutation<void, CollectionRequest>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
                 method: 'DELETE',
@@ -428,7 +351,7 @@ export const ragApi = createApi({
             },
             invalidatesTags: ['collections'],
         }),
-        updateCollection: builder.mutation<RagCollectionConfig, UpdateCollectionRequest>({
+        updateCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
                 method: 'PUT',

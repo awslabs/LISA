@@ -22,16 +22,14 @@ import Select from '@cloudscape-design/components/select';
 import { Checkbox, SpaceBetween, Textarea } from '@cloudscape-design/components';
 import { useListRagRepositoriesQuery } from '../../../shared/reducers/rag.reducer';
 import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
-import { CreateCollectionRequest } from '#root/lib/schema';
+import { RagCollectionConfig } from '#root/lib/schema';
 
 export type CollectionConfigProps = {
     isEdit: boolean;
 };
 
-type CollectionConfigFormItem = CreateCollectionRequest & { repositoryId: string };
-
 export function CollectionConfigForm(
-    props: FormProps<CollectionConfigFormItem> & CollectionConfigProps
+    props: FormProps<RagCollectionConfig> & CollectionConfigProps
 ): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
     

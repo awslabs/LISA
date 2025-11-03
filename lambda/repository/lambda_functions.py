@@ -24,7 +24,6 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import (
-    CreateCollectionRequest,
     FilterParams,
     IngestDocumentRequest,
     IngestionJob,
@@ -34,7 +33,6 @@ from models.domain_objects import (
     PaginationResult,
     RagCollectionConfig,
     RagDocument,
-    UpdateCollectionRequest,
     UpdateVectorStoreRequest,
 )
 from repository.collection_service import CollectionService
@@ -227,7 +225,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The parent repository ID
-            - body: JSON with collection configuration (CreateCollectionRequest)
+            - body: JSON with collection configuration (RagCollectionConfig)
         context (dict): The Lambda context object
 
     Returns:
@@ -247,7 +245,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Parse request body
     try:
         body = json.loads(event.get("body", {}))
-        request = CreateCollectionRequest(**body)
+        request = RagCollectionConfig(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
@@ -341,7 +339,7 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The parent repository ID
             - pathParameters.collectionId: The collection ID
-            - body: JSON with partial collection updates (UpdateCollectionRequest)
+            - body: JSON with partial collection updates (RagCollectionConfig)
         context (dict): The Lambda context object
 
     Returns:
@@ -366,7 +364,7 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Parse request body
     try:
         body = json.loads(event.get("body", {}))
-        request = UpdateCollectionRequest(**body)
+        request = RagCollectionConfig(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
@@ -749,6 +747,50 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     return {"jobs": jobs}
 
 
+def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_params: dict) -> None:
+    """Handle deprecated chunkSize and chunkOverlap query parameters.
+    
+    This function provides backward compatibility by migrating legacy query parameters
+    to the new chunkingStrategy format. It logs deprecation warnings to encourage
+    migration to the new API format.
+    
+    Args:
+        request: The IngestDocumentRequest object to potentially modify
+        query_params: Query string parameters from the HTTP request
+        
+    Side Effects:
+        - Logs deprecation warning if legacy parameters are detected
+        - Modifies request.chunkingStrategy if legacy parameters are present
+          and chunkingStrategy is not already set
+    
+    Deprecated Parameters:
+        - chunkSize: Size of each chunk (use chunkingStrategy.size instead)
+        - chunkOverlap: Overlap between chunks (use chunkingStrategy.overlap instead)
+    """
+    if "chunkSize" in query_params or "chunkOverlap" in query_params:
+        logger.warning(
+            "DEPRECATION WARNING: Query parameters 'chunkSize' and 'chunkOverlap' are deprecated. "
+            "Please use the 'chunkingStrategy' object in the request body instead. "
+            "Legacy parameters will be removed in a future version."
+        )
+        
+        # Migrate legacy parameters to new format if chunkingStrategy not provided
+        if not request.chunkingStrategy:
+            chunk_size = int(query_params.get("chunkSize", 512))
+            chunk_overlap = int(query_params.get("chunkOverlap", 51))
+            
+            # Create chunkingStrategy from legacy parameters
+            request.chunkingStrategy = {
+                "type": "fixed",
+                "size": chunk_size,
+                "overlap": chunk_overlap
+            }
+            logger.info(
+                f"Migrated legacy parameters to chunkingStrategy: "
+                f"size={chunk_size}, overlap={chunk_overlap}"
+            )
+
+
 @api_wrapper
 def ingest_documents(event: dict, context: dict) -> dict:
     """Ingest documents into the RAG repository."""
@@ -757,6 +799,9 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository_id = event.get("pathParameters", {}).get("repositoryId")
     query_params = event.get("queryStringParameters", {}) or {}
     bucket = os.environ["BUCKET_NAME"]
+
+    # Handle deprecated chunking parameters
+    handle_deprecated_chunking_strategy(request, query_params)
 
     username, is_admin, groups = get_user_context(event)
     repository = get_repository(event, repository_id=repository_id)

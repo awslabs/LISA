@@ -220,7 +220,7 @@ class CollectionService:
         Args:
             collection_id: Collection ID to update
             repository_id: Repository ID
-            request: UpdateCollectionRequest with fields to update
+            request: RagCollectionConfig with fields to update
             username: Username for access control
             user_groups: User groups for access control
             is_admin: Whether user is admin

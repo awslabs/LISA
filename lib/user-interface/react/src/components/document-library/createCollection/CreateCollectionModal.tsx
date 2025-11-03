@@ -16,23 +16,25 @@
 
 import { Modal, Wizard } from '@cloudscape-design/components';
 import { ReactElement, useEffect, useMemo } from 'react';
-import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
-import { useAppDispatch } from '../../../config/store';
-import { useNotificationService } from '../../../shared/util/hooks';
-import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
+import { scrollToInvalid, useValidationReducer } from '@/shared/validation';
+import { useAppDispatch } from '@/config/store';
+import { useNotificationService } from '@/shared/util/hooks';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { 
     useCreateCollectionMutation, 
-    useUpdateCollectionMutation,
-    RagCollectionConfig 
-} from '../../../shared/reducers/rag.reducer';
+    useUpdateCollectionMutation,  
+} from '@/shared/reducers/rag.reducer';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { ChunkingConfigForm } from './ChunkingConfigForm';
 import { AccessControlForm } from './AccessControlForm';
-import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
-import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
-import { ModifyMethod } from '../../../shared/validation/modify-method';
+import { ReviewChanges } from '@/shared/modal/ReviewChanges';
+import { getJsonDifference, normalizeError } from '@/shared/util/validationUtils';
+import { ModifyMethod } from '@/shared/validation/modify-method';
 import _ from 'lodash';
-import { CreateCollectionRequestSchema, CreateCollectionRequest } from '#root/lib/schema';
+import {
+    RagCollectionConfig,
+    RagCollectionConfigSchema
+} from '#root/lib/schema';
 
 export type CreateCollectionModalProps = {
     visible: boolean;
@@ -45,7 +47,7 @@ export type CreateCollectionModalProps = {
 
 export type CollectionCreateState = {
     validateAll: boolean;
-    form: CreateCollectionRequest & { repositoryId: string };
+    form: RagCollectionConfig;
     touched: any;
     formSubmitting: boolean;
     activeStepIndex: number;
@@ -75,7 +77,7 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         },
     ] = useUpdateCollectionMutation();
     
-    const initialForm: CreateCollectionRequest & { repositoryId: string } = {
+    const initialForm: RagCollectionConfig = {
         repositoryId: '',
         name: '',
         description: '',
@@ -99,7 +101,7 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         touchFields,
         errors,
         isValid,
-    } = useValidationReducer(CreateCollectionRequestSchema, {
+    } = useValidationReducer(RagCollectionConfigSchema, {
         validateAll: false as boolean,
         touched: {},
         formSubmitting: false as boolean,

@@ -127,6 +127,77 @@ export function CollectionConfigForm(
                     Make this collection private
                 </Checkbox>
             </FormField>
+            
+            {/* Pipeline Configuration */}
+            <FormField
+                label="Pipeline Configuration"
+                description="Optional: Configure automatic ingestion from S3"
+            >
+                <Checkbox
+                    checked={item.pipelines && item.pipelines.length > 0}
+                    onChange={({ detail }) => {
+                        if (detail.checked) {
+                            setFields({ 
+                                pipelines: [{ 
+                                    s3Bucket: '', 
+                                    s3Prefix: '',
+                                    trigger: 'event' as const,
+                                    autoRemove: true,
+                                }] 
+                            });
+                        } else {
+                            setFields({ pipelines: [] });
+                        }
+                    }}
+                >
+                    Enable S3 pipeline ingestion
+                </Checkbox>
+            </FormField>
+            
+            {/* S3 Bucket - only show if pipeline is enabled */}
+            {item.pipelines && item.pipelines.length > 0 && (
+                <>
+                    <FormField
+                        label="S3 Bucket"
+                        errorText={formErrors?.pipelines?.[0]?.s3Bucket}
+                        description="S3 bucket to monitor for new documents"
+                    >
+                        <Input
+                            value={item.pipelines[0].s3Bucket || ''}
+                            onChange={({ detail }) => {
+                                const updatedPipelines = [...(item.pipelines || [])];
+                                updatedPipelines[0] = {
+                                    ...updatedPipelines[0],
+                                    s3Bucket: detail.value
+                                };
+                                setFields({ pipelines: updatedPipelines });
+                            }}
+                            onBlur={() => touchFields(['pipelines.0.s3Bucket'])}
+                            placeholder="my-documents-bucket"
+                        />
+                    </FormField>
+                    
+                    <FormField
+                        label="S3 Prefix (optional)"
+                        errorText={formErrors?.pipelines?.[0]?.s3Prefix}
+                        description="Optional: Only monitor objects with this prefix"
+                    >
+                        <Input
+                            value={item.pipelines[0].s3Prefix || ''}
+                            onChange={({ detail }) => {
+                                const updatedPipelines = [...(item.pipelines || [])];
+                                updatedPipelines[0] = {
+                                    ...updatedPipelines[0],
+                                    s3Prefix: detail.value
+                                };
+                                setFields({ pipelines: updatedPipelines });
+                            }}
+                            onBlur={() => touchFields(['pipelines.0.s3Prefix'])}
+                            placeholder="documents/engineering/"
+                        />
+                    </FormField>
+                </>
+            )}
         </SpaceBetween>
     );
 }

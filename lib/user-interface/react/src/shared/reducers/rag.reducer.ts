@@ -132,7 +132,15 @@ export type RagCollectionConfig = {
         customFields?: Record<string, any>;
     };
     allowChunkingOverride?: boolean;
-    pipelines?: any[];
+    pipelines?: Array<{
+        chunkSize?: number;
+        chunkOverlap?: number;
+        embeddingModel?: string;
+        s3Bucket: string;
+        s3Prefix?: string;
+        trigger?: 'daily' | 'event';
+        autoRemove?: boolean;
+    }>;
 };
 
 type ListCollectionsRequest = {
@@ -157,6 +165,15 @@ type CreateCollectionRequest = {
     allowedGroups?: string[];
     metadata?: any;
     private?: boolean;
+    pipelines?: Array<{
+        chunkSize?: number;
+        chunkOverlap?: number;
+        embeddingModel?: string;
+        s3Bucket?: string;
+        s3Prefix?: string;
+        trigger?: 'daily' | 'event';
+        autoRemove?: boolean;
+    }>;
 };
 
 type DeleteCollectionRequest = {
@@ -179,7 +196,15 @@ type UpdateCollectionRequest = {
     metadata?: any;
     private?: boolean;
     allowChunkingOverride?: boolean;
-    pipelines?: any[];
+    pipelines?: Array<{
+        chunkSize?: number;
+        chunkOverlap?: number;
+        embeddingModel?: string;
+        s3Bucket?: string;
+        s3Prefix?: string;
+        trigger?: 'daily' | 'event';
+        autoRemove?: boolean;
+    }>;
     status?: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
 };
 
@@ -375,6 +400,7 @@ export const ragApi = createApi({
                     allowedGroups: request.allowedGroups,
                     metadata: request.metadata,
                     private: request.private,
+                    pipelines: request.pipelines,
                 },
             }),
             transformErrorResponse: (baseQueryReturnValue) => {

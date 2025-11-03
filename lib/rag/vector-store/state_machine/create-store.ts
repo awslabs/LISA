@@ -23,6 +23,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { VectorStoreStatus } from './vector-store-status';
 
 type CreateStoreStateMachineProps = BaseProps & {
     executionRole: iam.IRole;
@@ -47,7 +48,7 @@ export class CreateStoreStateMachine extends Construct {
             table: vectorStoreConfigTable,
             item: {
                 repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')),
-                status: tasks.DynamoAttributeValue.fromString('CREATE_IN_PROGRESS'),
+                status: tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_IN_PROGRESS),
                 config: tasks.DynamoAttributeValue.mapFromJsonPath('$.config')
             },
             resultPath: '$.dynamoResult',
@@ -94,7 +95,7 @@ export class CreateStoreStateMachine extends Construct {
             updateExpression: 'SET #status = :status',
             expressionAttributeNames: { '#status': 'status' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString('CREATE_COMPLETE')
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_COMPLETE)
             },
         });
 
@@ -105,7 +106,7 @@ export class CreateStoreStateMachine extends Construct {
             updateExpression: 'SET #status = :status, #stackName = :stackName',
             expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString('CREATE_COMPLETE'),
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_COMPLETE),
                 ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName') ?? '')
             },
         });
@@ -117,7 +118,7 @@ export class CreateStoreStateMachine extends Construct {
             updateExpression: 'SET #status = :status, #stackName = :stackName',
             expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString('CREATE_FAILED'),
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_FAILED),
                 ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName'))
             },
         });
@@ -135,9 +136,9 @@ export class CreateStoreStateMachine extends Construct {
                                     sfn.Condition.and(
                                         sfn.Condition.isPresent('$.deployResult.status'),
                                         sfn.Condition.or(
-                                            sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_IN_PROGRESS'),
-                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_IN_PROGRESS'),
-                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.CREATE_IN_PROGRESS),
+                                            sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_IN_PROGRESS),
+                                            sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS),
                                         ),
                                     ),
                                     wait.next(checkDeploymentStatus)
@@ -146,8 +147,8 @@ export class CreateStoreStateMachine extends Construct {
                                     sfn.Condition.and(
                                         sfn.Condition.isPresent('$.deployResult.status'),
                                         sfn.Condition.or(
-                                            sfn.Condition.stringEquals('$.deployResult.status', 'CREATE_COMPLETE'),
-                                            sfn.Condition.stringEquals('$.deployResult.status', 'UPDATE_COMPLETE'),
+                                            sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.CREATE_COMPLETE),
+                                            sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_COMPLETE),
                                         ),
                                     ),
                                     updateSuccessStatus

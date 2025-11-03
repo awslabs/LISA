@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig } from '@/shared/reducers/rag.reducer';
+import { VectorStoreStatus } from '#root/lib/schema';
 
 export type RagConfig = {
     collection?: RagCollectionConfig;
@@ -34,7 +35,7 @@ type RagControlProps = {
     ragConfig: RagConfig;
 };
 
-export default function RagControls ({isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
+export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
     const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
@@ -47,11 +48,13 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
         }
     );
 
-    const { data: allModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+    const { data: allModels } = useGetAllModelsQuery(undefined, {
+        refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isLoading: state.isLoading,
             data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
-        })});
+        })
+    });
 
     const [userHasSelectedCollection, setUserHasSelectedCollection] = useState<boolean>(false);
 
@@ -59,6 +62,13 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
 
     const selectedRepositoryOption = ragConfig?.repositoryId ?? '';
     const selectedCollectionOption = ragConfig?.collection?.collectionId ?? '';
+
+    const filteredRepositories = useMemo(() => {
+        if (!repositories) return [];
+        return repositories.filter((repo) =>
+            repo.status === VectorStoreStatus.CREATE_COMPLETE || repo.status === VectorStoreStatus.UPDATE_COMPLETE
+        );
+    }, [repositories]);
 
     const collectionOptions = useMemo(() => {
         if (!collections) return [];
@@ -87,8 +97,8 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
         }
 
         // Set default embedding model when no collection is selected
-        if (currentRepositoryId && repositories && allModels && !userHasSelectedCollection) {
-            const repository = repositories.find((repo) => repo.repositoryId === currentRepositoryId);
+        if (currentRepositoryId && filteredRepositories && allModels && !userHasSelectedCollection) {
+            const repository = filteredRepositories.find((repo) => repo.repositoryId === currentRepositoryId);
 
             if (repository?.embeddingModelId && !ragConfig?.collection) {
                 const defaultModel = allModels.find((model) => model.modelId === repository.embeddingModelId);
@@ -105,7 +115,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
         ragConfig?.repositoryId,
         ragConfig?.collection,
         ragConfig?.embeddingModel,
-        repositories,
+        filteredRepositories,
         allModels,
         userHasSelectedCollection,
         setRagConfig
@@ -116,7 +126,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
         setUserHasSelectedCollection(false); // Reset collection selection flag
 
         if (newRepositoryId) {
-            const repository = repositories?.find((repo) => repo.repositoryId === newRepositoryId);
+            const repository = filteredRepositories?.find((repo) => repo.repositoryId === newRepositoryId);
             setRagConfig((config) => ({
                 ...config,
                 repositoryId: newRepositoryId,
@@ -157,7 +167,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
             }
         } else {
             // User cleared collection - fall back to repository default
-            const repository = repositories?.find(
+            const repository = filteredRepositories?.find(
                 (repo) => repo.repositoryId === ragConfig?.repositoryId
             );
             const defaultModel = allModels?.find(
@@ -190,7 +200,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                     value={selectedRepositoryOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}
                     onChange={handleRepositoryChange}
-                    options={repositories?.map((repository) => ({
+                    options={filteredRepositories?.map((repository) => ({
                         value: repository.repositoryId,
                         label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId
                     })) || []}

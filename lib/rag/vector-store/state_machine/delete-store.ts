@@ -30,6 +30,7 @@ import { getDefaultRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
 import { LAMBDA_PATH } from '../../../util';
+import { VectorStoreStatus } from './vector-store-status';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,
@@ -120,7 +121,7 @@ export class DeleteStoreStateMachine extends Construct {
             updateExpression: 'SET #status = :status',
             expressionAttributeNames: { '#status': 'status' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString('DELETE_IN_PROGRESS'),
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.DELETE_IN_PROGRESS),
             },
             resultPath: '$.updateDynamoDbResult',
         });
@@ -186,7 +187,7 @@ export class DeleteStoreStateMachine extends Construct {
         }))
             .next(
                 new sfn.Choice(this, 'DeletionSuccessful?')
-                    .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_FAILED'), updateFailureStatus)
+                    .when(sfn.Condition.stringEquals('$.checkResult.status', VectorStoreStatus.DELETE_FAILED), updateFailureStatus)
                     .otherwise(wait.next(checkStackStatus))
             );
         // Define the sequence of tasks and conditions in the state machine

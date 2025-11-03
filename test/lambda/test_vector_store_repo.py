@@ -53,7 +53,6 @@ def test_vector_store_repo_find_by_id():
                     "repositoryId": "test-repo",
                     "name": "Test Repo",
                     "type": "opensearch",
-                    "status": "active",
                 },
                 "status": "active",
             }
@@ -84,7 +83,6 @@ def test_vector_store_repo_get_registered():
                         "repositoryId": "repo1",
                         "name": "Repo 1",
                         "type": "opensearch",
-                        "status": "active",
                     },
                     "status": "active",
                 }

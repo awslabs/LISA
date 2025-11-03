@@ -50,7 +50,7 @@ export function RepositoryTable (): ReactElement {
         refetchOnMountOrArgChange: 30,
         pollingInterval: shouldPoll ? Duration.fromObject({seconds: 30}) : undefined
     });
-    const tableDefinition: ReadonlyArray<TableRow> = getTableDefinition(ragStatusHook);
+    const tableDefinition: ReadonlyArray<TableRow> = getTableDefinition();
     const [preferences, setPreferences] = useLocalStorage('RepositoryPreferences', getDefaultPreferences(tableDefinition));
     const [newRepositoryModalVisible, setNewRepositoryModalVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);

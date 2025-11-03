@@ -17,6 +17,36 @@ import { z } from 'zod';
 import { EbsDeviceVolumeType } from './cdk';
 
 /**
+ * Defines possible states for a vector store deployment.
+ * These statuses are used by both create-store and delete-store state machines.
+ */
+export enum VectorStoreStatus {
+    /** Vector store creation is in progress */
+    CREATE_IN_PROGRESS = 'CREATE_IN_PROGRESS',
+
+    /** Vector store creation completed successfully */
+    CREATE_COMPLETE = 'CREATE_COMPLETE',
+
+    /** Vector store creation failed */
+    CREATE_FAILED = 'CREATE_FAILED',
+
+    /** Vector store update is in progress */
+    UPDATE_IN_PROGRESS = 'UPDATE_IN_PROGRESS',
+
+    /** Vector store update completed successfully */
+    UPDATE_COMPLETE = 'UPDATE_COMPLETE',
+
+    /** Vector store update cleanup is in progress */
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+
+    /** Vector store deletion is in progress */
+    DELETE_IN_PROGRESS = 'DELETE_IN_PROGRESS',
+
+    /** Vector store deletion failed */
+    DELETE_FAILED = 'DELETE_FAILED',
+}
+
+/**
  * Enum for different types of RAG repositories available
  */
 export enum RagRepositoryType {
@@ -111,6 +141,7 @@ export const RagRepositoryConfigSchema = z
         allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
         allowUserCollections: z.boolean().default(true).describe('Whether non-admin users can create collections in this repository.'),
         metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
+        status: z.nativeEnum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||

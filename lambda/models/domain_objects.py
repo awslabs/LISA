@@ -756,9 +756,29 @@ class SortParams:
 class CollectionStatus(str, Enum):
     """Defines possible states for a collection."""
 
+    def __str__(self) -> str:
+        """Returns string representation of the enum value."""
+        return str(self.value)
+
     ACTIVE = "ACTIVE"
     ARCHIVED = "ARCHIVED"
     DELETED = "DELETED"
+
+
+class VectorStoreStatus(str, Enum):
+    """Defines possible states for a vector store deployment."""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value."""
+        return str(self.value)
+
+    CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
+    CREATE_COMPLETE = "CREATE_COMPLETE"
+    CREATE_FAILED = "CREATE_FAILED"
+    UPDATE_IN_PROGRESS = "UPDATE_IN_PROGRESS"
+    UPDATE_COMPLETE = "UPDATE_COMPLETE"
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"
+    UNKNOWN = "UNKNOWN"
 
 
 class PipelineTrigger(str, Enum):
@@ -902,6 +922,10 @@ class ListCollectionsResponse(PaginatedResponse):
 class CollectionSortBy(str, Enum):
     """Defines sort options for collection listing."""
 
+    def __str__(self) -> str:
+        """Returns string representation of the enum value."""
+        return str(self.value)
+
     NAME = "name"
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"
@@ -909,6 +933,10 @@ class CollectionSortBy(str, Enum):
 
 class SortOrder(str, Enum):
     """Defines sort order options."""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value."""
+        return str(self.value)
 
     ASC = "asc"
     DESC = "desc"
@@ -939,7 +967,7 @@ class VectorStoreConfig(BaseModel):
         default=None, description="Bedrock Knowledge Base configuration"
     )
     # Status and timestamps
-    status: Optional[str] = Field(default=None, description="Repository status")
+    status: Optional[str] = VectorStoreStatus.UNKNOWN
     createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 

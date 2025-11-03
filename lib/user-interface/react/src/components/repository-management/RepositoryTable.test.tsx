@@ -16,7 +16,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { RepositoryTable } from './RepositoryTable';
 import { renderWithProviders } from '../../test/helpers/render';
 import { createMockRepositories } from '../../test/factories/repository.factory';
@@ -51,7 +50,7 @@ vi.mock('../../shared/reducers/rag.reducer', async () => {
 });
 
 vi.mock('./createRepository/CreateRepositoryModal', () => ({
-    default: () => <div data-testid="create-repository-modal">Create Repository Modal</div>,
+    default: () => <div data-testid='create-repository-modal'>Create Repository Modal</div>,
 }));
 
 describe('RepositoryTable', () => {

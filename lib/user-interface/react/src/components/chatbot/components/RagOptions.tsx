@@ -38,16 +38,16 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
     const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
-    
+
     const { data: collections, isLoading: isLoadingCollections } = useListCollectionsQuery(
         { repositoryId: ragConfig?.repositoryId },
-        { 
+        {
             skip: !ragConfig?.repositoryId,
-            refetchOnMountOrArgChange: 5 
+            refetchOnMountOrArgChange: 5
         }
     );
-    
-    const { data: allModels, isLoading: isLoadingModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
+
+    const { data: allModels } = useGetAllModelsQuery(undefined, {refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             isLoading: state.isLoading,
             data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
@@ -59,7 +59,6 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
     const lastRepositoryIdRef = useRef<string>(undefined);
 
     const selectedRepositoryOption = ragConfig?.repositoryId ?? '';
-    const selectedEmbeddingOption = ragConfig?.embeddingModel?.modelId ?? '';
     const selectedCollectionOption = ragConfig?.collection?.collectionId ?? '';
 
     const collectionOptions = useMemo(() => {
@@ -69,18 +68,6 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
             label: collection.name || collection.collectionId,
         }));
     }, [collections]);
-
-    const embeddingOptions = useMemo(() => {
-        if (!allModels || !selectedRepositoryOption) return [];
-
-        const repository = repositories?.find((repo) => repo.repositoryId === selectedRepositoryOption);
-        const defaultModelId = repository?.embeddingModelId;
-
-        return allModels.map((model) => ({
-            value: model.modelId,
-            label: model.modelId + (model.modelId === defaultModelId ? ' (default)' : '')
-        }));
-    }, [allModels, repositories, selectedRepositoryOption]);
 
     // Update useRag flag based on repository and embedding model availability
     useEffect(() => {
@@ -117,12 +104,12 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
             }
         }
     }, [
-        ragConfig?.repositoryId, 
-        ragConfig?.collection, 
+        ragConfig?.repositoryId,
+        ragConfig?.collection,
         ragConfig?.embeddingModel,
-        repositories, 
-        allModels, 
-        userHasSelectedCollection, 
+        repositories,
+        allModels,
+        userHasSelectedCollection,
         setRagConfig
     ]);
 
@@ -174,7 +161,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
     const handleCollectionChange = ({ detail }) => {
         const newCollectionId = detail.value;
         setUserHasSelectedCollection(true);
-        
+
         if (newCollectionId) {
             const collection = collections?.find(
                 (c) => c.collectionId === newCollectionId
@@ -184,7 +171,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                 const embeddingModel = allModels?.find(
                     (model) => model.modelId === collection.embeddingModel
                 );
-                
+
                 setRagConfig((config) => ({
                     ...config,
                     collection: collection,
@@ -199,7 +186,7 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
             const defaultModel = allModels?.find(
                 (model) => model.modelId === repository?.embeddingModelId
             );
-            
+
             setRagConfig((config) => ({
                 ...config,
                 collection: undefined,

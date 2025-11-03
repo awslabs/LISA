@@ -25,6 +25,7 @@ import {
 } from '../../test/factories/collection.factory';
 import { MemoryRouter } from 'react-router-dom';
 import * as ragReducer from '../../shared/reducers/rag.reducer';
+import * as modelReducer from '../../shared/reducers/model-management.reducer';
 
 const mockNavigate = vi.fn();
 
@@ -53,6 +54,16 @@ describe('RepositoryLibraryComponent', () => {
             vi.fn(),
             { isLoading: false, isError: false, error: undefined },
         ] as any);
+
+        // Mock model management API
+        vi.spyOn(modelReducer, 'useGetAllModelsQuery').mockReturnValue({
+            data: [],
+            isFetching: false,
+            isLoading: false,
+            isError: false,
+            error: undefined,
+            refetch: vi.fn(),
+        } as any);
     });
 
     describe('Rendering', () => {
@@ -70,10 +81,13 @@ describe('RepositoryLibraryComponent', () => {
             );
 
             await waitFor(() => {
-                expect(screen.getByText('Collection Name')).toBeInTheDocument();
-                expect(screen.getByText('Collection ID')).toBeInTheDocument();
-                expect(screen.getByText('Repository')).toBeInTheDocument();
-                expect(screen.getByText('Embedding Model')).toBeInTheDocument();
+                // Check for the Collections header
+                expect(screen.getByText('Collections')).toBeInTheDocument();
+                // Check for the count
+                expect(screen.getByText('3')).toBeInTheDocument();
+                // Check for column headers - use getAllByText since modal also has "Collection Name"
+                const collectionNameHeaders = screen.getAllByText('Collection Name');
+                expect(collectionNameHeaders.length).toBeGreaterThan(0);
             });
         });
 

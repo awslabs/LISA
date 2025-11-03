@@ -20,14 +20,15 @@ import { Provider } from 'react-redux';
 import { configureStore, PreloadedState } from '@reduxjs/toolkit';
 import User from '../../shared/reducers/user.reducer';
 import { ragApi } from '../../shared/reducers/rag.reducer';
+import { modelManagementApi } from '../../shared/reducers/model-management.reducer';
 
-interface ExtendedRenderOptions extends Omit<RenderOptions, 'queries'> {
+type ExtendedRenderOptions = {
     preloadedState?: PreloadedState<any>;
     store?: any;
     apis?: any[];
-}
+} & Omit<RenderOptions, 'queries'>;
 
-export function renderWithProviders(
+export function renderWithProviders (
     ui: ReactElement,
     {
         preloadedState = {},
@@ -36,6 +37,7 @@ export function renderWithProviders(
             reducer: {
                 user: User,
                 [ragApi.reducerPath]: ragApi.reducer,
+                [modelManagementApi.reducerPath]: modelManagementApi.reducer,
                 ...apis.reduce((acc, api) => {
                     acc[api.reducerPath] = api.reducer;
                     return acc;
@@ -44,14 +46,16 @@ export function renderWithProviders(
             middleware: (getDefaultMiddleware) =>
                 apis.reduce(
                     (middleware, api) => middleware.concat(api.middleware),
-                    getDefaultMiddleware().concat(ragApi.middleware)
+                    getDefaultMiddleware()
+                        .concat(ragApi.middleware)
+                        .concat(modelManagementApi.middleware)
                 ),
             preloadedState,
         }),
         ...renderOptions
     }: ExtendedRenderOptions = {}
 ) {
-    function Wrapper({ children }: { children: React.ReactNode }) {
+    function Wrapper ({ children }: { children: React.ReactNode }) {
         return <Provider store={store}>{children}</Provider>;
     }
 

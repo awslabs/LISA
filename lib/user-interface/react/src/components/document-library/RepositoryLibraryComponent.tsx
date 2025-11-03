@@ -31,7 +31,7 @@ import { useAppDispatch } from '../../config/store';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { CreateCollectionModal } from './createCollection/CreateCollectionModal';
 
-export function RepositoryLibraryComponent(): ReactElement {
+export function RepositoryLibraryComponent (): ReactElement {
     const {
         data: allCollections,
         isLoading: fetchingCollections,
@@ -71,7 +71,9 @@ export function RepositoryLibraryComponent(): ReactElement {
                     },
                 },
             },
-            selection: { trackBy: 'collectionId' },
+            selection: {
+                trackBy: (item) => `${item.repositoryId}#${item.collectionId}`,
+            },
         }
     );
 

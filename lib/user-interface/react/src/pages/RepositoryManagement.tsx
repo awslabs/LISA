@@ -17,11 +17,11 @@
 import { ReactElement, useEffect } from 'react';
 import RepositoryManagementComponent from '../components/repository-management/RepositoryManagementComponent';
 
-export interface RepositoryManagementProps {
+export type RepositoryManagementProps = {
     setNav: (nav: React.ReactNode | null) => void;
-}
+};
 
-export function RepositoryManagement({ setNav }: RepositoryManagementProps): ReactElement {
+export function RepositoryManagement ({ setNav }: RepositoryManagementProps): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);

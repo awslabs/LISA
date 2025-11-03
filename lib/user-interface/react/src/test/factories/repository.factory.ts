@@ -16,7 +16,7 @@
 
 import { RagRepositoryConfig } from '#root/lib/schema';
 
-export function createMockRepository(overrides?: Partial<RagRepositoryConfig>): RagRepositoryConfig {
+export function createMockRepository (overrides?: Partial<RagRepositoryConfig>): RagRepositoryConfig {
     return {
         repositoryId: 'test-repo-1',
         repositoryName: 'Test Repository',
@@ -27,8 +27,8 @@ export function createMockRepository(overrides?: Partial<RagRepositoryConfig>): 
     };
 }
 
-export function createMockRepositories(count: number): RagRepositoryConfig[] {
-    return Array.from({ length: count }, (_, i) => 
+export function createMockRepositories (count: number): RagRepositoryConfig[] {
+    return Array.from({ length: count }, (_, i) =>
         createMockRepository({
             repositoryId: `test-repo-${i + 1}`,
             repositoryName: `Test Repository ${i + 1}`,

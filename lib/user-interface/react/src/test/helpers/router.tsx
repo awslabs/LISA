@@ -18,18 +18,18 @@ import { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { MemoryRouter, MemoryRouterProps } from 'react-router-dom';
 
-interface RouterRenderOptions extends Omit<RenderOptions, 'queries'> {
+type RouterRenderOptions = {
     routerProps?: MemoryRouterProps;
-}
+} & Omit<RenderOptions, 'queries'>;
 
-export function renderWithRouter(
+export function renderWithRouter (
     ui: ReactElement,
     {
         routerProps = {},
         ...renderOptions
     }: RouterRenderOptions = {}
 ) {
-    function Wrapper({ children }: { children: React.ReactNode }) {
+    function Wrapper ({ children }: { children: React.ReactNode }) {
         return <MemoryRouter {...routerProps}>{children}</MemoryRouter>;
     }
 

@@ -19,12 +19,12 @@ import { Header } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import RepositoryTable from './RepositoryTable';
 
-export function RepositoryManagementComponent(): ReactElement {
+export function RepositoryManagementComponent (): ReactElement {
     return (
-        <SpaceBetween size="m">
+        <SpaceBetween size='m'>
             <Header
-                variant="h1"
-                description="Manage RAG repositories and vector stores"
+                variant='h1'
+                description='Manage RAG repositories and vector stores'
             >
                 Repository Management
             </Header>

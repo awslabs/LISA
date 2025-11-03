@@ -29,38 +29,38 @@ export type ChunkingConfigFormProps = {
     formErrors: any;
 };
 
-export function ChunkingConfigForm(props: ChunkingConfigFormProps): ReactElement {
+export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
     const { item, touchFields, setFields, formErrors } = props;
-    
+
     // Chunking type options
     const chunkingTypeOptions = [
         { label: 'Fixed Size', value: ChunkingStrategyType.FIXED },
         // Future: { label: 'Semantic', value: ChunkingStrategyType.SEMANTIC },
         // Future: { label: 'Recursive', value: ChunkingStrategyType.RECURSIVE },
     ];
-    
+
     return (
-        <SpaceBetween size="s">
-            <Alert type="info">
-                Chunking strategy is optional. If not specified, the collection will inherit 
+        <SpaceBetween size='s'>
+            <Alert type='info'>
+                Chunking strategy is optional. If not specified, the collection will inherit
                 the chunking strategy from its parent repository.
             </Alert>
-            
+
             {/* Chunking Type */}
-            <FormField 
-                label="Chunking Type"
+            <FormField
+                label='Chunking Type'
                 errorText={formErrors?.['chunkingStrategy.type'] || formErrors?.chunkingStrategy?.type}
-                description="How documents should be split into chunks"
+                description='How documents should be split into chunks'
             >
                 <Select
                     selectedOption={
-                        item?.type 
+                        item?.type
                             ? { label: 'Fixed Size', value: item.type }
                             : null
                     }
                     onChange={({ detail }) => {
                         if (detail.selectedOption.value === ChunkingStrategyType.FIXED) {
-                            setFields({ 
+                            setFields({
                                 chunkingStrategy: {
                                     type: ChunkingStrategyType.FIXED,
                                     size: 1000,
@@ -70,41 +70,41 @@ export function ChunkingConfigForm(props: ChunkingConfigFormProps): ReactElement
                         }
                     }}
                     options={chunkingTypeOptions}
-                    placeholder="Select chunking type"
+                    placeholder='Select chunking type'
                 />
             </FormField>
-            
+
             {/* Fixed Size Configuration */}
             {item?.type === ChunkingStrategyType.FIXED && (
                 <>
-                    <FormField 
-                        label="Chunk Size"
+                    <FormField
+                        label='Chunk Size'
                         errorText={formErrors?.['chunkingStrategy.size'] || formErrors?.chunkingStrategy?.size}
-                        description="Size of each chunk in characters (100-10000)"
+                        description='Size of each chunk in characters (100-10000)'
                     >
                         <Input
-                            type="number"
+                            type='number'
                             value={String(item.size || 1000)}
                             onChange={({ detail }) => {
-                                setFields({ 
-                                    'chunkingStrategy.size': Number(detail.value) 
+                                setFields({
+                                    'chunkingStrategy.size': Number(detail.value)
                                 });
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.size'])}
                         />
                     </FormField>
-                    
-                    <FormField 
-                        label="Chunk Overlap"
+
+                    <FormField
+                        label='Chunk Overlap'
                         errorText={formErrors?.['chunkingStrategy.overlap'] || formErrors?.chunkingStrategy?.overlap}
-                        description="Overlap between chunks in characters (must be ≤ size/2)"
+                        description='Overlap between chunks in characters (must be ≤ size/2)'
                     >
                         <Input
-                            type="number"
+                            type='number'
                             value={String(item.overlap || 200)}
                             onChange={({ detail }) => {
-                                setFields({ 
-                                    'chunkingStrategy.overlap': Number(detail.value) 
+                                setFields({
+                                    'chunkingStrategy.overlap': Number(detail.value)
                                 });
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.overlap'])}

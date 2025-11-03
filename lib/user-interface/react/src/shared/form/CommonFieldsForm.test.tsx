@@ -129,12 +129,12 @@ describe('CommonFieldsForm', () => {
 
             const input = screen.getByPlaceholderText('Select an embedding model');
             await user.click(input);
-            
+
             // Click on the first option
             await waitFor(() => {
                 expect(screen.getByText('Embedding Model 1')).toBeInTheDocument();
             });
-            
+
             const option = screen.getByText('Embedding Model 1');
             await user.click(option);
 
@@ -159,12 +159,12 @@ describe('CommonFieldsForm', () => {
 
             const input = screen.getByPlaceholderText('Select an embedding model');
             await user.click(input);
-            
+
             // Click on the first option
             await waitFor(() => {
                 expect(screen.getByText('Embedding Model 1')).toBeInTheDocument();
             });
-            
+
             const option = screen.getByText('Embedding Model 1');
             await user.click(option);
 

@@ -41,7 +41,7 @@ export type RepositoryConfigProps = {
 export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & RepositoryConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
     const shape = RagRepositoryConfigSchema.innerType().shape;
-    
+
     return (
         <SpaceBetween size={'s'}>
             <FormField label='Repository ID'
@@ -62,7 +62,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                         setFields({ 'repositoryName': detail.value });
                     }} placeholder='Postgres RAG' />
             </FormField>
-            
+
             {/* Common Fields: Embedding Model */}
             <CommonFieldsForm
                 item={item}
@@ -72,7 +72,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 showEmbeddingModel={true}
                 showAllowedGroups={false}
             />
-            
+
             <FormField label='Repository Type'
                 errorText={formErrors?.type}
                 description={shape.type.description}>
@@ -126,7 +126,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 <BedrockKnowledgeBaseConfigForm item={item.bedrockKnowledgeBaseConfig} setFields={setFields} touchFields={touchFields}
                     formErrors={formErrors} isEdit={isEdit}></BedrockKnowledgeBaseConfigForm>
             }
-            
+
             {/* Common Fields: Allowed Groups */}
             <CommonFieldsForm
                 item={item}

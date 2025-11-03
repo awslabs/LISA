@@ -20,9 +20,9 @@ import { scrollToInvalid, useValidationReducer } from '@/shared/validation';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
-import { 
-    useCreateCollectionMutation, 
-    useUpdateCollectionMutation,  
+import {
+    useCreateCollectionMutation,
+    useUpdateCollectionMutation,
 } from '@/shared/reducers/rag.reducer';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { ChunkingConfigForm } from './ChunkingConfigForm';
@@ -53,9 +53,9 @@ export type CollectionCreateState = {
     activeStepIndex: number;
 };
 
-export function CreateCollectionModal(props: CreateCollectionModalProps): ReactElement {
+export function CreateCollectionModal (props: CreateCollectionModalProps): ReactElement {
     const { visible, setVisible, selectedItems, isEdit, setIsEdit } = props;
-    
+
     // Mutations
     const [
         createCollection,
@@ -66,7 +66,7 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             reset: resetCreate,
         },
     ] = useCreateCollectionMutation();
-    
+
     const [
         updateCollection,
         {
@@ -76,7 +76,7 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             reset: resetUpdate,
         },
     ] = useUpdateCollectionMutation();
-    
+
     const initialForm: RagCollectionConfig = {
         repositoryId: '',
         name: '',
@@ -89,10 +89,10 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         allowChunkingOverride: true,
         pipelines: [],
     };
-    
+
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    
+
     // Validation reducer
     const {
         state,
@@ -110,11 +110,11 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         },
         activeStepIndex: 0,
     } as CollectionCreateState);
-    
+
     const toSubmit = {
         ...state.form,
     };
-    
+
     const changesDiff = useMemo(() => {
         if (isEdit && selectedItems.length > 0) {
             return getJsonDifference({
@@ -124,16 +124,16 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         return getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, isEdit]);
-    
+
     const reviewError = normalizeError('Collection', isEdit ? updateError : createError);
-    
+
     const requiredFields = [
         ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
         [], // Step 2: Chunking Configuration (optional)
         [], // Step 3: Access Control (optional)
     ];
-    
-    function handleSubmit() {
+
+    function handleSubmit () {
         if (isValid && !_.isEmpty(changesDiff)) {
             if (isEdit && selectedItems.length > 0) {
                 resetUpdate();
@@ -166,7 +166,7 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             }
         }
     }
-    
+
     // Pre-populate form in edit mode
     useEffect(() => {
         if (isEdit && selectedItems.length > 0) {
@@ -182,8 +182,8 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
                     allowedGroups: selectedCollection.allowedGroups || [],
                     metadata: selectedCollection.metadata || { tags: [], customFields: {} },
                     private: selectedCollection.private,
-                    allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined 
-                        ? selectedCollection.allowChunkingOverride 
+                    allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
+                        ? selectedCollection.allowChunkingOverride
                         : true,
                     pipelines: selectedCollection.pipelines || [],
                 },
@@ -191,7 +191,7 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEdit, selectedItems]);
-    
+
     // Success handling
     useEffect(() => {
         if (!isCreating && !isUpdating && (isCreateSuccess || isUpdateSuccess)) {
@@ -206,19 +206,19 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isUpdating, isCreateSuccess, isUpdateSuccess]);
 
-    
+
     // Wizard steps configuration
     const steps = [
         {
             title: 'Collection Configuration',
             description: 'Define your collection\'s basic settings',
             content: (
-                <CollectionConfigForm 
-                    item={state.form} 
-                    setFields={setFields} 
+                <CollectionConfigForm
+                    item={state.form}
+                    setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
-                    isEdit={isEdit} 
+                    isEdit={isEdit}
                 />
             ),
         },
@@ -226,9 +226,9 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             title: 'Chunking Configuration',
             description: 'Configure how documents are split into chunks',
             content: (
-                <ChunkingConfigForm 
-                    item={state.form.chunkingStrategy} 
-                    setFields={setFields} 
+                <ChunkingConfigForm
+                    item={state.form.chunkingStrategy}
+                    setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
                 />
@@ -239,9 +239,9 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             title: 'Access Control',
             description: 'Configure user group access permissions',
             content: (
-                <AccessControlForm 
-                    item={state.form} 
-                    setFields={setFields} 
+                <AccessControlForm
+                    item={state.form}
+                    setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
                 />
@@ -252,15 +252,15 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             title: `Review and ${isEdit ? 'Update' : 'Create'}`,
             description: `Review configuration ${isEdit ? 'changes' : ''} prior to submitting`,
             content: (
-                <ReviewChanges 
-                    jsonDiff={changesDiff} 
+                <ReviewChanges
+                    jsonDiff={changesDiff}
                     error={reviewError}
                 />
             ),
         },
     ];
-    
-    function resetState() {
+
+    function resetState () {
         setState({
             validateAll: false as boolean,
             touched: {},
@@ -273,8 +273,8 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
         resetCreate();
         resetUpdate();
     }
-    
-    function handleDismiss() {
+
+    function handleDismiss () {
         dispatch(
             setConfirmationModal({
                 action: 'Discard',
@@ -288,8 +288,8 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             })
         );
     }
-    
-    function handleCancel() {
+
+    function handleCancel () {
         dispatch(
             setConfirmationModal({
                 action: 'Discard',
@@ -303,8 +303,8 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             })
         );
     }
-    
-    function handleNavigate(event: any) {
+
+    function handleNavigate (event: any) {
         switch (event.detail.reason) {
             case 'step':
             case 'previous':
@@ -325,15 +325,15 @@ export function CreateCollectionModal(props: CreateCollectionModalProps): ReactE
             }
                 break;
         }
-        
+
         scrollToInvalid();
     }
-    
+
     return (
-        <Modal 
-            size="large" 
-            onDismiss={handleDismiss} 
-            visible={visible} 
+        <Modal
+            size='large'
+            onDismiss={handleDismiss}
+            visible={visible}
             header={`${isEdit ? 'Update' : 'Create'} Collection`}
         >
             <Wizard

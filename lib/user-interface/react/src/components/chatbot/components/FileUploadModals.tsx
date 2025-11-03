@@ -18,9 +18,6 @@ import {
     Box,
     Button,
     FileUpload,
-    FormField,
-    Grid,
-    Input,
     Modal,
     ProgressBar,
     SpaceBetween,
@@ -336,7 +333,7 @@ export const RagUploadModal = ({
                         </small>
                     </p>
                 </TextContent>
-                
+
                 {/* Chunking Strategy Form */}
                 <ChunkingConfigForm
                     item={chunkingStrategy}
@@ -358,7 +355,7 @@ export const RagUploadModal = ({
                     touchFields={() => {}}
                     formErrors={{}}
                 />
-                
+
                 <FileUpload
                     onChange={({ detail }) => setSelectedFiles(detail.value)}
                     value={selectedFiles}

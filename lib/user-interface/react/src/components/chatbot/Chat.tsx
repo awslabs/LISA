@@ -250,7 +250,7 @@ export default function Chat ({ sessionId }) {
 
         // Determine embedding model: use collection's model if available,
         // otherwise fall back to ragConfig.embeddingModel (repository default)
-        const embeddingModelId = ragConfig.collection?.embeddingModel 
+        const embeddingModelId = ragConfig.collection?.embeddingModel
             ?? ragConfig.embeddingModel?.modelId;
 
         if (!embeddingModelId) {

@@ -26,9 +26,9 @@ vi.mock('../components/document-library/DocumentLibraryComponent', () => ({
     default: (props: any) => {
         mockDocumentLibraryComponent(props);
         return (
-            <div data-testid="document-library-component">
-                <div data-testid="repository-id">{props.repositoryId}</div>
-                <div data-testid="collection-id">{props.collectionId || 'none'}</div>
+            <div data-testid='document-library-component'>
+                <div data-testid='repository-id'>{props.repositoryId}</div>
+                <div data-testid='collection-id'>{props.collectionId || 'none'}</div>
             </div>
         );
     },
@@ -37,11 +37,11 @@ vi.mock('../components/document-library/DocumentLibraryComponent', () => ({
 describe('DocumentLibrary with optional collectionId', () => {
     it('should accept repositoryId parameter from route', () => {
         const setNav = vi.fn();
-        
+
         renderWithProviders(
             <MemoryRouter initialEntries={['/document-library/test-repo-1']}>
                 <Routes>
-                    <Route path="/document-library/:repoId/:collectionId?" element={<DocumentLibrary setNav={setNav} />} />
+                    <Route path='/document-library/:repoId/:collectionId?' element={<DocumentLibrary setNav={setNav} />} />
                 </Routes>
             </MemoryRouter>
         );
@@ -51,11 +51,11 @@ describe('DocumentLibrary with optional collectionId', () => {
 
     it('should accept optional collectionId parameter from route', () => {
         const setNav = vi.fn();
-        
+
         renderWithProviders(
             <MemoryRouter initialEntries={['/document-library/test-repo-1/test-collection-1']}>
                 <Routes>
-                    <Route path="/document-library/:repoId/:collectionId?" element={<DocumentLibrary setNav={setNav} />} />
+                    <Route path='/document-library/:repoId/:collectionId?' element={<DocumentLibrary setNav={setNav} />} />
                 </Routes>
             </MemoryRouter>
         );
@@ -66,11 +66,11 @@ describe('DocumentLibrary with optional collectionId', () => {
 
     it('should pass collectionId to DocumentLibraryComponent when provided', () => {
         const setNav = vi.fn();
-        
+
         renderWithProviders(
             <MemoryRouter initialEntries={['/document-library/test-repo-1/test-collection-1']}>
                 <Routes>
-                    <Route path="/document-library/:repoId/:collectionId?" element={<DocumentLibrary setNav={setNav} />} />
+                    <Route path='/document-library/:repoId/:collectionId?' element={<DocumentLibrary setNav={setNav} />} />
                 </Routes>
             </MemoryRouter>
         );
@@ -85,11 +85,11 @@ describe('DocumentLibrary with optional collectionId', () => {
 
     it('should work without collectionId (backward compatibility)', () => {
         const setNav = vi.fn();
-        
+
         renderWithProviders(
             <MemoryRouter initialEntries={['/document-library/test-repo-1']}>
                 <Routes>
-                    <Route path="/document-library/:repoId/:collectionId?" element={<DocumentLibrary setNav={setNav} />} />
+                    <Route path='/document-library/:repoId/:collectionId?' element={<DocumentLibrary setNav={setNav} />} />
                 </Routes>
             </MemoryRouter>
         );
@@ -100,11 +100,11 @@ describe('DocumentLibrary with optional collectionId', () => {
 
     it('should set navigation to null on mount', () => {
         const setNav = vi.fn();
-        
+
         renderWithProviders(
             <MemoryRouter initialEntries={['/document-library/test-repo-1']}>
                 <Routes>
-                    <Route path="/document-library/:repoId/:collectionId?" element={<DocumentLibrary setNav={setNav} />} />
+                    <Route path='/document-library/:repoId/:collectionId?' element={<DocumentLibrary setNav={setNav} />} />
                 </Routes>
             </MemoryRouter>
         );

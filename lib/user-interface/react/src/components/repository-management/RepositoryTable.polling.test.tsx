@@ -46,7 +46,7 @@ vi.mock('./createRepository/CreateRepositoryModal', () => ({
 describe('RepositoryTable Polling Behavior', () => {
     it('should verify polling configuration exists', () => {
         renderWithProviders(<RepositoryTable />);
-        
+
         // The component uses polling with 30 second interval
         // This is a basic smoke test to ensure the component renders with polling logic
         expect(true).toBe(true);
@@ -56,7 +56,7 @@ describe('RepositoryTable Polling Behavior', () => {
         // The component should detect all statuses end with _COMPLETE or _FAILED
         // and stop polling (shouldPoll = false)
         renderWithProviders(<RepositoryTable />);
-        
+
         expect(true).toBe(true); // Placeholder - actual polling stop is internal state
     });
 });

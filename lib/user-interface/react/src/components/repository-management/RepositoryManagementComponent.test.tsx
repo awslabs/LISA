@@ -15,31 +15,31 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { RepositoryManagementComponent } from './RepositoryManagementComponent';
 import { renderWithProviders } from '../../test/helpers/render';
 
 // Mock the RepositoryTable component
 vi.mock('./RepositoryTable', () => ({
-    default: () => <div data-testid="repository-table">Repository Table</div>,
+    default: () => <div data-testid='repository-table'>Repository Table</div>,
 }));
 
 describe('RepositoryManagementComponent', () => {
     it('should render page header with correct title', () => {
         renderWithProviders(<RepositoryManagementComponent />);
-        
+
         expect(screen.getByText('Repository Management')).toBeInTheDocument();
     });
 
     it('should render page header with description', () => {
         renderWithProviders(<RepositoryManagementComponent />);
-        
+
         expect(screen.getByText('Manage RAG repositories and vector stores')).toBeInTheDocument();
     });
 
     it('should render RepositoryTable component', () => {
         renderWithProviders(<RepositoryManagementComponent />);
-        
+
         expect(screen.getByTestId('repository-table')).toBeInTheDocument();
     });
 });

@@ -33,7 +33,7 @@ export type CommonFieldsFormProps = {
     isEdit?: boolean;
 };
 
-export function CommonFieldsForm(props: CommonFieldsFormProps): ReactElement {
+export function CommonFieldsForm (props: CommonFieldsFormProps): ReactElement {
     const {
         item,
         setFields,
@@ -70,20 +70,20 @@ export function CommonFieldsForm(props: CommonFieldsFormProps): ReactElement {
     const embeddingModelValue = item.embeddingModel || item.embeddingModelId || '';
 
     return (
-        <SpaceBetween size="s">
+        <SpaceBetween size='s'>
             {/* Embedding Model Selector */}
             {showEmbeddingModel && (
                 <FormField
-                    label="Embedding Model"
+                    label='Embedding Model'
                     errorText={formErrors?.embeddingModel || formErrors?.embeddingModelId}
-                    description="The model used to generate vector embeddings for documents"
+                    description='The model used to generate vector embeddings for documents'
                 >
                     <Autosuggest
                         statusType={isFetchingEmbeddingModels ? 'loading' : 'finished'}
-                        loadingText="Loading embedding models..."
-                        placeholder="Select an embedding model"
-                        empty={<div className="text-gray-500">No embedding models available.</div>}
-                        filteringType="auto"
+                        loadingText='Loading embedding models...'
+                        placeholder='Select an embedding model'
+                        empty={<div className='text-gray-500'>No embedding models available.</div>}
+                        filteringType='auto'
                         value={embeddingModelValue}
                         enteredTextLabel={(text) => `Use: "${text}"`}
                         onChange={({ detail }) => {
@@ -106,11 +106,11 @@ export function CommonFieldsForm(props: CommonFieldsFormProps): ReactElement {
             {/* Allowed Groups */}
             {showAllowedGroups && (
                 <ArrayInputField
-                    label="Allowed Groups"
+                    label='Allowed Groups'
                     errorText={formErrors?.allowedGroups}
                     values={item.allowedGroups || []}
                     onChange={(groups) => setFields({ allowedGroups: groups })}
-                    description="User groups that can access this resource. Leave empty for public access."
+                    description='User groups that can access this resource. Leave empty for public access.'
                 />
             )}
         </SpaceBetween>

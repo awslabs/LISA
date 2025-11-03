@@ -29,12 +29,12 @@ export type AccessControlFormProps = {
     formErrors: any;
 };
 
-export function AccessControlForm(props: AccessControlFormProps): ReactElement {
+export function AccessControlForm (props: AccessControlFormProps): ReactElement {
     const { item, touchFields, setFields, formErrors } = props;
 
     return (
-        <SpaceBetween size="s">
-            <Alert type="info">
+        <SpaceBetween size='s'>
+            <Alert type='info'>
                 Access control is optional. If no groups are specified, the collection will be
                 accessible to all users. You can also inherit access controls from the parent repository.
             </Alert>
@@ -52,14 +52,14 @@ export function AccessControlForm(props: AccessControlFormProps): ReactElement {
 
             {/* Metadata Tags */}
             <FormField
-                label="Tags (optional)"
+                label='Tags (optional)'
                 errorText={formErrors?.['metadata.tags'] || formErrors?.metadata?.tags}
-                description="Metadata tags for organizing and searching collections (max 50 tags)"
+                description='Metadata tags for organizing and searching collections (max 50 tags)'
             >
                 <ArrayInputField
                     values={item.metadata?.tags || []}
                     onChange={(tags) => setFields({ 'metadata.tags': tags })}
-                    placeholder="Add tag"
+                    placeholder='Add tag'
                 />
             </FormField>
         </SpaceBetween>

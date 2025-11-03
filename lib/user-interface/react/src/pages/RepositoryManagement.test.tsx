@@ -15,34 +15,34 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { RepositoryManagement } from './RepositoryManagement';
 import { renderWithProviders } from '../test/helpers/render';
 
 // Mock the RepositoryManagementComponent
 vi.mock('../components/repository-management/RepositoryManagementComponent', () => ({
-    default: () => <div data-testid="repository-management-component">Repository Management Component</div>,
+    default: () => <div data-testid='repository-management-component'>Repository Management Component</div>,
 }));
 
 describe('RepositoryManagement Page', () => {
     it('should render without crashing', () => {
         const setNav = vi.fn();
         renderWithProviders(<RepositoryManagement setNav={setNav} />);
-        
+
         expect(screen.getByTestId('repository-management-component')).toBeInTheDocument();
     });
 
     it('should set navigation to null on mount', () => {
         const setNav = vi.fn();
         renderWithProviders(<RepositoryManagement setNav={setNav} />);
-        
+
         expect(setNav).toHaveBeenCalledWith(null);
     });
 
     it('should render RepositoryManagementComponent', () => {
         const setNav = vi.fn();
         renderWithProviders(<RepositoryManagement setNav={setNav} />);
-        
+
         expect(screen.getByText('Repository Management Component')).toBeInTheDocument();
     });
 });

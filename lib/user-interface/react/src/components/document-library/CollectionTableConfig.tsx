@@ -75,7 +75,7 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     },
 ];
 
-function getStatusBadge(status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
+function getStatusBadge (status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
     let color: 'green' | 'grey' | 'red' = 'grey';
     switch (status) {
         case 'ACTIVE':
@@ -91,21 +91,21 @@ function getStatusBadge(status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
     return <Badge color={color}>{status}</Badge>;
 }
 
-export function getCollectionTablePreference(): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {
+export function getCollectionTablePreference (): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {
     return COLLECTION_COLUMN_DEFINITIONS.map((c) => ({
         id: c.id!,
         label: c.header,
     }));
 }
 
-export function getCollectionTableColumnDisplay(): CollectionPreferencesProps.ContentDisplayItem[] {
+export function getCollectionTableColumnDisplay (): CollectionPreferencesProps.ContentDisplayItem[] {
     return COLLECTION_COLUMN_DEFINITIONS.map((c) => ({
         id: c.id!,
         visible: c.visible,
     }));
 }
 
-export function getDefaultCollectionPreferences(): CollectionPreferencesProps.Preferences {
+export function getDefaultCollectionPreferences (): CollectionPreferencesProps.Preferences {
     return {
         pageSize: PAGE_SIZE_OPTIONS[0].value,
         contentDisplay: getCollectionTableColumnDisplay(),

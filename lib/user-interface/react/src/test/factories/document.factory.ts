@@ -16,7 +16,7 @@
 
 import { RagDocument, IngestionType } from '../../components/types';
 
-export function createMockDocument(overrides?: Partial<RagDocument>): RagDocument {
+export function createMockDocument (overrides?: Partial<RagDocument>): RagDocument {
     return {
         document_id: 'doc-123',
         document_name: 'test-document.pdf',
@@ -32,8 +32,8 @@ export function createMockDocument(overrides?: Partial<RagDocument>): RagDocumen
     };
 }
 
-export function createMockDocuments(count: number): RagDocument[] {
-    return Array.from({ length: count }, (_, i) => 
+export function createMockDocuments (count: number): RagDocument[] {
+    return Array.from({ length: count }, (_, i) =>
         createMockDocument({
             document_id: `doc-${i + 1}`,
             document_name: `document-${i + 1}.pdf`,
@@ -41,7 +41,7 @@ export function createMockDocuments(count: number): RagDocument[] {
     );
 }
 
-export function createMockDocumentWithOwner(username: string, overrides?: Partial<RagDocument>): RagDocument {
+export function createMockDocumentWithOwner (username: string, overrides?: Partial<RagDocument>): RagDocument {
     return createMockDocument({
         username,
         ...overrides,

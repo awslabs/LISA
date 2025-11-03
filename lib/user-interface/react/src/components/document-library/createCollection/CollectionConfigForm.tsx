@@ -28,43 +28,46 @@ export type CollectionConfigProps = {
     isEdit: boolean;
 };
 
-export function CollectionConfigForm(
+export function CollectionConfigForm (
     props: FormProps<RagCollectionConfig> & CollectionConfigProps
 ): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
-    
+
     // Fetch repositories for dropdown
     const { data: repositories, isLoading: isLoadingRepos } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
-    
+
     // Repository options
     const repositoryOptions = useMemo(() => {
-        return repositories?.map((repo) => ({
+        if (!repositories || !Array.isArray(repositories)) {
+            return [];
+        }
+        return repositories.map((repo) => ({
             label: repo.repositoryName || repo.repositoryId,
             value: repo.repositoryId,
-        })) || [];
+        }));
     }, [repositories]);
-    
+
     return (
-        <SpaceBetween size="s">
+        <SpaceBetween size='s'>
             {/* Collection Name */}
-            <FormField 
-                label="Collection Name"
+            <FormField
+                label='Collection Name'
                 errorText={formErrors?.name}
-                description="A user-friendly name for the collection"
+                description='A user-friendly name for the collection'
             >
                 <Input
                     value={item.name || ''}
                     onChange={({ detail }) => setFields({ name: detail.value })}
                     onBlur={() => touchFields(['name'])}
-                    placeholder="Engineering Documents"
+                    placeholder='Engineering Documents'
                 />
             </FormField>
-            
+
             {/* Description */}
-            <FormField 
-                label="Description (optional)"
+            <FormField
+                label='Description (optional)'
                 errorText={formErrors?.description}
                 description="A brief description of the collection's purpose"
             >
@@ -72,21 +75,21 @@ export function CollectionConfigForm(
                     value={item.description || ''}
                     onChange={({ detail }) => setFields({ description: detail.value })}
                     onBlur={() => touchFields(['description'])}
-                    placeholder="Collection of engineering documentation and specifications"
+                    placeholder='Collection of engineering documentation and specifications'
                     rows={3}
                 />
             </FormField>
-            
+
             {/* Repository Selection */}
-            <FormField 
-                label="Repository"
+            <FormField
+                label='Repository'
                 errorText={formErrors?.repositoryId}
-                description="The parent repository that will contain this collection"
+                description='The parent repository that will contain this collection'
             >
                 <Select
                     selectedOption={
-                        item.repositoryId 
-                            ? repositoryOptions.find(opt => opt.value === item.repositoryId) || null
+                        item.repositoryId
+                            ? repositoryOptions.find((opt) => opt.value === item.repositoryId) || null
                             : null
                     }
                     onChange={({ detail }) => {
@@ -95,11 +98,11 @@ export function CollectionConfigForm(
                     onBlur={() => touchFields(['repositoryId'])}
                     options={repositoryOptions}
                     disabled={isEdit}
-                    placeholder="Select a repository"
+                    placeholder='Select a repository'
                     statusType={isLoadingRepos ? 'loading' : 'finished'}
                 />
             </FormField>
-            
+
             {/* Common Fields (Embedding Model) */}
             <CommonFieldsForm
                 item={item}
@@ -111,11 +114,11 @@ export function CollectionConfigForm(
                 showAllowedGroups={false}
                 isEdit={isEdit}
             />
-            
+
             {/* Private Checkbox */}
             <FormField
-                label="Privacy"
-                description="Private collections are only accessible to the creator and administrators"
+                label='Privacy'
+                description='Private collections are only accessible to the creator and administrators'
             >
                 <Checkbox
                     checked={item.private || false}
@@ -125,23 +128,23 @@ export function CollectionConfigForm(
                     Make this collection private
                 </Checkbox>
             </FormField>
-            
+
             {/* Pipeline Configuration */}
             <FormField
-                label="Pipeline Configuration"
-                description="Optional: Configure automatic ingestion from S3"
+                label='Pipeline Configuration'
+                description='Optional: Configure automatic ingestion from S3'
             >
                 <Checkbox
                     checked={item.pipelines && item.pipelines.length > 0}
                     onChange={({ detail }) => {
                         if (detail.checked) {
-                            setFields({ 
-                                pipelines: [{ 
-                                    s3Bucket: '', 
+                            setFields({
+                                pipelines: [{
+                                    s3Bucket: '',
                                     s3Prefix: '',
                                     trigger: 'event' as const,
                                     autoRemove: true,
-                                }] 
+                                }]
                             });
                         } else {
                             setFields({ pipelines: [] });
@@ -151,14 +154,14 @@ export function CollectionConfigForm(
                     Enable S3 pipeline ingestion
                 </Checkbox>
             </FormField>
-            
+
             {/* S3 Bucket - only show if pipeline is enabled */}
             {item.pipelines && item.pipelines.length > 0 && (
                 <>
                     <FormField
-                        label="S3 Bucket"
+                        label='S3 Bucket'
                         errorText={formErrors?.pipelines?.[0]?.s3Bucket}
-                        description="S3 bucket to monitor for new documents"
+                        description='S3 bucket to monitor for new documents'
                     >
                         <Input
                             value={item.pipelines[0].s3Bucket || ''}
@@ -171,14 +174,14 @@ export function CollectionConfigForm(
                                 setFields({ pipelines: updatedPipelines });
                             }}
                             onBlur={() => touchFields(['pipelines.0.s3Bucket'])}
-                            placeholder="my-documents-bucket"
+                            placeholder='my-documents-bucket'
                         />
                     </FormField>
-                    
+
                     <FormField
-                        label="S3 Prefix (optional)"
+                        label='S3 Prefix (optional)'
                         errorText={formErrors?.pipelines?.[0]?.s3Prefix}
-                        description="Optional: Only monitor objects with this prefix"
+                        description='Optional: Only monitor objects with this prefix'
                     >
                         <Input
                             value={item.pipelines[0].s3Prefix || ''}
@@ -191,7 +194,7 @@ export function CollectionConfigForm(
                                 setFields({ pipelines: updatedPipelines });
                             }}
                             onBlur={() => touchFields(['pipelines.0.s3Prefix'])}
-                            placeholder="documents/engineering/"
+                            placeholder='documents/engineering/'
                         />
                     </FormField>
                 </>

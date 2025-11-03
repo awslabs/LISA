@@ -16,7 +16,7 @@
 
 import { RagCollectionConfig } from '../../shared/reducers/rag.reducer';
 
-export function createMockCollection(overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
+export function createMockCollection (overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
     return {
         collectionId: 'test-collection-1',
         repositoryId: 'test-repo-1',
@@ -38,8 +38,8 @@ export function createMockCollection(overrides?: Partial<RagCollectionConfig>): 
     };
 }
 
-export function createMockCollections(count: number): RagCollectionConfig[] {
-    return Array.from({ length: count }, (_, i) => 
+export function createMockCollections (count: number): RagCollectionConfig[] {
+    return Array.from({ length: count }, (_, i) =>
         createMockCollection({
             collectionId: `test-collection-${i + 1}`,
             name: `Test Collection ${i + 1}`,
@@ -48,7 +48,7 @@ export function createMockCollections(count: number): RagCollectionConfig[] {
     );
 }
 
-export function createMockPublicCollection(overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
+export function createMockPublicCollection (overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
     return createMockCollection({
         allowedGroups: [],
         private: false,
@@ -56,7 +56,7 @@ export function createMockPublicCollection(overrides?: Partial<RagCollectionConf
     });
 }
 
-export function createMockPrivateCollection(groups: string[], overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
+export function createMockPrivateCollection (groups: string[], overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
     return createMockCollection({
         allowedGroups: groups,
         private: true,

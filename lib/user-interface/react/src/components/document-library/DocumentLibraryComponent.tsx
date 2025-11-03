@@ -223,8 +223,8 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
                         </SpaceBetween>
                     }
                 >
-                    {collectionId && collectionData 
-                        ? `${collectionData.name || collectionId} Documents` 
+                    {collectionId && collectionData
+                        ? `${collectionData.name || collectionId} Documents`
                         : `${repositoryId} Documents`}
                 </Header>
             }

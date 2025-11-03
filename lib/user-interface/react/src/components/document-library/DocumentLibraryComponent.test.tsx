@@ -16,7 +16,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { DocumentLibraryComponent, getMatchesCountText } from './DocumentLibraryComponent';
 import { renderWithProviders } from '../../test/helpers/render';
 import { MemoryRouter } from 'react-router-dom';
@@ -31,16 +30,16 @@ vi.mock('../../shared/util/downloader', () => ({
 describe('DocumentLibraryComponent', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        
+
         // Mock Redux selectors
         vi.spyOn(store, 'useAppSelector').mockImplementation((selector: any) => {
             if (selector.toString().includes('selectCurrentUsername')) return 'test-user';
             if (selector.toString().includes('selectCurrentUserIsAdmin')) return false;
             return null;
         });
-        
+
         vi.spyOn(store, 'useAppDispatch').mockReturnValue(vi.fn() as any);
-        
+
         // Default mocks for queries
         vi.spyOn(ragReducer, 'useListRagDocumentsQuery').mockReturnValue({
             data: {
@@ -50,16 +49,16 @@ describe('DocumentLibraryComponent', () => {
             },
             isLoading: false,
         } as any);
-        
+
         vi.spyOn(ragReducer, 'useGetCollectionQuery').mockReturnValue({
             data: null,
         } as any);
-        
+
         vi.spyOn(ragReducer, 'useDeleteRagDocumentsMutation').mockReturnValue([
             vi.fn(),
             { isLoading: false },
         ] as any);
-        
+
         vi.spyOn(ragReducer, 'useLazyDownloadRagDocumentQuery').mockReturnValue([
             vi.fn(),
             { isFetching: false },
@@ -70,7 +69,7 @@ describe('DocumentLibraryComponent', () => {
         it('should render document table with repository ID in header', async () => {
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -89,9 +88,9 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent 
-                        repositoryId="repo-123" 
-                        collectionId="col-123" 
+                    <DocumentLibraryComponent
+                        repositoryId='repo-123'
+                        collectionId='col-123'
                     />
                 </MemoryRouter>
             );
@@ -117,7 +116,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -135,7 +134,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -154,7 +153,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -175,7 +174,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -198,7 +197,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -219,7 +218,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -243,7 +242,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -267,7 +266,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -291,7 +290,7 @@ describe('DocumentLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent repositoryId="repo-123" />
+                    <DocumentLibraryComponent repositoryId='repo-123' />
                 </MemoryRouter>
             );
 
@@ -304,16 +303,15 @@ describe('DocumentLibraryComponent', () => {
 
     describe('Collection Filtering', () => {
         it('should fetch collection data when collectionId is provided', async () => {
-            const mockGetCollection = vi.fn();
             vi.spyOn(ragReducer, 'useGetCollectionQuery').mockReturnValue({
                 data: { collectionId: 'col-123', name: 'Test Collection' },
             } as any);
 
             renderWithProviders(
                 <MemoryRouter>
-                    <DocumentLibraryComponent 
-                        repositoryId="repo-123" 
-                        collectionId="col-456" 
+                    <DocumentLibraryComponent
+                        repositoryId='repo-123'
+                        collectionId='col-456'
                     />
                 </MemoryRouter>
             );

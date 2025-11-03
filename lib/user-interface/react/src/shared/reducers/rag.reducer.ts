@@ -118,8 +118,8 @@ export type RagCollectionConfig = {
     embeddingModel: string;
     chunkingStrategy?: {
         type: string;
-        chunkSize: number;
-        chunkOverlap: number;
+        size: number;
+        overlap: number;
     };
     allowedGroups?: string[];
     createdBy: string;
@@ -131,6 +131,8 @@ export type RagCollectionConfig = {
         tags?: string[];
         customFields?: Record<string, any>;
     };
+    allowChunkingOverride?: boolean;
+    pipelines?: any[];
 };
 
 type ListCollectionsRequest = {
@@ -165,6 +167,20 @@ type DeleteCollectionRequest = {
 type GetCollectionRequest = {
     repositoryId: string;
     collectionId: string;
+};
+
+type UpdateCollectionRequest = {
+    repositoryId: string;
+    collectionId: string;
+    name?: string;
+    description?: string;
+    chunkingStrategy?: any;
+    allowedGroups?: string[];
+    metadata?: any;
+    private?: boolean;
+    allowChunkingOverride?: boolean;
+    pipelines?: any[];
+    status?: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
 };
 
 export const ragApi = createApi({
@@ -386,6 +402,32 @@ export const ragApi = createApi({
             },
             invalidatesTags: ['collections'],
         }),
+        updateCollection: builder.mutation<RagCollectionConfig, UpdateCollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+                method: 'PUT',
+                data: {
+                    name: request.name,
+                    description: request.description,
+                    chunkingStrategy: request.chunkingStrategy,
+                    allowedGroups: request.allowedGroups,
+                    metadata: request.metadata,
+                    private: request.private,
+                    allowChunkingOverride: request.allowChunkingOverride,
+                    pipelines: request.pipelines,
+                    status: request.status,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Update Collection Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                        : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['collections'],
+        }),
     }),
 });
 
@@ -408,5 +450,6 @@ export const {
     useListAllCollectionsQuery,
     useGetCollectionQuery,
     useCreateCollectionMutation,
+    useUpdateCollectionMutation,
     useDeleteCollectionMutation,
 } = ragApi;

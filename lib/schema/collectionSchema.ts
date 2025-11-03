@@ -34,9 +34,9 @@ export enum CollectionStatus {
  * and registering it with the ChunkingStrategyFactory in the backend.
  */
 export enum ChunkingStrategyType {
-    FIXED = 'FIXED',
-    // SEMANTIC = 'SEMANTIC',  // Not yet implemented
-    // RECURSIVE = 'RECURSIVE',  // Not yet implemented
+    FIXED = 'fixed',
+    // SEMANTIC = 'semantic',  // Not yet implemented
+    // RECURSIVE = 'recursive',  // Not yet implemented
 }
 
 /**
@@ -44,11 +44,11 @@ export enum ChunkingStrategyType {
  */
 export const FixedSizeChunkingStrategySchema = z.object({
     type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
-    chunkSize: z.number().min(100).max(10000).describe('Size of each chunk in characters'),
-    chunkOverlap: z.number().min(0).describe('Overlap between chunks in characters'),
+    size: z.number().min(100).max(10000).describe('Size of each chunk in characters'),
+    overlap: z.number().min(0).describe('Overlap between chunks in characters'),
 }).refine(
-    (data) => data.chunkOverlap <= data.chunkSize / 2,
-    { message: 'chunkOverlap must be less than or equal to half of chunkSize' }
+    (data) => data.overlap <= data.size / 2,
+    { message: 'overlap must be less than or equal to half of size' }
 );
 
 /**

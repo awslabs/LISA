@@ -262,7 +262,6 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Convert request to RagCollectionConfig
     collection = RagCollectionConfig(
         repositoryId=repository_id,
-        collectionId=request.name,
         name=request.name,
         description=request.description,
         embeddingModel=request.embeddingModel,

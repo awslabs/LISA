@@ -53,8 +53,20 @@ class CollectionService:
             return True
         if require_write:
             return False
-        if not collection.private and bool(set(user_groups) & set(collection.allowedGroups or [])):
+        
+        # Private collections are only accessible to creator and admins
+        if collection.private:
+            return False
+        
+        # Public collection (empty allowedGroups means accessible to all)
+        allowed_groups = collection.allowedGroups or []
+        if not allowed_groups:
             return True
+        
+        # Check if user has at least one matching group
+        if bool(set(user_groups) & set(allowed_groups)):
+            return True
+        
         return False
 
     def create_collection(
@@ -63,7 +75,26 @@ class CollectionService:
         username: str,
         is_admin: bool,
     ) -> RagCollectionConfig:
-        """Create a new collection."""
+        """Create a new collection with name uniqueness validation.
+        
+        Args:
+            collection: Collection configuration to create
+            username: Username creating the collection
+            is_admin: Whether user is admin
+            
+        Returns:
+            Created collection
+            
+        Raises:
+            ValidationError: If collection name already exists in repository
+        """
+        # Check if collection name already exists in this repository
+        existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)
+        if existing:
+            raise ValidationError(
+                f"Collection with name '{collection.name}' already exists in repository '{collection.repositoryId}'"
+            )
+
         return self.collection_repo.create(collection)
 
     def get_collection(
@@ -107,7 +138,73 @@ class CollectionService:
             repository_id, page_size=page_size, last_evaluated_key=last_evaluated_key
         )
         filtered = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
+        
+        # On first page, check if default collection needs to be added
+        if not last_evaluated_key:
+            default_collection = self._create_default_collection(repository_id)
+            if default_collection:
+                # Check if a collection with the default embedding model ID already exists
+                existing_ids = {c.collectionId for c in filtered}
+                if default_collection.collectionId not in existing_ids:
+                    filtered.append(default_collection)
+        
         return filtered, key
+
+    def _create_default_collection(self, repository_id: str) -> Optional[RagCollectionConfig]:
+        """
+        Create a virtual default collection for a repository.
+        
+        This collection is not persisted to the database but represents the repository's
+        default embedding model configuration.
+        
+        Args:
+            repository_id: Repository ID
+            
+        Returns:
+            Default collection config or None if repository has no embedding model
+        """
+        try:
+            # Get repository configuration
+            repositories = self.vector_store_repo.get_registered_repositories()
+            repository = next((r for r in repositories if r.get("repositoryId") == repository_id), None)
+            
+            if not repository:
+                logger.warning(f"Repository {repository_id} not found")
+                return None
+            
+            embedding_model = repository.get("embeddingModelId")
+            if not embedding_model:
+                logger.info(f"Repository {repository_id} has no default embedding model")
+                return None
+            
+            # Create virtual default collection
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+            
+            default_collection = RagCollectionConfig(
+                collectionId=embedding_model,  # Use embedding model name as collection ID
+                repositoryId=repository_id,
+                name="Default",
+                description="Default collection using repository's embedding model",
+                embeddingModel=embedding_model,
+                chunkingStrategy=repository.get("chunkingStrategy"),
+                allowedGroups=repository.get("allowedGroups", []),
+                createdBy="system",
+                createdAt=now,
+                updatedAt=now,
+                status="ACTIVE",
+                private=False,
+                metadata=CollectionMetadata(tags=["default"], customFields={}),
+                allowChunkingOverride=True,
+                pipelines=[]
+            )
+            
+            logger.info(f"Created virtual default collection for repository {repository_id}")
+            return default_collection
+            
+        except Exception as e:
+            logger.error(f"Failed to create default collection for repository {repository_id}: {e}")
+            return None
 
     def update_collection(
         self,
@@ -118,7 +215,7 @@ class CollectionService:
         user_groups: List[str],
         is_admin: bool,
     ) -> RagCollectionConfig:
-        """Update a collection with access control.
+        """Update a collection with access control and name uniqueness validation.
 
         Args:
             collection_id: Collection ID to update
@@ -130,6 +227,9 @@ class CollectionService:
 
         Returns:
             Updated collection
+            
+        Raises:
+            ValidationError: If name already exists or access denied
         """
         collection = self.collection_repo.find_by_id(collection_id, repository_id)
         if not collection:
@@ -140,6 +240,15 @@ class CollectionService:
         updates = {}
 
         # Build updates from request
+        if hasattr(request, "name") and request.name is not None:
+            # Check if new name conflicts with existing collection
+            if request.name != collection.name:
+                existing = self.collection_repo.find_by_name(repository_id, request.name)
+                if existing and existing.collectionId != collection_id:
+                    raise ValidationError(
+                        f"Collection with name '{request.name}' already exists in repository '{repository_id}'"
+                    )
+            updates["name"] = request.name
         if hasattr(request, "description") and request.description is not None:
             updates["description"] = request.description
         if hasattr(request, "embeddingModel") and request.embeddingModel is not None:
@@ -513,6 +622,14 @@ class CollectionService:
                     if self.has_access(c, username, user_groups, is_admin)
                 ]
                 
+                # Check if default collection needs to be added
+                default_collection = self._create_default_collection(repo_id)
+                if default_collection:
+                    # Check if a collection with the default embedding model ID already exists
+                    existing_ids = {c.collectionId for c in accessible}
+                    if default_collection.collectionId not in existing_ids:
+                        accessible.append(default_collection)
+                
                 all_collections.extend(accessible)
                 logger.debug(f"Repository {repo_id}: {len(accessible)} accessible collections")
                 
@@ -639,6 +756,12 @@ class CollectionService:
         if pagination_token and pagination_token.get("version") == "v2":
             cursors = pagination_token.get("repositoryCursors", {})
             global_offset = pagination_token.get("globalOffset", 0)
+            # Convert lists back to sets
+            seen_ids_raw = pagination_token.get("seenCollectionIds", {})
+            seen_collection_ids = {
+                repo_id: set(id_list) 
+                for repo_id, id_list in seen_ids_raw.items()
+            }
             
             # Verify filter consistency
             token_filters = pagination_token.get("filters", {})
@@ -648,9 +771,11 @@ class CollectionService:
                 logger.warning("Pagination token filters don't match, resetting cursors")
                 cursors = {}
                 global_offset = 0
+                seen_collection_ids = {}
         else:
             cursors = {}
             global_offset = 0
+            seen_collection_ids = {}
 
         # Initialize cursors for new repositories
         for repo in repositories:
@@ -660,6 +785,8 @@ class CollectionService:
                     "lastEvaluatedKey": None,
                     "exhausted": False
                 }
+            if repo_id not in seen_collection_ids:
+                seen_collection_ids[repo_id] = set()
 
         # Fetch batches from each non-exhausted repository
         batches = []
@@ -683,6 +810,19 @@ class CollectionService:
                     c for c in collections
                     if self.has_access(c, username, user_groups, is_admin)
                 ]
+                
+                # Track seen collection IDs for this repository
+                for c in accessible:
+                    seen_collection_ids[repo_id].add(c.collectionId)
+                
+                # On first fetch for this repository, check if default collection needs to be added
+                if not cursor["lastEvaluatedKey"]:
+                    default_collection = self._create_default_collection(repo_id)
+                    if default_collection:
+                        # Check if we've seen a collection with the default embedding model ID
+                        if default_collection.collectionId not in seen_collection_ids[repo_id]:
+                            accessible.append(default_collection)
+                            seen_collection_ids[repo_id].add(default_collection.collectionId)
                 
                 # Apply text filtering
                 if filter_text:
@@ -727,10 +867,17 @@ class CollectionService:
             # If we consumed all merged results, reset offset for next fetch
             new_offset = end_idx if end_idx < len(merged) else 0
             
+            # Convert sets to lists for JSON serialization
+            serializable_seen_ids = {
+                repo_id: list(id_set) 
+                for repo_id, id_set in seen_collection_ids.items()
+            }
+            
             next_token = {
                 "version": "v2",
                 "repositoryCursors": cursors,
                 "globalOffset": new_offset,
+                "seenCollectionIds": serializable_seen_ids,
                 "filters": {
                     "filter": filter_text,
                     "sortBy": sort_by,

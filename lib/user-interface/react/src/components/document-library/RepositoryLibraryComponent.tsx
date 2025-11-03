@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement } from 'react';
+import { ReactElement, useState } from 'react';
 import { Box, Button, ButtonDropdown, CollectionPreferences, Header, Icon, Pagination, Table, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useAppDispatch } from '../../config/store';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { CreateCollectionModal } from './createCollection/CreateCollectionModal';
 
 export function RepositoryLibraryComponent(): ReactElement {
     const {
@@ -45,6 +46,10 @@ export function RepositoryLibraryComponent(): ReactElement {
     );
 
     const navigate = useNavigate();
+
+    // Modal state
+    const [createCollectionModalVisible, setCreateCollectionModalVisible] = useState(false);
+    const [isEdit, setIsEdit] = useState(false);
 
     const { items, actions, filteredItemsCount, collectionProps, filterProps, paginationProps } = useCollection(
         allCollections ?? [],
@@ -77,6 +82,11 @@ export function RepositoryLibraryComponent(): ReactElement {
 
     const handleAction = async (e: any) => {
         switch (e.detail.id) {
+            case 'edit': {
+                setIsEdit(true);
+                setCreateCollectionModalVisible(true);
+                break;
+            }
             case 'delete': {
                 const selectedCollection = collectionProps.selectedItems[0];
                 dispatch(
@@ -107,84 +117,108 @@ export function RepositoryLibraryComponent(): ReactElement {
     };
 
     return (
-        <Table
-            {...collectionProps}
-            selectedItems={collectionProps.selectedItems}
-            onSelectionChange={handleSelectionChange}
-            onRowClick={({ detail }) => {
-                const collection = detail.item;
-                navigate(`/document-library/${collection.repositoryId}/${collection.collectionId}`);
-            }}
-            columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
-            columnDisplay={preferences.contentDisplay}
-            stickyColumns={{ first: 1, last: 0 }}
-            resizableColumns
-            enableKeyboardNavigation
-            items={items}
-            loading={fetchingCollections && !allCollections}
-            loadingText='Loading collections'
-            selectionType='single'
-            filter={
-                <TextFilter
-                    {...filterProps}
-                    countText={`${filteredItemsCount} ${filteredItemsCount === 1 ? 'match' : 'matches'}`}
-                    filteringPlaceholder='Find collections'
-                />
-            }
-            header={
-                <Header
-                    counter={
-                        collectionProps.selectedItems.length
-                            ? `(${collectionProps.selectedItems.length}/${allCollections?.length || 0})`
-                            : `${allCollections?.length || 0}`
-                    }
-                    actions={
-                        <SpaceBetween direction='horizontal' size='xs'>
-                            <Button
-                                onClick={() => {
-                                    actions.setSelectedItems([]);
-                                    dispatch(ragApi.util.invalidateTags(['collections']));
-                                }}
-                                ariaLabel='Refresh collections'
-                            >
-                                <Icon name='refresh' />
-                            </Button>
-                            <ButtonDropdown
-                                items={[
-                                    {
-                                        id: 'delete',
-                                        text: 'Delete',
-                                        disabled: collectionProps.selectedItems.length === 0,
-                                    },
-                                ]}
-                                loading={isDeleteLoading}
-                                disabled={collectionProps.selectedItems.length === 0}
-                                onItemClick={handleAction}
-                            >
-                                Actions
-                            </ButtonDropdown>
-                        </SpaceBetween>
-                    }
-                >
-                    Collections
-                </Header>
-            }
-            pagination={<Pagination {...paginationProps} />}
-            preferences={
-                <CollectionPreferences
-                    title='Preferences'
-                    preferences={preferences}
-                    confirmLabel='Confirm'
-                    cancelLabel='Cancel'
-                    onConfirm={({ detail }) => setPreferences(detail)}
-                    contentDisplayPreference={{
-                        title: 'Select visible columns',
-                        options: getCollectionTablePreference(),
-                    }}
-                    pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}
-                />
-            }
-        />
+        <>
+            <CreateCollectionModal
+                visible={createCollectionModalVisible}
+                setVisible={setCreateCollectionModalVisible}
+                isEdit={isEdit}
+                setIsEdit={setIsEdit}
+                selectedItems={collectionProps.selectedItems}
+                setSelectedItems={actions.setSelectedItems}
+            />
+            <Table
+                {...collectionProps}
+                selectedItems={collectionProps.selectedItems}
+                onSelectionChange={handleSelectionChange}
+                onRowClick={({ detail }) => {
+                    const collection = detail.item;
+                    navigate(`/document-library/${collection.repositoryId}/${collection.collectionId}`);
+                }}
+                columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
+                columnDisplay={preferences.contentDisplay}
+                stickyColumns={{ first: 1, last: 0 }}
+                resizableColumns
+                enableKeyboardNavigation
+                items={items}
+                loading={fetchingCollections && !allCollections}
+                loadingText='Loading collections'
+                selectionType='single'
+                filter={
+                    <TextFilter
+                        {...filterProps}
+                        countText={`${filteredItemsCount} ${filteredItemsCount === 1 ? 'match' : 'matches'}`}
+                        filteringPlaceholder='Find collections'
+                    />
+                }
+                header={
+                    <Header
+                        counter={
+                            collectionProps.selectedItems.length
+                                ? `(${collectionProps.selectedItems.length}/${allCollections?.length || 0})`
+                                : `${allCollections?.length || 0}`
+                        }
+                        actions={
+                            <SpaceBetween direction='horizontal' size='xs'>
+                                <Button
+                                    onClick={() => {
+                                        actions.setSelectedItems([]);
+                                        dispatch(ragApi.util.invalidateTags(['collections']));
+                                    }}
+                                    ariaLabel='Refresh collections'
+                                >
+                                    <Icon name='refresh' />
+                                </Button>
+                                <ButtonDropdown
+                                    items={[
+                                        {
+                                            id: 'edit',
+                                            text: 'Edit',
+                                            disabled: collectionProps.selectedItems.length === 0,
+                                        },
+                                        {
+                                            id: 'delete',
+                                            text: 'Delete',
+                                            disabled: collectionProps.selectedItems.length === 0,
+                                        },
+                                    ]}
+                                    loading={isDeleteLoading}
+                                    disabled={collectionProps.selectedItems.length === 0}
+                                    onItemClick={handleAction}
+                                >
+                                    Actions
+                                </ButtonDropdown>
+                                <Button
+                                    variant='primary'
+                                    onClick={() => {
+                                        setIsEdit(false);
+                                        setCreateCollectionModalVisible(true);
+                                    }}
+                                >
+                                    Create Collection
+                                </Button>
+                            </SpaceBetween>
+                        }
+                    >
+                        Collections
+                    </Header>
+                }
+                pagination={<Pagination {...paginationProps} />}
+                preferences={
+                    <CollectionPreferences
+                        title='Preferences'
+                        preferences={preferences}
+                        confirmLabel='Confirm'
+                        cancelLabel='Cancel'
+                        onConfirm={({ detail }) => setPreferences(detail)}
+                        contentDisplayPreference={{
+                            title: 'Select visible columns',
+                            options: getCollectionTablePreference(),
+                        }}
+                        pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}
+                    />
+                }
+            />
+        </>
     );
 }
 

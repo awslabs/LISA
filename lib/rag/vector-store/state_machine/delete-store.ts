@@ -14,7 +14,7 @@
  limitations under the License.
  */
 import { Construct } from 'constructs';
-import { BaseProps } from '../../../schema';
+import { BaseProps, VectorStoreStatus,  } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -30,7 +30,6 @@ import { getDefaultRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
 import { LAMBDA_PATH } from '../../../util';
-import { VectorStoreStatus } from './vector-store-status';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,

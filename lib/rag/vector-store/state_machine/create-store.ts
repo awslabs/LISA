@@ -14,7 +14,7 @@
   limitations under the License.
 */
 import { Construct } from 'constructs';
-import { BaseProps } from '../../../schema';
+import { BaseProps, VectorStoreStatus,  } from '../../../schema';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -23,7 +23,6 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { VectorStoreStatus } from './vector-store-status';
 
 type CreateStoreStateMachineProps = BaseProps & {
     executionRole: iam.IRole;

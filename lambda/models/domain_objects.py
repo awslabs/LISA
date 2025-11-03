@@ -28,7 +28,12 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
-from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
+from utilities.validation import (
+    validate_all_fields_defined,
+    validate_any_fields_defined,
+    validate_instance_type,
+    ValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -693,8 +698,6 @@ class FilterParams:
         Raises:
             ValidationError: If status value is invalid
         """
-        from utilities.validation import ValidationError
-
         filter_text = query_params.get("filter")
 
         status_filter = None
@@ -727,7 +730,6 @@ class SortParams:
         Raises:
             ValidationError: If sortBy or sortOrder values are invalid
         """
-        from utilities.validation import ValidationError
 
         sort_by = CollectionSortBy.CREATED_AT
         if "sortBy" in query_params:

@@ -2873,7 +2873,6 @@ def test_similarity_search_helpers():
         assert results[0]["page_content"] == "test content"
 
 
-
 # Tests for list_user_collections endpoint
 
 
@@ -2889,39 +2888,17 @@ def mock_collection_service_for_lambda():
 def lambda_event_user_collections():
     """Sample Lambda event for list_user_collections."""
     return {
-        "requestContext": {
-            "authorizer": {
-                "username": "test-user",
-                "groups": json.dumps(["group1", "group2"])
-            }
-        },
-        "queryStringParameters": {
-            "pageSize": "20",
-            "sortBy": "createdAt",
-            "sortOrder": "desc"
-        }
+        "requestContext": {"authorizer": {"username": "test-user", "groups": json.dumps(["group1", "group2"])}},
+        "queryStringParameters": {"pageSize": "20", "sortBy": "createdAt", "sortOrder": "desc"},
     }
 
 
-@pytest.fixture
-def lambda_context():
-    """Sample Lambda context."""
-    return SimpleNamespace(
-        function_name="test-function",
-        memory_limit_in_mb=128,
-        invoked_function_arn="arn:aws:lambda:us-east-1:123456789012:function:test-function",
-        aws_request_id="test-request-id"
-    )
-
-
 def test_list_user_collections_endpoint_success_workflow(
-    lambda_event_user_collections,
-    lambda_context,
-    mock_collection_service_for_lambda
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
     """
     Complete API workflow: event → handler → service → response with collections.
-    
+
     Workflow:
     1. API Gateway sends event with user context
     2. Handler extracts user info and query params
@@ -2930,7 +2907,7 @@ def test_list_user_collections_endpoint_success_workflow(
     5. Returns 200 with collection data
     """
     from repository.lambda_functions import list_user_collections
-    
+
     # Setup: Configure mock service to return sample collections
     sample_collections = [
         {
@@ -2946,13 +2923,13 @@ def test_list_user_collections_endpoint_success_workflow(
     ]
     mock_collection_service_for_lambda.list_all_user_collections.return_value = (
         sample_collections,
-        None  # No next token
+        None,  # No next token
     )
-    
+
     # Execute: Call handler with event
     with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
         response = list_user_collections(lambda_event_user_collections, lambda_context)
-    
+
     # Verify: Response structure and data
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
@@ -2963,13 +2940,10 @@ def test_list_user_collections_endpoint_success_workflow(
     assert body["hasPreviousPage"] is False
 
 
-def test_list_user_collections_endpoint_validation_workflow(
-    lambda_event_user_collections,
-    lambda_context
-):
+def test_list_user_collections_endpoint_validation_workflow(lambda_event_user_collections, lambda_context):
     """
     Complete validation workflow: invalid params → validation error → 400 response.
-    
+
     Workflow:
     1. API Gateway sends event with invalid sortBy
     2. Handler validates parameters
@@ -2977,13 +2951,13 @@ def test_list_user_collections_endpoint_validation_workflow(
     4. Returns 400 with error message
     """
     from repository.lambda_functions import list_user_collections
-    
+
     # Setup: Invalid sortBy parameter
     lambda_event_user_collections["queryStringParameters"]["sortBy"] = "invalid_field"
-    
+
     # Execute: Call handler with invalid params
     response = list_user_collections(lambda_event_user_collections, lambda_context)
-    
+
     # Verify: 400 error response
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
@@ -2994,7 +2968,7 @@ def test_list_user_collections_endpoint_validation_workflow(
 def test_list_user_collections_endpoint_auth_workflow(lambda_context):
     """
     Complete auth workflow: missing auth → 401 response.
-    
+
     Workflow:
     1. API Gateway sends event without auth context
     2. Handler attempts to extract user context
@@ -3002,28 +2976,23 @@ def test_list_user_collections_endpoint_auth_workflow(lambda_context):
     4. Returns error response
     """
     from repository.lambda_functions import list_user_collections
-    
+
     # Setup: Event without auth context
-    event_no_auth = {
-        "requestContext": {},
-        "queryStringParameters": {}
-    }
-    
+    event_no_auth = {"requestContext": {}, "queryStringParameters": {}}
+
     # Execute: Call handler without auth
     response = list_user_collections(event_no_auth, lambda_context)
-    
+
     # Verify: Error response (may be 500 or 401 depending on implementation)
     assert response["statusCode"] in [401, 500]
 
 
 def test_list_user_collections_endpoint_pagination_workflow(
-    lambda_event_user_collections,
-    lambda_context,
-    mock_collection_service_for_lambda
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
     """
     Complete pagination workflow: request with token → next page returned.
-    
+
     Workflow:
     1. API Gateway sends event with pagination token
     2. Handler parses pagination token
@@ -3032,11 +3001,11 @@ def test_list_user_collections_endpoint_pagination_workflow(
     5. Handler returns response with next page data
     """
     from repository.lambda_functions import list_user_collections
-    
+
     # Setup: Add pagination token to event
     pagination_token = {"version": "v1", "offset": 20}
     lambda_event_user_collections["queryStringParameters"]["lastEvaluatedKey"] = json.dumps(pagination_token)
-    
+
     # Configure mock to return next page
     next_collections = [
         {
@@ -3047,15 +3016,12 @@ def test_list_user_collections_endpoint_pagination_workflow(
         }
     ]
     next_token = {"version": "v1", "offset": 40}
-    mock_collection_service_for_lambda.list_all_user_collections.return_value = (
-        next_collections,
-        next_token
-    )
-    
+    mock_collection_service_for_lambda.list_all_user_collections.return_value = (next_collections, next_token)
+
     # Execute: Call handler with pagination token
     with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
         response = list_user_collections(lambda_event_user_collections, lambda_context)
-    
+
     # Verify: Next page returned
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
@@ -3067,13 +3033,11 @@ def test_list_user_collections_endpoint_pagination_workflow(
 
 
 def test_list_user_collections_endpoint_filtering_workflow(
-    lambda_event_user_collections,
-    lambda_context,
-    mock_collection_service_for_lambda
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
     """
     Complete filtering workflow: filter param → filtered results.
-    
+
     Workflow:
     1. API Gateway sends event with filter parameter
     2. Handler extracts filter text
@@ -3082,10 +3046,10 @@ def test_list_user_collections_endpoint_filtering_workflow(
     5. Handler returns filtered results
     """
     from repository.lambda_functions import list_user_collections
-    
+
     # Setup: Add filter to event
     lambda_event_user_collections["queryStringParameters"]["filter"] = "test"
-    
+
     # Configure mock to return filtered results
     filtered_collections = [
         {
@@ -3094,21 +3058,18 @@ def test_list_user_collections_endpoint_filtering_workflow(
             "description": "Contains test keyword",
         }
     ]
-    mock_collection_service_for_lambda.list_all_user_collections.return_value = (
-        filtered_collections,
-        None
-    )
-    
+    mock_collection_service_for_lambda.list_all_user_collections.return_value = (filtered_collections, None)
+
     # Execute: Call handler with filter
     with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
         response = list_user_collections(lambda_event_user_collections, lambda_context)
-    
+
     # Verify: Filtered results returned
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["collections"]) == 1
     assert "test" in body["collections"][0]["name"].lower() or "test" in body["collections"][0]["description"].lower()
-    
+
     # Verify service was called with filter
     mock_collection_service_for_lambda.list_all_user_collections.assert_called_once()
     call_kwargs = mock_collection_service_for_lambda.list_all_user_collections.call_args[1]
@@ -3116,13 +3077,11 @@ def test_list_user_collections_endpoint_filtering_workflow(
 
 
 def test_list_user_collections_endpoint_error_handling_workflow(
-    lambda_event_user_collections,
-    lambda_context,
-    mock_collection_service_for_lambda
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
     """
     Complete error handling workflow: service error → 500 response with logging.
-    
+
     Workflow:
     1. API Gateway sends valid event
     2. Handler calls service
@@ -3131,14 +3090,14 @@ def test_list_user_collections_endpoint_error_handling_workflow(
     5. Returns 500 with generic error message
     """
     from repository.lambda_functions import list_user_collections
-    
+
     # Setup: Configure mock to raise error
     mock_collection_service_for_lambda.list_all_user_collections.side_effect = Exception("Database connection failed")
-    
+
     # Execute: Call handler (service will raise error)
     with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
         response = list_user_collections(lambda_event_user_collections, lambda_context)
-    
+
     # Verify: 500 error response
     assert response["statusCode"] == 500
     body = json.loads(response["body"])

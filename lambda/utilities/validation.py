@@ -14,8 +14,12 @@
 
 """Validation utilities for Lambda functions."""
 import logging
+from typing import Any, List
+
+import botocore.session
 
 logger = logging.getLogger(__name__)
+sess = botocore.session.Session()
 
 
 class ValidationError(Exception):
@@ -49,6 +53,48 @@ def validate_model_name(model_name: str) -> bool:
         raise ValidationError("Model name cannot be empty")
 
     return True
+
+
+def validate_instance_type(type: str) -> str:
+    """Validate that the type is a valid EC2 instance type.
+
+    Args:
+        type: EC2 instance type to validate
+
+    Returns:
+        str: The validated instance type
+
+    Raises:
+        ValueError: If instance type is invalid
+    """
+    if type in sess.get_service_model("ec2").shape_for("InstanceType").enum:
+        return type
+
+    raise ValueError("Invalid EC2 instance type.")
+
+
+def validate_all_fields_defined(fields: List[Any]) -> bool:
+    """Validate that all fields are non-null in the field list.
+
+    Args:
+        fields: List of fields to validate
+
+    Returns:
+        bool: True if all fields are non-null, False otherwise
+    """
+    return all((field is not None for field in fields))
+
+
+def validate_any_fields_defined(fields: List[Any]) -> bool:
+    """Validate that at least one field is non-null in the field list.
+
+    Args:
+        fields: List of fields to validate
+
+    Returns:
+        bool: True if at least one field is non-null, False otherwise
+    """
+    return any((field is not None for field in fields))
 
 
 def safe_error_response(error: Exception) -> dict:

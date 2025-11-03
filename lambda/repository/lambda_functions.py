@@ -33,6 +33,7 @@ from models.domain_objects import (
     PaginationResult,
     RagCollectionConfig,
     RagDocument,
+    SortParams,
     UpdateVectorStoreRequest,
 )
 from repository.collection_service import CollectionService
@@ -245,7 +246,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Parse request body
     try:
         body = json.loads(event.get("body", {}))
-        request = RagCollectionConfig(**body)
+        collection = RagCollectionConfig(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
@@ -256,21 +257,6 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
-
-    # Convert request to RagCollectionConfig
-    collection = RagCollectionConfig(
-        repositoryId=repository_id,
-        name=request.name,
-        description=request.description,
-        embeddingModel=request.embeddingModel,
-        chunkingStrategy=request.chunkingStrategy,
-        allowedGroups=request.allowedGroups or [],
-        metadata=request.metadata or {},
-        private=request.private,
-        allowChunkingOverride=request.allowChunkingOverride,
-        pipelines=request.pipelines or [],
-        createdBy=username,
-    )
 
     # Create collection via service
     created_collection = collection_service.create_collection(
@@ -591,6 +577,7 @@ def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
     if "lastEvaluatedKey" in query_params:
         try:
             import json as json_lib
+
             pagination_token = json_lib.loads(query_params["lastEvaluatedKey"])
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning(f"Failed to parse pagination token: {e}")
@@ -601,17 +588,7 @@ def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
     filter_text = filter_params.filter_text
 
     # Parse sort parameters
-    sort_by = query_params.get("sortBy", "createdAt")
-    sort_order = query_params.get("sortOrder", "desc")
-
-    # Validate sort parameters
-    valid_sort_by = ["name", "createdAt", "updatedAt"]
-    if sort_by not in valid_sort_by:
-        raise ValidationError(f"Invalid sortBy value. Must be one of: {', '.join(valid_sort_by)}")
-
-    valid_sort_order = ["asc", "desc"]
-    if sort_order not in valid_sort_order:
-        raise ValidationError(f"Invalid sortOrder value. Must be one of: {', '.join(valid_sort_order)}")
+    sort_params = SortParams.from_query_params(query_params)
 
     # List collections via service
     collections, next_token = collection_service.list_all_user_collections(
@@ -621,8 +598,7 @@ def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
         page_size=page_size,
         pagination_token=pagination_token,
         filter_text=filter_text,
-        sort_by=sort_by,
-        sort_order=sort_order,
+        sort_params=sort_params,
     )
 
     # Calculate pagination metadata
@@ -634,6 +610,7 @@ def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
     if next_token:
         try:
             import json as json_lib
+
             encoded_next_token = json_lib.dumps(next_token)
         except Exception as e:
             logger.error(f"Failed to encode pagination token: {e}")
@@ -749,20 +726,20 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
 def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_params: dict) -> None:
     """Handle deprecated chunkSize and chunkOverlap query parameters.
-    
+
     This function provides backward compatibility by migrating legacy query parameters
     to the new chunkingStrategy format. It logs deprecation warnings to encourage
     migration to the new API format.
-    
+
     Args:
         request: The IngestDocumentRequest object to potentially modify
         query_params: Query string parameters from the HTTP request
-        
+
     Side Effects:
         - Logs deprecation warning if legacy parameters are detected
         - Modifies request.chunkingStrategy if legacy parameters are present
           and chunkingStrategy is not already set
-    
+
     Deprecated Parameters:
         - chunkSize: Size of each chunk (use chunkingStrategy.size instead)
         - chunkOverlap: Overlap between chunks (use chunkingStrategy.overlap instead)
@@ -773,21 +750,16 @@ def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_pa
             "Please use the 'chunkingStrategy' object in the request body instead. "
             "Legacy parameters will be removed in a future version."
         )
-        
+
         # Migrate legacy parameters to new format if chunkingStrategy not provided
         if not request.chunkingStrategy:
             chunk_size = int(query_params.get("chunkSize", 512))
             chunk_overlap = int(query_params.get("chunkOverlap", 51))
-            
+
             # Create chunkingStrategy from legacy parameters
-            request.chunkingStrategy = {
-                "type": "fixed",
-                "size": chunk_size,
-                "overlap": chunk_overlap
-            }
+            request.chunkingStrategy = {"type": "fixed", "size": chunk_size, "overlap": chunk_overlap}
             logger.info(
-                f"Migrated legacy parameters to chunkingStrategy: "
-                f"size={chunk_size}, overlap={chunk_overlap}"
+                f"Migrated legacy parameters to chunkingStrategy: " f"size={chunk_size}, overlap={chunk_overlap}"
             )
 
 

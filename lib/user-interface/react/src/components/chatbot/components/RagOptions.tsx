@@ -53,7 +53,6 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
             data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
         })});
 
-    const [userHasSelectedModel, setUserHasSelectedModel] = useState<boolean>(false);
     const [userHasSelectedCollection, setUserHasSelectedCollection] = useState<boolean>(false);
 
     const lastRepositoryIdRef = useRef<string>(undefined);
@@ -84,7 +83,6 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
         // Update tracking and reset user selection flag when repository changes
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
-            setUserHasSelectedModel(false);
             setUserHasSelectedCollection(false);
         }
 
@@ -115,7 +113,6 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
 
     const handleRepositoryChange = ({ detail }) => {
         const newRepositoryId = detail.value;
-        setUserHasSelectedModel(false); // Reset when repository changes
         setUserHasSelectedCollection(false); // Reset collection selection flag
 
         if (newRepositoryId) {
@@ -133,26 +130,6 @@ export default function RagControls ({isRunning, setUseRag, setRagConfig, ragCon
                 repositoryId: undefined,
                 repositoryType: undefined,
                 collection: undefined,
-                embeddingModel: undefined,
-            }));
-        }
-    };
-
-    const handleModelChange = ({ detail }) => {
-        const newModelId = detail.value;
-        setUserHasSelectedModel(true); // Mark that user has made an explicit choice
-
-        if (newModelId) {
-            const model = allModels.find((model) => model.modelId === newModelId);
-            if (model) {
-                setRagConfig((config) => ({
-                    ...config,
-                    embeddingModel: model,
-                }));
-            }
-        } else {
-            setRagConfig((config) => ({
-                ...config,
                 embeddingModel: undefined,
             }));
         }

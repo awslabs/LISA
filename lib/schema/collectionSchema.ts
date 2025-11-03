@@ -108,7 +108,7 @@ export const RagCollectionConfigSchema = z.object({
     repositoryId: z.string().min(1).describe('Parent vector store ID'),
     name: z.string()
         .max(100)
-        .regex(/^[a-z0-9_-]+$/, 'Collection name must contain only lower alphanumeric characters, hyphens, and underscores')
+        .regex(/^[a-zA-Z0-9 _-]+$/, 'Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores')
         .optional()
         .describe('User-friendly collection name'),
     description: z.string().optional().describe('Collection description'),

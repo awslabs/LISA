@@ -22,7 +22,7 @@ These tests verify end-to-end functionality with real repository implementations
 import os
 import sys
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -47,10 +47,10 @@ def mock_dynamodb_tables():
     # Create mock tables
     collections_table = Mock()
     repositories_table = Mock()
-    
+
     # Sample data
     now = datetime.now(timezone.utc)
-    
+
     repositories = [
         {
             "repositoryId": "repo-1",
@@ -68,7 +68,7 @@ def mock_dynamodb_tables():
             "allowedGroups": [],  # Public
         },
     ]
-    
+
     collections = {
         "repo-1": [
             RagCollectionConfig(
@@ -118,52 +118,49 @@ def mock_dynamodb_tables():
         ],
         "repo-3": [],  # Empty repository
     }
-    
+
     return {
         "collections": collections_table,
         "repositories": repositories_table,
         "data": {
             "repositories": repositories,
             "collections": collections,
-        }
+        },
     }
 
 
 @pytest.fixture
 def integration_collection_service(mock_dynamodb_tables):
     """Service with real repository implementations (mocked DynamoDB)."""
-    from repository.collection_service import CollectionService
     from repository.collection_repo import CollectionRepository
+    from repository.collection_service import CollectionService
     from repository.vector_store_repo import VectorStoreRepository
-    
+
     # Create mock repositories that use the test data
     collection_repo = Mock(spec=CollectionRepository)
     vector_store_repo = Mock(spec=VectorStoreRepository)
-    
+
     # Configure vector store repo
     vector_store_repo.get_registered_repositories.return_value = mock_dynamodb_tables["data"]["repositories"]
-    
+
     # Configure collection repo
     def mock_list_by_repo(repository_id, **kwargs):
         collections = mock_dynamodb_tables["data"]["collections"].get(repository_id, [])
         return (collections, None)
-    
+
     def mock_count_by_repo(repository_id):
         return len(mock_dynamodb_tables["data"]["collections"].get(repository_id, []))
-    
+
     collection_repo.list_by_repository.side_effect = mock_list_by_repo
     collection_repo.count_by_repository.side_effect = mock_count_by_repo
-    
-    return CollectionService(
-        collection_repo=collection_repo,
-        vector_store_repo=vector_store_repo
-    )
+
+    return CollectionService(collection_repo=collection_repo, vector_store_repo=vector_store_repo)
 
 
 def test_cross_repository_query_integration(integration_collection_service, mock_dynamodb_tables):
     """
     Full flow: multiple repos in DB → query → aggregated results.
-    
+
     Integration test verifying:
     1. Service queries multiple repositories
     2. Collections are aggregated correctly
@@ -181,15 +178,15 @@ def test_cross_repository_query_integration(integration_collection_service, mock
         sort_by="createdAt",
         sort_order="desc",
     )
-    
+
     # Verify: All collections from all repositories returned
     assert len(collections) == 3
-    
+
     # Verify: Collections from different repositories
     repo_ids = {c["repositoryId"] for c in collections}
     assert "repo-1" in repo_ids
     assert "repo-2" in repo_ids
-    
+
     # Verify: Repository names enriched
     assert all("repositoryName" in c for c in collections)
     repo_1_collections = [c for c in collections if c["repositoryId"] == "repo-1"]
@@ -199,7 +196,7 @@ def test_cross_repository_query_integration(integration_collection_service, mock
 def test_permission_enforcement_integration(integration_collection_service, mock_dynamodb_tables):
     """
     Full flow: repos with different permissions → filtered results.
-    
+
     Integration test verifying:
     1. Repository-level permissions are enforced
     2. Collection-level permissions are enforced
@@ -217,7 +214,7 @@ def test_permission_enforcement_integration(integration_collection_service, mock
         sort_by="createdAt",
         sort_order="desc",
     )
-    
+
     # Verify: Only accessible collections returned
     # user1 with group1 has access to:
     # - repo-1 (via group1) → coll-1 (public, group1)
@@ -225,7 +222,7 @@ def test_permission_enforcement_integration(integration_collection_service, mock
     # Should NOT see:
     # - coll-2 (private, owned by user2)
     # - coll-3 (repo-2 requires group3)
-    
+
     assert len(collections) == 1
     assert collections[0]["collectionId"] == "coll-1"
     assert collections[0]["repositoryId"] == "repo-1"
@@ -234,7 +231,7 @@ def test_permission_enforcement_integration(integration_collection_service, mock
 def test_pagination_with_large_dataset_integration(integration_collection_service, mock_dynamodb_tables):
     """
     Full flow: 1000+ collections → paginated results.
-    
+
     Integration test verifying:
     1. Large datasets trigger appropriate pagination strategy
     2. Pagination tokens work correctly
@@ -244,7 +241,7 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
     # Setup: Mock large dataset
     large_collections = []
     now = datetime.now(timezone.utc)
-    
+
     for i in range(50):
         large_collections.append(
             RagCollectionConfig(
@@ -262,17 +259,17 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
                 private=False,
             )
         )
-    
+
     mock_dynamodb_tables["data"]["collections"]["repo-1"] = large_collections
-    
+
     # Update mock to return large dataset
     def mock_list_by_repo(repository_id, **kwargs):
         collections = mock_dynamodb_tables["data"]["collections"].get(repository_id, [])
         return (collections, None)
-    
+
     integration_collection_service.collection_repo.list_by_repository.side_effect = mock_list_by_repo
     integration_collection_service.collection_repo.count_by_repository.return_value = 50
-    
+
     # Execute: First page
     page1, token1 = integration_collection_service.list_all_user_collections(
         username="admin-user",
@@ -284,11 +281,11 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
         sort_by="createdAt",
         sort_order="desc",
     )
-    
+
     # Verify: First page has 20 items and next token
     assert len(page1) == 20
     assert token1 is not None
-    
+
     # Execute: Second page
     page2, token2 = integration_collection_service.list_all_user_collections(
         username="admin-user",
@@ -300,11 +297,11 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
         sort_by="createdAt",
         sort_order="desc",
     )
-    
+
     # Verify: Second page has 20 items
     assert len(page2) == 20
     assert token2 is not None
-    
+
     # Verify: No duplicate collections across pages
     page1_ids = {c["collectionId"] for c in page1}
     page2_ids = {c["collectionId"] for c in page2}
@@ -314,7 +311,7 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
 def test_scalable_pagination_activation_integration(integration_collection_service, mock_dynamodb_tables):
     """
     Full flow: large dataset triggers scalable strategy.
-    
+
     Integration test verifying:
     1. Service estimates collection count
     2. Scalable strategy is selected for 1000+ collections
@@ -323,7 +320,7 @@ def test_scalable_pagination_activation_integration(integration_collection_servi
     """
     # Setup: Mock count to trigger scalable strategy
     integration_collection_service.collection_repo.count_by_repository.return_value = 500  # 500 per repo
-    
+
     # Execute: Query (should trigger scalable strategy due to estimated 1500 total)
     collections, next_token = integration_collection_service.list_all_user_collections(
         username="admin-user",
@@ -335,7 +332,7 @@ def test_scalable_pagination_activation_integration(integration_collection_servi
         sort_by="createdAt",
         sort_order="desc",
     )
-    
+
     # Verify: Scalable strategy was used (check token format if present)
     # With actual data, we have 3 collections, so no token
     # But the strategy selection logic was exercised
@@ -345,7 +342,7 @@ def test_scalable_pagination_activation_integration(integration_collection_servi
 def test_repository_metadata_enrichment_integration(integration_collection_service, mock_dynamodb_tables):
     """
     Full flow: collections enriched with repo names.
-    
+
     Integration test verifying:
     1. Collections are queried from repositories
     2. Repository metadata is looked up
@@ -363,15 +360,15 @@ def test_repository_metadata_enrichment_integration(integration_collection_servi
         sort_by="createdAt",
         sort_order="desc",
     )
-    
+
     # Verify: All collections have repositoryName
     assert all("repositoryName" in c for c in collections)
-    
+
     # Verify: Repository names match expected values
     for collection in collections:
         repo_id = collection["repositoryId"]
         expected_name = next(
             (r["repositoryName"] for r in mock_dynamodb_tables["data"]["repositories"] if r["repositoryId"] == repo_id),
-            repo_id
+            repo_id,
         )
         assert collection["repositoryName"] == expected_name

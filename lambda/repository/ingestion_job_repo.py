@@ -227,4 +227,3 @@ class IngestionJobRepository:
                 logger.debug(f"Error listing jobs with status {status}: {e}")
 
         return None
-

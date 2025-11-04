@@ -364,3 +364,33 @@ def get_hosted_mcp_server(event: dict, context: dict) -> Any:
         return item
 
     raise ValueError(f"Not authorized to get hosted MCP server {mcp_server_id}. User {user_id} is not an admin.")
+
+
+@api_wrapper
+def delete_hosted_mcp_server(event: dict, context: dict) -> Any:
+    """Trigger the state machine to delete a LISA Hosted MCP server."""
+    user_id = get_username(event)
+    mcp_server_id = get_mcp_server_id(event)
+
+    # Check if the user is authorized to delete Hosted MCP server
+    if is_admin(event):
+        # Check if server exists
+        response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
+        item = get_item(response)
+
+        if item is None:
+            raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+
+        # Kick off state machine
+        sfn_arn = os.environ.get("DELETE_MCP_SERVER_SFN_ARN")
+        if not sfn_arn:
+            raise ValueError("DELETE_MCP_SERVER_SFN_ARN not configured")
+
+        stepfunctions.start_execution(
+            stateMachineArn=sfn_arn,
+            input=json.dumps({"id": mcp_server_id}),
+        )
+
+        return {"message": f"Deletion initiated for hosted MCP server {mcp_server_id}"}
+
+    raise ValueError(f"Not authorized to delete hosted MCP server. User {user_id} is not an admin.")

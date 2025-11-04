@@ -29,6 +29,7 @@ import { Vpc } from '../networking/vpc';
 import { LAMBDA_PATH } from '../util';
 import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
+import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
@@ -44,7 +45,8 @@ type McpServerApiProps = {
  * API for managing MCP server dynamic hosting infrastructure
  */
 export class McpServerApi extends Construct {
-    readonly stateMachineArn: string;
+    readonly createStateMachineArn: string;
+    readonly deleteStateMachineArn: string;
     readonly mcpServerDeployerFn: IFunction;
 
     constructor (scope: Construct, id: string, props: McpServerApiProps) {
@@ -166,11 +168,24 @@ export class McpServerApi extends Construct {
             managementKeyName: managementKeyName,
         });
 
-        this.stateMachineArn = createMcpServerStateMachine.stateMachineArn;
+        this.createStateMachineArn = createMcpServerStateMachine.stateMachineArn;
+
+        // Create state machine for deleting MCP servers
+        const deleteMcpServerStateMachine = new DeleteMcpServerStateMachine(this, 'DeleteMcpServerWorkflow', {
+            config: config,
+            mcpServerTable: mcpServersTable,
+            lambdaLayers: lambdaLayers,
+            role: stateMachinesLambdaRole,
+            vpc: vpc,
+            securityGroups: securityGroups,
+        });
+
+        this.deleteStateMachineArn = deleteMcpServerStateMachine.stateMachineArn;
 
         const env = {
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName,
             CREATE_MCP_SERVER_SFN_ARN: createMcpServerStateMachine.stateMachineArn,
+            DELETE_MCP_SERVER_SFN_ARN: deleteMcpServerStateMachine.stateMachineArn,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
         };
 
@@ -241,6 +256,27 @@ export class McpServerApi extends Construct {
             lambdaRole,
         );
 
+        // Register DELETE endpoint for deleting a hosted MCP server by ID
+        registerAPIEndpoint(
+            this,
+            restApi,
+            lambdaPath,
+            lambdaLayers,
+            {
+                name: 'delete_hosted_mcp_server',
+                resource: 'mcp_server',
+                description: 'Delete LISA MCP hosted server by ID',
+                path: 'mcp/{serverId}',
+                method: 'DELETE',
+                environment: env
+            },
+            getDefaultRuntime(),
+            vpc,
+            securityGroups,
+            authorizer,
+            lambdaRole,
+        );
+
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
         // Grant permissions for state machine invocation
@@ -253,6 +289,7 @@ export class McpServerApi extends Construct {
                     ],
                     resources: [
                         createMcpServerStateMachine.stateMachineArn,
+                        deleteMcpServerStateMachine.stateMachineArn,
                     ],
                 }),
                 new PolicyStatement({
@@ -262,6 +299,7 @@ export class McpServerApi extends Construct {
                         'dynamodb:Scan',
                         'dynamodb:PutItem',
                         'dynamodb:UpdateItem',
+                        'dynamodb:DeleteItem',
                     ],
                     resources: [
                         mcpServersTable.tableArn,
@@ -360,6 +398,8 @@ export class McpServerApi extends Construct {
                         'dynamodb:PutItem',
                         'dynamodb:UpdateItem',
                         'dynamodb:GetItem',
+                        'dynamodb:DeleteItem',
+                        'dynamodb:Scan',
                     ],
                     resources: [
                         mcpConnectionsTableArnPattern,

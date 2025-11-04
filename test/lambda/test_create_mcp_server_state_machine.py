@@ -286,7 +286,12 @@ def test_handle_add_server_to_active_success(mcp_servers_table, sample_mcp_serve
 
     with patch("mcp_server.state_machine.create_mcp_server.ssmClient") as mock_ssm:
         # Mock SSM to return None (chat not deployed)
-        mock_ssm.get_parameter.side_effect = Exception("ParameterNotFound")
+        # Create a proper exception class for ParameterNotFound
+        class ParameterNotFound(Exception):
+            pass
+
+        mock_ssm.exceptions.ParameterNotFound = ParameterNotFound
+        mock_ssm.get_parameter.side_effect = ParameterNotFound()
 
         result = handle_add_server_to_active(event, None)
 
@@ -359,7 +364,12 @@ def test_handle_add_server_to_active_with_empty_groups(mcp_servers_table, sample
     )
 
     with patch("mcp_server.state_machine.create_mcp_server.ssmClient") as mock_ssm:
-        mock_ssm.get_parameter.side_effect = Exception("ParameterNotFound")
+        # Create a proper exception class for ParameterNotFound
+        class ParameterNotFound(Exception):
+            pass
+
+        mock_ssm.exceptions.ParameterNotFound = ParameterNotFound
+        mock_ssm.get_parameter.side_effect = ParameterNotFound()
 
         result = handle_add_server_to_active(event, None)
 

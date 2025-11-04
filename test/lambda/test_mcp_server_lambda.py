@@ -318,6 +318,153 @@ def test_get_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambd
     mock_common.is_admin.return_value = False
 
 
+def test_delete_hosted_mcp_server_success(mcp_servers_table, lambda_context):
+    """Test successful deletion of hosted MCP server."""
+    # Add a server to the table
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "InService",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    with patch.dict(
+        os.environ,
+        {"DELETE_MCP_SERVER_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteTestStateMachine"},
+    ):
+        # Import the module to get access to stepfunctions
+        import mcp_server.lambda_functions as mcp_module
+
+        # Create a mock client with start_execution method
+        mock_sfn_client = MagicMock()
+        mock_sfn_client.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123456789012:execution:DeleteTestStateMachine:test-execution"
+        }
+
+        # Patch the stepfunctions attribute directly in the already-imported module
+        original_stepfunctions = mcp_module.stepfunctions
+        mcp_module.stepfunctions = mock_sfn_client
+
+        try:
+            mock_common.get_username.return_value = "admin-user"
+            mock_common.is_admin.return_value = True
+
+            # Call the function from the module namespace to ensure it uses the patched stepfunctions
+            response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+            assert response["statusCode"] == 200
+            body = json.loads(response["body"])
+            assert "message" in body
+            assert "test-server-id" in body["message"]
+
+            # Verify state machine was invoked
+            mock_sfn_client.start_execution.assert_called_once()
+            call_args = mock_sfn_client.start_execution.call_args
+            assert (
+                call_args[1]["stateMachineArn"]
+                == "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteTestStateMachine"
+            )
+            input_data = json.loads(call_args[1]["input"])
+            assert input_data["id"] == "test-server-id"
+
+            # Reset mocks
+            mock_common.get_username.return_value = "test-user"
+            mock_common.is_admin.return_value = False
+        finally:
+            # Restore original stepfunctions client
+            mcp_module.stepfunctions = original_stepfunctions
+
+
+def test_delete_hosted_mcp_server_not_found(mcp_servers_table, lambda_context):
+    """Test deletion of non-existent hosted MCP server."""
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "non-existent-server"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "not found" in body["error"].lower()
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_not_admin(mcp_servers_table, lambda_context):
+    """Test that non-admin cannot delete hosted MCP server."""
+    # Add a server to the table
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "InService",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "Not authorized" in body["error"]
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_context):
+    """Test that missing SFN ARN raises error."""
+    # Add a server to the table
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "InService",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    with patch.dict(os.environ, {}, clear=True):
+        os.environ["MCP_SERVERS_TABLE_NAME"] = "mcp-servers-table"
+        os.environ["MCP_SERVERS_BY_OWNER_INDEX_NAME"] = "mcp-servers-by-owner-index"
+        mock_common.get_username.return_value = "admin-user"
+        mock_common.is_admin.return_value = True
+
+        response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+        assert response["statusCode"] == 500
+        body = json.loads(response["body"])
+        assert "DELETE_MCP_SERVER_SFN_ARN not configured" in body["error"]
+
+        # Reset mocks
+        mock_common.get_username.return_value = "test-user"
+        mock_common.is_admin.return_value = False
+
+
 def test_get_mcp_server_not_found(mcp_servers_table, lambda_context):
     """Test MCP server not found error."""
     event = {

@@ -17,16 +17,16 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
+import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Role } from 'aws-cdk-lib/aws-iam';
-import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 
 export type LisaApiBaseProps = {
     vpc: Vpc;
-    tokenTable: ITable | undefined;
 } & BaseProps &
     StackProps;
 
@@ -39,11 +39,43 @@ export class LisaApiBaseConstruct extends Construct {
     public readonly restApiId: string;
     public readonly rootResourceId: string;
     public readonly restApiUrl: string;
+    public readonly tokenTable?: ITable;
 
     constructor (scope: Stack, id: string, props: LisaApiBaseProps) {
         super(scope, id);
 
-        const { config, vpc, tokenTable } = props;
+        const { config, vpc } = props;
+
+        // TokenTable is now managed in API Base so it's independent of Serve
+        // Create the table - if it already exists from previous Serve deployment,
+        // CloudFormation will handle the conflict. For new deployments, it will be created.
+        let tokenTable: ITable | undefined;
+
+        // Use new table name to avoid conflicts with existing Serve stack deployments
+        const tableName = `${config.deploymentName}-LISAApiBaseTokenTable`;
+        const tokenTableNameParam = `${config.deploymentPrefix}/tokenTableName`;
+
+        // Create the table with new name
+        // Serve stack will automatically use the new table via SSM parameter reference
+        tokenTable = new Table(scope, 'TokenTable', {
+            tableName: tableName,
+            partitionKey: {
+                name: 'token',
+                type: AttributeType.STRING,
+            },
+            billingMode: BillingMode.PAY_PER_REQUEST,
+            encryption: TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+        });
+
+        // Store token table name in SSM for cross-stack reference
+        new StringParameter(scope, 'TokenTableNameParameter', {
+            parameterName: tokenTableNameParam,
+            stringValue: tokenTable.tableName,
+            description: 'DynamoDB table name for API tokens',
+        });
+
+        this.tokenTable = tokenTable;
 
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
@@ -56,7 +88,7 @@ export class LisaApiBaseConstruct extends Construct {
             const authorizer = new CustomAuthorizer(scope, 'LisaApiAuthorizer', {
                 config: config,
                 securityGroups: [vpc.securityGroups.lambdaSg],
-                tokenTable,
+                tokenTable: this.tokenTable,
                 vpc,
                 ...(config.roles &&
                 {

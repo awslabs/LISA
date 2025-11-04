@@ -25,13 +25,14 @@ from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
 from utilities.common_functions import api_wrapper, get_bearer_token, get_groups, get_item, retry_config
 
-from .models import McpServerModel, McpServerStatus
+from .models import HostedMcpServerModel, McpServerModel, McpServerStatus, HostedMcpServerStatus
 
 logger = logging.getLogger(__name__)
 
 # Initialize the DynamoDB resource and the table using environment variables
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
+stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 def replace_bearer_token_header(mcp_server: dict, replacement: str):
@@ -227,6 +228,36 @@ def create(event: dict, context: dict) -> Any:
     # Insert the new mcp server item into the DynamoDB table
     table.put_item(Item=mcp_server_model.model_dump(exclude_none=True))
     return mcp_server_model.model_dump()
+
+
+@api_wrapper
+def create_hosted_mcp_server(event: dict, context: dict) -> Any:
+    """Trigger the state machine to create a LISA Hosted MCP server."""
+    user_id = get_username(event)
+    body = json.loads(event["body"], parse_float=Decimal)
+    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
+
+    # Check if the user is authorized to create Hosted MCP server
+    if is_admin(event):
+        # Validate and parse the hosted server configuration
+        hosted_server_model = HostedMcpServerModel(**body)
+
+        # persist initial record
+        table.put_item(Item=hosted_server_model.model_dump(exclude_none=True))
+
+        # kick off state machine
+        sfn_arn = os.environ.get("CREATE_MCP_SERVER_SFN_ARN")
+        if not sfn_arn:
+            raise ValueError("CREATE_MCP_SERVER_SFN_ARN not configured")
+        stepfunctions.start_execution(
+            stateMachineArn=sfn_arn,
+            input=json.dumps(hosted_server_model.model_dump(exclude_none=True)),
+        )
+
+        result = hosted_server_model.model_dump(exclude_none=True)
+        result["status"] = HostedMcpServerStatus.CREATING
+        return result
+    raise ValueError(f"Not authorized to create hosted MCP server. User {user_id} is not an admin.")
 
 
 @api_wrapper

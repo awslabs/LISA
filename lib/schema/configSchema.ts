@@ -792,6 +792,7 @@ const RoleConfig = z.object({
     S3ReaderRole: z.string().max(64).optional(),
     UIDeploymentRole: z.string().max(64).optional(),
     VectorStoreCreatorRole: z.string().max(64).optional(),
+    McpServerDeployerRole: z.string().max(64),
 })
     .describe('Role overrides used across stacks.');
 
@@ -847,6 +848,7 @@ export const RawConfigObject = z.object({
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
+    deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
@@ -880,6 +882,7 @@ export const RawConfigObject = z.object({
     deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
     webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
     ecsModelDeployerPath: z.string().optional().describe('Optional path to precompiled ecs model deployer. If not specified the ecs model deployer will be built at deploy time.'),
+    mcpServerDeployerPath: z.string().optional().describe('Optional path to precompiled mcp server deployer. If not specified the mcp server deployer will be built at deploy time.'),
     vectorStoreDeployerPath: z.string().optional().describe('Optional path to precompiled vector store deployer. If not specified the vector store deployer will be built at deploy time.'),
     documentsPath: z.string().optional().describe('Optional path to precompiled LISA documents. If not specified the LISA docs will be built at deploy time.'),
     lambdaPath: z.any().optional().describe('Optional path to precompiled LISA lambda. If not specified the LISA lambda will be built at deploy time.'),

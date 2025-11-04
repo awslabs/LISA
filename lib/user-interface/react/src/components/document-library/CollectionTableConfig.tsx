@@ -15,10 +15,11 @@
  */
 
 import { CollectionPreferencesProps, TableProps } from '@cloudscape-design/components';
-import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
+import { DEFAULT_PAGE_SIZE_OPTIONS } from '@/shared/preferences/common-preferences';
 import Badge from '@cloudscape-design/components/badge';
+import Link from '@cloudscape-design/components/link';
 import { ReactNode } from 'react';
-import { RagCollectionConfig } from '../../shared/reducers/rag.reducer';
+import { RagCollectionConfig } from '@/shared/reducers/rag.reducer';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Collections');
 
@@ -31,7 +32,11 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     {
         id: 'name',
         header: 'Collection Name',
-        cell: (collection) => collection.name || collection.collectionId,
+        cell: (collection) => (
+            <Link href={`#/document-library/${collection.repositoryId}/${collection.collectionId}`}>
+                {collection.name || collection.collectionId}
+            </Link>
+        ),
         sortingField: 'name',
         visible: true,
         isRowHeader: true,
@@ -41,12 +46,16 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
         header: 'Collection ID',
         cell: (collection) => collection.collectionId,
         sortingField: 'collectionId',
-        visible: true,
+        visible: false,
     },
     {
         id: 'repositoryId',
         header: 'Repository',
-        cell: (collection) => collection.repositoryId,
+        cell: (collection) => (
+            <Link href={`#/document-library/${collection.repositoryId}`}>
+                {collection.repositoryId}
+            </Link>
+        ),
         sortingField: 'repositoryId',
         visible: true,
     },
@@ -75,7 +84,7 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     },
 ];
 
-function getStatusBadge (status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
+function getStatusBadge(status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
     let color: 'green' | 'grey' | 'red' = 'grey';
     switch (status) {
         case 'ACTIVE':
@@ -91,21 +100,21 @@ function getStatusBadge (status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
     return <Badge color={color}>{status}</Badge>;
 }
 
-export function getCollectionTablePreference (): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {
+export function getCollectionTablePreference(): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {
     return COLLECTION_COLUMN_DEFINITIONS.map((c) => ({
         id: c.id!,
         label: c.header,
     }));
 }
 
-export function getCollectionTableColumnDisplay (): CollectionPreferencesProps.ContentDisplayItem[] {
+export function getCollectionTableColumnDisplay(): CollectionPreferencesProps.ContentDisplayItem[] {
     return COLLECTION_COLUMN_DEFINITIONS.map((c) => ({
         id: c.id!,
         visible: c.visible,
     }));
 }
 
-export function getDefaultCollectionPreferences (): CollectionPreferencesProps.Preferences {
+export function getDefaultCollectionPreferences(): CollectionPreferencesProps.Preferences {
     return {
         pageSize: PAGE_SIZE_OPTIONS[0].value,
         contentDisplay: getCollectionTableColumnDisplay(),

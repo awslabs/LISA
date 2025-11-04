@@ -22,14 +22,14 @@ import {
     getCollectionTablePreference,
     getDefaultCollectionPreferences,
     PAGE_SIZE_OPTIONS,
-} from './CollectionTableConfig';
-import { ragApi, useDeleteCollectionMutation, useListAllCollectionsQuery } from '../../shared/reducers/rag.reducer';
-import { useLocalStorage } from '../../shared/hooks/use-local-storage';
+} from '@/components/document-library/CollectionTableConfig';
+import { ragApi, useDeleteCollectionMutation, useListAllCollectionsQuery } from '@/shared/reducers/rag.reducer';
+import { useLocalStorage } from '@/shared/hooks/use-local-storage';
 import { useNavigate } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
-import { useAppDispatch } from '../../config/store';
-import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
-import { CreateCollectionModal } from './createCollection/CreateCollectionModal';
+import { useAppDispatch } from '@/config/store';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { CreateCollectionModal } from '@/components/document-library/createCollection/CreateCollectionModal';
 
 export function RepositoryLibraryComponent (): ReactElement {
     const {
@@ -132,10 +132,6 @@ export function RepositoryLibraryComponent (): ReactElement {
                 {...collectionProps}
                 selectedItems={collectionProps.selectedItems}
                 onSelectionChange={handleSelectionChange}
-                onRowClick={({ detail }) => {
-                    const collection = detail.item;
-                    navigate(`/document-library/${collection.repositoryId}/${collection.collectionId}`);
-                }}
                 columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
                 columnDisplay={preferences.contentDisplay}
                 stickyColumns={{ first: 1, last: 0 }}

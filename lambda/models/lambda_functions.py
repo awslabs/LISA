@@ -32,18 +32,28 @@ from .domain_objects import (
     CreateModelRequest,
     CreateModelResponse,
     DeleteModelResponse,
+    DeleteScheduleResponse,
     GetModelResponse,
+    GetScheduleResponse,
+    GetScheduleStatusResponse,
     ListModelsResponse,
+    SchedulingConfig,
     UpdateModelRequest,
     UpdateModelResponse,
-    SchedulingConfig,
     UpdateScheduleResponse,
-    GetScheduleResponse,
-    DeleteScheduleResponse,
-    GetScheduleStatusResponse,
 )
 from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
-from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler, UpdateScheduleHandler, GetScheduleHandler, DeleteScheduleHandler, GetScheduleStatusHandler
+from .handler import (
+    CreateModelHandler,
+    DeleteModelHandler,
+    DeleteScheduleHandler,
+    GetModelHandler,
+    GetScheduleHandler,
+    GetScheduleStatusHandler,
+    ListModelsHandler,
+    UpdateModelHandler,
+    UpdateScheduleHandler,
+)
 
 sess = botocore.session.Session()
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
@@ -184,9 +194,14 @@ async def get_instances() -> list[str]:
     """Endpoint to list available instances in this region."""
     return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)
 
+
 @app.post(path="/{model_id}/schedule")
 @app.put(path="/{model_id}/schedule")
-async def update_schedule(model_id: Annotated[str, Path(title="The unique model ID of the model to schedule")], schedule_config: SchedulingConfig, request: Request) -> UpdateScheduleResponse:
+async def update_schedule(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to schedule")],
+    schedule_config: SchedulingConfig,
+    request: Request,
+) -> UpdateScheduleResponse:
     """Endpoint to create or update a schedule for a model"""
     update_schedule_handler = UpdateScheduleHandler(
         autoscaling_client=autoscaling,
@@ -206,11 +221,15 @@ async def update_schedule(model_id: Annotated[str, Path(title="The unique model 
             user_groups = []
             admin_status = False
 
-    return update_schedule_handler(model_id=model_id, schedule_config=schedule_config, user_groups=user_groups, is_admin=admin_status)
+    return update_schedule_handler(
+        model_id=model_id, schedule_config=schedule_config, user_groups=user_groups, is_admin=admin_status
+    )
 
 
 @app.get(path="/{model_id}/schedule")
-async def get_schedule(model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule for")], request: Request) -> GetScheduleResponse:
+async def get_schedule(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule for")], request: Request
+) -> GetScheduleResponse:
     """Endpoint to get current schedule configuration for a model"""
     get_schedule_handler = GetScheduleHandler(
         autoscaling_client=autoscaling,
@@ -234,7 +253,9 @@ async def get_schedule(model_id: Annotated[str, Path(title="The unique model ID 
 
 
 @app.delete(path="/{model_id}/schedule")
-async def delete_schedule(model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request) -> DeleteScheduleResponse:
+async def delete_schedule(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request
+) -> DeleteScheduleResponse:
     """Endpoint to delete a schedule for a model"""
     delete_schedule_handler = DeleteScheduleHandler(
         autoscaling_client=autoscaling,
@@ -260,7 +281,7 @@ async def delete_schedule(model_id: Annotated[str, Path(title="The unique model 
 @app.get(path="/{model_id}/schedule/status")
 async def get_schedule_status(
     model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule status for")],
-    request: Request
+    request: Request,
 ) -> GetScheduleStatusResponse:
     """Endpoint to get current schedule status and next scheduled action for a model"""
     get_schedule_status_handler = GetScheduleStatusHandler(
@@ -282,6 +303,7 @@ async def get_schedule_status(
             admin_status = False
 
     return get_schedule_status_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")
 docs = Mangum(app, lifespan="off")

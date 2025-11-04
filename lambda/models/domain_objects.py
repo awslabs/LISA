@@ -567,6 +567,7 @@ class DeleteModelResponse(ApiResponseBase):
 
     pass
 
+
 class UpdateScheduleResponse(BaseModel):
     """Response object for schedule create/update operations."""
 

@@ -368,6 +368,7 @@ def test_handle_add_server_to_active_with_empty_groups(mcp_servers_table, sample
 
 def test_handle_failure(mcp_servers_table, sample_mcp_server_event):
     """Test handling deployment failure."""
+    from mcp_server.state_machine.create_mcp_server import handle_failure
 
     # Create initial server record
     mcp_servers_table.put_item(
@@ -381,11 +382,15 @@ def test_handle_failure(mcp_servers_table, sample_mcp_server_event):
     event = sample_mcp_server_event.copy()
     event["error"] = "Deployment failed: Stack creation error"
 
+    # Call the handler function
+    result = handle_failure(event, None)
+
     # Verify DynamoDB was updated
     response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
     assert response["Item"]["status"] == "Failed"
     assert response["Item"]["error_message"] == "Deployment failed: Stack creation error"
     assert "last_modified" in response["Item"]
+    assert result == event
 
 
 def test_handle_failure_missing_id(mcp_servers_table):
@@ -401,6 +406,7 @@ def test_handle_failure_missing_id(mcp_servers_table):
 
 def test_handle_failure_no_error_message(mcp_servers_table, sample_mcp_server_event):
     """Test handle_failure with no error message."""
+    from mcp_server.state_machine.create_mcp_server import handle_failure
 
     mcp_servers_table.put_item(
         Item={
@@ -409,11 +415,19 @@ def test_handle_failure_no_error_message(mcp_servers_table, sample_mcp_server_ev
             "status": "Creating",
         }
     )
+
+    event = sample_mcp_server_event.copy()
     # No error field
 
+    # Call the handler function
+    result = handle_failure(event, None)
+
+    # Verify DynamoDB was updated
     response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
     assert response["Item"]["status"] == "Failed"
     assert response["Item"]["error_message"] == "Unknown error"
+    assert "last_modified" in response["Item"]
+    assert result == event
 
 
 def test_normalize_server_identifier():

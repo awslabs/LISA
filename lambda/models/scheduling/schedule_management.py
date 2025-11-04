@@ -214,64 +214,36 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
     return scheduled_action_arns
 
 
-def get_capacity_config(model_id: str, auto_scaling_group: str) -> Dict[str, int]:
-    """Get capacity configuration from model record or fallback to existing ASG configuration"""
+def get_existing_asg_capacity(auto_scaling_group: str) -> Dict[str, int]:
+    """Get the existing Auto Scaling Group's current capacity configuration"""
     try:
-        # First, try to get capacity from the model's AutoScalingConfig
-        response = model_table.get_item(Key={"model_id": model_id})
-        
-        if "Item" in response:
-            model_item = response["Item"]
-            auto_scaling_config = model_item.get("autoScalingConfig", {})
-            
-            if auto_scaling_config:
-                min_capacity = auto_scaling_config.get("minCapacity")
-                max_capacity = auto_scaling_config.get("maxCapacity")
-                desired_capacity = min_capacity
-                
-                if min_capacity is not None and max_capacity is not None:
-                    logger.info(f"Using model AutoScalingConfig for {model_id}: min={min_capacity}, max={max_capacity}, desired={desired_capacity}")
-                    return {
-                        "MinSize": min_capacity,
-                        "MaxSize": max_capacity,
-                        "DesiredCapacity": desired_capacity
-                    }
-        
-        # Fallback: try to get from existing ASG if model config is not available
-        logger.info(f"Model AutoScalingConfig not found for {model_id}, falling back to existing ASG configuration")
         response = autoscaling_client.describe_auto_scaling_groups(
             AutoScalingGroupNames=[auto_scaling_group]
         )
         
         if not response['AutoScalingGroups']:
-            # If ASG doesn't exist either, use reasonable defaults
-            logger.warning(f"Auto Scaling Group {auto_scaling_group} not found, using default capacity values")
-            return {
-                "MinSize": 1,
-                "MaxSize": 1,
-                "DesiredCapacity": 1
-            }
+            raise ScheduleManagementError(f"Auto Scaling Group {auto_scaling_group} not found")
         
         asg = response['AutoScalingGroups'][0]
-        logger.info(f"Using existing ASG configuration for {auto_scaling_group}")
+        logger.info(f"Using existing ASG capacity for {auto_scaling_group}: min={asg['MinSize']}, max={asg['MaxSize']}, desired={asg['DesiredCapacity']}")
         
         return {
             "MinSize": asg['MinSize'],
-            "MaxSize": asg['MaxSize'],
+            "MaxSize": asg['MaxSize'], 
             "DesiredCapacity": asg['DesiredCapacity']
         }
         
     except ClientError as e:
-        logger.error(f"Failed to get capacity configuration for model {model_id}: {e}")
-        raise ScheduleManagementError(f"Failed to get capacity configuration: {str(e)}")
+        logger.error(f"Failed to get ASG capacity for {auto_scaling_group}: {e}")
+        raise ScheduleManagementError(f"Failed to get ASG capacity: {str(e)}")
 
 
 def create_daily_scheduled_actions(model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str) -> List[str]:
     """Create scheduled actions for daily recurring schedule"""
     scheduled_action_arns = []
     
-    # Get capacity configuration from model record or fallback to existing ASG
-    capacity_config = get_capacity_config(model_id, auto_scaling_group)
+    # Get ASG capacity config
+    capacity_config = get_existing_asg_capacity(auto_scaling_group)
     
     # Create start action
     start_cron = convert_to_utc_cron(day_schedule.startTime, timezone_name)
@@ -332,9 +304,9 @@ def create_weekdays_scheduled_actions(model_id: str, auto_scaling_group: str, da
     """Create scheduled actions for weekdays-only schedule"""
     scheduled_action_arns = []
     
-    # Get capacity configuration from model record or fallback to existing ASG
-    capacity_config = get_capacity_config(model_id, auto_scaling_group)
-    
+    # Get ASG capacity config
+    capacity_config = get_existing_asg_capacity(auto_scaling_group)
+
     # Create start action (Monday-Friday)
     start_cron = convert_to_utc_cron_weekdays(day_schedule.startTime, timezone_name)
     start_action_name = f"{model_id}-weekdays-start"
@@ -394,8 +366,8 @@ def create_weekly_scheduled_actions( model_id: str, auto_scaling_group: str, wee
     """Create scheduled actions for weekly schedule (different times each day with support for multiple periods)"""
     scheduled_action_arns = []
     
-    # Get capacity configuration from model record or fallback to existing ASG
-    capacity_config = get_capacity_config(model_id, auto_scaling_group)
+    # Get ASG capacity config
+    capacity_config = get_existing_asg_capacity(auto_scaling_group)
     
     day_mapping = {
         'monday': (1, weekly_schedule.monday),
@@ -616,14 +588,34 @@ def update_model_schedule_record(model_id: str, scheduling_config: SchedulingCon
             if next_action:
                 schedule_data["nextScheduledAction"] = next_action
         
-        # Update the model record
-        model_table.update_item(
-            Key={"model_id": model_id},
-            UpdateExpression="SET autoScalingConfig.scheduling = :scheduling",
-            ExpressionAttributeValues={
-                ":scheduling": schedule_data
-            }
-        )
+        # Check if autoScalingConfig exists first
+        response = model_table.get_item(Key={"model_id": model_id})
+        if "Item" not in response:
+            raise ValueError(f"Model {model_id} not found")
+        
+        model_item = response["Item"]
+        auto_scaling_config_exists = "autoScalingConfig" in model_item
+        
+        if auto_scaling_config_exists:
+            # Update existing autoScalingConfig.scheduling
+            model_table.update_item(
+                Key={"model_id": model_id},
+                UpdateExpression="SET autoScalingConfig.scheduling = :scheduling",
+                ExpressionAttributeValues={
+                    ":scheduling": schedule_data
+                }
+            )
+        else:
+            # Create autoScalingConfig with scheduling
+            model_table.update_item(
+                Key={"model_id": model_id},
+                UpdateExpression="SET autoScalingConfig = :autoScalingConfig",
+                ExpressionAttributeValues={
+                    ":autoScalingConfig": {
+                        "scheduling": schedule_data
+                    }
+                }
+            )
         
         logger.info(f"Updated schedule record for model {model_id}")
         
@@ -636,17 +628,40 @@ def calculate_next_scheduled_action(schedule_data: Dict[str, Any]) -> Optional[D
     """Calculate the next scheduled action for a model."""
     try:
         schedule_type = schedule_data.get("scheduleType")
+        timezone_name = schedule_data.get("timezone", "UTC")
         
         if schedule_type == ScheduleType.NONE:
             return None
         
-        # For now, return a placeholder - this would be implemented with more complex logic
-        # to calculate the actual next action based on current time and schedule configuration
-        return {
-            "action": "START",
-            "scheduledTime": datetime.now(dt_timezone.utc).isoformat()
-        }
+        from zoneinfo import ZoneInfo
+        
+        tz = ZoneInfo(timezone_name)
+        now = datetime.now(tz)
+        current_time = now.time()
+        
+        # Get the schedule times
+        if schedule_type in [ScheduleType.RECURRING_DAILY, ScheduleType.WEEKDAYS_ONLY]:
+            daily_schedule = schedule_data.get("dailySchedule", {})
+            start_time = daily_schedule.get("startTime")
+            stop_time = daily_schedule.get("stopTime")
+            
+            if start_time and stop_time:
+                start_hour, start_minute = map(int, start_time.split(':'))
+                stop_hour, stop_minute = map(int, stop_time.split(':'))
+                
+                start_time_obj = datetime.min.time().replace(hour=start_hour, minute=start_minute)
+                stop_time_obj = datetime.min.time().replace(hour=stop_hour, minute=stop_minute)
+                
+                # Simple logic: if we're between start and stop, next action is STOP
+                # Otherwise, next action is START
+                if start_time_obj <= current_time <= stop_time_obj:
+                    return {"action": "STOP"}
+                else:
+                    return {"action": "START"}
+        
+        # For EACH_DAY, just return START as default
+        return {"action": "START"}
         
     except Exception as e:
         logger.error(f"Failed to calculate next scheduled action: {e}")
-        return None
+        return {"action": "START"}

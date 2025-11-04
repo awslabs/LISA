@@ -15,7 +15,6 @@
 import json
 import logging
 import os
-from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -32,28 +31,28 @@ lambda_client = boto3.client("lambda", config=retry_config)
 
 # Handler functions for Step Function integration
 def lambda_handler_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for schedule creation in Step Functions."""
+    """Lambda handler for schedule creation in Step Functions"""
     return handle_schedule_creation(event, context)
 
 
 def lambda_handler_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for schedule update in Step Functions."""
+    """Lambda handler for schedule update in Step Functions"""
     return handle_schedule_update(event, context)
 
 def lambda_handler_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for schedule cleanup in Step Functions."""
+    """Lambda handler for schedule cleanup in Step Functions"""
     return handle_cleanup_schedule(event, context)
 
 
 def lambda_handler_detect_schedule_changes(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for detecting schedule changes in Step Functions."""
+    """Lambda handler for detecting schedule changes in Step Functions"""
     return detect_schedule_changes(event, context)
 
 
 def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Create Auto Scaling scheduled actions for the model if scheduling is configured"""
     logger.info(f"Processing schedule creation for model: {event.get('modelId')}")
-    output_dict = deepcopy(event)
+    output_dict = event.copy()
     
     # Only proceed if scheduling is configured
     scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
@@ -73,14 +72,14 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
     try:
         # Invoke Schedule Management Lambda
         payload = {
-            "operation": "create",
+            "operation": "update",
             "modelId": model_id,
             "scheduleConfig": scheduling_config,
             "autoScalingGroup": auto_scaling_group
         }
         
         response = lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME", "LISA-ScheduleManagement"),
+            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
             InvocationType="RequestResponse",
             Payload=json.dumps(payload)
         )
@@ -118,7 +117,7 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
 def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Update Auto Scaling scheduled actions when schedule configuration changes"""
     logger.info(f"Processing schedule update for model: {event.get('modelId')}")
-    output_dict = deepcopy(event)
+    output_dict = event.copy()
     
     model_id = event["modelId"]
     new_scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
@@ -178,7 +177,7 @@ def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any
 def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Clean up scheduled actions before deleting the model"""
     logger.info(f"Cleaning up schedule for model: {event.get('modelId')}")
-    output_dict = deepcopy(event)
+    output_dict = event.copy()
     
     model_id = event["modelId"]
     
@@ -212,7 +211,7 @@ def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, An
 def detect_schedule_changes(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Detect if schedule configuration has changed during model update"""
     logger.info(f"Detecting schedule changes for model: {event.get('modelId')}")
-    output_dict = deepcopy(event)
+    output_dict = event.copy()
     
     model_id = event["modelId"]
     new_auto_scaling_config = event.get("autoScalingConfig", {})

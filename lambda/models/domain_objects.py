@@ -567,6 +567,44 @@ class DeleteModelResponse(ApiResponseBase):
 
     pass
 
+class UpdateScheduleResponse(BaseModel):
+    """Response object for schedule create/update operations."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleResponse(BaseModel):
+    """Response object for getting schedule configuration."""
+
+    modelId: str
+    scheduling: Dict[str, Any]
+    nextScheduledAction: Optional[Dict[str, str]] = None
+
+
+class DeleteScheduleResponse(BaseModel):
+    """Response object for schedule deletion."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleStatusResponse(BaseModel):
+    """Response object for getting schedule status."""
+
+    modelId: str
+    scheduleEnabled: bool
+    scheduleConfigured: bool
+    lastScheduleFailed: bool
+    scheduleStatus: str
+    scheduleType: str
+    timezone: str
+    nextScheduledAction: Optional[Dict[str, str]] = None
+    lastScheduleUpdate: Optional[str] = None
+    lastScheduleFailure: Optional[Dict[str, Any]] = None
+
 
 class IngestionType(str, Enum):
     """Specifies whether ingestion was automatic or manual."""

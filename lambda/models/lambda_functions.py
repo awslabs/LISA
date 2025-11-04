@@ -36,9 +36,14 @@ from .domain_objects import (
     ListModelsResponse,
     UpdateModelRequest,
     UpdateModelResponse,
+    SchedulingConfig,
+    UpdateScheduleResponse,
+    GetScheduleResponse,
+    DeleteScheduleResponse,
+    GetScheduleStatusResponse,
 )
 from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
-from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler
+from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler, UpdateScheduleHandler, GetScheduleHandler, DeleteScheduleHandler, GetScheduleStatusHandler
 
 sess = botocore.session.Session()
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
@@ -179,6 +184,104 @@ async def get_instances() -> list[str]:
     """Endpoint to list available instances in this region."""
     return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)
 
+@app.post(path="/{model_id}/schedule")
+@app.put(path="/{model_id}/schedule")
+async def update_schedule(model_id: Annotated[str, Path(title="The unique model ID of the model to schedule")], schedule_config: SchedulingConfig, request: Request) -> UpdateScheduleResponse:
+    """Endpoint to create or update a schedule for a model"""
+    update_schedule_handler = UpdateScheduleHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return update_schedule_handler(model_id=model_id, schedule_config=schedule_config, user_groups=user_groups, is_admin=admin_status)
+
+
+@app.get(path="/{model_id}/schedule")
+async def get_schedule(model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule for")], request: Request) -> GetScheduleResponse:
+    """Endpoint to get current schedule configuration for a model"""
+    get_schedule_handler = GetScheduleHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return get_schedule_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+
+
+@app.delete(path="/{model_id}/schedule")
+async def delete_schedule(model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request) -> DeleteScheduleResponse:
+    """Endpoint to delete a schedule for a model"""
+    delete_schedule_handler = DeleteScheduleHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return delete_schedule_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+
+
+@app.get(path="/{model_id}/schedule/status")
+async def get_schedule_status(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule status for")],
+    request: Request
+) -> GetScheduleStatusResponse:
+    """Endpoint to get current schedule status and next scheduled action for a model"""
+    get_schedule_status_handler = GetScheduleStatusHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return get_schedule_status_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")
 docs = Mangum(app, lifespan="off")

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { Cors, IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, IRole, ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -116,7 +116,17 @@ export class McpServerApi extends Construct {
         // Create or get the /mcp resource explicitly to capture its ID
         // This resource ID is needed for the deployer to reference it when creating server routes
         // We do this before registerAPIEndpoint so we can pass the ID to the deployer
-        const mcpResource = restApi.root.getResource('mcp') || restApi.root.addResource('mcp');
+        let mcpResource = restApi.root.getResource('mcp');
+        if (!mcpResource) {
+            mcpResource = restApi.root.addResource('mcp');
+        }
+        // Add CORS preflight support for the /mcp resource
+        // This ensures OPTIONS method is available even if the resource already existed
+        // addCorsPreflight is idempotent - it won't create duplicate OPTIONS methods
+        mcpResource.addCorsPreflight({
+            allowOrigins: Cors.ALL_ORIGINS,
+            allowHeaders: Cors.DEFAULT_HEADERS,
+        });
         const mcpResourceId = mcpResource.resourceId;
 
         // Create MCP server deployer

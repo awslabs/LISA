@@ -215,7 +215,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
                 api_gateway_url = _get_api_gateway_url(deployment_prefix)
                 if api_gateway_url:
                     # Normalize server ID to match what CDK uses for resource naming
-                    normalized_id = _normalize_server_identifier(server_id)
+                    normalized_id = _normalize_server_identifier(name)
                     # Construct API Gateway URL for the hosted server
                     server_url = f"{api_gateway_url}/mcp/{normalized_id}/mcp"
 
@@ -233,7 +233,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
                         "id": server_id,
                         "owner": owner,
                         "url": server_url,
-                        "name": name or server_id,
+                        "name": name,
                         "created": datetime.now(UTC).isoformat(),
                         "customHeaders": {"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                         "status": McpServerStatus.ACTIVE,

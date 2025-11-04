@@ -14,7 +14,6 @@
 
 """Unit tests for MCP server delete state machine handlers."""
 
-import json
 import os
 import sys
 from types import SimpleNamespace
@@ -144,16 +143,16 @@ def sample_mcp_server_without_stack():
 def test_handle_set_server_to_deleting(mcp_servers_table, sample_mcp_server_with_stack, lambda_context):
     """Test successful setting of server status to DELETING."""
     mcp_servers_table.put_item(Item=sample_mcp_server_with_stack)
-    
+
     from mcp_server.state_machine.delete_mcp_server import handle_set_server_to_deleting
-    
+
     event = {"id": sample_mcp_server_with_stack["id"]}
     result = handle_set_server_to_deleting(event, lambda_context)
-    
+
     assert result["id"] == "test-server-id"
     assert result["cloudformation_stack_arn"] == "test-stack-name"
     assert result["stack_name"] == "test-stack-name"
-    
+
     # Verify DynamoDB was updated
     item = mcp_servers_table.get_item(Key={"id": "test-server-id"})["Item"]
     assert item["status"] == "Deleting"
@@ -162,9 +161,9 @@ def test_handle_set_server_to_deleting(mcp_servers_table, sample_mcp_server_with
 def test_handle_set_server_to_deleting_not_found(mcp_servers_table, lambda_context):
     """Test handling deletion for non-existent server."""
     from mcp_server.state_machine.delete_mcp_server import handle_set_server_to_deleting
-    
+
     event = {"id": "non-existent-server"}
-    
+
     with pytest.raises(RuntimeError, match="not found"):
         handle_set_server_to_deleting(event, lambda_context)
 
@@ -172,12 +171,12 @@ def test_handle_set_server_to_deleting_not_found(mcp_servers_table, lambda_conte
 def test_handle_set_server_to_deleting_no_stack(mcp_servers_table, sample_mcp_server_without_stack, lambda_context):
     """Test setting server to deleting when no stack exists."""
     mcp_servers_table.put_item(Item=sample_mcp_server_without_stack)
-    
+
     from mcp_server.state_machine.delete_mcp_server import handle_set_server_to_deleting
-    
+
     event = {"id": sample_mcp_server_without_stack["id"]}
     result = handle_set_server_to_deleting(event, lambda_context)
-    
+
     assert result["id"] == "test-server-id"
     assert result["cloudformation_stack_arn"] is None
 
@@ -185,19 +184,19 @@ def test_handle_set_server_to_deleting_no_stack(mcp_servers_table, sample_mcp_se
 def test_handle_delete_stack(mcp_servers_table, lambda_context):
     """Test successful stack deletion initiation."""
     from mcp_server.state_machine.delete_mcp_server import handle_delete_stack
-    
+
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
         "cloudformation_stack_arn": "test-stack-name",
     }
-    
+
     # Mock CloudFormation client
     with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
         mock_cfn.delete_stack.return_value = {}
-        
+
         result = handle_delete_stack(event, lambda_context)
-        
+
         assert result == event
         mock_cfn.delete_stack.assert_called_once()
         call_args = mock_cfn.delete_stack.call_args
@@ -208,11 +207,11 @@ def test_handle_delete_stack(mcp_servers_table, lambda_context):
 def test_handle_delete_stack_missing_stack_name(mcp_servers_table, lambda_context):
     """Test delete stack with missing stack name."""
     from mcp_server.state_machine.delete_mcp_server import handle_delete_stack
-    
+
     event = {
         "id": "test-server-id",
     }
-    
+
     with pytest.raises(ValueError, match="Stack name not found"):
         handle_delete_stack(event, lambda_context)
 
@@ -220,61 +219,55 @@ def test_handle_delete_stack_missing_stack_name(mcp_servers_table, lambda_contex
 def test_handle_monitor_delete_stack_complete(mcp_servers_table, lambda_context):
     """Test monitoring stack deletion when complete."""
     from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
-    
+
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
         "cloudformation_stack_arn": "test-stack-name",
     }
-    
+
     # Mock CloudFormation client
     with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "DELETE_COMPLETE"}]
-        }
-        
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "DELETE_COMPLETE"}]}
+
         result = handle_monitor_delete_stack(event, lambda_context)
-        
+
         assert result["continue_polling"] is False
 
 
 def test_handle_monitor_delete_stack_in_progress(mcp_servers_table, lambda_context):
     """Test monitoring stack deletion when in progress."""
     from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
-    
+
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
         "cloudformation_stack_arn": "test-stack-name",
     }
-    
+
     # Mock CloudFormation client
     with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "DELETE_IN_PROGRESS"}]
-        }
-        
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "DELETE_IN_PROGRESS"}]}
+
         result = handle_monitor_delete_stack(event, lambda_context)
-        
+
         assert result["continue_polling"] is True
 
 
 def test_handle_monitor_delete_stack_failed(mcp_servers_table, lambda_context):
     """Test monitoring stack deletion when failed."""
     from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
-    
+
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
         "cloudformation_stack_arn": "test-stack-name",
     }
-    
+
     # Mock CloudFormation client
     with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "DELETE_FAILED"}]
-        }
-        
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "DELETE_FAILED"}]}
+
         with pytest.raises(RuntimeError, match="unexpected terminal state"):
             handle_monitor_delete_stack(event, lambda_context)
 
@@ -282,11 +275,11 @@ def test_handle_monitor_delete_stack_failed(mcp_servers_table, lambda_context):
 def test_handle_monitor_delete_stack_missing_stack_name(mcp_servers_table, lambda_context):
     """Test monitoring with missing stack name."""
     from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
-    
+
     event = {
         "id": "test-server-id",
     }
-    
+
     with pytest.raises(ValueError, match="Stack name not found"):
         handle_monitor_delete_stack(event, lambda_context)
 
@@ -294,20 +287,20 @@ def test_handle_monitor_delete_stack_missing_stack_name(mcp_servers_table, lambd
 def test_handle_delete_from_ddb(mcp_servers_table, sample_mcp_server_with_stack, lambda_context):
     """Test successful deletion from DynamoDB."""
     mcp_servers_table.put_item(Item=sample_mcp_server_with_stack)
-    
+
     from mcp_server.state_machine.delete_mcp_server import handle_delete_from_ddb
-    
+
     event = {"id": sample_mcp_server_with_stack["id"]}
-    
+
     # Mock SSM client to return None (no connections table)
     with patch("mcp_server.state_machine.delete_mcp_server.ssmClient") as mock_ssm:
         mock_ssm.exceptions.ParameterNotFound = Exception
         mock_ssm.get_parameter.side_effect = Exception("Parameter not found")
-        
+
         result = handle_delete_from_ddb(event, lambda_context)
-        
+
         assert result == event
-        
+
         # Verify server was deleted from main table
         response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
         assert "Item" not in response
@@ -318,7 +311,7 @@ def test_handle_delete_from_ddb_with_connections_table(
 ):
     """Test deletion from DynamoDB including connections table."""
     mcp_servers_table.put_item(Item=sample_mcp_server_with_stack)
-    
+
     # Add connection entry
     connection_entry = {
         "id": "test-server-id",
@@ -327,30 +320,26 @@ def test_handle_delete_from_ddb_with_connections_table(
         "url": "https://api.example.com/mcp/test-server/mcp",
     }
     mcp_connections_table.put_item(Item=connection_entry)
-    
+
     from mcp_server.state_machine.delete_mcp_server import handle_delete_from_ddb
-    
+
     event = {"id": sample_mcp_server_with_stack["id"]}
-    
+
     # Mock SSM client to return connections table name
     with patch("mcp_server.state_machine.delete_mcp_server.ssmClient") as mock_ssm:
         mock_ssm.exceptions.ParameterNotFound = Exception
-        mock_ssm.get_parameter.return_value = {
-            "Parameter": {"Value": "mcp-connections-table"}
-        }
-        
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "mcp-connections-table"}}
+
         result = handle_delete_from_ddb(event, lambda_context)
-        
+
         assert result == event
-        
+
         # Verify server was deleted from main table
         response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
         assert "Item" not in response
-        
+
         # Verify connection was deleted from connections table
-        response = mcp_connections_table.get_item(
-            Key={"id": "test-server-id", "owner": "test-user"}
-        )
+        response = mcp_connections_table.get_item(Key={"id": "test-server-id", "owner": "test-user"})
         assert "Item" not in response
 
 
@@ -359,30 +348,27 @@ def test_handle_delete_from_ddb_connections_table_error(
 ):
     """Test deletion continues even if connections table deletion fails."""
     mcp_servers_table.put_item(Item=sample_mcp_server_with_stack)
-    
+
     from mcp_server.state_machine.delete_mcp_server import handle_delete_from_ddb
-    
+
     event = {"id": sample_mcp_server_with_stack["id"]}
-    
+
     # Mock SSM client to return connections table name, but simulate error
     with patch("mcp_server.state_machine.delete_mcp_server.ssmClient") as mock_ssm:
         mock_ssm.exceptions.ParameterNotFound = Exception
-        mock_ssm.get_parameter.return_value = {
-            "Parameter": {"Value": "mcp-connections-table"}
-        }
-        
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "mcp-connections-table"}}
+
         # Mock the table scan to raise an error
         with patch("mcp_server.state_machine.delete_mcp_server.ddbResource") as mock_ddb:
             mock_table = MagicMock()
             mock_table.scan.side_effect = Exception("Connection table error")
             mock_ddb.Table.return_value = mock_table
-            
+
             # Should still succeed and delete from main table
             result = handle_delete_from_ddb(event, lambda_context)
-            
+
             assert result == event
-            
+
             # Verify server was deleted from main table despite connection table error
             response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
             assert "Item" not in response
-

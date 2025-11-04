@@ -22,9 +22,8 @@ from typing import Any, Dict, Optional
 from uuid import uuid4
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 from botocore.config import Config
-from boto3.dynamodb.conditions import Attr, Key
-
 from mcp_server.models import HostedMcpServerStatus
 
 logger = logging.getLogger()
@@ -125,7 +124,7 @@ def handle_delete_from_ddb(event: Dict[str, Any], context: Any) -> Dict[str, Any
     """Delete item from DDB after successful deletion workflow and remove from connections table."""
     server_id = event["id"]
     server_key = {"id": server_id}
-    
+
     # Delete from MCP Connections table if chat is deployed
     deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX", "")
     if deployment_prefix:
@@ -136,26 +135,21 @@ def handle_delete_from_ddb(event: Dict[str, Any], context: Any) -> Dict[str, Any
                 # The connections table uses (id, owner) as composite key
                 # We need to query/scan to find the entry with this server ID
                 # Since we don't know the owner, we'll scan for the id
-                response = mcp_connections_table.scan(
-                    FilterExpression=Attr("id").eq(server_id)
-                )
-                
+                response = mcp_connections_table.scan(FilterExpression=Attr("id").eq(server_id))
+
                 # Delete the matching item (there should only be one)
                 for item in response.get("Items", []):
-                    mcp_connections_table.delete_item(
-                        Key={
-                            "id": item["id"],
-                            "owner": item["owner"]
-                        }
+                    mcp_connections_table.delete_item(Key={"id": item["id"], "owner": item["owner"]})
+                    logger.info(
+                        f"Deleted MCP connection entry for server {server_id} (owner: {item['owner']}) "
+                        + "from connections table"
                     )
-                    logger.info(f"Deleted MCP connection entry for server {server_id} (owner: {item['owner']}) from connections table")
             except Exception as e:
                 logger.warning(f"Error deleting from MCP connections table: {str(e)}")
                 # Continue with deletion from main table even if connections table deletion fails
-    
+
     # Delete from main MCP servers table
     mcp_servers_table.delete_item(Key=server_key)
     logger.info(f"Deleted MCP server {server_id} from DynamoDB table")
-    
-    return event
 
+    return event

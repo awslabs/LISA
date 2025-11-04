@@ -61,7 +61,7 @@ export class DeleteMcpServerStateMachine extends Construct {
             DEPLOYMENT_PREFIX: config.deploymentPrefix ?? '',
         };
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        
+
         // Needs to return if server has a stack to delete. Updates server state to DELETING.
         // Input payload to state machine contains the server ID that we want to delete.
         const setServerToDeleting = new LambdaInvoke(this, 'SetServerToDeleting', {
@@ -170,4 +170,3 @@ export class DeleteMcpServerStateMachine extends Construct {
         this.stateMachineArn = stateMachine.stateMachineArn;
     }
 }
-

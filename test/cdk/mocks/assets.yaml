@@ -21,6 +21,7 @@ dev:
     tag: latest
   webAppAssetsPath: ./test/cdk/mocks/ui
   ecsModelDeployerPath: ./ecs_model_deployer
+  mcpServerDeployerPath: ./mcp_server_deployer
   vectorStoreDeployerPath: ./vector_store_deployer
   documentsPath: ./test/cdk/mocks/ui
   lambdaPath: ./lambda

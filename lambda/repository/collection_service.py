@@ -17,6 +17,7 @@
 
 import heapq
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -29,6 +30,7 @@ from models.domain_objects import (
     VectorStoreStatus,
 )
 from repository.collection_repo import CollectionRepository
+from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.validation import ValidationError
 
@@ -42,9 +44,13 @@ class CollectionService:
         self,
         collection_repo: Optional[CollectionRepository] = None,
         vector_store_repo: Optional[VectorStoreRepository] = None,
+        document_repo: Optional[RagDocumentRepository] = None,
     ):
         self.collection_repo = collection_repo or CollectionRepository()
         self.vector_store_repo = vector_store_repo or VectorStoreRepository()
+        self.document_repo = document_repo or RagDocumentRepository(
+            os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"]
+        )
 
     def has_access(
         self,
@@ -298,6 +304,19 @@ class CollectionService:
             raise ValidationError(f"Collection {collection_id} not found")
         if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
             raise ValidationError(f"Permission denied to delete collection {collection_id}")
+
+        # Update to clean up docs with batch task deletion
+        # TODO: Delete documents from Document Table
+        # - Delete by PK repo#collection
+        # TODO: Delete documents from Vector Store
+        # - Drop index to speed up cleanup
+        # TODO: Delete pipelines
+        # - Kick off statemachine to cleanup events
+
+        # Delete all documents in collection
+        self.document_repo.delete_all(repository_id, collection_id)
+
+        # Delete collection entry
         self.collection_repo.delete(collection_id, repository_id)
 
     def get_collection_by_name(

@@ -74,7 +74,7 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 vs_repo = VectorStoreRepository()
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
-collection_service = CollectionService()
+collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=doc_repo)
 
 
 @api_wrapper

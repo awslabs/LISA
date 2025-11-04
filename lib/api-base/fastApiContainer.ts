@@ -80,6 +80,20 @@ export class FastApiContainer extends Construct {
             LITELLM_CONFIG: yamlDump(config.litellmConfig),
         };
 
+        // Add build config overrides if provided
+        if (config.restApiConfig.buildConfig?.NODEENV_CACHE_DIR) {
+            buildArgs.NODEENV_CACHE_DIR = config.restApiConfig.buildConfig.NODEENV_CACHE_DIR;
+        }
+
+        // Add MCP Workbench build config overrides if provided
+        if (config.mcpWorkbenchBuildConfig) {
+            Object.entries(config.mcpWorkbenchBuildConfig).forEach(([key, value]) => {
+                if (value) {
+                    buildArgs[key] = value;
+                }
+            });
+        }
+
         // Environment variables for all containers
         const environment: Record<string, string> = {
             LOG_LEVEL: config.logLevel,

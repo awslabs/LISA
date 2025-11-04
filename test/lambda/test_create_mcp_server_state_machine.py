@@ -17,7 +17,6 @@
 import json
 import os
 import sys
-from datetime import datetime, UTC
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -219,9 +218,7 @@ def test_handle_poll_deployment_success():
     event = {"stack_name": "test-stack", "poll_count": 0}
 
     with patch("mcp_server.state_machine.create_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "CREATE_COMPLETE"}]
-        }
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_COMPLETE"}]}
 
         result = handle_poll_deployment(event, None)
 
@@ -237,9 +234,7 @@ def test_handle_poll_deployment_in_progress():
     event = {"stack_name": "test-stack", "poll_count": 5}
 
     with patch("mcp_server.state_machine.create_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "CREATE_IN_PROGRESS"}]
-        }
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_IN_PROGRESS"}]}
 
         result = handle_poll_deployment(event, None)
 
@@ -254,9 +249,7 @@ def test_handle_poll_deployment_failed():
     event = {"stack_name": "test-stack", "poll_count": 0}
 
     with patch("mcp_server.state_machine.create_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "CREATE_FAILED"}]
-        }
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_FAILED"}]}
 
         with pytest.raises(Exception, match="Stack test-stack failed with status: CREATE_FAILED"):
             handle_poll_deployment(event, None)
@@ -269,9 +262,7 @@ def test_handle_poll_deployment_max_polls():
     event = {"stack_name": "test-stack", "poll_count": MAX_POLLS + 1}
 
     with patch("mcp_server.state_machine.create_mcp_server.cfnClient") as mock_cfn:
-        mock_cfn.describe_stacks.return_value = {
-            "Stacks": [{"StackStatus": "CREATE_IN_PROGRESS"}]
-        }
+        mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_IN_PROGRESS"}]}
 
         with pytest.raises(Exception, match="Max polls exceeded"):
             handle_poll_deployment(event, None)
@@ -322,7 +313,7 @@ def test_handle_add_server_to_active_with_connections_table(mcp_servers_table, s
     )
 
     # Create MCP connections table (for user-facing connections)
-    connections_table = mcp_servers_table.meta.client.create_table(
+    mcp_servers_table.meta.client.create_table(
         TableName="mcp-connections-table",
         KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
         AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
@@ -377,7 +368,6 @@ def test_handle_add_server_to_active_with_empty_groups(mcp_servers_table, sample
 
 def test_handle_failure(mcp_servers_table, sample_mcp_server_event):
     """Test handling deployment failure."""
-    from mcp_server.state_machine.create_mcp_server import handle_failure
 
     # Create initial server record
     mcp_servers_table.put_item(
@@ -390,8 +380,6 @@ def test_handle_failure(mcp_servers_table, sample_mcp_server_event):
 
     event = sample_mcp_server_event.copy()
     event["error"] = "Deployment failed: Stack creation error"
-
-    result = handle_failure(event, None)
 
     # Verify DynamoDB was updated
     response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
@@ -413,7 +401,6 @@ def test_handle_failure_missing_id(mcp_servers_table):
 
 def test_handle_failure_no_error_message(mcp_servers_table, sample_mcp_server_event):
     """Test handle_failure with no error message."""
-    from mcp_server.state_machine.create_mcp_server import handle_failure
 
     mcp_servers_table.put_item(
         Item={
@@ -422,11 +409,7 @@ def test_handle_failure_no_error_message(mcp_servers_table, sample_mcp_server_ev
             "status": "Creating",
         }
     )
-
-    event = sample_mcp_server_event.copy()
     # No error field
-
-    result = handle_failure(event, None)
 
     response = mcp_servers_table.get_item(Key={"id": "test-server-id"})
     assert response["Item"]["status"] == "Failed"
@@ -486,4 +469,3 @@ def test_get_api_gateway_url_error():
 
         result = _get_api_gateway_url("/test/lisa")
         assert result is None
-

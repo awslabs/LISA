@@ -302,8 +302,8 @@ export class LisaServeApplicationStage extends Stage {
                 vpc: networkingStack.vpc,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
-                authorizerId: apiBaseStack.authorizer?.authorizerId || '',
                 apiCluster: serveStack.restApi.apiCluster,
+                authorizer: apiBaseStack.authorizer,
             });
             mcpWorkbenchStack.addDependency(coreStack);
             mcpWorkbenchStack.addDependency(apiBaseStack);

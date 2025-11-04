@@ -20,7 +20,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 from uuid import uuid4
 
@@ -38,24 +38,16 @@ from utilities.validation import (
 logger = logging.getLogger(__name__)
 
 
-class InferenceContainer(str, Enum):
+class InferenceContainer(StrEnum):
     """Defines supported inference container types."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     TGI = "tgi"
     TEI = "tei"
     VLLM = "vllm"
 
 
-class ModelStatus(str, Enum):
+class ModelStatus(StrEnum):
     """Defines possible model deployment states."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     CREATING = "Creating"
     IN_SERVICE = "InService"
@@ -67,12 +59,8 @@ class ModelStatus(str, Enum):
     FAILED = "Failed"
 
 
-class ModelType(str, Enum):
+class ModelType(StrEnum):
     """Defines supported model categories."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     TEXTGEN = "textgen"
     IMAGEGEN = "imagegen"
@@ -535,7 +523,7 @@ class IngestionJob(BaseModel):
     document_id: Optional[str] = Field(default=None)
     repository_id: str
     chunk_strategy: Optional[ChunkingStrategy] = Field(default=None)
-    embedding_model: str = Field(default=None)
+    embedding_model: Optional[str] = Field(default=None)
     username: Optional[str] = Field(default=None)
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -753,24 +741,16 @@ class SortParams:
 # ============================================================================
 
 
-class CollectionStatus(str, Enum):
+class CollectionStatus(StrEnum):
     """Defines possible states for a collection."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     ACTIVE = "ACTIVE"
     ARCHIVED = "ARCHIVED"
     DELETED = "DELETED"
 
 
-class VectorStoreStatus(str, Enum):
+class VectorStoreStatus(StrEnum):
     """Defines possible states for a vector store deployment."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
     CREATE_COMPLETE = "CREATE_COMPLETE"
@@ -919,24 +899,16 @@ class ListCollectionsResponse(PaginatedResponse):
     totalPages: Optional[int] = Field(default=None, description="Total number of pages")
 
 
-class CollectionSortBy(str, Enum):
+class CollectionSortBy(StrEnum):
     """Defines sort options for collection listing."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     NAME = "name"
     CREATED_AT = "createdAt"
     UPDATED_AT = "updatedAt"
 
 
-class SortOrder(str, Enum):
+class SortOrder(StrEnum):
     """Defines sort order options."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     ASC = "asc"
     DESC = "desc"

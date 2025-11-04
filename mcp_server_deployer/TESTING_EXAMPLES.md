@@ -45,8 +45,7 @@ The payload should match the `McpServerConfig` interface structure.
 ```
 
 **Notes:**
-- `serverType: "stdio"` explicitly sets the server type (will be auto-detected if omitted)
-- No `port` specified - STDIO servers don't listen on ports
+- `serverType: "stdio"` is required - STDIO servers don't listen on ports
 - Automatically wrapped with `mcp-proxy` to expose HTTP endpoint on port 8080
 - S3 path contains binary executable that will be downloaded at container startup
 
@@ -80,7 +79,7 @@ The payload should match the `McpServerConfig` interface structure.
 
 **Notes:**
 - `port: 8000` specifies the HTTP server port
-- `serverType: "http"` explicitly sets the type (auto-detected from port if omitted)
+- `serverType: "http"` is required
 - S3 path contains Python source files
 - Container will download files and execute Python script at startup
 
@@ -175,7 +174,7 @@ The payload should match the `McpServerConfig` interface structure.
 
 ---
 
-### Example 6: Minimal Configuration (Auto-detected)
+### Example 6: Minimal Configuration
 
 ```json
 {
@@ -183,6 +182,7 @@ The payload should match the `McpServerConfig` interface structure.
   "name": "Simple MCP Server",
   "startCommand": "python3 server.py",
   "port": 8000,
+  "serverType": "http",
   "autoScalingConfig": {
     "minCapacity": 1,
     "maxCapacity": 2
@@ -192,7 +192,7 @@ The payload should match the `McpServerConfig` interface structure.
 ```
 
 **Notes:**
-- No `serverType` - will be auto-detected as `http` because `port` is provided
+- `serverType: "http"` is required
 - No `s3Path` - assumes server files are baked into container image or base image
 - Minimal auto-scaling config - only `minCapacity` and `maxCapacity` required
 - Other auto-scaling fields will use defaults
@@ -225,7 +225,7 @@ The payload should match the `McpServerConfig` interface structure.
 ```
 
 **Notes:**
-- Uses Node.js base image (auto-detected from `npm` in start command)
+- `serverType: "http"` is required
 - `PORT` environment variable matches the `port` configuration
 - Longer cooldown periods for more stable scaling behavior
 
@@ -253,7 +253,7 @@ The payload should match the `McpServerConfig` interface structure.
 ```
 
 **Notes:**
-- Rust binary detected from command structure
+- `serverType: "stdio"` is required
 - STDIO server automatically wrapped with `mcp-proxy`
 - Binary executable downloaded from S3 and made executable
 
@@ -663,6 +663,7 @@ curl -X POST \
 | `id` | string | Unique identifier for the server (used in API Gateway routes) |
 | `name` | string | Human-readable name for the server |
 | `startCommand` | string | Command to start the server (e.g., `"python3 server.py"`, `"/app/server/binary"`) |
+| `serverType` | `'stdio' \| 'http' \| 'sse'` | Server type - must be explicitly specified |
 | `autoScalingConfig` | object | Auto-scaling configuration (see below) |
 | `idpGroups` | string[] | Array of IDP groups authorized to access this server |
 
@@ -670,8 +671,7 @@ curl -X POST \
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `port` | number | Auto-detected | Port number for HTTP/SSE servers |
-| `serverType` | `'stdio' \| 'http' \| 'sse'` | Auto-detected | Explicit server type |
+| `port` | number | - | Port number for HTTP/SSE servers (required for HTTP/SSE, not used for STDIO) |
 | `s3Path` | string | - | S3 path to server artifacts (binaries, source files) |
 | `image` | string | - | Pre-built container image (ECR or Docker Hub) |
 | `environment` | object | {} | Environment variables for the container |
@@ -689,23 +689,14 @@ curl -X POST \
 | `duration` | number | 60 | Metric evaluation period (seconds) |
 | `cooldown` | number | 60 | Cooldown period between scaling actions (seconds) |
 
-### Server Type Auto-detection
-
-The system automatically detects server type if not explicitly provided:
-
-1. **If `serverType` is set**: Use that value
-2. **Else if `port` is provided**: Assume `"http"`
-3. **Else if command contains "sse" or "server-sent"**: Assume `"sse"`
-4. **Else**: Default to `"stdio"`
-
 ### Container Base Image Selection
 
-When building from S3 artifacts, the base image is automatically selected based on `startCommand`:
+When building from S3 artifacts, you can specify the base image using the `image` field along with `s3Path`. If `image` is provided with `s3Path`, it will be used as the base image for the Dockerfile.
 
-- **Python**: `python:3.12-slim-bookworm` (if command contains `python` or `.py`)
-- **Node.js**: `node:20-slim` (if command contains `node` or `npm`)
-- **Rust**: `rust:1-slim-bullseye` (if command contains `cargo` or `rust`)
-- **Default**: `python:3.12-slim-bookworm`
+**Examples:**
+- If `image` is provided without `s3Path`: The image is treated as a pre-built container image and used directly
+- If `image` is provided with `s3Path`: The `image` is used as the base image, and artifacts from `s3Path` are copied into it
+- If only `s3Path` is provided (no `image`): Defaults to `python:3.12-slim-bookworm` as the base image
 
 ---
 
@@ -720,29 +711,35 @@ Replace these placeholders in the examples:
 
 ## API Gateway Routes
 
-The MCP server deployment creates two API Gateway routes under the existing `/mcp` resource:
+The MCP server deployment creates three API Gateway routes under the existing `/mcp` resource:
 
-1. **Root Route**: `/mcp/{SERVER_ID}` - Routes directly to the server root
-2. **Proxy Route**: `/mcp/{SERVER_ID}/{proxy+}` - Routes with path proxying
+1. **Root Route**: `/mcp/{SERVER_ID}` - Routes directly to the server root (ALB root)
+2. **Proxy Route**: `/mcp/{SERVER_ID}/{proxy+}` - Routes with path proxying (forwards the `{proxy+}` portion to the server)
+3. **MCP Protocol Route**: `/mcp/{SERVER_ID}/mcp` - Explicit route for MCP protocol endpoints (recommended for MCP clients)
+
+**Note:** The MCP Protocol Route (`/mcp/{SERVER_ID}/mcp`) is the recommended endpoint for MCP clients and is automatically added to the MCP Connections table when a server is deployed.
+
+**HTTP Methods Supported:**
+- All routes support: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`
+- `OPTIONS` methods are automatically created via CORS preflight support
+- Authorization is required for all methods except `OPTIONS` (CORS preflight)
+
+**Special 405 Behavior:**
+- For HTTP/STDIO servers: `GET` requests to `/mcp/{SERVER_ID}/mcp` return `405 Method Not Allowed`
+- For SSE servers: `POST` requests to `/mcp/{SERVER_ID}/mcp` return `405 Method Not Allowed`
+- Use `POST` for HTTP/STDIO servers and `GET` for SSE servers at the `/mcp` endpoint
 
 ---
 
-## Testing WITHOUT Proxy (Root Route)
+## Testing MCP Protocol Route (Recommended)
 
-### Example 1: Health Check (GET request to root)
+The `/mcp/{SERVER_ID}/mcp` route is the recommended endpoint for MCP protocol communication. This is the URL that gets automatically added to the MCP Connections table.
 
-```bash
-curl -X GET \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/health" \
-  -H "Authorization: Bearer {AUTH_TOKEN}" \
-  -H "Content-Type: application/json"
-```
-
-### Example 2: MCP Initialize (POST request to root)
+### Example 1: MCP Initialize (POST request to /mcp endpoint)
 
 ```bash
 curl -X POST \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/" \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/mcp" \
   -H "Authorization: Bearer {AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -760,20 +757,30 @@ curl -X POST \
   }'
 ```
 
-### Example 3: Server Info (GET request to root)
+### Example 2: MCP Tools List (POST request to /mcp endpoint)
 
 ```bash
-curl -X GET \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/" \
+curl -X POST \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/mcp" \
   -H "Authorization: Bearer {AUTH_TOKEN}" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }'
 ```
+
+**Note:** For HTTP/STDIO servers, `GET` requests to `/mcp/{SERVER_ID}/mcp` will return `405 Method Not Allowed`. Use `POST` for MCP protocol requests.
 
 ---
 
-## Testing WITH Proxy (Proxy Route)
+## Testing Root Route (Server Root)
 
-### Example 4: Health Check via Proxy
+The `/mcp/{SERVER_ID}` route forwards requests directly to the server root (ALB root endpoint).
+
+### Example 3: Health Check (GET request to root)
 
 ```bash
 curl -X GET \
@@ -782,9 +789,74 @@ curl -X GET \
   -H "Content-Type: application/json"
 ```
 
-Note: The `/health` path is captured by the `{proxy+}` wildcard and forwarded to the server.
+### Example 4: Custom Server Endpoint (GET request to root)
 
-### Example 5: MCP Tools List via Proxy
+```bash
+curl -X GET \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/api/status" \
+  -H "Authorization: Bearer {AUTH_TOKEN}" \
+  -H "Content-Type: application/json"
+```
+
+### Example 5: Server Info (POST request to root)
+
+```bash
+curl -X POST \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/" \
+  -H "Authorization: Bearer {AUTH_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {}
+  }'
+```
+
+---
+
+## Testing WITH Proxy (Proxy Route)
+
+The `/mcp/{SERVER_ID}/{proxy+}` route forwards requests with path proxying. The `{proxy+}` portion is forwarded to the server.
+
+### Example 6: Health Check via Proxy
+
+```bash
+curl -X GET \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/health" \
+  -H "Authorization: Bearer {AUTH_TOKEN}" \
+  -H "Content-Type: application/json"
+```
+
+**Note:** The `/health` path is captured by the `{proxy+}` wildcard and forwarded to the server as `/health`.
+
+### Example 7: Custom API Endpoint via Proxy
+
+```bash
+curl -X GET \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/api/v1/status" \
+  -H "Authorization: Bearer {AUTH_TOKEN}" \
+  -H "Content-Type: application/json"
+```
+
+The path `/api/v1/status` is forwarded to the server as-is.
+
+### Example 8: Nested Paths via Proxy
+
+```bash
+curl -X POST \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/api/v2/resource/create" \
+  -H "Authorization: Bearer {AUTH_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource": "example",
+    "data": {"key": "value"}
+  }'
+```
+
+The path `/api/v2/resource/create` is forwarded to the server as-is.
+
+### Example 9: MCP Protocol via Proxy (Alternative)
 
 ```bash
 curl -X POST \
@@ -799,49 +871,7 @@ curl -X POST \
   }'
 ```
 
-The path `/mcp/v1/tools/list` is forwarded to the server as the `proxy` path.
-
-### Example 6: MCP Tool Call via Proxy
-
-```bash
-curl -X POST \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/mcp/v1/tools/call" \
-  -H "Authorization: Bearer {AUTH_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 3,
-    "method": "tools/call",
-    "params": {
-      "name": "example_tool",
-      "arguments": {
-        "param1": "value1"
-      }
-    }
-  }'
-```
-
-### Example 7: Custom Server Endpoint via Proxy
-
-```bash
-curl -X GET \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/api/v1/status" \
-  -H "Authorization: Bearer {AUTH_TOKEN}" \
-  -H "Content-Type: application/json"
-```
-
-### Example 8: Nested Paths via Proxy
-
-```bash
-curl -X POST \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/api/v2/resource/create" \
-  -H "Authorization: Bearer {AUTH_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource": "example",
-    "data": {"key": "value"}
-  }'
-```
+**Note:** While this works, it's recommended to use `/mcp/{SERVER_ID}/mcp` (without the proxy) for MCP protocol communication, as it's the official endpoint registered in the MCP Connections table.
 
 ---
 
@@ -880,7 +910,7 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# Without proxy - root endpoint
+# Health check via proxy route
 response = requests.get(
     f"{api_gateway_url}/mcp/{server_id}/health",
     headers=headers
@@ -888,7 +918,7 @@ response = requests.get(
 print(f"Health Check Status: {response.status_code}")
 print(f"Response: {response.text}")
 
-# With proxy - MCP tools list
+# MCP protocol call (recommended: use /mcp endpoint)
 payload = {
     "jsonrpc": "2.0",
     "id": 2,
@@ -896,7 +926,7 @@ payload = {
     "params": {}
 }
 response = requests.post(
-    f"{api_gateway_url}/mcp/{server_id}/mcp/v1/tools/list",
+    f"{api_gateway_url}/mcp/{server_id}/mcp",
     headers=headers,
     json=payload
 )
@@ -920,7 +950,7 @@ const headers = {
   'Content-Type': 'application/json'
 };
 
-// Without proxy - health check
+// Health check via proxy route
 async function testHealthCheck() {
   const response = await fetch(
     `${API_GATEWAY_URL}/mcp/${SERVER_ID}/health`,
@@ -929,7 +959,7 @@ async function testHealthCheck() {
   console.log('Health Check:', await response.text());
 }
 
-// With proxy - MCP tools list
+// MCP protocol call (recommended: use /mcp endpoint)
 async function testToolsList() {
   const payload = {
     jsonrpc: '2.0',
@@ -939,7 +969,7 @@ async function testToolsList() {
   };
 
   const response = await fetch(
-    `${API_GATEWAY_URL}/mcp/${SERVER_ID}/mcp/v1/tools/list`,
+    `${API_GATEWAY_URL}/mcp/${SERVER_ID}/mcp`,
     {
       method: 'POST',
       headers,
@@ -958,14 +988,32 @@ testToolsList();
 
 ## Testing OPTIONS (CORS Preflight)
 
-The OPTIONS method bypasses authorization for CORS preflight requests:
+All routes (`/mcp/{SERVER_ID}`, `/mcp/{SERVER_ID}/{proxy+}`, and `/mcp/{SERVER_ID}/mcp`) have CORS preflight support enabled. The OPTIONS method bypasses authorization for CORS preflight requests:
 
 ```bash
+# Test CORS on root route
 curl -X OPTIONS \
   "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/health" \
   -H "Origin: https://example.com" \
   -H "Access-Control-Request-Method: GET"
+
+# Test CORS on MCP protocol route
+curl -X OPTIONS \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/mcp" \
+  -H "Origin: https://example.com" \
+  -H "Access-Control-Request-Method: POST"
+
+# Test CORS on proxy route
+curl -X OPTIONS \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/api/v1/status" \
+  -H "Origin: https://example.com" \
+  -H "Access-Control-Request-Method: GET"
 ```
+
+**Expected CORS Headers:**
+- `Access-Control-Allow-Origin: *`
+- `Access-Control-Allow-Methods: GET,POST,PUT,DELETE,PATCH,OPTIONS`
+- `Access-Control-Allow-Headers: Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token`
 
 ---
 
@@ -975,17 +1023,19 @@ curl -X OPTIONS \
 STDIO servers are automatically wrapped with `mcp-proxy` and exposed on port 8080.
 
 ```bash
-# Health check
+# Health check (via proxy route)
 curl -X GET \
   "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/health" \
   -H "Authorization: Bearer {AUTH_TOKEN}"
 
-# MCP protocol calls
+# MCP protocol calls (recommended: use /mcp endpoint)
 curl -X POST \
-  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/" \
+  "https://{API_GATEWAY_URL}/mcp/{SERVER_ID}/mcp" \
   -H "Authorization: Bearer {AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
+
+# Note: GET requests to /mcp/{SERVER_ID}/mcp will return 405 for STDIO servers
 ```
 
 ### 2. HTTP Server
@@ -1079,15 +1129,24 @@ Check your CloudFormation stack outputs or API Gateway console for the REST API 
 
 ### Path Forwarding
 
-- **Root route** (`/mcp/{SERVER_ID}`): Forwards requests to the server root
-- **Proxy route** (`/mcp/{SERVER_ID}/{proxy+}`): Forwards the `{proxy+}` portion as the path
+- **Root route** (`/mcp/{SERVER_ID}`): Forwards requests directly to the server root (ALB root endpoint)
+- **Proxy route** (`/mcp/{SERVER_ID}/{proxy+}`): Forwards the `{proxy+}` portion as the path to the server
   - Example: `/mcp/myserver/api/health` → Forwards `/api/health` to the server
+- **MCP Protocol route** (`/mcp/{SERVER_ID}/mcp`): Explicitly routes to `/mcp` on the server (recommended for MCP clients)
+  - This is the URL that gets automatically added to the MCP Connections table
+  - For HTTP/STDIO servers: `GET` returns `405`, use `POST` for MCP protocol
+  - For SSE servers: `POST` returns `405`, use `GET` for SSE streams
 
 ---
 
 ## Notes
 
-- All routes support: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`
-- Authorization is required for all methods except `OPTIONS`
-- CORS headers are automatically included in responses
-- The proxy path forwarding preserves query parameters and request bodies
+- **All routes support:** `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`
+- **Authorization:** Required for all methods except `OPTIONS` (CORS preflight)
+- **CORS:** Headers are automatically included in responses for all routes
+- **Path Forwarding:** The proxy route preserves query parameters and request bodies
+- **Recommended Endpoint:** Use `/mcp/{SERVER_ID}/mcp` for MCP protocol communication (this is the URL registered in MCP Connections table)
+- **405 Behavior:**
+  - HTTP/STDIO servers: `GET /mcp/{SERVER_ID}/mcp` returns `405` (use `POST`)
+  - SSE servers: `POST /mcp/{SERVER_ID}/mcp` returns `405` (use `GET`)
+- **Server URL Format:** The server URL in the MCP Connections table follows the pattern: `{API_GATEWAY_URL}/mcp/{SERVER_ID}/mcp`

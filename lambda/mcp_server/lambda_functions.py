@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+import uuid
 from decimal import Decimal
 from functools import reduce
 from typing import Any, Dict, List, Optional
@@ -295,6 +296,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
     user_id = get_username(event)
     body = json.loads(event["body"], parse_float=Decimal)
     body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
+    body["id"] = str(uuid.uuid4())
 
     # Check if the user is authorized to create Hosted MCP server
     if is_admin(event):

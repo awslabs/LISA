@@ -78,5 +78,5 @@ export type McpServerConfig = {
  * @returns {string} normalized server identifier
  */
 export function getMcpServerIdentifier (mcpServerConfig: McpServerConfig): string {
-    return (mcpServerConfig.id || mcpServerConfig.name).replace(/[^a-zA-Z0-9]/g, '');
+    return (mcpServerConfig.name).replace(/[^a-zA-Z0-9]/g, '');
 }

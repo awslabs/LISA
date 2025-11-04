@@ -16,6 +16,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { getMcpServerIdentifier } from './lib/utils';
 
 /*
   cdk CLI always wants ./ to be writable in order to write cdk.context.json.
@@ -69,7 +70,7 @@ export const handler = async (event: any) => {
 
     createWritableEnv();
 
-    const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'mcp-server', mcpServerConfig.id].join('-');
+    const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'mcp-server', getMcpServerIdentifier(mcpServerConfig)].join('-');
     process.env['LISA_STACK_NAME'] = stackName;
 
     const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out'], {stdio: 'inherit'});

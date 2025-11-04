@@ -122,7 +122,6 @@ class DaySchedule(BaseModel):
     def validate_time_format(cls, v: str) -> str:
         """Validates time format is HH:MM"""
         try:
-            from datetime import datetime
 
             datetime.strptime(v, "%H:%M")
         except ValueError:

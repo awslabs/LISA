@@ -35,6 +35,7 @@ from models.handler.schedule_handlers import (
     GetScheduleStatusHandler,
     UpdateScheduleHandler,
 )
+from utilities.common_functions import user_has_group_access
 
 # Set mock AWS credentials
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -455,8 +456,6 @@ class TestUserGroupAccess:
 
     def test_user_has_group_access_with_matching_groups(self):
         """Test user has access when groups match."""
-        from models.handler.schedule_handlers import user_has_group_access
-
         user_groups = ["admin", "developers"]
         allowed_groups = ["developers", "testers"]
 
@@ -464,8 +463,6 @@ class TestUserGroupAccess:
 
     def test_user_has_group_access_with_no_matching_groups(self):
         """Test user has no access when groups don't match."""
-        from models.handler.schedule_handlers import user_has_group_access
-
         user_groups = ["admin", "managers"]
         allowed_groups = ["developers", "testers"]
 
@@ -473,8 +470,6 @@ class TestUserGroupAccess:
 
     def test_user_has_group_access_with_empty_allowed_groups(self):
         """Test user has access when no groups are specified."""
-        from models.handler.schedule_handlers import user_has_group_access
-
         user_groups = ["admin"]
         allowed_groups = []
 
@@ -482,8 +477,6 @@ class TestUserGroupAccess:
 
     def test_user_has_group_access_with_empty_user_groups(self):
         """Test user has no access when user has no groups."""
-        from models.handler.schedule_handlers import user_has_group_access
-
         user_groups = []
         allowed_groups = ["developers"]
 

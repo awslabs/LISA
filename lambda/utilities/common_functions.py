@@ -26,6 +26,7 @@ from typing import Any, Callable, cast, Dict, List, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
+from models.exception import ModelNotFoundError
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -483,6 +484,36 @@ def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> 
 
     # Check if user has at least one matching group
     return len(set(user_groups).intersection(set(allowed_groups))) > 0
+
+
+def validate_model_access(
+    model_item: Dict[str, Any], model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+) -> None:
+    """
+    Validate if a user has access to a model based on group membership.
+
+    Args:
+        model_item: The model item from DynamoDB containing allowedGroups
+        model_id: The model ID for error messages
+        user_groups: List of groups the user belongs to
+        is_admin: Whether the user is an admin (bypasses group checks)
+
+    Raises:
+        ModelNotFoundError: If user doesn't have access to the model
+    """
+
+    # Admin users bypass group access checks
+    if is_admin:
+        return
+
+    # If no user groups provided, skip group validation
+    if user_groups is None:
+        return
+
+    # Check if user has access to this model based on groups
+    allowed_groups = model_item.get("allowedGroups", [])
+    if not user_has_group_access(user_groups, allowed_groups):
+        raise ModelNotFoundError(f"Model {model_id} not found")
 
 
 def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:

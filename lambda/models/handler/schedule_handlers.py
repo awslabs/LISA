@@ -17,7 +17,7 @@ import os
 from typing import Any, List, Optional
 
 import boto3
-from utilities.common_functions import retry_config
+from utilities.common_functions import retry_config, validate_model_access
 
 from ..domain_objects import (
     DeleteScheduleResponse,
@@ -28,13 +28,6 @@ from ..domain_objects import (
 )
 from ..exception import InvalidStateTransitionError, ModelNotFoundError
 from .base_handler import BaseApiHandler
-
-
-def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
-    """Check if user has access based on group membership"""
-    if not allowed_groups:  # If no groups specified, allow access
-        return True
-    return bool(set(user_groups) & set(allowed_groups))
 
 
 class ScheduleBaseHandler(BaseApiHandler):
@@ -65,10 +58,7 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
         model_item = model_response["Item"]
 
         # Check if user has access to this model based on groups
-        if not is_admin and user_groups is not None:
-            allowed_groups = model_item.get("allowedGroups", [])
-            if not user_has_group_access(user_groups, allowed_groups):
-                raise ModelNotFoundError(f"Model {model_id} not found")
+        validate_model_access(model_item, model_id, user_groups, is_admin)
 
         model_status = model_item.get("model_status")
 
@@ -130,10 +120,7 @@ class GetScheduleHandler(ScheduleBaseHandler):
         model_item = model_response["Item"]
 
         # Check if user has access to this model based on groups
-        if not is_admin and user_groups is not None:
-            allowed_groups = model_item.get("allowedGroups", [])
-            if not user_has_group_access(user_groups, allowed_groups):
-                raise ModelNotFoundError(f"Model {model_id} not found")
+        validate_model_access(model_item, model_id, user_groups, is_admin)
 
         # Invoke Schedule Management Lambda
         payload = {"operation": "get", "modelId": model_id}
@@ -174,10 +161,7 @@ class DeleteScheduleHandler(ScheduleBaseHandler):
         model_item = model_response["Item"]
 
         # Check if user has access to this model based on groups
-        if not is_admin and user_groups is not None:
-            allowed_groups = model_item.get("allowedGroups", [])
-            if not user_has_group_access(user_groups, allowed_groups):
-                raise ModelNotFoundError(f"Model {model_id} not found")
+        validate_model_access(model_item, model_id, user_groups, is_admin)
 
         model_status = model_item.get("model_status")
 
@@ -220,10 +204,8 @@ class GetScheduleStatusHandler(ScheduleBaseHandler):
         model_item = model_response["Item"]
 
         # Check if user has access to this model based on groups
-        if not is_admin and user_groups is not None:
-            allowed_groups = model_item.get("allowedGroups", [])
-            if not user_has_group_access(user_groups, allowed_groups):
-                raise ModelNotFoundError(f"Model {model_id} not found")
+        validate_model_access(model_item, model_id, user_groups, is_admin)
+
         auto_scaling_config = model_item.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
 

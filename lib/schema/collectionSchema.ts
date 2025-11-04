@@ -44,8 +44,8 @@ export enum ChunkingStrategyType {
  */
 export const FixedSizeChunkingStrategySchema = z.object({
     type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
-    size: z.number().min(100).max(10000).describe('Size of each chunk in characters'),
-    overlap: z.number().min(0).describe('Overlap between chunks in characters'),
+    size: z.number().min(100).max(10000).default(512).describe('Size of each chunk in characters'),
+    overlap: z.number().min(0).default(51).describe('Overlap between chunks in characters'),
 }).refine(
     (data) => data.overlap <= data.size / 2,
     { message: 'overlap must be less than or equal to half of size' }

@@ -26,8 +26,6 @@ from typing import Any, Callable, cast, Dict, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
-from pydantic import ValidationError
-from utilities.validation import RequestValidationError
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -263,33 +261,34 @@ def generate_exception_response(
     Dict[str, Union[str, int, Dict[str, str]]]
         An HTML response.
     """
-    # Check for ValidationError from utilities.validation or pydantic
+    # Check for ValidationError from utilities.validation
     status_code = 400
-    if isinstance(e, RequestValidationError) or isinstance(e, ValidationError):
+    error_message: str
+    if type(e).__name__ == "ValidationError":
+        error_message = str(e)
         logger.exception(e)
-        return generate_html_response(status_code, str(e))
-
-    if hasattr(e, "response"):  # i.e. validate the exception was from an API call
+    elif hasattr(e, "response"):  # i.e. validate the exception was from an API call
         metadata = e.response.get("ResponseMetadata")
         if metadata:
             status_code = metadata.get("HTTPStatusCode", 400)
+        error_message = str(e)
         logger.exception(e)
     elif hasattr(e, "http_status_code"):
         status_code = e.http_status_code
-        e = e.message  # type: ignore [assignment]
+        error_message = getattr(e, "message", str(e))
         logger.exception(e)
     elif hasattr(e, "status_code"):
         status_code = e.status_code
-        e = e.message  # type: ignore [assignment]
+        error_message = getattr(e, "message", str(e))
         logger.exception(e)
     else:
         error_msg = str(e)
         if error_msg in ["'requestContext'", "'pathParameters'", "'body'"]:
-            e = f"Missing event parameter: {error_msg}"  # type: ignore [assignment]
+            error_message = f"Missing event parameter: {error_msg}"
         else:
-            e = f"Bad Request: {error_msg}"  # type: ignore [assignment]
+            error_message = f"Bad Request: {error_msg}"
         logger.exception(e)
-    return generate_html_response(status_code, e)  # type: ignore [arg-type]
+    return generate_html_response(status_code, error_message)  # type: ignore [arg-type]
 
 
 def get_id_token(event: dict) -> str:

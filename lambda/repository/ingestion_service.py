@@ -86,6 +86,8 @@ class DocumentIngestionService:
 
         # Get embedding model
         embedding_model = collection.get("embeddingModel") if collection else repository.get("embeddingModelId")
+        source = "collection" if collection else "repository"
+        logger.info(f"Using embedding model for ingestion: {embedding_model} (from {source})")
 
         # Get metadata tags
         metadata = collection_server.get_collection_metadata(repository, collection, request.metadata)
@@ -99,5 +101,6 @@ class DocumentIngestionService:
             username=username,
             metadata=metadata,
         )
+        logger.info(f"Created ingestion job with embedding_model: {embedding_model}")
 
         return job

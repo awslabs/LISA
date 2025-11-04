@@ -22,6 +22,15 @@ import { Alert, SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
 import { ModifyMethod } from '../../../shared/form/form-props';
 
+// Utility function to create default chunking strategy
+function createDefaultChunkingStrategy () {
+    return {
+        type: ChunkingStrategyType.FIXED,
+        size: 512,
+        overlap: 51,
+    };
+}
+
 export type ChunkingConfigFormProps = {
     item: ChunkingStrategy | undefined;
     setFields(values: { [key: string]: any }, method?: ModifyMethod): void;
@@ -56,16 +65,12 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     selectedOption={
                         item?.type
                             ? { label: 'Fixed Size', value: item.type }
-                            : null
+                            : { label: 'Fixed Size', value: ChunkingStrategyType.FIXED }
                     }
                     onChange={({ detail }) => {
                         if (detail.selectedOption.value === ChunkingStrategyType.FIXED) {
                             setFields({
-                                chunkingStrategy: {
-                                    type: ChunkingStrategyType.FIXED,
-                                    size: 1000,
-                                    overlap: 200,
-                                }
+                                chunkingStrategy: createDefaultChunkingStrategy()
                             });
                         }
                     }}
@@ -84,7 +89,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     >
                         <Input
                             type='number'
-                            value={String(item.size || 1000)}
+                            value={String(item.size || 512)}
                             onChange={({ detail }) => {
                                 setFields({
                                     'chunkingStrategy.size': Number(detail.value)
@@ -101,7 +106,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     >
                         <Input
                             type='number'
-                            value={String(item.overlap || 200)}
+                            value={String(item.overlap || 51)}
                             onChange={({ detail }) => {
                                 setFields({
                                     'chunkingStrategy.overlap': Number(detail.value)

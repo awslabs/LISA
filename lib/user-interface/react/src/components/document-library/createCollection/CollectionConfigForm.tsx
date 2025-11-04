@@ -22,7 +22,7 @@ import Select from '@cloudscape-design/components/select';
 import { Checkbox, SpaceBetween, Textarea } from '@cloudscape-design/components';
 import { useListRagRepositoriesQuery } from '../../../shared/reducers/rag.reducer';
 import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
-import { RagCollectionConfig } from '#root/lib/schema';
+import { RagCollectionConfig, VectorStoreStatus } from '#root/lib/schema';
 
 export type CollectionConfigProps = {
     isEdit: boolean;
@@ -43,10 +43,19 @@ export function CollectionConfigForm (
         if (!repositories || !Array.isArray(repositories)) {
             return [];
         }
-        return repositories.map((repo) => ({
-            label: repo.repositoryName || repo.repositoryId,
-            value: repo.repositoryId,
-        }));
+        return repositories
+            .filter((repository) =>
+                repository.status && [
+                    VectorStoreStatus.CREATE_COMPLETE,
+                    VectorStoreStatus.UPDATE_COMPLETE,
+                    VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+                    VectorStoreStatus.UPDATE_IN_PROGRESS,
+                ].includes(repository.status)
+            )
+            .map((repo) => ({
+                label: repo.repositoryName || repo.repositoryId,
+                value: repo.repositoryId,
+            }));
     }, [repositories]);
 
     return (
@@ -61,7 +70,7 @@ export function CollectionConfigForm (
                     value={item.name || ''}
                     onChange={({ detail }) => setFields({ name: detail.value })}
                     onBlur={() => touchFields(['name'])}
-                    placeholder='Engineering Documents'
+                    placeholder='Documents'
                 />
             </FormField>
 
@@ -75,7 +84,7 @@ export function CollectionConfigForm (
                     value={item.description || ''}
                     onChange={({ detail }) => setFields({ description: detail.value })}
                     onBlur={() => touchFields(['description'])}
-                    placeholder='Collection of engineering documentation and specifications'
+                    placeholder='Collection of documents'
                     rows={3}
                 />
             </FormField>

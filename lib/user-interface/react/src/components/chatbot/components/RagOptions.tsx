@@ -61,7 +61,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
     const lastRepositoryIdRef = useRef<string>(undefined);
 
     const selectedRepositoryOption = ragConfig?.repositoryId ?? '';
-    const selectedCollectionOption = ragConfig?.collection?.collectionId ?? '';
+    const selectedCollectionOption = ragConfig?.collection?.name ?? '';
 
     const filteredRepositories = useMemo(() => {
         if (!repositories) return [];
@@ -74,7 +74,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         if (!collections) return [];
         return collections.map((collection) => ({
             value: collection.collectionId,
-            label: collection.name || collection.collectionId,
+            label: collection.name,
         }));
     }, [collections]);
 

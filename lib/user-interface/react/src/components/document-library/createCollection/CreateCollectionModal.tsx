@@ -33,7 +33,8 @@ import { ModifyMethod } from '@/shared/validation/modify-method';
 import _ from 'lodash';
 import {
     RagCollectionConfig,
-    RagCollectionConfigSchema
+    RagCollectionConfigSchema,
+    ChunkingStrategyType
 } from '#root/lib/schema';
 
 export type CreateCollectionModalProps = {
@@ -82,7 +83,11 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         name: '',
         description: '',
         embeddingModel: '',
-        chunkingStrategy: undefined,
+        chunkingStrategy: {
+            type: ChunkingStrategyType.FIXED,
+            size: 512,
+            overlap: 50,
+        },
         allowedGroups: [],
         metadata: { tags: [], customFields: {} },
         private: false,

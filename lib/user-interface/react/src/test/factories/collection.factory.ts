@@ -14,7 +14,8 @@
  limitations under the License.
  */
 
-import { RagCollectionConfig } from '../../shared/reducers/rag.reducer';
+import { ChunkingStrategyType, CollectionStatus } from '#root/lib/schema';
+import { RagCollectionConfig } from '@/shared/reducers/rag.reducer';
 
 export function createMockCollection (overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
     return {
@@ -24,15 +25,15 @@ export function createMockCollection (overrides?: Partial<RagCollectionConfig>):
         description: 'A test collection',
         embeddingModel: 'amazon.titan-embed-text-v1',
         chunkingStrategy: {
-            type: 'fixed',
-            chunkSize: 512,
-            chunkOverlap: 50,
+            type: ChunkingStrategyType.FIXED,
+            size: 512,
+            overlap: 50,
         },
         allowedGroups: [],
         createdBy: 'test-user',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        status: 'ACTIVE',
+        status: CollectionStatus.ACTIVE,
         private: false,
         ...overrides,
     };

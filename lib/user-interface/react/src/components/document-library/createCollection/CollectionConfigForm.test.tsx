@@ -112,25 +112,8 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const input = screen.getByPlaceholderText('Engineering Documents');
+            const input = screen.getByPlaceholderText('Documents');
             expect(input).toBeInTheDocument();
-        });
-
-        it('should render description textarea', () => {
-            renderWithProviders(
-                <CollectionConfigForm
-                    item={mockItem}
-                    setFields={mockSetFields}
-                    touchFields={mockTouchFields}
-                    formErrors={mockFormErrors}
-                    isEdit={false}
-                />
-            );
-
-            const textarea = screen.getByPlaceholderText(
-                'Collection of engineering documentation and specifications'
-            );
-            expect(textarea).toBeInTheDocument();
         });
 
         it('should render private checkbox', () => {

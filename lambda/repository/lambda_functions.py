@@ -243,20 +243,23 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     if not repository_id:
         raise ValidationError("repositoryId is required")
 
-    # Parse request body
-    try:
-        body = json.loads(event.get("body", {}))
-        collection = RagCollectionConfig(**body)
-    except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON in request body: {e}")
-    except Exception as e:
-        raise ValidationError(f"Invalid request: {e}")
-
     # Get user context
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
+
+    # Parse request body
+    try:
+        body = json.loads(event.get("body", {}))
+        # Add required fields
+        body["repositoryId"] = repository_id
+        body["createdBy"] = username
+        collection = RagCollectionConfig(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+    except Exception as e:
+        raise ValidationError(f"Invalid request: {e}")
 
     # Create collection via service
     created_collection = collection_service.create_collection(
@@ -757,6 +760,8 @@ def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_pa
             logger.info(
                 f"Migrated legacy parameters to chunkingStrategy: " f"size={chunk_size}, overlap={chunk_overlap}"
             )
+        if "collectionId" in query_params:
+            request.collectionId = query_params.get("collectionId")
 
 
 @api_wrapper
@@ -785,6 +790,10 @@ def ingest_documents(event: dict, context: dict) -> dict:
             is_admin=is_admin,
         )
         collection = collection.model_dump() if hasattr(collection, "model_dump") else collection
+        logger.info(
+            f"""Collection retrieved for ingestion: {collection.get('collectionId')},
+            embeddingModel: {collection.get('embeddingModel')}"""
+        )
 
     # Create jobs
     jobs = []

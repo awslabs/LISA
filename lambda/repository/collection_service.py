@@ -20,7 +20,14 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from models.domain_objects import CollectionMetadata, CollectionSortBy, RagCollectionConfig, SortOrder, SortParams
+from models.domain_objects import (
+    CollectionMetadata,
+    CollectionSortBy,
+    RagCollectionConfig,
+    SortOrder,
+    SortParams,
+    VectorStoreStatus,
+)
 from repository.collection_repo import CollectionRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.validation import ValidationError
@@ -171,6 +178,16 @@ class CollectionService:
 
             if not repository:
                 logger.warning(f"Repository {repository_id} not found")
+                return None
+
+            active = repository.get("status", VectorStoreStatus.UNKNOWN) in [
+                VectorStoreStatus.CREATE_COMPLETE,
+                VectorStoreStatus.UPDATE_COMPLETE,
+                VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+                VectorStoreStatus.UPDATE_IN_PROGRESS,
+            ]
+            if not active:
+                logger.info(f"Repository {repository_id} is not active")
                 return None
 
             embedding_model = repository.get("embeddingModelId")

@@ -193,11 +193,28 @@ def test_handle_delete_stack(mcp_servers_table, lambda_context):
 
     # Mock CloudFormation client
     with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
+        # Mock describe_stacks to return stack with ARN
+        mock_cfn.describe_stacks.return_value = {
+            "Stacks": [
+                {
+                    "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123",
+                    "StackName": "test-stack-name",
+                    "StackStatus": "CREATE_COMPLETE",
+                }
+            ]
+        }
         mock_cfn.delete_stack.return_value = {}
 
         result = handle_delete_stack(event, lambda_context)
 
-        assert result == event
+        # Verify ARN was retrieved and set
+        assert (
+            result["cloudformation_stack_arn"]
+            == "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123"
+        )
+        # Verify describe_stacks was called to get ARN
+        mock_cfn.describe_stacks.assert_called_once_with(StackName="test-stack-name")
+        # Verify delete_stack was called
         mock_cfn.delete_stack.assert_called_once()
         call_args = mock_cfn.delete_stack.call_args
         assert call_args[1]["StackName"] == "test-stack-name"
@@ -216,6 +233,29 @@ def test_handle_delete_stack_missing_stack_name(mcp_servers_table, lambda_contex
         handle_delete_stack(event, lambda_context)
 
 
+def test_handle_delete_stack_stack_not_found(mcp_servers_table, lambda_context):
+    """Test delete stack when stack doesn't exist."""
+    from botocore.exceptions import ClientError
+    from mcp_server.state_machine.delete_mcp_server import handle_delete_stack
+
+    event = {
+        "id": "test-server-id",
+        "stack_name": "non-existent-stack",
+        "cloudformation_stack_arn": "non-existent-stack",
+    }
+
+    # Mock CloudFormation client
+    with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
+        # Create a ClientError with ValidationError code when trying to get ARN
+        error_response = {
+            "Error": {"Code": "ValidationError", "Message": "Stack with id non-existent-stack does not exist"}
+        }
+        mock_cfn.describe_stacks.side_effect = ClientError(error_response, "DescribeStacks")
+
+        with pytest.raises(RuntimeError, match="does not exist and cannot be deleted"):
+            handle_delete_stack(event, lambda_context)
+
+
 def test_handle_monitor_delete_stack_complete(mcp_servers_table, lambda_context):
     """Test monitoring stack deletion when complete."""
     from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
@@ -223,7 +263,7 @@ def test_handle_monitor_delete_stack_complete(mcp_servers_table, lambda_context)
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
-        "cloudformation_stack_arn": "test-stack-name",
+        "cloudformation_stack_arn": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123",
     }
 
     # Mock CloudFormation client
@@ -233,6 +273,10 @@ def test_handle_monitor_delete_stack_complete(mcp_servers_table, lambda_context)
         result = handle_monitor_delete_stack(event, lambda_context)
 
         assert result["continue_polling"] is False
+        # Verify ARN was used for monitoring
+        mock_cfn.describe_stacks.assert_called_once_with(
+            StackName="arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123"
+        )
 
 
 def test_handle_monitor_delete_stack_in_progress(mcp_servers_table, lambda_context):
@@ -242,7 +286,7 @@ def test_handle_monitor_delete_stack_in_progress(mcp_servers_table, lambda_conte
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
-        "cloudformation_stack_arn": "test-stack-name",
+        "cloudformation_stack_arn": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123",
     }
 
     # Mock CloudFormation client
@@ -252,6 +296,10 @@ def test_handle_monitor_delete_stack_in_progress(mcp_servers_table, lambda_conte
         result = handle_monitor_delete_stack(event, lambda_context)
 
         assert result["continue_polling"] is True
+        # Verify ARN was used for monitoring
+        mock_cfn.describe_stacks.assert_called_once_with(
+            StackName="arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123"
+        )
 
 
 def test_handle_monitor_delete_stack_failed(mcp_servers_table, lambda_context):
@@ -261,7 +309,7 @@ def test_handle_monitor_delete_stack_failed(mcp_servers_table, lambda_context):
     event = {
         "id": "test-server-id",
         "stack_name": "test-stack-name",
-        "cloudformation_stack_arn": "test-stack-name",
+        "cloudformation_stack_arn": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123",
     }
 
     # Mock CloudFormation client
@@ -273,15 +321,47 @@ def test_handle_monitor_delete_stack_failed(mcp_servers_table, lambda_context):
 
 
 def test_handle_monitor_delete_stack_missing_stack_name(mcp_servers_table, lambda_context):
-    """Test monitoring with missing stack name."""
+    """Test monitoring with missing stack name/ARN."""
     from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
 
     event = {
         "id": "test-server-id",
     }
 
-    with pytest.raises(ValueError, match="Stack name not found"):
+    with pytest.raises(ValueError, match="Stack ARN or name not found"):
         handle_monitor_delete_stack(event, lambda_context)
+
+
+def test_handle_monitor_delete_stack_not_found(mcp_servers_table, lambda_context):
+    """Test monitoring stack deletion when stack no longer exists (successfully deleted)."""
+    from botocore.exceptions import ClientError
+    from mcp_server.state_machine.delete_mcp_server import handle_monitor_delete_stack
+
+    event = {
+        "id": "test-server-id",
+        "stack_name": "test-stack-name",
+        "cloudformation_stack_arn": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123",
+    }
+
+    # Mock CloudFormation client
+    with patch("mcp_server.state_machine.delete_mcp_server.cfnClient") as mock_cfn:
+        # Create a ClientError with ValidationError code
+        error_response = {
+            "Error": {
+                "Code": "ValidationError",
+                "Message": "Stack with id arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123 does not exist",
+            }
+        }
+        mock_cfn.describe_stacks.side_effect = ClientError(error_response, "DescribeStacks")
+
+        result = handle_monitor_delete_stack(event, lambda_context)
+
+        # Stack doesn't exist means deletion was successful
+        assert result["continue_polling"] is False
+        # Verify ARN was used for monitoring
+        mock_cfn.describe_stacks.assert_called_once_with(
+            StackName="arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123"
+        )
 
 
 def test_handle_delete_from_ddb(mcp_servers_table, sample_mcp_server_with_stack, lambda_context):

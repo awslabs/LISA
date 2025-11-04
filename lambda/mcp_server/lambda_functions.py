@@ -25,7 +25,7 @@ from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
 from utilities.common_functions import api_wrapper, get_bearer_token, get_groups, get_item, retry_config
 
-from .models import HostedMcpServerModel, McpServerModel, McpServerStatus, HostedMcpServerStatus
+from .models import HostedMcpServerModel, HostedMcpServerStatus, McpServerModel, McpServerStatus
 
 logger = logging.getLogger(__name__)
 

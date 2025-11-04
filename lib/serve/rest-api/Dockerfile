@@ -3,10 +3,10 @@ FROM ${BASE_IMAGE}
 
 # Install build dependencies for madoka package
 RUN apt-get update && apt-get install -y \
-gcc \
-g++ \
-make \
-&& rm -rf /var/lib/apt/lists/*
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG
@@ -14,10 +14,9 @@ ARG LITELLM_CONFIG
 #### POINT TO NEW PYPI CONFIG
 ARG PYPI_INDEX_URL
 ARG PYPI_TRUSTED_HOST
-ARG NODEENV_CACHE_DIR=NODEENV_CACHE
 RUN if [ "$PYPI_INDEX_URL" != "" ]; then \
-pip config set global.index-url $PYPI_INDEX_URL && \
-pip config set global.trusted-host $PYPI_TRUSTED_HOST;fi
+        pip config set global.index-url $PYPI_INDEX_URL && \
+        pip config set global.trusted-host $PYPI_TRUSTED_HOST;fi
 
 # Set working directory in the container
 WORKDIR /app

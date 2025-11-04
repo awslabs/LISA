@@ -448,3 +448,337 @@ class TestGetScheduleStatusHandler:
 
         with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
             handler(model_id="test-model")
+
+
+class TestUserGroupAccess:
+    """Test user group access functionality."""
+
+    def test_user_has_group_access_with_matching_groups(self):
+        """Test user has access when groups match."""
+        from models.handler.schedule_handlers import user_has_group_access
+
+        user_groups = ["admin", "developers"]
+        allowed_groups = ["developers", "testers"]
+
+        assert user_has_group_access(user_groups, allowed_groups) is True
+
+    def test_user_has_group_access_with_no_matching_groups(self):
+        """Test user has no access when groups don't match."""
+        from models.handler.schedule_handlers import user_has_group_access
+
+        user_groups = ["admin", "managers"]
+        allowed_groups = ["developers", "testers"]
+
+        assert user_has_group_access(user_groups, allowed_groups) is False
+
+    def test_user_has_group_access_with_empty_allowed_groups(self):
+        """Test user has access when no groups are specified."""
+        from models.handler.schedule_handlers import user_has_group_access
+
+        user_groups = ["admin"]
+        allowed_groups = []
+
+        assert user_has_group_access(user_groups, allowed_groups) is True
+
+    def test_user_has_group_access_with_empty_user_groups(self):
+        """Test user has no access when user has no groups."""
+        from models.handler.schedule_handlers import user_has_group_access
+
+        user_groups = []
+        allowed_groups = ["developers"]
+
+        assert user_has_group_access(user_groups, allowed_groups) is False
+
+
+class TestUpdateScheduleHandlerGroupAccess:
+    """Test UpdateScheduleHandler with group access controls."""
+
+    def test_update_schedule_with_group_access_allowed(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+    ):
+        """Test successful update with group access."""
+        # Setup model with allowed groups
+        model_item = {
+            "model_id": "test-model",
+            "model_status": "InService",
+            "auto_scaling_group": "test-asg",
+            "allowedGroups": ["developers", "admins"],
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
+
+        # Setup mock lambda response
+        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
+        ).encode()
+
+        with patch("boto3.client") as mock_boto3:
+            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+
+            handler = UpdateScheduleHandler(
+                autoscaling_client=mock_autoscaling_client,
+                stepfunctions_client=mock_stepfunctions_client,
+                model_table_resource=mock_model_table,
+            )
+
+            # Execute with matching user groups
+            result = handler(
+                model_id="test-model",
+                schedule_config=sample_schedule_config,
+                user_groups=["developers", "testers"],
+                is_admin=False,
+            )
+
+            # Verify result
+            assert isinstance(result, UpdateScheduleResponse)
+            assert result.message == "Schedule updated successfully"
+
+    def test_update_schedule_with_group_access_denied(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+    ):
+        """Test update denied due to group access."""
+        # Setup model with allowed groups
+        model_item = {
+            "model_id": "test-model",
+            "model_status": "InService",
+            "auto_scaling_group": "test-asg",
+            "allowedGroups": ["developers", "admins"],
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
+
+        handler = UpdateScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+        )
+
+        # Execute with non-matching user groups
+        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+            handler(
+                model_id="test-model",
+                schedule_config=sample_schedule_config,
+                user_groups=["testers", "managers"],
+                is_admin=False,
+            )
+
+    def test_update_schedule_admin_bypass_group_access(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+    ):
+        """Test admin can bypass group access restrictions."""
+        # Setup model with allowed groups
+        model_item = {
+            "model_id": "test-model",
+            "model_status": "InService",
+            "auto_scaling_group": "test-asg",
+            "allowedGroups": ["developers"],
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
+
+        # Setup mock lambda response
+        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
+        ).encode()
+
+        with patch("boto3.client") as mock_boto3:
+            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+
+            handler = UpdateScheduleHandler(
+                autoscaling_client=mock_autoscaling_client,
+                stepfunctions_client=mock_stepfunctions_client,
+                model_table_resource=mock_model_table,
+            )
+
+            # Execute as admin with non-matching groups
+            result = handler(
+                model_id="test-model", schedule_config=sample_schedule_config, user_groups=["managers"], is_admin=True
+            )
+
+            # Verify result
+            assert isinstance(result, UpdateScheduleResponse)
+            assert result.message == "Schedule updated successfully"
+
+
+class TestGetScheduleHandlerGroupAccess:
+    """Test GetScheduleHandler with group access controls."""
+
+    def test_get_schedule_with_group_access_denied(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
+        """Test get schedule denied due to group access."""
+        # Setup model with allowed groups
+        model_item = {
+            "model_id": "test-model",
+            "allowedGroups": ["developers"],
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
+
+        handler = GetScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+        )
+
+        # Execute with non-matching user groups
+        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+            handler(model_id="test-model", user_groups=["managers"], is_admin=False)
+
+
+class TestDeleteScheduleHandlerGroupAccess:
+    """Test DeleteScheduleHandler with group access controls."""
+
+    def test_delete_schedule_with_group_access_denied(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
+        """Test delete schedule denied due to group access."""
+        # Setup model with allowed groups
+        model_item = {
+            "model_id": "test-model",
+            "allowedGroups": ["developers"],
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
+
+        handler = DeleteScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+        )
+
+        # Execute with non-matching user groups
+        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+            handler(model_id="test-model", user_groups=["managers"], is_admin=False)
+
+
+class TestGetScheduleStatusHandlerGroupAccess:
+    """Test GetScheduleStatusHandler with group access controls."""
+
+    def test_get_schedule_status_with_group_access_denied(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
+        """Test get schedule status denied due to group access."""
+        # Setup model with allowed groups
+        model_item = {
+            "model_id": "test-model",
+            "allowedGroups": ["developers"],
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
+
+        handler = GetScheduleStatusHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+        )
+
+        # Execute with non-matching user groups
+        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+            handler(model_id="test-model", user_groups=["managers"], is_admin=False)
+
+
+class TestLambdaInvocationErrorHandling:
+    """Test Lambda invocation error handling scenarios."""
+
+    def test_update_schedule_lambda_error_response_format_string_body(
+        self,
+        mock_model_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
+        sample_schedule_config,
+    ):
+        """Test Lambda error response with string body format."""
+        mock_model_table.get_item.return_value = {"Item": sample_model_item}
+
+        # Setup mock lambda error response with string body
+        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 500, "body": "Internal server error"}
+        ).encode()
+
+        with patch("boto3.client") as mock_boto3:
+            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+
+            handler = UpdateScheduleHandler(
+                autoscaling_client=mock_autoscaling_client,
+                stepfunctions_client=mock_stepfunctions_client,
+                model_table_resource=mock_model_table,
+            )
+
+            with pytest.raises(ValueError, match="Failed to create/update schedule: Internal server error"):
+                handler(model_id="test-model", schedule_config=sample_schedule_config)
+
+    def test_update_schedule_lambda_invalid_json_body(
+        self,
+        mock_model_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
+        sample_schedule_config,
+    ):
+        """Test Lambda error response with invalid JSON body."""
+        mock_model_table.get_item.return_value = {"Item": sample_model_item}
+
+        # Setup mock lambda error response with invalid JSON
+        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 500, "body": "invalid json {"}
+        ).encode()
+
+        with patch("boto3.client") as mock_boto3:
+            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+
+            handler = UpdateScheduleHandler(
+                autoscaling_client=mock_autoscaling_client,
+                stepfunctions_client=mock_stepfunctions_client,
+                model_table_resource=mock_model_table,
+            )
+
+            with pytest.raises(ValueError, match="Failed to create/update schedule: invalid json"):
+                handler(model_id="test-model", schedule_config=sample_schedule_config)
+
+    def test_get_schedule_lambda_error_handling(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+    ):
+        """Test GetSchedule Lambda error handling."""
+        mock_model_table.get_item.return_value = {"Item": sample_model_item}
+
+        # Setup mock lambda error response
+        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 500, "body": {"message": "Lambda execution failed"}}
+        ).encode()
+
+        with patch("boto3.client") as mock_boto3:
+            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+
+            handler = GetScheduleHandler(
+                autoscaling_client=mock_autoscaling_client,
+                stepfunctions_client=mock_stepfunctions_client,
+                model_table_resource=mock_model_table,
+            )
+
+            with pytest.raises(ValueError, match="Failed to get schedule: Lambda execution failed"):
+                handler(model_id="test-model")
+
+    def test_delete_schedule_lambda_error_handling(
+        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+    ):
+        """Test DeleteSchedule Lambda error handling."""
+        mock_model_table.get_item.return_value = {"Item": sample_model_item}
+
+        # Setup mock lambda error response
+        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 500, "body": {"message": "Lambda execution failed"}}
+        ).encode()
+
+        with patch("boto3.client") as mock_boto3:
+            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+
+            handler = DeleteScheduleHandler(
+                autoscaling_client=mock_autoscaling_client,
+                stepfunctions_client=mock_stepfunctions_client,
+                model_table_resource=mock_model_table,
+            )
+
+            with pytest.raises(ValueError, match="Failed to delete schedule: Lambda execution failed"):
+                handler(model_id="test-model")

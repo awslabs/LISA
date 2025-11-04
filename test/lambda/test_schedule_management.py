@@ -326,23 +326,451 @@ class TestCalculateNextScheduledAction:
         assert result is None
 
 
+class TestScheduleManagementHelperFunctions:
+    """Test helper functions in schedule management."""
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_get_existing_asg_capacity_success(self, mock_autoscaling_client):
+        """Test successful ASG capacity retrieval."""
+        from models.scheduling.schedule_management import get_existing_asg_capacity
+
+        # Mock ASG response
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [
+                {
+                    "MinSize": 1,
+                    "MaxSize": 10,
+                    "DesiredCapacity": 3,
+                }
+            ]
+        }
+
+        result = get_existing_asg_capacity("test-asg")
+
+        assert result == {"MinSize": 1, "MaxSize": 10, "DesiredCapacity": 3}
+        mock_autoscaling_client.describe_auto_scaling_groups.assert_called_once_with(AutoScalingGroupNames=["test-asg"])
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_get_existing_asg_capacity_not_found(self, mock_autoscaling_client):
+        """Test ASG not found error."""
+        from models.scheduling.schedule_management import get_existing_asg_capacity, ScheduleManagementError
+
+        # Mock empty ASG response
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {"AutoScalingGroups": []}
+
+        with pytest.raises(ScheduleManagementError, match="Auto Scaling Group test-asg not found"):
+            get_existing_asg_capacity("test-asg")
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_get_existing_asg_capacity_client_error(self, mock_autoscaling_client):
+        """Test ASG client error handling."""
+        from botocore.exceptions import ClientError
+        from models.scheduling.schedule_management import get_existing_asg_capacity, ScheduleManagementError
+
+        # Mock client error
+        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
+            {"Error": {"Code": "ValidationError", "Message": "Invalid ASG name"}}, "DescribeAutoScalingGroups"
+        )
+
+        with pytest.raises(ScheduleManagementError, match="Failed to get ASG capacity"):
+            get_existing_asg_capacity("invalid-asg")
+
+    def test_construct_scheduled_action_arn_with_account_id(self):
+        """Test ARN construction with account ID in environment."""
+        from models.scheduling.schedule_management import construct_scheduled_action_arn
+
+        # Set environment variable
+        os.environ["AWS_ACCOUNT_ID"] = "123456789012"
+
+        result = construct_scheduled_action_arn("test-asg", "test-action")
+
+        expected = (
+            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:"
+            "autoScalingGroupName/test-asg:scheduledActionName/test-action"
+        )
+        assert result == expected
+
+    @patch("boto3.client")
+    def test_construct_scheduled_action_arn_without_account_id(self, mock_boto3):
+        """Test ARN construction without account ID in environment."""
+        from models.scheduling.schedule_management import construct_scheduled_action_arn
+
+        # Remove account ID from environment
+        if "AWS_ACCOUNT_ID" in os.environ:
+            del os.environ["AWS_ACCOUNT_ID"]
+
+        # Mock STS client
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "987654321098"}
+        mock_boto3.return_value = mock_sts
+
+        result = construct_scheduled_action_arn("test-asg", "test-action")
+
+        expected = (
+            "arn:aws:autoscaling:us-east-1:987654321098:scheduledUpdateGroupAction:*:"
+            "autoScalingGroupName/test-asg:scheduledActionName/test-action"
+        )
+        assert result == expected
+
+    @patch("boto3.client")
+    def test_construct_scheduled_action_arn_sts_error(self, mock_boto3):
+        """Test ARN construction with STS error."""
+        from models.scheduling.schedule_management import construct_scheduled_action_arn
+
+        # Remove account ID from environment
+        if "AWS_ACCOUNT_ID" in os.environ:
+            del os.environ["AWS_ACCOUNT_ID"]
+
+        # Mock STS client error
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.side_effect = Exception("STS error")
+        mock_boto3.return_value = mock_sts
+
+        with pytest.raises(ValueError, match="Unable to determine AWS Account ID"):
+            construct_scheduled_action_arn("test-asg", "test-action")
+
+    def test_convert_to_utc_cron(self):
+        """Test time conversion to UTC cron."""
+        from models.scheduling.schedule_management import convert_to_utc_cron
+
+        # Test with UTC timezone (should be same)
+        result = convert_to_utc_cron("09:30", "UTC")
+        assert result == "30 9 * * *"
+
+    def test_convert_to_utc_cron_weekdays(self):
+        """Test weekdays time conversion to UTC cron."""
+        from models.scheduling.schedule_management import convert_to_utc_cron_weekdays
+
+        # Test with UTC timezone
+        result = convert_to_utc_cron_weekdays("14:15", "UTC")
+        assert result == "15 14 * * 1-5"
+
+    def test_convert_to_utc_cron_with_day(self):
+        """Test time conversion with specific day."""
+        from models.scheduling.schedule_management import convert_to_utc_cron_with_day
+
+        # Test with UTC timezone and Monday (1)
+        result = convert_to_utc_cron_with_day("08:45", "UTC", 1)
+        assert result == "45 8 * * 1"
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_get_existing_scheduled_action_arns_success(self, mock_model_table):
+        """Test successful retrieval of existing scheduled action ARNs."""
+        from models.scheduling.schedule_management import get_existing_scheduled_action_arns
+
+        # Mock model table response
+        mock_model_table.get_item.return_value = {
+            "Item": {
+                "model_id": "test-model",
+                "autoScalingConfig": {"scheduling": {"scheduledActionArns": ["arn1", "arn2"]}},
+            }
+        }
+
+        result = get_existing_scheduled_action_arns("test-model")
+        assert result == ["arn1", "arn2"]
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_get_existing_scheduled_action_arns_no_model(self, mock_model_table):
+        """Test retrieval when model doesn't exist."""
+        from models.scheduling.schedule_management import get_existing_scheduled_action_arns
+
+        # Mock empty response
+        mock_model_table.get_item.return_value = {}
+
+        result = get_existing_scheduled_action_arns("nonexistent-model")
+        assert result == []
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_get_existing_scheduled_action_arns_no_scheduling(self, mock_model_table):
+        """Test retrieval when model has no scheduling config."""
+        from models.scheduling.schedule_management import get_existing_scheduled_action_arns
+
+        # Mock model without scheduling
+        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model", "autoScalingConfig": {}}}
+
+        result = get_existing_scheduled_action_arns("test-model")
+        assert result == []
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_delete_scheduled_actions_success(self, mock_autoscaling_client):
+        """Test successful deletion of scheduled actions."""
+        from models.scheduling.schedule_management import delete_scheduled_actions
+
+        arns = [
+            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/action1",
+            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/action2",
+        ]
+
+        delete_scheduled_actions(arns)
+
+        assert mock_autoscaling_client.delete_scheduled_action.call_count == 2
+        mock_autoscaling_client.delete_scheduled_action.assert_any_call(
+            AutoScalingGroupName="test-asg", ScheduledActionName="action1"
+        )
+        mock_autoscaling_client.delete_scheduled_action.assert_any_call(
+            AutoScalingGroupName="test-asg", ScheduledActionName="action2"
+        )
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_delete_scheduled_actions_validation_error(self, mock_autoscaling_client):
+        """Test deletion with validation error (action not found)."""
+        from botocore.exceptions import ClientError
+        from models.scheduling.schedule_management import delete_scheduled_actions
+
+        # Mock validation error (action not found)
+        mock_autoscaling_client.delete_scheduled_action.side_effect = ClientError(
+            {"Error": {"Code": "ValidationError", "Message": "Action not found"}}, "DeleteScheduledAction"
+        )
+
+        arns = [
+            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/nonexistent"
+        ]
+
+        # Should not raise exception for validation errors
+        delete_scheduled_actions(arns)
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_delete_scheduled_actions_other_client_error(self, mock_autoscaling_client):
+        """Test deletion with other client errors."""
+        from botocore.exceptions import ClientError
+        from models.scheduling.schedule_management import delete_scheduled_actions
+
+        # Mock other client error
+        mock_autoscaling_client.delete_scheduled_action.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "DeleteScheduledAction"
+        )
+
+        arns = [
+            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/action1"
+        ]
+
+        with pytest.raises(ClientError):
+            delete_scheduled_actions(arns)
+
+
+class TestCreateScheduledActions:
+    """Test create_scheduled_actions and related functions."""
+
+    @patch("models.scheduling.schedule_management.create_daily_scheduled_actions")
+    def test_create_scheduled_actions_recurring_daily(self, mock_create_daily):
+        """Test creating scheduled actions for RECURRING_DAILY type."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import create_scheduled_actions
+
+        mock_create_daily.return_value = ["arn1", "arn2"]
+
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.RECURRING_DAILY,
+            timezone="UTC",
+            dailySchedule=DaySchedule(startTime="09:00", stopTime="17:00"),
+        )
+
+        result = create_scheduled_actions("test-model", "test-asg", schedule_config)
+
+        assert result == ["arn1", "arn2"]
+        mock_create_daily.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
+
+    @patch("models.scheduling.schedule_management.create_weekdays_scheduled_actions")
+    def test_create_scheduled_actions_weekdays_only(self, mock_create_weekdays):
+        """Test creating scheduled actions for WEEKDAYS_ONLY type."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import create_scheduled_actions
+
+        mock_create_weekdays.return_value = ["arn1", "arn2"]
+
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.WEEKDAYS_ONLY,
+            timezone="UTC",
+            dailySchedule=DaySchedule(startTime="09:00", stopTime="17:00"),
+        )
+
+        result = create_scheduled_actions("test-model", "test-asg", schedule_config)
+
+        assert result == ["arn1", "arn2"]
+        mock_create_weekdays.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
+
+    @patch("models.scheduling.schedule_management.create_weekly_scheduled_actions")
+    def test_create_scheduled_actions_each_day(self, mock_create_weekly):
+        """Test creating scheduled actions for EACH_DAY type."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+        from models.scheduling.schedule_management import create_scheduled_actions
+
+        mock_create_weekly.return_value = ["arn1", "arn2", "arn3"]
+
+        weekly_schedule = WeeklySchedule(
+            monday=[DaySchedule(startTime="09:00", stopTime="17:00")],
+            tuesday=[DaySchedule(startTime="10:00", stopTime="18:00")],
+        )
+
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.EACH_DAY, timezone="UTC", weeklySchedule=weekly_schedule
+        )
+
+        result = create_scheduled_actions("test-model", "test-asg", schedule_config)
+
+        assert result == ["arn1", "arn2", "arn3"]
+        mock_create_weekly.assert_called_once_with("test-model", "test-asg", schedule_config.weeklySchedule, "UTC")
+
+    def test_create_scheduled_actions_recurring_daily_missing_schedule(self):
+        """Test error when dailySchedule is missing for RECURRING_DAILY."""
+        from models.domain_objects import ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import create_scheduled_actions
+
+        # Create config with NONE type first, then modify to avoid Pydantic validation
+        schedule_config = SchedulingConfig(scheduleType=ScheduleType.NONE, timezone="UTC")
+        # Manually set the schedule type to test the runtime validation
+        schedule_config.scheduleType = ScheduleType.RECURRING_DAILY
+        schedule_config.dailySchedule = None
+
+        with pytest.raises(ValueError, match="dailySchedule required for RECURRING_DAILY type"):
+            create_scheduled_actions("test-model", "test-asg", schedule_config)
+
+    def test_create_scheduled_actions_weekdays_only_missing_schedule(self):
+        """Test error when dailySchedule is missing for WEEKDAYS_ONLY."""
+        from models.domain_objects import ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import create_scheduled_actions
+
+        # Create config with NONE type first, then modify to avoid Pydantic validation
+        schedule_config = SchedulingConfig(scheduleType=ScheduleType.NONE, timezone="UTC")
+        # Manually set the schedule type to test the runtime validation
+        schedule_config.scheduleType = ScheduleType.WEEKDAYS_ONLY
+        schedule_config.dailySchedule = None
+
+        with pytest.raises(ValueError, match="dailySchedule required for WEEKDAYS_ONLY type"):
+            create_scheduled_actions("test-model", "test-asg", schedule_config)
+
+    def test_create_scheduled_actions_each_day_missing_schedule(self):
+        """Test error when weeklySchedule is missing for EACH_DAY."""
+        from models.domain_objects import ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import create_scheduled_actions
+
+        # Create config with NONE type first, then modify to avoid Pydantic validation
+        schedule_config = SchedulingConfig(scheduleType=ScheduleType.NONE, timezone="UTC")
+        # Manually set the schedule type to test the runtime validation
+        schedule_config.scheduleType = ScheduleType.EACH_DAY
+        schedule_config.weeklySchedule = None
+
+        with pytest.raises(ValueError, match="weeklySchedule required for EACH_DAY type"):
+            create_scheduled_actions("test-model", "test-asg", schedule_config)
+
+
+class TestUpdateModelScheduleRecord:
+    """Test update_model_schedule_record function."""
+
+    @patch("models.scheduling.schedule_management.model_table")
+    @patch("models.scheduling.schedule_management.calculate_next_scheduled_action")
+    def test_update_model_schedule_record_existing_config(self, mock_calculate_next, mock_model_table):
+        """Test updating model with existing autoScalingConfig."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import update_model_schedule_record
+
+        # Mock existing model with autoScalingConfig
+        mock_model_table.get_item.return_value = {
+            "Item": {"model_id": "test-model", "autoScalingConfig": {"existing": "config"}}
+        }
+
+        mock_calculate_next.return_value = {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"}
+
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING_DAILY
+        daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
+        )
+
+        update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
+
+        # Verify update_item was called with correct expression
+        mock_model_table.update_item.assert_called_once()
+        call_args = mock_model_table.update_item.call_args
+        assert call_args[1]["UpdateExpression"] == "SET autoScalingConfig.scheduling = :scheduling"
+
+    @patch("models.scheduling.schedule_management.model_table")
+    @patch("models.scheduling.schedule_management.calculate_next_scheduled_action")
+    def test_update_model_schedule_record_new_config(self, mock_calculate_next, mock_model_table):
+        """Test updating model without existing autoScalingConfig."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import update_model_schedule_record
+
+        # Mock model without autoScalingConfig
+        mock_model_table.get_item.return_value = {
+            "Item": {
+                "model_id": "test-model"
+                # No autoScalingConfig
+            }
+        }
+
+        mock_calculate_next.return_value = {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"}
+
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING_DAILY
+        daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
+        )
+
+        update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
+
+        # Verify update_item was called with correct expression
+        mock_model_table.update_item.assert_called_once()
+        call_args = mock_model_table.update_item.call_args
+        assert call_args[1]["UpdateExpression"] == "SET autoScalingConfig = :autoScalingConfig"
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_update_model_schedule_record_model_not_found(self, mock_model_table):
+        """Test error when model is not found."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import update_model_schedule_record
+
+        # Mock model not found
+        mock_model_table.get_item.return_value = {}
+
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING_DAILY
+        daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
+        )
+
+        with pytest.raises(ValueError, match="Model test-model not found"):
+            update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
+
+
 class TestScheduleValidation:
-    """Test schedule validation functions - these functions don't exist in the actual implementation."""
+    """Test schedule validation and edge cases."""
 
-    def test_valid_time_format(self):
-        """Test valid time format validation."""
-        # These validation functions don't exist in the actual implementation
-        # The validation is done by Pydantic in the domain objects
-        pass
+    def test_lambda_handler_missing_operation(self, lambda_context):
+        """Test lambda handler with missing operation."""
+        from models.scheduling.schedule_management import lambda_handler
 
-    def test_schedule_config_validation(self):
-        """Test schedule configuration validation."""
-        # These validation functions don't exist in the actual implementation
-        # The validation is done by Pydantic in the domain objects
-        pass
+        event = {"modelId": "test-model"}  # Missing operation
 
-    def test_timezone_validation(self):
-        """Test timezone validation."""
-        # These validation functions don't exist in the actual implementation
-        # The validation is done by Pydantic in the domain objects
-        pass
+        result = lambda_handler(event, lambda_context)
+
+        assert result["statusCode"] == 500
+        body = json.loads(result["body"])
+        assert "Both 'operation' and 'modelId' are required" in body["message"]
+
+    def test_lambda_handler_missing_model_id(self, lambda_context):
+        """Test lambda handler with missing modelId."""
+        from models.scheduling.schedule_management import lambda_handler
+
+        event = {"operation": "update"}  # Missing modelId
+
+        result = lambda_handler(event, lambda_context)
+
+        assert result["statusCode"] == 500
+        body = json.loads(result["body"])
+        assert "Both 'operation' and 'modelId' are required" in body["message"]
+
+    @patch("models.scheduling.schedule_management.update_schedule")
+    def test_lambda_handler_update_schedule_exception(self, mock_update_schedule, lambda_context):
+        """Test lambda handler when update_schedule raises exception."""
+        from models.scheduling.schedule_management import lambda_handler
+
+        mock_update_schedule.side_effect = Exception("Update failed")
+
+        event = {"operation": "update", "modelId": "test-model"}
+
+        result = lambda_handler(event, lambda_context)
+
+        assert result["statusCode"] == 500
+        body = json.loads(result["body"])
+        assert "Update failed" in body["message"]

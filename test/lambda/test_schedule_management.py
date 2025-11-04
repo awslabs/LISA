@@ -1,8 +1,21 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """Unit tests for schedule management lambda."""
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -36,11 +49,8 @@ def sample_schedule_config():
     return {
         "scheduleType": "RECURRING_DAILY",
         "timezone": "America/New_York",
-        "dailySchedule": {
-            "startTime": "09:00",
-            "stopTime": "17:00"
-        },
-        "scheduleEnabled": True
+        "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
+        "scheduleEnabled": True,
     }
 
 
@@ -53,100 +63,89 @@ def sample_weekly_schedule_config():
         "weeklySchedule": {
             "monday": [{"startTime": "09:00", "stopTime": "17:00"}],
             "tuesday": [{"startTime": "10:00", "stopTime": "18:00"}],
-            "friday": [{"startTime": "08:00", "stopTime": "16:00"}]
+            "friday": [{"startTime": "08:00", "stopTime": "16:00"}],
         },
-        "scheduleEnabled": True
+        "scheduleEnabled": True,
     }
 
 
 class TestScheduleManagement:
     """Test schedule management Lambda function."""
 
-    @patch('models.scheduling.schedule_management.model_table')
-    @patch('models.scheduling.schedule_management.autoscaling_client')
-    @patch('models.scheduling.schedule_management.calculate_next_scheduled_action')
-    def test_update_operation_success(self, mock_calculate_next, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config):
+    @patch("models.scheduling.schedule_management.model_table")
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("models.scheduling.schedule_management.calculate_next_scheduled_action")
+    def test_update_operation_success(
+        self, mock_calculate_next, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config
+    ):
         """Test successful update operation."""
         from models.scheduling.schedule_management import lambda_handler
-        
+
         # Mock model table
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
         mock_model_table.update_item.return_value = {}
-        
+
         # Mock calculate_next_scheduled_action
-        next_action = {
-            "action": "START",
-            "scheduledTime": "2025-01-15T14:00:00-05:00"  # 9 AM EST
-        }
+        next_action = {"action": "START", "scheduledTime": "2025-01-15T14:00:00-05:00"}  # 9 AM EST
         mock_calculate_next.return_value = next_action
-        
+
         # Mock successful Auto Scaling operations
         mock_autoscaling_client.put_scheduled_update_group_action.return_value = {}
-        mock_autoscaling_client.describe_scheduled_actions.return_value = {
-            "ScheduledUpdateGroupActions": []
-        }
-        
+        mock_autoscaling_client.describe_scheduled_actions.return_value = {"ScheduledUpdateGroupActions": []}
+
         # Test event
         event = {
             "operation": "update",
             "modelId": "test-model",
             "scheduleConfig": sample_schedule_config,
-            "autoScalingGroup": "test-asg"
+            "autoScalingGroup": "test-asg",
         }
-        
+
         # Execute
         result = lambda_handler(event, lambda_context)
-        
+
         # Verify response
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert body["message"] == "Schedule updated successfully"
         assert body["modelId"] == "test-model"
         assert "scheduledActionArns" in body
-        assert body["scheduleEnabled"] == True
-        
+        assert body["scheduleEnabled"]
+
         # Verify Auto Scaling calls
         assert mock_autoscaling_client.put_scheduled_update_group_action.call_count == 2  # START and STOP
-        
+
         # Verify DynamoDB update
         mock_model_table.update_item.assert_called_once()
 
-    @patch('models.scheduling.schedule_management.model_table')
+    @patch("models.scheduling.schedule_management.model_table")
     def test_get_operation_success(self, mock_model_table, lambda_context, sample_schedule_config):
         """Test successful get operation."""
         from models.scheduling.schedule_management import lambda_handler
-        
+
         # Mock model table with schedule data
         mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "autoScalingConfig": {
-                    "scheduling": sample_schedule_config
-                }
-            }
+            "Item": {"model_id": "test-model", "autoScalingConfig": {"scheduling": sample_schedule_config}}
         }
-        
+
         # Test event
-        event = {
-            "operation": "get",
-            "modelId": "test-model"
-        }
-        
+        event = {"operation": "get", "modelId": "test-model"}
+
         # Execute
         result = lambda_handler(event, lambda_context)
-        
+
         # Verify response
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert body["modelId"] == "test-model"
         assert body["scheduling"] == sample_schedule_config
 
-    @patch('models.scheduling.schedule_management.model_table')
-    @patch('models.scheduling.schedule_management.autoscaling_client')
+    @patch("models.scheduling.schedule_management.model_table")
+    @patch("models.scheduling.schedule_management.autoscaling_client")
     def test_delete_operation_success(self, mock_autoscaling_client, mock_model_table, lambda_context):
         """Test successful delete operation."""
         from models.scheduling.schedule_management import lambda_handler
-        
+
         # Mock model table - need to mock both get_item calls
         mock_model_table.get_item.return_value = {
             "Item": {
@@ -155,80 +154,76 @@ class TestScheduleManagement:
                     "scheduling": {
                         "scheduledActionArns": [
                             "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-START-action",
-                            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-STOP-action"
+                            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-STOP-action",
                         ]
                     }
-                }
+                },
             }
         }
-        
+
         # Mock successful deletion
         mock_autoscaling_client.delete_scheduled_action.return_value = {}
         mock_model_table.update_item.return_value = {}
-        
+
         # Test event
-        event = {
-            "operation": "delete",
-            "modelId": "test-model"
-        }
-        
+        event = {"operation": "delete", "modelId": "test-model"}
+
         # Execute
         result = lambda_handler(event, lambda_context)
-        
+
         # Verify response
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert body["message"] == "Schedule deleted successfully"
         assert body["modelId"] == "test-model"
-        
+
         # Verify scheduled actions were deleted
         assert mock_autoscaling_client.delete_scheduled_action.call_count == 2
 
     def test_invalid_operation(self, lambda_context):
         """Test invalid operation error."""
         from models.scheduling.schedule_management import lambda_handler
-        
+
         # Test event with invalid operation
-        event = {
-            "operation": "invalid_operation",
-            "modelId": "test-model"
-        }
-        
+        event = {"operation": "invalid_operation", "modelId": "test-model"}
+
         # Execute
         result = lambda_handler(event, lambda_context)
-        
+
         # Verify error response
         assert result["statusCode"] == 500
         body = json.loads(result["body"])
         assert "Unsupported operation" in body["message"]
 
-    @patch('models.scheduling.schedule_management.model_table')
-    @patch('models.scheduling.schedule_management.autoscaling_client')
-    def test_autoscaling_error_handling(self, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config):
+    @patch("models.scheduling.schedule_management.model_table")
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_autoscaling_error_handling(
+        self, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config
+    ):
         """Test Auto Scaling error handling."""
-        from models.scheduling.schedule_management import lambda_handler
         from botocore.exceptions import ClientError
-        
+        from models.scheduling.schedule_management import lambda_handler
+
         # Mock model table
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
-        
+
         # Mock Auto Scaling error
         mock_autoscaling_client.put_scheduled_update_group_action.side_effect = ClientError(
             {"Error": {"Code": "ValidationError", "Message": "Auto Scaling Group not found"}},
-            "PutScheduledUpdateGroupAction"
+            "PutScheduledUpdateGroupAction",
         )
-        
+
         # Test event
         event = {
             "operation": "update",
             "modelId": "test-model",
             "scheduleConfig": sample_schedule_config,
-            "autoScalingGroup": "non-existent-asg"
+            "autoScalingGroup": "non-existent-asg",
         }
-        
+
         # Execute
         result = lambda_handler(event, lambda_context)
-        
+
         # Verify error response
         assert result["statusCode"] == 500
         body = json.loads(result["body"])
@@ -237,15 +232,13 @@ class TestScheduleManagement:
     def test_missing_required_parameters(self, lambda_context):
         """Test missing required parameters."""
         from models.scheduling.schedule_management import lambda_handler
-        
+
         # Test event missing modelId
-        event = {
-            "operation": "update"
-        }
-        
+        event = {"operation": "update"}
+
         # Execute
         result = lambda_handler(event, lambda_context)
-        
+
         # Verify error response
         assert result["statusCode"] == 500
         body = json.loads(result["body"])
@@ -258,18 +251,15 @@ class TestCalculateNextScheduledAction:
     def test_recurring_daily_schedule(self):
         """Test RECURRING_DAILY schedule calculation."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
-        
+
         schedule_config = {
             "scheduleType": "RECURRING_DAILY",
             "timezone": "UTC",
-            "dailySchedule": {
-                "startTime": "09:00",
-                "stopTime": "17:00"
-            }
+            "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
         }
-        
+
         result = calculate_next_scheduled_action(schedule_config)
-        
+
         # Just verify it returns a result (the actual calculation logic is complex)
         assert result is not None
         assert result["action"] in ["START", "STOP"]
@@ -277,18 +267,15 @@ class TestCalculateNextScheduledAction:
     def test_weekdays_only_schedule(self):
         """Test WEEKDAYS_ONLY schedule calculation."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
-        
+
         schedule_config = {
             "scheduleType": "WEEKDAYS_ONLY",
             "timezone": "UTC",
-            "dailySchedule": {
-                "startTime": "09:00",
-                "stopTime": "17:00"
-            }
+            "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
         }
-        
+
         result = calculate_next_scheduled_action(schedule_config)
-        
+
         # Just verify it returns a result
         assert result is not None
         assert result["action"] in ["START", "STOP"]
@@ -296,18 +283,18 @@ class TestCalculateNextScheduledAction:
     def test_each_day_schedule(self):
         """Test EACH_DAY schedule calculation."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
-        
+
         schedule_config = {
             "scheduleType": "EACH_DAY",
             "timezone": "UTC",
             "weeklySchedule": {
                 "monday": [{"startTime": "09:00", "stopTime": "17:00"}],
-                "wednesday": [{"startTime": "10:00", "stopTime": "18:00"}]
-            }
+                "wednesday": [{"startTime": "10:00", "stopTime": "18:00"}],
+            },
         }
-        
+
         result = calculate_next_scheduled_action(schedule_config)
-        
+
         # Just verify it returns a result
         assert result is not None
         assert result["action"] in ["START", "STOP"]
@@ -315,18 +302,15 @@ class TestCalculateNextScheduledAction:
     def test_timezone_conversion(self):
         """Test timezone conversion in schedule calculation."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
-        
+
         schedule_config = {
             "scheduleType": "RECURRING_DAILY",
             "timezone": "America/New_York",
-            "dailySchedule": {
-                "startTime": "09:00",
-                "stopTime": "17:00"
-            }
+            "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
         }
-        
+
         result = calculate_next_scheduled_action(schedule_config)
-        
+
         # Just verify it returns a result
         assert result is not None
         assert result["action"] in ["START", "STOP"]
@@ -334,14 +318,11 @@ class TestCalculateNextScheduledAction:
     def test_no_schedule_type(self):
         """Test NONE schedule type."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
-        
-        schedule_config = {
-            "scheduleType": "NONE",
-            "timezone": "UTC"
-        }
-        
+
+        schedule_config = {"scheduleType": "NONE", "timezone": "UTC"}
+
         result = calculate_next_scheduled_action(schedule_config)
-        
+
         assert result is None
 
 

@@ -234,7 +234,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
                         "owner": owner,
                         "url": server_url,
                         "name": name,
-                        "created": datetime.now(UTC).isoformat(),
+                        "created": datetime.now().isoformat(),
                         "customHeaders": {"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                         "status": McpServerStatus.ACTIVE,
                     }

@@ -60,20 +60,21 @@ class TestStateMachineScheduleHandlers:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"}
+                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
-            }
+            },
         }
 
         # Mock successful lambda response
         mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps({
-            "statusCode": 200,
-            "body": json.dumps({
-                "message": "Schedule created successfully",
-                "scheduledActionArns": ["arn1", "arn2"]
-            })
-        }).encode()
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {
+                "statusCode": 200,
+                "body": json.dumps(
+                    {"message": "Schedule created successfully", "scheduledActionArns": ["arn1", "arn2"]}
+                ),
+            }
+        ).encode()
         mock_lambda_client.invoke.return_value = mock_lambda_response
 
         # Execute
@@ -91,12 +92,7 @@ class TestStateMachineScheduleHandlers:
         from models.state_machine.schedule_handlers import handle_schedule_creation
 
         # Mock event without scheduling
-        event = {
-            "modelId": "test-model",
-            "autoScalingConfig": {
-                "scheduling": {"scheduleType": "NONE"}
-            }
-        }
+        event = {"modelId": "test-model", "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}}
 
         # Execute
         result = handle_schedule_creation(event, lambda_context)
@@ -117,9 +113,9 @@ class TestStateMachineScheduleHandlers:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"}
+                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
-            }
+            },
             # Missing autoScalingGroup
         }
 
@@ -144,17 +140,19 @@ class TestStateMachineScheduleHandlers:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"}
+                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
-            }
+            },
         }
 
         # Mock lambda error response - the body should be a dict, not a JSON string
         mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps({
-            "statusCode": 500,
-            "body": {"message": "Lambda execution failed"}  # This should be a dict, not JSON string
-        }).encode()
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {
+                "statusCode": 500,
+                "body": {"message": "Lambda execution failed"},  # This should be a dict, not JSON string
+            }
+        ).encode()
         mock_lambda_client.invoke.return_value = mock_lambda_response
 
         # Execute
@@ -178,20 +176,21 @@ class TestStateMachineScheduleHandlers:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"}
+                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"},
                 }
-            }
+            },
         }
 
         # Mock successful lambda response
         mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps({
-            "statusCode": 200,
-            "body": json.dumps({
-                "message": "Schedule updated successfully",
-                "scheduledActionArns": ["arn1", "arn2"]
-            })
-        }).encode()
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {
+                "statusCode": 200,
+                "body": json.dumps(
+                    {"message": "Schedule updated successfully", "scheduledActionArns": ["arn1", "arn2"]}
+                ),
+            }
+        ).encode()
         mock_lambda_client.invoke.return_value = mock_lambda_response
 
         # Execute
@@ -206,10 +205,7 @@ class TestStateMachineScheduleHandlers:
         from models.state_machine.schedule_handlers import handle_schedule_update
 
         # Mock event without schedule update flag
-        event = {
-            "modelId": "test-model",
-            "has_schedule_update": False
-        }
+        event = {"modelId": "test-model", "has_schedule_update": False}
 
         # Execute
         result = handle_schedule_update(event, lambda_context)
@@ -228,10 +224,9 @@ class TestStateMachineScheduleHandlers:
 
         # Mock successful lambda response
         mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps({
-            "statusCode": 200,
-            "body": json.dumps({"message": "Schedule deleted successfully"})
-        }).encode()
+        mock_lambda_response["Payload"].read.return_value = json.dumps(
+            {"statusCode": 200, "body": json.dumps({"message": "Schedule deleted successfully"})}
+        ).encode()
         mock_lambda_client.invoke.return_value = mock_lambda_response
 
         # Execute
@@ -255,9 +250,9 @@ class TestStateMachineScheduleHandlers:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"}
+                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"},
                 }
-            }
+            },
         }
 
         # Mock existing model with different schedule
@@ -269,9 +264,9 @@ class TestStateMachineScheduleHandlers:
                         "scheduleType": "RECURRING_DAILY",
                         "timezone": "UTC",
                         "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-                        "scheduledActionArns": ["existing-arn1", "existing-arn2"]
+                        "scheduledActionArns": ["existing-arn1", "existing-arn2"],
                     }
-                }
+                },
             }
         }
 
@@ -295,9 +290,9 @@ class TestStateMachineScheduleHandlers:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"}
+                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
-            }
+            },
         }
 
         # Mock existing model with same schedule
@@ -308,9 +303,9 @@ class TestStateMachineScheduleHandlers:
                     "scheduling": {
                         "scheduleType": "RECURRING_DAILY",
                         "timezone": "UTC",
-                        "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"}
+                        "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                     }
-                }
+                },
             }
         }
 
@@ -346,10 +341,7 @@ class TestScheduleHandlerLambdaWrappers:
         from models.state_machine.schedule_handlers import lambda_handler_schedule_creation
 
         # Mock event
-        event = {
-            "modelId": "test-model",
-            "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}
-        }
+        event = {"modelId": "test-model", "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}}
 
         # Execute
         result = lambda_handler_schedule_creation(event, lambda_context)
@@ -362,10 +354,7 @@ class TestScheduleHandlerLambdaWrappers:
         from models.state_machine.schedule_handlers import lambda_handler_schedule_update
 
         # Mock event
-        event = {
-            "modelId": "test-model",
-            "has_schedule_update": False
-        }
+        event = {"modelId": "test-model", "has_schedule_update": False}
 
         # Execute
         result = lambda_handler_schedule_update(event, lambda_context)
@@ -391,10 +380,7 @@ class TestScheduleHandlerLambdaWrappers:
         from models.state_machine.schedule_handlers import lambda_handler_detect_schedule_changes
 
         # Mock event
-        event = {
-            "modelId": "test-model",
-            "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}
-        }
+        event = {"modelId": "test-model", "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}}
 
         # Execute
         result = lambda_handler_detect_schedule_changes(event, lambda_context)
@@ -421,9 +407,9 @@ class TestScheduleCreationEdgeCases:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"}
+                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
-            }
+            },
         }
 
         # Mock lambda client exception
@@ -451,9 +437,9 @@ class TestScheduleCreationEdgeCases:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"}
+                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"},
                 }
-            }
+            },
         }
 
         # Mock lambda client exception
@@ -495,9 +481,9 @@ class TestScheduleCreationEdgeCases:
                 "scheduling": {
                     "scheduleType": "RECURRING_DAILY",
                     "timezone": "UTC",
-                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"}
+                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"},
                 }
-            }
+            },
         }
 
         # Mock DynamoDB exception

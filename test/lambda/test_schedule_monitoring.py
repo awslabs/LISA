@@ -16,7 +16,6 @@
 
 import json
 import os
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -61,7 +60,7 @@ def sample_model_with_schedule():
                 "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 "scheduledActionArns": [
                     "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-daily-start",
-                    "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-daily-stop"
+                    "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-daily-stop",
                 ],
                 "lastScheduleUpdate": "2025-01-14T12:00:00Z",
             }
@@ -84,28 +83,23 @@ class TestScheduleMonitoring:
             "detail": {
                 "StatusCode": "Successful",
                 "AutoScalingGroupName": "test-asg",
-                "StatusMessage": "Scaling completed successfully"
-            }
+                "StatusMessage": "Scaling completed successfully",
+            },
         }
 
         # Mock model lookup
-        mock_model_table.scan.return_value = {
-            "Items": [{"model_id": "test-model"}],
-            "Count": 1
-        }
+        mock_model_table.scan.return_value = {"Items": [{"model_id": "test-model"}], "Count": 1}
 
         # Mock model get_item
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model",
-                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
+                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
             }
         }
 
         # Mock ECS service
-        mock_ecs_client.describe_services.return_value = {
-            "services": [{"runningCount": 1}]
-        }
+        mock_ecs_client.describe_services.return_value = {"services": [{"runningCount": 1}]}
 
         # Mock update_item
         mock_model_table.update_item.return_value = {}
@@ -124,10 +118,7 @@ class TestScheduleMonitoring:
         from models.scheduling.schedule_monitoring import lambda_handler
 
         # Test event for sync operation
-        event = {
-            "operation": "sync_status",
-            "modelId": "test-model"
-        }
+        event = {"operation": "sync_status", "modelId": "test-model"}
 
         # Execute - this will fail due to missing ECS service, but tests the routing
         result = lambda_handler(event, lambda_context)
@@ -139,10 +130,7 @@ class TestScheduleMonitoring:
         """Test handling of unknown event format."""
         from models.scheduling.schedule_monitoring import lambda_handler
 
-        # Unknown event format
-        event = {"unknown": "event"}
-
-        # Execute
+        # Execute with empty event
         result = lambda_handler({}, lambda_context)
 
         # Verify response
@@ -160,10 +148,7 @@ class TestScheduleMonitoring:
         # Test autoscaling event that will trigger the exception
         event = {
             "source": "aws.autoscaling",
-            "detail": {
-                "StatusCode": "Successful",
-                "AutoScalingGroupName": "test-asg"
-            }
+            "detail": {"StatusCode": "Successful", "AutoScalingGroupName": "test-asg"},
         }
 
         # Execute
@@ -184,10 +169,7 @@ class TestScheduleMonitoring:
         from models.scheduling.schedule_monitoring import find_model_by_asg_name
 
         # Mock model table scan
-        mock_model_table.scan.return_value = {
-            "Items": [{"model_id": "test-model"}],
-            "Count": 1
-        }
+        mock_model_table.scan.return_value = {"Items": [{"model_id": "test-model"}], "Count": 1}
 
         result = find_model_by_asg_name("test-asg")
 
@@ -200,10 +182,7 @@ class TestScheduleMonitoring:
         from models.scheduling.schedule_monitoring import find_model_by_asg_name
 
         # Mock empty scan result
-        mock_model_table.scan.return_value = {
-            "Items": [],
-            "Count": 0
-        }
+        mock_model_table.scan.return_value = {"Items": [], "Count": 0}
 
         result = find_model_by_asg_name("nonexistent-asg")
 
@@ -218,7 +197,7 @@ class TestScheduleMonitoring:
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model",
-                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
+                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
             }
         }
 
@@ -244,9 +223,7 @@ class TestScheduleMonitoring:
         from models.scheduling.schedule_monitoring import get_ecs_service_running_count
 
         # Mock ECS client response
-        mock_ecs_client.describe_services.return_value = {
-            "services": [{"runningCount": 2}]
-        }
+        mock_ecs_client.describe_services.return_value = {"services": [{"runningCount": 2}]}
 
         result = get_ecs_service_running_count("test-service-arn")
 
@@ -267,8 +244,8 @@ class TestScheduleMonitoring:
     @patch("models.scheduling.schedule_monitoring.model_table")
     def test_update_model_status_success(self, mock_model_table):
         """Test successful model status update."""
-        from models.scheduling.schedule_monitoring import update_model_status
         from models.domain_objects import ModelStatus
+        from models.scheduling.schedule_monitoring import update_model_status
 
         mock_model_table.update_item.return_value = {}
 
@@ -289,13 +266,7 @@ class TestScheduleMonitoring:
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model",
-                "autoScalingConfig": {
-                    "scheduling": {
-                        "lastScheduleFailure": {
-                            "retryCount": 2
-                        }
-                    }
-                }
+                "autoScalingConfig": {"scheduling": {"lastScheduleFailure": {"retryCount": 2}}},
             }
         }
 
@@ -310,10 +281,7 @@ class TestScheduleMonitoring:
 
         # Mock model without failure info
         mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "autoScalingConfig": {"scheduling": {}}
-            }
+            "Item": {"model_id": "test-model", "autoScalingConfig": {"scheduling": {}}}
         }
 
         result = get_current_retry_count("test-model")
@@ -390,9 +358,7 @@ class TestScheduleMonitoringHelpers:
         from models.scheduling.schedule_monitoring import get_model_info
 
         # Mock model table response
-        mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model", "model_status": "InService"}
-        }
+        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model", "model_status": "InService"}}
 
         result = get_model_info("test-model")
 

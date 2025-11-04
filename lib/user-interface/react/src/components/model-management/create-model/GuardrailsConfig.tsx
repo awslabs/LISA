@@ -147,120 +147,97 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         <FormField
                                             label='Guardrail Name'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrail_name}
-                                            constraintText='Required. A friendly name for this guardrail.'
-                                        >
-                                            <Input
-                                                value={guardrail.guardrail_name}
-                                                onChange={({ detail }) => updateGuardrail(key, 'guardrail_name', detail.value)}
-                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrail_name`])}
-                                                placeholder='Enter guardrail name'
-                                            />
-                                        </FormField>
-
+                                            constraintText='A friendly name for this guardrail.'
+                                        ></FormField>
+                                        <Input
+                                            value={guardrail.guardrail_name}
+                                            onChange={({ detail }) => updateGuardrail(key, 'guardrail_name', detail.value)}
+                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrail_name`])}
+                                            placeholder='Enter guardrail name'
+                                        />
                                         <FormField
                                             label='Guardrail Identifier'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrail_identifier}
-                                            constraintText='Required. The ARN or ID of the AWS Bedrock guardrail.'
-                                        >
-                                            <Input
-                                                value={guardrail.guardrail_identifier}
-                                                onChange={({ detail }) => updateGuardrail(key, 'guardrail_identifier', detail.value)}
-                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrail_identifier`])}
-                                                placeholder='Enter guardrail identifier (ARN or ID)'
-                                            />
-                                        </FormField>
+                                            constraintText='The ARN or ID of the AWS Bedrock guardrail.'
+                                        > </FormField>
+                                        <Input
+                                            value={guardrail.guardrail_identifier}
+                                            onChange={({ detail }) => updateGuardrail(key, 'guardrail_identifier', detail.value)}
+                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrail_identifier`])}
+                                            placeholder='Enter guardrail identifier (ARN or ID)'
+                                        />
 
                                         <FormField
                                             label='Guardrail Version'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrail_version}
                                             constraintText='The version of the guardrail to use. Default is DRAFT.'
-                                        >
-                                            <Input
-                                                value={guardrail.guardrail_version}
-                                                onChange={({ detail }) => updateGuardrail(key, 'guardrail_version', detail.value)}
-                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrail_version`])}
-                                                placeholder='Enter version (e.g., DRAFT, 1, 2)'
-                                            />
-                                        </FormField>
+                                        ></FormField>
+                                        <Input
+                                            value={guardrail.guardrail_version}
+                                            onChange={({ detail }) => updateGuardrail(key, 'guardrail_version', detail.value)}
+                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrail_version`])}
+                                            placeholder='Enter version (e.g., DRAFT, 1, 2)'
+                                        />
 
                                         <FormField
                                             label='Mode'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.mode}
                                             constraintText='When the guardrail should be executed.'
-                                        >
-                                            <Select
-                                                selectedOption={
-                                                    modeOptions.find((opt) => opt.value === guardrail.mode) ||
+                                        ></FormField>
+                                        <Select
+                                            selectedOption={
+                                                modeOptions.find((opt) => opt.value === guardrail.mode) ||
                                                     modeOptions[0]
-                                                }
-                                                onChange={({ detail }) => updateGuardrail(key, 'mode', detail.selectedOption.value)}
-                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.mode`])}
-                                                options={modeOptions}
-                                            />
-                                        </FormField>
+                                            }
+                                            onChange={({ detail }) => updateGuardrail(key, 'mode', detail.selectedOption.value)}
+                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.mode`])}
+                                            options={modeOptions}
+                                        />
 
                                         <FormField
-                                            label='Description'
+                                            label={<span>Description <em>(Optional)</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.description}
-                                            constraintText='Optional. A description of what this guardrail does.'
-                                        >
-                                            <Textarea
-                                                value={guardrail.description || ''}
-                                                onChange={({ detail }) => updateGuardrail(key, 'description', detail.value)}
-                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.description`])}
-                                                placeholder='Enter description'
-                                                rows={3}
-                                            />
-                                        </FormField>
+                                            constraintText='A description of what this guardrail does.'
+                                        > </FormField>
+                                        <Textarea
+                                            value={guardrail.description || ''}
+                                            onChange={({ detail }) => updateGuardrail(key, 'description', detail.value)}
+                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.description`])}
+                                            placeholder='Enter description'
+                                            rows={3}
+                                        />
 
                                         <FormField
-                                            label='Allowed Groups'
+                                            label={<span>Allowed Groups <em>(Optional)</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.allowed_groups}
-                                            constraintText='Optional. Groups that are allowed to use this guardrail. Type a group name and click Add.'
-                                        >
-                                            <SpaceBetween size='xs'>
-                                                <TokenGroup
-                                                    items={
-                                                        (guardrail.allowed_groups || []).map((group) => ({
-                                                            label: group,
-                                                            dismissLabel: `Remove ${group}`
-                                                        }))
-                                                    }
-                                                    onDismiss={({ detail: { itemIndex } }) => {
-                                                        const newGroups = [...(guardrail.allowed_groups || [])];
-                                                        newGroups.splice(itemIndex, 1);
-                                                        updateGuardrail(key, 'allowed_groups', newGroups);
-                                                    }}
-                                                    alignment='vertical'
-                                                />
-                                                <Input
-                                                    value={groupInputValues[key] || ''}
-                                                    placeholder='Enter group name'
-                                                    onChange={({ detail }) => {
-                                                        setGroupInputValues((prev) => ({
-                                                            ...prev,
-                                                            [key]: detail.value
-                                                        }));
-                                                    }}
-                                                    onKeyDown={(event) => {
-                                                        if (event.detail.key === 'Enter') {
-                                                            const value = (groupInputValues[key] || '').trim();
-                                                            if (value && !(guardrail.allowed_groups || []).includes(value)) {
-                                                                updateGuardrail(key, 'allowed_groups', [
-                                                                    ...(guardrail.allowed_groups || []),
-                                                                    value
-                                                                ]);
-                                                                setGroupInputValues((prev) => ({
-                                                                    ...prev,
-                                                                    [key]: ''
-                                                                }));
-                                                            }
-                                                            event.preventDefault();
-                                                        }
-                                                    }}
-                                                />
-                                                <Button
-                                                    onClick={() => {
+                                            constraintText='Groups that will have this guardrail applied to them. Type a group name and click Add.'
+                                        > </FormField>
+                                        <SpaceBetween size='xs'>
+                                            <TokenGroup
+                                                items={
+                                                    (guardrail.allowed_groups || []).map((group) => ({
+                                                        label: group,
+                                                        dismissLabel: `Remove ${group}`
+                                                    }))
+                                                }
+                                                onDismiss={({ detail: { itemIndex } }) => {
+                                                    const newGroups = [...(guardrail.allowed_groups || [])];
+                                                    newGroups.splice(itemIndex, 1);
+                                                    updateGuardrail(key, 'allowed_groups', newGroups);
+                                                }}
+                                                alignment='vertical'
+                                            />
+                                            <Input
+                                                value={groupInputValues[key] || ''}
+                                                placeholder='Enter group name'
+                                                onChange={({ detail }) => {
+                                                    setGroupInputValues((prev) => ({
+                                                        ...prev,
+                                                        [key]: detail.value
+                                                    }));
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    if (event.detail.key === 'Enter') {
                                                         const value = (groupInputValues[key] || '').trim();
                                                         if (value && !(guardrail.allowed_groups || []).includes(value)) {
                                                             updateGuardrail(key, 'allowed_groups', [
@@ -272,12 +249,28 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                                                 [key]: ''
                                                             }));
                                                         }
-                                                    }}
-                                                >
-                                                    Add
-                                                </Button>
-                                            </SpaceBetween>
-                                        </FormField>
+                                                        event.preventDefault();
+                                                    }
+                                                }}
+                                            />
+                                            <Button
+                                                onClick={() => {
+                                                    const value = (groupInputValues[key] || '').trim();
+                                                    if (value && !(guardrail.allowed_groups || []).includes(value)) {
+                                                        updateGuardrail(key, 'allowed_groups', [
+                                                            ...(guardrail.allowed_groups || []),
+                                                            value
+                                                        ]);
+                                                        setGroupInputValues((prev) => ({
+                                                            ...prev,
+                                                            [key]: ''
+                                                        }));
+                                                    }
+                                                }}
+                                            >
+                                                Add
+                                            </Button>
+                                        </SpaceBetween>
                                     </SpaceBetween>
                                 </Container>
                             );

@@ -1093,6 +1093,337 @@ def test_create_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_cont
             mock_common.is_admin.return_value = False
 
 
+def test_create_hosted_mcp_server_duplicate_normalized_name(mcp_servers_table, lambda_context):
+    """Test that creating a server with duplicate normalized name fails."""
+    # Add an existing server with name "Test Server"
+    existing_server = {
+        "id": "existing-server-id",
+        "name": "Test Server",
+        "owner": "admin-user",
+        "status": "InService",
+        "startCommand": "python server.py",
+        "serverType": "http",
+        "autoScalingConfig": {"minCapacity": 1, "maxCapacity": 10},
+    }
+    mcp_servers_table.put_item(Item=existing_server)
+
+    # Try to create a new server with name "Test-Server" (normalizes to same as existing)
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "body": json.dumps(
+            {
+                "name": "Test-Server",  # Normalizes to "TestServer" same as "Test Server"
+                "description": "Test description",
+                "startCommand": "python server.py",
+                "port": 8000,
+                "serverType": "http",
+                "autoScalingConfig": {
+                    "minCapacity": 1,
+                    "maxCapacity": 10,
+                    "targetValue": 5,
+                },
+            }
+        ),
+    }
+
+    with patch.dict(
+        os.environ, {"CREATE_MCP_SERVER_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:TestStateMachine"}
+    ):
+        import mcp_server.lambda_functions as mcp_module
+
+        mock_common.get_username.return_value = "admin-user"
+        mock_common.is_admin.return_value = True
+
+        response = mcp_module.create_hosted_mcp_server(event, lambda_context)
+        assert response["statusCode"] == 500
+        body = json.loads(response["body"])
+        assert "conflicts with existing server" in body["error"].lower()
+        assert "normalized names must be unique" in body["error"].lower()
+
+        # Reset mocks
+        mock_common.get_username.return_value = "test-user"
+        mock_common.is_admin.return_value = False
+
+
+def test_create_hosted_mcp_server_empty_normalized_name(mcp_servers_table, lambda_context):
+    """Test that creating a server with only special characters fails."""
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "body": json.dumps(
+            {
+                "name": "!@#$%^&*()",  # Only special characters, normalizes to empty string
+                "description": "Test description",
+                "startCommand": "python server.py",
+                "port": 8000,
+                "serverType": "http",
+                "autoScalingConfig": {
+                    "minCapacity": 1,
+                    "maxCapacity": 10,
+                    "targetValue": 5,
+                },
+            }
+        ),
+    }
+
+    with patch.dict(
+        os.environ, {"CREATE_MCP_SERVER_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:TestStateMachine"}
+    ):
+        import mcp_server.lambda_functions as mcp_module
+
+        mock_common.get_username.return_value = "admin-user"
+        mock_common.is_admin.return_value = True
+
+        response = mcp_module.create_hosted_mcp_server(event, lambda_context)
+        assert response["statusCode"] == 500
+        body = json.loads(response["body"])
+        assert "must contain at least one alphanumeric character" in body["error"].lower()
+
+        # Reset mocks
+        mock_common.get_username.return_value = "test-user"
+        mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_invalid_status_creating(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Creating' fails."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Creating",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "cannot delete server" in body["error"].lower()
+    assert "creating" in body["error"].lower()
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_invalid_status_starting(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Starting' fails."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Starting",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "cannot delete server" in body["error"].lower()
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_invalid_status_stopping(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Stopping' fails."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Stopping",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "cannot delete server" in body["error"].lower()
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_invalid_status_updating(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Updating' fails."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Updating",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "cannot delete server" in body["error"].lower()
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_invalid_status_deleting(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Deleting' fails."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Deleting",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "cannot delete server" in body["error"].lower()
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_valid_status_stopped(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Stopped' succeeds."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Stopped",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    with patch.dict(
+        os.environ,
+        {"DELETE_MCP_SERVER_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteTestStateMachine"},
+    ):
+        import mcp_server.lambda_functions as mcp_module
+
+        mock_sfn_client = MagicMock()
+        mock_sfn_client.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123456789012:execution:DeleteTestStateMachine:test-execution"
+        }
+
+        original_stepfunctions = mcp_module.stepfunctions
+        mcp_module.stepfunctions = mock_sfn_client
+
+        try:
+            mock_common.get_username.return_value = "admin-user"
+            mock_common.is_admin.return_value = True
+
+            response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+            assert response["statusCode"] == 200
+            body = json.loads(response["body"])
+            assert "Deletion initiated" in body["message"]
+
+            mock_sfn_client.start_execution.assert_called_once()
+        finally:
+            mcp_module.stepfunctions = original_stepfunctions
+            mock_common.get_username.return_value = "test-user"
+            mock_common.is_admin.return_value = False
+
+
+def test_delete_hosted_mcp_server_valid_status_failed(mcp_servers_table, lambda_context):
+    """Test that deleting a server with status 'Failed' succeeds."""
+    server_item = {
+        "id": "test-server-id",
+        "name": "Test Hosted MCP Server",
+        "status": "Failed",
+        "stack_name": "test-stack-name",
+    }
+    mcp_servers_table.put_item(Item=server_item)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "test-server-id"},
+    }
+
+    with patch.dict(
+        os.environ,
+        {"DELETE_MCP_SERVER_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteTestStateMachine"},
+    ):
+        import mcp_server.lambda_functions as mcp_module
+
+        mock_sfn_client = MagicMock()
+        mock_sfn_client.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123456789012:execution:DeleteTestStateMachine:test-execution"
+        }
+
+        original_stepfunctions = mcp_module.stepfunctions
+        mcp_module.stepfunctions = mock_sfn_client
+
+        try:
+            mock_common.get_username.return_value = "admin-user"
+            mock_common.is_admin.return_value = True
+
+            response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
+            assert response["statusCode"] == 200
+            body = json.loads(response["body"])
+            assert "Deletion initiated" in body["message"]
+
+            mock_sfn_client.start_execution.assert_called_once()
+        finally:
+            mcp_module.stepfunctions = original_stepfunctions
+            mock_common.get_username.return_value = "test-user"
+            mock_common.is_admin.return_value = False
+
+
 def test_list_hosted_mcp_servers_success(mcp_servers_table, sample_hosted_mcp_server, lambda_context):
     """Test successful listing of hosted MCP servers."""
     # Add some hosted servers

@@ -305,6 +305,7 @@ export class LisaServeApplicationStage extends Stage {
                 securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
                 vpc: networkingStack.vpc,
             });
+            apiDeploymentStack.addDependency(mcpApiStack);
             mcpApiStack.addDependency(apiBaseStack);
             this.stacks.push(mcpApiStack);
         }

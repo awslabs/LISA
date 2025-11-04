@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+import re
 import uuid
 from decimal import Decimal
 from functools import reduce
@@ -34,6 +35,11 @@ logger = logging.getLogger(__name__)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+
+def _normalize_server_name(name: str) -> str:
+    """Normalize server name to match CDK resource naming (alphanumeric only)."""
+    return re.sub(r"[^a-zA-Z0-9]", "", name)
 
 
 def replace_bearer_token_header(mcp_server: dict, replacement: str):
@@ -303,6 +309,33 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
         # Validate and parse the hosted server configuration
         hosted_server_model = HostedMcpServerModel(**body)
 
+        # Check if normalized name is unique
+        normalized_name = _normalize_server_name(hosted_server_model.name)
+        if not normalized_name:
+            raise ValueError("Server name must contain at least one alphanumeric character.")
+
+        # Scan all items to check for duplicate normalized names
+        items = []
+        scan_arguments = {}
+        while True:
+            response = table.scan(**scan_arguments)
+            items.extend(response.get("Items", []))
+
+            if "LastEvaluatedKey" in response:
+                scan_arguments["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+            else:
+                break
+
+        # Check if any existing server has the same normalized name
+        for item in items:
+            existing_name = item.get("name", "")
+            existing_normalized = _normalize_server_name(existing_name)
+            if existing_normalized == normalized_name and item.get("id") != body["id"]:
+                raise ValueError(
+                    f"Server name '{hosted_server_model.name}' conflicts with existing server '{existing_name}'. "
+                    f"Normalized names must be unique (alphanumeric characters only)."
+                )
+
         # persist initial record
         table.put_item(Item=hosted_server_model.model_dump(exclude_none=True))
 
@@ -380,6 +413,20 @@ def delete_hosted_mcp_server(event: dict, context: dict) -> Any:
 
         if item is None:
             raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+
+        # Validate server status - only allow deletion if in specific states
+        server_status = item.get("status", "")
+        allowed_statuses = [
+            HostedMcpServerStatus.IN_SERVICE,
+            HostedMcpServerStatus.STOPPED,
+            HostedMcpServerStatus.FAILED,
+        ]
+        if server_status not in allowed_statuses:
+            raise ValueError(
+                f"Cannot delete server {mcp_server_id} with status '{server_status}'. "
+                f"Only servers with status '{HostedMcpServerStatus.IN_SERVICE}', "
+                f"'{HostedMcpServerStatus.STOPPED}', or '{HostedMcpServerStatus.FAILED}' can be deleted."
+            )
 
         # Kick off state machine
         sfn_arn = os.environ.get("DELETE_MCP_SERVER_SFN_ARN")

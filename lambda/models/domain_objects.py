@@ -239,7 +239,7 @@ class SchedulingConfig(BaseModel):
     """Defines scheduling configuration for model resource management"""
 
     scheduleType: ScheduleType = ScheduleType.NONE
-    timezone: str = Field(default="UTC", pattern=r"^[A-Za-z_]+/[A-Za-z_]+$")
+    timezone: str = Field(default="UTC")
 
     # Weekly schedule (for EACH_DAY type)
     weeklySchedule: Optional[WeeklySchedule] = None

@@ -74,14 +74,13 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "id": event.get("id"),
         "name": event.get("name"),
         "startCommand": event.get("startCommand"),
+        "serverType": event.get("serverType"),
         "autoScalingConfig": event.get("autoScalingConfig"),
     }
 
     # Add optional fields if present
     if event.get("port") is not None:
         server_config["port"] = event.get("port")
-    if event.get("serverType"):
-        server_config["serverType"] = event.get("serverType")
     if event.get("image"):
         server_config["image"] = event.get("image")
     if event.get("s3Path"):

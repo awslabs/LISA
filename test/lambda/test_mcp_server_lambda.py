@@ -92,7 +92,18 @@ for p in patches:
     p.start()
 
 # Now import the lambda functions
-from mcp_server.lambda_functions import _get_mcp_servers, create, delete, get, get_mcp_server_id, list, update
+from mcp_server.lambda_functions import (
+    _get_mcp_servers,
+    create,
+    create_hosted_mcp_server,
+    delete,
+    get,
+    get_hosted_mcp_server,
+    get_mcp_server_id,
+    list,
+    list_hosted_mcp_servers,
+    update,
+)
 
 # Stop patches to avoid global interference
 for p in patches:
@@ -192,6 +203,27 @@ def sample_global_mcp_server():
         "owner": "lisa:public",
         "url": "https://example.com/global-mcp-server",
         "name": "Global MCP Server",
+    }
+
+
+@pytest.fixture
+def sample_hosted_mcp_server():
+    """Sample hosted MCP server data."""
+    return {
+        "id": "hosted-server-id",
+        "created": datetime.now().isoformat(),
+        "owner": "test-user",
+        "name": "Test Hosted MCP Server",
+        "description": "Test description",
+        "startCommand": "python server.py",
+        "port": 8000,
+        "serverType": "http",
+        "autoScalingConfig": {
+            "minCapacity": 1,
+            "maxCapacity": 10,
+            "targetValue": 5,
+        },
+        "status": "Creating",
     }
 
 
@@ -787,3 +819,271 @@ def test_get_mcp_servers_empty_groups_filter(mcp_servers_table, lambda_context):
     actual_ids = {item["id"] for item in result["Items"]}
 
     assert actual_ids == expected_ids
+
+
+# ============================================================================
+# Hosted MCP Server Tests
+# ============================================================================
+
+
+def test_create_hosted_mcp_server_success(mcp_servers_table, lambda_context):
+    """Test successful creation of hosted MCP server."""
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "body": json.dumps(
+            {
+                "name": "Test Hosted MCP Server",
+                "description": "Test description",
+                "startCommand": "python server.py",
+                "port": 8000,
+                "serverType": "http",
+                "autoScalingConfig": {
+                    "minCapacity": 1,
+                    "maxCapacity": 10,
+                    "targetValue": 5,
+                },
+            }
+        ),
+    }
+
+    with patch.dict(
+        os.environ, {"CREATE_MCP_SERVER_SFN_ARN": "arn:aws:states:us-east-1:123456789012:stateMachine:TestStateMachine"}
+    ):
+        # Create a mock client with start_execution method
+        mock_sfn_client = MagicMock()
+        mock_sfn_client.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123456789012:execution:TestStateMachine:test-execution"
+        }
+
+        # Import the module to get access to stepfunctions
+        import mcp_server.lambda_functions as mcp_module
+
+        # Patch the stepfunctions attribute directly in the already-imported module
+        original_stepfunctions = mcp_module.stepfunctions
+        mcp_module.stepfunctions = mock_sfn_client
+
+        try:
+            mock_common.get_username.return_value = "admin-user"
+            mock_common.is_admin.return_value = True
+
+            # Call the function from the module namespace to ensure it uses the patched stepfunctions
+            response = mcp_module.create_hosted_mcp_server(event, lambda_context)
+            assert response["statusCode"] == 200
+            body = json.loads(response["body"])
+            assert body["name"] == "Test Hosted MCP Server"
+            assert body["startCommand"] == "python server.py"
+            assert body["status"] == "Creating"
+            assert "id" in body
+            assert "created" in body
+
+            # Verify state machine was invoked
+            mock_sfn_client.start_execution.assert_called_once()
+            call_args = mock_sfn_client.start_execution.call_args
+            assert (
+                call_args[1]["stateMachineArn"] == "arn:aws:states:us-east-1:123456789012:stateMachine:TestStateMachine"
+            )
+
+            # Reset mocks
+            mock_common.get_username.return_value = "test-user"
+            mock_common.is_admin.return_value = False
+        finally:
+            # Restore original stepfunctions client
+            mcp_module.stepfunctions = original_stepfunctions
+
+
+def test_create_hosted_mcp_server_not_admin(mcp_servers_table, lambda_context):
+    """Test that non-admin cannot create hosted MCP server."""
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "body": json.dumps(
+            {
+                "name": "Test Hosted MCP Server",
+                "startCommand": "python server.py",
+                "autoScalingConfig": {"minCapacity": 1, "maxCapacity": 10},
+            }
+        ),
+    }
+
+    with patch("mcp_server.lambda_functions.stepfunctions"):
+        mock_common.is_admin.return_value = False
+
+        response = create_hosted_mcp_server(event, lambda_context)
+        assert response["statusCode"] == 500
+        body = json.loads(response["body"])
+        assert "Not authorized to create hosted MCP server" in body["error"]
+
+
+def test_create_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_context):
+    """Test that missing SFN ARN raises error."""
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "body": json.dumps(
+            {
+                "name": "Test Hosted MCP Server",
+                "startCommand": "python server.py",
+                "serverType": "http",
+                "autoScalingConfig": {"minCapacity": 1, "maxCapacity": 10},
+            }
+        ),
+    }
+
+    import mcp_server.lambda_functions as mcp_module
+
+    with patch.object(mcp_module, "stepfunctions", MagicMock()):
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ["MCP_SERVERS_TABLE_NAME"] = "mcp-servers-table"
+            os.environ["MCP_SERVERS_BY_OWNER_INDEX_NAME"] = "mcp-servers-by-owner-index"
+            mock_common.get_username.return_value = "admin-user"
+            mock_common.is_admin.return_value = True
+
+            response = mcp_module.create_hosted_mcp_server(event, lambda_context)
+            assert response["statusCode"] == 500
+            body = json.loads(response["body"])
+            assert "CREATE_MCP_SERVER_SFN_ARN not configured" in body["error"]
+
+            # Reset mocks
+            mock_common.get_username.return_value = "test-user"
+            mock_common.is_admin.return_value = False
+
+
+def test_list_hosted_mcp_servers_success(mcp_servers_table, sample_hosted_mcp_server, lambda_context):
+    """Test successful listing of hosted MCP servers."""
+    # Add some hosted servers
+    mcp_servers_table.put_item(Item=sample_hosted_mcp_server)
+    another_server = sample_hosted_mcp_server.copy()
+    another_server["id"] = "hosted-server-id-2"
+    another_server["name"] = "Another Hosted Server"
+    mcp_servers_table.put_item(Item=another_server)
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = list_hosted_mcp_servers(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert "Items" in body
+    assert len(body["Items"]) == 2
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_list_hosted_mcp_servers_empty(mcp_servers_table, lambda_context):
+    """Test listing hosted MCP servers when table is empty."""
+    event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = list_hosted_mcp_servers(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert "Items" in body
+    assert len(body["Items"]) == 0
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_list_hosted_mcp_servers_not_admin(mcp_servers_table, lambda_context):
+    """Test that non-admin cannot list hosted MCP servers."""
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+    response = list_hosted_mcp_servers(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "Not authorized to list hosted MCP servers" in body["error"]
+
+
+def test_get_hosted_mcp_server_success(mcp_servers_table, sample_hosted_mcp_server, lambda_context):
+    """Test successful retrieval of hosted MCP server."""
+    mcp_servers_table.put_item(Item=sample_hosted_mcp_server)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "hosted-server-id"},
+    }
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = get_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["id"] == "hosted-server-id"
+    assert body["name"] == "Test Hosted MCP Server"
+    assert body["startCommand"] == "python server.py"
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_get_hosted_mcp_server_not_found(mcp_servers_table, lambda_context):
+    """Test hosted MCP server not found error."""
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+        "pathParameters": {"serverId": "non-existent-server"},
+    }
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = get_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "Hosted MCP Server non-existent-server not found" in body["error"]
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+
+def test_get_hosted_mcp_server_not_admin(mcp_servers_table, sample_hosted_mcp_server, lambda_context):
+    """Test that non-admin cannot get hosted MCP server."""
+    mcp_servers_table.put_item(Item=sample_hosted_mcp_server)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "pathParameters": {"serverId": "hosted-server-id"},
+    }
+
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False
+
+    response = get_hosted_mcp_server(event, lambda_context)
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "Not authorized to get hosted MCP server" in body["error"]
+
+
+def test_list_hosted_mcp_servers_pagination(mcp_servers_table, sample_hosted_mcp_server, lambda_context):
+    """Test pagination handling in list_hosted_mcp_servers."""
+    # Create multiple servers
+    for i in range(5):
+        server = sample_hosted_mcp_server.copy()
+        server["id"] = f"hosted-server-{i}"
+        server["name"] = f"Hosted Server {i}"
+        mcp_servers_table.put_item(Item=server)
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
+
+    mock_common.get_username.return_value = "admin-user"
+    mock_common.is_admin.return_value = True
+
+    response = list_hosted_mcp_servers(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert "Items" in body
+    assert len(body["Items"]) == 5
+
+    # Reset mocks
+    mock_common.get_username.return_value = "test-user"
+    mock_common.is_admin.return_value = False

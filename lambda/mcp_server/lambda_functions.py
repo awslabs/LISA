@@ -231,36 +231,6 @@ def create(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def create_hosted_mcp_server(event: dict, context: dict) -> Any:
-    """Trigger the state machine to create a LISA Hosted MCP server."""
-    user_id = get_username(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-
-    # Check if the user is authorized to create Hosted MCP server
-    if is_admin(event):
-        # Validate and parse the hosted server configuration
-        hosted_server_model = HostedMcpServerModel(**body)
-
-        # persist initial record
-        table.put_item(Item=hosted_server_model.model_dump(exclude_none=True))
-
-        # kick off state machine
-        sfn_arn = os.environ.get("CREATE_MCP_SERVER_SFN_ARN")
-        if not sfn_arn:
-            raise ValueError("CREATE_MCP_SERVER_SFN_ARN not configured")
-        stepfunctions.start_execution(
-            stateMachineArn=sfn_arn,
-            input=json.dumps(hosted_server_model.model_dump(exclude_none=True)),
-        )
-
-        result = hosted_server_model.model_dump(exclude_none=True)
-        result["status"] = HostedMcpServerStatus.CREATING
-        return result
-    raise ValueError(f"Not authorized to create hosted MCP server. User {user_id} is not an admin.")
-
-
-@api_wrapper
 def update(event: dict, context: dict) -> Any:
     """Update an existing mcp server in DynamoDB."""
     user_id = get_username(event)
@@ -317,3 +287,78 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
 def get_mcp_server_id(event: dict) -> str:
     """Extract the mcp server id from the event's path parameters."""
     return str(event["pathParameters"]["serverId"])
+
+
+@api_wrapper
+def create_hosted_mcp_server(event: dict, context: dict) -> Any:
+    """Trigger the state machine to create a LISA Hosted MCP server."""
+    user_id = get_username(event)
+    body = json.loads(event["body"], parse_float=Decimal)
+    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
+
+    # Check if the user is authorized to create Hosted MCP server
+    if is_admin(event):
+        # Validate and parse the hosted server configuration
+        hosted_server_model = HostedMcpServerModel(**body)
+
+        # persist initial record
+        table.put_item(Item=hosted_server_model.model_dump(exclude_none=True))
+
+        # kick off state machine
+        sfn_arn = os.environ.get("CREATE_MCP_SERVER_SFN_ARN")
+        if not sfn_arn:
+            raise ValueError("CREATE_MCP_SERVER_SFN_ARN not configured")
+        stepfunctions.start_execution(
+            stateMachineArn=sfn_arn,
+            input=json.dumps(hosted_server_model.model_dump(exclude_none=True)),
+        )
+
+        result = hosted_server_model.model_dump(exclude_none=True)
+        result["status"] = HostedMcpServerStatus.CREATING
+        return result
+    raise ValueError(f"Not authorized to create hosted MCP server. User {user_id} is not an admin.")
+
+
+@api_wrapper
+def list_hosted_mcp_servers(event: dict, context: dict) -> Dict[str, Any]:
+    """List all hosted MCP servers from DynamoDB."""
+    user_id = get_username(event)
+
+    # Check if the user is authorized to list hosted MCP servers
+    if is_admin(event):
+        logger.info(f"Listing all hosted MCP servers for user {user_id} (is_admin)")
+        # Get all items from the table
+        items = []
+        scan_arguments = {}
+        while True:
+            response = table.scan(**scan_arguments)
+            items.extend(response.get("Items", []))
+
+            if "LastEvaluatedKey" in response:
+                scan_arguments["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+            else:
+                break
+
+        return {"Items": items}
+
+    raise ValueError(f"Not authorized to list hosted MCP servers. User {user_id} is not an admin.")
+
+
+@api_wrapper
+def get_hosted_mcp_server(event: dict, context: dict) -> Any:
+    """Retrieve a specific hosted MCP server from DynamoDB."""
+    user_id = get_username(event)
+    mcp_server_id = get_mcp_server_id(event)
+
+    # Query for the mcp server
+    response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
+    item = get_item(response)
+
+    if item is None:
+        raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+
+    # Check if the user is authorized to get the hosted mcp server
+    if is_admin(event):
+        return item
+
+    raise ValueError(f"Not authorized to get hosted MCP server {mcp_server_id}. User {user_id} is not an admin.")

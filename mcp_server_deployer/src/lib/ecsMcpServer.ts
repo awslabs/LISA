@@ -42,7 +42,7 @@ import * as path from 'node:path';
 
 import { PartialConfig } from '../../../lib/schema';
 import { ECSFargateCluster } from './ecsFargateCluster';
-import { detectServerType, getMcpServerIdentifier, McpServerConfig } from './utils';
+import { getMcpServerIdentifier, McpServerConfig } from './utils';
 import { DockerfileBuilder } from './dockerfileBuilder';
 import { createCdkId } from '../../../lib/core/utils';
 
@@ -82,7 +82,6 @@ export class EcsMcpServer extends Construct {
         const { config, mcpServerConfig, securityGroup, vpc, subnetSelection, restApiId, rootResourceId, mcpResourceId } = props;
 
         const identifier = getMcpServerIdentifier(mcpServerConfig);
-        const serverType = detectServerType(mcpServerConfig);
 
         // Resolve IAM roles
         const taskExecutionRole = mcpServerConfig.taskExecutionRoleArn
@@ -94,7 +93,7 @@ export class EcsMcpServer extends Construct {
             : undefined;
 
         // Create container image
-        const containerImage = this.getContainerImage( mcpServerConfig, serverType);
+        const containerImage = this.getContainerImage( mcpServerConfig);
 
         // Grant S3 read access if s3Path is provided
         // Hosting bucket ARN should be passed via environment variable
@@ -110,7 +109,6 @@ export class EcsMcpServer extends Construct {
         const containerDefinitionConfig = this.createContainerDefinition(
             containerImage,
             mcpServerConfig,
-            serverType,
         );
 
         const modelCluster = new ECSFargateCluster(scope, `${id}-FargateCluster`, {
@@ -168,8 +166,7 @@ export class EcsMcpServer extends Construct {
         // Determine container port
         // For STDIO servers, mcp-proxy exposes HTTP on port 8080
         // For HTTP/SSE servers, use the configured port or default 8000
-        const serverType = detectServerType(mcpServerConfig);
-        const containerPort = serverType === 'stdio' ? 8080 : (mcpServerConfig.port || 8000);
+        const containerPort = mcpServerConfig.serverType === 'stdio' ? 8080 : (mcpServerConfig.port || 8000);
 
         // For REST API v1, VPC Link requires a Network Load Balancer (NLB)
         // Create an NLB that targets the ALB listener (not Fargate tasks directly)
@@ -427,8 +424,8 @@ export class EcsMcpServer extends Construct {
             // For HTTP/STDIO servers: block GET at /mcp with 405
             // For SSE servers: block POST at /mcp with 405
             const useMock405 = (
-                (serverType !== 'sse' && method === 'GET') ||
-                (serverType === 'sse' && method === 'POST')
+                (mcpServerConfig.serverType !== 'sse' && method === 'GET') ||
+                (mcpServerConfig.serverType === 'sse' && method === 'POST')
             );
 
             if (useMock405) {
@@ -478,8 +475,7 @@ export class EcsMcpServer extends Construct {
      * Creates container image from configuration.
      */
     private getContainerImage (
-        mcpServerConfig: McpServerConfig,
-        serverType: 'stdio' | 'http' | 'sse',
+        mcpServerConfig: McpServerConfig
     ): ContainerImage {
         // If image is provided without s3Path, it's a pre-built image - use it directly
         if (mcpServerConfig.image && !mcpServerConfig.s3Path) {
@@ -500,7 +496,7 @@ export class EcsMcpServer extends Construct {
             if (!hostingBucketArn) {
                 throw new Error('LISA_HOSTING_BUCKET_ARN environment variable is required when s3Path is provided');
             }
-            return this.buildContainerFromS3(mcpServerConfig, serverType);
+            return this.buildContainerFromS3(mcpServerConfig);
         }
 
         // Default: use a common base image
@@ -512,8 +508,7 @@ export class EcsMcpServer extends Construct {
      * Builds a container image from S3 artifacts by creating a Dockerfile and building it
      */
     private buildContainerFromS3 (
-        mcpServerConfig: McpServerConfig,
-        serverType: 'stdio' | 'http' | 'sse',
+        mcpServerConfig: McpServerConfig
     ): ContainerImage {
         const identifier = getMcpServerIdentifier(mcpServerConfig);
         const buildDir = `/tmp/mcp-build-${identifier}`;
@@ -524,15 +519,15 @@ export class EcsMcpServer extends Construct {
         }
 
         // Generate Dockerfile
-        const dockerfile = this.generateDockerfile(mcpServerConfig, serverType);
+        const dockerfile = this.generateDockerfile(mcpServerConfig);
         const dockerfilePath = path.join(buildDir, 'Dockerfile');
         fs.writeFileSync(dockerfilePath, dockerfile);
 
         // Generate and write entrypoint script
-        const entrypointScript = serverType === 'stdio'
+        const entrypointScript = mcpServerConfig.serverType === 'stdio'
             ? DockerfileBuilder.generateStdioEntrypointScript(mcpServerConfig)
             : DockerfileBuilder.generateEntrypointScript(mcpServerConfig);
-        const scriptName = serverType === 'stdio' ? 'entrypoint-stdio.sh' : 'entrypoint.sh';
+        const scriptName = mcpServerConfig.serverType === 'stdio' ? 'entrypoint-stdio.sh' : 'entrypoint.sh';
         const scriptPath = path.join(buildDir, scriptName);
         fs.writeFileSync(scriptPath, entrypointScript);
         fs.chmodSync(scriptPath, 0o755);
@@ -547,10 +542,9 @@ export class EcsMcpServer extends Construct {
      * Generates Dockerfile content based on server type
      */
     private generateDockerfile (
-        mcpServerConfig: McpServerConfig,
-        serverType: 'stdio' | 'http' | 'sse',
+        mcpServerConfig: McpServerConfig
     ): string {
-        if (serverType === 'stdio') {
+        if (mcpServerConfig.serverType === 'stdio') {
             return this.generateStdioDockerfile(mcpServerConfig);
         } else {
             return this.generateHttpDockerfile(mcpServerConfig);
@@ -650,7 +644,6 @@ ENTRYPOINT ["/entrypoint.sh"]
     private createContainerDefinition (
         image: ContainerImage,
         mcpServerConfig: McpServerConfig,
-        serverType: 'stdio' | 'http' | 'sse',
     ): {
         image: ContainerImage;
         environment: { [key: string]: string };
@@ -661,7 +654,7 @@ ENTRYPOINT ["/entrypoint.sh"]
         // Build environment variables
         const environment: { [key: string]: string } = {
             ...mcpServerConfig.environment,
-            MCP_SERVER_TYPE: serverType,
+            MCP_SERVER_TYPE: mcpServerConfig.serverType,
             START_COMMAND: mcpServerConfig.startCommand,
         };
 
@@ -688,7 +681,7 @@ ENTRYPOINT ["/entrypoint.sh"]
         // HTTP/SSE servers use their specified port or default 8000
         const portMappings = mcpServerConfig.port
             ? [{ containerPort: mcpServerConfig.port, protocol: Protocol.TCP }]
-            : serverType === 'stdio'
+            : mcpServerConfig.serverType === 'stdio'
                 ? [{ containerPort: 8080, protocol: Protocol.TCP }] // mcp-proxy port
                 : [{ containerPort: 8000, protocol: Protocol.TCP }];
 
@@ -700,7 +693,7 @@ ENTRYPOINT ["/entrypoint.sh"]
         // Check if this is a pre-built image (image provided without s3Path)
         const isPrebuiltImage = mcpServerConfig.image && !mcpServerConfig.s3Path;
 
-        if (isPrebuiltImage && serverType === 'stdio') {
+        if (isPrebuiltImage && mcpServerConfig.serverType === 'stdio') {
             // For pre-built STDIO images, we need to override with mcp-proxy wrapper
             // Build a bash script that:
             // 1. Downloads from S3 if configured (with environment variable substitution)

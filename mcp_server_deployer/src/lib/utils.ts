@@ -63,7 +63,7 @@ export type McpServerConfig = {
     containerHealthCheckConfig?: ContainerHealthCheckConfig;
     groups?: string[];
     s3Path?: string;
-    serverType?: 'stdio' | 'http' | 'sse';
+    serverType: 'stdio' | 'http' | 'sse';
     image?: string;
     environment?: Record<string, string>;
     taskExecutionRoleArn?: string;
@@ -79,32 +79,4 @@ export type McpServerConfig = {
  */
 export function getMcpServerIdentifier (mcpServerConfig: McpServerConfig): string {
     return (mcpServerConfig.id || mcpServerConfig.name).replace(/[^a-zA-Z0-9]/g, '');
-}
-
-/**
- * Detects the server type from the configuration.
- * Priority: explicit serverType > port-based detection > command-based detection
- *
- * @param {McpServerConfig} mcpServerConfig - MCP server configuration
- * @returns {'stdio' | 'http' | 'sse'} detected server type
- */
-export function detectServerType (mcpServerConfig: McpServerConfig): 'stdio' | 'http' | 'sse' {
-    // If explicitly provided, use it
-    if (mcpServerConfig.serverType) {
-        return mcpServerConfig.serverType;
-    }
-
-    // If port is provided, assume HTTP
-    if (mcpServerConfig.port) {
-        return 'http';
-    }
-
-    // Check command for SSE keywords
-    const command = mcpServerConfig.startCommand.toLowerCase();
-    if (command.includes('sse') || command.includes('server-sent')) {
-        return 'sse';
-    }
-
-    // Default to STDIO if no port and no explicit type
-    return 'stdio';
 }

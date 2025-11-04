@@ -149,8 +149,8 @@ class HostedMcpServerModel(BaseModel):
     # Port number (optional, used for HTTP/SSE servers)
     port: Optional[int] = Field(default=None)
 
-    # Server type: 'stdio', 'http', or 'sse' (optional, will be auto-detected)
-    serverType: Optional[str] = Field(default=None)
+    # Server type: 'stdio', 'http', or 'sse'
+    serverType: str
 
     # Container image (optional)
     # If provided without s3Path: use as pre-built container image

@@ -189,6 +189,48 @@ export class McpServerApi extends Construct {
             lambdaRole,
         );
 
+        // Register GET endpoint for listing hosted MCP servers
+        registerAPIEndpoint(
+            this,
+            restApi,
+            lambdaPath,
+            lambdaLayers,
+            {
+                name: 'list_hosted_mcp_servers',
+                resource: 'mcp_server',
+                description: 'List LISA MCP hosted servers',
+                path: 'mcp',
+                method: 'GET',
+                environment: env
+            },
+            getDefaultRuntime(),
+            vpc,
+            securityGroups,
+            authorizer,
+            lambdaRole,
+        );
+
+        // Register GET endpoint for getting a specific hosted MCP server by ID
+        registerAPIEndpoint(
+            this,
+            restApi,
+            lambdaPath,
+            lambdaLayers,
+            {
+                name: 'get_hosted_mcp_server',
+                resource: 'mcp_server',
+                description: 'Get LISA MCP hosted server by ID',
+                path: 'mcp/{serverId}',
+                method: 'GET',
+                environment: env
+            },
+            getDefaultRuntime(),
+            vpc,
+            securityGroups,
+            authorizer,
+            lambdaRole,
+        );
+
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
         // Grant permissions for state machine invocation

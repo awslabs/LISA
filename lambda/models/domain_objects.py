@@ -534,6 +534,7 @@ class IngestionJob(BaseModel):
     error_message: Optional[str] = Field(default=None)
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
+    metadata: Optional[dict] = Field(default=None)
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)

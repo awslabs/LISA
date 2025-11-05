@@ -17,6 +17,33 @@ import { z } from 'zod';
 import { EbsDeviceVolumeType } from './cdk';
 
 /**
+ * Enum for chunking strategy types
+ */
+export enum ChunkingStrategyType {
+    FIXED = 'fixed',
+}
+
+/**
+ * Fixed size chunking strategy schema
+ */
+export const FixedSizeChunkingStrategySchema = z.object({
+    type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
+    size: z.number().min(100).max(10000).default(512).describe('Size of each chunk in characters'),
+    overlap: z.number().min(0).default(51).describe('Overlap between chunks in characters'),
+}).refine(
+    (data) => data.overlap <= data.size / 2,
+    { message: 'overlap must be less than or equal to half of size' }
+);
+
+/**
+ * Union of all chunking strategy types
+ */
+export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
+
+export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
+export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
+
+/**
  * Defines possible states for a vector store deployment.
  * These statuses are used by both create-store and delete-store state machines.
  */
@@ -89,7 +116,9 @@ const triggerSchema = z.object({
 export const RagRepositoryPipeline = z.object({
     chunkSize: z.number().default(512).describe('The size of the chunks used for document segmentation.'),
     chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
+    chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
     embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
+    collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
     s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()
         .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')

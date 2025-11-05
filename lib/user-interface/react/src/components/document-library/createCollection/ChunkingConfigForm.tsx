@@ -23,7 +23,7 @@ import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
 import { ModifyMethod } from '../../../shared/form/form-props';
 
 // Utility function to create default chunking strategy
-function createDefaultChunkingStrategy () {
+function createDefaultChunkingStrategy() {
     return {
         type: ChunkingStrategyType.FIXED,
         size: 512,
@@ -38,7 +38,7 @@ export type ChunkingConfigFormProps = {
     formErrors: any;
 };
 
-export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
+export function ChunkingConfigForm(props: ChunkingConfigFormProps): ReactElement {
     const { item, touchFields, setFields, formErrors } = props;
 
     // Chunking type options
@@ -50,11 +50,6 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
 
     return (
         <SpaceBetween size='s'>
-            <Alert type='info'>
-                Chunking strategy is optional. If not specified, the collection will inherit
-                the chunking strategy from its parent repository.
-            </Alert>
-
             {/* Chunking Type */}
             <FormField
                 label='Chunking Type'

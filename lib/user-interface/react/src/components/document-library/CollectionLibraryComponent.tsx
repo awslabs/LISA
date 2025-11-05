@@ -25,13 +25,16 @@ import {
 } from '@/components/document-library/CollectionTableConfig';
 import { ragApi, useDeleteCollectionMutation, useListAllCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { useLocalStorage } from '@/shared/hooks/use-local-storage';
-import { useNavigate } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useAppDispatch } from '@/config/store';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { CreateCollectionModal } from '@/components/document-library/createCollection/CreateCollectionModal';
 
-export function RepositoryLibraryComponent (): ReactElement {
+interface CollectionLibraryComponentProps {
+    admin?: boolean;
+}
+
+export function CollectionLibraryComponent ({ admin = false }: CollectionLibraryComponentProps): ReactElement {
     const {
         data: allCollections,
         isLoading: fetchingCollections,
@@ -76,7 +79,9 @@ export function RepositoryLibraryComponent (): ReactElement {
     );
 
     const handleSelectionChange = ({ detail }) => {
-        actions.setSelectedItems(detail.selectedItems);
+        if (admin) {
+            actions.setSelectedItems(detail.selectedItems);
+        }
         // Navigation is now handled by onRowClick to separate selection from navigation
     };
 
@@ -118,18 +123,20 @@ export function RepositoryLibraryComponent (): ReactElement {
 
     return (
         <>
-            <CreateCollectionModal
-                visible={createCollectionModalVisible}
-                setVisible={setCreateCollectionModalVisible}
-                isEdit={isEdit}
-                setIsEdit={setIsEdit}
-                selectedItems={collectionProps.selectedItems}
-                setSelectedItems={actions.setSelectedItems}
-            />
+            {admin && (
+                <CreateCollectionModal
+                    visible={createCollectionModalVisible}
+                    setVisible={setCreateCollectionModalVisible}
+                    isEdit={isEdit}
+                    setIsEdit={setIsEdit}
+                    selectedItems={collectionProps.selectedItems}
+                    setSelectedItems={actions.setSelectedItems}
+                />
+            )}
             <Table
                 {...collectionProps}
-                selectedItems={collectionProps.selectedItems}
-                onSelectionChange={handleSelectionChange}
+                selectedItems={admin ? collectionProps.selectedItems: []}
+                onSelectionChange={admin ? handleSelectionChange: undefined}
                 columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
                 columnDisplay={preferences.contentDisplay}
                 stickyColumns={{ first: 1, last: 0 }}
@@ -138,7 +145,7 @@ export function RepositoryLibraryComponent (): ReactElement {
                 items={items}
                 loading={fetchingCollections && !allCollections}
                 loadingText='Loading collections'
-                selectionType='single'
+                selectionType={admin ? 'single': undefined}
                 filter={
                     <TextFilter
                         {...filterProps}
@@ -149,7 +156,7 @@ export function RepositoryLibraryComponent (): ReactElement {
                 header={
                     <Header
                         counter={
-                            collectionProps.selectedItems.length
+                            admin && collectionProps.selectedItems.length
                                 ? `(${collectionProps.selectedItems.length}/${allCollections?.length || 0})`
                                 : `${allCollections?.length || 0}`
                         }
@@ -157,41 +164,47 @@ export function RepositoryLibraryComponent (): ReactElement {
                             <SpaceBetween direction='horizontal' size='xs'>
                                 <Button
                                     onClick={() => {
-                                        actions.setSelectedItems([]);
+                                        if (admin) {
+                                            actions.setSelectedItems([]);
+                                        }
                                         dispatch(ragApi.util.invalidateTags(['collections']));
                                     }}
                                     ariaLabel='Refresh collections'
                                 >
                                     <Icon name='refresh' />
                                 </Button>
-                                <ButtonDropdown
-                                    items={[
-                                        {
-                                            id: 'edit',
-                                            text: 'Edit',
-                                            disabled: collectionProps.selectedItems.length === 0,
-                                        },
-                                        {
-                                            id: 'delete',
-                                            text: 'Delete',
-                                            disabled: collectionProps.selectedItems.length === 0,
-                                        },
-                                    ]}
-                                    loading={isDeleteLoading}
-                                    disabled={collectionProps.selectedItems.length === 0}
-                                    onItemClick={handleAction}
-                                >
-                                    Actions
-                                </ButtonDropdown>
-                                <Button
-                                    variant='primary'
-                                    onClick={() => {
-                                        setIsEdit(false);
-                                        setCreateCollectionModalVisible(true);
-                                    }}
-                                >
-                                    Create Collection
-                                </Button>
+                                {admin && (
+                                    <>
+                                        <ButtonDropdown
+                                            items={[
+                                                {
+                                                    id: 'edit',
+                                                    text: 'Edit',
+                                                    disabled: collectionProps.selectedItems.length === 0,
+                                                },
+                                                {
+                                                    id: 'delete',
+                                                    text: 'Delete',
+                                                    disabled: collectionProps.selectedItems.length === 0,
+                                                },
+                                            ]}
+                                            loading={isDeleteLoading}
+                                            disabled={collectionProps.selectedItems.length === 0}
+                                            onItemClick={handleAction}
+                                        >
+                                            Actions
+                                        </ButtonDropdown>
+                                        <Button
+                                            variant='primary'
+                                            onClick={() => {
+                                                setIsEdit(false);
+                                                setCreateCollectionModalVisible(true);
+                                            }}
+                                        >
+                                            Create Collection
+                                        </Button>
+                                    </>
+                                )}
                             </SpaceBetween>
                         }
                     >
@@ -218,4 +231,4 @@ export function RepositoryLibraryComponent (): ReactElement {
     );
 }
 
-export default RepositoryLibraryComponent;
+export default CollectionLibraryComponent;

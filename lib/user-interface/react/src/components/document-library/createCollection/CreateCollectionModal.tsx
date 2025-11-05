@@ -90,9 +90,9 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         },
         allowedGroups: [],
         metadata: { tags: [], customFields: {} },
-        private: false,
         allowChunkingOverride: true,
-        pipelines: [],
+        // private: false,
+        // pipelines: [],
     };
 
     const dispatch = useAppDispatch();
@@ -150,9 +150,9 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     chunkingStrategy: toSubmit.chunkingStrategy,
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
-                    private: toSubmit.private,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    pipelines: toSubmit.pipelines,
+                    // private: toSubmit.private,
+                    // pipelines: toSubmit.pipelines,
                 });
             } else {
                 resetCreate();
@@ -164,9 +164,9 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     chunkingStrategy: toSubmit.chunkingStrategy,
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
-                    private: toSubmit.private,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    pipelines: toSubmit.pipelines,
+                    // private: toSubmit.private,
+                    // pipelines: toSubmit.pipelines,
                 });
             }
         }
@@ -186,11 +186,11 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     chunkingStrategy: selectedCollection.chunkingStrategy,
                     allowedGroups: selectedCollection.allowedGroups || [],
                     metadata: selectedCollection.metadata || { tags: [], customFields: {} },
-                    private: selectedCollection.private,
                     allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
-                        ? selectedCollection.allowChunkingOverride
-                        : true,
-                    pipelines: selectedCollection.pipelines || [],
+                    ? selectedCollection.allowChunkingOverride
+                    : true,
+                    // private: selectedCollection.private,
+                    // pipelines: selectedCollection.pipelines || [],
                 },
             });
         }

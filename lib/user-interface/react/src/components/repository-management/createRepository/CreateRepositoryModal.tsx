@@ -108,6 +108,25 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
     useEffect(() => {
         const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: RagRepositoryConfig, b: RagRepositoryConfig) => b === null ? a : undefined);
+        
+        // Convert old chunkSize/chunkOverlap fields to new chunkingStrategy structure
+        if (parsedValue.pipelines) {
+            parsedValue.pipelines = parsedValue.pipelines.map((pipeline: any) => {
+                // If old fields exist but no chunkingStrategy, create one
+                if ((pipeline.chunkSize !== undefined || pipeline.chunkOverlap !== undefined) && !pipeline.chunkingStrategy) {
+                    return {
+                        ...pipeline,
+                        chunkingStrategy: {
+                            type: 'fixed' as const,
+                            size: pipeline.chunkSize || 512,
+                            overlap: pipeline.chunkOverlap || 51,
+                        },
+                    };
+                }
+                return pipeline;
+            });
+        }
+        
         if (props.isEdit) {
             setState({ ...state, form: { ...parsedValue } });
         }
@@ -139,8 +158,13 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             title: 'Pipeline Configuration',
             description: 'Create pipelines for ingesting RAG documents from S3',
             content: (
-                <PipelineConfigForm item={state.form.pipelines} setFields={setFields} touchFields={touchFields}
-                    formErrors={errors} isEdit={isEdit} />
+                <PipelineConfigForm 
+                    item={state.form.pipelines} 
+                    setFields={setFields} 
+                    touchFields={touchFields}
+                    formErrors={errors} 
+                    isEdit={isEdit}
+                    repositoryId={state.form.repositoryId} />
             ),
             isOptional: true,
             onEdit: true,

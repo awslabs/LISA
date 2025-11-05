@@ -17,7 +17,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RepositoryLibraryComponent } from './RepositoryLibraryComponent';
+import { CollectionLibraryComponent } from './CollectionLibraryComponent';
 import { renderWithProviders } from '../../test/helpers/render';
 import {
     createMockCollections,
@@ -37,7 +37,7 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-describe('RepositoryLibraryComponent', () => {
+describe('CollectionLibraryComponent', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
@@ -76,7 +76,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -100,7 +100,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -123,7 +123,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -142,7 +142,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -157,7 +157,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -181,7 +181,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -205,7 +205,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -222,7 +222,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -242,7 +242,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -262,7 +262,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 
@@ -283,7 +283,7 @@ describe('RepositoryLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <RepositoryLibraryComponent />
+                    <CollectionLibraryComponent />
                 </MemoryRouter>
             );
 

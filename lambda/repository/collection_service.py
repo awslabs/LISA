@@ -85,6 +85,7 @@ class CollectionService:
 
     def create_collection(
         self,
+        repository: dict,
         collection: RagCollectionConfig,
         username: str,
         is_admin: bool,
@@ -102,6 +103,9 @@ class CollectionService:
         Raises:
             ValidationError: If collection name already exists in repository
         """
+        if repository.get('type') is RepositoryType.BEDROCK_KB:
+            raise ValidationError(f"Unsupported repository type: {RepositoryType.BEDROCK_KB}")
+
         # Check if collection name already exists in this repository
         existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)
         if existing:

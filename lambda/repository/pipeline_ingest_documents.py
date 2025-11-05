@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import boto3
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
+from models.domain_objects import ChunkingStrategy, FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
 from repository.collection_service import CollectionService
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
@@ -65,7 +65,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
             )
         else:
             documents = generate_chunks(job)
-            texts, metadatas = prepare_chunks(documents, job.repository_id)
+            texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
             all_ids = store_chunks_in_vectorstore(
                 texts, metadatas, job.repository_id, job.collection_id, job.embedding_model
             )
@@ -271,15 +271,48 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     return batches
 
 
-def extract_chunk_strategy(pipeline_config: Dict) -> FixedChunkingStrategy:
-    """Extract and validate configuration parameters."""
-    chunk_size = int(pipeline_config["chunkSize"])
-    chunk_overlap = int(pipeline_config["chunkOverlap"])
+def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
+    """
+    Extract and validate chunking strategy from pipeline configuration.
+    
+    Supports both new chunkingStrategy object format and legacy flat fields for backward compatibility.
+    Uses Pydantic model validation to ensure data integrity.
+    
+    Args:
+        pipeline_config: Pipeline configuration dictionary
+        
+    Returns:
+        ChunkingStrategy object (validated Pydantic model)
+        
+    Raises:
+        ValueError: If chunking strategy type is unsupported or validation fails
+    """
+    # Check for new chunkingStrategy object format first
+    if "chunkingStrategy" in pipeline_config and pipeline_config["chunkingStrategy"]:
+        chunking_strategy = pipeline_config["chunkingStrategy"]
+        chunk_type = chunking_strategy.get("type", "fixed")
+        
+        if chunk_type == "fixed":
+            # Use Pydantic model validation for type safety and validation
+            return FixedChunkingStrategy.model_validate(chunking_strategy)
+        else:
+            # Future: Handle other chunking strategy types (semantic, recursive, etc.)
+            raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")
+    
+    # Fall back to legacy flat fields for backward compatibility
+    elif "chunkSize" in pipeline_config and "chunkOverlap" in pipeline_config:
+        chunk_size = int(pipeline_config["chunkSize"])
+        chunk_overlap = int(pipeline_config["chunkOverlap"])
+        # Use Pydantic model for validation
+        return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
+    
+    # Default values if neither format is present
+    else:
+        logger.warning("No chunking strategy found in pipeline config, using defaults")
+        return FixedChunkingStrategy(size=512, overlap=51)
 
-    return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
 
-
-def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict]]:
+def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[List[str], List[Dict]]:
     """Prepare texts and metadata from document chunks."""
     texts = []
     metadatas = []
@@ -287,6 +320,7 @@ def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict
     for doc in docs:
         texts.append(doc.page_content)
         doc.metadata["repository_id"] = repository_id
+        doc.metadata["collection_id"] = collection_id
         metadatas.append(doc.metadata)
 
     return texts, metadatas

@@ -12,6 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any, Dict
 
@@ -22,11 +24,11 @@ class RepositoryType(str, Enum):
     BEDROCK_KB = "bedrock_knowledge_base"
 
     @classmethod
-    def get_type(cls, repository: Dict[str, Any]) -> "RepositoryType":
+    def get_type(cls, repository: Dict[str, Any]) -> RepositoryType:
         return RepositoryType(repository.get("type"))
 
     @classmethod
-    def is_type(cls, repository: Dict[str, Any], repo_type: "RepositoryType") -> bool:
+    def is_type(cls, repository: Dict[str, Any], repo_type: RepositoryType) -> bool:
         return repository.get("type") == repo_type
 
     def calculate_similarity_score(self, score: float) -> float:

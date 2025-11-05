@@ -45,8 +45,6 @@ export function RepositoryLibraryComponent (): ReactElement {
         getDefaultCollectionPreferences()
     );
 
-    const navigate = useNavigate();
-
     // Modal state
     const [createCollectionModalVisible, setCreateCollectionModalVisible] = useState(false);
     const [isEdit, setIsEdit] = useState(false);

@@ -14,9 +14,11 @@
 
 """Defines domain objects for model endpoint interactions."""
 
+import json
 import logging
 import re
 import time
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -599,8 +601,6 @@ class PaginationParams:
             - lastEvaluatedKeyStatus
             - lastEvaluatedKeyCreatedAt
         """
-        import urllib.parse
-
         # Check if any lastEvaluatedKey fields are present
         has_key = any(f"lastEvaluatedKey{field.capitalize()}" in query_params for field in key_fields)
 
@@ -647,9 +647,6 @@ class PaginationParams:
                 }
             }
         """
-        import json
-        import urllib.parse
-
         if "lastEvaluatedKey" not in query_params:
             return None
 

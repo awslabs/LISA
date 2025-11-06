@@ -16,7 +16,7 @@
 
 from typing import Any, Dict, List
 
-from ..domain_objects import GuardrailConfig, GuardrailsConfig, LISAModel
+from ..domain_objects import GuardrailConfig, LISAModel
 
 
 def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
@@ -30,14 +30,7 @@ def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
 
 def create_guardrail_config(item: Dict[str, Any]) -> GuardrailConfig:
     """Create a GuardrailConfig object from a DynamoDB guardrail item."""
-    return GuardrailConfig(
-        guardrail_name=item["guardrail_name"],
-        guardrail_identifier=item["guardrail_identifier"],
-        guardrail_version=item["guardrail_version"],
-        mode=item["mode"],
-        description=item.get("description"),
-        allowed_groups=item.get("allowed_groups", []),
-    )
+    return GuardrailConfig(**item)
 
 
 def attach_guardrails_to_model(model: LISAModel, guardrail_items: List[Dict[str, Any]]) -> None:
@@ -45,21 +38,17 @@ def attach_guardrails_to_model(model: LISAModel, guardrail_items: List[Dict[str,
     if not guardrail_items:
         return
 
-    guardrails_dict: Dict[str, GuardrailConfig] = {}
-    for item in guardrail_items:
-        # Use guardrail_name as the key
-        key = f"guardrail-{item['guardrail_name']}"
-        guardrails_dict[key] = create_guardrail_config(item)
-
-    model.guardrailsConfig = GuardrailsConfig(guardrails=guardrails_dict)
+    model.guardrailsConfig = {
+        f"guardrail-{item['guardrailName']}": create_guardrail_config(item) for item in guardrail_items
+    }
 
 
 def fetch_guardrails_for_model(guardrails_table, model_id: str) -> List[Dict[str, Any]]:
     """Query guardrails table for a specific model ID."""
     guardrails_response = guardrails_table.query(
         IndexName="ModelIdIndex",
-        KeyConditionExpression="model_id = :model_id",
-        ExpressionAttributeValues={":model_id": model_id},
+        KeyConditionExpression="modelId = :modelId",
+        ExpressionAttributeValues={":modelId": model_id},
     )
     return guardrails_response.get("Items", [])
 
@@ -80,10 +69,10 @@ def fetch_all_guardrails(guardrails_table) -> List[Dict[str, Any]]:
 
 
 def group_guardrails_by_model(guardrail_items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group guardrail items by model_id."""
+    """Group guardrail items by modelId."""
     guardrails_by_model: Dict[str, List[Dict[str, Any]]] = {}
     for item in guardrail_items:
-        model_id = item["model_id"]
+        model_id = item["modelId"]
         if model_id not in guardrails_by_model:
             guardrails_by_model[model_id] = []
         guardrails_by_model[model_id].append(item)

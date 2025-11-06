@@ -161,16 +161,13 @@ export const conditionalDeps = (baseDeps, conditions, conditionalDeps) => {
  */
 export const markLastUserMessageAsGuardrailTriggered = (history: LisaChatMessage[]): LisaChatMessage[] => {
     const updatedHistory = [...history];
+    const lastHumanIndex = updatedHistory.findLastIndex((message) => message.type === MessageTypes.HUMAN);
 
-    // Find and mark the last user message
-    for (let i = updatedHistory.length - 1; i >= 0; i--) {
-        if (updatedHistory[i].type === MessageTypes.HUMAN) {
-            updatedHistory[i] = new LisaChatMessage({
-                ...updatedHistory[i],
-                guardrailTriggered: true
-            });
-            break;
-        }
+    if (lastHumanIndex !== -1) {
+        updatedHistory[lastHumanIndex] = new LisaChatMessage({
+            ...updatedHistory[lastHumanIndex],
+            guardrailTriggered: true
+        });
     }
 
     return updatedHistory;

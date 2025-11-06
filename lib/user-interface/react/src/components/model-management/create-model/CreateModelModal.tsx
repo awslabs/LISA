@@ -367,7 +367,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             title: 'Guardrails Configuration',
             description: 'Configure guardrails for your model (optional).',
             content: (
-                <GuardrailsConfig item={state.form.guardrailsConfig || { guardrails: {} }} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+                <GuardrailsConfig item={state.form.guardrailsConfig || {}} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
             onEdit: true,
             forExternalModel: true

@@ -48,29 +48,27 @@ export enum GuardrailMode {
 }
 
 export type IGuardrailConfig = {
-    guardrail_name: string;
-    guardrail_identifier: string;
-    guardrail_version: string;
+    guardrailName: string;
+    guardrailIdentifier: string;
+    guardrailVersion: string;
     mode: GuardrailMode;
     description?: string;
-    allowed_groups: string[];
-    marked_for_deletion?: boolean;
+    allowedGroups: string[];
+    markedForDeletion?: boolean;
 };
 
-export type IGuardrailsConfig = {
-    guardrails: Record<string, IGuardrailConfig>;
-};
+export type IGuardrailsConfig = Record<string, IGuardrailConfig>;
 
 export type IGuardrailResponse = {
-    model_id: string;
-    guardrails_config: IGuardrailsConfig;
+    modelId: string;
+    guardrailsConfig: IGuardrailsConfig;
     success: boolean;
     message: string;
 };
 
 export type IGuardrailRequest = {
-    model_id: string;
-    guardrails_config: IGuardrailsConfig;
+    modelId: string;
+    guardrailsConfig: IGuardrailsConfig;
 };
 
 export type IContainerHealthCheckConfig = {
@@ -248,17 +246,15 @@ export const autoScalingConfigSchema = z.object({
 });
 
 export const guardrailConfigSchema = z.object({
-    guardrail_name: z.string().min(1, {message: 'Guardrail name is required'}).default(''),
-    guardrail_identifier: z.string().min(1, {message: 'Guardrail identifier is required'}).default(''),
-    guardrail_version: z.string().default('DRAFT'),
+    guardrailName: z.string().min(1, {message: 'Guardrail name is required'}).default(''),
+    guardrailIdentifier: z.string().min(1, {message: 'Guardrail identifier is required'}).default(''),
+    guardrailVersion: z.string().default('DRAFT'),
     mode: z.nativeEnum(GuardrailMode).default(GuardrailMode.PRE_CALL),
     description: z.string().optional(),
-    allowed_groups: z.array(z.string()).default([]),
+    allowedGroups: z.array(z.string()).default([]),
 });
 
-export const guardrailsConfigSchema = z.object({
-    guardrails: z.record(z.string(), guardrailConfigSchema).default({}),
-});
+export const guardrailsConfigSchema = z.record(z.string(), guardrailConfigSchema).default({});
 
 export const containerConfigSchema = z.object({
     image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),

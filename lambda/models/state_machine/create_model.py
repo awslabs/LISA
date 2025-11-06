@@ -418,7 +418,7 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
     output_dict = deepcopy(event)
 
     # Check if guardrails config exists
-    if not event.get("guardrailsConfig") or not event["guardrailsConfig"].get("guardrails"):
+    if not event.get("guardrailsConfig") or not event["guardrailsConfig"]:
         logger.info("No guardrails configuration found, skipping guardrail creation")
         output_dict["guardrail_ids"] = []
         return output_dict
@@ -428,7 +428,7 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
 
     try:
         # Process each guardrail in the configuration
-        for guardrail_key, guardrail_config in event["guardrailsConfig"]["guardrails"].items():
+        for guardrail_key, guardrail_config in event["guardrailsConfig"].items():
             logger.info(f"Processing guardrail: {guardrail_key}")
 
             model_id = event["modelId"]
@@ -436,12 +436,12 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
             # Transform guardrail config to LiteLLM format
             litellm_guardrail_config = {
                 "guardrail": {
-                    "guardrail_name": f'{guardrail_config["guardrail_name"]}-{model_id}',
+                    "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
                     "litellm_params": {
                         "guardrail": "bedrock",
                         "mode": str(guardrail_config.get("mode", "pre_call")),
-                        "guardrailIdentifier": guardrail_config["guardrail_identifier"],
-                        "guardrailVersion": guardrail_config.get("guardrail_version", "DRAFT"),
+                        "guardrailIdentifier": guardrail_config["guardrailIdentifier"],
+                        "guardrailVersion": guardrail_config.get("guardrailVersion", "DRAFT"),
                         "default_on": False,
                     },
                     "guardrail_info": {"description": guardrail_config.get("description", "")},
@@ -449,7 +449,7 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
             }
 
             # Create guardrail in LiteLLM
-            logger.info(f"Creating guardrail in LiteLLM: {guardrail_config['guardrail_name']}")
+            logger.info(f"Creating guardrail in LiteLLM: {guardrail_config['guardrailName']}")
             litellm_response = litellm_client.create_guardrail(litellm_guardrail_config)
 
             # Extract LiteLLM guardrail ID from response
@@ -462,14 +462,14 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
 
             # Create guardrail entry for DynamoDB
             guardrail_entry = GuardrailsTableEntry(
-                guardrail_id=litellm_guardrail_id,
-                model_id=model_id,
-                guardrail_name=guardrail_config["guardrail_name"],
-                guardrail_identifier=guardrail_config["guardrail_identifier"],
-                guardrail_version=guardrail_config.get("guardrail_version", "DRAFT"),
-                mode=str(guardrail_config.get("mode", "pre_call")),
+                guardrailId=litellm_guardrail_id,
+                modelId=model_id,
+                guardrailName=guardrail_config["guardrailName"],
+                guardrailIdentifier=guardrail_config["guardrailIdentifier"],
+                guardrailVersion=guardrail_config.get("guardrailVersion", "DRAFT"),
+                mode=guardrail_config.get("mode", "pre_call"),
                 description=guardrail_config.get("description"),
-                allowed_groups=guardrail_config.get("allowed_groups", []),
+                allowedGroups=guardrail_config.get("allowedGroups", []),
             )
 
             # Store in DynamoDB
@@ -480,12 +480,12 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
             created_guardrails.append(
                 {
                     "guardrail_id": litellm_guardrail_id,
-                    "guardrail_name": guardrail_config["guardrail_name"],
+                    "guardrail_name": guardrail_config["guardrailName"],
                 }
             )
 
             logger.info(
-                f"Successfully created guardrail: {guardrail_config['guardrail_name']} with ID: {litellm_guardrail_id}"
+                f"Successfully created guardrail: {guardrail_config['guardrailName']} with ID: {litellm_guardrail_id}"
             )
 
     except Exception as e:

@@ -99,19 +99,19 @@ def guardrails_table(dynamodb):
     table = dynamodb.create_table(
         TableName="guardrails-table",
         KeySchema=[
-            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
-            {"AttributeName": "model_id", "KeyType": "RANGE"},
+            {"AttributeName": "guardrailId", "KeyType": "HASH"},
+            {"AttributeName": "modelId", "KeyType": "RANGE"},
         ],
         AttributeDefinitions=[
-            {"AttributeName": "guardrail_id", "AttributeType": "S"},
-            {"AttributeName": "model_id", "AttributeType": "S"},
+            {"AttributeName": "guardrailId", "AttributeType": "S"},
+            {"AttributeName": "modelId", "AttributeType": "S"},
         ],
         GlobalSecondaryIndexes=[
             {
                 "IndexName": "ModelIdIndex",
                 "KeySchema": [
-                    {"AttributeName": "model_id", "KeyType": "HASH"},
-                    {"AttributeName": "guardrail_id", "KeyType": "RANGE"},
+                    {"AttributeName": "modelId", "KeyType": "HASH"},
+                    {"AttributeName": "guardrailId", "KeyType": "RANGE"},
                 ],
                 "Projection": {"ProjectionType": "ALL"},
             }

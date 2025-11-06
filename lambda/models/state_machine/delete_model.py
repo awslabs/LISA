@@ -100,8 +100,8 @@ def handle_delete_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
         # Get all guardrails for this model from DynamoDB
         response = guardrails_table.query(
             IndexName="ModelIdIndex",
-            KeyConditionExpression="model_id = :model_id",
-            ExpressionAttributeValues={":model_id": model_id},
+            KeyConditionExpression="modelId = :modelId",
+            ExpressionAttributeValues={":modelId": model_id},
         )
 
         guardrails_to_delete = response.get("Items", [])
@@ -115,8 +115,8 @@ def handle_delete_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
 
         # Delete each guardrail from both LiteLLM and DynamoDB
         for guardrail in guardrails_to_delete:
-            guardrail_id = guardrail["guardrail_id"]
-            guardrail_name = guardrail["guardrail_name"]
+            guardrail_id = guardrail["guardrailId"]
+            guardrail_name = guardrail["guardrailName"]
 
             try:
                 logger.info(f"Deleting guardrail from LiteLLM: {guardrail_name} (ID: {guardrail_id})")
@@ -125,7 +125,7 @@ def handle_delete_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
 
                 logger.info(f"Deleting guardrail from DynamoDB: {guardrail_name} (ID: {guardrail_id})")
                 # Delete from DynamoDB
-                guardrails_table.delete_item(Key={"guardrail_id": guardrail_id, "model_id": model_id})
+                guardrails_table.delete_item(Key={"guardrailId": guardrail_id, "modelId": model_id})
 
                 deleted_guardrails.append(
                     {"guardrail_id": guardrail_id, "guardrail_name": guardrail_name, "action": "deleted"}

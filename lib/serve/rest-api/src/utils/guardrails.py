@@ -46,8 +46,8 @@ async def get_model_guardrails(model_id: str) -> List[Dict[str, Any]]:
         # Query using the ModelIdIndex GSI
         response = guardrails_table.query(
             IndexName="ModelIdIndex",
-            KeyConditionExpression="model_id = :model_id",
-            ExpressionAttributeValues={":model_id": model_id},
+            KeyConditionExpression="modelId = :modelId",
+            ExpressionAttributeValues={":modelId": model_id},
         )
 
         guardrails = response.get("Items", [])
@@ -56,50 +56,6 @@ async def get_model_guardrails(model_id: str) -> List[Dict[str, Any]]:
 
     except Exception as e:
         logger.error(f"Error fetching guardrails for model {model_id}: {e}")
-        return []
-
-
-def extract_user_groups_from_jwt(jwt_data: Optional[Dict[str, Any]]) -> List[str]:
-    """
-    Extract user groups from JWT data using the JWT_GROUPS_PROP environment variable.
-
-    This follows the same property path traversal logic as in auth.py's is_user_in_group() function.
-
-    Parameters
-    ----------
-    jwt_data : Optional[Dict[str, Any]]
-        JWT data from authentication. None if user authenticated via API token.
-
-    Returns
-    -------
-    List[str]
-        List of groups the user belongs to. Empty list if no JWT data or groups not found.
-    """
-    if jwt_data is None:
-        # API token users have no JWT, treat as having no group restrictions
-        return []
-
-    jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
-    if not jwt_groups_property:
-        logger.warning("JWT_GROUPS_PROP environment variable not set")
-        return []
-
-    # Traverse the property path to find groups
-    props = jwt_groups_property.split(".")
-    current_node = jwt_data
-
-    for prop in props:
-        if isinstance(current_node, dict) and prop in current_node:
-            current_node = current_node[prop]
-        else:
-            logger.debug(f"Groups property path '{jwt_groups_property}' not found in JWT data")
-            return []
-
-    # current_node should now be the groups list
-    if isinstance(current_node, list):
-        return current_node
-    else:
-        logger.warning(f"Expected list of groups but got {type(current_node)}")
         return []
 
 
@@ -131,14 +87,14 @@ def get_applicable_guardrails(user_groups: List[str], guardrails: List[Dict[str,
 
     for guardrail in guardrails:
         # Skip guardrails marked for deletion
-        if guardrail.get("marked_for_deletion", False):
+        if guardrail.get("markedForDeletion", False):
             continue
 
-        allowed_groups = guardrail.get("allowed_groups", [])
-        guardrail_name = guardrail.get("guardrail_name")
+        allowed_groups = guardrail.get("allowedGroups", [])
+        guardrail_name = guardrail.get("guardrailName")
 
         if not guardrail_name:
-            logger.warning(f"Guardrail missing guardrail_name field: {guardrail}")
+            logger.warning(f"Guardrail missing guardrailName field: {guardrail}")
             continue
 
         # Construct the full LiteLLM guardrail name (matches format used in create_model.py)

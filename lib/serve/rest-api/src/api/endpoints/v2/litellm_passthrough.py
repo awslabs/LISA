@@ -26,12 +26,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from ....auth import Authorizer
+from ....auth import Authorizer, extract_user_groups_from_jwt
 from ....utils.guardrails import (
     create_guardrail_json_response,
     create_guardrail_streaming_response,
     extract_guardrail_response,
-    extract_user_groups_from_jwt,
     get_applicable_guardrails,
     get_model_guardrails,
     is_guardrail_violation,
@@ -89,6 +88,94 @@ secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REG
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dict) -> None:
+    """
+    Apply guardrails to a chat completion request.
+
+    This function modifies the params dict in-place, adding applicable guardrails
+    based on the user's group membership and the model's guardrail configuration.
+
+    Args:
+        params: The request parameters dict to modify
+        model_id: The model ID to get guardrails for
+        jwt_data: JWT data containing user information
+
+    Raises:
+        No exceptions are raised - errors are logged and the request continues
+    """
+    try:
+        # Get guardrails for this model
+        guardrails = await get_model_guardrails(model_id)
+
+        if not guardrails:
+            return
+
+        # Extract user groups from JWT
+        user_groups = extract_user_groups_from_jwt(jwt_data)
+
+        # Determine which guardrails apply to this user
+        applicable_guardrail_names = get_applicable_guardrails(user_groups, guardrails, model_id)
+
+        # Add guardrails to request if any apply
+        if applicable_guardrail_names:
+            params["guardrails"] = applicable_guardrail_names
+            logger.info(f"Applying guardrails to model {model_id}: {applicable_guardrail_names}")
+
+    except Exception as e:
+        logger.error(f"Error applying guardrails for model {model_id}: {e}")
+        # Continue with request even if guardrails fail to apply
+
+
+def handle_guardrail_violation_response(
+    response: requests.Response, model_id: str, params: dict, is_streaming: bool
+) -> Response | None:
+    """
+    Handle guardrail violation errors in LiteLLM responses.
+
+    Checks if a 400 error response contains a guardrail violation and converts it
+    into an appropriate format (streaming or non-streaming).
+
+    Args:
+        response: The HTTP response from LiteLLM
+        model_id: The model ID from the request
+        params: The original request parameters
+        is_streaming: Whether this is a streaming request
+
+    Returns:
+        Response object if a guardrail violation was handled, None otherwise
+    """
+    if response.status_code != 400:
+        return None
+
+    try:
+        error_response = response.json()
+        error_msg = error_response.get("error", {}).get("message", "")
+
+        if not is_guardrail_violation(error_msg):
+            return None
+
+        logger.info("Guardrail policy violated")
+
+        guardrail_response = extract_guardrail_response(error_msg)
+        if not guardrail_response:
+            return None
+
+        created = int(error_response.get("created", 0) if is_streaming else params.get("created", 0))
+
+        if is_streaming:
+            # Return as streaming response
+            return StreamingResponse(
+                create_guardrail_streaming_response(guardrail_response, model_id, created), status_code=200
+            )
+        else:
+            # Return as a normal completion response
+            return create_guardrail_json_response(guardrail_response, model_id, created)
+
+    except Exception as e:
+        logger.error(f"Error handling guardrail violation: {e}")
+        return None
 
 
 def generate_response(iterator: Iterator[Union[str, bytes]]) -> Iterator[str]:
@@ -174,6 +261,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     authorizer = Authorizer()
     require_admin = api_path not in OPENAI_ROUTES
+    jwt_data = await authorizer.authenticate_request(request)
     if not await authorizer.can_access(request, require_admin):
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough")
 
@@ -194,52 +282,16 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     if api_path in ["chat/completions", "v1/chat/completions"]:
         model_id = params.get("model")
         if model_id:
-            try:
-                # Get guardrails for this model
-                guardrails = await get_model_guardrails(model_id)
-
-                if guardrails:
-                    # Get JWT data to extract user groups
-                    jwt_data = await authorizer.authenticate_request(request)
-
-                    # Extract user groups from JWT
-                    user_groups = extract_user_groups_from_jwt(jwt_data)
-
-                    # Determine which guardrails apply to this user
-                    applicable_guardrail_names = get_applicable_guardrails(user_groups, guardrails, model_id)
-
-                    # Add guardrails to request if any apply
-                    if applicable_guardrail_names:
-                        params["guardrails"] = applicable_guardrail_names
-                        logger.info(f"Applying guardrails to model {model_id}: {applicable_guardrail_names}")
-            except Exception as e:
-                logger.error(f"Error applying guardrails for model {model_id}: {e}")
-                # Continue with request even if guardrails fail to apply
+            await apply_guardrails_to_request(params, model_id, jwt_data)
 
     if params.get("stream", False):  # if a streaming request
         response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
 
-        # Check if we got a 400 error (guardrail violation returns non-streaming error even with stream=True)
-        if response.status_code == 400:
-            try:
-                # Read the full response as JSON
-                error_response = response.json()
-                error_msg = error_response.get("error", {}).get("message", "")
-
-                if is_guardrail_violation(error_msg):
-                    logger.info("Guardrail policy violated in streaming request")
-
-                    guardrail_response = extract_guardrail_response(error_msg)
-                    if guardrail_response:
-                        model_id = params.get("model", "")
-                        created = int(error_response.get("created", 0))
-
-                        # Return as streaming response
-                        return StreamingResponse(
-                            create_guardrail_streaming_response(guardrail_response, model_id, created), status_code=200
-                        )
-            except Exception as e:
-                logger.error(f"Error handling streaming guardrail violation: {e}")
+        # Check for guardrail violations
+        model_id = params.get("model", "")
+        guardrail_response = handle_guardrail_violation_response(response, model_id, params, is_streaming=True)
+        if guardrail_response:
+            return guardrail_response
 
         # Normal streaming (no error or non-guardrail error)
         # Use guardrail-aware generator for chat/completions endpoints
@@ -254,24 +306,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     else:  # not a streaming request
         response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers)
 
-        # Handle guardrail violation errors
-        if response.status_code == 400:
-            try:
-                error_response = response.json()
-                error_msg = error_response.get("error", {}).get("message", "")
-
-                if is_guardrail_violation(error_msg):
-                    logger.info("Guardrail policy violated")
-
-                    guardrail_response = extract_guardrail_response(error_msg)
-                    if guardrail_response:
-                        model_id = params.get("model", "")
-                        created = int(params.get("created", 0))
-
-                        # Return as a normal completion response
-                        return create_guardrail_json_response(guardrail_response, model_id, created)
-            except Exception as e:
-                logger.error(f"Error handling guardrail violation: {e}")
+        # Check for guardrail violations
+        model_id = params.get("model", "")
+        guardrail_response = handle_guardrail_violation_response(response, model_id, params, is_streaming=False)
+        if guardrail_response:
+            return guardrail_response
 
         if response.status_code != 200:
             logger.error(f"LiteLLM error response: {response.text}")

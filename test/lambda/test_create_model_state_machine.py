@@ -208,12 +208,12 @@ def guardrails_table(dynamodb):
     table = dynamodb.create_table(
         TableName="guardrails-table",
         KeySchema=[
-            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
-            {"AttributeName": "model_id", "KeyType": "RANGE"},
+            {"AttributeName": "guardrailId", "KeyType": "HASH"},
+            {"AttributeName": "modelId", "KeyType": "RANGE"},
         ],
         AttributeDefinitions=[
-            {"AttributeName": "guardrail_id", "AttributeType": "S"},
-            {"AttributeName": "model_id", "AttributeType": "S"},
+            {"AttributeName": "guardrailId", "AttributeType": "S"},
+            {"AttributeName": "modelId", "AttributeType": "S"},
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
@@ -714,15 +714,13 @@ def test_handle_add_guardrails_to_litellm_with_guardrails(model_table, guardrail
     event = {
         "modelId": "test-model",
         "guardrailsConfig": {
-            "guardrails": {
-                "guardrail1": {
-                    "guardrail_name": "test-guardrail",
-                    "guardrail_identifier": "test-identifier",
-                    "guardrail_version": "1",
-                    "mode": "pre_call",
-                    "description": "Test guardrail",
-                    "allowed_groups": ["group1"],
-                }
+            "guardrail1": {
+                "guardrailName": "test-guardrail",
+                "guardrailIdentifier": "test-identifier",
+                "guardrailVersion": "1",
+                "mode": "pre_call",
+                "description": "Test guardrail",
+                "allowedGroups": ["group1"],
             }
         },
     }
@@ -737,8 +735,8 @@ def test_handle_add_guardrails_to_litellm_with_guardrails(model_table, guardrail
         assert len(result["created_guardrails"]) == 1
 
         # Verify guardrail was stored in DynamoDB
-        item = guardrails_table.get_item(Key={"guardrail_id": "test-guardrail-id", "model_id": "test-model"})["Item"]
-        assert item["guardrail_name"] == "test-guardrail"
+        item = guardrails_table.get_item(Key={"guardrailId": "test-guardrail-id", "modelId": "test-model"})["Item"]
+        assert item["guardrailName"] == "test-guardrail"
 
 
 def test_handle_add_guardrails_to_litellm_no_guardrails(lambda_context):

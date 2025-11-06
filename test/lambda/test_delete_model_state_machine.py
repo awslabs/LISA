@@ -156,17 +156,17 @@ def guardrails_table(dynamodb):
     table = dynamodb.create_table(
         TableName="guardrails-table",
         KeySchema=[
-            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
-            {"AttributeName": "model_id", "KeyType": "RANGE"},
+            {"AttributeName": "guardrailId", "KeyType": "HASH"},
+            {"AttributeName": "modelId", "KeyType": "RANGE"},
         ],
         AttributeDefinitions=[
-            {"AttributeName": "guardrail_id", "AttributeType": "S"},
-            {"AttributeName": "model_id", "AttributeType": "S"},
+            {"AttributeName": "guardrailId", "AttributeType": "S"},
+            {"AttributeName": "modelId", "AttributeType": "S"},
         ],
         GlobalSecondaryIndexes=[
             {
                 "IndexName": "ModelIdIndex",
-                "KeySchema": [{"AttributeName": "model_id", "KeyType": "HASH"}],
+                "KeySchema": [{"AttributeName": "modelId", "KeyType": "HASH"}],
                 "Projection": {"ProjectionType": "ALL"},
                 "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             }
@@ -485,21 +485,21 @@ def test_handle_monitor_delete_stack_cloudformation_error(sample_event, lambda_c
 
 def test_handle_delete_guardrails_with_guardrails(guardrails_table, lambda_context):
     """Test deleting guardrails associated with a model."""
-    # Set up guardrails
+    # Set up guardrails with camelCase field names
     guardrail1 = {
-        "guardrail_id": "guardrail-1",
-        "model_id": "test-model",
-        "guardrail_name": "test-guardrail-1",
-        "guardrail_identifier": "identifier-1",
-        "guardrail_version": "1",
+        "guardrailId": "guardrail-1",
+        "modelId": "test-model",
+        "guardrailName": "test-guardrail-1",
+        "guardrailIdentifier": "identifier-1",
+        "guardrailVersion": "1",
         "mode": "pre_call",
     }
     guardrail2 = {
-        "guardrail_id": "guardrail-2",
-        "model_id": "test-model",
-        "guardrail_name": "test-guardrail-2",
-        "guardrail_identifier": "identifier-2",
-        "guardrail_version": "1",
+        "guardrailId": "guardrail-2",
+        "modelId": "test-model",
+        "guardrailName": "test-guardrail-2",
+        "guardrailIdentifier": "identifier-2",
+        "guardrailVersion": "1",
         "mode": "post_call",
     }
     guardrails_table.put_item(Item=guardrail1)
@@ -516,8 +516,8 @@ def test_handle_delete_guardrails_with_guardrails(guardrails_table, lambda_conte
         # Verify guardrails were deleted from DynamoDB
         response = guardrails_table.query(
             IndexName="ModelIdIndex",
-            KeyConditionExpression="model_id = :model_id",
-            ExpressionAttributeValues={":model_id": "test-model"},
+            KeyConditionExpression="modelId = :modelId",
+            ExpressionAttributeValues={":modelId": "test-model"},
         )
         assert len(response.get("Items", [])) == 0
 

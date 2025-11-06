@@ -230,17 +230,17 @@ def guardrails_table(dynamodb):
     table = dynamodb.create_table(
         TableName="guardrails-table",
         KeySchema=[
-            {"AttributeName": "guardrail_id", "KeyType": "HASH"},
-            {"AttributeName": "model_id", "KeyType": "RANGE"},
+            {"AttributeName": "guardrailId", "KeyType": "HASH"},
+            {"AttributeName": "modelId", "KeyType": "RANGE"},
         ],
         AttributeDefinitions=[
-            {"AttributeName": "guardrail_id", "AttributeType": "S"},
-            {"AttributeName": "model_id", "AttributeType": "S"},
+            {"AttributeName": "guardrailId", "AttributeType": "S"},
+            {"AttributeName": "modelId", "AttributeType": "S"},
         ],
         GlobalSecondaryIndexes=[
             {
                 "IndexName": "ModelIdIndex",
-                "KeySchema": [{"AttributeName": "model_id", "KeyType": "HASH"}],
+                "KeySchema": [{"AttributeName": "modelId", "KeyType": "HASH"}],
                 "Projection": {"ProjectionType": "ALL"},
                 "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             }
@@ -791,16 +791,16 @@ def test_edge_cases_and_json_error(model_table, lambda_context):
 
 def test_handle_update_guardrails(model_table, guardrails_table, lambda_context):
     """Test updating guardrails for a model."""
-    # Set up existing guardrail
+    # Set up existing guardrail with camelCase field names
     existing_guardrail = {
-        "guardrail_id": "existing-guardrail-id",
-        "model_id": "test-model",
-        "guardrail_name": "existing-guardrail",
-        "guardrail_identifier": "old-identifier",
-        "guardrail_version": "1",
+        "guardrailId": "existing-guardrail-id",
+        "modelId": "test-model",
+        "guardrailName": "existing-guardrail",
+        "guardrailIdentifier": "old-identifier",
+        "guardrailVersion": "1",
         "mode": "pre_call",
         "description": "Old description",
-        "allowed_groups": ["group1"],
+        "allowedGroups": ["group1"],
     }
     guardrails_table.put_item(Item=existing_guardrail)
 
@@ -808,24 +808,22 @@ def test_handle_update_guardrails(model_table, guardrails_table, lambda_context)
         "model_id": "test-model",
         "update_payload": {
             "guardrailsConfig": {
-                "guardrails": {
-                    "guardrail1": {
-                        "guardrail_name": "existing-guardrail",
-                        "guardrail_identifier": "new-identifier",
-                        "guardrail_version": "2",
-                        "mode": "post_call",
-                        "description": "Updated description",
-                        "allowed_groups": ["group2"],
-                    },
-                    "guardrail2": {
-                        "guardrail_name": "new-guardrail",
-                        "guardrail_identifier": "new-identifier",
-                        "guardrail_version": "1",
-                        "mode": "pre_call",
-                        "description": "New guardrail",
-                        "allowed_groups": ["group1"],
-                    },
-                }
+                "guardrail1": {
+                    "guardrailName": "existing-guardrail",
+                    "guardrailIdentifier": "new-identifier",
+                    "guardrailVersion": "2",
+                    "mode": "post_call",
+                    "description": "Updated description",
+                    "allowedGroups": ["group2"],
+                },
+                "guardrail2": {
+                    "guardrailName": "new-guardrail",
+                    "guardrailIdentifier": "new-identifier",
+                    "guardrailVersion": "1",
+                    "mode": "pre_call",
+                    "description": "New guardrail",
+                    "allowedGroups": ["group1"],
+                },
             }
         },
     }

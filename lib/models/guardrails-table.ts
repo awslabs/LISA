@@ -40,11 +40,11 @@ export class GuardrailsTable extends Construct {
         // Create the guardrails table with composite key structure
         this.table = new Table(this, 'GuardrailsTable', {
             partitionKey: {
-                name: 'guardrail_id',
+                name: 'guardrailId',
                 type: AttributeType.STRING
             },
             sortKey: {
-                name: 'model_id',
+                name: 'modelId',
                 type: AttributeType.STRING
             },
             billingMode: BillingMode.PAY_PER_REQUEST,
@@ -55,11 +55,11 @@ export class GuardrailsTable extends Construct {
         this.table.addGlobalSecondaryIndex({
             indexName: 'ModelIdIndex',
             partitionKey: {
-                name: 'model_id',
+                name: 'modelId',
                 type: AttributeType.STRING
             },
             sortKey: {
-                name: 'guardrail_id',
+                name: 'guardrailId',
                 type: AttributeType.STRING
             },
         });

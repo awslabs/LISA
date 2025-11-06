@@ -313,10 +313,17 @@ export class LisaServeApplicationConstruct extends Construct {
             this.modelsPs.grantRead(serveRole);
         });
 
+        // Get guardrails table name from parameter store
+        const guardrailsTableName = StringParameter.valueForStringParameter(
+            scope,
+            `${config.deploymentPrefix}/guardrailsTableName`
+        );
+
         // Add parameter as container environment variable for both RestAPI and RagAPI
         restApi.containers.forEach((container) => {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+            container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
         });
         restApi.node.addDependency(this.modelsPs);
         restApi.node.addDependency(litellmDbConnectionInfoPs);
@@ -352,12 +359,29 @@ export class LisaServeApplicationConstruct extends Construct {
             ]
         });
 
+        // Grant DynamoDB permissions for guardrails table
+        const guardrails_permissions = new Policy(scope, 'GuardrailsTablePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:Query',
+                        'dynamodb:GetItem',
+                    ],
+                    resources: [
+                        `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${guardrailsTableName}/*`,
+                    ],
+                }),
+            ]
+        });
+
         // Grant SSM parameter read access and attach invocation permissions
         const restRole = restApi.taskRoles[ECSTasks.REST];
         if (restRole) {
             this.modelsPs.grantRead(restRole);
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
+            restRole.attachInlinePolicy(guardrails_permissions);
         }
     }
 

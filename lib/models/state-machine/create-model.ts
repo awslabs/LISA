@@ -284,7 +284,7 @@ export class CreateModelStateMachine extends Construct {
         // Check for guardrails and add them if present
         addModelToLitellm.next(checkGuardrailsChoice);
         checkGuardrailsChoice
-            .when(Condition.isPresent('$.guardrailsConfig.guardrails'), addGuardrailsToLitellm)
+            .when(Condition.isPresent('$.guardrailsConfig'), addGuardrailsToLitellm)
             .otherwise(successState);
 
         // terminal states

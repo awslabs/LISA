@@ -88,19 +88,17 @@ class GuardrailMode(str, Enum):
 class GuardrailConfig(BaseModel):
     """Defines configuration for a single guardrail."""
 
-    guardrail_name: str = Field(min_length=1)
-    guardrail_identifier: str = Field(min_length=1)
-    guardrail_version: str = Field(default="DRAFT")
+    guardrailName: str = Field(min_length=1)
+    guardrailIdentifier: str = Field(min_length=1)
+    guardrailVersion: str = Field(default="DRAFT")
     mode: GuardrailMode = Field(default=GuardrailMode.PRE_CALL)
     description: Optional[str] = None
-    allowed_groups: List[str] = Field(default_factory=list)
-    marked_for_deletion: Optional[bool] = Field(default=False)
+    allowedGroups: List[str] = Field(default_factory=list)
+    markedForDeletion: Optional[bool] = Field(default=False)
 
 
-class GuardrailsConfig(BaseModel):
-    """Defines configuration for multiple guardrails per model."""
-
-    guardrails: Dict[str, GuardrailConfig] = Field(default_factory=dict)
+# Type alias for guardrails configuration - maps guardrail IDs to their configs
+GuardrailsConfig: TypeAlias = Dict[str, GuardrailConfig]
 
 
 class GuardrailRequest(BaseModel):
@@ -122,16 +120,16 @@ class GuardrailResponse(BaseModel):
 class GuardrailsTableEntry(BaseModel):
     """Represents a guardrail entry in DynamoDB table."""
 
-    guardrail_id: str  # Partition key
-    model_id: str  # Sort key
-    guardrail_name: str
-    guardrail_identifier: str
-    guardrail_version: str
+    guardrailId: str  # Partition key
+    modelId: str  # Sort key
+    guardrailName: str
+    guardrailIdentifier: str
+    guardrailVersion: str
     mode: str
     description: Optional[str]
-    allowed_groups: List[str]
-    created_date: int = Field(default_factory=lambda: int(time.time() * 1000))
-    last_modified_date: int = Field(default_factory=lambda: int(time.time() * 1000))
+    allowedGroups: List[str]
+    createdDate: int = Field(default_factory=lambda: int(time.time() * 1000))
+    lastModifiedDate: int = Field(default_factory=lambda: int(time.time() * 1000))
 
 
 class MetricConfig(BaseModel):
@@ -291,6 +289,7 @@ class LISAModel(BaseModel):
     streaming: bool
     features: Optional[List[ModelFeature]] = None
     allowedGroups: Optional[List[str]] = None
+    guardrailsConfig: Optional[GuardrailsConfig] = None
 
 
 class ApiResponseBase(BaseModel):

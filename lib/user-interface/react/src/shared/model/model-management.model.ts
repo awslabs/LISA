@@ -54,22 +54,21 @@ export type IGuardrailConfig = {
     mode: GuardrailMode;
     description?: string;
     allowedGroups: string[];
+    markedForDeletion?: boolean;
 };
 
-export type IGuardrailsConfig = {
-    guardrails: Record<string, IGuardrailConfig>;
-};
+export type IGuardrailsConfig = Record<string, IGuardrailConfig>;
 
 export type IGuardrailResponse = {
-    model_id: string;
-    guardrails_config: IGuardrailsConfig;
+    modelId: string;
+    guardrailsConfig: IGuardrailsConfig;
     success: boolean;
     message: string;
 };
 
 export type IGuardrailRequest = {
-    model_id: string;
-    guardrails_config: IGuardrailsConfig;
+    modelId: string;
+    guardrailsConfig: IGuardrailsConfig;
 };
 
 export type IContainerHealthCheckConfig = {
@@ -255,9 +254,7 @@ export const guardrailConfigSchema = z.object({
     allowedGroups: z.array(z.string()).default([]),
 });
 
-export const guardrailsConfigSchema = z.object({
-    guardrails: z.record(z.string(), guardrailConfigSchema).default({}),
-});
+export const guardrailsConfigSchema = z.record(z.string(), guardrailConfigSchema).default({});
 
 export const containerConfigSchema = z.object({
     image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),

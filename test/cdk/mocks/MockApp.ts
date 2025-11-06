@@ -154,6 +154,7 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaModels',
             authorizer: apiBaseStack.authorizer,
+            guardrailsTable: serveStack.guardrailsTable,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],

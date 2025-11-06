@@ -17,7 +17,7 @@ import os
 from typing import Any, List, Optional
 
 import boto3
-from utilities.common_functions import retry_config, validate_model_access
+from utilities.common_functions import retry_config
 
 from ..domain_objects import (
     DeleteScheduleResponse,
@@ -26,8 +26,8 @@ from ..domain_objects import (
     SchedulingConfig,
     UpdateScheduleResponse,
 )
-from ..exception import InvalidStateTransitionError, ModelNotFoundError
 from .base_handler import BaseApiHandler
+from .utils import get_model_and_validate_access, get_model_and_validate_status
 
 
 class ScheduleBaseHandler(BaseApiHandler):
@@ -50,23 +50,10 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
         is_admin: bool = False,
     ) -> UpdateScheduleResponse:
         """Create or update a schedule for a model"""
-        # Validate model exists and is in correct state
-        model_response = self._model_table.get_item(Key={"model_id": model_id})
-        if "Item" not in model_response:
-            raise ModelNotFoundError(f"Model {model_id} not found")
-
-        model_item = model_response["Item"]
-
-        # Check if user has access to this model based on groups
-        validate_model_access(model_item, model_id, user_groups, is_admin)
-
-        model_status = model_item.get("model_status")
-
-        allowed_statuses = ["InService", "Stopped"]
-        if model_status not in allowed_statuses:
-            raise InvalidStateTransitionError(
-                f"Cannot edit schedule when model is in '{model_status}' state, model must be InService or Stopped."
-            )
+        # Validate model exists, user access, and model status
+        model_item = get_model_and_validate_status(
+            self._model_table, model_id, user_groups=user_groups, is_admin=is_admin
+        )
 
         # Get Auto Scaling Group name from model
         auto_scaling_group = model_item.get("auto_scaling_group")
@@ -112,15 +99,8 @@ class GetScheduleHandler(ScheduleBaseHandler):
         self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
     ) -> GetScheduleResponse:
         """Get current schedule configuration for a model"""
-        # Validate model exists
-        model_response = self._model_table.get_item(Key={"model_id": model_id})
-        if "Item" not in model_response:
-            raise ModelNotFoundError(f"Model {model_id} not found")
-
-        model_item = model_response["Item"]
-
-        # Check if user has access to this model based on groups
-        validate_model_access(model_item, model_id, user_groups, is_admin)
+        # Validate model exists and user access
+        get_model_and_validate_access(self._model_table, model_id, user_groups, is_admin)
 
         # Invoke Schedule Management Lambda
         payload = {"operation": "get", "modelId": model_id}
@@ -153,23 +133,8 @@ class DeleteScheduleHandler(ScheduleBaseHandler):
         self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
     ) -> DeleteScheduleResponse:
         """Delete a schedule for a model"""
-        # Validate model exists
-        model_response = self._model_table.get_item(Key={"model_id": model_id})
-        if "Item" not in model_response:
-            raise ModelNotFoundError(f"Model {model_id} not found")
-
-        model_item = model_response["Item"]
-
-        # Check if user has access to this model based on groups
-        validate_model_access(model_item, model_id, user_groups, is_admin)
-
-        model_status = model_item.get("model_status")
-
-        allowed_statuses = ["InService", "Stopped"]
-        if model_status not in allowed_statuses:
-            raise InvalidStateTransitionError(
-                f"Cannot edit schedule when model is in '{model_status}' state, model must be InService or Stopped."
-            )
+        # Validate model exists, user access, and model status
+        get_model_and_validate_status(self._model_table, model_id, user_groups=user_groups, is_admin=is_admin)
 
         # Invoke Schedule Management Lambda
         payload = {"operation": "delete", "modelId": model_id}
@@ -196,15 +161,8 @@ class GetScheduleStatusHandler(ScheduleBaseHandler):
         self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
     ) -> GetScheduleStatusResponse:
         """Get current schedule status and next scheduled action for a model"""
-        # Validate model exists
-        model_response = self._model_table.get_item(Key={"model_id": model_id})
-        if "Item" not in model_response:
-            raise ModelNotFoundError(f"Model {model_id} not found")
-
-        model_item = model_response["Item"]
-
-        # Check if user has access to this model based on groups
-        validate_model_access(model_item, model_id, user_groups, is_admin)
+        # Validate model exists and user access
+        model_item = get_model_and_validate_access(self._model_table, model_id, user_groups, is_admin)
 
         auto_scaling_config = model_item.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
@@ -227,7 +185,7 @@ class GetScheduleStatusHandler(ScheduleBaseHandler):
             scheduleConfigured=schedule_configured,
             lastScheduleFailed=last_schedule_failed,
             scheduleStatus=status_text,
-            scheduleType=scheduling_config.get("scheduleType", "NONE"),
+            scheduleType=scheduling_config.get("scheduleType"),
             timezone=scheduling_config.get("timezone", "UTC"),
             nextScheduledAction=scheduling_config.get("nextScheduledAction"),
             lastScheduleUpdate=scheduling_config.get("lastScheduleUpdate"),

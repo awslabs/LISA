@@ -180,7 +180,9 @@ class TestUpdateScheduleHandler:
             model_table_resource=mock_model_table,
         )
 
-        with pytest.raises(InvalidStateTransitionError, match="Cannot edit schedule when model is in 'Creating' state"):
+        with pytest.raises(
+            InvalidStateTransitionError, match="Cannot perform operation when model is in 'Creating' state"
+        ):
             handler(model_id="creating-model", schedule_config=sample_schedule_config)
 
     def test_missing_autoscaling_group(
@@ -333,7 +335,9 @@ class TestDeleteScheduleHandler:
             model_table_resource=mock_model_table,
         )
 
-        with pytest.raises(InvalidStateTransitionError, match="Cannot edit schedule when model is in 'Creating' state"):
+        with pytest.raises(
+            InvalidStateTransitionError, match="Cannot perform operation when model is in 'Creating' state"
+        ):
             handler(model_id="creating-model")
 
 
@@ -434,7 +438,7 @@ class TestGetScheduleStatusHandler:
         assert result.scheduleEnabled is False
         assert result.scheduleConfigured is False
         assert result.scheduleStatus == "DISABLED"
-        assert result.scheduleType == "NONE"
+        assert result.scheduleType is None
         assert result.timezone == "UTC"
 
     def test_model_not_found(self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client):

@@ -31,27 +31,6 @@ model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME", "LISAModels"))
 lambda_client = boto3.client("lambda", config=retry_config)
 
 
-# Handler functions for Step Function integration
-def lambda_handler_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for schedule creation in Step Functions"""
-    return handle_schedule_creation(event, context)
-
-
-def lambda_handler_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for schedule update in Step Functions"""
-    return handle_schedule_update(event, context)
-
-
-def lambda_handler_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for schedule cleanup in Step Functions"""
-    return handle_cleanup_schedule(event, context)
-
-
-def lambda_handler_detect_schedule_changes(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for detecting schedule changes in Step Functions"""
-    return detect_schedule_changes(event, context)
-
-
 def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Create Auto Scaling scheduled actions for the model if scheduling is configured"""
     logger.info(f"Processing schedule creation for model: {event.get('modelId')}")
@@ -59,8 +38,8 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
 
     # Only proceed if scheduling is configured
     scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
-    if not scheduling_config or scheduling_config.get("scheduleType") == "NONE":
-        logger.info(f"No scheduling configured for model {event.get('modelId')}")
+    if not scheduling_config:
+        logger.info(f"No scheduling configured for model {event.get('modelId')} - model will run 24/7")
         return output_dict
 
     model_id = event["modelId"]
@@ -244,14 +223,14 @@ def detect_schedule_changes(event: Dict[str, Any], context: Any) -> Dict[str, An
                 output_dict["existing_scheduled_action_arns"] = existing_arns
         else:
             # New schedule for existing model
-            if new_scheduling_config and new_scheduling_config.get("scheduleType") != "NONE":
+            if new_scheduling_config:
                 has_schedule_update = True
                 logger.info(f"New schedule detected for model {model_id}")
 
     except Exception as e:
         logger.warning(f"Could not check existing schedule for {model_id}: {e}")
         # Assume update needed if we can't check
-        if new_scheduling_config and new_scheduling_config.get("scheduleType") != "NONE":
+        if new_scheduling_config:
             has_schedule_update = True
 
     output_dict["has_schedule_update"] = has_schedule_update

@@ -147,10 +147,10 @@ class TestSchedulingConfig:
         assert config.dailySchedule == daily_schedule
 
     def test_none_schedule_type(self):
-        """Test NONE schedule type."""
-        config = SchedulingConfig(scheduleType=ScheduleType.NONE)
+        """Test None schedule type."""
+        config = SchedulingConfig(scheduleType=None)
 
-        assert config.scheduleType == ScheduleType.NONE
+        assert config.scheduleType is None
         assert config.dailySchedule is None
         assert config.weeklySchedule is None
 
@@ -169,10 +169,6 @@ class TestSchedulingConfig:
         # EACH_DAY without weeklySchedule should fail
         with pytest.raises(ValidationError, match="weeklySchedule with at least one day required for EACH_DAY type"):
             SchedulingConfig(scheduleType=ScheduleType.EACH_DAY)
-
-        # NONE with schedules should fail
-        with pytest.raises(ValidationError, match="No schedule configuration allowed for NONE type"):
-            SchedulingConfig(scheduleType=ScheduleType.NONE, dailySchedule=daily_schedule)
 
     def test_timezone_validation(self):
         """Test timezone validation."""

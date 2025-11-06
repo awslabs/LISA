@@ -333,63 +333,6 @@ class TestStateMachineScheduleHandlers:
         assert call_args[1]["ExpressionAttributeValues"][":failed"] is True
 
 
-class TestScheduleHandlerLambdaWrappers:
-    """Test the lambda handler wrapper functions."""
-
-    def test_lambda_handler_schedule_creation(self, lambda_context):
-        """Test lambda handler for schedule creation."""
-        from models.state_machine.schedule_handlers import lambda_handler_schedule_creation
-
-        # Mock event
-        event = {"modelId": "test-model", "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}}
-
-        # Execute
-        result = lambda_handler_schedule_creation(event, lambda_context)
-
-        # Verify result (should pass through for NONE schedule type)
-        assert result["modelId"] == "test-model"
-
-    def test_lambda_handler_schedule_update(self, lambda_context):
-        """Test lambda handler for schedule update."""
-        from models.state_machine.schedule_handlers import lambda_handler_schedule_update
-
-        # Mock event
-        event = {"modelId": "test-model", "has_schedule_update": False}
-
-        # Execute
-        result = lambda_handler_schedule_update(event, lambda_context)
-
-        # Verify result
-        assert result["modelId"] == "test-model"
-
-    def test_lambda_handler_cleanup_schedule(self, lambda_context):
-        """Test lambda handler for schedule cleanup."""
-        from models.state_machine.schedule_handlers import lambda_handler_cleanup_schedule
-
-        # Mock event
-        event = {"modelId": "test-model"}
-
-        # Execute
-        result = lambda_handler_cleanup_schedule(event, lambda_context)
-
-        # Verify result
-        assert result["modelId"] == "test-model"
-
-    def test_lambda_handler_detect_schedule_changes(self, lambda_context):
-        """Test lambda handler for detecting schedule changes."""
-        from models.state_machine.schedule_handlers import lambda_handler_detect_schedule_changes
-
-        # Mock event
-        event = {"modelId": "test-model", "autoScalingConfig": {"scheduling": {"scheduleType": "NONE"}}}
-
-        # Execute
-        result = lambda_handler_detect_schedule_changes(event, lambda_context)
-
-        # Verify result
-        assert result["modelId"] == "test-model"
-        assert "has_schedule_update" in result
-
-
 class TestScheduleCreationEdgeCases:
     """Test edge cases for schedule creation."""
 

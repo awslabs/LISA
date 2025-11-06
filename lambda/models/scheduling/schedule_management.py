@@ -95,7 +95,7 @@ def update_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
             logger.info(f"Created {len(scheduled_action_arns)} new scheduled actions for model {model_id}")
         else:
             # If no schedule config provided, disable scheduling
-            scheduling_config = SchedulingConfig(scheduleType=ScheduleType.NONE)
+            scheduling_config = None
 
         # Update model record
         update_model_schedule_record(
@@ -136,10 +136,7 @@ def delete_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
             logger.info(f"Deleted {len(existing_arns)} scheduled actions for model {model_id}")
 
         # Update model record to disable scheduling
-        scheduling_config = SchedulingConfig(scheduleType=ScheduleType.NONE)
-        update_model_schedule_record(
-            model_id=model_id, scheduling_config=scheduling_config, scheduled_action_arns=[], enabled=False
-        )
+        update_model_schedule_record(model_id=model_id, scheduling_config=None, scheduled_action_arns=[], enabled=False)
 
         return {
             "statusCode": 200,
@@ -579,25 +576,10 @@ def get_existing_scheduled_action_arns(model_id: str) -> List[str]:
 
 
 def update_model_schedule_record(
-    model_id: str, scheduling_config: SchedulingConfig, scheduled_action_arns: List[str], enabled: bool
+    model_id: str, scheduling_config: Optional[SchedulingConfig], scheduled_action_arns: List[str], enabled: bool
 ) -> None:
     """Update model record in DynamoDB with schedule information"""
     try:
-        # Prepare the scheduling configuration for storage
-        schedule_data = scheduling_config.model_dump()
-        schedule_data["scheduledActionArns"] = scheduled_action_arns
-        schedule_data["scheduleEnabled"] = enabled
-        schedule_data["lastScheduleUpdate"] = datetime.now(dt_timezone.utc).isoformat()
-
-        schedule_data["scheduleConfigured"] = enabled
-        schedule_data["lastScheduleFailed"] = False
-
-        # Calculate next scheduled action
-        if enabled:
-            next_action = calculate_next_scheduled_action(schedule_data)
-            if next_action:
-                schedule_data["nextScheduledAction"] = next_action
-
         # Check if autoScalingConfig exists first
         response = model_table.get_item(Key={"model_id": model_id})
         if "Item" not in response:
@@ -606,20 +588,43 @@ def update_model_schedule_record(
         model_item = response["Item"]
         auto_scaling_config_exists = "autoScalingConfig" in model_item
 
-        if auto_scaling_config_exists:
-            # Update existing autoScalingConfig.scheduling
-            model_table.update_item(
-                Key={"model_id": model_id},
-                UpdateExpression="SET autoScalingConfig.scheduling = :scheduling",
-                ExpressionAttributeValues={":scheduling": schedule_data},
-            )
+        if scheduling_config:
+            # Prepare the scheduling configuration for storage
+            schedule_data = scheduling_config.model_dump()
+            schedule_data["scheduledActionArns"] = scheduled_action_arns
+            schedule_data["scheduleEnabled"] = enabled
+            schedule_data["lastScheduleUpdate"] = datetime.now(dt_timezone.utc).isoformat()
+
+            schedule_data["scheduleConfigured"] = enabled
+            schedule_data["lastScheduleFailed"] = False
+
+            # Calculate next scheduled action
+            if enabled:
+                next_action = calculate_next_scheduled_action(schedule_data)
+                if next_action:
+                    schedule_data["nextScheduledAction"] = next_action
+
+            if auto_scaling_config_exists:
+                # Update existing autoScalingConfig.scheduling
+                model_table.update_item(
+                    Key={"model_id": model_id},
+                    UpdateExpression="SET autoScalingConfig.scheduling = :scheduling",
+                    ExpressionAttributeValues={":scheduling": schedule_data},
+                )
+            else:
+                # Create autoScalingConfig with scheduling
+                model_table.update_item(
+                    Key={"model_id": model_id},
+                    UpdateExpression="SET autoScalingConfig = :autoScalingConfig",
+                    ExpressionAttributeValues={":autoScalingConfig": {"scheduling": schedule_data}},
+                )
         else:
-            # Create autoScalingConfig with scheduling
-            model_table.update_item(
-                Key={"model_id": model_id},
-                UpdateExpression="SET autoScalingConfig = :autoScalingConfig",
-                ExpressionAttributeValues={":autoScalingConfig": {"scheduling": schedule_data}},
-            )
+            # Remove scheduling configuration for always run behavior
+            if auto_scaling_config_exists:
+                model_table.update_item(
+                    Key={"model_id": model_id},
+                    UpdateExpression="REMOVE autoScalingConfig.scheduling",
+                )
 
         logger.info(f"Updated schedule record for model {model_id}")
 
@@ -634,7 +639,8 @@ def calculate_next_scheduled_action(schedule_data: Dict[str, Any]) -> Optional[D
         schedule_type = schedule_data.get("scheduleType")
         timezone_name = schedule_data.get("timezone", "UTC")
 
-        if schedule_type == ScheduleType.NONE:
+        # None scheduling means always run
+        if not schedule_data or schedule_type is None:
             return None
 
         from zoneinfo import ZoneInfo

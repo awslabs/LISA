@@ -18,10 +18,11 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
@@ -108,7 +109,6 @@ class ScheduleType(str, Enum):
     EACH_DAY = "EACH_DAY"
     RECURRING_DAILY = "RECURRING_DAILY"
     WEEKDAYS_ONLY = "WEEKDAYS_ONLY"
-    NONE = "NONE"
 
 
 class DaySchedule(BaseModel):
@@ -169,8 +169,6 @@ class WeeklySchedule(BaseModel):
     @model_validator(mode="after")
     def validate_daily_schedules(self) -> Self:
         """Validates that each day's schedules don't overlap and are properly ordered"""
-        from datetime import datetime, timedelta
-
         days = [
             ("monday", self.monday),
             ("tuesday", self.tuesday),
@@ -237,7 +235,7 @@ class ScheduleFailure(BaseModel):
 class SchedulingConfig(BaseModel):
     """Defines scheduling configuration for model resource management"""
 
-    scheduleType: ScheduleType = ScheduleType.NONE
+    scheduleType: Optional[ScheduleType] = None
     timezone: str = Field(default="UTC")
 
     # Weekly schedule (for EACH_DAY type)
@@ -266,8 +264,6 @@ class SchedulingConfig(BaseModel):
     def validate_timezone(cls, v: str) -> str:
         """Validates timezone is a valid IANA timezone identifier"""
         try:
-            from zoneinfo import ZoneInfo
-
             ZoneInfo(v)
         except Exception:
             raise ValueError(f"Invalid timezone: {v}, timezone must be a valid IANA timezone identifier")
@@ -276,6 +272,10 @@ class SchedulingConfig(BaseModel):
     @model_validator(mode="after")
     def validate_schedule_consistency(self) -> Self:
         """Validates schedule configuration consistency"""
+        # Skip validation if no schedule type is configured
+        if self.scheduleType is None:
+            return self
+
         if self.scheduleType == ScheduleType.EACH_DAY:
             if not self.weeklySchedule or not any(
                 [
@@ -296,9 +296,6 @@ class SchedulingConfig(BaseModel):
                 raise ValueError(f"dailySchedule required for {self.scheduleType} type")
             if self.weeklySchedule:
                 raise ValueError(f"weeklySchedule not allowed for {self.scheduleType} type")
-        elif self.scheduleType == ScheduleType.NONE:
-            if self.weeklySchedule or self.dailySchedule:
-                raise ValueError("No schedule configuration allowed for NONE type")
 
         return self
 
@@ -599,7 +596,7 @@ class GetScheduleStatusResponse(BaseModel):
     scheduleConfigured: bool
     lastScheduleFailed: bool
     scheduleStatus: str
-    scheduleType: str
+    scheduleType: Optional[str] = None
     timezone: str
     nextScheduledAction: Optional[Dict[str, str]] = None
     lastScheduleUpdate: Optional[str] = None

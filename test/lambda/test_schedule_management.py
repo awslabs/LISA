@@ -316,10 +316,10 @@ class TestCalculateNextScheduledAction:
         assert result["action"] in ["START", "STOP"]
 
     def test_no_schedule_type(self):
-        """Test NONE schedule type."""
+        """Test None schedule type."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
 
-        schedule_config = {"scheduleType": "NONE", "timezone": "UTC"}
+        schedule_config = {"scheduleType": None, "timezone": "UTC"}
 
         result = calculate_next_scheduled_action(schedule_config)
 
@@ -616,8 +616,8 @@ class TestCreateScheduledActions:
         from models.domain_objects import ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
-        # Create config with NONE type first, then modify to avoid Pydantic validation
-        schedule_config = SchedulingConfig(scheduleType=ScheduleType.NONE, timezone="UTC")
+        # Create config with None type first, then modify to avoid Pydantic validation
+        schedule_config = SchedulingConfig(scheduleType=None, timezone="UTC")
         # Manually set the schedule type to test the runtime validation
         schedule_config.scheduleType = ScheduleType.RECURRING_DAILY
         schedule_config.dailySchedule = None
@@ -630,8 +630,8 @@ class TestCreateScheduledActions:
         from models.domain_objects import ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
-        # Create config with NONE type first, then modify to avoid Pydantic validation
-        schedule_config = SchedulingConfig(scheduleType=ScheduleType.NONE, timezone="UTC")
+        # Create config with None type first, then modify to avoid Pydantic validation
+        schedule_config = SchedulingConfig(scheduleType=None, timezone="UTC")
         # Manually set the schedule type to test the runtime validation
         schedule_config.scheduleType = ScheduleType.WEEKDAYS_ONLY
         schedule_config.dailySchedule = None
@@ -644,8 +644,8 @@ class TestCreateScheduledActions:
         from models.domain_objects import ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
-        # Create config with NONE type first, then modify to avoid Pydantic validation
-        schedule_config = SchedulingConfig(scheduleType=ScheduleType.NONE, timezone="UTC")
+        # Create config with None type first, then modify to avoid Pydantic validation
+        schedule_config = SchedulingConfig(scheduleType=None, timezone="UTC")
         # Manually set the schedule type to test the runtime validation
         schedule_config.scheduleType = ScheduleType.EACH_DAY
         schedule_config.weeklySchedule = None

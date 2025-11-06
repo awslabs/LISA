@@ -240,7 +240,6 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
-        });
         }
         restApi.node.addDependency(this.modelsPs);
         restApi.node.addDependency(litellmDbConnectionInfoPs);
@@ -294,18 +293,19 @@ export class LisaServeApplicationConstruct extends Construct {
         });
 
         // Grant SSM parameter read access and attach invocation permissions
-        const restRole = restApi.taskRoles[ECSTasks.REST];
+        const restRole = restApi.apiCluster.taskRoles[ECSTasks.REST];
         if (restRole) {
             this.modelsPs.grantRead(restRole);
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
             restRole.attachInlinePolicy(guardrails_permissions);
-        if (serveRole) {
-            this.modelsPs.grantRead(serveRole);
-            litellmDbConnectionInfoPs.grantRead(serveRole);
-            serveRole.attachInlinePolicy(invocation_permissions);
+            if (serveRole) {
+                this.modelsPs.grantRead(serveRole);
+                litellmDbConnectionInfoPs.grantRead(serveRole);
+                serveRole.attachInlinePolicy(invocation_permissions);
+            }
         }
-    }
+    };
 
     getIAMAuthLambda (scope: Stack, config: Config, secret: ISecret, user: string, vpc: Vpc, securityGroups: ISecurityGroup[]): IFunction {
         // Create the IAM role for updating the database to allow IAM authentication
@@ -427,4 +427,5 @@ export class LisaServeApplicationConstruct extends Construct {
 
         return { managementKeySecretName };
     }
+
 }

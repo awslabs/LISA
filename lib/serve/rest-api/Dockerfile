@@ -1,6 +1,9 @@
 ARG BASE_IMAGE=python:3.11
 FROM ${BASE_IMAGE}
 
+ARG NODEENV_CACHE_DIR=NODEENV_CACHE
+ENV NODEENV_CACHE_DIR=$NODEENV_CACHE_DIR
+
 # Install build dependencies for madoka package
 RUN apt-get update && apt-get install -y \
     gcc \

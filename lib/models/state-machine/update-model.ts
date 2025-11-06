@@ -39,6 +39,7 @@ import { LAMBDA_PATH } from '../../util';
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
+    guardrailsTable: ITable,
     lambdaLayers: ILayerVersion[],
     vpc: Vpc,
     securityGroups: ISecurityGroup[];
@@ -72,6 +73,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
+            GUARDRAILS_TABLE_NAME: props.guardrailsTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
@@ -147,6 +149,23 @@ export class UpdateModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const handleUpdateGuardrails = new LambdaInvoke(this, 'HandleUpdateGuardrails', {
+            lambdaFunction: new Function(this, 'HandleUpdateGuardrailsFunc', {
+                runtime: getDefaultRuntime(),
+                handler: 'models.state_machine.update_model.handle_update_guardrails',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
                 runtime: getDefaultRuntime(),
@@ -169,6 +188,7 @@ export class UpdateModelStateMachine extends Construct {
 
         // choice states
         const hasEcsUpdateChoice = new Choice(this, 'HasEcsUpdateChoice');
+        const hasGuardrailsUpdateChoice = new Choice(this, 'HasGuardrailsUpdateChoice');
         const hasCapacityUpdateChoice = new Choice(this, 'HasCapacityUpdateChoice');
         const pollAsgChoice = new Choice(this, 'PollAsgChoice');
         const pollEcsDeploymentChoice = new Choice(this, 'PollEcsDeploymentChoice');
@@ -190,14 +210,21 @@ export class UpdateModelStateMachine extends Construct {
         // ECS update flow
         hasEcsUpdateChoice
             .when(Condition.booleanEquals('$.needs_ecs_update', true), handleEcsUpdate)
-            .otherwise(hasCapacityUpdateChoice);
+            .otherwise(hasGuardrailsUpdateChoice);
 
         handleEcsUpdate.next(handlePollEcsDeployment);
         handlePollEcsDeployment.next(pollEcsDeploymentChoice);
         pollEcsDeploymentChoice
             .when(Condition.booleanEquals('$.should_continue_ecs_polling', true), waitBeforePollEcsDeployment)
-            .otherwise(hasCapacityUpdateChoice);
+            .otherwise(hasGuardrailsUpdateChoice);
         waitBeforePollEcsDeployment.next(handlePollEcsDeployment);
+
+        // Guardrails update flow
+        hasGuardrailsUpdateChoice
+            .when(Condition.booleanEquals('$.needs_guardrails_update', true), handleUpdateGuardrails)
+            .otherwise(hasCapacityUpdateChoice);
+
+        handleUpdateGuardrails.next(hasCapacityUpdateChoice);
 
         // Existing capacity update flow
         hasCapacityUpdateChoice

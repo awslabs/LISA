@@ -283,6 +283,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             authorizer: apiBaseStack.authorizer,
             description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
+            guardrailsTable: serveStack.guardrailsTable,
             lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
@@ -318,8 +319,8 @@ export class LisaServeApplicationStage extends Stage {
                 vpc: networkingStack.vpc,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
-                authorizerId: apiBaseStack.authorizer?.authorizerId || '',
                 apiCluster: serveStack.restApi.apiCluster,
+                authorizer: apiBaseStack.authorizer,
             });
             mcpWorkbenchStack.addDependency(coreStack);
             mcpWorkbenchStack.addDependency(apiBaseStack);

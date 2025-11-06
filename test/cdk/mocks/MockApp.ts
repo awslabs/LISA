@@ -154,6 +154,7 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaModels',
             authorizer: apiBaseStack.authorizer,
+            guardrailsTable: serveStack.guardrailsTable,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
@@ -166,8 +167,8 @@ export default class MockApp {
             vpc: networkingStack.vpc,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
-            authorizerId: apiBaseStack.authorizer?.authorizerId || '',
-            apiCluster: serveStack.restApi.apiCluster
+            apiCluster: serveStack.restApi.apiCluster,
+            authorizer: apiBaseStack.authorizer
         });
 
         const mcpApiStack = new LisaMcpApiStack(app, 'LisaMcpApi', {

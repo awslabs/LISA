@@ -17,40 +17,33 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
-import McpWorkbenchConstruct from './mcpWorkbenchConstruct';
+import { McpWorkbenchConstruct } from './mcpWorkbenchConstruct';
 import { Vpc } from '../networking/vpc';
 import { ECSCluster } from '../api-base/ecsCluster';
-import McpWorkbenchServiceConstruct from './mcpWorkbenchServiceConstruct';
+import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 
 export type McpWorkbenchStackProps = {
     vpc: Vpc;
     restApiId: string;
     rootResourceId: string;
-    authorizerId: string;
     apiCluster: ECSCluster;
+    authorizer?: IAuthorizer;
 } & BaseProps & StackProps;
 
 export class McpWorkbenchStack extends Stack {
     constructor (scope: Construct, id: string, props: McpWorkbenchStackProps) {
         super(scope, id, props);
 
-        const { config, vpc, restApiId, rootResourceId, authorizerId, apiCluster } = props;
+        const { vpc, restApiId, rootResourceId, authorizer, apiCluster } = props;
 
-        // Import authorizer
-        const authorizer = { authorizerId };
-
-        const { workbenchBucket } = new McpWorkbenchConstruct(this, 'McpWorkbench', {
+        new McpWorkbenchConstruct(this, 'McpWorkbench', {
             ...props,
-            authorizer: authorizer as any,
             restApiId,
             rootResourceId,
             securityGroups: [vpc.securityGroups.ecsModelAlbSg],
-        });
-
-        new McpWorkbenchServiceConstruct(this, 'McpWorkbenchService', {
-            config,
+            vpc: vpc,
             apiCluster,
-            workbenchBucket,
+            authorizer
         });
     }
 

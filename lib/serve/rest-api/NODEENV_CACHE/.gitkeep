@@ -1,0 +1,2 @@
+# Placeholder to ensure NODEENV_CACHE directory exists in build context
+# For offline builds, populate this directory using: python -m nodeenv NODEENV_CACHE

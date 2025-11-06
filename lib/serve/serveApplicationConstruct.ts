@@ -42,6 +42,7 @@ import { getDefaultRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { EventBus } from 'aws-cdk-lib/aws-events';
+import { GuardrailsTable } from '../models/guardrails-table';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -59,6 +60,8 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly tokenTable?: ITable;
     public readonly ecsCluster: ECSCluster;
     public readonly managementKeySecretName: string;
+    public readonly guardrailsTableNamePs: StringParameter;
+    public readonly guardrailsTable: ITable;
 
     /**
      * @param {Stack} scope - The parent or owner of the construct.
@@ -89,6 +92,19 @@ export class LisaServeApplicationConstruct extends Construct {
 
         const { managementKeySecretName } = this.createManagementKeySecret(scope, config, vpc, securityGroups);
         this.managementKeySecretName = managementKeySecretName;
+
+        // Create guardrails table in serve stack to avoid circular dependency
+        const guardrailsTableConstruct = new GuardrailsTable(scope, 'GuardrailsTable', {
+            deploymentPrefix: config.deploymentPrefix || '',
+            removalPolicy: config.removalPolicy,
+        });
+        this.guardrailsTable = guardrailsTableConstruct.table;
+
+        // Create SSM parameter for guardrails table name
+        this.guardrailsTableNamePs = new StringParameter(scope, 'GuardrailsTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/guardrailsTableName`,
+            stringValue: this.guardrailsTable.tableName,
+        });
 
         // Create REST API
         const restApi = new FastApiContainer(scope, 'RestApi', {
@@ -229,12 +245,16 @@ export class LisaServeApplicationConstruct extends Construct {
             this.modelsPs.grantRead(serveRole);
         }
 
+        // Use the guardrails table name from the construct we just created
+        const guardrailsTableName = this.guardrailsTable.tableName;
+
         // Add parameter as container environment variable for both RestAPI and RagAPI
         const container = restApi.apiCluster.containers[ECSTasks.REST];
         if (container) {
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
+            container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
         }
         restApi.node.addDependency(this.modelsPs);
         restApi.node.addDependency(litellmDbConnectionInfoPs);
@@ -253,6 +273,7 @@ export class LisaServeApplicationConstruct extends Construct {
                     actions: [
                         'bedrock:InvokeModel',
                         'bedrock:InvokeModelWithResponseStream',
+                        'bedrock:ApplyGuardrail',
                     ],
                     resources: [
                         '*'
@@ -271,13 +292,36 @@ export class LisaServeApplicationConstruct extends Construct {
             ]
         });
 
+        // Grant DynamoDB permissions for guardrails table
+        const guardrails_permissions = new Policy(scope, 'GuardrailsTablePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:Query',
+                        'dynamodb:GetItem',
+                    ],
+                    resources: [
+                        `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${guardrailsTableName}/*`,
+                    ],
+                }),
+            ]
+        });
+
         // Grant SSM parameter read access and attach invocation permissions
-        if (serveRole) {
-            this.modelsPs.grantRead(serveRole);
-            litellmDbConnectionInfoPs.grantRead(serveRole);
-            serveRole.attachInlinePolicy(invocation_permissions);
+        const restRole = restApi.apiCluster.taskRoles[ECSTasks.REST];
+        if (restRole) {
+            this.modelsPs.grantRead(restRole);
+            litellmDbConnectionInfoPs.grantRead(restRole);
+            restRole.attachInlinePolicy(invocation_permissions);
+            restRole.attachInlinePolicy(guardrails_permissions);
+            if (serveRole) {
+                this.modelsPs.grantRead(serveRole);
+                litellmDbConnectionInfoPs.grantRead(serveRole);
+                serveRole.attachInlinePolicy(invocation_permissions);
+            }
         }
-    }
+    };
 
     getIAMAuthLambda (scope: Stack, config: Config, secret: ISecret, user: string, vpc: Vpc, securityGroups: ISecurityGroup[]): IFunction {
         // Create the IAM role for updating the database to allow IAM authentication
@@ -399,4 +443,5 @@ export class LisaServeApplicationConstruct extends Construct {
 
         return { managementKeySecretName };
     }
+
 }

@@ -42,14 +42,13 @@ import { Vpc } from '../networking/vpc';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
-import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
-import { GuardrailsTable } from './guardrails-table';
 
 /**
  * Properties for ModelsApi Construct.
@@ -61,6 +60,7 @@ import { GuardrailsTable } from './guardrails-table';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    guardrailsTable: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -75,7 +75,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,
@@ -127,12 +127,6 @@ export class ModelsApi extends Construct {
             stringValue: modelTable.tableName,
         });
 
-        // Create guardrails table
-        const guardrailsTable = new GuardrailsTable(this, 'GuardrailsTable', {
-            deploymentPrefix: config.deploymentPrefix || '',
-            removalPolicy: config.removalPolicy,
-        });
-
         const ecsModelBuildRepo = new Repository(this, 'ecs-model-build-repo');
 
         const ecsModelDeployer = new ECSModelDeployer(this, 'ecs-model-deployer', {
@@ -157,13 +151,13 @@ export class ModelsApi extends Construct {
 
         const stateMachinesLambdaRole = config.roles ?
             Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
-            this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.table.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
+            this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            guardrailsTable: guardrailsTable.table,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -179,7 +173,7 @@ export class ModelsApi extends Construct {
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            guardrailsTable: guardrailsTable.table,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -192,7 +186,7 @@ export class ModelsApi extends Construct {
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            guardrailsTable: guardrailsTable.table,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -210,7 +204,7 @@ export class ModelsApi extends Construct {
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
-            GUARDRAILS_TABLE_NAME: guardrailsTable.table.tableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
@@ -344,8 +338,8 @@ export class ModelsApi extends Construct {
                         'dynamodb:Scan',
                     ],
                     resources: [
-                        guardrailsTable.table.tableArn,
-                        `${guardrailsTable.table.tableArn}/*`
+                        guardrailsTable.tableArn,
+                        `${guardrailsTable.tableArn}/*`
                     ],
                 }),
                 new PolicyStatement({

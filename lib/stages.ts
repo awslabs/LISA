@@ -283,6 +283,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             authorizer: apiBaseStack.authorizer,
             description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
+            guardrailsTable: serveStack.guardrailsTable,
             lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,

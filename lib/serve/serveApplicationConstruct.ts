@@ -42,6 +42,7 @@ import { getDefaultRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { EventBus } from 'aws-cdk-lib/aws-events';
+import { GuardrailsTable } from '../models/guardrails-table';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -59,6 +60,8 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly tokenTable?: ITable;
     public readonly ecsCluster: ECSCluster;
     public readonly managementKeySecretName: string;
+    public readonly guardrailsTableNamePs: StringParameter;
+    public readonly guardrailsTable: ITable;
 
     /**
      * @param {Stack} scope - The parent or owner of the construct.
@@ -87,6 +90,19 @@ export class LisaServeApplicationConstruct extends Construct {
 
         const { managementKeySecretName } = this.createManagementKeySecret(scope, config, vpc, securityGroups);
         this.managementKeySecretName = managementKeySecretName;
+
+        // Create guardrails table in serve stack to avoid circular dependency
+        const guardrailsTableConstruct = new GuardrailsTable(scope, 'GuardrailsTable', {
+            deploymentPrefix: config.deploymentPrefix || '',
+            removalPolicy: config.removalPolicy,
+        });
+        this.guardrailsTable = guardrailsTableConstruct.table;
+
+        // Create SSM parameter for guardrails table name
+        this.guardrailsTableNamePs = new StringParameter(scope, 'GuardrailsTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/guardrailsTableName`,
+            stringValue: this.guardrailsTable.tableName,
+        });
 
         // Create REST API
         const restApi = new FastApiContainer(scope, 'RestApi', {
@@ -227,11 +243,8 @@ export class LisaServeApplicationConstruct extends Construct {
             this.modelsPs.grantRead(serveRole);
         }
 
-        // Get guardrails table name from parameter store
-        const guardrailsTableName = StringParameter.valueForStringParameter(
-            scope,
-            `${config.deploymentPrefix}/guardrailsTableName`
-        );
+        // Use the guardrails table name from the construct we just created
+        const guardrailsTableName = this.guardrailsTable.tableName;
 
         // Add parameter as container environment variable for both RestAPI and RagAPI
         const container = restApi.apiCluster.containers[ECSTasks.REST];

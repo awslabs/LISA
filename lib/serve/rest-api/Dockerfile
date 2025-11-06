@@ -25,6 +25,22 @@ WORKDIR /app
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
+# Copy nodeenv cache directory (always exists, may be empty or populated)
+COPY ${NODEENV_CACHE_DIR} /tmp/nodeenv-cache/
+
+# Pre-cache nodeenv for prisma-client-py
+# If the copied directory has content, use it (for offline environments)
+# Otherwise, download it during build (requires internet)
+RUN mkdir -p /root/.cache/prisma-python && \
+    if [ -d "/tmp/nodeenv-cache" ] && [ -n "$(ls /tmp/nodeenv-cache 2>/dev/null)" ]; then \
+        echo "Using pre-cached nodeenv from host" && \
+        cp -r /tmp/nodeenv-cache /root/.cache/prisma-python/nodeenv && \
+        rm -rf /tmp/nodeenv-cache; \
+    else \
+        echo "Downloading nodeenv (requires internet)" && \
+        python -m nodeenv /root/.cache/prisma-python/nodeenv; \
+    fi
+
 # Copy the source code into the container
 COPY src/ ./src
 

@@ -283,7 +283,7 @@ Update your `config-custom.yaml` to point to ADC-accessible repositories:
 
 ```yaml
 # Configure pip to use ADC-accessible PyPI mirror
-pipConfig:
+pypiConfig:
   indexUrl: https://your-adc-pypi-mirror.com/simple
   trustedHost: your-adc-pypi-mirror.com
 
@@ -293,8 +293,44 @@ npmConfig:
 
 # Use ADC-accessible base images for LISA-Serve and Batch Ingestion
 baseImage: <adc-registry>/python:3.11
+
+# Configure offline build dependencies for REST API (nodeenv for prisma-client-py)
+restApiConfig:
+  buildConfig:
+    NODEENV_CACHE_DIR: "./nodeenv-cache"  # Path relative to lib/serve/rest-api/
+
+# Configure offline build dependencies for MCP Workbench (S6 Overlay and rclone)
+mcpWorkbenchBuildConfig:
+  S6_OVERLAY_NOARCH_SOURCE: "./s6-overlay-noarch.tar.xz"  # Path relative to lib/serve/mcp-workbench/
+  S6_OVERLAY_ARCH_SOURCE: "./s6-overlay-x86_64.tar.xz"    # Path relative to lib/serve/mcp-workbench/
+  RCLONE_SOURCE: "./rclone-linux-amd64.zip"                # Path relative to lib/serve/mcp-workbench/
 ```
 You'll also want any model hosting base containers available, e.g. vllm/vllm-openai:latest and ghcr.io/huggingface/text-embeddings-inference:latest
+
+#### Preparing Offline Build Dependencies
+
+For environments without internet access during Docker builds, you can pre-cache required dependencies:
+
+**REST API nodeenv cache** (required by prisma-client-py):
+```bash
+# Create the cache directory in the REST API build context
+python -m nodeenv lib/serve/rest-api/nodeenv-cache
+```
+
+**MCP Workbench dependencies** (S6 Overlay and rclone):
+```bash
+# Download S6 Overlay files
+cd lib/serve/mcp-workbench/
+wget https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-noarch.tar.xz
+wget https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-x86_64.tar.xz
+
+# Download rclone
+wget https://github.com/rclone/rclone/releases/download/v1.71.0/rclone-v1.71.0-linux-amd64.zip
+
+cd ../../..
+```
+
+These cached dependencies will be used during the Docker build process instead of downloading from the internet.
 
 To utilize the prebuilt hosting model containers with self-hosted models, select `type: ecr` in the Model Deployment > Container Configs.
 

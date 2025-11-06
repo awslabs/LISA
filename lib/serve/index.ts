@@ -20,8 +20,8 @@ import { Construct } from 'constructs';
 import { FastApiContainer } from '../api-base/fastApiContainer';
 import { LisaServeApplicationConstruct, LisaServeApplicationProps } from './serveApplicationConstruct';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-
 export * from './serveApplicationConstruct';
+export * from './mcpWorkbenchConstruct';
 
 /**
  * LisaServe Application stack.

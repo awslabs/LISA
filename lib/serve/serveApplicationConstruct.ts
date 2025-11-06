@@ -20,6 +20,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { FastApiContainer } from '../api-base/fastApiContainer';
+import { ECSCluster } from '../api-base/ecsCluster';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { BaseProps, Config } from '../schema';
@@ -40,7 +41,6 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 import { getDefaultRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
-import { letIfDefined } from '../util/common-functions';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 
 export type LisaServeApplicationProps = {
@@ -57,6 +57,8 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
     public readonly tokenTable?: ITable;
+    public readonly ecsCluster: ECSCluster;
+    public readonly managementKeySecretName: string;
 
     /**
      * @param {Stack} scope - The parent or owner of the construct.
@@ -83,6 +85,9 @@ export class LisaServeApplicationConstruct extends Construct {
         }
         this.tokenTable = tokenTable;
 
+        const { managementKeySecretName } = this.createManagementKeySecret(scope, config, vpc, securityGroups);
+        this.managementKeySecretName = managementKeySecretName;
+
         // Create REST API
         const restApi = new FastApiContainer(scope, 'RestApi', {
             apiName: 'REST',
@@ -91,78 +96,7 @@ export class LisaServeApplicationConstruct extends Construct {
             securityGroup: vpc.securityGroups.restApiAlbSg,
             tokenTable: tokenTable,
             vpc: vpc,
-        });
-
-        // Create EventBus for management key rotation events
-        const managementEventBus = new EventBus(scope, createCdkId([scope.node.id, 'managementEventBus']), {
-            eventBusName: `${config.deploymentName}-lisa-management-events`,
-        });
-
-        // Use a stable name for the management key secret
-        const managementKeySecret = new Secret(scope, createCdkId([scope.node.id, 'managementKeySecret']), {
-            secretName: `${config.deploymentName}-lisa-management-key`, // Use stable name based on deployment
-            description: 'LISA management key secret',
-            generateSecretString: {
-                excludePunctuation: true,
-                passwordLength: 16
-            },
-            removalPolicy: config.removalPolicy
-        });
-
-        // Add rotation policy for the management key secret
-        const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
-            runtime: getDefaultRuntime(),
-            handler: 'management_key.handler',
-            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
-            timeout: Duration.minutes(5),
-            environment: {
-                EVENT_BUS_NAME: managementEventBus.eventBusName,
-            },
-            role: new Role(scope, createCdkId([scope.node.id, 'managementKeyRotationRole']), {
-                assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-                managedPolicies: [
-                    ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
-                ],
-                inlinePolicies: {
-                    'SecretsManagerRotation': new PolicyDocument({
-                        statements: [
-                            new PolicyStatement({
-                                effect: Effect.ALLOW,
-                                actions: [
-                                    'secretsmanager:DescribeSecret',
-                                    'secretsmanager:GetSecretValue',
-                                    'secretsmanager:PutSecretValue',
-                                    'secretsmanager:UpdateSecretVersionStage'
-                                ],
-                                resources: [managementKeySecret.secretArn]
-                            }),
-                            new PolicyStatement({
-                                effect: Effect.ALLOW,
-                                actions: [
-                                    'events:PutEvents'
-                                ],
-                                resources: [managementEventBus.eventBusArn]
-                            })
-                        ]
-                    })
-                }
-            }),
-            securityGroups: securityGroups,
-            vpc: vpc.vpc,
-        });
-
-        // Configure automatic rotation every 30 days
-        managementKeySecret.addRotationSchedule('RotationSchedule', {
-            automaticallyAfter: Duration.days(30),
-            rotationLambda: rotationLambda
-        });
-
-        const managementKeySecretNameStringParameter = new StringParameter(scope, createCdkId(['ManagementKeySecretName']), {
-            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
-            stringValue: managementKeySecret.secretName,
-        });
-        restApi.containers.forEach((container) => {
-            container.addEnvironment('MANAGEMENT_KEY_NAME', managementKeySecretNameStringParameter.stringValue);
+            managementKeyName: managementKeySecretName
         });
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
@@ -241,14 +175,27 @@ export class LisaServeApplicationConstruct extends Construct {
             ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
         }));
 
-        Object.values(restApi.taskRoles).forEach((taskRole) => {
-            litellmDbConnectionInfoPs.grantRead(taskRole);
-        });
-
         // update the rdsConfig with the endpoint address
         config.restApiConfig.rdsConfig.dbHost = litellmDb.dbInstanceEndpointAddress;
 
-        letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
+        // Create Parameter Store entry with RestAPI URI
+        this.endpointUrl = new StringParameter(scope, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {
+            parameterName: `${config.deploymentPrefix}/lisaServeRestApiUri`,
+            stringValue: restApi.endpoint,
+            description: 'URI for LISA Serve API',
+        });
+
+        // Create Parameter Store entry with registeredModels
+        this.modelsPs = new StringParameter(scope, createCdkId(['RegisteredModels', 'StringParameter']), {
+            parameterName: `${config.deploymentPrefix}/registeredModels`,
+            stringValue: JSON.stringify([]),
+            description: 'Serialized JSON of registered models data',
+        });
+
+        const serveRole = restApi.apiCluster.taskRoles[ECSTasks.REST];
+        if (serveRole) {
+            // Grant access to REST API task role only
+            litellmDbConnectionInfoPs.grantRead(serveRole);
             if (config.iamRdsAuth) {
                 litellmDb.grantConnect(serveRole, serveRole.roleName);
 
@@ -277,41 +224,8 @@ export class LisaServeApplicationConstruct extends Construct {
                 litellmDb.grantConnect(serveRole);
                 litellmDbPasswordSecret.grantRead(serveRole);
             }
-        });
-
-        restApi.containers.forEach((container) => {
-            container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
-        });
-
-        if (config.region.includes('iso')) {
-            const ca_bundle = config.certificateAuthorityBundle ?? '';
-
-            restApi.containers.forEach((container) => {
-                container.addEnvironment('SSL_CERT_DIR', '/etc/pki/tls/certs');
-                container.addEnvironment('SSL_CERT_FILE', ca_bundle);
-                container.addEnvironment('REQUESTS_CA_BUNDLE', ca_bundle);
-                container.addEnvironment('CURL_CA_BUNDLE', ca_bundle);
-                container.addEnvironment('AWS_CA_BUNDLE', ca_bundle);
-            });
-        }
-
-        // Create Parameter Store entry with RestAPI URI
-        this.endpointUrl = new StringParameter(scope, createCdkId(['LisaServeRestApiUri', 'StringParameter']), {
-            parameterName: `${config.deploymentPrefix}/lisaServeRestApiUri`,
-            stringValue: restApi.endpoint,
-            description: 'URI for LISA Serve API',
-        });
-
-        // Create Parameter Store entry with registeredModels
-        this.modelsPs = new StringParameter(scope, createCdkId(['RegisteredModels', 'StringParameter']), {
-            parameterName: `${config.deploymentPrefix}/registeredModels`,
-            stringValue: JSON.stringify([]),
-            description: 'Serialized JSON of registered models data',
-        });
-
-        letIfDefined(restApi.taskRoles[ECSTasks.REST], (serveRole) => {
             this.modelsPs.grantRead(serveRole);
-        });
+        }
 
         // Get guardrails table name from parameter store
         const guardrailsTableName = StringParameter.valueForStringParameter(
@@ -320,17 +234,21 @@ export class LisaServeApplicationConstruct extends Construct {
         );
 
         // Add parameter as container environment variable for both RestAPI and RagAPI
-        restApi.containers.forEach((container) => {
+        const container = restApi.apiCluster.containers[ECSTasks.REST];
+        if (container) {
+            container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
         });
+        }
         restApi.node.addDependency(this.modelsPs);
         restApi.node.addDependency(litellmDbConnectionInfoPs);
         restApi.node.addDependency(this.endpointUrl);
 
         // Update
         this.restApi = restApi;
+        this.ecsCluster = restApi.apiCluster;
 
         // Grant permissions after restApi is fully constructed
         // Additional permissions for REST API Role
@@ -382,6 +300,10 @@ export class LisaServeApplicationConstruct extends Construct {
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
             restRole.attachInlinePolicy(guardrails_permissions);
+        if (serveRole) {
+            this.modelsPs.grantRead(serveRole);
+            litellmDbConnectionInfoPs.grantRead(serveRole);
+            serveRole.attachInlinePolicy(invocation_permissions);
         }
     }
 
@@ -435,5 +357,74 @@ export class LisaServeApplicationConstruct extends Construct {
             'LISAServeCommonLayerVersion',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
+    }
+
+    private createManagementKeySecret (scope: Stack, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[]): { managementKeySecretName: string } {
+        const managementKeySecretName = `${config.deploymentName}-lisa-management-key`;
+
+        const managementEventBus = new EventBus(scope, createCdkId([scope.node.id, 'managementEventBus']), {
+            eventBusName: `${config.deploymentName}-lisa-management-events`,
+        });
+
+        const managementKeySecret = new Secret(scope, createCdkId([scope.node.id, 'managementKeySecret']), {
+            secretName: managementKeySecretName,
+            description: 'LISA management key secret',
+            generateSecretString: {
+                excludePunctuation: true,
+                passwordLength: 16
+            },
+            removalPolicy: config.removalPolicy
+        });
+
+        const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
+            runtime: getDefaultRuntime(),
+            handler: 'management_key.handler',
+            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            timeout: Duration.minutes(5),
+            environment: {
+                EVENT_BUS_NAME: managementEventBus.eventBusName,
+            },
+            role: new Role(scope, createCdkId([scope.node.id, 'managementKeyRotationRole']), {
+                assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+                managedPolicies: [
+                    ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+                ],
+                inlinePolicies: {
+                    'SecretsManagerRotation': new PolicyDocument({
+                        statements: [
+                            new PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: [
+                                    'secretsmanager:DescribeSecret',
+                                    'secretsmanager:GetSecretValue',
+                                    'secretsmanager:PutSecretValue',
+                                    'secretsmanager:UpdateSecretVersionStage'
+                                ],
+                                resources: [managementKeySecret.secretArn]
+                            }),
+                            new PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: ['events:PutEvents'],
+                                resources: [managementEventBus.eventBusArn]
+                            })
+                        ]
+                    })
+                }
+            }),
+            securityGroups: securityGroups,
+            vpc: vpc.vpc,
+        });
+
+        managementKeySecret.addRotationSchedule('RotationSchedule', {
+            automaticallyAfter: Duration.days(30),
+            rotationLambda: rotationLambda
+        });
+
+        new StringParameter(scope, createCdkId(['ManagementKeySecretName']), {
+            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
+            stringValue: managementKeySecret.secretName,
+        });
+
+        return { managementKeySecretName };
     }
 }

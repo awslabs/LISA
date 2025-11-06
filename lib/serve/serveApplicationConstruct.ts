@@ -271,6 +271,7 @@ export class LisaServeApplicationConstruct extends Construct {
                     actions: [
                         'bedrock:InvokeModel',
                         'bedrock:InvokeModelWithResponseStream',
+                        'bedrock:ApplyGuardrail',
                     ],
                     resources: [
                         '*'

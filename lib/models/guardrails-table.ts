@@ -15,7 +15,6 @@
 */
 
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 /**
@@ -35,7 +34,7 @@ export class GuardrailsTable extends Construct {
     constructor (scope: Construct, id: string, props: GuardrailsTableProps) {
         super(scope, id);
 
-        const { deploymentPrefix, removalPolicy } = props;
+        const { removalPolicy } = props;
 
         // Create the guardrails table with composite key structure
         this.table = new Table(this, 'GuardrailsTable', {
@@ -62,12 +61,6 @@ export class GuardrailsTable extends Construct {
                 name: 'guardrailId',
                 type: AttributeType.STRING
             },
-        });
-
-        // Create SSM parameter for guardrails table name
-        new StringParameter(this, 'GuardrailsTableNameParameter', {
-            parameterName: `${deploymentPrefix}/guardrailsTableName`,
-            stringValue: this.table.tableName,
         });
     }
 }

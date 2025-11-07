@@ -55,6 +55,7 @@ const navLinks = [
       { text: 'Model Compatibility', link: '/config/model-compatibility' },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
+      { text: 'Guardrails', link: '/config/guardrails' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Vector Stores', link: '/config/vector-stores' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},

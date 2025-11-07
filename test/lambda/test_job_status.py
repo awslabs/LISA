@@ -27,11 +27,11 @@ class TestJobStatus:
             "status": "completed",
             "document": "test-document.pdf",
             "auto": True,
-            "created_date": "2025-01-15T10:00:00Z"
+            "created_date": "2025-01-15T10:00:00Z",
         }
-        
+
         job_status = JobStatus(**job_data)
-        
+
         assert job_status.status == "completed"
         assert job_status.document == "test-document.pdf"
         assert job_status.auto is True
@@ -43,11 +43,11 @@ class TestJobStatus:
             "status": "running",
             "document": "another-document.txt",
             "auto": False,
-            "created_date": "2025-01-15T11:30:00Z"
+            "created_date": "2025-01-15T11:30:00Z",
         }
-        
+
         job_status = JobStatus(**job_data)
-        
+
         assert job_status.status == "running"
         assert job_status.document == "another-document.txt"
         assert job_status.auto is False
@@ -59,12 +59,12 @@ class TestJobStatus:
             "status": "failed",
             "document": "error-document.docx",
             "auto": True,
-            "created_date": "2025-01-15T12:00:00Z"
+            "created_date": "2025-01-15T12:00:00Z",
         }
-        
+
         job_status = JobStatus(**job_data)
         result = job_status.model_dump()
-        
+
         assert result == job_data
 
     def test_job_status_model_validation(self):
@@ -74,7 +74,7 @@ class TestJobStatus:
             JobStatus(
                 status="completed",
                 document="test.pdf",
-                auto=True
+                auto=True,
                 # missing created_date
             )
 
@@ -84,11 +84,11 @@ class TestJobStatus:
             "status": "pending",
             "document": "test.pdf",
             "auto": "true",  # String that should be converted to bool
-            "created_date": "2025-01-15T09:00:00Z"
+            "created_date": "2025-01-15T09:00:00Z",
         }
-        
+
         job_status = JobStatus(**job_data)
-        
+
         assert job_status.status == "pending"
         assert job_status.document == "test.pdf"
         assert job_status.auto is True  # Should be converted to boolean

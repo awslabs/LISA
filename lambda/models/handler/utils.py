@@ -18,11 +18,8 @@ from typing import Any, Dict, List, Optional
 
 from utilities.common_functions import validate_model_access
 
-from ..domain_objects import LISAModel
-from ..exception import InvalidStateTransitionError, ModelNotFoundError
-from typing import Any, Dict, List
-
 from ..domain_objects import GuardrailConfig, LISAModel
+from ..exception import InvalidStateTransitionError, ModelNotFoundError
 
 
 def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
@@ -103,6 +100,8 @@ def get_model_and_validate_status(
         )
 
     return model_item
+
+
 def create_guardrail_config(item: Dict[str, Any]) -> GuardrailConfig:
     """Create a GuardrailConfig object from a DynamoDB guardrail item."""
     return GuardrailConfig(**item)

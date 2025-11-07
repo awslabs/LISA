@@ -75,9 +75,8 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,

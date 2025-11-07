@@ -54,6 +54,13 @@ def mock_model_table():
 
 
 @pytest.fixture
+def mock_guardrails_table():
+    """Mock DynamoDB guardrails table."""
+    table = MagicMock()
+    return table
+
+
+@pytest.fixture
 def mock_autoscaling_client():
     """Mock Auto Scaling client."""
     client = MagicMock()
@@ -111,6 +118,7 @@ class TestUpdateScheduleHandler:
     def test_successful_update_schedule(
         self,
         mock_model_table,
+        mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
         sample_model_item,
@@ -133,6 +141,7 @@ class TestUpdateScheduleHandler:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             # Execute
@@ -153,7 +162,12 @@ class TestUpdateScheduleHandler:
             assert payload["autoScalingGroup"] == "test-asg"
 
     def test_model_not_found(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_schedule_config,
     ):
         """Test model not found error."""
         mock_model_table.get_item.return_value = {}
@@ -162,13 +176,19 @@ class TestUpdateScheduleHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
             handler(model_id="test-model", schedule_config=sample_schedule_config)
 
     def test_invalid_model_state(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_schedule_config,
     ):
         """Test invalid model state error."""
         creating_model = {"model_id": "creating-model", "model_status": "Creating"}
@@ -178,6 +198,7 @@ class TestUpdateScheduleHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         with pytest.raises(
@@ -186,7 +207,12 @@ class TestUpdateScheduleHandler:
             handler(model_id="creating-model", schedule_config=sample_schedule_config)
 
     def test_missing_autoscaling_group(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_schedule_config,
     ):
         """Test missing auto scaling group error."""
         model_without_asg = {
@@ -200,6 +226,7 @@ class TestUpdateScheduleHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         with pytest.raises(ValueError, match="Model does not have an Auto Scaling Group configured"):
@@ -208,6 +235,7 @@ class TestUpdateScheduleHandler:
     def test_lambda_invocation_failure(
         self,
         mock_model_table,
+        mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
         sample_model_item,
@@ -229,6 +257,7 @@ class TestUpdateScheduleHandler:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             with pytest.raises(ValueError, match="Failed to create/update schedule"):
@@ -239,7 +268,12 @@ class TestGetScheduleHandler:
     """Test GetScheduleHandler class."""
 
     def test_successful_get_schedule(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
     ):
         """Test successful schedule retrieval."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
@@ -266,6 +300,7 @@ class TestGetScheduleHandler:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             # Execute
@@ -277,7 +312,9 @@ class TestGetScheduleHandler:
             assert result.scheduling == schedule_data["scheduling"]
             assert result.nextScheduledAction == schedule_data["nextScheduledAction"]
 
-    def test_model_not_found(self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client):
+    def test_model_not_found(
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test model not found error."""
         mock_model_table.get_item.return_value = {}
 
@@ -285,6 +322,7 @@ class TestGetScheduleHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
@@ -295,7 +333,12 @@ class TestDeleteScheduleHandler:
     """Test DeleteScheduleHandler class."""
 
     def test_successful_delete_schedule(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
     ):
         """Test successful schedule deletion."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
@@ -313,6 +356,7 @@ class TestDeleteScheduleHandler:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             # Execute
@@ -324,7 +368,9 @@ class TestDeleteScheduleHandler:
             assert result.modelId == "test-model"
             assert result.scheduleEnabled is False
 
-    def test_invalid_model_state(self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client):
+    def test_invalid_model_state(
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test invalid model state error."""
         creating_model = {"model_id": "creating-model", "model_status": "Creating"}
         mock_model_table.get_item.return_value = {"Item": creating_model}
@@ -333,6 +379,7 @@ class TestDeleteScheduleHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         with pytest.raises(
@@ -345,7 +392,12 @@ class TestGetScheduleStatusHandler:
     """Test GetScheduleStatusHandler class."""
 
     def test_successful_get_schedule_status(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
     ):
         """Test successful schedule status retrieval."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
@@ -354,6 +406,7 @@ class TestGetScheduleStatusHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute
@@ -369,7 +422,9 @@ class TestGetScheduleStatusHandler:
         assert result.scheduleType == "RECURRING_DAILY"
         assert result.timezone == "UTC"
 
-    def test_schedule_status_disabled(self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client):
+    def test_schedule_status_disabled(
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test schedule status when schedule is disabled."""
         model_no_schedule = {
             "model_id": "test-model",
@@ -381,6 +436,7 @@ class TestGetScheduleStatusHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute
@@ -390,7 +446,9 @@ class TestGetScheduleStatusHandler:
         assert result.scheduleStatus == "DISABLED"
         assert result.scheduleConfigured is False
 
-    def test_schedule_status_failed(self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client):
+    def test_schedule_status_failed(
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test schedule status when schedule has failed."""
         model_failed_schedule = {
             "model_id": "test-model",
@@ -409,6 +467,7 @@ class TestGetScheduleStatusHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute
@@ -419,7 +478,7 @@ class TestGetScheduleStatusHandler:
         assert result.lastScheduleFailed is True
 
     def test_model_without_scheduling_config(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test model without scheduling configuration."""
         model_no_scheduling = {"model_id": "test-model", "autoScalingConfig": {}}
@@ -429,6 +488,7 @@ class TestGetScheduleStatusHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute
@@ -441,7 +501,9 @@ class TestGetScheduleStatusHandler:
         assert result.scheduleType is None
         assert result.timezone == "UTC"
 
-    def test_model_not_found(self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client):
+    def test_model_not_found(
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
+    ):
         """Test model not found error."""
         mock_model_table.get_item.return_value = {}
 
@@ -449,6 +511,7 @@ class TestGetScheduleStatusHandler:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
@@ -491,7 +554,12 @@ class TestUpdateScheduleHandlerGroupAccess:
     """Test UpdateScheduleHandler with group access controls."""
 
     def test_update_schedule_with_group_access_allowed(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_schedule_config,
     ):
         """Test successful update with group access."""
         # Setup model with allowed groups
@@ -516,6 +584,7 @@ class TestUpdateScheduleHandlerGroupAccess:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             # Execute with matching user groups
@@ -531,7 +600,12 @@ class TestUpdateScheduleHandlerGroupAccess:
             assert result.message == "Schedule updated successfully"
 
     def test_update_schedule_with_group_access_denied(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_schedule_config,
     ):
         """Test update denied due to group access."""
         # Setup model with allowed groups
@@ -547,6 +621,7 @@ class TestUpdateScheduleHandlerGroupAccess:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute with non-matching user groups
@@ -559,7 +634,12 @@ class TestUpdateScheduleHandlerGroupAccess:
             )
 
     def test_update_schedule_admin_bypass_group_access(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_schedule_config
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_schedule_config,
     ):
         """Test admin can bypass group access restrictions."""
         # Setup model with allowed groups
@@ -584,6 +664,7 @@ class TestUpdateScheduleHandlerGroupAccess:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             # Execute as admin with non-matching groups
@@ -600,7 +681,7 @@ class TestGetScheduleHandlerGroupAccess:
     """Test GetScheduleHandler with group access controls."""
 
     def test_get_schedule_with_group_access_denied(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test get schedule denied due to group access."""
         # Setup model with allowed groups
@@ -614,6 +695,7 @@ class TestGetScheduleHandlerGroupAccess:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute with non-matching user groups
@@ -625,7 +707,7 @@ class TestDeleteScheduleHandlerGroupAccess:
     """Test DeleteScheduleHandler with group access controls."""
 
     def test_delete_schedule_with_group_access_denied(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test delete schedule denied due to group access."""
         # Setup model with allowed groups
@@ -639,6 +721,7 @@ class TestDeleteScheduleHandlerGroupAccess:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute with non-matching user groups
@@ -650,7 +733,7 @@ class TestGetScheduleStatusHandlerGroupAccess:
     """Test GetScheduleStatusHandler with group access controls."""
 
     def test_get_schedule_status_with_group_access_denied(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client
+        self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test get schedule status denied due to group access."""
         # Setup model with allowed groups
@@ -664,6 +747,7 @@ class TestGetScheduleStatusHandlerGroupAccess:
             autoscaling_client=mock_autoscaling_client,
             stepfunctions_client=mock_stepfunctions_client,
             model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
         )
 
         # Execute with non-matching user groups
@@ -677,6 +761,7 @@ class TestLambdaInvocationErrorHandling:
     def test_update_schedule_lambda_error_response_format_string_body(
         self,
         mock_model_table,
+        mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
         sample_model_item,
@@ -698,6 +783,7 @@ class TestLambdaInvocationErrorHandling:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             with pytest.raises(ValueError, match="Failed to create/update schedule: Internal server error"):
@@ -706,6 +792,7 @@ class TestLambdaInvocationErrorHandling:
     def test_update_schedule_lambda_invalid_json_body(
         self,
         mock_model_table,
+        mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
         sample_model_item,
@@ -727,13 +814,19 @@ class TestLambdaInvocationErrorHandling:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             with pytest.raises(ValueError, match="Failed to create/update schedule: invalid json"):
                 handler(model_id="test-model", schedule_config=sample_schedule_config)
 
     def test_get_schedule_lambda_error_handling(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
     ):
         """Test GetSchedule Lambda error handling."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
@@ -751,13 +844,19 @@ class TestLambdaInvocationErrorHandling:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             with pytest.raises(ValueError, match="Failed to get schedule: Lambda execution failed"):
                 handler(model_id="test-model")
 
     def test_delete_schedule_lambda_error_handling(
-        self, mock_model_table, mock_autoscaling_client, mock_stepfunctions_client, sample_model_item
+        self,
+        mock_model_table,
+        mock_guardrails_table,
+        mock_autoscaling_client,
+        mock_stepfunctions_client,
+        sample_model_item,
     ):
         """Test DeleteSchedule Lambda error handling."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
@@ -775,6 +874,7 @@ class TestLambdaInvocationErrorHandling:
                 autoscaling_client=mock_autoscaling_client,
                 stepfunctions_client=mock_stepfunctions_client,
                 model_table_resource=mock_model_table,
+                guardrails_table_resource=mock_guardrails_table,
             )
 
             with pytest.raises(ValueError, match="Failed to delete schedule: Lambda execution failed"):

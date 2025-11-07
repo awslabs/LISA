@@ -33,9 +33,15 @@ from .utils import get_model_and_validate_access, get_model_and_validate_status
 class ScheduleBaseHandler(BaseApiHandler):
     """Base handler for schedule operations with Lambda client"""
 
-    def __init__(self, autoscaling_client: Any, stepfunctions_client: Any, model_table_resource: Any):
+    def __init__(
+        self,
+        autoscaling_client: Any,
+        stepfunctions_client: Any,
+        model_table_resource: Any,
+        guardrails_table_resource: Any,
+    ):
         """Initialize with Lambda client for schedule management operations"""
-        super().__init__(autoscaling_client, stepfunctions_client, model_table_resource)
+        super().__init__(autoscaling_client, stepfunctions_client, model_table_resource, guardrails_table_resource)
         self._lambda_client = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 

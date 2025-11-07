@@ -197,17 +197,6 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
             )
         )
 
-    elif schedule_config.scheduleType == ScheduleType.WEEKDAYS_ONLY:
-        # Create weekdays-only schedule
-        if not schedule_config.dailySchedule:
-            raise ValueError("dailySchedule required for WEEKDAYS_ONLY type")
-
-        scheduled_action_arns.extend(
-            create_weekdays_scheduled_actions(
-                model_id, auto_scaling_group, schedule_config.dailySchedule, schedule_config.timezone
-            )
-        )
-
     elif schedule_config.scheduleType == ScheduleType.EACH_DAY:
         # Create individual day schedules
         if not schedule_config.weeklySchedule:
@@ -294,69 +283,6 @@ def create_daily_scheduled_actions(
 
     except ClientError as e:
         logger.error(f"Failed to create stop action {stop_action_name}: {e}")
-        # Clean up start action if stop action fails
-        try:
-            autoscaling_client.delete_scheduled_action(
-                AutoScalingGroupName=auto_scaling_group, ScheduledActionName=start_action_name
-            )
-        except Exception:
-            pass
-        raise
-
-    return scheduled_action_arns
-
-
-def create_weekdays_scheduled_actions(
-    model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str
-) -> List[str]:
-    """Create scheduled actions for weekdays-only schedule"""
-    scheduled_action_arns = []
-
-    # Get ASG capacity config
-    capacity_config = get_existing_asg_capacity(auto_scaling_group)
-
-    # Create start action (Monday-Friday)
-    start_cron = convert_to_utc_cron_weekdays(day_schedule.startTime, timezone_name)
-    start_action_name = f"{model_id}-weekdays-start"
-
-    try:
-        autoscaling_client.put_scheduled_update_group_action(
-            AutoScalingGroupName=auto_scaling_group,
-            ScheduledActionName=start_action_name,
-            Recurrence=start_cron,
-            MinSize=capacity_config["MinSize"],
-            MaxSize=capacity_config["MaxSize"],
-            DesiredCapacity=capacity_config["DesiredCapacity"],
-        )
-
-        start_arn = construct_scheduled_action_arn(auto_scaling_group, start_action_name)
-        scheduled_action_arns.append(start_arn)
-        logger.info(f"Created weekdays start action: {start_action_name}")
-
-    except ClientError as e:
-        logger.error(f"Failed to create weekdays start action {start_action_name}: {e}")
-        raise
-
-    # Create stop action (Monday-Friday)
-    stop_cron = convert_to_utc_cron_weekdays(day_schedule.stopTime, timezone_name)
-    stop_action_name = f"{model_id}-weekdays-stop"
-
-    try:
-        autoscaling_client.put_scheduled_update_group_action(
-            AutoScalingGroupName=auto_scaling_group,
-            ScheduledActionName=stop_action_name,
-            Recurrence=stop_cron,
-            MinSize=0,
-            MaxSize=0,
-            DesiredCapacity=0,
-        )
-
-        stop_arn = construct_scheduled_action_arn(auto_scaling_group, stop_action_name)
-        scheduled_action_arns.append(stop_arn)
-        logger.info(f"Created weekdays stop action: {stop_action_name}")
-
-    except ClientError as e:
-        logger.error(f"Failed to create weekdays stop action {stop_action_name}: {e}")
         # Clean up start action if stop action fails
         try:
             autoscaling_client.delete_scheduled_action(
@@ -650,7 +576,7 @@ def calculate_next_scheduled_action(schedule_data: Dict[str, Any]) -> Optional[D
         current_time = now.time()
 
         # Get the schedule times
-        if schedule_type in [ScheduleType.RECURRING_DAILY, ScheduleType.WEEKDAYS_ONLY]:
+        if schedule_type == ScheduleType.RECURRING_DAILY:
             daily_schedule = schedule_data.get("dailySchedule", {})
             start_time = daily_schedule.get("startTime")
             stop_time = daily_schedule.get("stopTime")

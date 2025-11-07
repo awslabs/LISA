@@ -264,22 +264,6 @@ class TestCalculateNextScheduledAction:
         assert result is not None
         assert result["action"] in ["START", "STOP"]
 
-    def test_weekdays_only_schedule(self):
-        """Test WEEKDAYS_ONLY schedule calculation."""
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
-
-        schedule_config = {
-            "scheduleType": "WEEKDAYS_ONLY",
-            "timezone": "UTC",
-            "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-        }
-
-        result = calculate_next_scheduled_action(schedule_config)
-
-        # Just verify it returns a result
-        assert result is not None
-        assert result["action"] in ["START", "STOP"]
-
     def test_each_day_schedule(self):
         """Test EACH_DAY schedule calculation."""
         from models.scheduling.schedule_management import calculate_next_scheduled_action
@@ -570,25 +554,6 @@ class TestCreateScheduledActions:
         assert result == ["arn1", "arn2"]
         mock_create_daily.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
 
-    @patch("models.scheduling.schedule_management.create_weekdays_scheduled_actions")
-    def test_create_scheduled_actions_weekdays_only(self, mock_create_weekdays):
-        """Test creating scheduled actions for WEEKDAYS_ONLY type."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
-        from models.scheduling.schedule_management import create_scheduled_actions
-
-        mock_create_weekdays.return_value = ["arn1", "arn2"]
-
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.WEEKDAYS_ONLY,
-            timezone="UTC",
-            dailySchedule=DaySchedule(startTime="09:00", stopTime="17:00"),
-        )
-
-        result = create_scheduled_actions("test-model", "test-asg", schedule_config)
-
-        assert result == ["arn1", "arn2"]
-        mock_create_weekdays.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
-
     @patch("models.scheduling.schedule_management.create_weekly_scheduled_actions")
     def test_create_scheduled_actions_each_day(self, mock_create_weekly):
         """Test creating scheduled actions for EACH_DAY type."""
@@ -623,20 +588,6 @@ class TestCreateScheduledActions:
         schedule_config.dailySchedule = None
 
         with pytest.raises(ValueError, match="dailySchedule required for RECURRING_DAILY type"):
-            create_scheduled_actions("test-model", "test-asg", schedule_config)
-
-    def test_create_scheduled_actions_weekdays_only_missing_schedule(self):
-        """Test error when dailySchedule is missing for WEEKDAYS_ONLY."""
-        from models.domain_objects import ScheduleType, SchedulingConfig
-        from models.scheduling.schedule_management import create_scheduled_actions
-
-        # Create config with None type first, then modify to avoid Pydantic validation
-        schedule_config = SchedulingConfig(scheduleType=None, timezone="UTC")
-        # Manually set the schedule type to test the runtime validation
-        schedule_config.scheduleType = ScheduleType.WEEKDAYS_ONLY
-        schedule_config.dailySchedule = None
-
-        with pytest.raises(ValueError, match="dailySchedule required for WEEKDAYS_ONLY type"):
             create_scheduled_actions("test-model", "test-asg", schedule_config)
 
     def test_create_scheduled_actions_each_day_missing_schedule(self):

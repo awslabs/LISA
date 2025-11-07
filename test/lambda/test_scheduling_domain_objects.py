@@ -136,16 +136,6 @@ class TestSchedulingConfig:
         assert config.weeklySchedule == weekly_schedule
         assert config.dailySchedule is None
 
-    def test_weekdays_only_schedule(self):
-        """Test WEEKDAYS_ONLY schedule type."""
-        daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.WEEKDAYS_ONLY, timezone="Europe/London", dailySchedule=daily_schedule
-        )
-
-        assert config.scheduleType == ScheduleType.WEEKDAYS_ONLY
-        assert config.dailySchedule == daily_schedule
-
     def test_none_schedule_type(self):
         """Test None schedule type."""
         config = SchedulingConfig(scheduleType=None)

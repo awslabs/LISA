@@ -108,7 +108,6 @@ class ScheduleType(str, Enum):
 
     EACH_DAY = "EACH_DAY"
     RECURRING_DAILY = "RECURRING_DAILY"
-    WEEKDAYS_ONLY = "WEEKDAYS_ONLY"
 
 
 class DaySchedule(BaseModel):
@@ -291,7 +290,7 @@ class SchedulingConfig(BaseModel):
                 raise ValueError("weeklySchedule with at least one day required for EACH_DAY type")
             if self.dailySchedule:
                 raise ValueError("dailySchedule not allowed for EACH_DAY type")
-        elif self.scheduleType in [ScheduleType.RECURRING_DAILY, ScheduleType.WEEKDAYS_ONLY]:
+        elif self.scheduleType == ScheduleType.RECURRING_DAILY:
             if not self.dailySchedule:
                 raise ValueError(f"dailySchedule required for {self.scheduleType} type")
             if self.weeklySchedule:

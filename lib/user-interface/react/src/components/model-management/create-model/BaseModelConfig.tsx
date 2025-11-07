@@ -38,123 +38,125 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
     return (
         <SpaceBetween size={'s'}>
             <FormField label='Hosting Type' errorText={props.formErrors?.lisaHostedModel}>
-                <Select
-                    selectedOption={{
-                        label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
-                        value: props.item.lisaHostedModel ? 'true' : 'false'
-                    }}
-                    onChange={({ detail }) => {
-                        const isLisaHosted = detail.selectedOption.value === 'true';
-                        const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
+            </FormField>
+            <Select
+                selectedOption={{
+                    label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
+                    value: props.item.lisaHostedModel ? 'true' : 'false'
+                }}
+                onChange={({ detail }) => {
+                    const isLisaHosted = detail.selectedOption.value === 'true';
+                    const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
 
-                        // If switching to Third Party, clear LISA Hosted specific fields
-                        if (!isLisaHosted) {
-                            fieldsToUpdate['instanceType'] = undefined;
-                            fieldsToUpdate['inferenceContainer'] = undefined;
-                        }
-                        props.setFields(fieldsToUpdate);
-                    }}
-                    onBlur={() => props.touchFields(['lisaHostedModel'])}
-                    options={[
-                        { label: 'Third Party', value: 'false' },
-                        { label: 'LISA Hosted', value: 'true' }
-                    ]}
-                    disabled={props.isEdit}
-                />
+                    // If switching to Third Party, clear LISA Hosted specific fields
+                    if (!isLisaHosted) {
+                        fieldsToUpdate['instanceType'] = undefined;
+                        fieldsToUpdate['inferenceContainer'] = undefined;
+                    }
+                    props.setFields(fieldsToUpdate);
+                }}
+                onBlur={() => props.touchFields(['lisaHostedModel'])}
+                options={[
+                    { label: 'Third Party', value: 'false' },
+                    { label: 'LISA Hosted', value: 'true' }
+                ]}
+                disabled={props.isEdit}
+            />
+            <FormField label='Model ID' errorText={props.formErrors?.modelId} constraintText='The unique model IDs are displayed to users in the "Select a model" drop down. We recommend using a descriptive name like "claude3.7" or "nova-imagegen"'>
             </FormField>
-            <FormField label='Model ID' errorText={props.formErrors?.modelId} description='The unique model IDs are displayed to users in the "Select a model" drop down. We recommend using a descriptive name like "claude3.7" or "nova-imagegen"'>
-                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelId': detail.value });
-                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
-            </FormField>
+            <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
+                props.setFields({ 'modelId': detail.value });
+            }} disabled={props.isEdit} placeholder='mistral-vllm'/>
             <FormField label='Model Name' errorText={props.formErrors?.modelName}
-                description='The full model name is the repository path, or the third party model provider path. The path format typically will be: {ProviderPath}/{ProviderModelName}. Users do not see this value in the chat assistant user interface.'>
-                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelName': detail.value });
-                }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
+                constraintText='The full model name is the repository path, or the third party model provider path. The path format typically will be: {ProviderPath}/{ProviderModelName}. Users do not see this value in the chat assistant user interface.'>
             </FormField>
-            <FormField label={<span>Model Description <em>(optional)</em></span>} errorText={props.formErrors?.modelDescription}>
-                <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelDescription': detail.value });
-                }} placeholder='Brief description of the model and its capabilities'/>
+            <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
+                props.setFields({ 'modelName': detail.value });
+            }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
+            <FormField label={<span>Model Description <em>(Optional)</em></span>} errorText={props.formErrors?.modelDescription}>
             </FormField>
-            {!props.item.lisaHostedModel && <FormField label={<span>API Key <em>(optional)</em></span>} errorText={props.formErrors?.apiKey}>
-                <Input value={props.item.apiKey} inputMode='text' onBlur={() => props.touchFields(['apiKey'])} onChange={({ detail }) => {
-                    props.setFields({ 'apiKey': detail.value });
-                }} disabled={props.isEdit}/>
-            </FormField>}
-            <FormField label={<span>Model URL <em>(optional)</em></span>} errorText={props.formErrors?.modelUrl}>
-                <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
-                    props.setFields({ 'modelUrl': detail.value });
-                }} disabled={props.isEdit}/>
+            <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
+                props.setFields({ 'modelDescription': detail.value });
+            }} placeholder='Brief description of the model and its capabilities'/>
+            {!props.item.lisaHostedModel && <><FormField label={<span>API Key <em>(Optional)</em></span>} errorText={props.formErrors?.apiKey}>
             </FormField>
+            <Input value={props.item.apiKey} inputMode='text' onBlur={() => props.touchFields(['apiKey'])} onChange={({ detail }) => {
+                props.setFields({ 'apiKey': detail.value });
+            }} disabled={props.isEdit}/></>}
+            <FormField label={<span>Model URL <em>(Optional)</em></span>} errorText={props.formErrors?.modelUrl}>
+            </FormField>
+            <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
+                props.setFields({ 'modelUrl': detail.value });
+            }} disabled={props.isEdit}/>
             <FormField label='Model Type' errorText={props.formErrors?.modelType}>
-                <Select
-                    selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
-                    onChange={({ detail }) => {
-                        const fields = {
-                            'modelType': detail.selectedOption.value,
-                        };
-
-                        // turn off streaming for embedded models
-                        if (fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen) {
-                            fields['streaming'] = false;
-                        }
-
-                        // turn off summarization and image input for embedded and imagegen models
-                        if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen)) {
-                            fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT && feature.name !== ModelFeatures.TOOL_CALLS);
-                        }
-
-                        props.setFields(fields);
-                    }}
-                    onBlur={() => props.touchFields(['modelType'])}
-                    options={[
-                        { label: 'TEXTGEN', value: ModelType.textgen },
-                        { label: 'IMAGEGEN', value: ModelType.imagegen },
-                        { label: 'EMBEDDING', value: ModelType.embedding },
-                    ]}
-                    disabled={props.isEdit}
-                />
             </FormField>
+            <Select
+                selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
+                onChange={({ detail }) => {
+                    const fields = {
+                        'modelType': detail.selectedOption.value,
+                    };
+
+                    // turn off streaming for embedded models
+                    if (fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen) {
+                        fields['streaming'] = false;
+                    }
+
+                    // turn off summarization and image input for embedded and imagegen models
+                    if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen)) {
+                        fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT && feature.name !== ModelFeatures.TOOL_CALLS);
+                    }
+
+                    props.setFields(fields);
+                }}
+                onBlur={() => props.touchFields(['modelType'])}
+                options={[
+                    { label: 'TEXTGEN', value: ModelType.textgen },
+                    { label: 'IMAGEGEN', value: ModelType.imagegen },
+                    { label: 'EMBEDDING', value: ModelType.embedding },
+                ]}
+                disabled={props.isEdit}
+            />
             {props.item.lisaHostedModel && (
                 <>
                     <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
-                        <Select
-                            options={(instances || []).map((instance) => ({value: instance}))}
-                            selectedOption={{value: props.item.instanceType}}
-                            loadingText='Loading instances'
-                            disabled={props.isEdit}
-                            onBlur={() => props.touchFields(['instanceType'])}
-                            onChange={({ detail }) => {
-                                props.setFields({ 'instanceType': detail.selectedOption.value });
-                            }}
-                            filteringType='auto'
-                            statusType={ isLoadingInstances ? 'loading' : 'finished'}
-                            virtualScroll
-                        />
                     </FormField>
+                    <Select
+                        options={(instances || []).map((instance) => ({value: instance}))}
+                        selectedOption={{value: props.item.instanceType}}
+                        loadingText='Loading instances'
+                        disabled={props.isEdit}
+                        onBlur={() => props.touchFields(['instanceType'])}
+                        onChange={({ detail }) => {
+                            props.setFields({ 'instanceType': detail.selectedOption.value });
+                        }}
+                        filteringType='auto'
+                        statusType={ isLoadingInstances ? 'loading' : 'finished'}
+                        virtualScroll
+                    />
                     <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
-                        <Select
-                            selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
-                            onBlur={() => props.touchFields(['inferenceContainer'])}
-                            onChange={({ detail }) =>
-                                props.setFields({
-                                    'inferenceContainer': detail.selectedOption.value,
-                                })
-                            }
-                            options={[
-                                { label: 'TGI', value: InferenceContainer.TGI },
-                                { label: 'TEI', value: InferenceContainer.TEI },
-                                { label: 'VLLM', value: InferenceContainer.VLLM },
-                            ]}
-                            disabled={props.isEdit}
-                        />
                     </FormField>
+                    <Select
+                        selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
+                        onBlur={() => props.touchFields(['inferenceContainer'])}
+                        onChange={({ detail }) =>
+                            props.setFields({
+                                'inferenceContainer': detail.selectedOption.value,
+                            })
+                        }
+                        options={[
+                            { label: 'TGI', value: InferenceContainer.TGI },
+                            { label: 'TEI', value: InferenceContainer.TEI },
+                            { label: 'VLLM', value: InferenceContainer.VLLM },
+                        ]}
+                        disabled={props.isEdit}
+                    />
                 </>
             )}
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
-                <FormField label='Streaming' errorText={props.formErrors?.streaming}>
+                <SpaceBetween size={'s'}>
+                    <FormField label='Streaming' errorText={props.formErrors?.streaming}>
+                    </FormField>
                     <Toggle
                         onChange={({ detail }) =>
                             props.setFields({'streaming': detail.checked})
@@ -163,8 +165,10 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         disabled={isEmbeddingModel || isImageModel}
                         checked={props.item.streaming}
                     />
-                </FormField>
-                <FormField label='Tool Calls' errorText={props.formErrors?.features}>
+                </SpaceBetween>
+                <SpaceBetween size={'s'}>
+                    <FormField label='Tool Calls' errorText={props.formErrors?.features}>
+                    </FormField>
                     <Toggle
                         onChange={({ detail }) => {
                             if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) === undefined) {
@@ -177,8 +181,10 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
-                </FormField>
-                <FormField label='Image Input' errorText={props.formErrors?.features}>
+                </SpaceBetween>
+                <SpaceBetween size={'s'}>
+                    <FormField label='Image Input' errorText={props.formErrors?.features}>
+                    </FormField>
                     <Toggle
                         onChange={({ detail }) => {
                             if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) === undefined) {
@@ -191,9 +197,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
-                </FormField>
-                <FormField label='Summarization' errorText={props.formErrors?.features}
-                    warningText={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}>
+                </SpaceBetween>
+                <SpaceBetween size={'s'}>
+                    <FormField label='Summarization' errorText={props.formErrors?.features}
+                        warningText={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}>
+                    </FormField>
                     <Toggle
                         onChange={({ detail }) => {
                             if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) === undefined) {
@@ -206,19 +214,19 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined}
                     />
-                </FormField>
+                </SpaceBetween>
             </Grid>
-            <FormField label='Summarization Capabilities' errorText={props.formErrors?.summarizationCapabilities}>
-                <Input value={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
-                    props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
-                }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Optional overview of Summarization for Model'/>
+            <FormField label={<span>Summarization Capabilities <em>(Optional)</em></span>} errorText={props.formErrors?.summarizationCapabilities}>
             </FormField>
+            <Input value={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
+                props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
+            }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Overview of Summarization for Model'/>
             <ArrayInputField
                 label='Allowed Groups'
                 errorText={props.formErrors?.allowedGroups}
                 values={props.item.allowedGroups || []}
                 onChange={(values) => props.setFields({ 'allowedGroups': values })}
-                description='Restrict model access to specific groups. Leave empty to allow access to all users.'
+                constraintText='Restrict model access to specific groups. Leave empty to allow access to all users.'
             />
         </SpaceBetween>
     );

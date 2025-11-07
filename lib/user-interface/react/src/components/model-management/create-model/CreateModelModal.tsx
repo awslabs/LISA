@@ -23,6 +23,7 @@ import { BaseModelConfig } from './BaseModelConfig';
 import { ContainerConfig } from './ContainerConfig';
 import { AutoScalingConfig } from './AutoScalingConfig';
 import { LoadBalancerConfig } from './LoadBalancerConfig';
+import { GuardrailsConfig } from './GuardrailsConfig';
 import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/reducers/model-management.reducer';
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
@@ -184,7 +185,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 'allowedGroups',
                 'features',
                 'containerConfig',
-                'autoScalingConfig'
+                'autoScalingConfig',
+                'guardrailsConfig'
             ]);
 
             // Build the update request
@@ -256,6 +258,14 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     (value) => value !== undefined
                 );
             }
+
+            // Handle guardrailsConfig if present
+            if (updateFields.guardrailsConfig !== undefined) {
+                // Send the complete current guardrails config from state.form, not just the diff
+                // This ensures all guardrails are preserved unless explicitly marked for deletion
+                updateRequest.guardrailsConfig = state.form.guardrailsConfig;
+            }
+
             updateModelMutation(updateRequest);
         }
     }
@@ -352,6 +362,15 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             isOptional: true,
             onEdit: state.form.lisaHostedModel,
             forExternalModel: false
+        },
+        {
+            title: 'Guardrails Configuration',
+            description: 'Configure guardrails for your model (optional).',
+            content: (
+                <GuardrailsConfig item={state.form.guardrailsConfig || {}} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
+            ),
+            onEdit: true,
+            forExternalModel: true
         },
         {
             title: `Review and ${props.isEdit ? 'Update' : 'Create'}`,

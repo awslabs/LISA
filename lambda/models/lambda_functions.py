@@ -72,6 +72,7 @@ autoscaling = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
+guardrails_table = dynamodb.Table(os.environ["GUARDRAILS_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
@@ -107,6 +108,7 @@ async def create_model(create_request: CreateModelRequest) -> CreateModelRespons
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
     return create_handler(create_request=create_request)
 
@@ -119,6 +121,7 @@ async def list_models(request: Request) -> ListModelsResponse:
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     user_groups = []
@@ -145,6 +148,7 @@ async def get_model(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     user_groups = []
@@ -172,6 +176,7 @@ async def update_model(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
     return update_handler(model_id=model_id, update_request=update_request)
 
@@ -185,6 +190,7 @@ async def delete_model(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
     return delete_handler(model_id=model_id)
 

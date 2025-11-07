@@ -21,6 +21,7 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { LisaServeApplicationConstruct, LisaServeApplicationProps } from './serveApplicationConstruct';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 export * from './serveApplicationConstruct';
+export * from './mcpWorkbenchConstruct';
 
 /**
  * LisaServe Application stack.
@@ -31,6 +32,8 @@ export class LisaServeApplicationStack extends Stack {
     public readonly modelsPs: StringParameter;
     public readonly endpointUrl: StringParameter;
     public readonly tokenTable?: ITable;
+    public readonly guardrailsTableNamePs: StringParameter;
+    public readonly guardrailsTable: ITable;
 
     /**
     * @param {Construct} scope - The parent or owner of the construct.
@@ -46,5 +49,7 @@ export class LisaServeApplicationStack extends Stack {
         this.modelsPs = app.modelsPs;
         this.restApi = app.restApi;
         this.tokenTable = app.tokenTable;
+        this.guardrailsTableNamePs = app.guardrailsTableNamePs;
+        this.guardrailsTable = app.guardrailsTable;
     }
 }

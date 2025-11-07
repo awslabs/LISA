@@ -1,3 +1,39 @@
+# v5.4.0
+
+## Key Features
+
+### Bedrock Guardrails Integration
+LISA Administrators can now Bedrock Guardrails to any models via the Model Management page or API
+- **Comprehensive Protection**: Integrated with Bedrock Guardrails through LiteLLM's proxy support of the ApplyGuardrail API, enabling guardrails during prompt input, response generation, and prompt output.
+- **Advanced Capabilities**: Supports topic denial, word filtering, sensitive information limitation, contextual grounding checks, and automated reasoning for factual accuracy.
+- **Flexible Administration**: Administrators can apply Guardrails to any LISA model (self hosted or 3rd party) via the Model Management UI or API, with customizable permissions for different user groups.
+- **Adaptive Policies**: Guardrails and group permissions can be updated anytime to evolve content moderation alongside organizational needs.
+
+### Offline/Air-gapped Deployment Support
+Enhanced the platform to support offline and air-gapped deployments by enabling pre-caching of external dependencies for the REST API and MCP Workbench.
+- **Nodeenv Pre-caching**: Added support for pre-caching the required nodeenv in the REST API container to enable offline deployments.
+- **Offline Deployment**: Enabled configuration of pre-cached external dependencies for the MCP Workbench via  to support offline and air-gapped deployments.
+
+### MCP Workbench Refactoring
+Migrated the MCP Workbench deployment to use the shared LisaServe ECS cluster, improving modularity and enabling conditional deployment.
+- **MCP Workbench Stack**: Created a dedicated stack that deploys the MCP Workbench as a separate ECS service on the shared cluster.
+- **Conditional Deployment**: Introduced a  configuration flag to control the optional deployment of the MCP Workbench.
+- **Container Overrides**: Added support for overriding the MCP Workbench container image during deployment..
+
+### MCP Workbench UX Improvements
+Enhanced the user experience of the MCP Workbench with tool validation, error display, and theme support.
+- **Validation**: Implemented tool validation to improve the user experience.
+- **Theming**: Introduced theme support for the MCP Workbench UI.
+
+## Acknowledgements
+* @batzela
+* @bedanley
+* @dustins
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.3.2..v5.4.0
+
 # v5.3.2
 
 ## Key Features
@@ -20,7 +56,7 @@ This release includes updates to our [documentation site](https://awslabs.github
 
 ## Acknowledgements
 * @bedanley
-* @dustinps
+* @dustins
 * @estohlmann
 * @jmharold
 

@@ -42,7 +42,7 @@ import { Vpc } from '../networking/vpc';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
-import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -60,6 +60,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    guardrailsTable: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -76,6 +77,7 @@ export class ModelsApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
+        const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,
@@ -151,12 +153,13 @@ export class ModelsApi extends Construct {
 
         const stateMachinesLambdaRole = config.roles ?
             Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
-            this.createStateMachineLambdaRole(modelTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
+            this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -172,6 +175,7 @@ export class ModelsApi extends Construct {
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
             config: config,
             modelTable: modelTable,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -184,6 +188,7 @@ export class ModelsApi extends Construct {
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
             config: config,
             modelTable: modelTable,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -217,6 +222,7 @@ export class ModelsApi extends Construct {
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
@@ -341,6 +347,21 @@ export class ModelsApi extends Construct {
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: [
+                        'dynamodb:GetItem',
+                        'dynamodb:PutItem',
+                        'dynamodb:UpdateItem',
+                        'dynamodb:DeleteItem',
+                        'dynamodb:Query',
+                        'dynamodb:Scan',
+                    ],
+                    resources: [
+                        guardrailsTable.tableArn,
+                        `${guardrailsTable.tableArn}/*`
+                    ],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
                         'autoscaling:DescribeAutoScalingGroups',
                     ],
                     resources: ['*'],  // we do not know ASG names in advance
@@ -401,7 +422,7 @@ export class ModelsApi extends Construct {
      * @param managementKeyName - Name of the management key secret
      * @returns The created role
      */
-    createStateMachineLambdaRole (modelTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
+    createStateMachineLambdaRole (modelTableArn: string, guardrailTableArn: string ,dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
         return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -418,10 +439,13 @@ export class ModelsApi extends Construct {
                                 'dynamodb:PutItem',
                                 'dynamodb:UpdateItem',
                                 'dynamodb:Scan',
+                                'dynamodb:Query'
                             ],
                             resources: [
                                 modelTableArn,
                                 `${modelTableArn}/*`,
+                                guardrailTableArn,
+                                `${guardrailTableArn}/*`,
                             ]
                         }),
                         new PolicyStatement({
@@ -526,6 +550,7 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'bedrock:InvokeModel',
                                 'bedrock:InvokeModelWithResponseStream',
+                                'bedrock:ApplyGuardrail'
                             ],
                             resources: ['*'],  // Bedrock model ARNs are dynamic and region-specific
                         }),

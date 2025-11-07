@@ -34,7 +34,7 @@ COPY ${NODEENV_CACHE_DIR} /tmp/nodeenv-cache/
 # Pre-cache nodeenv for prisma-client-py
 # If the copied directory has content, use it (for offline environments)
 # Otherwise, download it during build (requires internet)
-RUN python -m prisma fetch
+RUN python -m prisma version
 
 # Copy the source code into the container
 COPY src/ ./src
